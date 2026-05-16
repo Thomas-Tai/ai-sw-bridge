@@ -26,6 +26,7 @@
 
     ["ISketchManager", "InsertSketch"],
     ["ISketchManager", "CreateCornerRectangle"],
+    ["ISketchManager", "CreateCenterRectangle"],
     ["ISketchManager", "CreateCircle"],
 
     ["IEquationMgr", "Add2"],

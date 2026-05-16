@@ -187,6 +187,13 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
         "return_type": 'System.bool',
         "summary": 'Selects the specified entity.',
     },
+    "ISketchManager.CreateCenterRectangle": {
+        "args_count": 6,
+        "arg_names": ['X1', 'Y1', 'Z1', 'X2', 'Y2', 'Z2'],
+        "arg_types": ['system.double', 'system.double', 'system.double', 'system.double', 'system.double', 'system.double'],
+        "return_type": 'System.object',
+        "summary": 'Creates a center rectangle.',
+    },
     "ISketchManager.CreateCircle": {
         "args_count": 6,
         "arg_names": ['XC', 'YC', 'Zc', 'Xp', 'Yp', 'Zp'],

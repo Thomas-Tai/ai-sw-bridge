@@ -767,6 +767,47 @@
       "availability": "SOLIDWORKS 2008 FCS, Revision Number 16.0",
       "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISketchManager~CreateCornerRectangle.html"
     },
+    "ISketchManager.CreateCenterRectangle": {
+      "interface": "ISketchManager",
+      "method": "CreateCenterRectangle",
+      "summary": "Creates a center rectangle.",
+      "return_type": "System.object",
+      "args": [
+        {
+          "name": "X1",
+          "type": "system.double",
+          "doc": "X coordinate for point 1"
+        },
+        {
+          "name": "Y1",
+          "type": "system.double",
+          "doc": "Y coordinate for point 1"
+        },
+        {
+          "name": "Z1",
+          "type": "system.double",
+          "doc": "Z coordinate for point 1"
+        },
+        {
+          "name": "X2",
+          "type": "system.double",
+          "doc": "X coordinate for point 2"
+        },
+        {
+          "name": "Y2",
+          "type": "system.double",
+          "doc": "Y coordinate for point 2"
+        },
+        {
+          "name": "Z2",
+          "type": "system.double",
+          "doc": "Z coordinate for point 2"
+        }
+      ],
+      "args_count": 6,
+      "availability": null,
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISketchManager~CreateCenterRectangle.html"
+    },
     "ISketchManager.CreateCircle": {
       "interface": "ISketchManager",
       "method": "CreateCircle",

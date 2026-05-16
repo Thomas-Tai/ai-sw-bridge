@@ -312,6 +312,23 @@ Selects the specified entity.
 
 **Availability:** SOLIDWORKS 2005 FCS, Revision Number 13.0
 
+### `ISketchManager.CreateCenterRectangle`
+
+Creates a center rectangle.
+
+**Args (6):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `X1` | `system.double` | X coordinate for point 1 |
+| 2 | `Y1` | `system.double` | Y coordinate for point 1 |
+| 3 | `Z1` | `system.double` | Z coordinate for point 1 |
+| 4 | `X2` | `system.double` | X coordinate for point 2 |
+| 5 | `Y2` | `system.double` | Y coordinate for point 2 |
+| 6 | `Z2` | `system.double` | Z coordinate for point 2 |
+
+**Returns:** `System.object`
+
 ### `ISketchManager.CreateCircle`
 
 Creates a circle based on a center point and a point on the circle.
