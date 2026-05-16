@@ -99,39 +99,65 @@ the COM IDL signatures for cut methods — pywin32 cannot generate proper
 VARIANT type wrappers without the gencache stubs, which the SW typelib
 won't produce ("Invalid index" on `GetTypeInfo`).
 
-## Path forward decision (next session)
+## RESOLUTION (2026-05-17 later): FeatureCut4 needs 27 args, not 24
 
-Two viable options to unblock cuts:
+The CHM API help shipped in
+`Hardware/S1b_Conveyor/Model/example/api/sldworksapi.chm` was decompiled
+via `hh.exe -decompile`. The `IFeatureManager~FeatureCut4.html` file
+shows the true signature is **27 args** -- our spikes were missing
+three optional-looking parameters:
+- arg 22: `AutoSelectComponents` (bool)
+- arg 23: `PropagateFeatureToParts` (bool)
+- arg 27: `OptimizeGeometry` (bool, sheet metal only)
 
-**Option A: VBA macro fallback for cut features only**
-- Keep direct-COM for everything else (boss, sketch, dim, equation)
-- Emit a tiny `.bas` per cut, invoke via `RunMacro2`
-- The cut runs in SW's own VBA context where FeatureCut4 works
-- Reference: `Path C` (record-and-parameterize) already proved RunMacro2
-  works on `.swp` files (OLE compound, not plain text). For cuts, we
-  emit a fresh macro per call rather than reusing recorded ones.
-- Pro: focused workaround, minimal disruption to existing builder.py
-- Con: requires `.swp` packaging (OLE compound document writing) OR
-  the user must paste .bas content manually
+**Spike E7** verified the 27-arg form on SW 2024 SP1: produced
+`Cut-Extrude1` of type "Cut". Builder updated. The PARAMNOTOPTIONAL
+error means literally "missing required parameters", not a
+marshalling issue. Our pywin32 late-binding pessimism was wrong.
 
-**Option B: Different automation library**
-- pywin32 is unique in its marshalling limitations. Alternatives:
-  - `comtypes` (different COM library) — may handle the IDL differently
-  - `pyswx`, `SolidWorks.Interop` via pythonnet — both .NET-based, may
-    bypass the COM marshalling layer
-- Pro: potentially solves cuts, AddDimension2 popup, and SelectByID2 in
-  one go
-- Con: major library migration; unproven on this build; pyswx is dormant
+Other CHM-driven fixes from the same investigation:
+- `swEndCondThroughAll = 1` (we had 4, which is the deprecated
+  `swEndCondUpToSurface`)
+- `FeatureExtrusion2` is 23 args (confirmed in CHM)
+- `FeatureExtrusion3` is also 23 args (not a combined boss/cut method,
+  just a near-identical newer variant)
 
-## Suggested next-session approach
+**Key lesson**: when an SW API call fails PARAMNOTOPTIONAL, the very
+first check is whether the arg count matches sldworksapi.chm.
+Decompile via `hh.exe -decompile <dst> <src.chm>` and grep the per-method
+html file. Confirmed authoritative.
 
-1. Spike A (VBA macro fallback for cuts) — 60-90 min:
-   - Generate a `.swp`-as-OLE wrapping the cut VBA
-   - OR fall back to "Path C lite": save `.bas`, ask user to paste +F5
-   - Build a single cut via this path; confirm geometry result
-2. If A works: refactor builder.py to route `cut_extrude_*` features
-   through the VBA path. Keep boss/sketch/dim direct-COM.
-3. Re-run MMP build end-to-end.
+## Tooling added
+
+- `tools/chm_extract.py` -- decompiled-CHM parser; produces JSON refs
+- `tools/gen_api_markdown.py` -- JSON -> docs/api_reference.md
+- `tools/gen_sw_types.py` -- JSON -> src/ai_sw_bridge/sw_types.py
+  (enum constants + METHOD_SIGNATURES dict + assert_args runtime check)
+- `docs/api_reference.json` -- machine-readable signatures of all 23
+  in-use methods + 5 enums
+- `docs/api_reference.md` -- human-readable form
+
+## MMP end-to-end status (2026-05-17)
+
+After all fixes (cut signature, end-cond enum, face-selection fallback):
+- Features 1-4 built successfully (rect sketch -> boss -> circle on
+  face -> cut-through-all). **The first cut produced via this pipeline.**
+- Feature 5 (SK_FlangeRecess) succeeded with the new face-select offset
+  logic (1-15mm offsets handle holes up to 30mm diameter)
+- Feature 6 (Cut_FlangeRecess) returned None: a sketch whose origin
+  falls inside a pre-existing through-hole cannot define a cut, even
+  if the circle extends outside the hole.
+
+**v1 limitation documented**: a face-based sketch's origin must lie on
+material, not inside a void. The MMP design pattern (flange recess
+concentric with through-hole) hits this. Workarounds:
+- Sketch on the underlying plane (Front Plane), not the face -- avoids
+  the bounded-region rule
+- Move sketch origin off-center (changes feature intent, not viable)
+
+Suggested fix path: add a `sketch_circle_on_plane_at_face_z` feature
+type that picks the underlying plane parallel to the face but at the
+face's z offset. Defer to next session.
 
 ## Files referenced
 
@@ -141,10 +167,16 @@ Two viable options to unblock cuts:
 - `spikes/phase0/spike_e4_typed_fm.py` -- gencache typed FeatureManager attempt
 - `spikes/phase0/spike_e5_extrude_as_cut.py` -- FeatureExtrusion2 cut-mode check
 - `spikes/phase0/spike_e6_extrusion3.py` -- FeatureExtrusion3 (combined boss/cut) at arg counts 24-28
+- `spikes/phase0/spike_e7_cut_27args.py` -- **the resolution**; 27-arg FeatureCut4 works
 - `spikes/phase0/spike_f_close_pm.py` -- PM-pane dismissal probe (2026-05-17)
 - `spikes/phase0/spike_h_sendkeys.py` -- key-injection probe
 - `spikes/phase0/spike_h_window_probe.py` -- SW HWND discovery
 - `spikes/phase0/spike_i_verify_toggle.py` -- toggle ID 8 verification
 - `spikes/phase0/spike_j_specific_dim.py` -- AddSpecificDimension marshalling test
-- `src/ai_sw_bridge/spec/builder.py` -- `_dismiss_dim_pane` remains a no-op;
-  `_call_feature_cut` will need rerouting through VBA path (Option A above)
+- `tools/chm_extract.py` -- generic CHM signature/enum extractor
+- `tools/gen_api_markdown.py` and `tools/gen_sw_types.py` -- generators
+- `docs/api_reference.{json,md}` -- the verified reference
+- `src/ai_sw_bridge/sw_types.py` -- auto-generated constants + assert_args
+- `src/ai_sw_bridge/spec/builder.py` -- FeatureCut4 = 27 args (fixed),
+  FeatureExtrusion2 = 23 args (verified), THROUGH_ALL = 1 (fixed),
+  face selection uses 1-15mm offset fallback for holes

@@ -23,17 +23,22 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..sw_com import get_sw_app
+from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
+    SW_END_COND_BLIND,
+    SW_END_COND_THROUGH_ALL,
+    SW_END_COND_THROUGH_NEXT,
+    SW_END_COND_MID_PLANE,
+    SW_END_COND_THROUGH_ALL_BOTH,
+    SW_START_SKETCH_PLANE,
+    assert_args,
+)
 
 
-# SW enum values used here. Constants kept local to the builder so changes
-# to SW versions don't ripple into other modules.
-SW_END_COND_BLIND = 0
-SW_END_COND_THROUGH_ALL = 4
-SW_FEATURE_BODY_OP_CUT = 2  # used by FeatureCut4 (not used in v1; we use FeatureExtrusion2 with bodyOperation arg implicit)
-SW_START_SKETCH_PLANE = 0
-# swUserPreferenceToggle.swInputDimValOnCreate -- when True, AddDimension2 pops
-# a "Modify Dimension" dialog and blocks waiting for user input. We toggle it
-# False at build start and restore at end. Confirmed in Spike D.
+# swUserPreferenceToggle.swInputDimValOnCreate -- the toggle ID is NOT
+# documented in the CHM enum (descriptions just say "see System Options").
+# Empirically, ID=8 reads back False on this build but does NOT suppress
+# the popup. Kept in place because it's harmless and may help on some
+# SW builds; see MMP_DEBUG_SESSION.md for the full investigation.
 SW_PREF_INPUT_DIM_VAL_ON_CREATE = 8
 
 
@@ -266,6 +271,70 @@ def _build_sketch_circle_on_plane(ctx: BuildContext, feat: dict[str, Any]) -> Bu
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
 
 
+def _select_extrude_face(
+    ctx: BuildContext,
+    parent: "BuiltFeature",
+    face: str,
+) -> tuple[bool, float, float, float]:
+    """Select the +z or -z face of an extrusion.
+
+    Tries the face center first; if that fails (e.g. earlier cut removed
+    material at the center), tries small offsets from center until one
+    succeeds. Returns (ok, fx, fy, fz) where the coords are the point on
+    the face that successfully selected (for downstream use as sketch
+    origin reference).
+    """
+    ox, oy, oz = parent.extrude_origin
+    ax, ay, az = parent.extrude_axis
+    depth = parent.extrude_depth_m
+    if parent.extrude_flip:
+        ax, ay, az = -ax, -ay, -az
+    if face == "+z":
+        fx0 = ox + ax * depth
+        fy0 = oy + ay * depth
+        fz0 = oz + az * depth
+    else:
+        fx0, fy0, fz0 = ox, oy, oz
+
+    # Candidate offsets in the face's tangent plane. Since +z faces lie
+    # perpendicular to the extrude axis, the tangent plane uses the OTHER
+    # two axes. For a Front-Plane sketch, axis=+Z, so tangent = (X, Y).
+    # Try center first; if that hits a hole (prior cut), expand to larger
+    # offsets. Use a spiral of 1mm, 5mm, 15mm, 50mm to handle holes of any
+    # reasonable size. Worst case (large hole, small plate): last offset
+    # still falls inside the hole AND outside the plate -- a real geometry
+    # problem the caller must fix by adjusting the spec.
+    offsets_2d = [
+        (0, 0),
+        (0.001, 0), (0, 0.001), (-0.001, 0), (0, -0.001),
+        (0.005, 0), (0, 0.005), (-0.005, 0), (0, -0.005),
+        (0.015, 0), (0, 0.015), (-0.015, 0), (0, -0.015),
+        (0.005, 0.005), (-0.005, -0.005),
+        (0.015, 0.015), (-0.015, -0.015),
+    ]
+
+    if abs(az) > 0.99:        # axis is +/-Z; tangent is (X, Y)
+        for du, dv in offsets_2d:
+            fx, fy, fz = fx0 + du, fy0 + dv, fz0
+            ctx.doc.ClearSelection2(True)
+            if ctx.doc.SelectByID("", "FACE", fx, fy, fz):
+                return True, fx, fy, fz
+    elif abs(ay) > 0.99:      # axis is +/-Y; tangent is (X, Z)
+        for du, dv in offsets_2d:
+            fx, fy, fz = fx0 + du, fy0, fz0 + dv
+            ctx.doc.ClearSelection2(True)
+            if ctx.doc.SelectByID("", "FACE", fx, fy, fz):
+                return True, fx, fy, fz
+    else:                     # axis is +/-X; tangent is (Y, Z)
+        for du, dv in offsets_2d:
+            fx, fy, fz = fx0, fy0 + du, fz0 + dv
+            ctx.doc.ClearSelection2(True)
+            if ctx.doc.SelectByID("", "FACE", fx, fy, fz):
+                return True, fx, fy, fz
+
+    return False, fx0, fy0, fz0
+
+
 def _build_sketch_circle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     parent_name = feat["of_feature"]
     parent = ctx.features_by_name.get(parent_name)
@@ -286,24 +355,11 @@ def _build_sketch_circle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bui
             f"v1 only supports +z/-z (out/in board) faces of extrusions; got {face}"
         )
 
-    ox, oy, oz = parent.extrude_origin
-    ax, ay, az = parent.extrude_axis
-    depth = parent.extrude_depth_m
-    # If extrude was flipped, the outboard face is at -axis*depth
-    if parent.extrude_flip:
-        ax, ay, az = -ax, -ay, -az
-    if face == "+z":
-        fx = ox + ax * depth
-        fy = oy + ay * depth
-        fz = oz + az * depth
-    else:  # -z
-        fx, fy, fz = ox, oy, oz
-
-    ctx.doc.ClearSelection2(True)
-    ok = ctx.doc.SelectByID("", "FACE", fx, fy, fz)
+    ok, fx, fy, fz = _select_extrude_face(ctx, parent, face)
     if not ok:
         raise RuntimeError(
-            f"SelectByID returned False at ({fx}, {fy}, {fz}) - face not at expected coord"
+            f"SelectByID returned False for {face} face of {parent_name} -- "
+            f"tried center and offset points, none hit material"
         )
 
     sm = ctx.doc.SketchManager
@@ -359,21 +415,12 @@ def _build_sketch_circles_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bu
             f"v1 only supports +z/-z (out/in board) faces; got {face}"
         )
 
-    ox, oy, oz = parent.extrude_origin
-    ax, ay, az = parent.extrude_axis
-    depth = parent.extrude_depth_m
-    if parent.extrude_flip:
-        ax, ay, az = -ax, -ay, -az
-    if face == "+z":
-        fx = ox + ax * depth
-        fy = oy + ay * depth
-        fz = oz + az * depth
-    else:  # -z
-        fx, fy, fz = ox, oy, oz
-
-    ctx.doc.ClearSelection2(True)
-    if not ctx.doc.SelectByID("", "FACE", fx, fy, fz):
-        raise RuntimeError(f"face select returned False at ({fx}, {fy}, {fz})")
+    ok, fx, fy, fz = _select_extrude_face(ctx, parent, face)
+    if not ok:
+        raise RuntimeError(
+            f"face select returned False for {face} face of {parent_name} -- "
+            f"tried center and offsets"
+        )
 
     sm = ctx.doc.SketchManager
     sm.InsertSketch(True)
@@ -414,50 +461,46 @@ def _call_feature_extrusion(
     depth_m: float,
     flip: bool,
 ) -> Any:
-    """Common wrapper around FeatureManager.FeatureExtrusion2.
+    """Boss-only extrusion. For cuts use _call_feature_cut (FeatureCut4).
 
-    Used by all three extrude variants (boss blind, cut through-all, cut blind).
-    The bodyOperation (boss vs cut) is determined by whether there's an existing
-    body intersected by the sketch + the Merge flag. For v1, FeatureExtrusion2
-    naturally produces a boss on the first extrude and a cut when the sketch
-    overlaps the existing solid -- SW's auto-detection handles it.
-
-    Actually no: FeatureExtrusion2 is BOSS-ONLY. For cuts we must use
-    FeatureCut4. Will refactor if v1 hits this.
+    SW 2017+ signature (23 args; verified via decompiled sldworksapi.chm):
+      Sd, Flip, Dir, T1, T2, D1, D2,
+      Dchk1, Dchk2, Ddir1, Ddir2,
+      Dang1, Dang2,
+      OffsetReverse1, OffsetReverse2,
+      TranslateSurface1, TranslateSurface2,
+      Merge,
+      UseFeatScope, UseAutoSelect,
+      T0, StartOffset, FlipStartOffset
     """
     fm = ctx.doc.FeatureManager
-    try:
-        feature = fm.FeatureExtrusion2(
-            True,           # Sd (single direction)
-            flip,           # Flip
-            False,          # Dir (use sketch normal)
-            end_cond,       # T1
-            0,              # T2
-            depth_m,        # D1
-            0.0,            # D2
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True,           # Merge
-            True,           # UseFeatScope
-            True,           # UseAutoSelect
-            SW_START_SKETCH_PLANE,
-            0.0,
-            False,
-        )
-    except Exception:
-        # Try 22-arg fallback (some SW builds)
-        feature = fm.FeatureExtrusion2(
-            True, flip, False,
-            end_cond, 0,
-            depth_m, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            SW_START_SKETCH_PLANE,
-            0.0,
-        )
+    args = (
+        True,           # 1  Sd (single direction)
+        flip,           # 2  Flip
+        False,          # 3  Dir (use sketch normal)
+        end_cond,       # 4  T1
+        0,              # 5  T2
+        depth_m,        # 6  D1
+        0.0,            # 7  D2
+        False,          # 8  Dchk1
+        False,          # 9  Dchk2
+        False,          # 10 Ddir1
+        False,          # 11 Ddir2
+        0.0,            # 12 Dang1
+        0.0,            # 13 Dang2
+        False,          # 14 OffsetReverse1
+        False,          # 15 OffsetReverse2
+        False,          # 16 TranslateSurface1
+        False,          # 17 TranslateSurface2
+        True,           # 18 Merge
+        True,           # 19 UseFeatScope
+        True,           # 20 UseAutoSelect
+        SW_START_SKETCH_PLANE,  # 21 T0
+        0.0,            # 22 StartOffset
+        False,          # 23 FlipStartOffset
+    )
+    assert_args("IFeatureManager.FeatureExtrusion2", args)
+    feature = fm.FeatureExtrusion2(*args)
     if feature is None:
         raise RuntimeError("FeatureExtrusion2 returned None")
     return feature
@@ -485,7 +528,7 @@ def _call_feature_cut(
       T0, StartOffset, FlipStartOffset, OptimizeGeometry
     """
     fm = ctx.doc.FeatureManager
-    feature = fm.FeatureCut4(
+    args = (
         True,           # 1  Sd (single-ended)
         flip,           # 2  Flip
         False,          # 3  Dir
@@ -514,6 +557,8 @@ def _call_feature_cut(
         False,          # 26 FlipStartOffset
         False,          # 27 OptimizeGeometry (sheet metal only)
     )
+    assert_args("IFeatureManager.FeatureCut4", args)
+    feature = fm.FeatureCut4(*args)
     if feature is None:
         raise RuntimeError("FeatureCut4 returned None")
     return feature

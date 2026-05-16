@@ -1,0 +1,43 @@
+{
+  "_comment": "APIs the bridge actually calls. Used by chm_extract.py batch to produce docs/api_reference.json.",
+  "methods": [
+    ["ISldWorks", "NewDocument"],
+    ["ISldWorks", "GetUserPreferenceStringValue"],
+    ["ISldWorks", "GetUserPreferenceToggle"],
+    ["ISldWorks", "SetUserPreferenceToggle"],
+    ["ISldWorks", "SendKeys"],
+
+    ["IModelDoc2", "SelectByID"],
+    ["IModelDoc2", "ClearSelection2"],
+    ["IModelDoc2", "AddDimension2"],
+    ["IModelDoc2", "FeatureByPositionReverse"],
+    ["IModelDoc2", "EditRebuild3"],
+    ["IModelDoc2", "EditUndo2"],
+    ["IModelDoc2", "Parameter"],
+    ["IModelDoc2", "GetFeatureCount"],
+    ["IModelDoc2", "SaveBMP"],
+
+    ["IModelDocExtension", "SelectByID2"],
+
+    ["IFeatureManager", "FeatureExtrusion2"],
+    ["IFeatureManager", "FeatureExtrusion3"],
+    ["IFeatureManager", "FeatureCut4"],
+    ["IFeatureManager", "FeatureCut5"],
+
+    ["ISketchManager", "InsertSketch"],
+    ["ISketchManager", "CreateCornerRectangle"],
+    ["ISketchManager", "CreateCircle"],
+
+    ["IEquationMgr", "Add2"],
+
+    ["IFeature", "GetTypeName"],
+    ["IFeature", "GetNextFeature"]
+  ],
+  "enums": [
+    "swEndConditions_e",
+    "swStartConditions_e",
+    "swDocumentTypes_e",
+    "swDimensionType_e",
+    "swSelectType_e"
+  ]
+}

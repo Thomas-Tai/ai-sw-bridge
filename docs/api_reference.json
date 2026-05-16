@@ -1,0 +1,1103 @@
+{
+  "methods": {
+    "ISldWorks.NewDocument": {
+      "interface": "ISldWorks",
+      "method": "NewDocument",
+      "summary": "Creates a new document based on the specified template.",
+      "return_type": "System.object",
+      "args": [
+        {
+          "name": "TemplateName",
+          "type": "system.string",
+          "doc": "Fully qualified path and name of the template to use for creating the new document"
+        },
+        {
+          "name": "PaperSize",
+          "type": "system.int",
+          "doc": "Size of paper as defined in swDwgPaperSizes_e"
+        },
+        {
+          "name": "Width",
+          "type": "system.double",
+          "doc": "Width of paper; used only when PaperSize is swDwgPapersUserDefined"
+        },
+        {
+          "name": "Height",
+          "type": "system.double",
+          "doc": "Height of paper; used only when PaperSize is swDwgPapersUserDefined"
+        }
+      ],
+      "args_count": 4,
+      "availability": "SOLIDWORKS 2000 FCS, Revision Number 8.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISldWorks~NewDocument.html"
+    },
+    "ISldWorks.GetUserPreferenceStringValue": {
+      "interface": "ISldWorks",
+      "method": "GetUserPreferenceStringValue",
+      "summary": "Gets system default user preference values.",
+      "return_type": "System.string",
+      "args": [
+        {
+          "name": "UserPreference",
+          "type": "system.int",
+          "doc": "User preference as defined in swUserPreferenceStringValue_e"
+        }
+      ],
+      "args_count": 1,
+      "availability": "SOLIDWORKS 2000 FCS, Revision Number 8.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISldWorks~GetUserPreferenceStringValue.html"
+    },
+    "ISldWorks.GetUserPreferenceToggle": {
+      "interface": "ISldWorks",
+      "method": "GetUserPreferenceToggle",
+      "summary": "Gets document default user preference values.",
+      "return_type": "System.bool",
+      "args": [
+        {
+          "name": "UserPreferenceToggle",
+          "type": "system.int",
+          "doc": "User preference as defined in swUserPreferenceToggle_e"
+        }
+      ],
+      "args_count": 1,
+      "availability": null,
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISldWorks~GetUserPreferenceToggle.html"
+    },
+    "ISldWorks.SetUserPreferenceToggle": {
+      "interface": "ISldWorks",
+      "method": "SetUserPreferenceToggle",
+      "summary": "Sets system default user preference values.",
+      "return_type": "void",
+      "args": [
+        {
+          "name": "UserPreferenceValue",
+          "type": "system.int",
+          "doc": "User preference as defined in swUserPreferenceToggle_e"
+        },
+        {
+          "name": "OnFlag",
+          "type": "system.bool",
+          "doc": "True to toggle UserPreferenceValue on, false to toggle UserPreferenceValue off"
+        }
+      ],
+      "args_count": 2,
+      "availability": null,
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISldWorks~SetUserPreferenceToggle.html"
+    },
+    "IModelDoc2.SelectByID": {
+      "interface": "IModelDoc2",
+      "method": "SelectByID",
+      "summary": "Obsolete. Superseded by IModelDocExtension::SelectByID2.",
+      "return_type": "System.bool",
+      "args": [
+        {
+          "name": "SelID",
+          "type": "system.string",
+          "doc": ""
+        },
+        {
+          "name": "SelParams",
+          "type": "system.string",
+          "doc": ""
+        },
+        {
+          "name": "X",
+          "type": "system.double",
+          "doc": ""
+        },
+        {
+          "name": "Y",
+          "type": "system.double",
+          "doc": ""
+        },
+        {
+          "name": "Z",
+          "type": "system.double",
+          "doc": ""
+        }
+      ],
+      "args_count": 5,
+      "availability": null,
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IModelDoc2~SelectByID.html"
+    },
+    "IModelDoc2.ClearSelection2": {
+      "interface": "IModelDoc2",
+      "method": "ClearSelection2",
+      "summary": "Clears the selection list.",
+      "return_type": "void",
+      "args": [
+        {
+          "name": "All",
+          "type": "system.bool",
+          "doc": "True clears the entire existing selection list, false clears only the items in the active selection list (see Remarks)"
+        }
+      ],
+      "args_count": 1,
+      "availability": "SOLIDWORKS 2001Plus FCS, Revision Number 10.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IModelDoc2~ClearSelection2.html"
+    },
+    "IModelDoc2.AddDimension2": {
+      "interface": "IModelDoc2",
+      "method": "AddDimension2",
+      "summary": "Creates a display dimension at the specified location for selected entities.",
+      "return_type": "System.object",
+      "args": [
+        {
+          "name": "X",
+          "type": "system.double",
+          "doc": "Dimension text location in meters"
+        },
+        {
+          "name": "Y",
+          "type": "system.double",
+          "doc": "Dimension text location in meters"
+        },
+        {
+          "name": "Z",
+          "type": "system.double",
+          "doc": "Dimension text location in meters"
+        }
+      ],
+      "args_count": 3,
+      "availability": "SOLIDWORKS 2001Plus FCS, Revision Number 10.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IModelDoc2~AddDimension2.html"
+    },
+    "IModelDoc2.FeatureByPositionReverse": {
+      "interface": "IModelDoc2",
+      "method": "FeatureByPositionReverse",
+      "summary": "Gets the nth from last feature in the document.",
+      "return_type": "System.object",
+      "args": [
+        {
+          "name": "Num",
+          "type": "system.int",
+          "doc": "Number of feature from the last feature in the FeatureManager design tree; 0 is the last feature in FeatureManager design tree"
+        }
+      ],
+      "args_count": 1,
+      "availability": "SOLIDWORKS 2001Plus FCS, Revision Number 10.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IModelDoc2~FeatureByPositionReverse.html"
+    },
+    "IModelDoc2.EditRebuild3": {
+      "interface": "IModelDoc2",
+      "method": "EditRebuild3",
+      "summary": "Rebuilds only those features that need to be rebuilt in the active configuration in the model.",
+      "return_type": "System.bool",
+      "args": [],
+      "args_count": 0,
+      "availability": "SOLIDWORKS 2001Plus FCS, Revision Number 10.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IModelDoc2~EditRebuild3.html"
+    },
+    "IModelDoc2.EditUndo2": {
+      "interface": "IModelDoc2",
+      "method": "EditUndo2",
+      "summary": "Undoes the specified number of actions in the active SOLIDWORKS session.",
+      "return_type": "void",
+      "args": [
+        {
+          "name": "Steps",
+          "type": "system.int",
+          "doc": "Number of actions to undo"
+        }
+      ],
+      "args_count": 1,
+      "availability": "SOLIDWORKS 2001Plus FCS, Revision Number 10.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IModelDoc2~EditUndo2.html"
+    },
+    "IModelDoc2.Parameter": {
+      "interface": "IModelDoc2",
+      "method": "Parameter",
+      "summary": "Gets the specified parameter.",
+      "return_type": "System.object",
+      "args": [
+        {
+          "name": "StringIn",
+          "type": "system.string",
+          "doc": "Name of parameter (for example, \"D1@Base-Revolve\")"
+        }
+      ],
+      "args_count": 1,
+      "availability": "SOLIDWORKS 2001Plus FCS, Revision Number 10.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IModelDoc2~Parameter.html"
+    },
+    "IModelDoc2.GetFeatureCount": {
+      "interface": "IModelDoc2",
+      "method": "GetFeatureCount",
+      "summary": "Gets the number of features in this document.",
+      "return_type": "System.int",
+      "args": [],
+      "args_count": 0,
+      "availability": "SOLIDWORKS 2001Plus FCS, Revision Number 10.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IModelDoc2~GetFeatureCount.html"
+    },
+    "IModelDoc2.SaveBMP": {
+      "interface": "IModelDoc2",
+      "method": "SaveBMP",
+      "summary": "Saves the current view as a bitmap (BMP) file.",
+      "return_type": "System.bool",
+      "args": [
+        {
+          "name": "FileNameIn",
+          "type": "system.string",
+          "doc": "Path and file name of the new BMP file"
+        },
+        {
+          "name": "WidthIn",
+          "type": "system.int",
+          "doc": "Width of the BMP"
+        },
+        {
+          "name": "HeightIn",
+          "type": "system.int",
+          "doc": "Height of the BMP"
+        }
+      ],
+      "args_count": 3,
+      "availability": "SOLIDWORKS 2001Plus FCS, Revision Number 10.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IModelDoc2~SaveBMP.html"
+    },
+    "IModelDocExtension.SelectByID2": {
+      "interface": "IModelDocExtension",
+      "method": "SelectByID2",
+      "summary": "Selects the specified entity.",
+      "return_type": "System.bool",
+      "args": [
+        {
+          "name": "Name",
+          "type": "system.string",
+          "doc": "Name of object to select or an empty string"
+        },
+        {
+          "name": "Type",
+          "type": "system.string",
+          "doc": "Type of object (uppercase) as defined in swSelectType_e or an empty string"
+        },
+        {
+          "name": "X",
+          "type": "system.double",
+          "doc": "X selection location or 0"
+        },
+        {
+          "name": "Y",
+          "type": "system.double",
+          "doc": "Y selection location or 0"
+        },
+        {
+          "name": "Z",
+          "type": "system.double",
+          "doc": "Z selection location or 0"
+        },
+        {
+          "name": "Append",
+          "type": "system.bool",
+          "doc": "If... An, if entity is... Then... True Not already selected Entity is appended to the current selection list Already selected Entity is removed from the current selection list False Not already selected Current selection is cleared and then the entity is put on the list Already selected Current selection list remains the same"
+        },
+        {
+          "name": "Mark",
+          "type": "system.int",
+          "doc": "Value that you want to use as a mark; this value is used by other functions that require ordered selection (see Remarks)"
+        },
+        {
+          "name": "Callout",
+          "type": "callout",
+          "doc": "Pointer to the associated callout"
+        },
+        {
+          "name": "SelectOption",
+          "type": "system.int",
+          "doc": "Selection option as defined in swSelectOption_e (see Remarks)"
+        }
+      ],
+      "args_count": 9,
+      "availability": "SOLIDWORKS 2005 FCS, Revision Number 13.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IModelDocExtension~SelectByID2.html"
+    },
+    "IFeatureManager.FeatureExtrusion2": {
+      "interface": "IFeatureManager",
+      "method": "FeatureExtrusion2",
+      "summary": "Obsolete. Superseded by IFeatureManager::FeatureExtrusion3.",
+      "return_type": "Feature",
+      "args": [
+        {
+          "name": "Sd",
+          "type": "system.bool",
+          "doc": "True for single ended, false for double ended"
+        },
+        {
+          "name": "Flip",
+          "type": "system.bool",
+          "doc": "True to flip side to cut"
+        },
+        {
+          "name": "Dir",
+          "type": "system.bool",
+          "doc": "True to flip the direction to extrude"
+        },
+        {
+          "name": "T1",
+          "type": "system.int",
+          "doc": "Termination type for first end as defined in swEndConditions_e"
+        },
+        {
+          "name": "T2",
+          "type": "system.int",
+          "doc": "Termination type for second end as defined in swEndConditions_e"
+        },
+        {
+          "name": "D1",
+          "type": "system.double",
+          "doc": "Depth of extrusion for first end in meters"
+        },
+        {
+          "name": "D2",
+          "type": "system.double",
+          "doc": "Depth of extrusion for second end in meters"
+        },
+        {
+          "name": "Dchk1",
+          "type": "system.bool",
+          "doc": "True allows draft angle in first direction, false does not allow drafting"
+        },
+        {
+          "name": "Dchk2",
+          "type": "system.bool",
+          "doc": "True allows draft angle in second direction, false does not allow drafting"
+        },
+        {
+          "name": "Ddir1",
+          "type": "system.bool",
+          "doc": "True for first draft angle to be inward, false to be outward"
+        },
+        {
+          "name": "Ddir2",
+          "type": "system.bool",
+          "doc": "True for second draft angle to be inward, false to be outward"
+        },
+        {
+          "name": "Dang1",
+          "type": "system.double",
+          "doc": "Draft angle for first end"
+        },
+        {
+          "name": "Dang2",
+          "type": "system.double",
+          "doc": "Draft angle for second end"
+        },
+        {
+          "name": "OffsetReverse1",
+          "type": "system.bool",
+          "doc": "If you chose to offset the first end condition from another face or plane, then True specifies offset in direction away from the sketch, false specifies offset from the face or plane in direction toward the sketch"
+        },
+        {
+          "name": "OffsetReverse2",
+          "type": "system.bool",
+          "doc": "If you chose to offset the second end condition from another face or plane, then True specifies offset in direction away from the sketch, false specifies offset from the face or plane in direction toward the sketch"
+        },
+        {
+          "name": "TranslateSurface1",
+          "type": "system.bool",
+          "doc": "When you choose swEndcondOffsetFromSurface as the termination type for the first end, then True specifies that the end of the extrusion is a translation of the reference surface, false specifies to use a true offset"
+        },
+        {
+          "name": "TranslateSurface2",
+          "type": "system.bool",
+          "doc": "When you choose swEndcondOffsetFromSurface as the termination type for the second end, then True specifies that the end of the extrusion is a translation of the reference surface, false specifies to use a true offset"
+        },
+        {
+          "name": "Merge",
+          "type": "system.bool",
+          "doc": "True to merge the results in a multibody part, false to not"
+        },
+        {
+          "name": "UseFeatScope",
+          "type": "system.bool",
+          "doc": "True if the feature only affects selected bodies, false if the feature affects all bodies"
+        },
+        {
+          "name": "UseAutoSelect",
+          "type": "system.bool",
+          "doc": "True to automatically select all bodies and have the feature affect those bodies, false to select the bodies the feature affects (see Remarks)"
+        },
+        {
+          "name": "T0",
+          "type": "system.int",
+          "doc": "Start condition as defined in swStartConditions_e"
+        },
+        {
+          "name": "StartOffset",
+          "type": "system.double",
+          "doc": "If t0 set to swStartOffset, then specify offset value"
+        },
+        {
+          "name": "FlipStartOffset",
+          "type": "system.bool",
+          "doc": "If t0 set to swStartOffset, then True to flip the direction or false to not"
+        }
+      ],
+      "args_count": 23,
+      "availability": "SOLIDWORKS 2005 FCS, Revision Number 13.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~FeatureExtrusion2.html"
+    },
+    "IFeatureManager.FeatureExtrusion3": {
+      "interface": "IFeatureManager",
+      "method": "FeatureExtrusion3",
+      "summary": "Creates an extruded feature.",
+      "return_type": "Feature",
+      "args": [
+        {
+          "name": "Sd",
+          "type": "system.bool",
+          "doc": "True for single ended, false for double ended"
+        },
+        {
+          "name": "Flip",
+          "type": "system.bool",
+          "doc": "True to flip the side to cut"
+        },
+        {
+          "name": "Dir",
+          "type": "system.bool",
+          "doc": "True to flip the direction of extrusion"
+        },
+        {
+          "name": "T1",
+          "type": "system.int",
+          "doc": "Termination type for first end of the extrusion as defined in swEndConditions_e"
+        },
+        {
+          "name": "T2",
+          "type": "system.int",
+          "doc": "Termination type for second end of the extrusion as defined in swEndConditions_e"
+        },
+        {
+          "name": "D1",
+          "type": "system.double",
+          "doc": "Depth of extrusion for first end in meters; offset, if T1 is set to swEndConditions_e.swEndCondOffsetFromSurface"
+        },
+        {
+          "name": "D2",
+          "type": "system.double",
+          "doc": "Depth of extrusion for second end in meters; offset, if T2 is set to swEndConditions_e.swEndCondOffsetFromSurface"
+        },
+        {
+          "name": "Dchk1",
+          "type": "system.bool",
+          "doc": "True to allow drafting in the first direction, false to not"
+        },
+        {
+          "name": "Dchk2",
+          "type": "system.bool",
+          "doc": "True to allow drafting in the second direction, false to not"
+        },
+        {
+          "name": "Ddir1",
+          "type": "system.bool",
+          "doc": "True for first draft angle to be inward, false to be outward; valid only if Dchk1 is true"
+        },
+        {
+          "name": "Ddir2",
+          "type": "system.bool",
+          "doc": "True for second draft angle to be inward, false to be outward; valid only if Dchk2 is true"
+        },
+        {
+          "name": "Dang1",
+          "type": "system.double",
+          "doc": "Draft angle for first end; valid only if Dchk1 is true"
+        },
+        {
+          "name": "Dang2",
+          "type": "system.double",
+          "doc": "Draft angle for second end; valid only if Dchk2 is true"
+        },
+        {
+          "name": "OffsetReverse1",
+          "type": "system.bool",
+          "doc": "True to offset the first end from another face or plane in a direction away from the sketch, false to offset in a direction toward the sketch; valid only if T1 is set to swEndConditions_e.swEndCondOffsetFromSurface"
+        },
+        {
+          "name": "OffsetReverse2",
+          "type": "system.bool",
+          "doc": "True to offset the second end from another face or plane in a direction away from the sketch, false to offset in a direction toward the sketch; valid only if T2 is set to swEndConditions_e.swEndCondOffsetFromSurface"
+        },
+        {
+          "name": "TranslateSurface1",
+          "type": "system.bool",
+          "doc": "True if the first end of the extrusion is a translation of the reference surface, false if it has a true offset; valid only if T1 is set to swEndConditions_e.swEndCondOffsetFromSurface"
+        },
+        {
+          "name": "TranslateSurface2",
+          "type": "system.bool",
+          "doc": "True if the second end of the extrusion is a translation of the reference surface, false if it has a true offset; valid only if T2 is set to swEndConditions_e.swEndCondOffsetFromSurface"
+        },
+        {
+          "name": "Merge",
+          "type": "system.bool",
+          "doc": "True to merge the results in a multibody part, false to not"
+        },
+        {
+          "name": "UseFeatScope",
+          "type": "system.bool",
+          "doc": "True if the feature only affects selected bodies, false if the feature affects all bodies (see Remarks)"
+        },
+        {
+          "name": "UseAutoSelect",
+          "type": "system.bool",
+          "doc": "True to automatically select all bodies and have the feature affect those bodies, false to select the bodies that the feature affects (see Remarks)"
+        },
+        {
+          "name": "T0",
+          "type": "system.int",
+          "doc": "Start condition as defined in swStartConditions_e"
+        },
+        {
+          "name": "StartOffset",
+          "type": "system.double",
+          "doc": "Distance from the sketch plane to start the extrude; valid only if T0 is set to swStartConditions_e.swStartOffset"
+        },
+        {
+          "name": "FlipStartOffset",
+          "type": "system.bool",
+          "doc": "True to flip the direction of the start offset, false to not; valid only if T0 is set to swStartConditions_e.swStartOffset"
+        }
+      ],
+      "args_count": 23,
+      "availability": "SOLIDWORKS 2014 FCS, Revision Number 22.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~FeatureExtrusion3.html"
+    },
+    "IFeatureManager.FeatureCut4": {
+      "interface": "IFeatureManager",
+      "method": "FeatureCut4",
+      "summary": "Creates a cut extrude feature.",
+      "return_type": "Feature",
+      "args": [
+        {
+          "name": "Sd",
+          "type": "system.bool",
+          "doc": "True for a single-ended cut, false for a doubled-ended cut"
+        },
+        {
+          "name": "Flip",
+          "type": "system.bool",
+          "doc": "True to remove material outside of the profile of the flip side to cut, false to not"
+        },
+        {
+          "name": "Dir",
+          "type": "system.bool",
+          "doc": "True for Direction 1 to be opposite of the default direction (see Remarks)"
+        },
+        {
+          "name": "T1",
+          "type": "system.int",
+          "doc": "Termination type for the first end as defined in swEndConditions_e"
+        },
+        {
+          "name": "T2",
+          "type": "system.int",
+          "doc": "Termination type for the second end as defined in swEndConditions_e"
+        },
+        {
+          "name": "D1",
+          "type": "system.double",
+          "doc": "Depth of extrusion for the first end in meters"
+        },
+        {
+          "name": "D2",
+          "type": "system.double",
+          "doc": "Depth of extrusion for the second end in meters"
+        },
+        {
+          "name": "Dchk1",
+          "type": "system.bool",
+          "doc": "True allows a draft angle in the first direction, false does not allow drafting in the first direction"
+        },
+        {
+          "name": "Dchk2",
+          "type": "system.bool",
+          "doc": "True allows a draft angle in the second direction, false does not allow drafting in the second direction"
+        },
+        {
+          "name": "Ddir1",
+          "type": "system.bool",
+          "doc": "True for the first draft angle to be inward, false to be outward; only valid when Dchk1 is true"
+        },
+        {
+          "name": "Ddir2",
+          "type": "system.bool",
+          "doc": "True for the second draft angle to be inward, false to be outward; only valid when Dchk2 is true"
+        },
+        {
+          "name": "Dang1",
+          "type": "system.double",
+          "doc": "Draft angle for the first end; only valid when Dchk1 is true"
+        },
+        {
+          "name": "Dang2",
+          "type": "system.double",
+          "doc": "Draft angle for the second end; only valid when Dchk2 is true"
+        },
+        {
+          "name": "OffsetReverse1",
+          "type": "system.bool",
+          "doc": "If you chose to offset the first end condition from another face or plane, then true specifies offset in direction away from the sketch, false specifies offset from the face or plane in a direction toward the sketch"
+        },
+        {
+          "name": "OffsetReverse2",
+          "type": "system.bool",
+          "doc": "If you chose to offset the second end condition from another face or plane, then true specifies offset in direction away from the sketch, false specifies offset from the face or plane in a direction toward the sketch"
+        },
+        {
+          "name": "TranslateSurface1",
+          "type": "system.bool",
+          "doc": "When you choose swEndConditions_e.swEndCondOffsetFromSurface as the termination type for the first end, then true specifies that the end of the extrusion is a translation of the reference surface, false specifies to use a true offset"
+        },
+        {
+          "name": "TranslateSurface2",
+          "type": "system.bool",
+          "doc": "When you choose swEndConditions_e.swEndCondOffsetFromSurface as the termination type for the second end, then true specifies that the end of the extrusion is a translation of the reference surface, false specifies to use a true offset"
+        },
+        {
+          "name": "NormalCut",
+          "type": "system.bool",
+          "doc": "True to create the cut normal to the sheet metal thickness, false to not (only valid for sheet metal parts; use false for non-sheet metal parts)"
+        },
+        {
+          "name": "UseFeatScope",
+          "type": "system.bool",
+          "doc": "True if the feature only affects selected bodies or components, false if the feature affects all bodies or components"
+        },
+        {
+          "name": "UseAutoSelect",
+          "type": "system.bool",
+          "doc": "True to automatically select all bodies or components and have the feature affect those bodies or components, false to only select the bodies or components the feature affects (see Remarks)"
+        },
+        {
+          "name": "AssemblyFeatureScope",
+          "type": "system.bool",
+          "doc": "True if the assembly feature only affects selected components in the assembly, false if the assembly feature affects all components in the assembly"
+        },
+        {
+          "name": "AutoSelectComponents",
+          "type": "system.bool",
+          "doc": "True to automatically select all affected components, false to use only the selected components"
+        },
+        {
+          "name": "PropagateFeatureToParts",
+          "type": "system.bool",
+          "doc": "True to propagate the assembly feature to the components in the model that it affects, false to not"
+        },
+        {
+          "name": "T0",
+          "type": "system.int",
+          "doc": "Start conditions as defined in swStartConditions_e"
+        },
+        {
+          "name": "StartOffset",
+          "type": "system.double",
+          "doc": "If T0 is swStartConditions_e.swStartOffset, then specify an offset value"
+        },
+        {
+          "name": "FlipStartOffset",
+          "type": "system.bool",
+          "doc": "If T0 is swStartConditions_e.swStartOffset, then true to flip the direction of cut, false to not"
+        },
+        {
+          "name": "OptimizeGeometry",
+          "type": "system.bool",
+          "doc": "True to optimize the normal cut in a sheet metal part, false to not; only valid for sheet metal parts and when NormalCut is true"
+        }
+      ],
+      "args_count": 27,
+      "availability": "SOLIDWORKS 2017 FCS, Revision Number 25.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~FeatureCut4.html"
+    },
+    "ISketchManager.InsertSketch": {
+      "interface": "ISketchManager",
+      "method": "InsertSketch",
+      "summary": "Inserts a new sketch in the current part or assembly document.",
+      "return_type": "void",
+      "args": [
+        {
+          "name": "UpdateEditRebuild",
+          "type": "system.bool",
+          "doc": "True to rebuild the part with any changes made to the sketch and exit sketch mode, false to not"
+        }
+      ],
+      "args_count": 1,
+      "availability": "SOLIDWORKS 2007 FCS, Revision Number 15.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISketchManager~InsertSketch.html"
+    },
+    "ISketchManager.CreateCornerRectangle": {
+      "interface": "ISketchManager",
+      "method": "CreateCornerRectangle",
+      "summary": "Creates a corner rectangle.",
+      "return_type": "System.object",
+      "args": [
+        {
+          "name": "X1",
+          "type": "system.double",
+          "doc": "Upper-left X coordinate for point 1"
+        },
+        {
+          "name": "Y1",
+          "type": "system.double",
+          "doc": "Upper-left Y coordinate for point 1"
+        },
+        {
+          "name": "Z1",
+          "type": "system.double",
+          "doc": "Upper-left Z coordinate for point 1"
+        },
+        {
+          "name": "X2",
+          "type": "system.double",
+          "doc": "Lower-right X coordinate for point 2"
+        },
+        {
+          "name": "Y2",
+          "type": "system.double",
+          "doc": "Lower-right Y coordinate for point 2"
+        },
+        {
+          "name": "Z2",
+          "type": "system.double",
+          "doc": "Lower-right Z coordinate for point 2"
+        }
+      ],
+      "args_count": 6,
+      "availability": "SOLIDWORKS 2008 FCS, Revision Number 16.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISketchManager~CreateCornerRectangle.html"
+    },
+    "ISketchManager.CreateCircle": {
+      "interface": "ISketchManager",
+      "method": "CreateCircle",
+      "summary": "Creates a circle based on a center point and a point on the circle.",
+      "return_type": "SketchSegment",
+      "args": [
+        {
+          "name": "XC",
+          "type": "system.double",
+          "doc": "X coordinate of the circle center point, in meters"
+        },
+        {
+          "name": "YC",
+          "type": "system.double",
+          "doc": "Y coordinate of the circle center point, in meters"
+        },
+        {
+          "name": "Zc",
+          "type": "system.double",
+          "doc": "Z coordinate of the circle center point, in meters"
+        },
+        {
+          "name": "Xp",
+          "type": "system.double",
+          "doc": "X coordinate of the point on the circle, in meters"
+        },
+        {
+          "name": "Yp",
+          "type": "system.double",
+          "doc": "Y coordinate of the point on the circle, in meters"
+        },
+        {
+          "name": "Zp",
+          "type": "system.double",
+          "doc": "Z coordinate of the point on the circle, in meters"
+        }
+      ],
+      "args_count": 6,
+      "availability": "SOLIDWORKS 2008 FCS, Revision Number 16.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISketchManager~CreateCircle.html"
+    },
+    "IEquationMgr.Add2": {
+      "interface": "IEquationMgr",
+      "method": "Add2",
+      "summary": "Adds an equation at the specified index.",
+      "return_type": "System.int",
+      "args": [
+        {
+          "name": "Index",
+          "type": "system.int",
+          "doc": "0-based index of the new equation (-1 places it at the end of the list)"
+        },
+        {
+          "name": "Equation",
+          "type": "system.string",
+          "doc": "String containing the equation (see Remarks)"
+        },
+        {
+          "name": "Solve",
+          "type": "system.bool",
+          "doc": "True to solve the equation immediately; false otherwise (see Remarks)"
+        }
+      ],
+      "args_count": 3,
+      "availability": "SOLIDWORKS 2010 FCS, Revision Number 18.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IEquationMgr~Add2.html"
+    },
+    "IFeature.GetTypeName": {
+      "interface": "IFeature",
+      "method": "GetTypeName",
+      "summary": "Gets the type of feature. NOTE: To get the underlying type of feature of an Instant3D feature (i.e., \"ICE\"), call this method; otherwise, call IFeature::GetTypeName2.",
+      "return_type": "System.string",
+      "args": [],
+      "args_count": 0,
+      "availability": null,
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeature~GetTypeName.html"
+    },
+    "IFeature.GetNextFeature": {
+      "interface": "IFeature",
+      "method": "GetNextFeature",
+      "summary": "Gets the next feature in the part.",
+      "return_type": "System.object",
+      "args": [],
+      "args_count": 0,
+      "availability": null,
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeature~GetNextFeature.html"
+    }
+  },
+  "enums": {
+    "swEndConditions_e": {
+      "enum": "swEndConditions_e",
+      "summary": "End conditions for creation of a variety of features.",
+      "values": [
+        {
+          "name": "swEndCondBlind",
+          "value": 0,
+          "doc": null
+        },
+        {
+          "name": "swEndCondMidPlane",
+          "value": 6,
+          "doc": null
+        },
+        {
+          "name": "swEndCondOffsetFromSurface",
+          "value": 5,
+          "doc": null
+        },
+        {
+          "name": "swEndCondThroughAll",
+          "value": 1,
+          "doc": null
+        },
+        {
+          "name": "swEndCondThroughAllBoth",
+          "value": 9,
+          "doc": null
+        },
+        {
+          "name": "swEndCondThroughNext",
+          "value": 2,
+          "doc": null
+        },
+        {
+          "name": "swEndCondUpToBody",
+          "value": 7,
+          "doc": null
+        },
+        {
+          "name": "swEndCondUpToNext",
+          "value": 11,
+          "doc": null
+        },
+        {
+          "name": "swEndCondUpToSelection",
+          "value": 10,
+          "doc": null
+        },
+        {
+          "name": "swEndCondUpToSurface",
+          "value": 4,
+          "doc": "Do not use; superseded by swEndCondUpToSelection"
+        },
+        {
+          "name": "swEndCondUpToVertex",
+          "value": 3,
+          "doc": "Do not use; superseded by swEndCondUpToSelection"
+        }
+      ],
+      "values_count": 11,
+      "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swEndConditions_e.html"
+    },
+    "swStartConditions_e": {
+      "enum": "swStartConditions_e",
+      "summary": "Start conditions.",
+      "values": [
+        {
+          "name": "swStartOffset",
+          "value": 3,
+          "doc": null
+        },
+        {
+          "name": "swStartSketchPlane",
+          "value": 0,
+          "doc": null
+        },
+        {
+          "name": "swStartSurface",
+          "value": 1,
+          "doc": null
+        },
+        {
+          "name": "swStartVertex",
+          "value": 2,
+          "doc": null
+        }
+      ],
+      "values_count": 4,
+      "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swStartConditions_e.html"
+    },
+    "swDocumentTypes_e": {
+      "enum": "swDocumentTypes_e",
+      "summary": "Document types.",
+      "values": [
+        {
+          "name": "swDocASSEMBLY",
+          "value": 2,
+          "doc": null
+        },
+        {
+          "name": "swDocDRAWING",
+          "value": 3,
+          "doc": null
+        },
+        {
+          "name": "swDocIMPORTED_ASSEMBLY",
+          "value": 7,
+          "doc": null
+        },
+        {
+          "name": "swDocIMPORTED_PART",
+          "value": 6,
+          "doc": null
+        },
+        {
+          "name": "swDocLAYOUT",
+          "value": 5,
+          "doc": null
+        },
+        {
+          "name": "swDocNONE",
+          "value": 0,
+          "doc": null
+        },
+        {
+          "name": "swDocPART",
+          "value": 1,
+          "doc": null
+        },
+        {
+          "name": "swDocSDM",
+          "value": 4,
+          "doc": null
+        }
+      ],
+      "values_count": 8,
+      "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swDocumentTypes_e.html"
+    },
+    "swDimensionType_e": {
+      "enum": "swDimensionType_e",
+      "summary": "Types of dimensions.",
+      "values": [
+        {
+          "name": "swAngularDimension",
+          "value": 3,
+          "doc": "Angular dimension type"
+        },
+        {
+          "name": "swAngularOrdinateDimension",
+          "value": 16,
+          "doc": "Angular ordinate dimension"
+        },
+        {
+          "name": "swArcLengthDimension",
+          "value": 4,
+          "doc": "Arc length dimension type"
+        },
+        {
+          "name": "swChamferDimension",
+          "value": 10,
+          "doc": null
+        },
+        {
+          "name": "swDiameterDimension",
+          "value": 6,
+          "doc": "Diameter dimension"
+        },
+        {
+          "name": "swDiametricLinearDimension",
+          "value": 15,
+          "doc": "Doubled distance linear dimension"
+        },
+        {
+          "name": "swDimensionTypeUnknown",
+          "value": 0,
+          "doc": "Dimension type could not be determined"
+        },
+        {
+          "name": "swHorLinearDimension",
+          "value": 11,
+          "doc": "Horizontal linear dimension"
+        },
+        {
+          "name": "swHorOrdinateDimension",
+          "value": 7,
+          "doc": "Horizontal ordinate dimension"
+        },
+        {
+          "name": "swLinearDimension",
+          "value": 2,
+          "doc": "Linear dimension type"
+        },
+        {
+          "name": "swOrdinateDimension",
+          "value": 1,
+          "doc": "Base ordinate and its subordinates are of this type"
+        },
+        {
+          "name": "swRadialDimension",
+          "value": 5,
+          "doc": "Radial dimension"
+        },
+        {
+          "name": "swRadialLinearDimension",
+          "value": 14,
+          "doc": "Doubled distance radial dimension"
+        },
+        {
+          "name": "swScalarDimension",
+          "value": 13,
+          "doc": null
+        },
+        {
+          "name": "swVertLinearDimension",
+          "value": 12,
+          "doc": "Vertical linear dimension"
+        },
+        {
+          "name": "swVertOrdinateDimension",
+          "value": 8,
+          "doc": "Vertical ordinate dimension"
+        },
+        {
+          "name": "swZAxisDimension",
+          "value": 9,
+          "doc": null
+        }
+      ],
+      "values_count": 17,
+      "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swDimensionType_e.html"
+    },
+    "swSelectType_e": {
+      "enum": "swSelectType_e",
+      "summary": "Values for types of returned IDs.",
+      "values": [],
+      "values_count": 0,
+      "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swSelectType_e.html"
+    }
+  },
+  "missing": [
+    "method:ISldWorks.SendKeys",
+    "method:IFeatureManager.FeatureCut5"
+  ]
+}

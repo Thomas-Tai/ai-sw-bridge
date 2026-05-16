@@ -41,3 +41,9 @@ examples/**/*_parameterized.bas
 
 # Decompiled SW API CHM (reproducible from chm files in the OneDrive tree)
 spikes/phase0/_chm_decompiled/
+spikes/phase0/_chm_decompiled_swconst/
+spikes/phase0/_chm_decompiled_progguide/
+
+# Temp files from debug sessions
+spikes/phase0/_tmp_*.json
+docs/_test*.json
