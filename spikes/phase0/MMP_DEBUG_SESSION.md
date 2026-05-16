@@ -1,90 +1,114 @@
-# MMP Phase 1 debug session — 2026-05-16 (incomplete)
+# MMP Phase 1 debug session
 
-Captures the half-finished debugging of the MMP end-to-end build so the next
+Captures findings from 2026-05-16 and 2026-05-17 debug runs so the next
 session can pick up without re-deriving context.
 
-## What worked
+## Session log
 
-The cylinder example (`examples/minimal_cylinder_v2/spec.json`) built fully
-end-to-end via `ai-sw-build` earlier in this session. Tree confirmed:
-SK_Body + Extrude_Body, equations 0-3 (2 globals + 2 dim bindings). That
-proved the v0.2 architecture is sound.
+### 2026-05-16
 
-## What failed
+Cylinder example (`examples/minimal_cylinder_v2/spec.json`) built fully
+end-to-end via `ai-sw-build`. MMP build (10 features) failed on
+`Cut_CouplerHole` with COM error `(-2147352561, 'Parameter not optional.',
+None, None)` -- i.e. wrong FeatureCut4 arg count for this SW build.
 
-MMP build (10 features) failed on `Cut_CouplerHole` with COM error
-`(-2147352561, 'Parameter not optional.', None, None)` — i.e. wrong
-FeatureCut4 arg count for this SW build.
+Suspected at the time: a "Modify Dimension popup" was appearing on every
+sketch and seemed to be related to a SW preference toggle that had become
+sticky. Stopped to restart SW fresh next session.
 
-But before that, **the Modify Dimension popup started appearing on every
-sketch** including the cylinder which had previously been silent. Cylinder
-regressed during the debug session.
+### 2026-05-17
 
-## Diagnoses
+**Confirmed**: cylinder still builds end-to-end (`ok: true`) after SW
+restart. The "regression" was perceptual -- popup was ALWAYS appearing
+even on the original "working" build; AddDimension2 just blocks
+synchronously until the user ticks, then returns success. The cylinder
+build returning `ok: true` does NOT imply no manual ticking happened.
 
-### Bug 2 (FeatureCut4 signature)
+**Two separate dialogs appear per AddDimension2 call**:
+1. Small floating Modify Dimension popup (numeric value + green/red ticks)
+2. Left-side Dimension PropertyManager pane (green/red ticks)
 
-Tried 25-arg form first (failed: PARAMNOTOPTIONAL). Reduced to 24 args
-(reordering NormalCut to position 18). Untested due to popup blocking the
-re-run.
+Both must be dismissed before AddDimension2 returns.
 
-### Bug 1 (Modify popup escapes suppression)
+### Spike F (PM-pane dismissal strategies)
+- `doc.ClosePropertyManager()`: AttributeError (not a member)
+- `doc.Extension.CloseAndDestroyPropertyManagers()`: AttributeError
+- `doc.Extension.RunCommand(1, "")`: returns True but pane NOT dismissed
+- "no dismiss" control: completes if user ticks manually
 
-`sw.SetUserPreferenceToggle(8, False)` had worked for Spike D (rectangle on
-plane) and the cylinder build. But on MMP it stopped working at SK_CouplerHole
-(first face-based sketch).
+### Spike H (SendKeys variants)
+- `sw.SendKeys("{ENTER}")`: did NOT dismiss the Modify popup. User had to
+  click manually; elapsed ~85s.
+- ctypes `keybd_event(VK_RETURN)` with `SetForegroundWindow(sw_main_hwnd)`:
+  did NOT dismiss (focus stolen from modal to main window)
+- ctypes `keybd_event(VK_RETURN)` blind (no focus change): DID dismiss
+  the Modify popup, but then the PM pane was left active and still
+  required manual tick
+- ctypes double-ENTER (200ms apart): unreliable -- after first ENTER
+  closes the popup, focus returns to the launching terminal, second
+  ENTER doesn't land in SW
 
-Tried fixes that made it worse, not better:
-1. Added `doc.SetUserPreferenceToggle(8, False)` after NewDocument.
-   Result: cylinder regressed — popup appeared on the rectangle that had
-   previously been suppressed.
-2. Reverted #1 + added `doc.Extension.RunCommand(-1, "")` after each
-   AddDimension2. Result: cylinder STILL hit the popup.
-3. Reverted both. Cylinder STILL hits the popup.
+SW 2024 SP1 window class is NOT "SldWorks" -- it's an `Afx:*` class.
+Title prefix "SOLIDWORKS" works for FindWindow.
 
-**Working hypothesis**: `swInputDimValOnCreate` is a persistent SW preference,
-not just a session toggle. Setting it programmatically *toggles* the stored
-value rather than overriding for the session. Possibly: the GetUserPreferenceToggle
-returned the wrong value (or my interpretation was wrong), so we wrote
-True instead of False at some point and now it's stuck True in the registry.
+### Spike I (toggle 8 verification)
+- `GetUserPreferenceToggle(8)` returns False BOTH before and after our
+  `SetUserPreferenceToggle(8, False)` call
+- AddDimension2 still blocks 12s waiting for manual tick
+- **Conclusion**: ID 8 is NOT `swInputDimValOnCreate` on this build, OR
+  swInputDimValOnCreate doesn't actually suppress AddDimension2's popup
+  on SW 2024 SP1
 
-## Recovery plan for next session
+### Spike J (AddSpecificDimension alternative)
+- All 9 DimType values (1-9) fail with `com_error('Type mismatch.', ..., 5)`
+  at ~0.1s each
+- Failure is in the COM-marshalling layer -- the OUT `Error` parameter
+  doesn't bind via pywin32 late-binding
+- Same class of problem as SelectByID2's Callout arg (documented
+  in known_gotchas.md)
+- **AddSpecificDimension is unusable via pywin32 late-binding**
 
-Order of operations:
-1. **Quit SOLIDWORKS completely** (File → Exit, wait for it to fully close).
-2. **Open SW Tools → Options → Document Properties (or System Options) →
-   Sketch**. Look for "Prompt to set driven state" or similar — the GUI
-   exposure of `swInputDimValOnCreate`. Set to OFF (unchecked).
-3. **Open a blank Part**.
-4. Re-run cylinder build: `ai-sw-build examples/minimal_cylinder_v2/spec.json`.
-   Should pass without any popup.
-5. If cylinder passes: investigate Bug 2 (FeatureCut4). Spike with
-   `spikes/phase0/spike_e_cut.py` first to find the right arg count on this
-   build, before retrying MMP.
-6. If cylinder still fails: the preference is more sticky than expected.
-   Check `%APPDATA%\SolidWorks\SolidWorks 2024\swSettings.sldreg` or
-   equivalent for the saved toggle value.
+## Current accepted limitation
 
-## Code state at session end
+`AddDimension2` requires manual ticking (1x Modify popup + 1x PM pane)
+per dimension. For the cylinder (2 dims) this is 4 manual ticks. For
+MMP (~15 dims) ~30 manual ticks.
 
-- `src/ai_sw_bridge/spec/builder.py`: reverted close to its earlier-working
-  state. `_dismiss_dim_pane` is a no-op (the RunCommand attempt was reverted).
-  The cut signature is the 24-arg form (untested).
-- `examples/motor_mount_plate/spec.json`: complete spec for MMP. Untested
-  end-to-end.
-- `examples/minimal_cylinder_v2/spec.json`: previously verified, currently
-  regressed due to SW preference state.
+This is annoying but not a blocker for the build pipeline -- the build
+completes successfully once ticks are done.
 
-## Lesson for the project
+## Real MMP blocker (still unresolved)
 
-Don't toggle SW user preferences via API on persistent registry-backed keys
-without restoring on exit. The `try/finally restore` block at the end of
-`build()` would only fire if Python reached the end of `build()` — if the
-process is killed mid-build (which happened multiple times in this session),
-the restore never runs and the preference is left in whatever state we
-wrote.
+**`FeatureCut4` PARAMNOTOPTIONAL on SW 2024 SP1**:
+- 25-arg form failed
+- 24-arg form untested (current builder.py uses it)
+- Need to run `spike_e_cut.py` to discover the working signature
 
-**Future builder pattern**: wrap the entire SW preference manipulation in
-a context manager that registers an `atexit` handler in case the process
-exits abnormally. Or, simpler: use a SW pref that can be restored from a
-known-good baseline file at session start.
+## Resume plan for next session
+
+1. **Skip popup suppression work** -- accept manual ticks for now
+2. Open SW with a part that has: a boss extrude + an active sketch on
+   one face with a circle that doesn't fully cover it (this is the
+   precondition for `spike_e_cut.py`)
+3. Run `spike_e_cut.py` to find the FeatureCut4 arg-count that works on
+   this build
+4. Update `_call_feature_cut` in builder.py with the working signature
+5. Re-run MMP build end-to-end
+6. (Eventually) revisit popup suppression with one of:
+   - VBA macro fallback: write SW macro that does AddDimension2 inside
+     SW's context, invoke from Python via `RunMacro2`
+   - `gencache.EnsureDispatch` with handcrafted typelib stubs for
+     AddSpecificDimension OUT-param marshalling
+   - Native Python COM with explicit VARIANT byref args
+
+## Files referenced
+
+- `spikes/phase0/spike_e_cut.py` -- written, NOT YET RUN
+- `spikes/phase0/spike_f_close_pm.py` -- PM-pane dismissal probe (this session)
+- `spikes/phase0/spike_h_sendkeys.py` -- key-injection probe (this session)
+- `spikes/phase0/spike_h_window_probe.py` -- SW HWND discovery (this session)
+- `spikes/phase0/spike_i_verify_toggle.py` -- toggle ID 8 verification (this session)
+- `spikes/phase0/spike_j_specific_dim.py` -- AddSpecificDimension marshalling test (this session)
+- `src/ai_sw_bridge/spec/builder.py` -- `_dismiss_dim_pane` remains a no-op;
+  toggle code remains in place (harmless even though toggle 8 doesn't
+  actually suppress on this build)
