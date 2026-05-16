@@ -77,38 +77,74 @@ MMP (~15 dims) ~30 manual ticks.
 This is annoying but not a blocker for the build pipeline -- the build
 completes successfully once ticks are done.
 
-## Real MMP blocker (still unresolved)
+## Real MMP blocker (RESOLVED -- dead end identified)
 
-**`FeatureCut4` PARAMNOTOPTIONAL on SW 2024 SP1**:
-- 25-arg form failed
-- 24-arg form untested (current builder.py uses it)
-- Need to run `spike_e_cut.py` to discover the working signature
+**Cuts are unreachable via pywin32 late-binding on SW 2024 SP1.**
 
-## Resume plan for next session
+Spike-E variants exhausted (all in `spikes/phase0/spike_e*.py`):
 
-1. **Skip popup suppression work** -- accept manual ticks for now
-2. Open SW with a part that has: a boss extrude + an active sketch on
-   one face with a circle that doesn't fully cover it (this is the
-   precondition for `spike_e_cut.py`)
-3. Run `spike_e_cut.py` to find the FeatureCut4 arg-count that works on
-   this build
-4. Update `_call_feature_cut` in builder.py with the working signature
-5. Re-run MMP build end-to-end
-6. (Eventually) revisit popup suppression with one of:
-   - VBA macro fallback: write SW macro that does AddDimension2 inside
-     SW's context, invoke from Python via `RunMacro2`
-   - `gencache.EnsureDispatch` with handcrafted typelib stubs for
-     AddSpecificDimension OUT-param marshalling
-   - Native Python COM with explicit VARIANT byref args
+| Spike | Method | Result |
+|-------|--------|--------|
+| E     | FeatureCut4 23/24/25/26 args, THROUGH_ALL | All PARAMNOTOPTIONAL |
+| E2    | FeatureCut4 24-arg BLIND/THROUGH_ALL/THROUGH_NEXT, Sd True/False, +FeatureCut3, +FeatureCut | All PARAMNOTOPTIONAL or wrong arg count |
+| E3    | SelectByID2 marks 0/1/2/4/8/16/32 before FeatureCut4 | SelectByID2 fails Type mismatch (param 8 = Callout) |
+| E4    | gencache typed FeatureManager wrapper | Returns CDispatch (late-bound); FeatureCut4 still PARAMNOTOPTIONAL. typelib probe fails "Invalid index". |
+| E5    | FeatureExtrusion2 with overlap intent | Always produces "Boss", never "Cut". SW does not auto-detect cut intent. |
+| E6    | FeatureExtrusion3 (combined boss/cut) at arg counts 24-28 | All fail PARAMNOTOPTIONAL or "Invalid number of parameters" |
+
+The pywin32 late-binding cut path is dead on this build. Pattern:
+**operations that produce material (boss) work fine; operations that
+remove material (cut) all fail to marshal.** The exact reason is in
+the COM IDL signatures for cut methods — pywin32 cannot generate proper
+VARIANT type wrappers without the gencache stubs, which the SW typelib
+won't produce ("Invalid index" on `GetTypeInfo`).
+
+## Path forward decision (next session)
+
+Two viable options to unblock cuts:
+
+**Option A: VBA macro fallback for cut features only**
+- Keep direct-COM for everything else (boss, sketch, dim, equation)
+- Emit a tiny `.bas` per cut, invoke via `RunMacro2`
+- The cut runs in SW's own VBA context where FeatureCut4 works
+- Reference: `Path C` (record-and-parameterize) already proved RunMacro2
+  works on `.swp` files (OLE compound, not plain text). For cuts, we
+  emit a fresh macro per call rather than reusing recorded ones.
+- Pro: focused workaround, minimal disruption to existing builder.py
+- Con: requires `.swp` packaging (OLE compound document writing) OR
+  the user must paste .bas content manually
+
+**Option B: Different automation library**
+- pywin32 is unique in its marshalling limitations. Alternatives:
+  - `comtypes` (different COM library) — may handle the IDL differently
+  - `pyswx`, `SolidWorks.Interop` via pythonnet — both .NET-based, may
+    bypass the COM marshalling layer
+- Pro: potentially solves cuts, AddDimension2 popup, and SelectByID2 in
+  one go
+- Con: major library migration; unproven on this build; pyswx is dormant
+
+## Suggested next-session approach
+
+1. Spike A (VBA macro fallback for cuts) — 60-90 min:
+   - Generate a `.swp`-as-OLE wrapping the cut VBA
+   - OR fall back to "Path C lite": save `.bas`, ask user to paste +F5
+   - Build a single cut via this path; confirm geometry result
+2. If A works: refactor builder.py to route `cut_extrude_*` features
+   through the VBA path. Keep boss/sketch/dim direct-COM.
+3. Re-run MMP build end-to-end.
 
 ## Files referenced
 
-- `spikes/phase0/spike_e_cut.py` -- written, NOT YET RUN
-- `spikes/phase0/spike_f_close_pm.py` -- PM-pane dismissal probe (this session)
-- `spikes/phase0/spike_h_sendkeys.py` -- key-injection probe (this session)
-- `spikes/phase0/spike_h_window_probe.py` -- SW HWND discovery (this session)
-- `spikes/phase0/spike_i_verify_toggle.py` -- toggle ID 8 verification (this session)
-- `spikes/phase0/spike_j_specific_dim.py` -- AddSpecificDimension marshalling test (this session)
+- `spikes/phase0/spike_e_cut.py` -- arg-count sweep on FeatureCut4 (2026-05-17)
+- `spikes/phase0/spike_e2_cut_args.py` -- arg-value variants + FeatureCut3/FeatureCut alternatives
+- `spikes/phase0/spike_e3_sel_mark.py` -- SelectByID2 marks before FeatureCut4
+- `spikes/phase0/spike_e4_typed_fm.py` -- gencache typed FeatureManager attempt
+- `spikes/phase0/spike_e5_extrude_as_cut.py` -- FeatureExtrusion2 cut-mode check
+- `spikes/phase0/spike_e6_extrusion3.py` -- FeatureExtrusion3 (combined boss/cut) at arg counts 24-28
+- `spikes/phase0/spike_f_close_pm.py` -- PM-pane dismissal probe (2026-05-17)
+- `spikes/phase0/spike_h_sendkeys.py` -- key-injection probe
+- `spikes/phase0/spike_h_window_probe.py` -- SW HWND discovery
+- `spikes/phase0/spike_i_verify_toggle.py` -- toggle ID 8 verification
+- `spikes/phase0/spike_j_specific_dim.py` -- AddSpecificDimension marshalling test
 - `src/ai_sw_bridge/spec/builder.py` -- `_dismiss_dim_pane` remains a no-op;
-  toggle code remains in place (harmless even though toggle 8 doesn't
-  actually suppress on this build)
+  `_call_feature_cut` will need rerouting through VBA path (Option A above)
