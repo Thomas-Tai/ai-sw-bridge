@@ -122,6 +122,37 @@ SKETCH_CIRCLE_ON_FACE: dict[str, Any] = {
 }
 
 
+# Multi-circle variant: all circles in one sketch (typical for a hole pattern).
+# Each circle gets its own diameter dim numbered in selection order: D1, D2, ...
+# v1 limit: circle CENTER positions are literal (mm). Parametric positions are
+# deferred to v1.1 (needs sketch relations, not just dims).
+SKETCH_CIRCLES_ON_FACE: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["type", "name", "of_feature", "face", "circles"],
+    "properties": {
+        "type": {"const": "sketch_circles_on_face"},
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+        "of_feature": {"type": "string"},
+        "face": {"enum": ["+x", "-x", "+y", "-y", "+z", "-z"]},
+        "circles": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["u", "v", "diameter"],
+                "properties": {
+                    "u": {"type": "number", "description": "Center u-offset (mm) from face center."},
+                    "v": {"type": "number"},
+                    "diameter": LENGTH_SCHEMA,
+                },
+            },
+        },
+    },
+}
+
+
 BOSS_EXTRUDE_BLIND: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -205,6 +236,7 @@ SCHEMA: dict[str, Any] = {
                     SKETCH_RECTANGLE_ON_PLANE,
                     SKETCH_CIRCLE_ON_PLANE,
                     SKETCH_CIRCLE_ON_FACE,
+                    SKETCH_CIRCLES_ON_FACE,
                     BOSS_EXTRUDE_BLIND,
                     CUT_EXTRUDE_THROUGH_ALL,
                     CUT_EXTRUDE_BLIND,
@@ -220,6 +252,7 @@ SKETCH_TYPES = frozenset({
     "sketch_rectangle_on_plane",
     "sketch_circle_on_plane",
     "sketch_circle_on_face",
+    "sketch_circles_on_face",
 })
 EXTRUDE_TYPES = frozenset({
     "boss_extrude_blind",

@@ -129,6 +129,24 @@ def create_blank_part(sw: Any) -> Any:
     return doc
 
 
+def _dismiss_dim_pane(doc: Any) -> None:
+    """Reserved for v1.1 — currently a no-op.
+
+    KNOWN ISSUE: After AddDimension2, SW opens a Dimension PropertyManager
+    pane on the left side. The floating Modify popup is suppressed via
+    swInputDimValOnCreate=False, but the side pane is NOT. Initial attempt
+    to dismiss via RunCommand(-1) instead RE-ENABLED the popup on a doc
+    that had previously worked (cylinder regression). Reverted to no-op.
+
+    Until the proper API is found, leave the pane open; it accumulates
+    state but does not appear to block subsequent COM calls when the
+    floating popup is suppressed at the app level (cylinder previously
+    succeeded end-to-end). MMP exposes a different failure mode that may
+    be the cut-feature, not the pane.
+    """
+    return
+
+
 def link_locals(doc: Any, locals_path: str) -> None:
     """Run the full 4-call LinkToFile sequence proven in Spike C.
 
@@ -187,6 +205,7 @@ def _build_sketch_rectangle_on_plane(ctx: BuildContext, feat: dict[str, Any]) ->
     dim_w = ctx.doc.AddDimension2(cx_m, top_y + 0.005, 0.0)
     if dim_w is None:
         raise RuntimeError("AddDimension2 returned None for width")
+    _dismiss_dim_pane(ctx.doc)
 
     ctx.doc.ClearSelection2(True)
     left_x = cx_m - width_m / 2
@@ -195,6 +214,7 @@ def _build_sketch_rectangle_on_plane(ctx: BuildContext, feat: dict[str, Any]) ->
     dim_h = ctx.doc.AddDimension2(left_x - 0.005, cy_m, 0.0)
     if dim_h is None:
         raise RuntimeError("AddDimension2 returned None for height")
+    _dismiss_dim_pane(ctx.doc)
 
     sm.InsertSketch(True)  # close
 
@@ -234,6 +254,7 @@ def _build_sketch_circle_on_plane(ctx: BuildContext, feat: dict[str, Any]) -> Bu
     dim_d = ctx.doc.AddDimension2(cx_m + radius_m + 0.005, cy_m + radius_m + 0.005, 0.0)
     if dim_d is None:
         raise RuntimeError("AddDimension2 returned None for diameter")
+    _dismiss_dim_pane(ctx.doc)
 
     sm.InsertSketch(True)
 
@@ -305,12 +326,82 @@ def _build_sketch_circle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bui
     dim_d = ctx.doc.AddDimension2(u_m + radius_m + 0.005, v_m + radius_m + 0.005, 0.0)
     if dim_d is None:
         raise RuntimeError("AddDimension2 returned None for face-sketch diameter")
+    _dismiss_dim_pane(ctx.doc)
 
     sm.InsertSketch(True)
 
     sketch_feat = ctx.doc.FeatureByPositionReverse(0)
     if sketch_feat is None:
         raise RuntimeError("no sketch produced on face")
+    sketch_feat.Name = feat["name"]
+
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
+
+
+def _build_sketch_circles_on_face(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Multiple circles in one sketch on a feature face.
+
+    Each circle gets its own driving diameter dim. Dim numbering follows
+    selection order: first circle's diameter -> D1, second -> D2, etc.
+    The builder dimensions each circle immediately after creating it so the
+    numbering matches the spec's `circles` array order.
+    """
+    parent_name = feat["of_feature"]
+    parent = ctx.features_by_name.get(parent_name)
+    if parent is None:
+        raise RuntimeError(f"sketch_circles_on_face: '{parent_name}' not built yet")
+    if parent.extrude_axis is None:
+        raise RuntimeError(f"'{parent_name}' is not an extrusion with known axis")
+
+    face = feat["face"]
+    if face not in ("+z", "-z"):
+        raise NotImplementedError(
+            f"v1 only supports +z/-z (out/in board) faces; got {face}"
+        )
+
+    ox, oy, oz = parent.extrude_origin
+    ax, ay, az = parent.extrude_axis
+    depth = parent.extrude_depth_m
+    if parent.extrude_flip:
+        ax, ay, az = -ax, -ay, -az
+    if face == "+z":
+        fx = ox + ax * depth
+        fy = oy + ay * depth
+        fz = oz + az * depth
+    else:  # -z
+        fx, fy, fz = ox, oy, oz
+
+    ctx.doc.ClearSelection2(True)
+    if not ctx.doc.SelectByID("", "FACE", fx, fy, fz):
+        raise RuntimeError(f"face select returned False at ({fx}, {fy}, {fz})")
+
+    sm = ctx.doc.SketchManager
+    sm.InsertSketch(True)
+
+    for k, c in enumerate(feat["circles"]):
+        u_m = float(c["u"]) / 1000.0
+        v_m = float(c["v"]) / 1000.0
+        diameter_m = _literal_or_default(c["diameter"], 4.0)
+        radius_m = diameter_m / 2
+        sm.CreateCircle(u_m, v_m, 0.0, u_m + radius_m, v_m, 0.0)
+        # Dimension this circle BEFORE creating the next one, so dim
+        # numbering matches array index: first circle -> D1, second -> D2.
+        ctx.doc.ClearSelection2(True)
+        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", u_m + radius_m, v_m, 0.0):
+            raise RuntimeError(f"could not select circle #{k} for diameter dim")
+        # Place leader offset from the circle, with stagger so consecutive
+        # circles' dim leaders don't overlap.
+        lead_offset = 0.005 + 0.003 * k
+        dim = ctx.doc.AddDimension2(u_m + radius_m + lead_offset, v_m + lead_offset, 0.0)
+        if dim is None:
+            raise RuntimeError(f"AddDimension2 returned None for circle #{k}")
+        _dismiss_dim_pane(ctx.doc)
+
+    sm.InsertSketch(True)
+
+    sketch_feat = ctx.doc.FeatureByPositionReverse(0)
+    if sketch_feat is None:
+        raise RuntimeError("no multi-circle sketch produced")
     sketch_feat.Name = feat["name"]
 
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
@@ -381,28 +472,42 @@ def _call_feature_cut(
 ) -> Any:
     """FeatureManager.FeatureCut4 - the cut variant of FeatureExtrusion2.
 
-    Same arg structure but produces a cut. Used for cut_extrude_*.
-    Signature (per SW API docs, ~25 args, very similar to FeatureExtrusion2).
+    SW 2024 signature (24 args):
+      Sd, Flip, Dir, T1, T2, D1, D2,
+      Dchk1, Dchk2, Ddir1, Ddir2,
+      Dang1, Dang2,
+      OffsetReverse1, OffsetReverse2,
+      TranslateSurface1, TranslateSurface2,
+      NormalCut,
+      UseFeatScope, UseAutoSelect, AssemblyFeatureScope,
+      T0, StartOffset, FlipStartOffset
     """
     fm = ctx.doc.FeatureManager
     feature = fm.FeatureCut4(
-        True,           # Sd
-        flip,           # Flip
-        False,          # Dir
-        end_cond,       # T1
-        0,              # T2
-        depth_m,        # D1
-        0.0,            # D2
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        False, False, False,
-        True,           # UseFeatScope
-        True,           # UseAutoSelect
-        True,           # AssemblyFeatureScope
-        SW_START_SKETCH_PLANE,
-        0.0,
-        False,
+        True,           # 1  Sd
+        flip,           # 2  Flip
+        False,          # 3  Dir
+        end_cond,       # 4  T1
+        0,              # 5  T2
+        depth_m,        # 6  D1
+        0.0,            # 7  D2
+        False,          # 8  Dchk1
+        False,          # 9  Dchk2
+        False,          # 10 Ddir1
+        False,          # 11 Ddir2
+        0.0,            # 12 Dang1
+        0.0,            # 13 Dang2
+        False,          # 14 OffsetReverse1
+        False,          # 15 OffsetReverse2
+        False,          # 16 TranslateSurface1
+        False,          # 17 TranslateSurface2
+        False,          # 18 NormalCut
+        True,           # 19 UseFeatScope
+        True,           # 20 UseAutoSelect
+        True,           # 21 AssemblyFeatureScope
+        SW_START_SKETCH_PLANE,  # 22 T0
+        0.0,            # 23 StartOffset
+        False,          # 24 FlipStartOffset
     )
     if feature is None:
         raise RuntimeError("FeatureCut4 returned None")
@@ -493,9 +598,18 @@ def _collect_bindings(spec: dict[str, Any]) -> list[tuple[str, str]]:
     """Walk features and produce (dim_name, rhs) tuples for every {rhs} length.
 
     dim_name is "D<n>@<feature_name>". rhs is the raw expression from the spec.
+    For multi-circle sketches, each circle's diameter -> D{k+1}@<name> in
+    spec-array order (matching the builder's dim-numbering convention).
     """
     out: list[tuple[str, str]] = []
     for feat in spec["features"]:
+        if feat["type"] == "sketch_circles_on_face":
+            for k, c in enumerate(feat["circles"]):
+                value = c.get("diameter")
+                if _is_rhs(value):
+                    dim_name = f"D{k+1}@{feat['name']}"
+                    out.append((dim_name, value["rhs"]))
+            continue
         field_map = DIM_FIELD_MAP.get(feat["type"], {})
         for field, dim_suffix in field_map.items():
             value = feat.get(field)
@@ -529,6 +643,7 @@ HANDLERS = {
     "sketch_rectangle_on_plane": _build_sketch_rectangle_on_plane,
     "sketch_circle_on_plane":    _build_sketch_circle_on_plane,
     "sketch_circle_on_face":     _build_sketch_circle_on_face,
+    "sketch_circles_on_face":    _build_sketch_circles_on_face,
     "boss_extrude_blind":        _build_boss_extrude_blind,
     "cut_extrude_through_all":   _build_cut_extrude_through_all,
     "cut_extrude_blind":         _build_cut_extrude_blind,
@@ -554,7 +669,8 @@ def build(spec: dict[str, Any]) -> BuildResult:
     ctx = BuildContext(sw=sw, doc=doc)
 
     # Suppress the "Modify Dimension" popup that AddDimension2 fires by
-    # default. Without this, every dim add blocks waiting for a user click.
+    # default. App-level only; doc-level call was found to RE-ENABLE the
+    # popup on a fresh doc (regression in MMP debug session 2026-05-16).
     prev_input_dim = sw.GetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE)
     sw.SetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE, False)
 

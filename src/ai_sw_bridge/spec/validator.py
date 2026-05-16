@@ -40,10 +40,22 @@ class ValidationError(Exception):
 QUOTED_VAR_RE = re.compile(r'"([A-Za-z_][A-Za-z0-9_]*)"')
 
 
+def _strip_comments(node: Any) -> Any:
+    """Recursively remove keys starting with '_' from dicts. Lets specs carry
+    `_comment` fields without tripping additionalProperties=false. Returns a
+    deep-copy with the keys filtered out; original is untouched."""
+    if isinstance(node, dict):
+        return {k: _strip_comments(v) for k, v in node.items() if not k.startswith("_")}
+    if isinstance(node, list):
+        return [_strip_comments(v) for v in node]
+    return node
+
+
 def _check_schema(spec: dict[str, Any]) -> None:
     """Raise ValidationError on the first jsonschema violation."""
+    cleaned = _strip_comments(spec)
     try:
-        jsonschema.validate(instance=spec, schema=SCHEMA)
+        jsonschema.validate(instance=cleaned, schema=SCHEMA)
     except jsonschema.ValidationError as e:
         path = "/".join(str(p) for p in e.absolute_path)
         raise ValidationError(message=e.message, path=path or "$") from e
@@ -64,17 +76,17 @@ def _check_references(spec: dict[str, Any]) -> None:
             )
 
         # Reference checks per feature type
-        if ftype == "sketch_circle_on_face":
+        if ftype in ("sketch_circle_on_face", "sketch_circles_on_face"):
             target = feat["of_feature"]
             if target not in seen:
                 raise ValidationError(
-                    message=f"sketch_circle_on_face references '{target}', "
+                    message=f"{ftype} references '{target}', "
                     f"which is not an earlier feature",
                     path=f"features/{i}/of_feature",
                 )
             if seen[target] not in EXTRUDE_TYPES:
                 raise ValidationError(
-                    message=f"sketch_circle_on_face requires '{target}' to be "
+                    message=f"{ftype} requires '{target}' to be "
                     f"an extrusion-type feature; got '{seen[target]}'",
                     path=f"features/{i}/of_feature",
                 )
@@ -114,6 +126,10 @@ def _collect_rhs_var_refs(spec: dict[str, Any]) -> dict[str, list[tuple[str, str
             if field in feat:
                 for v in _extract_var_refs(feat[field]):
                     refs.setdefault(v, []).append((feat["name"], field))
+        # Multi-circle sketch: each circle has its own diameter
+        for j, c in enumerate(feat.get("circles", [])):
+            for v in _extract_var_refs(c.get("diameter")):
+                refs.setdefault(v, []).append((feat["name"], f"circles[{j}].diameter"))
     return refs
 
 
