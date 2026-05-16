@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "name": "MinimalCylinder_v2",
+  "locals": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\examples\\minimal_cylinder\\locals.txt",
+  "features": [
+    {
+      "type": "sketch_circle_on_plane",
+      "name": "SK_Body",
+      "plane": "Front",
+      "diameter": {"rhs": "\"PART_DIAMETER\""}
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "Extrude_Body",
+      "sketch": "SK_Body",
+      "depth": {"rhs": "\"PART_LENGTH\""}
+    }
+  ]
+}

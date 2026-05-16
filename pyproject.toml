@@ -28,6 +28,7 @@ dependencies = [
     "pywin32>=305",
     "Pillow>=10.0",
     "oletools>=0.60",
+    "jsonschema>=4.0",
 ]
 
 [project.urls]
@@ -40,6 +41,7 @@ ai-sw-probe    = "ai_sw_bridge.cli.probe:main"
 ai-sw-observe  = "ai_sw_bridge.cli.observe:main"
 ai-sw-mutate   = "ai_sw_bridge.cli.mutate:main"
 ai-sw-codegen  = "ai_sw_bridge.cli.codegen:main"
+ai-sw-build    = "ai_sw_bridge.cli.build:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
