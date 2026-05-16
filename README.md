@@ -3,81 +3,95 @@
 A semi-automated bridge that lets an AI assistant (Claude, ChatGPT, Codex, etc.)
 drive SOLIDWORKS through the COM API.
 
-## Goal
+## What it does
 
-**Enable AI-driven build-parts-from-scratch via the SOLIDWORKS API.** The long-term target is an AI agent that reads a design guide, emits a declarative part spec, drives SOLIDWORKS to build the part, and verifies the result against the spec — all through diffable, version-controlled artifacts. See [docs/ai_driven_architecture_review.md](docs/ai_driven_architecture_review.md) for the full architectural plan, field survey of existing SW automation tools, and v0.2 roadmap.
+Today, ai-sw-bridge ships **four capabilities** along a continuum from observation to AI-driven creation:
 
-Today, ai-sw-bridge ships three concrete capabilities that build toward that goal:
+| Capability | CLI | What it gives you |
+|---|---|---|
+| **Inspection** | `ai-sw-observe` | Read features, equations, mates, screenshots as JSON. Safe to run any time. |
+| **Variable mutation** | `ai-sw-mutate` | Propose–Approve–Execute changes to `*_locals.txt` variables. Dry-run + rollback before commit. |
+| **Recorded-macro parameterization** (Path C) | `ai-sw-codegen` | Record once in SW UI, parameterize against `*_locals.txt`, replay to regenerate. |
+| **Declarative part synthesis** (v0.2, in progress) | `ai-sw-build` | Take a JSON spec describing features + parametric bindings, drive SW via direct-COM to produce the part. **AI-native authoring path.** |
 
-- **Design-guide tuning** — verify that a SOLIDWORKS model actually matches what a written design guide claims, and propose corrections.
-- **Parametric part creation (Path C)** — record a part once in SOLIDWORKS, parameterize the recorded macro against a `*_locals.txt` source of truth, and replay to regenerate the part with new dimensions.
-- **Repeatable inspection** — feature errors, mate errors, equations, measurements, and screenshots are all available as plain JSON over a CLI.
+The long-term target is the fourth capability: an AI agent reads a design guide, emits a JSON part spec, drives SOLIDWORKS to build it, and verifies the result — all through diffable, version-controlled artifacts. Phases 0 and 1 are landed; MMP (motor mount plate) is a partial end-to-end demonstration. See [docs/ai_driven_architecture_review.md](docs/ai_driven_architecture_review.md) for the full plan.
 
 Designed around a **Propose–Approve–Execute** discipline: every mutation runs as a dry-run with rollback first, surfaces a delta, and only commits after explicit approval. The AI never gets a `do-anything` button into your CAD model.
 
-## Limitations (read before adopting)
+## Current status (2026-05-17)
 
-Building AI-driven SOLIDWORKS automation is genuinely R&D, not a port of an existing solution. The hard constraints below shape what this project can and cannot do. See [docs/ai_driven_architecture_review.md](docs/ai_driven_architecture_review.md) for the full survey.
+**v0.1 capabilities — production-validated** on SOLIDWORKS 2024 SP1:
+- `ai-sw-probe`, `ai-sw-observe`, `ai-sw-mutate` end-to-end working
+- Path C parameterization verified on a single-extrude cylinder
+
+**v0.2 capabilities — in progress:**
+- Phase 0 spikes: **GREEN** — direct-COM late-binding is viable for the v0.2 architecture
+- Phase 1 (JSON-spec builder): **partial**
+  - Cylinder example builds end-to-end with parametric bindings
+  - MMP example builds 5/10 features including the first cut feature ever produced via this pipeline
+  - Known v1 blocker: face-based sketch origins cannot lie inside an existing through-hole (documented in [spikes/phase0/MMP_DEBUG_SESSION.md](spikes/phase0/MMP_DEBUG_SESSION.md))
+- **CHM-verified API reference** ([docs/api_reference.md](docs/api_reference.md)) — 23 in-use SW methods + 5 enums extracted from the official `sldworksapi.chm`, with arg-count assertion at runtime
+
+## Why this matters
+
+**Building AI-driven SOLIDWORKS automation is genuinely R&D.** The SW community has spent a decade building add-in frameworks (angelsix, xCAD, codestack) and modify-only wrappers (pyswx, pySldWrap), but nobody has shipped a declarative part-builder. ai-sw-bridge's v0.2 work is that gap — see the field survey in [docs/ai_driven_architecture_review.md](docs/ai_driven_architecture_review.md).
+
+What makes it tractable now:
+
+- **AI assistants are good at JSON.** The spec is pure data, not VBA prose. The AI writes spec, the bridge runs it.
+- **Direct-COM via pywin32 late-binding works** for most of the SW API on the builds we've tested. The lesson "cuts don't work" was wrong (see commit `c560e97`) — they work fine once you pass all 27 args FeatureCut4 expects, not the 24 the older docs imply.
+- **Authoritative API signatures.** When an SW call returns `PARAMNOTOPTIONAL`, the very first check is the arg count per `sldworksapi.chm`. We codified that lookup; see [tools/chm_extract.py](tools/chm_extract.py).
+
+## Limitations (read before adopting)
 
 **Platform and API**
 
 - **Windows only.** SOLIDWORKS is Windows-only, and `pywin32` only supports Windows.
-- **pywin32 late-binding only.** `EnsureDispatch`/makepy doesn't work on `SldWorks.Application` on most installs. Consequences: API methods with `OUT` parameters (e.g., `SelectByID2`, `GetErrorCode2`, `Save3`) are unreachable; zero-arg methods auto-invoke as properties. Every new API surface needs a sandbox test to confirm late-binding works. See [docs/known_gotchas.md](docs/known_gotchas.md).
-- **SW state is invisible.** The SW state machine (active sketch, current selection, edit mode) lives in SW's UI memory; the API cannot reliably query it. Every operation must be designed to set state explicitly, not depend on whatever happened to be selected.
-- **`RunMacro` requires binary `.swp`.** Plain-text `.bas` files are silently rejected. Path C accepts a one-time manual paste in lieu of full automation. Future binary-`.swp`-write support is unsolved.
+- **pywin32 late-binding only.** `EnsureDispatch`/makepy doesn't work on `SldWorks.Application` on most installs. Consequences: API methods with `OUT` parameters or COM-interface args (e.g. `SelectByID2`'s `Callout`, `AddSpecificDimension`'s `Error`) are unreachable. Every new API surface needs sandbox confirmation. See [docs/known_gotchas.md](docs/known_gotchas.md).
+- **SW state is invisible.** The SW state machine (active sketch, current selection, edit mode) lives in SW's UI memory; the API cannot reliably query it. Every operation must set state explicitly.
+- **`AddDimension2` opens a Modify Dimension popup** that requires manual ticking. The `swInputDimValOnCreate` toggle ID empirically doesn't suppress it on SW 2024 SP1. Documented in [spikes/phase0/MMP_DEBUG_SESSION.md](spikes/phase0/MMP_DEBUG_SESSION.md). MMP-scale builds need ~15 manual clicks.
 
 **Performance and AI iteration**
 
 - **COM is ~5-50ms per call.** A 30-feature part needs ~200 calls = 30-120 seconds end-to-end. AI iteration must be *plan-then-execute*, not call-by-call.
 
-**What this project cannot do (today or soon)**
+**Scope (v0.2 today)**
 
-- **No fluent part-builder API yet.** No `part.box().hole()` chaining. Field survey (angelsix, xCAD, pyswx, codestack — see review doc) found that nobody in the SW community has built one in a decade, by choice. ai-sw-bridge v0.2 will offer JSON-spec→VBA-emitter as the AI-native alternative; this is unbuilt.
-- **No automated face/edge selection.** SW selects faces via 3D coordinates, not "outboard face of feature X". The emitter has to compute coords from feature geometry; this is fragile and per-feature.
-- **No fillets, sweeps, or lofts in v1 scope.** These need human judgment (which edges to fillet) or path geometry that doesn't map cleanly to declarative spec. Deferred.
+- **No fluent part-builder API.** No `part.box().hole()` chaining. v0.2 is JSON-spec → direct-COM. The AI generates spec JSON, not freehand prose.
+- **Limited face/edge selection.** SW selects faces via 3D coordinates, not "outboard face of feature X". The builder computes coords from feature geometry and tries small offsets as a fallback when an earlier feature has cut material at the center. Fragile in edge cases like concentric holes.
+- **No fillets, sweeps, lofts.** Need human judgment (which edges) or path geometry that doesn't map cleanly to declarative spec. Deferred.
 - **No assemblies, no mates, no drawings.** Separate problem each. The current bridge handles part-level workflows only.
-- **No "describe the part in English and get geometry."** The spec language is precise. The AI generates spec JSON, not freehand prose.
-- **Will not replace CAD engineers.** This is a tool to make designers more productive and more reproducible. Hand-off to manufacturing still needs human review.
-
-**Where this project meets the field consensus**
-
-- The codestack-canonical pattern is **template + equation file**: build a part once in SOLIDWORKS UI, then drive parametric variations through `*_locals.txt`. ai-sw-bridge fully supports this via `ai-sw-observe` + `ai-sw-mutate`. If your need is variation rather than from-scratch generation, this is the recommended workflow today.
-
-## Status
-
-`v0.1.0` — first public release. Phases 1 (observe) and 2 (mutate) are end-to-end validated. Path C (recorded-macro parameterization) is validated for a single-extrude part on SOLIDWORKS 2024 (rev 32.1.0). v0.2 (JSON-spec→VBA-emitter for AI-driven part synthesis) is on the roadmap, gated on a Phase 0 de-risking spike — see [docs/ai_driven_architecture_review.md](docs/ai_driven_architecture_review.md). See [CHANGELOG.md](CHANGELOG.md) and [docs/known_gotchas.md](docs/known_gotchas.md) for honest limitations.
+- **No "describe the part in English and get geometry."** The spec language is precise. The AI generates spec JSON.
+- **Will not replace CAD engineers.** This is a tool to make designers more productive and more reproducible.
 
 ## Quickstart
 
 ### Prerequisites
 
 - **Windows** (SOLIDWORKS is Windows-only, and `pywin32` only supports Windows)
-- **SOLIDWORKS** installed and running (tested on 2024; should work on 2021 SP5+)
-- **Python 3.10+**
+- **SOLIDWORKS** installed and running (tested on 2024 SP1; should work on 2021 SP5+)
+- **Python 3.10+** (tested on 3.14)
 
 ### Install
 
 ```powershell
-# 1. Clone the repo
 git clone https://github.com/Thomas-Tai/ai-sw-bridge.git
 cd ai-sw-bridge
 
-# 2. Create a virtual environment
 python -m venv .venv
 .venv\Scripts\activate
-
-# 3. Install the package + dependencies
 pip install -e .
 ```
 
-After install, four CLI commands are on your PATH:
+After install, **five** CLI commands are on your PATH:
 
 | Command | Purpose |
 |---|---|
 | `ai-sw-probe` | COM connectivity sanity check |
 | `ai-sw-observe` | Read-only inspection (features, equations, mates, screenshots) |
-| `ai-sw-mutate` | Propose-Approve-Execute mutations of `*_locals.txt` variables |
+| `ai-sw-mutate` | Propose–Approve–Execute mutations of `*_locals.txt` variables |
 | `ai-sw-codegen` | Path C: parameterize a recorded `.swp` macro |
+| `ai-sw-build` | **v0.2**: build a part from a JSON spec via direct-COM |
 
 ### Smoke test
 
@@ -87,7 +101,7 @@ Open SOLIDWORKS, then:
 ai-sw-probe
 ```
 
-You should see something like:
+You should see:
 ```json
 {
   "ok": true,
@@ -97,83 +111,150 @@ You should see something like:
 }
 ```
 
-If you see `could not dispatch SldWorks.Application`, SOLIDWORKS isn't running or pywin32 wasn't registered properly. See [docs/known_gotchas.md](docs/known_gotchas.md).
+## Five-minute tour
 
-## What it actually does
-
-### Observe (read-only — safe to run at any time)
+### 1. Inspect a model (safe, read-only)
 
 ```powershell
 ai-sw-observe active_doc
 ai-sw-observe feature_errors
 ai-sw-observe equations
+ai-sw-observe screenshot --width=1280 --height=720
 ai-sw-observe mate_errors                              # assemblies only
-ai-sw-observe screenshot                               # 640x360 PNG to ./captures/
-ai-sw-observe screenshot --width=1280 --height=720     # detail
 ai-sw-observe measure                                  # uses current SW UI selection
 ```
 
 Each command prints one JSON object to stdout. Exit code is non-zero on failure.
 
-### Mutate (Propose–Approve–Execute)
+### 2. Mutate a parametric variable (Propose–Approve–Execute)
 
-Your active SOLIDWORKS part must have a linked `*_locals.txt` equation file (Tools > Equations > Link to file). Then:
+Your active SOLIDWORKS part must have a linked `*_locals.txt` equation file:
 
 ```powershell
-# 1. Propose a change (no SW touch yet)
 ai-sw-mutate propose --var=PART_DIAMETER --new_value=30.0
 # -> { "proposal_id": "abc123def456", ... }
 
-# 2. Dry-run: apply, rebuild, capture before/after, roll back
-ai-sw-mutate dry_run --proposal_id=abc123def456
-
-# 3. Commit (only allowed after dry_run_ok)
-ai-sw-mutate commit --proposal_id=abc123def456
-
-# 4. Undo most recent commit if needed
+ai-sw-mutate dry_run --proposal_id=abc123def456     # apply, rebuild, capture, roll back
+ai-sw-mutate commit  --proposal_id=abc123def456     # only allowed after dry_run_ok
 ai-sw-mutate undo_last_commit
 ```
 
-Proposals are persisted as JSON files in `./proposals/` so an AI agent can resume across multiple sessions.
+Proposals are persisted as JSON in `./proposals/` so an AI agent can resume across sessions.
 
-### Codegen — parametric part creation (Path C)
+### 3. Build a part from a JSON spec (v0.2, direct-COM)
 
-1. **Record a part in SOLIDWORKS** once via *Tools → Macro → Record*. Save as `recorded.swp`.
-2. **Write a tiny spec JSON** mapping the recorded SW dimensions to your variable names.
-3. **Run the parameterizer**:
-   ```powershell
-   ai-sw-codegen parameterize examples/minimal_cylinder/recorded.swp examples/minimal_cylinder/spec.json
-   ```
-4. **Paste the generated `.bas` into VBE and press F5** — the new part will be created with all dimensions bound to your `*_locals.txt` source of truth.
+Open a fresh blank Part in SOLIDWORKS, then:
 
-See [examples/minimal_cylinder/README.md](examples/minimal_cylinder/README.md) for a worked example.
+```powershell
+ai-sw-build examples/minimal_cylinder_v2/spec.json
+```
+
+The spec is a small JSON file declaring features and their parametric bindings:
+
+```json
+{
+  "schema_version": 1,
+  "name": "MyCylinder",
+  "locals": "C:\\path\\to\\globals_locals.txt",
+  "features": [
+    {"type": "sketch_circle_on_plane", "name": "SK_Body", "plane": "Front",
+     "diameter": {"rhs": "\"PART_DIAMETER\""}},
+    {"type": "boss_extrude_blind", "name": "Extrude_Body", "sketch": "SK_Body",
+     "depth": {"rhs": "\"PART_LENGTH\""}}
+  ]
+}
+```
+
+The builder:
+1. Validates the spec (schema + topological references + locals-file vars)
+2. Creates a fresh part via `NewDocument`
+3. Links the locals file (4-call sequence for `EquationMgr`)
+4. Walks features in order; emits direct-COM calls for each
+5. Binds parametric dims via `EquationMgr.Add2`
+
+Output is JSON with `features_built` and `bindings_added`. See [examples/minimal_cylinder_v2/](examples/minimal_cylinder_v2/) and [examples/motor_mount_plate/](examples/motor_mount_plate/) for worked examples.
+
+**Note**: each `AddDimension2` call opens a Modify Dimension popup that requires manual tick. A 10-feature MMP build needs ~15 clicks. Known limitation; see [spikes/phase0/MMP_DEBUG_SESSION.md](spikes/phase0/MMP_DEBUG_SESSION.md).
+
+### 4. Parametric replay of a hand-recorded part (Path C)
+
+For shapes that the v0.2 spec language doesn't yet cover (fillets, sweeps, complex profiles), Path C lets you record once in SW UI and replay parameterized:
+
+```powershell
+# Record a part in SW (Tools → Macro → Record). Save as recorded.swp.
+# Write a tiny spec mapping the recorded dims to your variables.
+ai-sw-codegen parameterize examples/minimal_cylinder/recorded.swp examples/minimal_cylinder/spec.json
+# Paste the generated .bas into VBE, F5.
+```
+
+See [examples/minimal_cylinder/README.md](examples/minimal_cylinder/README.md).
+
+## API reference (CHM-verified)
+
+The bridge keeps an authoritative reference of every SW API it calls, extracted from `sldworksapi.chm`:
+
+- [docs/api_reference.md](docs/api_reference.md) — human-readable: signatures, arg docs, enum values, availability
+- [docs/api_reference.json](docs/api_reference.json) — machine-readable
+
+Generated by:
+
+```powershell
+# 1. Decompile the CHM (one-time setup)
+hh.exe -decompile spikes/phase0/_chm_decompiled "C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\sldworksapi.chm"
+
+# 2. Extract the methods + enums declared in tools/_api_extract_input.json
+python tools/chm_extract.py batch tools/_api_extract_input.json docs/api_reference.json
+
+# 3. Regenerate the human-readable + Python-stub forms
+python tools/gen_api_markdown.py docs/api_reference.json docs/api_reference.md
+python tools/gen_sw_types.py docs/api_reference.json src/ai_sw_bridge/sw_types.py
+```
+
+The generated [src/ai_sw_bridge/sw_types.py](src/ai_sw_bridge/sw_types.py) exports enum constants (`SW_END_COND_THROUGH_ALL = 1`, etc.) and a `METHOD_SIGNATURES` dict. The builder calls `assert_args()` before each FeatureManager call, so any future arg-count drift fails fast with a clear diagnostic.
+
+**Lesson**: when an SW call returns `PARAMNOTOPTIONAL` or `Invalid number of parameters`, the very first check is whether the arg count matches the CHM. ([commit c560e97](https://github.com/Thomas-Tai/ai-sw-bridge/commit/c560e97) — `FeatureCut4` was 27 args, not the 24 we'd been sending.)
 
 ## Why this design
 
 - **AI agents need verifiable, reversible operations.** Every mutation is `propose → dry-run → review → commit`. Rollback verification reads the file back from disk and compares against the snapshot.
 - **The `*_locals.txt` file is the single source of truth.** Editing variables in SW Equation Manager directly is fragile (the link can overwrite them). We always edit the file, then reload + rebuild.
-- **Late-binding pywin32 only.** `EnsureDispatch`/makepy doesn't work against SldWorks.Application on most installs. We accept the late-binding tax (some APIs unreachable, see gotchas) and work around it.
+- **Late-binding pywin32 only.** `EnsureDispatch`/makepy doesn't work against `SldWorks.Application` on most installs. We accept the late-binding tax (some APIs unreachable, see gotchas) and work around it.
 - **JSON in/out for everything.** Trivially scriptable from any AI agent harness — Claude Code, OpenAI Assistants, custom MCP servers, plain shell scripts.
+- **CHM is authoritative.** API signatures change between SW versions. Re-extract on a fresh SW install; the generated `sw_types.py` adapts the runtime arg-count assertion automatically.
 
 ## Layout
 
 ```
 ai-sw-bridge/
-├── src/ai_sw_bridge/        # the Python package
+├── src/ai_sw_bridge/
 │   ├── sw_com.py            # SldWorks dispatch + helpers
+│   ├── sw_types.py          # auto-generated enum constants + assert_args
 │   ├── observe.py           # Phase 1: read-only tools
 │   ├── mutate.py            # Phase 2: Propose-Approve-Execute
 │   ├── locals_io.py         # *_locals.txt parser + atomic writer
 │   ├── parameterize.py      # Path C: recorded-macro parameterizer
-│   └── cli/                 # CLI entry points (one per command)
+│   ├── spec/                # v0.2: JSON-spec build pipeline
+│   │   ├── schema.py        # JSON schema for the spec language
+│   │   ├── validator.py     # 3-layer validation (schema, refs, locals)
+│   │   └── builder.py       # direct-COM build executor
+│   └── cli/                 # CLI entry points
+├── tools/
+│   ├── chm_extract.py       # decompiled-CHM signature/enum parser
+│   ├── gen_api_markdown.py  # JSON → docs/api_reference.md
+│   ├── gen_sw_types.py      # JSON → src/ai_sw_bridge/sw_types.py
+│   └── _api_extract_input.json  # which methods/enums to extract
 ├── docs/
 │   ├── architecture.md                     # phases, design rationale (v0.1)
 │   ├── ai_driven_architecture_review.md    # field survey + v0.2 plan
 │   ├── tools_reference.md                  # every CLI command, every flag
-│   └── known_gotchas.md                    # the things we learned the hard way
+│   ├── known_gotchas.md                    # things we learned the hard way
+│   └── api_reference.{md,json}             # CHM-verified SW API reference
 ├── examples/
-│   └── minimal_cylinder/    # worked example (record → parameterize → run)
-├── USAGE.md                 # detailed workflows
+│   ├── minimal_cylinder/        # Path C example (recorded macro → parametric)
+│   ├── minimal_cylinder_v2/     # v0.2 example (JSON spec → direct-COM)
+│   └── motor_mount_plate/       # v0.2 spec for the S1b MMP (partial; v1 limitation)
+├── spikes/phase0/                # Phase 0 de-risking spikes + MMP debug log
+├── USAGE.md
 ├── CHANGELOG.md
 ├── pyproject.toml
 └── requirements.txt
