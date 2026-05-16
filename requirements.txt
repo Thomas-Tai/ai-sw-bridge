@@ -1,0 +1,5 @@
+# Runtime dependencies for ai-sw-bridge
+# Windows-only because pywin32 only supports Windows; SOLIDWORKS itself is Windows-only.
+pywin32>=305
+Pillow>=10.0
+oletools>=0.60

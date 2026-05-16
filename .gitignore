@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+.venv-*/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# Runtime data (per-user, auto-created)
+captures/
+proposals/
+
+# Examples: user-recorded macros that aren't part of the example
+examples/**/recorded.swp
+examples/**/*_parameterized.bas
+
+# But DO ship the example spec.json and any docs
+!examples/**/spec.json
+!examples/**/README.md

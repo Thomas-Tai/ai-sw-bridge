@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-sw-bridge"
+version = "0.1.0"
+description = "A semi-automated bridge that lets an AI assistant (Claude, ChatGPT, Codex, etc.) drive SOLIDWORKS through the COM API for design-guide tuning and parametric part creation."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "ai-sw-bridge contributors" }]
+keywords = ["solidworks", "cad", "automation", "ai", "claude", "codex", "com", "pywin32"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Manufacturing",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "pywin32>=305",
+    "Pillow>=10.0",
+    "oletools>=0.60",
+]
+
+[project.urls]
+Homepage = "https://github.com/Thomas-Tai/ai-sw-bridge"
+Issues = "https://github.com/Thomas-Tai/ai-sw-bridge/issues"
+Repository = "https://github.com/Thomas-Tai/ai-sw-bridge.git"
+
+[project.scripts]
+ai-sw-probe    = "ai_sw_bridge.cli.probe:main"
+ai-sw-observe  = "ai_sw_bridge.cli.observe:main"
+ai-sw-mutate   = "ai_sw_bridge.cli.mutate:main"
+ai-sw-codegen  = "ai_sw_bridge.cli.codegen:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ai_sw_bridge = ["py.typed"]
