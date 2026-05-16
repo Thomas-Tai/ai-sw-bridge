@@ -472,7 +472,8 @@ def _call_feature_cut(
 ) -> Any:
     """FeatureManager.FeatureCut4 - the cut variant of FeatureExtrusion2.
 
-    SW 2024 signature (24 args):
+    SW 2017+ signature (27 args; verified via decompiled sldworksapi.chm
+    and Spike E7 on SW 2024 SP1):
       Sd, Flip, Dir, T1, T2, D1, D2,
       Dchk1, Dchk2, Ddir1, Ddir2,
       Dang1, Dang2,
@@ -480,11 +481,12 @@ def _call_feature_cut(
       TranslateSurface1, TranslateSurface2,
       NormalCut,
       UseFeatScope, UseAutoSelect, AssemblyFeatureScope,
-      T0, StartOffset, FlipStartOffset
+      AutoSelectComponents, PropagateFeatureToParts,
+      T0, StartOffset, FlipStartOffset, OptimizeGeometry
     """
     fm = ctx.doc.FeatureManager
     feature = fm.FeatureCut4(
-        True,           # 1  Sd
+        True,           # 1  Sd (single-ended)
         flip,           # 2  Flip
         False,          # 3  Dir
         end_cond,       # 4  T1
@@ -501,13 +503,16 @@ def _call_feature_cut(
         False,          # 15 OffsetReverse2
         False,          # 16 TranslateSurface1
         False,          # 17 TranslateSurface2
-        False,          # 18 NormalCut
+        False,          # 18 NormalCut (sheet metal only)
         True,           # 19 UseFeatScope
         True,           # 20 UseAutoSelect
         True,           # 21 AssemblyFeatureScope
-        SW_START_SKETCH_PLANE,  # 22 T0
-        0.0,            # 23 StartOffset
-        False,          # 24 FlipStartOffset
+        True,           # 22 AutoSelectComponents
+        False,          # 23 PropagateFeatureToParts
+        SW_START_SKETCH_PLANE,  # 24 T0
+        0.0,            # 25 StartOffset
+        False,          # 26 FlipStartOffset
+        False,          # 27 OptimizeGeometry (sheet metal only)
     )
     if feature is None:
         raise RuntimeError("FeatureCut4 returned None")

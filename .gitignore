@@ -38,3 +38,6 @@ examples/**/*_parameterized.bas
 # But DO ship the example spec.json and any docs
 !examples/**/spec.json
 !examples/**/README.md
+
+# Decompiled SW API CHM (reproducible from chm files in the OneDrive tree)
+spikes/phase0/_chm_decompiled/
