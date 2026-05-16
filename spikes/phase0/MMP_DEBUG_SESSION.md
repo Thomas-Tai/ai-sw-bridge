@@ -137,27 +137,54 @@ html file. Confirmed authoritative.
   in-use methods + 5 enums
 - `docs/api_reference.md` -- human-readable form
 
-## MMP end-to-end status (2026-05-17)
+## MMP end-to-end status: GREEN 10/10 (2026-05-17 final)
 
-After all fixes (cut signature, end-cond enum, face-selection fallback):
-- Features 1-4 built successfully (rect sketch -> boss -> circle on
-  face -> cut-through-all). **The first cut produced via this pipeline.**
-- Feature 5 (SK_FlangeRecess) succeeded with the new face-select offset
-  logic (1-15mm offsets handle holes up to 30mm diameter)
-- Feature 6 (Cut_FlangeRecess) returned None: a sketch whose origin
-  falls inside a pre-existing through-hole cannot define a cut, even
-  if the circle extends outside the hole.
+After all fixes (cut signature, end-cond enum, face-selection offset,
+interleaved per-feature binding, -z face X-axis mirror, center-rect)
+the MMP builds fully end-to-end with all 10 features and 7 parametric
+bindings. Verified visually via screenshot: plate centered, coupler
+hole concentric with flange recess, motor+frame hole pairs at ±15mm.
 
-**v1 limitation documented**: a face-based sketch's origin must lie on
-material, not inside a void. The MMP design pattern (flange recess
-concentric with through-hole) hits this. Workarounds:
-- Sketch on the underlying plane (Front Plane), not the face -- avoids
-  the bounded-region rule
-- Move sketch origin off-center (changes feature intent, not viable)
+### What was actually wrong (the prior "v1 geometric limitation" was wrong)
 
-Suggested fix path: add a `sketch_circle_on_plane_at_face_z` feature
-type that picks the underlying plane parallel to the face but at the
-face's z offset. Defer to next session.
+The "face-based sketch origin must lie on material" hypothesis was a
+red herring. **Spike K** built a box + through-hole + concentric circle
+cut and it worked fine on all three workaround variants. The
+MMP-specific failure was actually three separate bugs:
+
+1. **Placeholder-vs-target mismatch**: parametric circle's placeholder
+   diameter (6mm) was smaller than the existing through-hole (12mm),
+   so the cut profile was entirely inside a void at the time
+   `FeatureCut4` ran (bindings were applied AFTER all features).
+   **Fix**: interleave bindings -- apply each feature's Add2 + rebuild
+   immediately after the feature is built, so downstream geometry sees
+   target sizes.
+
+2. **-z face X-axis mirror**: SW mirrors sketch X when viewing a -z
+   face from outside. `CreateCircle` uses sketch-local coords (the
+   circle ends up at the spec u, v) but `SelectByID("SKETCHSEGMENT",...)`
+   uses PART-frame coords. On -z faces, sketch (15, 0) is at part
+   (-15, 0), so clicking at sketch (17, 0) misses the circle entirely.
+   **Fix**: mirror u in the click coords for -z (and -x, -y) faces.
+
+3. **Rectangle dim-resize asymmetry**: `CreateCornerRectangle` makes
+   an unconstrained rect; when dims bind it from placeholder to target,
+   SW's solver picks an arbitrary corner to anchor and grows the rect
+   asymmetrically -- the centroid ends up off origin, so all downstream
+   features (which use the origin as reference) are wrong.
+   **Fix**: use `CreateCenterRectangle` instead -- it anchors via
+   construction diagonals through the center, so resize stays centered.
+
+### Spike K outcome
+
+`spikes/phase0/spike_k_concentric_cut.py` tested three workaround
+patterns against the original failure hypothesis. All three succeeded:
+- A: face-based concentric circle (the supposed v1 limitation)
+- B: plane-based sketch with `StartOffset` for blind cut at z-offset
+- C: face-based off-center circle
+
+The original v1 limitation hypothesis was disproved. The real bug was
+the placeholder-vs-target mismatch (bug 1 above).
 
 ## Files referenced
 
@@ -167,7 +194,8 @@ face's z offset. Defer to next session.
 - `spikes/phase0/spike_e4_typed_fm.py` -- gencache typed FeatureManager attempt
 - `spikes/phase0/spike_e5_extrude_as_cut.py` -- FeatureExtrusion2 cut-mode check
 - `spikes/phase0/spike_e6_extrusion3.py` -- FeatureExtrusion3 (combined boss/cut) at arg counts 24-28
-- `spikes/phase0/spike_e7_cut_27args.py` -- **the resolution**; 27-arg FeatureCut4 works
+- `spikes/phase0/spike_e7_cut_27args.py` -- **the FeatureCut4 resolution**; 27-arg works
+- `spikes/phase0/spike_k_concentric_cut.py` -- disproved the "face-sketch origin must lie on material" hypothesis
 - `spikes/phase0/spike_f_close_pm.py` -- PM-pane dismissal probe (2026-05-17)
 - `spikes/phase0/spike_h_sendkeys.py` -- key-injection probe
 - `spikes/phase0/spike_h_window_probe.py` -- SW HWND discovery

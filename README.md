@@ -24,12 +24,11 @@ Designed around a **Propose–Approve–Execute** discipline: every mutation run
 - `ai-sw-probe`, `ai-sw-observe`, `ai-sw-mutate` end-to-end working
 - Path C parameterization verified on a single-extrude cylinder
 
-**v0.2 capabilities — in progress:**
+**v0.2 capabilities — Phase 1 GREEN:**
 - Phase 0 spikes: **GREEN** — direct-COM late-binding is viable for the v0.2 architecture
-- Phase 1 (JSON-spec builder): **partial**
+- Phase 1 (JSON-spec builder): **GREEN**
   - Cylinder example builds end-to-end with parametric bindings
-  - MMP example builds 5/10 features including the first cut feature ever produced via this pipeline
-  - Known v1 blocker: face-based sketch origins cannot lie inside an existing through-hole (documented in [spikes/phase0/MMP_DEBUG_SESSION.md](spikes/phase0/MMP_DEBUG_SESSION.md))
+  - **Motor Mount Plate (MMP) builds 10/10 features end-to-end** with 7 parametric bindings (50×50 plate with concentric Ø12 coupler hole + Ø20.5 flange recess + pairs of motor/frame holes at ±15mm). Geometry verified centered.
 - **CHM-verified API reference** ([docs/api_reference.md](docs/api_reference.md)) — 23 in-use SW methods + 5 enums extracted from the official `sldworksapi.chm`, with arg-count assertion at runtime
 
 ## Why this matters

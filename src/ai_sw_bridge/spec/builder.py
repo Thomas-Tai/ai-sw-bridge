@@ -193,8 +193,14 @@ def _build_sketch_rectangle_on_plane(ctx: BuildContext, feat: dict[str, Any]) ->
     cx_m = float(center.get("x", 0.0)) / 1000.0
     cy_m = float(center.get("y", 0.0)) / 1000.0
 
-    sm.CreateCornerRectangle(
-        cx_m - width_m / 2, cy_m - height_m / 2, 0.0,
+    # CreateCenterRectangle (NOT CreateCornerRectangle) so the rectangle
+    # is internally anchored to its CENTER via construction diagonals.
+    # When dim binding resizes it, both halves grow symmetrically -- the
+    # corner-rectangle equivalent would let SW's solver anchor at an
+    # arbitrary corner and grow asymmetrically, putting features
+    # off-center after the rebuild. Args: (center, opposite corner).
+    sm.CreateCenterRectangle(
+        cx_m, cy_m, 0.0,
         cx_m + width_m / 2, cy_m + height_m / 2, 0.0,
     )
 
@@ -375,10 +381,29 @@ def _build_sketch_circle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bui
 
     sm.CreateCircle(u_m, v_m, 0.0, u_m + radius_m, v_m, 0.0)
 
-    # Add diameter dim
+    # Add diameter dim. SelectByID for SKETCHSEGMENT uses PART-frame coords,
+    # so on -z faces we mirror u (SW mirrors the sketch X axis when looking
+    # at a -z face from outside).
+    mirror_u = -1.0 if face.startswith("-") else 1.0
+    u_click = mirror_u * u_m
+
     ctx.doc.ClearSelection2(True)
-    if not ctx.doc.SelectByID("", "SKETCHSEGMENT", u_m + radius_m, v_m, 0.0):
-        raise RuntimeError("could not select face-sketch circle for diameter dim")
+    sel_candidates = [
+        (u_click + radius_m * mirror_u, v_m, 0.0),
+        (u_click, v_m + radius_m, 0.0),
+        (u_click - radius_m * mirror_u, v_m, 0.0),
+        (u_click, v_m - radius_m, 0.0),
+    ]
+    selected = False
+    for sx, sy, sz in sel_candidates:
+        if ctx.doc.SelectByID("", "SKETCHSEGMENT", sx, sy, sz):
+            selected = True
+            break
+    if not selected:
+        raise RuntimeError(
+            f"could not select face-sketch circle for diameter dim "
+            f"(face={face}, u={u_m*1000:.1f}mm, r={radius_m*1000:.2f}mm)"
+        )
     dim_d = ctx.doc.AddDimension2(u_m + radius_m + 0.005, v_m + radius_m + 0.005, 0.0)
     if dim_d is None:
         raise RuntimeError("AddDimension2 returned None for face-sketch diameter")
@@ -425,6 +450,16 @@ def _build_sketch_circles_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bu
     sm = ctx.doc.SketchManager
     sm.InsertSketch(True)
 
+    # On -z faces (and -x/-y), SW mirrors the sketch X axis: a circle drawn
+    # at sketch (u, v) lands at part (-u, v). The CreateCircle call uses
+    # sketch-local coords (so the circle ends up where the spec says relative
+    # to the face's u/v frame), but SelectByID for SKETCHSEGMENT needs PART
+    # coords on this build. Compute the click-coord mirror once.
+    if face.startswith("-"):
+        mirror_u = -1.0
+    else:
+        mirror_u = 1.0
+
     for k, c in enumerate(feat["circles"]):
         u_m = float(c["u"]) / 1000.0
         v_m = float(c["v"]) / 1000.0
@@ -434,8 +469,26 @@ def _build_sketch_circles_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bu
         # Dimension this circle BEFORE creating the next one, so dim
         # numbering matches array index: first circle -> D1, second -> D2.
         ctx.doc.ClearSelection2(True)
-        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", u_m + radius_m, v_m, 0.0):
-            raise RuntimeError(f"could not select circle #{k} for diameter dim")
+        # Click in part-frame coords; on -z faces, the u axis is mirrored.
+        u_click = mirror_u * u_m
+        sel_candidates = [
+            (u_click + radius_m * mirror_u, v_m, 0.0),       # east-ish
+            (u_click, v_m + radius_m, 0.0),                  # north
+            (u_click - radius_m * mirror_u, v_m, 0.0),       # west-ish
+            (u_click, v_m - radius_m, 0.0),                  # south
+        ]
+        selected = False
+        for sx, sy, sz in sel_candidates:
+            if ctx.doc.SelectByID("", "SKETCHSEGMENT", sx, sy, sz):
+                selected = True
+                break
+        if not selected:
+            raise RuntimeError(
+                f"could not select circle #{k} (perimeter at radius {radius_m*1000:.2f}mm "
+                f"from sketch center ({u_m*1000:.1f}, {v_m*1000:.1f}) mm, "
+                f"face={face}, mirror_u={mirror_u}) -- "
+                f"tried 4 cardinal perimeter points in part frame"
+            )
         # Place leader offset from the circle, with stagger so consecutive
         # circles' dim leaders don't overlap.
         lead_offset = 0.005 + 0.003 * k
@@ -644,28 +697,35 @@ DIM_FIELD_MAP: dict[str, dict[str, str]] = {
 }
 
 
-def _collect_bindings(spec: dict[str, Any]) -> list[tuple[str, str]]:
-    """Walk features and produce (dim_name, rhs) tuples for every {rhs} length.
+def _collect_feature_bindings(feat: dict[str, Any]) -> list[tuple[str, str]]:
+    """Bindings for one feature. Same shape as _collect_bindings but scoped
+    to a single spec entry. Used for interleaved per-feature binding so that
+    placeholder sketch dimensions get replaced by their parametric values
+    BEFORE the next feature (which may depend on the geometry being at
+    target size, e.g. a cut that needs material to remove)."""
+    out: list[tuple[str, str]] = []
+    if feat["type"] == "sketch_circles_on_face":
+        for k, c in enumerate(feat["circles"]):
+            value = c.get("diameter")
+            if _is_rhs(value):
+                dim_name = f"D{k+1}@{feat['name']}"
+                out.append((dim_name, value["rhs"]))
+        return out
+    field_map = DIM_FIELD_MAP.get(feat["type"], {})
+    for field, dim_suffix in field_map.items():
+        value = feat.get(field)
+        if _is_rhs(value):
+            dim_name = f"{dim_suffix}@{feat['name']}"
+            out.append((dim_name, value["rhs"]))
+    return out
 
-    dim_name is "D<n>@<feature_name>". rhs is the raw expression from the spec.
-    For multi-circle sketches, each circle's diameter -> D{k+1}@<name> in
-    spec-array order (matching the builder's dim-numbering convention).
-    """
+
+def _collect_bindings(spec: dict[str, Any]) -> list[tuple[str, str]]:
+    """All bindings for the whole spec, in feature order. Kept for callers
+    that want to see what was applied without scanning per-feature."""
     out: list[tuple[str, str]] = []
     for feat in spec["features"]:
-        if feat["type"] == "sketch_circles_on_face":
-            for k, c in enumerate(feat["circles"]):
-                value = c.get("diameter")
-                if _is_rhs(value):
-                    dim_name = f"D{k+1}@{feat['name']}"
-                    out.append((dim_name, value["rhs"]))
-            continue
-        field_map = DIM_FIELD_MAP.get(feat["type"], {})
-        for field, dim_suffix in field_map.items():
-            value = feat.get(field)
-            if _is_rhs(value):
-                dim_name = f"{dim_suffix}@{feat['name']}"
-                out.append((dim_name, value["rhs"]))
+        out.extend(_collect_feature_bindings(feat))
     return out
 
 
@@ -730,6 +790,7 @@ def build(spec: dict[str, Any]) -> BuildResult:
             link_locals(doc, spec["locals"])
 
         built: list[str] = []
+        binding_results: list[tuple[str, str, int]] = []
         feat: dict[str, Any] | None = None
         try:
             for feat in spec["features"]:
@@ -745,21 +806,31 @@ def build(spec: dict[str, Any]) -> BuildResult:
 
                 ctx.features_by_name[bf.name] = bf
                 built.append(bf.name)
+
+                # Apply this feature's parametric bindings BEFORE the next
+                # feature. Without this, a downstream cut may operate on a
+                # sketch still at placeholder size, with no material to
+                # remove (the original MMP Cut_FlangeRecess failure mode --
+                # placeholder diameter 6mm was smaller than the 12mm
+                # through-hole it sat over).
+                feat_bindings = _collect_feature_bindings(feat)
+                if feat_bindings:
+                    indices = _apply_bindings(doc, feat_bindings)
+                    for (d, r), i in zip(feat_bindings, indices):
+                        binding_results.append((d, r, i))
+                    # Force a rebuild so subsequent geometry sees the
+                    # updated dim values, not the placeholder.
+                    _ = doc.EditRebuild3
         except Exception as e:
             return BuildResult(
                 ok=False,
                 features_built=built,
-                bindings_added=[],
+                bindings_added=binding_results,
                 error=str(e),
                 error_feature=feat["name"] if feat is not None else None,
             )
 
-        # All features built; now bind dims
-        bindings = _collect_bindings(spec)
-        indices = _apply_bindings(doc, bindings)
-        binding_results = [(d, r, i) for (d, r), i in zip(bindings, indices)]
-
-        # Final rebuild
+        # Final rebuild for good measure
         _ = doc.EditRebuild3
 
         return BuildResult(

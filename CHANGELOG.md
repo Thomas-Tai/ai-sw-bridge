@@ -46,15 +46,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **`AddDimension2` opens a Modify Dimension popup** that requires manual
   ticking. The `swInputDimValOnCreate` toggle (ID 8) does not suppress it
-  on SW 2024 SP1 in our testing. MMP-scale builds need ~15 manual clicks.
+  on SW 2024 SP1 in our testing. MMP-scale builds need ~16 manual clicks.
   Full investigation in `spikes/phase0/MMP_DEBUG_SESSION.md`.
-- **Face-based sketch origins must lie on material**, not inside a void.
-  The MMP design pattern (flange recess concentric with through-hole) hits
-  this v1 limitation. Workaround sketched: add a feature type that sketches
-  on the underlying plane instead. Deferred.
-- **MMP example is partial**: 5/10 features build successfully end-to-end
-  including the first cut feature ever produced via this pipeline. Feature 6
-  (`Cut_FlangeRecess`) hits the limitation above.
+- **Only +/-z faces supported** for face-based sketches in v1. +/-x and +/-y
+  faces of extrusions are not yet wired. Adding them is mechanical (extend
+  `_select_extrude_face` and the X-mirror logic).
+- **SW emits a "warning beep" each time the builder closes a sketch.**
+  Caused by sketches being under-constrained (geometry-relation-wise) at
+  close time. We bind values numerically via `EquationMgr.Add2`, which
+  fully determines the resulting part, but SW prefers full geometric
+  constraint (e.g. coincident-to-origin relations). The beep is transient
+  and leaves no error in the tree (`ai-sw-observe feature_errors` returns
+  empty after a successful MMP build). Adding `sgFIXED` or coincident
+  relations per sketch is a future polish item.
+
+### Fixed (continued)
+
+- **Placeholder dim values vs target geometry**: previously all parametric
+  bindings were applied AFTER all features were built. This caused MMP's
+  flange recess (parametric Ø20.5mm with placeholder Ø6mm) to fail its cut
+  because the placeholder circle sat entirely inside the existing Ø12mm
+  through-hole at the time `FeatureCut4` ran. **Fix**: interleave bindings
+  -- apply each feature's Add2 and rebuild immediately after the feature is
+  built, so downstream geometry sees target sizes.
+- **-z face X-axis mirror**: SW mirrors the sketch X axis when viewing a
+  -z face from outside. `CreateCircle` uses sketch-local coords but
+  `SelectByID("SKETCHSEGMENT",...)` uses part-frame. On -z faces with
+  off-origin circles, the SKETCHSEGMENT click missed the circle entirely.
+  **Fix**: mirror u in the click coords for -z (-x, -y) faces.
+- **Rectangle dim-resize was asymmetric**: `CreateCornerRectangle` makes an
+  unconstrained rect; dim binding could anchor it at an arbitrary corner
+  rather than the origin, putting all downstream features off-center.
+  **Fix**: use `CreateCenterRectangle` which anchors via center diagonals.
+
+### MMP demonstration (the v0.2 milestone)
+
+The Motor Mount Plate from S1b conveyor §13.4 now builds 10/10 features
+end-to-end from JSON spec via `ai-sw-build`:
+  SK_PlateSlab (center rect, 50×50) → Extrude_Plate (boss blind 5mm) →
+  SK_CouplerHole (circle on -z face) → Cut_CouplerHole (through-all) →
+  SK_FlangeRecess (circle on +z) → Cut_FlangeRecess (blind 1mm) →
+  SK_MotorHoles (2 circles on +z at ±12.5mm) → Cut_MotorHoles (through-all) →
+  SK_FrameHoles (2 circles on -z at ±15mm) → Cut_FrameHoles (through-all)
+
+7 parametric bindings to `s1b_conveyor_locals.txt` applied via
+`EquationMgr.Add2`. Geometry verified centered via the `ai-sw-observe
+screenshot` capture.
 
 ## [0.1.0] - 2026-05-13
 
