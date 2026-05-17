@@ -99,11 +99,15 @@ def main() -> int:
         arg_types = [a["type"] for a in m["args"]]
         lines.append(f'    "{fq}": {{')
         lines.append(f'        "args_count": {m["args_count"]},')
-        lines.append(f'        "arg_names": {arg_names!r},')
-        lines.append(f'        "arg_types": {arg_types!r},')
-        lines.append(f'        "return_type": {m.get("return_type")!r},')
+        lines.append(f'        "arg_names": {json.dumps(arg_names)},')
+        lines.append(f'        "arg_types": {json.dumps(arg_types)},')
+        return_type = m.get("return_type")
+        if return_type is None:
+            lines.append('        "return_type": None,')
+        else:
+            lines.append(f'        "return_type": {json.dumps(return_type)},')
         if m.get("summary"):
-            lines.append(f'        "summary": {m["summary"]!r},')
+            lines.append(f'        "summary": {json.dumps(m["summary"])},')
         lines.append("    },")
     lines.append("}")
     lines.append("")

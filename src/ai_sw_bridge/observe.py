@@ -22,13 +22,23 @@ from .sw_com import (
 )
 
 
-# Where screenshots get written. Override via AI_SW_BRIDGE_CAPTURES env var,
-# else defaults to ./captures relative to the current working directory.
 def _captures_dir() -> Path:
+    """Where screenshots get written.
+
+    Order of precedence:
+      1. AI_SW_BRIDGE_CAPTURES env var (explicit override)
+      2. <tempdir>/ai-sw-bridge/captures (user-local, always writable)
+
+    The historical default of ./captures (cwd-relative) was changed because
+    cwd is frequently a cloud-synced folder (OneDrive, Dropbox) which can
+    deny SW's SaveBMP write with PermissionError(13).
+    """
+    import tempfile
+
     override = os.environ.get("AI_SW_BRIDGE_CAPTURES")
     if override:
         return Path(override).resolve()
-    return (Path.cwd() / "captures").resolve()
+    return (Path(tempfile.gettempdir()) / "ai-sw-bridge" / "captures").resolve()
 
 
 # IEquationMgr.Status return values per SW API

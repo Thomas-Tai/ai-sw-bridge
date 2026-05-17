@@ -1,11 +1,6 @@
 """ai-sw-observe: read-only inspection CLI.
 
-Usage:
-  ai-sw-observe <tool_name> [--key=value ...]
-
-Values are parsed as JSON: --fit_view=true, --width=1920, --filename=\"x.png\"
-
-Tools available:
+Subcommands:
   active_doc          -> sw_get_active_doc()
   feature_errors      -> sw_get_feature_errors()
   equations           -> sw_get_equations()
@@ -13,14 +8,17 @@ Tools available:
   measure             -> sw_measure(entity_a, entity_b)
   mate_errors         -> sw_get_mate_errors()  [assembly only]
 
-Prints a single JSON object to stdout. Non-zero exit if tool returns ok=False.
+Each subcommand prints a single JSON object to stdout and exits 0 if the
+underlying tool returned ok=True, else 1. Both --key=value and --key value
+syntax are accepted (argparse-standard).
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
-from typing import Any, Callable
+from typing import Any
 
 from ..observe import (
     sw_get_active_doc,
@@ -32,56 +30,121 @@ from ..observe import (
 )
 
 
-TOOLS: dict[str, Callable[..., dict[str, Any]]] = {
-    "active_doc": sw_get_active_doc,
-    "feature_errors": sw_get_feature_errors,
-    "equations": sw_get_equations,
-    "screenshot": sw_screenshot,
-    "measure": sw_measure,
-    "mate_errors": sw_get_mate_errors,
-}
+def _run_active_doc(_args: argparse.Namespace) -> dict[str, Any]:
+    return sw_get_active_doc()
 
 
-def parse_kwargs(args: list[str]) -> dict[str, Any]:
-    kwargs: dict[str, Any] = {}
-    for raw in args:
-        if not raw.startswith("--") or "=" not in raw:
-            raise ValueError(f"bad arg (expected --key=value): {raw}")
-        key, _, value = raw[2:].partition("=")
-        try:
-            kwargs[key] = json.loads(value)
-        except json.JSONDecodeError:
-            kwargs[key] = value
-    return kwargs
+def _run_feature_errors(_args: argparse.Namespace) -> dict[str, Any]:
+    return sw_get_feature_errors()
+
+
+def _run_equations(_args: argparse.Namespace) -> dict[str, Any]:
+    return sw_get_equations()
+
+
+def _run_mate_errors(_args: argparse.Namespace) -> dict[str, Any]:
+    return sw_get_mate_errors()
+
+
+def _run_screenshot(args: argparse.Namespace) -> dict[str, Any]:
+    return sw_screenshot(
+        width=args.width,
+        height=args.height,
+        fit_view=args.fit_view,
+        filename=args.filename,
+    )
+
+
+def _run_measure(args: argparse.Namespace) -> dict[str, Any]:
+    return sw_measure(entity_a=args.entity_a, entity_b=args.entity_b)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="ai-sw-observe",
+        description=(
+            "Read-only inspection of the running SOLIDWORKS session. Each "
+            "subcommand runs a single observation tool and prints a JSON "
+            "object to stdout."
+        ),
+    )
+    subs = parser.add_subparsers(dest="tool", required=True, metavar="tool")
+
+    p = subs.add_parser("active_doc", help="Report metadata on the active document.")
+    p.set_defaults(func=_run_active_doc)
+
+    p = subs.add_parser(
+        "feature_errors",
+        help="Walk the active doc's feature tree and report non-OK features.",
+    )
+    p.set_defaults(func=_run_feature_errors)
+
+    p = subs.add_parser(
+        "equations",
+        help="Dump every equation in the active doc with value and status.",
+    )
+    p.set_defaults(func=_run_equations)
+
+    p = subs.add_parser(
+        "screenshot",
+        help="Capture the active SW viewport to a PNG file.",
+        description=(
+            "Capture the active SW viewport to a PNG on disk. Output goes to "
+            "AI_SW_BRIDGE_CAPTURES env var if set, else ./captures relative "
+            "to the current working directory."
+        ),
+    )
+    p.add_argument("--width", type=int, default=640, help="Image width (default 640)")
+    p.add_argument("--height", type=int, default=360, help="Image height (default 360)")
+    p.add_argument(
+        "--fit-view",
+        dest="fit_view",
+        action="store_true",
+        help="Call ViewZoomtofit2 before capture.",
+    )
+    p.add_argument(
+        "--filename",
+        default=None,
+        help="Output filename (auto-derived from doc title if omitted).",
+    )
+    p.set_defaults(func=_run_screenshot)
+
+    p = subs.add_parser(
+        "measure",
+        help="Measure entities in the active document.",
+        description=(
+            "Measure entities in the active document. With no args, measures "
+            "whatever is currently selected in the SW UI. With --entity-a, "
+            "programmatically selects that entity and reports area/perimeter."
+        ),
+    )
+    p.add_argument(
+        "--entity-a",
+        dest="entity_a",
+        default=None,
+        help="Name of the first entity to select.",
+    )
+    p.add_argument(
+        "--entity-b",
+        dest="entity_b",
+        default=None,
+        help="Name of the second entity (note: two-entity named selection is unsupported).",
+    )
+    p.set_defaults(func=_run_measure)
+
+    p = subs.add_parser(
+        "mate_errors",
+        help="Walk an assembly's mate set and report per-mate status (assembly only).",
+    )
+    p.set_defaults(func=_run_mate_errors)
+
+    return parser
 
 
 def main() -> int:
-    argv = sys.argv
-    if len(argv) < 2:
-        print(json.dumps({
-            "ok": False,
-            "error": "usage: ai-sw-observe <tool> [--k=v ...]",
-            "tools": list(TOOLS),
-        }, indent=2))
-        return 2
-
-    name = argv[1]
-    tool = TOOLS.get(name)
-    if tool is None:
-        print(json.dumps({
-            "ok": False,
-            "error": f"unknown tool: {name}",
-            "tools": list(TOOLS),
-        }, indent=2))
-        return 2
-
-    try:
-        kwargs = parse_kwargs(argv[2:])
-    except ValueError as exc:
-        print(json.dumps({"ok": False, "error": str(exc)}, indent=2))
-        return 2
-
-    result = tool(**kwargs)
+    parser = _build_parser()
+    args = parser.parse_args()
+    result = args.func(args)
     print(json.dumps(result, indent=2, default=str))
     return 0 if result.get("ok") else 1
 

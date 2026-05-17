@@ -44,14 +44,37 @@ def resolve(obj: Any, name: str) -> Any:
     return getattr(obj, name)
 
 
+_CACHED_SW_APP: Any | None = None
+_COINIT_DONE: bool = False
+
+
 def get_sw_app() -> Any:
     """Dispatch (or attach to) the running SldWorks.Application.
 
+    Caches the Dispatch result and the CoInitialize call. Repeated calls
+    in the same process reuse the same Application handle -- important
+    for long-running services (MCP wrappers, future servers) that
+    otherwise leak STA apartments and re-dispatch SW per request.
+
     Raises pywintypes.com_error if SOLIDWORKS is not running. The caller
     can catch and surface a friendlier message ("please open SOLIDWORKS").
+    Call release_sw_app() to drop the cache (e.g. when SW has been
+    restarted and the old Dispatch handle is dead).
     """
-    pythoncom.CoInitialize()
-    return win32com.client.Dispatch("SldWorks.Application")
+    global _CACHED_SW_APP, _COINIT_DONE
+    if not _COINIT_DONE:
+        pythoncom.CoInitialize()
+        _COINIT_DONE = True
+    if _CACHED_SW_APP is None:
+        _CACHED_SW_APP = win32com.client.Dispatch("SldWorks.Application")
+    return _CACHED_SW_APP
+
+
+def release_sw_app() -> None:
+    """Drop the cached SW Application handle. Subsequent get_sw_app() calls
+    will re-dispatch. Use after SW has been restarted, or in test teardown."""
+    global _CACHED_SW_APP
+    _CACHED_SW_APP = None
 
 
 def get_active_doc(sw: Any) -> Any | None:

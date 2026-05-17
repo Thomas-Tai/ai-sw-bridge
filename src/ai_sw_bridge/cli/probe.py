@@ -7,6 +7,7 @@ document. Use this first to confirm your install is healthy.
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from typing import Any
@@ -64,6 +65,16 @@ def probe() -> dict[str, Any]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(
+        prog="ai-sw-probe",
+        description=(
+            "Probe the running SOLIDWORKS session: verify pywin32 can "
+            "dispatch SldWorks.Application, report the SW revision, and "
+            "summarize the active document (if any). Use this first to "
+            "confirm your install is healthy. Takes no arguments."
+        ),
+    )
+    parser.parse_args()
     result = probe()
     print(json.dumps(result, indent=2, default=str))
     return 0 if result.get("ok") else 1

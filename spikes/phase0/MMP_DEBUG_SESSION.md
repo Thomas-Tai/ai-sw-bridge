@@ -68,14 +68,43 @@ Title prefix "SOLIDWORKS" works for FindWindow.
   in known_gotchas.md)
 - **AddSpecificDimension is unusable via pywin32 late-binding**
 
-## Current accepted limitation
+## Accepted limitation (parametric mode) + workaround (no_dim mode)
 
-`AddDimension2` requires manual ticking (1x Modify popup + 1x PM pane)
-per dimension. For the cylinder (2 dims) this is 4 manual ticks. For
-MMP (~15 dims) ~30 manual ticks.
+In parametric mode (the default), `AddDimension2` requires manual ticking
+(1x Modify popup + 1x PM pane) per dimension. Cylinder (2 dims) = 4
+ticks. MMP (~15 dims) = ~30 ticks. Build completes once ticks are done;
+annoying but not a blocker.
 
-This is annoying but not a blocker for the build pipeline -- the build
-completes successfully once ticks are done.
+**Workaround shipped (2026-05-17)**: `ai-sw-build --no-dim` resolves
+every `{"rhs": "..."}` reference against `spec['locals']` in Python
+upfront, substitutes the literal mm value into the spec, and skips every
+`AddDimension2` call and `EquationMgr.Add2` binding. Build proceeds with
+zero popups. **MMP `--no-dim`: ~3s wall, 0 ticks, 10/10 features,
+screenshot-validated.** Trade-off: the resulting SLDPRT has no equation
+link to locals.txt (re-run `ai-sw-build` to propagate locals edits).
+
+### New spikes from the 2026-05-17 popup-elimination push
+
+- **Spike L** (`spike_l_no_dim_cylinder.py`): proved the numeric-resolve
+  approach end-to-end on cylinder — PASS in 1.72s, 0 ticks.
+- **Spike M** (`spike_m_toggle_78.py`): tested toggle 78
+  (`swSketchEnableOnScreenNumericInput`-class, user-suggested as
+  potentially the "right" toggle vs. our previously-tried toggle 8). FAIL
+  — still required manual ticking. Pywin32 + SW 2024 SP1 ignores both
+  toggle 8 and toggle 78.
+- **Spike N** (`spike_n_toggle_discovery.py`, written not run): would
+  brute-force-probe 4 candidate toggle IDs (8, 78, 95, 167) with
+  fresh-doc cycles. Skipped because spike L proved the numeric-resolve
+  path works without needing toggle discovery, and spikes M+I together
+  suggested the toggle approach is dead at the pywin32 layer regardless
+  of which ID is "correct."
+- **Spike O** (`spike_o_param_without_dim.py`): probed whether SW
+  auto-creates queryable internal dim params (D1@SK_Body, Diameter@...,
+  Length@..., etc.) on sketches/features even when AddDimension2 was
+  NEVER called. Probed 9 candidate names against the --no-dim cylinder.
+  **All 9 returned None.** Definitive: linkability to locals.txt requires
+  a real named dim, which requires AddDimension2, which means the popup
+  toll is unavoidable for the *parametric-linked* case on SW 2024 SP1.
 
 ## Real MMP blocker (RESOLVED -- dead end identified)
 

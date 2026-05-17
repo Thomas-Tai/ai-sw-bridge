@@ -15,7 +15,6 @@ first failure (fail-fast).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -24,12 +23,18 @@ import jsonschema
 from .schema import SCHEMA, SKETCH_TYPES, EXTRUDE_TYPES, ALL_TYPES
 
 
-@dataclass
 class ValidationError(Exception):
-    """One validation failure. Use `path` to locate it in the spec."""
+    """One validation failure. Use `path` to locate it in the spec.
 
-    message: str
-    path: str = ""
+    Plain Exception subclass (not @dataclass): @dataclass on an Exception
+    breaks Exception.args, which downstream frameworks rely on for
+    repr/pickling/re-raising.
+    """
+
+    def __init__(self, message: str, path: str = "") -> None:
+        super().__init__(message)
+        self.message = message
+        self.path = path
 
     def __str__(self) -> str:
         return f"{self.path}: {self.message}" if self.path else self.message
@@ -116,20 +121,48 @@ def _extract_var_refs(value: Any) -> list[str]:
     return []
 
 
+def _walk_rhs_in_feature(
+    node: Any,
+    path: str,
+) -> "list[tuple[str, str]]":
+    """Recursively find every {"rhs": "..."} inside a feature dict.
+
+    Returns [(field_path, var_name)] for each quoted var referenced. Field
+    path is a human-readable JSON-pointer-ish locator (e.g. "circles[0].diameter")
+    rooted at the feature itself.
+
+    Schema-agnostic by design: any future LENGTH_SCHEMA field is picked up
+    automatically without modifying the validator. This was a real footgun
+    -- v0.2's hardcoded ("width","height","depth","diameter") tuple would
+    silently miss any new length field added in v1.1+.
+    """
+    out: list[tuple[str, str]] = []
+    if isinstance(node, dict):
+        if "rhs" in node and isinstance(node["rhs"], str):
+            for v in QUOTED_VAR_RE.findall(node["rhs"]):
+                out.append((path, v))
+        else:
+            for k, v in node.items():
+                sub_path = f"{path}.{k}" if path else k
+                out.extend(_walk_rhs_in_feature(v, sub_path))
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            sub_path = f"{path}[{i}]"
+            out.extend(_walk_rhs_in_feature(v, sub_path))
+    return out
+
+
 def _collect_rhs_var_refs(spec: dict[str, Any]) -> dict[str, list[tuple[str, str]]]:
-    """Walk all length fields in all features. Return
-    {var_name: [(feature_name, field_name), ...]} so error messages can
-    point to where each ref appears."""
+    """Walk all features recursively; collect every {rhs} reference.
+
+    Returns {var_name: [(feature_name, field_path), ...]} so error messages
+    can point to where each ref appears.
+    """
     refs: dict[str, list[tuple[str, str]]] = {}
     for feat in spec["features"]:
-        for field in ("width", "height", "depth", "diameter"):
-            if field in feat:
-                for v in _extract_var_refs(feat[field]):
-                    refs.setdefault(v, []).append((feat["name"], field))
-        # Multi-circle sketch: each circle has its own diameter
-        for j, c in enumerate(feat.get("circles", [])):
-            for v in _extract_var_refs(c.get("diameter")):
-                refs.setdefault(v, []).append((feat["name"], f"circles[{j}].diameter"))
+        feat_name = feat.get("name", "<unnamed>")
+        for field_path, var_name in _walk_rhs_in_feature(feat, ""):
+            refs.setdefault(var_name, []).append((feat_name, field_path))
     return refs
 
 
@@ -162,9 +195,18 @@ def _check_locals(spec: dict[str, Any]) -> None:
 
     # Parse declared names from the file. Reuses locals_io.parse via the
     # established module so the regex stays in one place.
-    from ..locals_io import parse
+    # Read under ExclusiveLock to avoid racing with concurrent atomic_write
+    # from mutate.py (and with OneDrive's transient post-replace handle).
+    from ..locals_io import ExclusiveLock, parse
 
-    text = p.read_text(encoding="utf-8")
+    try:
+        with ExclusiveLock(p) as lock:
+            text = lock.read_text()
+    except OSError:
+        # Fall back to a plain read if the lock can't be acquired (e.g.
+        # validator running concurrently with the user editing the file
+        # in an external editor). Stale-by-a-tick is acceptable here.
+        text = p.read_text(encoding="utf-8")
     declared = {e.name for e in parse(text)}
 
     for var, sites in refs.items():

@@ -22,6 +22,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
@@ -30,6 +32,12 @@ dependencies = [
     "oletools>=0.60",
     "jsonschema>=4.0",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pytest-cov"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [project.urls]
 Homepage = "https://github.com/Thomas-Tai/ai-sw-bridge"

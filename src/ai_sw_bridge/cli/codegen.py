@@ -19,6 +19,7 @@ spec.json schema:
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -46,39 +47,43 @@ def cmd_parameterize(swp_path: Path, spec_path: Path) -> dict:
     }
 
 
+def _handle_parameterize(args: argparse.Namespace) -> dict:
+    swp_path = Path(args.swp).resolve()
+    spec_path = Path(args.spec).resolve()
+    if not swp_path.exists():
+        return {"ok": False, "error": f"swp not found: {swp_path}"}
+    if not spec_path.exists():
+        return {"ok": False, "error": f"spec not found: {spec_path}"}
+    try:
+        return cmd_parameterize(swp_path, spec_path)
+    except Exception as exc:
+        return {"ok": False, "error": f"parameterize failed: {exc!r}"}
+
+
 def main() -> int:
-    argv = sys.argv
-    if len(argv) < 2:
-        print(json.dumps({
-            "ok": False,
-            "error": "usage: ai-sw-codegen parameterize <recorded.swp> <spec.json>",
-        }, indent=2))
-        return 2
+    parser = argparse.ArgumentParser(
+        prog="ai-sw-codegen",
+        description=(
+            "Path C parameterizer: convert a SW-recorded macro into a "
+            "parametric .bas file linked to a locals.txt."
+        ),
+    )
+    subs = parser.add_subparsers(dest="command", required=True, metavar="command")
 
-    cmd = argv[1]
+    sub_param = subs.add_parser(
+        "parameterize",
+        help="Convert a recorded .swp into a parameterized .bas file.",
+        description=(
+            "Read a SW-recorded .swp (binary OLE compound), parameterize it "
+            "per the spec JSON, and write a .bas file next to the .swp."
+        ),
+    )
+    sub_param.add_argument("swp", help="Path to the recorded .swp file")
+    sub_param.add_argument("spec", help="Path to the spec JSON file")
+    sub_param.set_defaults(func=_handle_parameterize)
 
-    if cmd == "parameterize":
-        if len(argv) < 4:
-            print(json.dumps({
-                "ok": False,
-                "error": "usage: ai-sw-codegen parameterize <recorded.swp> <spec.json>",
-            }, indent=2))
-            return 2
-        swp_path = Path(argv[2]).resolve()
-        spec_path = Path(argv[3]).resolve()
-        if not swp_path.exists():
-            print(json.dumps({"ok": False, "error": f"swp not found: {swp_path}"}, indent=2))
-            return 2
-        if not spec_path.exists():
-            print(json.dumps({"ok": False, "error": f"spec not found: {spec_path}"}, indent=2))
-            return 2
-        try:
-            result = cmd_parameterize(swp_path, spec_path)
-        except Exception as exc:
-            result = {"ok": False, "error": f"parameterize failed: {exc!r}"}
-    else:
-        result = {"ok": False, "error": f"unknown command: {cmd}", "commands": ["parameterize"]}
-
+    args = parser.parse_args()
+    result = args.func(args)
     print(json.dumps(result, indent=2, default=str))
     return 0 if result.get("ok") else 1
 

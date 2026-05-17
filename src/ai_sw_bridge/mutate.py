@@ -107,17 +107,29 @@ def _force_rebuild(doc: Any) -> tuple[bool, str | None]:
     except Exception as exc:
         return False, f"GetEquationMgr failed: {exc!r}"
 
+    # Trigger the locals-file reload. SW returns False here when there is
+    # nothing to reload (file unchanged since last poll) -- NOT an error.
+    # Treat raise as fatal but False as informational; the rebuild that
+    # follows is the real success signal.
+    reload_warning = None
     try:
         reload_ok = bool(resolve(eq_mgr, "UpdateValuesFromExternalEquationFile"))
+        if not reload_ok:
+            reload_warning = (
+                "UpdateValuesFromExternalEquationFile returned False "
+                "(usually means file unchanged since last poll; non-fatal)"
+            )
     except Exception as exc:
-        return False, f"UpdateValuesFromExternalEquationFile failed: {exc!r}"
-
-    if not reload_ok:
-        return False, "UpdateValuesFromExternalEquationFile returned False"
+        return False, f"UpdateValuesFromExternalEquationFile raised: {exc!r}"
 
     try:
         rebuild_ok = bool(resolve(doc, "EditRebuild3"))
-        return rebuild_ok, None
+        # Even if the reload returned False, a successful rebuild means
+        # the doc is in the desired state. Surface the warning text only
+        # when the rebuild ALSO failed -- otherwise it's noise.
+        if rebuild_ok:
+            return True, None
+        return False, reload_warning or "EditRebuild3 returned False"
     except Exception as exc:
         return False, f"EditRebuild3 failed: {exc!r}"
 

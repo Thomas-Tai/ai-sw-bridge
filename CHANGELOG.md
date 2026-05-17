@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — `ai-sw-build --no-dim` (zero-popup build mode)
+
+- **`--no-dim` flag** for `ai-sw-build`. When set, every `{"rhs": "..."}`
+  reference in the spec is resolved against `spec['locals']` in Python
+  upfront (literal mm value substituted), and the builder skips every
+  `AddDimension2` call and the entire `EquationMgr.Add2` binding pass.
+  Eliminates the ~16 manual ticks per MMP build that the Modify-Dimension
+  popup imposes on SW 2024 SP1.
+- New helpers in `src/ai_sw_bridge/spec/builder.py`:
+  `_load_locals_map`, `_eval_rhs`, `_resolve_rhs_in_spec`. Handle quoted
+  variable refs (`"VAR"`), arithmetic, and recursive locals (one var
+  referencing another). Cycles raise; unknown refs raise KeyError.
+- `BuildContext` gained a `no_dim: bool` field; every per-feature
+  handler in `builder.py` gates its `AddDimension2` block on
+  `if not ctx.no_dim`. Geometry creation paths are unchanged.
+
+**Trade-off**: the resulting SLDPRT has NO equation link to `locals.txt`.
+Editing `locals.txt` will NOT propagate to existing parts; user must
+re-run `ai-sw-build`. The locals file is still the single source of
+truth — it's just resolved at build time instead of runtime.
+
+**Validation** (SW 2024 SP1):
+- Cylinder `--no-dim`: 1.72s, 0 ticks, Ø25 × 80mm verified
+- MMP `--no-dim`: ~3s, 0 ticks, 10/10 features, screenshot-verified
+  (50×50 plate, Ø12 coupler, Ø20.5 flange recess, 2× Ø3.2 motor holes,
+  2× Ø3.4 frame holes, all positioned correctly)
+
+**Why this exists**: three separate community-canonical workarounds for
+the AddDimension2 popup were investigated in this session — all toggle-
+based, all failed empirically on this build via pywin32:
+- Spike I (prior): toggle 8 (`swInputDimValOnCreate`) — confirmed dead
+- Spike M: toggle 78 (`swSketchEnableOnScreenNumericInput`-class) — confirmed dead
+- Spike O: probed whether SW auto-creates queryable D1/D2 internal
+  params without AddDimension2 — none found, confirming linkability is
+  unobtainable without the popup. `EquationMgr.Add2` needs a real named
+  dim to target.
+
+The toggle works inside SW's VBA editor (the context all the community
+advice assumes); it does not work from external pywin32 COM clients on
+SW 2024 SP1. `--no-dim` is the only zero-popup path that doesn't require
+a VBA-macro round-trip.
+
 ### Added — v0.2 declarative build pipeline (in progress)
 
 - **`ai-sw-build`** — new CLI that takes a JSON spec and drives SOLIDWORKS via
