@@ -1115,6 +1115,94 @@ def _build_cut_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFe
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
 
+def _select_edges_by_points(
+    ctx: BuildContext, edge_points_mm: "list[dict[str, float]]"
+) -> int:
+    """Accumulate model edges into the selection set, one per (x, y, z) point.
+
+    Replaces a naive loop of 5-arg `SelectByID("", "EDGE", x, y, z)` calls,
+    which silently fail to accumulate -- each call replaces the prior
+    selection so only the LAST edge ends up selected. Spike Q3
+    (2026-05-17) confirmed this: SelectionMgr.GetSelectedObjectCount2(-1)
+    stayed at 1 across 4 calls.
+
+    Naive alternatives that ALSO don't work under pywin32 late binding:
+      - `doc.Extension.SelectByID2(..., Append=True, ..., Callout=None, ...)`
+        raises com_error('Type mismatch', ..., 8) -- Callout OUT-IDispatch
+        marshalling failure
+      - `IEntity.Select4(Append, Callout)` -- same Callout failure (arg 2)
+
+    Working path (Spike Q4 GREEN, 2026-05-17):
+      1. IPartDoc.GetBodies2(swSolidBody=0, bVisibleOnly=True) -> bodies
+      2. For each body, body.GetEdges() -> all IEdge instances
+      3. For each target point, find the closest edge via
+         IEdge.GetClosestPointOn(x, y, z); zero squared-distance means
+         the point is on the edge
+      4. IEntity.Select2(Append=True, Mark=0) -- the older variant, NO
+         Callout, marshalls cleanly
+
+    Args are in mm; converted to meters internally. Raises if any point
+    fails to match an edge within 1um.
+    """
+    ctx.doc.ClearSelection2(True)
+
+    # Walk all solid bodies and collect their edges into one list. Most
+    # parts have a single body; multi-body parts are rare in v1's scope
+    # but cheap to support.
+    try:
+        bodies = ctx.doc.GetBodies2(0, True)  # swBodyType_e.swSolidBody=0
+    except Exception as e:
+        raise RuntimeError(f"GetBodies2 failed: {e!r}")
+    if bodies is None or len(bodies) == 0:
+        raise RuntimeError("part has no solid bodies; cannot select edges")
+
+    all_edges: list = []
+    for body in bodies:
+        edges = body.GetEdges
+        if callable(edges):
+            edges = edges()
+        if edges is None:
+            continue
+        all_edges.extend(edges)
+    if not all_edges:
+        raise RuntimeError("no edges on any body; cannot select")
+
+    n_selected = 0
+    for i, p in enumerate(edge_points_mm):
+        x_m = float(p["x"]) / 1000.0
+        y_m = float(p["y"]) / 1000.0
+        z_m = float(p["z"]) / 1000.0
+
+        # Find the closest edge. Threshold: 1 micron squared = 1e-12 m^2.
+        best_edge, best_d2 = None, 1e18
+        for edge in all_edges:
+            try:
+                cp = edge.GetClosestPointOn(x_m, y_m, z_m)
+            except Exception:
+                continue
+            if cp is None:
+                continue
+            d2 = (cp[0] - x_m) ** 2 + (cp[1] - y_m) ** 2 + (cp[2] - z_m) ** 2
+            if d2 < best_d2:
+                best_d2 = d2
+                best_edge = edge
+        if best_edge is None or best_d2 > 1e-12:
+            raise RuntimeError(
+                f"edge #{i} at part ({p['x']}, {p['y']}, {p['z']}) mm "
+                f"matches no edge within 1um (best squared distance "
+                f"{best_d2:.3e} m^2)"
+            )
+        # IEntity.Select2(Append, Mark) -- no Callout, marshalls cleanly
+        ok = best_edge.Select2(True, 0)
+        if not ok:
+            raise RuntimeError(
+                f"IEntity.Select2(append=True, mark=0) returned False on "
+                f"edge #{i} at part ({p['x']}, {p['y']}, {p['z']}) mm"
+            )
+        n_selected += 1
+    return n_selected
+
+
 def _build_fillet_constant_radius(
     ctx: BuildContext, feat: dict[str, Any]
 ) -> BuiltFeature:
@@ -1151,23 +1239,10 @@ def _build_fillet_constant_radius(
     # in Spike P; readback confirmed value round-trips.
     data.DefaultRadius = radius_m
 
-    # Select all target edges. SelectByID with type="EDGE" picks the edge
-    # whose midpoint is closest to the given point; passing a point ON
-    # the edge always works. Append mode is implicit via repeated calls
-    # (each non-cleared SelectByID adds to the selection set in
-    # late-binding mode, per the SW API conventions).
-    ctx.doc.ClearSelection2(True)
-    n_selected = 0
-    for i, p in enumerate(feat["edges"]):
-        x_m = float(p["x"]) / 1000.0
-        y_m = float(p["y"]) / 1000.0
-        z_m = float(p["z"]) / 1000.0
-        if not ctx.doc.SelectByID("", "EDGE", x_m, y_m, z_m):
-            raise RuntimeError(
-                f"could not select edge #{i} at part ({p['x']}, {p['y']}, "
-                f"{p['z']}) mm -- point not on any edge of current geometry"
-            )
-        n_selected += 1
+    # Accumulate edges via the shared helper. The naive
+    # SelectByID('', 'EDGE', x, y, z) loop does NOT accumulate -- each
+    # call replaces. See _select_edges_by_points docstring.
+    n_selected = _select_edges_by_points(ctx, feat["edges"])
     if n_selected == 0:
         raise RuntimeError("no edges selected; fillet would no-op")
 
@@ -1230,21 +1305,9 @@ def _build_chamfer_edge(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature
         # Unreachable; validator rejects other values. Defensive for clarity.
         raise RuntimeError(f"chamfer_edge: unknown mode {mode!r}")
 
-    # Select target edges. Same convention as fillet -- one point per edge,
-    # SelectByID(type='EDGE'). Append-mode is implicit across calls when we
-    # don't ClearSelection2 between them.
-    ctx.doc.ClearSelection2(True)
-    n_selected = 0
-    for i, p in enumerate(feat["edges"]):
-        x_m = float(p["x"]) / 1000.0
-        y_m = float(p["y"]) / 1000.0
-        z_m = float(p["z"]) / 1000.0
-        if not ctx.doc.SelectByID("", "EDGE", x_m, y_m, z_m):
-            raise RuntimeError(
-                f"could not select edge #{i} at part ({p['x']}, {p['y']}, "
-                f"{p['z']}) mm -- point not on any edge of current geometry"
-            )
-        n_selected += 1
+    # Accumulate edges via the shared helper (same as fillet uses). Naive
+    # SelectByID-loop fails because each call replaces the prior selection.
+    n_selected = _select_edges_by_points(ctx, feat["edges"])
     if n_selected == 0:
         raise RuntimeError("no edges selected; chamfer would no-op")
 
