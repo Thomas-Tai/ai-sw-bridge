@@ -106,6 +106,14 @@ class BuiltFeature:
     # consumes this sketch uses it as its extrude_origin so downstream face-
     # selects find faces in the right place along stacked-extrude chains.
     parent_face_origin: tuple[float, float, float] | None = None
+    # For plane-based sketches with a `center` offset: the sketch's center
+    # in part coords (meters), with the axis-aligned component zeroed.
+    # The downstream extrude uses this as its extrude_origin so the +/-z
+    # face center for a child face-sketch lands at the actual face centroid,
+    # not at (0, 0, depth). Was the root cause of the original TensionBracket
+    # bug -- plane sketches with `center` offsets recorded extrude_origin
+    # as world-origin and the downstream face math went wrong.
+    sketch_center_part: tuple[float, float, float] | None = None
     # For extrusions: the actual extrude axis (outward normal of the boss/cut),
     # origin of the base face in part coords, blind depth in meters, and the
     # `flip` flag (True = extrude in -axis direction). Used by child sketches
@@ -376,7 +384,16 @@ def _build_sketch_rectangle_on_plane(ctx: BuildContext, feat: dict[str, Any]) ->
         raise RuntimeError("no sketch produced by CreateCornerRectangle")
     sketch_feat.Name = feat["name"]
 
-    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
+    # Stash the sketch center in part coords so the downstream extrude
+    # gets the right extrude_origin. The third coord (axis-aligned) is
+    # 0 here; build() handles z=0 for plane sketches and we don't know
+    # the axis until build() injects parent_plane_normal.
+    return BuiltFeature(
+        name=feat["name"],
+        type=feat["type"],
+        sw_object=sketch_feat,
+        sketch_center_part=(cx_m, cy_m, 0.0),
+    )
 
 
 def _build_sketch_circle_on_plane(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
@@ -417,7 +434,94 @@ def _build_sketch_circle_on_plane(ctx: BuildContext, feat: dict[str, Any]) -> Bu
         raise RuntimeError("no sketch produced by CreateCircle")
     sketch_feat.Name = feat["name"]
 
-    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
+    return BuiltFeature(
+        name=feat["name"],
+        type=feat["type"],
+        sw_object=sketch_feat,
+        sketch_center_part=(cx_m, cy_m, 0.0),
+    )
+
+
+def _face_center_part_coords(
+    parent: "BuiltFeature",
+    face: str,
+) -> tuple[float, float, float]:
+    """The un-offset center of a parent extrusion's +z or -z face in part
+    coords (meters). Used by `_select_extrude_face` to seed its probe,
+    AND by the face-sketch warning to decide whether to alert the user
+    about the part-origin-projection-vs-face-center gotcha.
+    """
+    assert parent.extrude_origin is not None
+    assert parent.extrude_axis is not None
+    assert parent.extrude_depth_m is not None
+    ox, oy, oz = parent.extrude_origin
+    ax, ay, az = parent.extrude_axis
+    depth = parent.extrude_depth_m
+    if parent.extrude_flip:
+        ax, ay, az = -ax, -ay, -az
+    if face == "+z":
+        return (ox + ax * depth, oy + ay * depth, oz + az * depth)
+    return (ox, oy, oz)
+
+
+def _warn_face_sketch_offset(
+    parent: "BuiltFeature",
+    face: str,
+    feat: dict[str, Any],
+    in_face_keys: tuple[str, str],
+) -> None:
+    """Emit a one-line stderr warning when the user's face-sketch will
+    land at the part-origin projection rather than the face centroid.
+
+    Triggers when:
+      - parent face center (in part frame) is meaningfully non-zero
+        in the in-face tangent plane (>0.1 mm), AND
+      - the spec's `center` field is missing or zero (no explicit shift)
+
+    The warning includes the parent's face center coords so the user
+    can see what offset they'd need to add. This is the #1 source of
+    "wrong-position child feature" bugs surfaced in the TensionBracket
+    work; see docs/known_limitations.md for the full discussion.
+    """
+    import sys
+    fx, fy, fz = _face_center_part_coords(parent, face)
+    # For +/-z faces, the in-face tangent plane is (X, Y). For +/-y the
+    # tangent is (X, Z); for +/-x the tangent is (Y, Z). v1 only ships
+    # +/-z but we route through the tangent already to future-proof.
+    _ax, ay, az = parent.extrude_axis if parent.extrude_axis else (0.0, 0.0, 1.0)
+    if abs(az) > 0.99:
+        tu_mm, tv_mm = fx * 1000, fy * 1000
+    elif abs(ay) > 0.99:
+        tu_mm, tv_mm = fx * 1000, fz * 1000
+    else:  # axis is +/-X by elimination
+        tu_mm, tv_mm = fy * 1000, fz * 1000
+
+    # If face is centered on origin (within 0.1 mm), no warning needed.
+    if abs(tu_mm) < 0.1 and abs(tv_mm) < 0.1:
+        return
+
+    # If user explicitly set a center offset, assume they know what they're
+    # doing and don't second-guess. We don't try to validate whether the
+    # offset they picked matches the face center -- that's a richer check
+    # than this warning is meant to do.
+    center = feat.get("center", {})
+    u_key, v_key = in_face_keys
+    cu = float(center.get(u_key, 0.0))
+    cv = float(center.get(v_key, 0.0))
+    if abs(cu) > 0.001 or abs(cv) > 0.001:
+        return
+
+    print(
+        f"WARNING: {feat['type']} '{feat['name']}' on parent "
+        f"'{parent.name}' face {face}: parent face center is at "
+        f"part-frame ({tu_mm:+.2f}, {tv_mm:+.2f}) mm, but the face-sketch "
+        f"origin lands at (0, 0) (part-origin projection). The child "
+        f"feature will be drawn relative to (0, 0), NOT the face center. "
+        f"If you want it centered on the face, add "
+        f'`\"center\": {{\"{u_key}\": {tu_mm:.2f}, \"{v_key}\": {tv_mm:.2f}}}` '
+        f"to the spec entry. See docs/known_limitations.md section 1.",
+        file=sys.stderr,
+    )
 
 
 def _select_extrude_face(
@@ -501,6 +605,7 @@ def _build_sketch_rectangle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> 
         raise RuntimeError(f"'{parent_name}' is not an extrusion with known axis")
 
     face = feat["face"]
+    _warn_face_sketch_offset(parent, face, feat, ("u", "v"))
     if face not in ("+z", "-z"):
         raise NotImplementedError(
             f"v1 only supports +z/-z (out/in board) faces of extrusions; got {face}"
@@ -601,6 +706,7 @@ def _build_sketch_circle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bui
     #   "-z" face = inboard face = extrude_origin
     # Other faces (+/- x, y) are the four side faces. v1 supports only +z and -z.
     face = feat["face"]
+    _warn_face_sketch_offset(parent, face, feat, ("u", "v"))
     if face not in ("+z", "-z"):
         raise NotImplementedError(
             f"v1 only supports +z/-z (out/in board) faces of extrusions; got {face}"
@@ -682,6 +788,12 @@ def _build_sketch_circles_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bu
         raise RuntimeError(f"'{parent_name}' is not an extrusion with known axis")
 
     face = feat["face"]
+    # NOTE: no _warn_face_sketch_offset here. sketch_circles_on_face is the
+    # multi-hole variant; users already specify explicit per-circle u/v
+    # positions, so they've opted into the "I know where these go" mode.
+    # The single-center warning would just be noise for hole patterns where
+    # the natural reference is the part origin (e.g. MMP motor holes at
+    # u=+/-12.5 are explicitly relative to part X=0).
     if face not in ("+z", "-z"):
         raise NotImplementedError(
             f"v1 only supports +z/-z (out/in board) faces; got {face}"
@@ -895,12 +1007,32 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
             f"build() should set it on every plane-based sketch and the "
             f"face-based sketch handlers should set it too"
         )
-    # For face-based sketches the base face of the new boss is at the parent
-    # face origin, not world origin. Without this, downstream face-selects
-    # on stacked extrudes (e.g. TensionBracket's slab on top of cap) would
-    # probe at the wrong z. Plane-based sketches default to world origin
-    # since their reference plane passes through it.
-    extrude_origin = sketch.parent_face_origin or (0.0, 0.0, 0.0)
+    # Pick the extrude_origin for this boss:
+    # - Face-based sketch: the parent face's part-coord origin (set by the
+    #   face-sketch handler).
+    # - Plane-based sketch with a `center` offset: the sketch's center,
+    #   converted from sketch-local (X, Y) to part-frame based on the
+    #   parent plane. Front Plane (axis +Z): (cx, cy, 0). Top Plane
+    #   (axis +Y): (cx, 0, cy). Right Plane (axis +X): (0, cx, cy).
+    #   Without this, a plane sketch shifted off origin (e.g. TensionBracket
+    #   inboard cap at y=7.5) would record extrude_origin=(0,0,0) and
+    #   downstream face-selects would probe the wrong centroid -- the
+    #   original TensionBracket "slab hanging off in -Y" failure mode.
+    # - Plane-based sketch centered on origin: defaults to (0, 0, 0).
+    if sketch.parent_face_origin is not None:
+        extrude_origin = sketch.parent_face_origin
+    elif sketch.sketch_center_part is not None:
+        cx, cy, _ = sketch.sketch_center_part
+        ax, ay, az = sketch.parent_plane_normal
+        if abs(az) > 0.99:        # Front Plane: sketch XY -> part XY
+            extrude_origin = (cx, cy, 0.0)
+        elif abs(ay) > 0.99:      # Top Plane: sketch X -> part X, sketch Y -> part Z
+            extrude_origin = (cx, 0.0, cy)
+        else:                     # Right Plane: sketch X -> part Y, sketch Y -> part Z
+            _ = ax  # axis fully determined by ax dominance
+            extrude_origin = (0.0, cx, cy)
+    else:
+        extrude_origin = (0.0, 0.0, 0.0)
     return BuiltFeature(
         name=feat["name"],
         type=feat["type"],

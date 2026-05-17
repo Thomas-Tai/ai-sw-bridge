@@ -142,13 +142,36 @@ Proposals are persisted as JSON in `./proposals/` so an AI agent can resume acro
 
 ### 3. Build a part from a JSON spec (v0.2, direct-COM)
 
-Open a fresh blank Part in SOLIDWORKS, then:
+**Default to `--no-dim` mode.** It builds in seconds with zero manual clicks. Use parametric mode only when you specifically need a live equation link to `locals.txt` (see "Two build modes" below).
+
+Open SOLIDWORKS (no need to open a part — the builder creates a fresh one), then:
 
 ```powershell
-ai-sw-build examples/minimal_cylinder_v2/spec.json
+# Smallest end-to-end example: 20×20×10 box with a 2mm fillet on one edge
+ai-sw-build examples/filleted_box/spec.json --no-dim
 ```
 
-The spec is a small JSON file declaring features and their parametric bindings:
+Expected output (~3 seconds):
+
+```json
+{
+  "ok": true,
+  "features_built": ["SK_Box", "Extrude_Box", "Fillet_TopRightEdge"],
+  "bindings_added": [],
+  "save_as": null,
+  "no_dim": true
+}
+```
+
+Three more examples to try, in order of complexity:
+
+```powershell
+ai-sw-build examples/minimal_cylinder_v2/spec.json   --no-dim    # 2 features
+ai-sw-build examples/motor_mount_plate/spec.json     --no-dim    # 10 features
+ai-sw-build examples/tension_bracket/spec.json       --no-dim    # 8 features, stacked extrudes
+```
+
+A spec is a small JSON file declaring features in build order. Lengths are literal mm (`20.0`) or expressions that bind to variables in a `*_locals.txt` file (`{"rhs": "\"PART_DIAMETER\""}`):
 
 ```json
 {
@@ -164,16 +187,20 @@ The spec is a small JSON file declaring features and their parametric bindings:
 }
 ```
 
-The builder:
-1. Validates the spec (schema + topological references + locals-file vars)
-2. Creates a fresh part via `NewDocument`
-3. Links the locals file (4-call sequence for `EquationMgr`)
-4. Walks features in order; emits direct-COM calls for each
-5. Binds parametric dims via `EquationMgr.Add2`
+The builder validates the spec (schema + topological references + locals-file vars), creates a fresh part via `NewDocument`, walks features in order, and emits direct-COM calls. Output is JSON with `features_built` and (in parametric mode) `bindings_added`.
 
-Output is JSON with `features_built` and `bindings_added`. See [examples/minimal_cylinder_v2/](examples/minimal_cylinder_v2/) and [examples/motor_mount_plate/](examples/motor_mount_plate/) for worked examples.
+#### Two build modes
 
-**Note**: each `AddDimension2` call opens a Modify Dimension popup that requires manual tick. A 10-feature MMP build needs ~15 clicks. Known limitation; see [spikes/phase0/MMP_DEBUG_SESSION.md](spikes/phase0/MMP_DEBUG_SESSION.md).
+| Mode | Flag | When to use | Trade-off |
+|---|---|---|---|
+| `--no-dim` (recommended) | `--no-dim` | First-time testing. Anything where the spec is the source of truth. AI-driven flows where the bridge re-runs on every edit. | Resulting SLDPRT has NO equation link to `locals.txt`. Editing locals afterwards requires re-running `ai-sw-build`. |
+| Parametric (default) | *(no flag)* | When humans will hand-edit the SLDPRT downstream and need the live link to `locals.txt`. | Each `AddDimension2` call opens a blocking "Modify Dimension" popup that requires manual mouse tick. An MMP-sized part is ~16 clicks. Cannot be suppressed on SW 2024 SP1; see [docs/known_limitations.md](docs/known_limitations.md) for the chain of failed suppression attempts. |
+
+In `--no-dim` mode, every `{"rhs": "..."}` reference is resolved against `spec['locals']` in Python upfront and substituted with a literal mm value before any SOLIDWORKS call. Geometry comes out at the right size; the SLDPRT just has no equations.
+
+#### Before authoring your own spec
+
+**Read [docs/known_limitations.md](docs/known_limitations.md) first.** Three sharp edges trip people up on their first non-example part: (1) face-sketch origin is the part-origin projection onto the face, *not* the face centroid; (2) only +/-z faces of extrudes can host child sketches today; (3) the parametric-mode popup toll. All three have documented workarounds, none of which are obvious from a first read of the schema.
 
 ### 4. Parametric replay of a hand-recorded part (Path C)
 
@@ -292,6 +319,75 @@ python tools/gen_sw_types.py docs/api_reference.json src/ai_sw_bridge/sw_types.p
 The generated [src/ai_sw_bridge/sw_types.py](src/ai_sw_bridge/sw_types.py) exports enum constants (`SW_END_COND_THROUGH_ALL = 1`, etc.) and a `METHOD_SIGNATURES` dict. The builder calls `assert_args()` before each FeatureManager call, so any future arg-count drift fails fast with a clear diagnostic.
 
 **Lesson**: when an SW call returns `PARAMNOTOPTIONAL` or `Invalid number of parameters`, the very first check is whether the arg count matches the CHM. ([commit c560e97](https://github.com/Thomas-Tai/ai-sw-bridge/commit/c560e97) — `FeatureCut4` was 27 args, not the 24 we'd been sending.)
+
+## What you can build today
+
+Eight feature primitives, in three categories. Every primitive supports both literal mm values and `{rhs}`-bound expressions for any length field, unless the "parametric" column says otherwise.
+
+**Sketches**
+
+| Primitive | Reference frame | Parametric | Limits |
+|---|---|---|---|
+| `sketch_rectangle_on_plane` | Front / Top / Right reference plane | width, height, center | Center default (0, 0) = part origin |
+| `sketch_rectangle_on_face` | +/-z face of an earlier extrusion | width, height, center | Only +/-z faces; sketch origin = part-origin projection onto face (not face centroid) |
+| `sketch_circle_on_plane` | Front / Top / Right reference plane | diameter, center | Center default (0, 0) = part origin |
+| `sketch_circle_on_face` | +/-z face of an earlier extrusion | diameter | Only +/-z faces; circle center positions in mm only (no rhs on position) |
+| `sketch_circles_on_face` | +/-z face of an earlier extrusion | diameter per circle | Same face limit; multi-circle sketch with one driving dim per circle |
+
+**Extrudes**
+
+| Primitive | Inherits axis from | Parametric | Limits |
+|---|---|---|---|
+| `boss_extrude_blind` | parent sketch (plane or face) | depth | Blind end-condition only |
+| `cut_extrude_through_all` | parent sketch | *(no dim)* | Through-all end-condition |
+| `cut_extrude_blind` | parent sketch | depth | Blind end-condition only |
+
+**Modify**
+
+| Primitive | Targets | Parametric | Limits |
+|---|---|---|---|
+| `fillet_constant_radius` | one or more edges by part-coord point | radius | Constant radius only (no variable / asymmetric / setback); edge selection by point, no "all edges of face" sugar |
+
+For full per-primitive schema details, see [src/ai_sw_bridge/spec/schema.py](src/ai_sw_bridge/spec/schema.py). For the worked examples that exercise every primitive, see [examples/](examples/).
+
+**Validated on**: SOLIDWORKS 2024 SP1 (rev 32.1.0), Python 3.14, pywin32 late-binding. The four shipped examples (cylinder, MMP, TensionBracket, filleted_box) all build clean in `--no-dim` mode.
+
+## Roadmap
+
+Three tiers, prioritized by how often the missing capability blocks a real hardware part vs how much it costs to add.
+
+**Near-term (v0.3 — extend what's here)**
+
+The next four primitives each follow the same recipe as `fillet_constant_radius` did in v0.2: spike `CreateDefinition` pipeline first, fall back to a single-call API only if that fails. ~45-60 min per primitive.
+
+- `+/-x` and `+/-y` face support for child sketches — mechanical extension to `_select_extrude_face`, no new API
+- `fillet_variable_radius`, `chamfer_constant_distance` — same `CreateDefinition` family as constant-radius fillet
+- `simple_hole` (countersinks, counterbores) — `IFeatureManager.HoleWizard5` family
+- `linear_pattern`, `circular_pattern`, `mirror` — pattern an existing feature; folds repetitive geometry into one spec entry
+
+**Mid-term (v0.4 — broaden the part vocabulary)**
+
+Different SW API families with their own design questions. Each is a multi-day effort, not minutes.
+
+- `revolve` — different feature family from extrudes; needs a profile sketch + axis-of-revolution element. Used for IdlerRoller, AxleEndCap, any turned/lathed part.
+- `sweep` and `loft` — path-driven; the spec language needs to express path geometry, not just a profile. Will likely require a separate `path_sketch` feature type.
+- Sheet-metal features — base flange, edge flange, sketched bend, flat pattern. Whole separate SW UI mode.
+- Reference geometry — custom reference planes, axes, points. Required for any extrude that doesn't sit on Front/Top/Right.
+
+**Long-term ("most of the SW API")**
+
+These each represent a sub-system rather than a feature. Realistic only after the v0.3-v0.4 vocabulary is comfortable.
+
+- **Assemblies + mates** — `IAssemblyDoc`, `IMate2`, component placement. Currently the bridge can *observe* assemblies (mate_errors tool) but not create them. The Propose–Approve–Execute discipline carries over but the API surface roughly doubles.
+- **Drawings** — `IDrawingDoc`, view placement, dimension annotation, BOM. Largely orthogonal to the part-building work.
+- **Surfaces** — `IFeatureManager.InsertSurface*` family. Mostly used by ID/styling work, less by mechanical parts.
+- **Configurations** — multi-variant parts with per-config dims. Touches every existing primitive (each would need a config-aware variant).
+
+**Not on the roadmap**
+
+- VBA emission — investigated as a popup-suppression fallback for parametric mode; risky due to OLE compound-doc packaging requirements; see [docs/known_limitations.md](docs/known_limitations.md). May revisit if SW ever fixes the `swInputDimValOnCreate` toggle behavior on this build.
+- A fluent Python builder API (`part.box().hole()...`). JSON spec is the AI-native authoring surface; chaining APIs has been rejected by the field for a decade per the architecture review.
+- Migrating off pywin32 to comtypes/pythonnet. Late-binding works for 26-of-26 in-use methods. Earlier "cuts unreachable" conclusion was wrong (just an arg count error); don't rebuild the foundation on a false premise.
 
 ## Why this design
 
