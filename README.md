@@ -350,7 +350,7 @@ Eight feature primitives, in three categories. Every primitive supports both lit
 |---|---|---|---|
 | `fillet_constant_radius` | one or more edges by part-coord point | radius | Constant radius only (no variable / asymmetric / setback); edge selection by point, no "all edges of face" sugar |
 
-For full per-primitive schema details, see [src/ai_sw_bridge/spec/schema.py](src/ai_sw_bridge/spec/schema.py). For the worked examples that exercise every primitive, see [examples/](examples/).
+For full per-primitive schema details, see [docs/spec_reference.md](docs/spec_reference.md) (human-readable) or [src/ai_sw_bridge/spec/schema.py](src/ai_sw_bridge/spec/schema.py) (authoritative). For the worked examples that exercise every primitive, see [examples/](examples/).
 
 **Validated on**: SOLIDWORKS 2024 SP1 (rev 32.1.0), Python 3.14, pywin32 late-binding. The four shipped examples (cylinder, MMP, TensionBracket, filleted_box) all build clean in `--no-dim` mode.
 
@@ -424,12 +424,16 @@ ai-sw-bridge/
 │   ├── architecture.md                     # phases, design rationale (v0.1)
 │   ├── ai_driven_architecture_review.md    # field survey + v0.2 plan
 │   ├── tools_reference.md                  # every CLI command, every flag
+│   ├── spec_reference.md                   # human-readable JSON spec field reference
+│   ├── known_limitations.md                # sharp edges + workarounds (read before authoring)
 │   ├── known_gotchas.md                    # things we learned the hard way
 │   └── api_reference.{md,json}             # CHM-verified SW API reference
 ├── examples/
-│   ├── minimal_cylinder/        # Path C example (recorded macro → parametric)
-│   ├── minimal_cylinder_v2/     # v0.2 example (JSON spec → direct-COM)
-│   └── motor_mount_plate/       # v0.2 spec for the S1b MMP (partial; v1 limitation)
+│   ├── filleted_box/              # simplest: box + fillet (3 features)
+│   ├── minimal_cylinder/          # Path C example (recorded macro → parametric)
+│   ├── minimal_cylinder_v2/       # v0.2 example (JSON spec → direct-COM)
+│   ├── motor_mount_plate/         # MMP: 10 features, 7 parametric bindings
+│   └── tension_bracket/           # stacked extrudes, face-sketch-origin offset (8 features)
 ├── spikes/phase0/                # Phase 0 de-risking spikes + MMP debug log
 ├── USAGE.md
 ├── CHANGELOG.md
