@@ -1,7 +1,37 @@
 # v0.3 spikes: chamfer, linear pattern, mirror
 
-Three spike scripts that probe the SW COM API for the three new v0.3
+Three spike scripts that probed the SW COM API for the three new v0.3
 primitives before wiring them into the bridge proper.
+
+## Results (2026-05-17, SW 2024 SP1)
+
+| Spike | Result | Path used by bridge |
+|---|---|---|
+| Q chamfer | GREEN | `InsertFeatureChamfer` (8-arg, single call). CreateDefinition probe of `swFmChamfer` failed (not in 0..49 range or has no `EqualDistance` property accessible) -- single-call is the path. |
+| R linear pattern | GREEN, after one pivot | See "selection pivot" below |
+| S mirror | GREEN, same pivot | Same approach as Spike R |
+
+## Selection pivot (Spikes R and S)
+
+`doc.Extension.SelectByID2` -- the marked-selection variant we wanted --
+raises `com_error('Type mismatch.', ..., 8)` under pywin32 late binding.
+Position 8 is `Callout` (`IDispatch` OUT-typed); same class of failure
+documented in `spikes/phase0/MMP_DEBUG_SESSION.md`.
+
+Workaround that works:
+
+1. Select the **direction edge (pattern) / mirror plane (mirror)** via
+   the plain 5-arg `IModelDoc2::SelectByID(name, type, x, y, z)`. This
+   is non-appending -- it starts a fresh selection set.
+2. Apply the selection mark via `ISelectionMgr::SetSelectedObjectMark(
+   AtIndex=1, Mark, Action=swSelectionMarkSet=0)`.
+3. Add the **seed feature** with `IFeature::Select2(append=True, mark)`.
+   `Select2` takes only `(append, mark)` -- no name lookup, no Callout.
+   `IFeature` instances are already in hand from prior `BuiltFeature`
+   records, so no SelectByID2 is needed.
+
+**Order matters:** step 1 must precede step 3, because `SelectByID`
+is non-appending and would clear the seed if done second.
 
 ## Why spike first
 

@@ -1262,30 +1262,27 @@ def _build_chamfer_edge(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
 
-def _select_seed_feature(ctx: BuildContext, seed_name: str, mark: int) -> None:
-    """Select a feature by name with a SW selection mark (used by pattern/mirror).
+def _mark_first_selection(ctx: BuildContext, mark: int) -> None:
+    """Apply a selection mark to the most-recently-selected item.
 
-    Uses doc.Extension.SelectByID2 with 9 args. The Callout (8th arg) is
-    typed as IDispatch; passing None is the documented late-binding-safe
-    way. We've seen Callout OUT params fail on SelectByID2 in the past
-    (MMP_DEBUG_SESSION.md), but the IN form with Callout=None has not been
-    tested for the BODYFEATURE type yet -- Spike R/S verify.
+    Wraps ISelectionMgr.SetSelectedObjectMark(AtIndex=1, Mark, Action=0).
+    Used after a SelectByID call to retroactively tag the selection with
+    a role (e.g. direction edge, mirror plane).
+
+    Why this exists: doc.Extension.SelectByID2 takes a mark arg directly,
+    but its 8th positional arg (Callout, OUT-typed IDispatch) fails to
+    marshal through pywin32 late binding -- raises com_error('Type
+    mismatch', ..., 8). Empirically verified 2026-05-17 in Spike R; same
+    class of failure as the prior SelectByID2 issue in MMP_DEBUG_SESSION.
+    Workaround: call 5-arg SelectByID (no Callout) then apply the mark
+    via SelectionMgr.
     """
-    ext = ctx.doc.Extension
-    ok = ext.SelectByID2(
-        seed_name,
-        "BODYFEATURE",
-        0.0,
-        0.0,
-        0.0,
-        True,  # Append (we keep prior selections in place for combined sel sets)
-        mark,
-        None,  # Callout
-        0,  # SelectOption
-    )
-    if not ok:
+    sel_mgr = ctx.doc.SelectionManager
+    # Action=0 is swSelectionMarkSet (per swSelectionMarkAction_e in CHM)
+    if not sel_mgr.SetSelectedObjectMark(1, mark, 0):
         raise RuntimeError(
-            f"SelectByID2('{seed_name}', 'BODYFEATURE', mark={mark}) returned False"
+            f"SetSelectedObjectMark(1, mark={mark}, set) returned False; "
+            f"selection set may be empty"
         )
 
 
@@ -1293,54 +1290,48 @@ def _build_linear_pattern(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeatu
     """Linear pattern of a seed feature along a direction edge.
 
     Uses the marked-selection convention required by pattern features:
-      mark = 4 (swSelPatternBody)  -- the seed feature
-      mark = 1 (swSelDirectionRef) -- the direction reference edge
+      mark = 1 (swSelPatternRefEdge) -- the direction reference edge
+      mark = 4 (swSelPatternBody)    -- the seed feature
 
-    Then calls FeatureLinearPattern5 (22 args). The CHM marks this method
-    obsolete since SW 2020, recommending CreateDefinition +
-    ILinearPatternFeatureData. We try the single-call first because it
-    works empirically on prior SW builds; if it fails on 2024 SP1 we
-    pivot.
+    Order matters. SelectByID is non-appending by default (5-arg form
+    has no Append param), so:
+      1. SelectByID(EDGE) for direction -- starts a fresh selection set
+      2. SetSelectedObjectMark(1, mark=1) -- tag as direction
+      3. seed.Select2(append=True, mark=4) -- add seed without clearing
+    Reverse order clears the seed.
+
+    Then calls FeatureLinearPattern5 (22 args). Marked obsolete in CHM
+    in favor of CreateDefinition+ILinearPatternFeatureData, but
+    empirically still works on SW 2024 SP1 (Spike R GREEN 2026-05-17).
     """
     seed_name = feat["seed"]
     if seed_name not in ctx.features_by_name:
-        # Defensive: validator should already have caught this, but the
-        # build path runs after validate so a direct caller bypassing
-        # validation gets a clearer error here than in SW.
+        # Defensive: validator should already have caught this.
         raise RuntimeError(f"linear_pattern seed '{seed_name}' not yet built")
+    seed_built = ctx.features_by_name[seed_name]
 
     spacing_m = _literal_or_default(feat["spacing"], 10.0)  # 10mm placeholder
     count = int(feat["count"])
     flip = bool(feat.get("flip", False))
 
-    # Select seed + direction with marks.
+    # 1. Direction edge first (non-appending SelectByID)
     ctx.doc.ClearSelection2(True)
-    _select_seed_feature(ctx, seed_name, mark=4)
-
     d = feat["direction"]
-    dx_m, dy_m, dz_m = (
-        float(d["x"]) / 1000.0,
-        float(d["y"]) / 1000.0,
-        float(d["z"]) / 1000.0,
-    )
-    # Direction edge: select by point with mark=1.
-    ext = ctx.doc.Extension
-    ok = ext.SelectByID2(
-        "",
-        "EDGE",
-        dx_m,
-        dy_m,
-        dz_m,
-        True,  # Append (keep the seed selection in place)
-        1,  # Mark = direction reference
-        None,
-        0,
-    )
-    if not ok:
+    dx_m = float(d["x"]) / 1000.0
+    dy_m = float(d["y"]) / 1000.0
+    dz_m = float(d["z"]) / 1000.0
+    if not ctx.doc.SelectByID("", "EDGE", dx_m, dy_m, dz_m):
         raise RuntimeError(
             f"could not select direction edge at part ({d['x']}, {d['y']}, "
             f"{d['z']}) mm -- point not on any edge of current geometry"
         )
+    _mark_first_selection(ctx, mark=1)
+
+    # 2. Seed via IFeature.Select2 with append=True
+    if seed_built.sw_object is None:
+        raise RuntimeError(f"linear_pattern seed '{seed_name}' has no sw_object handle")
+    if not seed_built.sw_object.Select2(True, 4):
+        raise RuntimeError(f"IFeature.Select2 on seed '{seed_name}' returned False")
 
     fm = ctx.doc.FeatureManager
     args = (
@@ -1372,8 +1363,10 @@ def _build_linear_pattern(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeatu
     if f is None:
         raise RuntimeError(
             f"FeatureLinearPattern5 returned None (seed='{seed_name}', "
-            f"count={count}, spacing={spacing_m * 1000:.2f}mm). Selection "
-            f"marks may have been lost between SelectByID2 calls."
+            f"count={count}, spacing={spacing_m * 1000:.2f}mm). The "
+            f"selected edge may not run in the direction you expect -- "
+            f"on a box, perimeter edges of a face are perpendicular to "
+            f"the face's normal but oriented along the face's other axis."
         )
     f.Name = feat["name"]
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
@@ -1382,39 +1375,36 @@ def _build_linear_pattern(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeatu
 def _build_mirror_feature(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Mirror a seed feature about one of the three default reference planes.
 
-    Selection marks (per SW API conventions):
-      mark = 2  -- the mirror plane (one of Front/Top/Right Plane)
+    Selection marks:
+      mark = 2  -- the mirror plane (Front/Top/Right Plane by name)
       mark = 1  -- the seed feature(s) to mirror
 
-    Then calls InsertMirrorFeature2 (5 args). The non-2 form (InsertMirrorFeature,
-    deprecated) had fewer ScopeOptions; we use the 2 form to be explicit.
+    Same order-matters reasoning as _build_linear_pattern:
+      1. SelectByID('Front Plane', 'PLANE') -- starts fresh selection
+      2. SetSelectedObjectMark(1, mark=2) -- tag as mirror plane
+      3. seed.Select2(append=True, mark=1) -- add seed
+
+    Verified GREEN on SW 2024 SP1 in Spike S (2026-05-17).
     """
     seed_name = feat["seed"]
     if seed_name not in ctx.features_by_name:
         raise RuntimeError(f"mirror_feature seed '{seed_name}' not yet built")
+    seed_built = ctx.features_by_name[seed_name]
 
     plane = feat["plane"]
     full_plane_name = PLANE_FULL_NAME[plane]
 
-    # 1) Select the mirror plane with mark=2.
+    # 1. Plane by name (non-appending)
     ctx.doc.ClearSelection2(True)
-    ext = ctx.doc.Extension
-    ok_plane = ext.SelectByID2(
-        full_plane_name,
-        "PLANE",
-        0.0,
-        0.0,
-        0.0,
-        False,  # Append (start with a clean selection set)
-        2,  # Mark = mirror plane
-        None,
-        0,
-    )
-    if not ok_plane:
+    if not ctx.doc.SelectByID(full_plane_name, "PLANE", 0.0, 0.0, 0.0):
         raise RuntimeError(f"could not select mirror plane '{full_plane_name}'")
+    _mark_first_selection(ctx, mark=2)
 
-    # 2) Select the seed feature with mark=1.
-    _select_seed_feature(ctx, seed_name, mark=1)
+    # 2. Seed via IFeature.Select2 with append=True
+    if seed_built.sw_object is None:
+        raise RuntimeError(f"mirror_feature seed '{seed_name}' has no sw_object handle")
+    if not seed_built.sw_object.Select2(True, 1):
+        raise RuntimeError(f"IFeature.Select2 on seed '{seed_name}' returned False")
 
     fm = ctx.doc.FeatureManager
     args = (

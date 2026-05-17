@@ -97,83 +97,81 @@ def _create_seed_hole(doc) -> str:
     sketch_feat.Select2(False, 0)
 
     cut = fm.FeatureCut4(
-        True,
-        False,
-        False,
-        SW_END_COND_THROUGH_ALL,
-        0,
-        0.0,
-        0.0,
-        False,
-        False,
-        False,
-        False,
-        0.0,
-        0.0,
-        False,
-        False,
-        False,
-        False,
-        True,
-        True,
-        True,
-        0,
-        0,
-        0.0,
-        False,
-        False,
-        False,
-        False,
-        False,
+        True,  # Sd
+        False,  # Flip
+        False,  # Dir
+        SW_END_COND_THROUGH_ALL,  # T1
+        0,  # T2
+        0.0,  # D1
+        0.0,  # D2
+        False,  # Dchk1
+        False,  # Dchk2
+        False,  # Ddir1
+        False,  # Ddir2
+        0.0,  # Dang1
+        0.0,  # Dang2
+        False,  # OffsetReverse1
+        False,  # OffsetReverse2
+        False,  # TranslateSurface1
+        False,  # TranslateSurface2
+        False,  # NormalCut
+        True,  # UseFeatScope
+        True,  # UseAutoSelect
+        True,  # AssemblyFeatureScope
+        True,  # AutoSelectComponents
+        False,  # PropagateFeatureToParts
+        0,  # T0
+        0.0,  # StartOffset
+        False,  # FlipStartOffset
+        False,  # OptimizeGeometry
     )
     if cut is None:
         raise RuntimeError("FeatureCut4 returned None for seed hole")
     cut.Name = "Hole_Seed"
-    return "Hole_Seed"
+    return cut  # return the IFeature so caller can Select2 on it
 
 
-def _select_plane_and_seed(doc, seed_feat_name: str) -> bool:
-    """Mark=2 for the mirror plane, Mark=1 for the seed feature."""
+def _select_plane_and_seed(doc, seed_feat) -> bool:
+    """Mark=2 for the mirror plane, Mark=1 for the seed feature.
+
+    UPDATED 2026-05-17 (same fix as Spike R): doc.Extension.SelectByID2
+    raises Type mismatch on the Callout OUT-param. Pivot to:
+      1. Plane via 5-arg SelectByID(name, "PLANE", 0,0,0) then
+         SetSelectedObjectMark(1, mark=2, action=Set).
+      2. Seed via IFeature.Select2(append=True, mark=1).
+    """
     doc.ClearSelection2(True)
-    ext = doc.Extension
+    sel_mgr = doc.SelectionManager
 
-    # 1. Mirror plane: Right Plane (YZ plane, x=0)
+    # 1. Plane via SelectByID (non-appending)
     try:
-        ok_plane = ext.SelectByID2(
-            "Right Plane",
-            "PLANE",
-            0.0,
-            0.0,
-            0.0,
-            False,  # Append
-            2,  # Mark = mirror plane
-            None,
-            0,
-        )
-        print(f"  SelectByID2(Right Plane) -> {ok_plane}")
+        ok_plane = doc.SelectByID("Right Plane", "PLANE", 0.0, 0.0, 0.0)
+        print(f"  SelectByID('Right Plane', 'PLANE') -> {ok_plane}")
+        if not ok_plane:
+            return False
+        ok_mark = sel_mgr.SetSelectedObjectMark(1, 2, 0)
+        print(f"  SetSelectedObjectMark(1, mark=2, set) -> {ok_mark}")
     except Exception as e:
-        print(f"  ! SelectByID2(Right Plane) raised: {e!r}")
+        print(f"  ! plane selection raised: {e!r}")
+        traceback.print_exc()
         return False
 
-    # 2. Seed feature (the hole)
+    # 2. Seed via IFeature.Select2 with append=True
     try:
-        ok_seed = ext.SelectByID2(
-            seed_feat_name,
-            "BODYFEATURE",
-            0.0,
-            0.0,
-            0.0,
-            True,  # Append
-            1,  # Mark = seed feature
-            None,
-            0,
-        )
-        print(f"  SelectByID2(seed) -> {ok_seed}")
+        ok_seed = seed_feat.Select2(True, 1)  # append=True, mark=1
+        print(f"  IFeature.Select2(append=True, mark=1) -> {ok_seed}")
     except Exception as e:
-        print(f"  ! SelectByID2(seed) raised: {e!r}")
+        print(f"  ! IFeature.Select2 raised: {e!r}")
+        traceback.print_exc()
         return False
 
-    return bool(ok_plane) and bool(ok_seed)
+    n = sel_mgr.GetSelectedObjectCount2(-1)
+    print(f"  total selected count: {n}")
+    for idx in range(1, n + 1):
+        m = sel_mgr.GetSelectedObjectMark(idx)
+        print(f"    selection[{idx}] mark = {m}")
+
+    return True
 
 
 def _try_insert_mirror_feature2(fm) -> int:
@@ -215,12 +213,12 @@ def main() -> int:
         _create_box(doc, side_mm=20.0, thick_mm=10.0)
         print(f"  box built; feature count = {doc.GetFeatureCount}")
 
-        seed_name = _create_seed_hole(doc)
+        seed_feat = _create_seed_hole(doc)
         print(f"  seed hole built; feature count = {doc.GetFeatureCount}")
 
         fm = doc.FeatureManager
 
-        if not _select_plane_and_seed(doc, seed_name):
+        if not _select_plane_and_seed(doc, seed_feat):
             print("== Spike S RED -- SelectByID2 selection failed ==")
             return 3
 

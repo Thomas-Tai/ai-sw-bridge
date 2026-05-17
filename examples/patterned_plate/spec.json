@@ -32,11 +32,12 @@
         {
             "type": "linear_pattern",
             "name": "LP_Holes",
-            "_comment": "3 instances total (seed + 2 copies) along +X at 8mm spacing. The direction edge is a point on the plate's top +X edge (x=15, z=4 on the +z face). Pattern uses the edge's tangent at the click point.",
+            "_comment": "3 instances total (seed + 2 copies) along +X at 8mm spacing. The direction edge is the top X-aligned edge of the +z face -- it runs from (-15, +10, 4) to (+15, +10, 4); midpoint (0, +10, 4). Edges PARALLEL to the desired direction are the ones to pick.",
             "seed": "Hole_Seed",
-            "direction": {"x": 15.0, "y": 0.0, "z": 4.0},
+            "direction": {"x": 0.0, "y": 10.0, "z": 4.0},
             "count": 3,
-            "spacing": 8.0
+            "spacing": 8.0,
+            "flip": true
         }
     ]
 }

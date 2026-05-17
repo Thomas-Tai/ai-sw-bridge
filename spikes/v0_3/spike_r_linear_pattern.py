@@ -117,98 +117,100 @@ def _create_seed_hole(doc) -> str:
     sketch_feat.Name = "SK_Hole_Seed"
     sketch_feat.Select2(False, 0)
 
-    # Use FeatureCut4 (27 args -- verified by Spike E7).
+    # Use FeatureCut4 (27 args -- canonical layout from
+    # src/ai_sw_bridge/spec/builder.py::_call_feature_cut, verified by
+    # Spike E7).
     cut = fm.FeatureCut4(
-        True,
-        False,
-        False,  # Sd, Flip, Dir
-        SW_END_COND_THROUGH_ALL,
-        0,  # EndCondition, EndCondition2
-        0.0,
-        0.0,  # Depth, Depth2
-        False,
-        False,
-        False,
-        False,  # Dchk, Dchk2, Ddir, Ddir2
-        0.0,
-        0.0,  # Dang, Dang2
-        False,
-        False,
-        False,
-        False,  # OffsetReverse, OffsetReverse2, TranslateSurface, TranslateSurface2
-        True,
-        True,
-        True,  # NormalCut, UseFeatScope, UseAutoSelect
+        True,  # Sd
+        False,  # Flip
+        False,  # Dir
+        SW_END_COND_THROUGH_ALL,  # T1
+        0,  # T2
+        0.0,  # D1
+        0.0,  # D2
+        False,  # Dchk1
+        False,  # Dchk2
+        False,  # Ddir1
+        False,  # Ddir2
+        0.0,  # Dang1
+        0.0,  # Dang2
+        False,  # OffsetReverse1
+        False,  # OffsetReverse2
+        False,  # TranslateSurface1
+        False,  # TranslateSurface2
+        False,  # NormalCut (sheet metal only)
+        True,  # UseFeatScope
+        True,  # UseAutoSelect
+        True,  # AssemblyFeatureScope
+        True,  # AutoSelectComponents
+        False,  # PropagateFeatureToParts
         0,  # T0
-        0,  # StartCondition
         0.0,  # StartOffset
         False,  # FlipStartOffset
-        False,  # AssemblyFeatureScope
-        False,  # AutoSelectComponents
-        False,  # PropagateFeatureToParts
-        False,  # OptimizeGeometry (sheet metal)
+        False,  # OptimizeGeometry (sheet metal only)
     )
     if cut is None:
         raise RuntimeError("FeatureCut4 returned None for seed hole")
     cut.Name = "Hole_Seed"
-    return "Hole_Seed"
+    return cut  # return the IFeature directly so callers can use Select2 on it
 
 
-def _select_seed_and_direction(doc, seed_feat_name: str) -> bool:
+def _select_seed_and_direction(doc, seed_feat) -> bool:
     """Mark seed feature with mark=4, and a top edge with mark=1 as direction.
 
-    Uses doc.Extension.SelectByID2 because SelectByID(name=..., type=BODYFEATURE)
-    doesn't accept a mark parameter (5-arg form). SelectByID2 may fail under
-    late binding due to Callout OUT-param marshalling -- we will see.
+    UPDATED 2026-05-17 after first run: doc.Extension.SelectByID2 raises
+    com_error('Type mismatch.', ..., 8) -- the Callout OUT-param at arg 8
+    doesn't marshal through pywin32 late binding. Same class of failure
+    as the prior SelectByID2 issue documented in MMP_DEBUG_SESSION.md.
 
-    Returns True if both selections appear to have succeeded.
+    Pivot:
+      - For the seed: use IFeature::Select2(append, mark) -- 2-arg
+        method on the feature object itself, no name lookup, no Callout.
+      - For the direction edge: use plain 5-arg SelectByID (which is
+        proven to work elsewhere in the bridge) and *then* apply a mark
+        post-hoc via ISelectionMgr.SetSelectionMark2. Same end-state,
+        no Callout exposure.
+
+    Returns True if both selections succeed.
     """
     doc.ClearSelection2(True)
-    ext = doc.Extension
+    sel_mgr = doc.SelectionManager
 
-    # SelectByID2 args (per CHM):
-    #   Name, Type, X, Y, Z, Append, Mark, Callout, SelectOption
-    # 9 args total. The Callout (CDispatch) is the OUT-param risk.
-    # In Python late-binding, passing None for OUT params usually marshals
-    # fine for *IN* args but Callout is mixed.
+    # ORDER MATTERS: SelectByID is non-appending by default, so we do
+    # the EDGE first, then apply its mark, then add the SEED with
+    # IFeature.Select2(append=True). Reverse order clears the seed.
 
-    # 1. Select seed feature by name (mark = 4)
+    # 1. Direction edge via SelectByID
     try:
-        ok_seed = ext.SelectByID2(
-            seed_feat_name,
-            "BODYFEATURE",
-            0.0,
-            0.0,
-            0.0,
-            False,  # Append
-            4,  # Mark = swSelPatternBody / pattern seed
-            None,  # Callout
-            0,  # SelectOption (default)
-        )
-        print(f"  SelectByID2(seed) -> {ok_seed}")
+        ok_dir = doc.SelectByID("", "EDGE", 0.01, 0.0, 0.01)
+        print(f"  SelectByID(EDGE) -> {ok_dir}")
+        if not ok_dir:
+            return False
+        # Mark the edge as direction reference (mark=1, action=Set=0)
+        ok_dir_mark = sel_mgr.SetSelectedObjectMark(1, 1, 0)
+        print(f"  SetSelectedObjectMark(1, mark=1, set) -> {ok_dir_mark}")
     except Exception as e:
-        print(f"  ! SelectByID2(seed) raised: {e!r}")
+        print(f"  ! direction edge selection raised: {e!r}")
+        traceback.print_exc()
         return False
 
-    # 2. Select direction edge (top +X edge midpoint), mark = 1
+    # 2. Seed feature via IFeature.Select2 with APPEND=True
     try:
-        ok_dir = ext.SelectByID2(
-            "",
-            "EDGE",
-            0.01,
-            0.0,
-            0.01,
-            True,  # Append
-            1,  # Mark = direction reference
-            None,
-            0,
-        )
-        print(f"  SelectByID2(direction edge) -> {ok_dir}")
+        ok_seed = seed_feat.Select2(True, 4)  # append=True, mark=4
+        print(f"  IFeature.Select2(append=True, mark=4) -> {ok_seed}")
     except Exception as e:
-        print(f"  ! SelectByID2(direction edge) raised: {e!r}")
+        print(f"  ! IFeature.Select2 raised: {e!r}")
+        traceback.print_exc()
         return False
 
-    return bool(ok_seed) and bool(ok_dir)
+    # Sanity: should have 2 items
+    n = sel_mgr.GetSelectedObjectCount2(-1)
+    print(f"  total selected count: {n}")
+    for idx in range(1, n + 1):
+        m = sel_mgr.GetSelectedObjectMark(idx)
+        print(f"    selection[{idx}] mark = {m}")
+
+    return True
 
 
 def _try_feature_linear_pattern5(fm) -> int:
@@ -267,12 +269,12 @@ def main() -> int:
         _create_box(doc, side_mm=20.0, thick_mm=10.0)
         print(f"  box built; feature count = {doc.GetFeatureCount}")
 
-        seed_name = _create_seed_hole(doc)
+        seed_feat = _create_seed_hole(doc)
         print(f"  seed hole built; feature count = {doc.GetFeatureCount}")
 
         fm = doc.FeatureManager
 
-        if not _select_seed_and_direction(doc, seed_name):
+        if not _select_seed_and_direction(doc, seed_feat):
             print("  ! could not establish seed + direction selection")
             print("  PATH 1 NOT ATTEMPTED.")
             print("== Spike R RED -- SelectByID2 marked-selection failed ==")

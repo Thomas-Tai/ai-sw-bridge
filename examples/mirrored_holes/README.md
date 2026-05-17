@@ -53,4 +53,4 @@ Like `linear_pattern`, mirror needs marked selection:
 - mark **2** — mirror plane
 - mark **1** — seed feature
 
-Implemented via `doc.Extension.SelectByID2`. See `spikes/v0_3/spike_s_mirror.py` for the API probe.
+`doc.Extension.SelectByID2` (the marked-selection variant) fails on this build with a Callout marshalling error under pywin32 late-binding. The bridge works around it via plain `SelectByID('Front Plane', 'PLANE', 0, 0, 0)` + `SelectionMgr.SetSelectedObjectMark` for the plane, then `seed.Select2(append=True, mark=1)` for the seed feature. See `spikes/v0_3/spike_s_mirror.py` and the v0.3 spikes README for the full diagnosis.
