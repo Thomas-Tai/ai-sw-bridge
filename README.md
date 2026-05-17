@@ -1,6 +1,6 @@
 # ai-sw-bridge
 
-> **Language**: English · [繁體中文](docs/i18n/zh-TW/README.md)
+> **Language**: English · [繁體中文](docs/i18n/zh-TW/README.md) · [简体中文](docs/i18n/zh-CN/README.md)
 
 A semi-automated bridge that lets an AI assistant (Claude, ChatGPT, Codex, etc.)
 drive SOLIDWORKS through the COM API.
