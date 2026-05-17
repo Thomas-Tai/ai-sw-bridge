@@ -37,6 +37,7 @@ from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
     SW_START_SKETCH_PLANE,
     SW_CHAMFER_EQUAL_DISTANCE,
     SW_CHAMFER_ANGLE_DISTANCE,
+    SW_CHAMFER_DISTANCE_DISTANCE,
     SW_FEATURE_CHAMFER_TANGENT_PROPAGATION,
     SW_FEATURE_SCOPE_ALL_BODIES,
     assert_args,
@@ -1261,58 +1262,60 @@ def _build_fillet_constant_radius(
 def _build_chamfer_edge(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Edge chamfer via IFeatureManager::InsertFeatureChamfer (8-arg call).
 
-    The single-call API has shipped since SW 2005 FCS and is not marked
-    obsolete in the CHM (unlike FeatureFillet3, which is). Spike Q in
-    spikes/v0_3/ verifies whether this remains the right call on SW
-    2024 SP1 or whether the CreateDefinition + IChamferFeatureData2 path
-    is needed instead.
+    Modes and the args that actually commit geometry on SW 2024 SP1
+    (confirmed GREEN in Spike Q11/Q12, 2026-05-17):
 
-    Selection: each edge listed in `edges[]` is selected by part-coord
-    point via SelectByID('EDGE'); InsertFeatureChamfer picks up the
-    current selection set as the chamfer target list.
+      equal_distance -> ChamferType=swChamferDistanceDistance=2,
+                        Width=OtherDist=distance_m.
+                        swChamferEqualDistance=16 is listed in the CHM enum
+                        but never commits geometry on this build -- the
+                        feature appears in the tree with GetEdgeCount=4 but
+                        body topology stays 6F/12E (plain box). DistDist with
+                        equal distances is geometrically identical.
 
-    Modes:
-      equal_distance -> swChamferEqualDistance=16, distance fed via OtherDist
-      distance_angle -> swChamferAngleDistance=1, distance via Width, angle
-                        via Angle (degrees, NOT radians -- SW's published
-                        signature uses degrees here despite all other length
-                        params being meters).
+      distance_angle -> ChamferType=swChamferAngleDistance=1,
+                        Width=distance_m, Angle=angle in RADIANS.
+                        The CHM says "degrees" but empirically both degrees
+                        and radians produce the same geometry for 45deg;
+                        using radians matches the broader SW API convention.
+
+    Options: tangent-propagation flag (4) is always set; flip adds bit 1.
     """
+    import math
+
     mode = feat["mode"]
     distance_m = _literal_or_default(feat["distance"], 1.0)  # 1mm placeholder
 
     options = SW_FEATURE_CHAMFER_TANGENT_PROPAGATION
     if feat.get("flip", False):
-        # swFeatureChamferFlipDirection = 1; bitwise OR into options.
-        options |= 1
+        options |= 1  # swFeatureChamferFlipDirection
 
     if mode == "equal_distance":
-        chamfer_type = SW_CHAMFER_EQUAL_DISTANCE
-        width = 0.0
-        angle_deg = 0.0
+        # Use DistanceDistance with both sides equal -- swChamferEqualDistance=16
+        # never commits geometry on SW 2024 SP1 (Spike Q12).
+        chamfer_type = SW_CHAMFER_DISTANCE_DISTANCE
+        width = distance_m
+        angle_rad = 0.0
         other_dist = distance_m
     elif mode == "distance_angle":
         chamfer_type = SW_CHAMFER_ANGLE_DISTANCE
         width = distance_m
-        # `angle` is degrees per the CHM; resolve {rhs} placeholder to 45deg.
         angle_value = feat["angle"]
         if isinstance(angle_value, dict) and "rhs" in angle_value:
             angle_deg = 45.0  # placeholder; rebound on next ctx rebuild
         else:
             angle_deg = float(angle_value)
+        angle_rad = angle_deg * math.pi / 180.0
         other_dist = 0.0
     else:
-        # Unreachable; validator rejects other values. Defensive for clarity.
         raise RuntimeError(f"chamfer_edge: unknown mode {mode!r}")
 
-    # Accumulate edges via the shared helper (same as fillet uses). Naive
-    # SelectByID-loop fails because each call replaces the prior selection.
     n_selected = _select_edges_by_points(ctx, feat["edges"])
     if n_selected == 0:
         raise RuntimeError("no edges selected; chamfer would no-op")
 
     fm = ctx.doc.FeatureManager
-    args = (options, chamfer_type, width, angle_deg, other_dist, 0.0, 0.0, 0.0)
+    args = (options, chamfer_type, width, angle_rad, other_dist, 0.0, 0.0, 0.0)
     assert_args("IFeatureManager.InsertFeatureChamfer", args)
     f = fm.InsertFeatureChamfer(*args)
     if f is None:
@@ -1321,6 +1324,7 @@ def _build_chamfer_edge(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature
             f"edges, mode={mode}, distance={distance_m * 1000:.2f}mm"
         )
     f.Name = feat["name"]
+    ctx.doc.ForceRebuild3(False)
 
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 

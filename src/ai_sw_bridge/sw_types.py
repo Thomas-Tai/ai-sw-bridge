@@ -23,7 +23,12 @@ from __future__ import annotations
 SW_CHAMFER_ANGLE_DISTANCE = 1  # swChamferAngleDistance
 SW_CHAMFER_DISTANCE_DISTANCE = 2  # swChamferDistanceDistance
 SW_CHAMFER_VERTEX = 3  # swChamferVertex
-SW_CHAMFER_EQUAL_DISTANCE = 16  # swChamferEqualDistance
+SW_CHAMFER_EQUAL_DISTANCE = 16  # swChamferEqualDistance -- not functional on SW 2024 SP1
+# Spike Q12 (2026-05-17): swChamferEqualDistance=16 never commits geometry via
+# InsertFeatureChamfer on SW 2024 SP1 (feature appears in tree, 6F/12E unchanged).
+# Workarounds that DO commit:
+#   equal_distance -> use SW_CHAMFER_DISTANCE_DISTANCE=2 with Width=OtherDist=distance
+#   distance_angle -> use SW_CHAMFER_ANGLE_DISTANCE=1 with Width=distance, Angle in RADIANS
 
 # swDimensionType_e: Types of dimensions.
 SW_DIMENSION_TYPE_UNKNOWN = (
