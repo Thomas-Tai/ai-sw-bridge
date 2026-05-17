@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "name": "filleted_box_parametric",
+  "locals": "C:\\D\\WorkSpace\\[Cloud]_Company_Sync\\MSC\\OwnInfo\\MyResearchProject\\Lego_Sorter_V2\\Hardware\\S1b_Conveyor\\Model\\s1b_conveyor_locals.txt",
+  "_comment": "Variant of the filleted_box demo with a parametric (rhs-bound) radius. The radius binds to S1B_TB_CAP_T (a thickness defined in s1b_conveyor_locals.txt, value 3.0mm) -- not a real fillet variable, just exercising the {rhs} path on a fillet dim. Run WITHOUT --no-dim to verify parametric binding works for fillets.",
+  "features": [
+    {
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_Box",
+      "plane": "Front",
+      "width": 20.0,
+      "height": 20.0
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "Extrude_Box",
+      "sketch": "SK_Box",
+      "depth": 10.0
+    },
+    {
+      "type": "fillet_constant_radius",
+      "name": "Fillet_TopRightEdge",
+      "radius": {"rhs": "\"S1B_TB_CAP_T\""},
+      "edges": [
+        {"x": 10.0, "y": 0.0, "z": 10.0}
+      ]
+    }
+  ]
+}

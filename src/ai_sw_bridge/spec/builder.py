@@ -46,6 +46,18 @@ from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
 # SW builds; see MMP_DEBUG_SESSION.md for the full investigation.
 SW_PREF_INPUT_DIM_VAL_ON_CREATE = 8
 
+# swFeatureNameID_e.swFmFillet -- numeric value not exposed in the
+# decompiled CHM enum table (text-only). Found empirically in Spike P
+# (spikes/phase0/spike_p_fillet_pipeline.py) by probing CreateDefinition
+# with ints 0..59 and checking which return object accepts
+# .Initialize(swConstRadiusFillet). swFmFillet = 1 on SW 2024 SP1.
+SW_FM_FILLET = 1
+
+# swSimpleFilletType_e.swConstRadiusFillet -- value IS in the CHM enum
+# table (constant radius == 0). The other useful values: swFaceFillet=2,
+# swFullRoundFillet=3. v1 of the bridge supports only constant-radius.
+SW_CONST_RADIUS_FILLET = 0
+
 
 # Plane name -> outward-normal vector (in part coordinates, +X right, +Y up, +Z out of screen)
 # Matches SW's default English template orientation:
@@ -919,6 +931,72 @@ def _build_cut_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFe
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
 
+def _build_fillet_constant_radius(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Constant-radius edge fillet via the SW 2020+ canonical pipeline.
+
+    FeatureFillet3 (single-call) is marked obsolete for constant-radius
+    fillets per the decompiled CHM. The recommended path is:
+        data = fm.CreateDefinition(swFmFillet)
+        data.Initialize(swConstRadiusFillet)
+        data.DefaultRadius = radius_m
+        <select edges>
+        fm.CreateFeature(data)
+
+    Spike P (spikes/phase0/spike_p_fillet_pipeline.py) verified the
+    full pipeline works via pywin32 late binding -- the data-object
+    arg to CreateFeature DOES marshal correctly (unlike Callout/OUT
+    params that have failed on this build).
+
+    v1 supports constant-radius only and selects edges by part-coord
+    points (one per edge). No "all edges of face" sugar yet; the spec
+    enumerates each edge midpoint explicitly.
+    """
+    radius_m = _literal_or_default(feat["radius"], 1.0)  # 1mm placeholder
+
+    fm = ctx.doc.FeatureManager
+    data = fm.CreateDefinition(SW_FM_FILLET)
+    if data is None:
+        raise RuntimeError("CreateDefinition(swFmFillet) returned None")
+    ok = data.Initialize(SW_CONST_RADIUS_FILLET)
+    if not ok:
+        raise RuntimeError("ISimpleFilletFeatureData2.Initialize(0) returned False")
+
+    # Set the default radius. Property assignment on the CDispatch worked
+    # in Spike P; readback confirmed value round-trips.
+    data.DefaultRadius = radius_m
+
+    # Select all target edges. SelectByID with type="EDGE" picks the edge
+    # whose midpoint is closest to the given point; passing a point ON
+    # the edge always works. Append mode is implicit via repeated calls
+    # (each non-cleared SelectByID adds to the selection set in
+    # late-binding mode, per the SW API conventions).
+    ctx.doc.ClearSelection2(True)
+    n_selected = 0
+    for i, p in enumerate(feat["edges"]):
+        x_m = float(p["x"]) / 1000.0
+        y_m = float(p["y"]) / 1000.0
+        z_m = float(p["z"]) / 1000.0
+        if not ctx.doc.SelectByID("", "EDGE", x_m, y_m, z_m):
+            raise RuntimeError(
+                f"could not select edge #{i} at part ({p['x']}, {p['y']}, "
+                f"{p['z']}) mm -- point not on any edge of current geometry"
+            )
+        n_selected += 1
+    if n_selected == 0:
+        raise RuntimeError("no edges selected; fillet would no-op")
+
+    # CreateFeature picks up the current selection set.
+    f = fm.CreateFeature(data)
+    if f is None:
+        raise RuntimeError(
+            f"CreateFeature returned None for fillet on {n_selected} edges "
+            f"with radius {radius_m*1000:.2f}mm"
+        )
+    f.Name = feat["name"]
+
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
+
+
 # -----------------------------------------------------------------------------
 # Feature registry: unified handler + dim-binding + length-field metadata
 # -----------------------------------------------------------------------------
@@ -1027,6 +1105,15 @@ FEATURE_REGISTRY: dict[str, FeatureType] = {
         handler=None,
         dim_fields={"depth": "D1"},
     ),
+    "fillet_constant_radius": FeatureType(
+        name="fillet_constant_radius",
+        handler=None,
+        # SW auto-names the fillet's driving radius dim D1@<FilletName>
+        # (verified empirically: Parameter('D1@Fillet_FromSpike') returns
+        # a CDispatch; Parameter('RadiusDim@...') returns None on SW 2024
+        # SP1, despite some forum docs suggesting RadiusDim@). Use D1.
+        dim_fields={"radius": "D1"},
+    ),
 }
 
 
@@ -1042,6 +1129,7 @@ def _wire_handlers() -> None:
         "boss_extrude_blind":        _build_boss_extrude_blind,
         "cut_extrude_through_all":   _build_cut_extrude_through_all,
         "cut_extrude_blind":         _build_cut_extrude_blind,
+        "fillet_constant_radius":    _build_fillet_constant_radius,
     }
     for name, ft in FEATURE_REGISTRY.items():
         # FeatureType is frozen; rebuild with handler in place.

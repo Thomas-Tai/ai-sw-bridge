@@ -252,6 +252,49 @@ CUT_EXTRUDE_BLIND: dict[str, Any] = {
 }
 
 
+# Constant-radius edge fillet. Selects N edges by part-coord points and
+# applies a single radius. Wired via the SW 2020+ canonical pipeline
+# (CreateDefinition + ISimpleFilletFeatureData2.Initialize + CreateFeature)
+# rather than the obsolete FeatureFillet3 single-call. Verified end-to-end
+# in Spike P (swFmFillet = 1, late binding works).
+#
+# v1 limits:
+#   - Constant radius only (no variable-radius, no asymmetric, no setback).
+#   - Edge selection by point only (one point per edge); no "all edges of
+#     face" sugar yet.
+#   - Single radius dim (D1@FilletName) -- parametric via {rhs} as usual.
+FILLET_CONSTANT_RADIUS: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["type", "name", "radius", "edges"],
+    "properties": {
+        "type": {"const": "fillet_constant_radius"},
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+        "radius": LENGTH_SCHEMA,
+        "edges": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["x", "y", "z"],
+                "properties": {
+                    "x": {"type": "number"},
+                    "y": {"type": "number"},
+                    "z": {"type": "number"},
+                },
+                "description": (
+                    "A point on the target edge in part coordinates (mm). "
+                    "The builder converts to meters and calls SelectByID "
+                    "with type='EDGE'. Each edge entry adds one to the "
+                    "selection set before CreateFeature runs."
+                ),
+            },
+        },
+    },
+}
+
+
 # Top-level spec
 SCHEMA: dict[str, Any] = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -285,6 +328,7 @@ SCHEMA: dict[str, Any] = {
                     BOSS_EXTRUDE_BLIND,
                     CUT_EXTRUDE_THROUGH_ALL,
                     CUT_EXTRUDE_BLIND,
+                    FILLET_CONSTANT_RADIUS,
                 ]
             },
         },
@@ -305,4 +349,10 @@ EXTRUDE_TYPES = frozenset({
     "cut_extrude_through_all",
     "cut_extrude_blind",
 })
-ALL_TYPES = SKETCH_TYPES | EXTRUDE_TYPES
+# Modify-existing-geometry features (operate on existing edges/faces, do not
+# need a parent sketch). Kept separate from EXTRUDE_TYPES so the validator's
+# sketch-reference rule doesn't try to demand a sketch on them.
+MODIFY_TYPES = frozenset({
+    "fillet_constant_radius",
+})
+ALL_TYPES = SKETCH_TYPES | EXTRUDE_TYPES | MODIFY_TYPES
