@@ -11,7 +11,9 @@ systems for the pure-Python utilities (locals_io, parameterize, spec).
 
 __version__ = "0.1.0"
 
-_LAZY_MODULES = frozenset({"locals_io", "mutate", "observe", "parameterize", "sw_com", "spec"})
+_LAZY_MODULES = frozenset(
+    {"locals_io", "mutate", "observe", "parameterize", "sw_com", "spec"}
+)
 
 
 def __getattr__(name):
@@ -28,4 +30,12 @@ def __dir__():
     return sorted(set(globals()) | _LAZY_MODULES)
 
 
-__all__ = ["locals_io", "mutate", "observe", "parameterize", "sw_com", "spec", "__version__"]
+__all__ = [
+    "locals_io",
+    "mutate",
+    "observe",
+    "parameterize",
+    "sw_com",
+    "spec",
+    "__version__",
+]

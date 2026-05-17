@@ -39,13 +39,19 @@ from ai_sw_bridge.sw_types import (  # noqa: E402
 )
 
 
-CYL_SPEC = Path(__file__).resolve().parents[2] / "examples" / "minimal_cylinder_v2" / "spec.json"
+CYL_SPEC = (
+    Path(__file__).resolve().parents[2]
+    / "examples"
+    / "minimal_cylinder_v2"
+    / "spec.json"
+)
 
 
 def resolve_rhs(rhs_expr: str, locals_map: dict[str, float]) -> float:
     """Evaluate an rhs expression like '"PART_DIAMETER"' or '"FLANGE_OD" + 0.5'
     against the locals_map. Returns the numeric value (units = whatever the
     locals file uses, typically mm)."""
+
     # Substitute "NAME" -> the numeric value
     def _sub(m: "re.Match[str]") -> str:
         name = m.group(1)
@@ -99,15 +105,29 @@ def build_cylinder_numeric(sw, doc, diameter_mm: float, length_mm: float) -> dic
 
     fm = doc.FeatureManager
     args = (
-        True, False, False,
-        SW_END_COND_BLIND, 0,
-        length_m, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True,           # Merge
-        True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        length_m,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,  # Merge
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     assert_args("IFeatureManager.FeatureExtrusion2", args)
     ext = fm.FeatureExtrusion2(*args)

@@ -41,6 +41,7 @@ BLIND end condition, 5mm depth. Verify a cut was produced.
 
 Preconditions: blank Part open.
 """
+
 from __future__ import annotations
 
 import json
@@ -72,11 +73,29 @@ def _build_box(doc):
     doc.SelectByID("SK_Box", "SKETCH", 0.0, 0.0, 0.0)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False, 0, 0,
-        0.005, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.005,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box None")
@@ -101,28 +120,33 @@ def _hole_sketch(doc, suffix: int) -> str:
 def _cut27(end_cond, depth):
     """27-arg FeatureCut4. depth meaningful only for BLIND."""
     return [
-        True,           # 1  Sd (single-ended)
-        False,          # 2  Flip
-        False,          # 3  Dir
-        end_cond,       # 4  T1
-        0,              # 5  T2
-        depth,          # 6  D1
-        0.0,            # 7  D2
-        False, False,   # 8-9   Dchk1, Dchk2
-        False, False,   # 10-11 Ddir1, Ddir2
-        0.0, 0.0,       # 12-13 Dang1, Dang2
-        False, False,   # 14-15 OffsetReverse1/2
-        False, False,   # 16-17 TranslateSurface1/2
-        False,          # 18 NormalCut (sheet metal only)
-        True,           # 19 UseFeatScope
-        True,           # 20 UseAutoSelect
-        True,           # 21 AssemblyFeatureScope
-        True,           # 22 AutoSelectComponents (NEW)
-        False,          # 23 PropagateFeatureToParts (NEW)
+        True,  # 1  Sd (single-ended)
+        False,  # 2  Flip
+        False,  # 3  Dir
+        end_cond,  # 4  T1
+        0,  # 5  T2
+        depth,  # 6  D1
+        0.0,  # 7  D2
+        False,
+        False,  # 8-9   Dchk1, Dchk2
+        False,
+        False,  # 10-11 Ddir1, Ddir2
+        0.0,
+        0.0,  # 12-13 Dang1, Dang2
+        False,
+        False,  # 14-15 OffsetReverse1/2
+        False,
+        False,  # 16-17 TranslateSurface1/2
+        False,  # 18 NormalCut (sheet metal only)
+        True,  # 19 UseFeatScope
+        True,  # 20 UseAutoSelect
+        True,  # 21 AssemblyFeatureScope
+        True,  # 22 AutoSelectComponents (NEW)
+        False,  # 23 PropagateFeatureToParts (NEW)
         SW_START_SKETCH_PLANE,  # 24 T0
-        0.0,            # 25 StartOffset
-        False,          # 26 FlipStartOffset
-        False,          # 27 OptimizeGeometry (NEW; sheet metal only)
+        0.0,  # 25 StartOffset
+        False,  # 26 FlipStartOffset
+        False,  # 27 OptimizeGeometry (NEW; sheet metal only)
     ]
 
 
@@ -133,8 +157,7 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": "no doc"}))
         return 1
     if doc.GetFeatureCount > 17:
-        print(json.dumps({"ok": False,
-                          "error": f"not blank ({doc.GetFeatureCount})"}))
+        print(json.dumps({"ok": False, "error": f"not blank ({doc.GetFeatureCount})"}))
         return 1
 
     try:
@@ -147,21 +170,21 @@ def main() -> int:
     results = []
 
     test_cases = [
-        ("blind_5mm",        SW_END_COND_BLIND,       0.005),
-        ("through_all_d0",   SW_END_COND_THROUGH_ALL, 0.0),
+        ("blind_5mm", SW_END_COND_BLIND, 0.005),
+        ("through_all_d0", SW_END_COND_THROUGH_ALL, 0.0),
     ]
 
     for i, (label, end_cond, depth) in enumerate(test_cases):
         try:
             sk_name = _hole_sketch(doc, i)
         except Exception as e:
-            results.append({"label": label, "ok": False,
-                            "error": f"sketch: {e!r}"})
+            results.append({"label": label, "ok": False, "error": f"sketch: {e!r}"})
             continue
         doc.ClearSelection2(True)
         if not doc.SelectByID(sk_name, "SKETCH", 0.0, 0.0, 0.0):
-            results.append({"label": label, "ok": False,
-                            "error": "select sketch failed"})
+            results.append(
+                {"label": label, "ok": False, "error": "select sketch failed"}
+            )
             continue
 
         args = _cut27(end_cond, depth)
@@ -170,9 +193,14 @@ def main() -> int:
         try:
             f = fm.FeatureCut4(*args)
             if f is None:
-                results.append({"label": label, "ok": False,
-                                "error": "FeatureCut4 returned None",
-                                "args_n": 27})
+                results.append(
+                    {
+                        "label": label,
+                        "ok": False,
+                        "error": "FeatureCut4 returned None",
+                        "args_n": 27,
+                    }
+                )
                 continue
             try:
                 ftype = str(f.GetTypeName)
@@ -182,17 +210,27 @@ def main() -> int:
                 fname = str(f.Name)
             except Exception:
                 fname = "?"
-            results.append({"label": label, "ok": True,
-                            "feature_type": ftype, "feature_name": fname,
-                            "looks_like_cut": "Cut" in ftype,
-                            "args_n": 27})
+            results.append(
+                {
+                    "label": label,
+                    "ok": True,
+                    "feature_type": ftype,
+                    "feature_name": fname,
+                    "looks_like_cut": "Cut" in ftype,
+                    "args_n": 27,
+                }
+            )
         except Exception as e:
-            results.append({"label": label, "ok": False, "error": repr(e),
-                            "args_n": 27})
+            results.append(
+                {"label": label, "ok": False, "error": repr(e), "args_n": 27}
+            )
 
     cuts = [r for r in results if r.get("looks_like_cut")]
-    print(json.dumps({"results": results,
-                      "winning": [r["label"] for r in cuts]}, indent=2))
+    print(
+        json.dumps(
+            {"results": results, "winning": [r["label"] for r in cuts]}, indent=2
+        )
+    )
     return 0 if cuts else 1
 
 

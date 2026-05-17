@@ -183,7 +183,9 @@ def sw_get_feature_errors() -> dict[str, Any]:
             try:
                 first = resolve(doc, "FirstFeature")
             except Exception:
-                result["error"] = f"FirstFeature failed on FeatureManager and doc: {exc!r}"
+                result["error"] = (
+                    f"FirstFeature failed on FeatureManager and doc: {exc!r}"
+                )
                 return result
 
         if first is None:
@@ -236,7 +238,9 @@ def sw_get_feature_errors() -> dict[str, Any]:
                     "type_name": type_name,
                     "depth": depth,
                     "state_code": state_code,
-                    "state": FEATURE_STATE_NAMES.get(state_code, f"unknown({state_code})"),
+                    "state": FEATURE_STATE_NAMES.get(
+                        state_code, f"unknown({state_code})"
+                    ),
                     "description": description,
                     "suppressed": suppressed,
                 }
@@ -319,7 +323,9 @@ def sw_get_equations() -> dict[str, Any]:
         try:
             mgr_status = int(resolve(eq_mgr, "Status"))
             result["manager_status_code"] = mgr_status
-            result["manager_status"] = EQ_STATUS_NAMES.get(mgr_status, f"unknown({mgr_status})")
+            result["manager_status"] = EQ_STATUS_NAMES.get(
+                mgr_status, f"unknown({mgr_status})"
+            )
         except Exception:
             pass
 
@@ -647,8 +653,15 @@ def sw_get_mate_errors() -> dict[str, Any]:
 def _select_by_id(doc: Any, entity: str, append: bool = False) -> bool:
     """Drive SW selection via IModelDoc2.SelectByID (legacy 5-arg form)."""
     type_attempts = [
-        "PLANE", "FACE", "EDGE", "VERTEX", "AXIS",
-        "SKETCH", "BODYFEATURE", "REFERENCEFEATURE", "",
+        "PLANE",
+        "FACE",
+        "EDGE",
+        "VERTEX",
+        "AXIS",
+        "SKETCH",
+        "BODYFEATURE",
+        "REFERENCEFEATURE",
+        "",
     ]
     for type_str in type_attempts:
         try:
@@ -739,7 +752,9 @@ def sw_measure(
 
         result["selected_count"] = count
         if count == 0:
-            result["error"] = "no_selection - select entities in SW first, or pass entity_a/entity_b"
+            result["error"] = (
+                "no_selection - select entities in SW first, or pass entity_a/entity_b"
+            )
             return result
 
         for i in range(1, count + 1):

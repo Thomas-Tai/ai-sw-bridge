@@ -37,9 +37,9 @@ SW_SELECTYPE_SKETCH = "SKETCH"
 SW_END_COND_BLIND = 0
 
 
-BOX_W = 0.020   # 20 mm
-BOX_H = 0.020   # 20 mm
-BOX_T = 0.005   # 5 mm
+BOX_W = 0.020  # 20 mm
+BOX_H = 0.020  # 20 mm
+BOX_T = 0.005  # 5 mm
 
 
 def run_com() -> dict:
@@ -95,42 +95,56 @@ def run_com() -> dict:
     # T0 = swStartSketchPlane = 0, StartOffset = 0.0
     try:
         feature = fm.FeatureExtrusion2(
-            True,                # Sd (single direction)
-            False,               # Flip
-            False,               # Dir (use sketch normal)
-            SW_END_COND_BLIND,   # T1
-            0,                   # T2
-            BOX_T,               # D1 (5 mm)
-            0.0,                 # D2
-            False,               # Dchk1
-            False,               # Dchk2
-            False,               # Ddir1
-            False,               # Ddir2
-            0.0,                 # Dang1
-            0.0,                 # Dang2
-            False,               # OffsetReverse1
-            False,               # OffsetReverse2
-            False,               # TranslateSurface1
-            False,               # TranslateSurface2
-            True,                # Merge
-            True,                # UseFeatScope
-            True,                # UseAutoSelect
-            0,                   # T0 (swStartSketchPlane)
-            0.0,                 # StartOffset
-            False,               # FlipStartOffset (some docs show 22 args, some 23)
+            True,  # Sd (single direction)
+            False,  # Flip
+            False,  # Dir (use sketch normal)
+            SW_END_COND_BLIND,  # T1
+            0,  # T2
+            BOX_T,  # D1 (5 mm)
+            0.0,  # D2
+            False,  # Dchk1
+            False,  # Dchk2
+            False,  # Ddir1
+            False,  # Ddir2
+            0.0,  # Dang1
+            0.0,  # Dang2
+            False,  # OffsetReverse1
+            False,  # OffsetReverse2
+            False,  # TranslateSurface1
+            False,  # TranslateSurface2
+            True,  # Merge
+            True,  # UseFeatScope
+            True,  # UseAutoSelect
+            0,  # T0 (swStartSketchPlane)
+            0.0,  # StartOffset
+            False,  # FlipStartOffset (some docs show 22 args, some 23)
         )
     except Exception as e:
         # try the 22-arg form if 23-arg failed
         try:
             feature = fm.FeatureExtrusion2(
-                True, False, False,
-                SW_END_COND_BLIND, 0,
-                BOX_T, 0.0,
-                False, False, False, False,
-                0.0, 0.0,
-                False, False, False, False,
-                True, True, True,
-                0, 0.0,
+                True,
+                False,
+                False,
+                SW_END_COND_BLIND,
+                0,
+                BOX_T,
+                0.0,
+                False,
+                False,
+                False,
+                False,
+                0.0,
+                0.0,
+                False,
+                False,
+                False,
+                False,
+                True,
+                True,
+                True,
+                0,
+                0.0,
             )
         except Exception as e2:
             return {
@@ -144,7 +158,11 @@ def run_com() -> dict:
     try:
         original_name = feature.Name
     except Exception as e:
-        return {"status": "PARTIAL", "feature_name": "?", "error": f"got feature but Name failed: {e!r}"}
+        return {
+            "status": "PARTIAL",
+            "feature_name": "?",
+            "error": f"got feature but Name failed: {e!r}",
+        }
 
     # Try to rename it
     try:
@@ -217,6 +235,7 @@ def main() -> int:
         return 0
 
     import json
+
     result = run_com()
     print(json.dumps(result, indent=2))
     return 0 if result.get("status") == "PASS" else 1

@@ -13,6 +13,16 @@ Run with `ai-sw-build <path>/spec.json --no-dim`. Recommended order:
 | [`motor_mount_plate/`](motor_mount_plate/) | 10 | Full MMP: 6 primitives, face sketches on both sides, multi-circle hole patterns |
 | [`tension_bracket/`](tension_bracket/) | 8 | Stacked extrudes, face-sketch-origin offset workaround |
 
+## v0.3 examples (new primitives)
+
+| Example | Features | What it demonstrates |
+|---|---|---|
+| [`chamfered_box/`](chamfered_box/) | 3 | `chamfer_edge` in equal-distance mode |
+| [`patterned_plate/`](patterned_plate/) | 5 | `linear_pattern` of a hole feature along an edge direction |
+| [`mirrored_holes/`](mirrored_holes/) | 5 | `mirror_feature` of a hole about Right Plane |
+
+Each ships with a README that walks through the feature list and the gotchas specific to that primitive. The pattern + mirror primitives depend on `SelectByID2` working under late-binding for marked-selection — if you hit a `SelectByID2 returned False` error, run the corresponding spike under [`../spikes/v0_3/`](../spikes/v0_3/) to diagnose.
+
 ## Path C example (recorded-macro parameterization)
 
 | Example | What it demonstrates |

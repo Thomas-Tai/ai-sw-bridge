@@ -710,6 +710,246 @@
       "availability": "SOLIDWORKS 2017 FCS, Revision Number 25.0",
       "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~FeatureCut4.html"
     },
+    "IFeatureManager.InsertFeatureChamfer": {
+      "interface": "IFeatureManager",
+      "method": "InsertFeatureChamfer",
+      "summary": "Inserts a chamfer.",
+      "return_type": "Feature",
+      "args": [
+        {
+          "name": "Options",
+          "type": "system.int",
+          "doc": "Options as defined by swFeatureChamferOption_e"
+        },
+        {
+          "name": "ChamferType",
+          "type": "system.int",
+          "doc": "Chamfer type as defined by swChamferType_e"
+        },
+        {
+          "name": "Width",
+          "type": "system.double",
+          "doc": "If ChamferType is swChamferAngleDistance, then specify width of chamfer"
+        },
+        {
+          "name": "Angle",
+          "type": "system.double",
+          "doc": "If ChamferType is swChamferAngleDistance, then specify the angle of the }}-->}}-->chamfer"
+        },
+        {
+          "name": "OtherDist",
+          "type": "system.double",
+          "doc": "If ChamferType is swChamferEqualDistance, then you can specify a single value so that all distances are equal"
+        },
+        {
+          "name": "VertexChamDist1",
+          "type": "system.double",
+          "doc": "If ChamferType is swChamferDistanceDistance or swChamferVertex, then specify a value for the distance on first side"
+        },
+        {
+          "name": "VertexChamDist2",
+          "type": "system.double",
+          "doc": "If ChamferType is swChamferDistanceDistance or swChamferVertex, then specify a value for the distance on second side"
+        },
+        {
+          "name": "VertexChamDist3",
+          "type": "system.double",
+          "doc": "If ChamferType is swChamferVertex, then specify a value for the distance on third side"
+        }
+      ],
+      "args_count": 8,
+      "availability": "SOLIDWORKS 2005 FCS, Revision Number 13.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~InsertFeatureChamfer.html"
+    },
+    "IFeatureManager.FeatureLinearPattern5": {
+      "interface": "IFeatureManager",
+      "method": "FeatureLinearPattern5",
+      "summary": "Obsolete. See IFeatureManager::CreateFeature and the Remarks in ILinearPatternFeatureData and ILocalLinearPatternFeatureData.",
+      "return_type": "Feature",
+      "args": [
+        {
+          "name": "Num1",
+          "type": "system.int",
+          "doc": "Number of instances of the linear pattern in Direction 1, including the original"
+        },
+        {
+          "name": "Spacing1",
+          "type": "system.double",
+          "doc": "Spacing in meters between each instance of the linear pattern in Direction 1"
+        },
+        {
+          "name": "Num2",
+          "type": "system.int",
+          "doc": "Number of instances of the linear pattern in Direction 2, including the original"
+        },
+        {
+          "name": "Spacing2",
+          "type": "system.double",
+          "doc": "Spacing in meters between each instance of the linear pattern in Direction 2"
+        },
+        {
+          "name": "FlipDir1",
+          "type": "system.bool",
+          "doc": "True to reverse the direction of the linear pattern in Direction 1, false to not"
+        },
+        {
+          "name": "FlipDir2",
+          "type": "system.bool",
+          "doc": "True to reverse the direction of the linear pattern in Direction 2, false to not"
+        },
+        {
+          "name": "DName1",
+          "type": "system.string",
+          "doc": "Name of the dimension defining Direction 1"
+        },
+        {
+          "name": "DName2",
+          "type": "system.string",
+          "doc": "Name of the dimension defining Direction 2"
+        },
+        {
+          "name": "GeometryPattern",
+          "type": "system.bool",
+          "doc": "True to use geometry pattern, false to not"
+        },
+        {
+          "name": "VaryInstance",
+          "type": "system.bool",
+          "doc": "True to vary the dimensions and spacing of individual pattern instances, false to not; valid only if GeometryPattern = false (see Remarks)"
+        },
+        {
+          "name": "HasOffset1",
+          "type": "system.bool",
+          "doc": "True if using Offset1 to specify an offset of the pattern seed from a selected reference in Direction 1, false if not"
+        },
+        {
+          "name": "HasOffset2",
+          "type": "system.bool",
+          "doc": "True if using Offset2 to specify an offset of the pattern seed from a selected reference in Direction 2, false if not"
+        },
+        {
+          "name": "CtrlByNum1",
+          "type": "system.bool",
+          "doc": "True to control pattern spacing using Num1, false to control it using Spacing1; valid only if HasOffset1 is true"
+        },
+        {
+          "name": "CtrlByNum2",
+          "type": "system.bool",
+          "doc": "True to control pattern spacing using Num2, false to control it using Spacing2; valid only if HasOffset2 is true"
+        },
+        {
+          "name": "FromCentroid1",
+          "type": "system.bool",
+          "doc": "True if Offset1 is measured from the centroid of the seed instance, false if it is measured from a selected reference on the seed instance; valid only if HasOffset1 is true (see Remarks)"
+        },
+        {
+          "name": "FromCentroid2",
+          "type": "system.bool",
+          "doc": "True if Offset2 is measured from the centroid of the seed instance, false if it is measured from a selected reference on the seed instance; valid only if HasOffset2 is true (see Remarks)"
+        },
+        {
+          "name": "RevOffset1",
+          "type": "system.bool",
+          "doc": "True to reverse the direction of Offset1, false to not; valid only if HasOffset1 is true"
+        },
+        {
+          "name": "RevOffset2",
+          "type": "system.bool",
+          "doc": "True to reverse the direction of Offset2, false to not; valid only if HasOffset2 is true"
+        },
+        {
+          "name": "Offset1",
+          "type": "system.double",
+          "doc": "Offset in meters from a selected reference in Direction 1; valid only if HasOffset1 is true (see Remarks)"
+        },
+        {
+          "name": "Offset2",
+          "type": "system.double",
+          "doc": "Offset in meters from a selected reference in Direction 2; valid only if HasOffset2 is true (see Remarks)"
+        },
+        {
+          "name": "D2PatternSeedOnly",
+          "type": "system.bool",
+          "doc": "True to create a linear pattern in Direction 2 using the seed features only, without replicating the pattern instances of Direction 1; false to not"
+        },
+        {
+          "name": "SyncSubAssemblies",
+          "type": "system.bool",
+          "doc": "True to move components in the patterned instances when components are moved in the seed flexible subassembly, false to not"
+        }
+      ],
+      "args_count": 22,
+      "availability": "SOLIDWORKS 2017 FCS, Revision Number 25.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~FeatureLinearPattern5.html"
+    },
+    "IFeatureManager.InsertMirrorFeature2": {
+      "interface": "IFeatureManager",
+      "method": "InsertMirrorFeature2",
+      "summary": "Mirrors selected features, faces, bodies, and structure systems about a selected plane or planar face.",
+      "return_type": "Feature",
+      "args": [
+        {
+          "name": "BMirrorBody",
+          "type": "system.bool",
+          "doc": "True to mirror solid bodies; false to mirror a feature or face"
+        },
+        {
+          "name": "BGeometryPattern",
+          "type": "system.bool",
+          "doc": "True to mirror only the feature geometry, false to solve the entire feature; applies to mirroring features only"
+        },
+        {
+          "name": "BMerge",
+          "type": "system.bool",
+          "doc": "True to merge any mirrored solid bodies, false to not; applies to mirroring solid bodies only"
+        },
+        {
+          "name": "BKnit",
+          "type": "system.bool",
+          "doc": "True to knit surfaces, false to not; applies to mirroring surfaces only"
+        },
+        {
+          "name": "ScopeOptions",
+          "type": "system.int",
+          "doc": "Feature scope as defined by swFeatureScope_e"
+        }
+      ],
+      "args_count": 5,
+      "availability": "SOLIDWORKS 2008 FCS, Revision Number 16.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~InsertMirrorFeature2.html"
+    },
+    "IFeatureManager.CreateDefinition": {
+      "interface": "IFeatureManager",
+      "method": "CreateDefinition",
+      "summary": "Creates a feature data object of the specified type.",
+      "return_type": "System.object",
+      "args": [
+        {
+          "name": "Type",
+          "type": "system.int",
+          "doc": "Feature name ID as defined in swFeatureNameID_e: swFMBaseFlange (sheet metal base flange) swFMBeltAndChain (belt/chain) swFmBoundingBox (bounding box) swFmCirPattern (circular pattern) swFmCornerRelief (sheet metal corner relief) swFmCurvePattern (curve-driven pattern) swFmDerivedLPattern (derived-driven pattern) swFmDimPattern (variable/dimension pattern) swFmEdgeFlange (sheet metal edge flange) swFmFillet (constant radius, face, full round fillet/chamfer) swFmFillPattern (fill pattern) swFmGroundPlane (ground plane) swFmLibraryFeature (library) swFmLocalChainPattern (chain component pattern) swFmLocalCirPattern (circular component pattern) swFmLocalCurvePattern (curve-driven component pattern) swFmLocalLPattern (linear component pattern) swFmLocalSketchPattern (sketch-driven component pattern) swFmLPattern (linear pattern) swFmMateController (mate controller) swFmMirrorComponent (mirror components) swFmNormalCut (sheet metal normal cut) swFmRefCurve (projection curve) swFmRefSurface (surface sweep) swFmSketchBend (sheet metal sketched bend) swFmSketchPattern (sketch-driven pattern) swFmSMGusset (sheet metal gusset) swFmSweep (boss sweep) swFmSweepCut (cut sweep) swFmSweepThread (sweep thread) swFmSweptFlange (sheet metal swept flange) swFmTabAndSlot (tab and slot) swFmTablePattern (table pattern)"
+        }
+      ],
+      "args_count": 1,
+      "availability": "SOLIDWORKS 2006 FCS, Revision Number 14.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~CreateDefinition.html"
+    },
+    "IFeatureManager.CreateFeature": {
+      "interface": "IFeatureManager",
+      "method": "CreateFeature",
+      "summary": "Creates the specified feature.",
+      "return_type": "Feature",
+      "args": [
+        {
+          "name": "FeatureData",
+          "type": "system.object",
+          "doc": "thread, sweep, library, tab/slot, bounding box, ground plane, mirror components, projection curve, sheet metal normal cut, sheet metal swept flange, sheet metal gusset, sheet metal edge flange, simple fillet/chamfer, belt/chain, sheet metal base flange, sheet metal corner relief, sheet metal sketched bend, mate controller, or a pattern-specific feature data object (see Remarks)"
+        }
+      ],
+      "args_count": 1,
+      "availability": "SOLIDWORKS 2006 FCS, Revision Number 14.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~CreateFeature.html"
+    },
     "ISketchManager.InsertSketch": {
       "interface": "ISketchManager",
       "method": "InsertSketch",
@@ -1135,6 +1375,85 @@
       "values": [],
       "values_count": 0,
       "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swSelectType_e.html"
+    },
+    "swChamferType_e": {
+      "enum": "swChamferType_e",
+      "summary": "Chamfer types.",
+      "values": [
+        {
+          "name": "swChamferAngleDistance",
+          "value": 1,
+          "doc": null
+        },
+        {
+          "name": "swChamferDistanceDistance",
+          "value": 2,
+          "doc": null
+        },
+        {
+          "name": "swChamferEqualDistance",
+          "value": 16,
+          "doc": null
+        },
+        {
+          "name": "swChamferVertex",
+          "value": 3,
+          "doc": null
+        }
+      ],
+      "values_count": 4,
+      "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swChamferType_e.html"
+    },
+    "swFeatureChamferOption_e": {
+      "enum": "swFeatureChamferOption_e",
+      "summary": "Chamfer feature options. Bitmask.",
+      "values": [
+        {
+          "name": "swFeatureChamferFlipDirection",
+          "value": 1,
+          "doc": null
+        },
+        {
+          "name": "swFeatureChamferKeepFeature",
+          "value": 2,
+          "doc": null
+        },
+        {
+          "name": "swFeatureChamferPropagateFeatToParts",
+          "value": 8,
+          "doc": null
+        },
+        {
+          "name": "swFeatureChamferTangentPropagation",
+          "value": 4,
+          "doc": null
+        }
+      ],
+      "values_count": 4,
+      "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swFeatureChamferOption_e.html"
+    },
+    "swFeatureScope_e": {
+      "enum": "swFeatureScope_e",
+      "summary": "Feature scope options.",
+      "values": [
+        {
+          "name": "swFeatureScope_AllBodies",
+          "value": 0,
+          "doc": "All of the bodies in the multibody part are affected by the Mirror feature."
+        },
+        {
+          "name": "swFeatureScope_SelectedBodiesWithAutoSelect",
+          "value": 1,
+          "doc": "Only the specified bodies in the multibody part are affected by the Mirror feature when AutoSelect is true."
+        },
+        {
+          "name": "swFeatureScope_SelectedBodiesWithOutAutoSelect",
+          "value": 2,
+          "doc": "Only the specified bodies in the multibody part are affected by the Mirror feature when AutoSelect is false."
+        }
+      ],
+      "values_count": 3,
+      "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swFeatureScope_e.html"
     }
   },
   "missing": [

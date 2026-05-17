@@ -12,6 +12,7 @@ of trying to gencache the whole SldWorks.Application.
 If we can get a typed FeatureManager, we can call FeatureCut4 against
 the stub which knows the correct VARIANT types per arg.
 """
+
 from __future__ import annotations
 
 import json
@@ -38,14 +39,29 @@ def _build_box(doc):
     doc.SelectByID("SK_Box", "SKETCH", 0.0, 0.0, 0.0)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        0, 0,
-        0.005, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.005,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("FeatureExtrusion2 None")
@@ -72,8 +88,7 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": "no doc"}))
         return 1
     if doc.GetFeatureCount > 17:
-        print(json.dumps({"ok": False,
-                          "error": f"not blank ({doc.GetFeatureCount})"}))
+        print(json.dumps({"ok": False, "error": f"not blank ({doc.GetFeatureCount})"}))
         return 1
 
     try:
@@ -87,11 +102,13 @@ def main() -> int:
     # Try gencache on the FeatureManager object
     try:
         from win32com.client import gencache, CDispatch
+
         # gencache.EnsureDispatch on a Dispatch-like proxy doesn't work
         # directly; we use Dispatch with a CLSID + create a typed proxy.
         # The simpler approach: gencache.EnsureModule with FeatureManager's
         # typeinfo. Try the type info route.
         import win32com.client
+
         # Get the typelib info from the late-bound object
         try:
             tinfo = fm_late._oleobj_.GetTypeInfo()
@@ -120,15 +137,30 @@ def main() -> int:
     doc.SelectByID(sk_name, "SKETCH", 0.0, 0.0, 0.0)
 
     args24 = [
-        True, False, False,
-        0, 0,
-        0.005, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
+        True,
         False,
-        True, True, True,
-        0, 0.0, False,
+        False,
+        0,
+        0,
+        0.005,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     ]
 
     # Try via the typed wrapper if we got one
@@ -150,12 +182,18 @@ def main() -> int:
     except Exception:
         methods = []
 
-    print(json.dumps({
-        "typed_class": typed_class,
-        "typed_cut4_result": typed_result,
-        "method_count_on_late_fm": len(methods),
-        "first_methods": methods[:20],
-    }, indent=2, default=str))
+    print(
+        json.dumps(
+            {
+                "typed_class": typed_class,
+                "typed_cut4_result": typed_result,
+                "method_count_on_late_fm": len(methods),
+                "first_methods": methods[:20],
+            },
+            indent=2,
+            default=str,
+        )
+    )
     return 0
 
 

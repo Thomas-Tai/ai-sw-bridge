@@ -16,6 +16,7 @@ We:
 PASS: D1@SpikeA_Box reads 10 mm after rebuild.
 FAIL: any of the above raises or value doesn't change.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -63,7 +64,10 @@ def run_com() -> dict:
     # Read the dim's current value before binding
     dim_before = doc.Parameter("D1@SpikeA_Box")
     if dim_before is None:
-        return {"status": "FAIL", "error": "Parameter(D1@SpikeA_Box) returned None - did Spike A not produce SpikeA_Box?"}
+        return {
+            "status": "FAIL",
+            "error": "Parameter(D1@SpikeA_Box) returned None - did Spike A not produce SpikeA_Box?",
+        }
 
     val_before_m = dim_before.SystemValue  # meters
 

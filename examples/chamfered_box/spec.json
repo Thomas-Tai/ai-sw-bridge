@@ -1,0 +1,33 @@
+{
+    "schema_version": 1,
+    "name": "ChamferedBox",
+    "_comment": "v0.3 example: 20x20x10 box with equal-distance chamfers on the four top edges.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Box",
+            "plane": "Front",
+            "width": 20.0,
+            "height": 20.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Box",
+            "sketch": "SK_Box",
+            "depth": 10.0
+        },
+        {
+            "type": "chamfer_edge",
+            "name": "Ch_TopEdges",
+            "_comment": "1mm equal-distance chamfer on all four top edges. Edge midpoints are at z=10mm (top face) and x or y on the perimeter.",
+            "mode": "equal_distance",
+            "distance": 1.0,
+            "edges": [
+                {"x":  10.0, "y":   0.0, "z": 10.0},
+                {"x": -10.0, "y":   0.0, "z": 10.0},
+                {"x":   0.0, "y":  10.0, "z": 10.0},
+                {"x":   0.0, "y": -10.0, "z": 10.0}
+            ]
+        }
+    ]
+}

@@ -74,8 +74,11 @@ def _try_strategy(doc, sm, strategy: str, x_offset_m: float) -> dict:
     try:
         dim = _open_sketch_and_add_dim(doc, sm, x_offset_m)
         if dim is None:
-            return {"strategy": strategy, "status": "FAIL",
-                    "error": "AddDimension2 returned None"}
+            return {
+                "strategy": strategy,
+                "status": "FAIL",
+                "error": "AddDimension2 returned None",
+            }
 
         # Apply the strategy
         applied = False
@@ -102,8 +105,12 @@ def _try_strategy(doc, sm, strategy: str, x_offset_m: float) -> dict:
             elif strategy == "S4_no_dismiss":
                 applied = True  # control
         except Exception as e:
-            return {"strategy": strategy, "status": "ERROR_IN_STRATEGY",
-                    "error": repr(e), "applied": applied}
+            return {
+                "strategy": strategy,
+                "status": "ERROR_IN_STRATEGY",
+                "error": repr(e),
+                "applied": applied,
+            }
 
         # Probe: can we still do COM calls? Try ClearSelection2 + close sketch
         try:
@@ -117,12 +124,15 @@ def _try_strategy(doc, sm, strategy: str, x_offset_m: float) -> dict:
                 "elapsed_s": round(elapsed, 3),
             }
         except Exception as e:
-            return {"strategy": strategy, "status": "FAIL_AFTER_STRATEGY",
-                    "error": repr(e), "method_result": str(method_result)}
+            return {
+                "strategy": strategy,
+                "status": "FAIL_AFTER_STRATEGY",
+                "error": repr(e),
+                "method_result": str(method_result),
+            }
 
     except Exception as e:
-        return {"strategy": strategy, "status": "FAIL_SETUP",
-                "error": repr(e)}
+        return {"strategy": strategy, "status": "FAIL_SETUP", "error": repr(e)}
 
 
 def run() -> dict:
@@ -133,8 +143,10 @@ def run() -> dict:
 
     fc = doc.GetFeatureCount
     if fc > 17:
-        return {"status": "FAIL",
-                "error": f"doc not blank: {fc} features. File > New > Part first."}
+        return {
+            "status": "FAIL",
+            "error": f"doc not blank: {fc} features. File > New > Part first.",
+        }
 
     sm = doc.SketchManager
 

@@ -63,12 +63,29 @@ def _create_box(doc, side_mm: float, thick_mm: float) -> None:
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, thick_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        thick_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude returned None")
@@ -149,10 +166,10 @@ def main() -> int:
         doc.ClearSelection2(True)
         # Try a few cardinal edge midpoints
         edge_candidates = [
-            (0.01, 0.0, 0.01),    # +X edge of top
-            (-0.01, 0.0, 0.01),   # -X edge of top
-            (0.0, 0.01, 0.01),    # +Y edge of top
-            (0.0, -0.01, 0.01),   # -Y edge of top
+            (0.01, 0.0, 0.01),  # +X edge of top
+            (-0.01, 0.0, 0.01),  # -X edge of top
+            (0.0, 0.01, 0.01),  # +Y edge of top
+            (0.0, -0.01, 0.01),  # -Y edge of top
         ]
         n_selected = 0
         for x, y, z in edge_candidates:

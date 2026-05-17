@@ -1,0 +1,42 @@
+{
+    "schema_version": 1,
+    "name": "PatternedPlate",
+    "_comment": "v0.3 example: a 30x20 plate with a seed hole, linear-patterned 3 times along +X with 8mm spacing.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Plate",
+            "plane": "Front",
+            "width": 30.0,
+            "height": 20.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Plate",
+            "sketch": "SK_Plate",
+            "depth": 4.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_HoleSeed",
+            "of_feature": "EX_Plate",
+            "face": "+z",
+            "diameter": 3.0,
+            "center": {"u": -10.0, "v": 0.0}
+        },
+        {
+            "type": "cut_extrude_through_all",
+            "name": "Hole_Seed",
+            "sketch": "SK_HoleSeed"
+        },
+        {
+            "type": "linear_pattern",
+            "name": "LP_Holes",
+            "_comment": "3 instances total (seed + 2 copies) along +X at 8mm spacing. The direction edge is a point on the plate's top +X edge (x=15, z=4 on the +z face). Pattern uses the edge's tangent at the click point.",
+            "seed": "Hole_Seed",
+            "direction": {"x": 15.0, "y": 0.0, "z": 4.0},
+            "count": 3,
+            "spacing": 8.0
+        }
+    ]
+}

@@ -2,6 +2,7 @@
 Read-only verification of the active part's feature tree.
 Used after Spikes A and B to confirm what got built.
 """
+
 from __future__ import annotations
 
 import json
@@ -37,7 +38,9 @@ def main() -> int:
         except Exception:
             break
 
-    print(json.dumps({"ok": True, "feature_count": count, "features": features}, indent=2))
+    print(
+        json.dumps({"ok": True, "feature_count": count, "features": features}, indent=2)
+    )
     return 0
 
 

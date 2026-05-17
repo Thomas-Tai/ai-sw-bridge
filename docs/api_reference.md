@@ -48,6 +48,34 @@ Gets the type of feature. NOTE: To get the underlying type of feature of an Inst
 
 **Returns:** `System.string`
 
+### `IFeatureManager.CreateDefinition`
+
+Creates a feature data object of the specified type.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Type` | `system.int` | Feature name ID as defined in swFeatureNameID_e: swFMBaseFlange (sheet metal base flange) swFMBeltAndChain (belt/chain) swFmBoundingBox (bounding box) swFmCirPattern (circular pattern) swFmCornerRe... |
+
+**Returns:** `System.object`
+
+**Availability:** SOLIDWORKS 2006 FCS, Revision Number 14.0
+
+### `IFeatureManager.CreateFeature`
+
+Creates the specified feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `FeatureData` | `system.object` | thread, sweep, library, tab/slot, bounding box, ground plane, mirror components, projection curve, sheet metal normal cut, sheet metal swept flange, sheet metal gusset, sheet metal edge flange, sim... |
+
+**Returns:** `Feature`
+
+**Availability:** SOLIDWORKS 2006 FCS, Revision Number 14.0
+
 ### `IFeatureManager.FeatureCut4`
 
 Creates a cut extrude feature.
@@ -159,6 +187,80 @@ Creates an extruded feature.
 **Returns:** `Feature`
 
 **Availability:** SOLIDWORKS 2014 FCS, Revision Number 22.0
+
+### `IFeatureManager.FeatureLinearPattern5`
+
+Obsolete. See IFeatureManager::CreateFeature and the Remarks in ILinearPatternFeatureData and ILocalLinearPatternFeatureData.
+
+**Args (22):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Num1` | `system.int` | Number of instances of the linear pattern in Direction 1, including the original |
+| 2 | `Spacing1` | `system.double` | Spacing in meters between each instance of the linear pattern in Direction 1 |
+| 3 | `Num2` | `system.int` | Number of instances of the linear pattern in Direction 2, including the original |
+| 4 | `Spacing2` | `system.double` | Spacing in meters between each instance of the linear pattern in Direction 2 |
+| 5 | `FlipDir1` | `system.bool` | True to reverse the direction of the linear pattern in Direction 1, false to not |
+| 6 | `FlipDir2` | `system.bool` | True to reverse the direction of the linear pattern in Direction 2, false to not |
+| 7 | `DName1` | `system.string` | Name of the dimension defining Direction 1 |
+| 8 | `DName2` | `system.string` | Name of the dimension defining Direction 2 |
+| 9 | `GeometryPattern` | `system.bool` | True to use geometry pattern, false to not |
+| 10 | `VaryInstance` | `system.bool` | True to vary the dimensions and spacing of individual pattern instances, false to not; valid only if GeometryPattern = false (see Remarks) |
+| 11 | `HasOffset1` | `system.bool` | True if using Offset1 to specify an offset of the pattern seed from a selected reference in Direction 1, false if not |
+| 12 | `HasOffset2` | `system.bool` | True if using Offset2 to specify an offset of the pattern seed from a selected reference in Direction 2, false if not |
+| 13 | `CtrlByNum1` | `system.bool` | True to control pattern spacing using Num1, false to control it using Spacing1; valid only if HasOffset1 is true |
+| 14 | `CtrlByNum2` | `system.bool` | True to control pattern spacing using Num2, false to control it using Spacing2; valid only if HasOffset2 is true |
+| 15 | `FromCentroid1` | `system.bool` | True if Offset1 is measured from the centroid of the seed instance, false if it is measured from a selected reference on the seed instance; valid only if HasOffset1 is true (see Remarks) |
+| 16 | `FromCentroid2` | `system.bool` | True if Offset2 is measured from the centroid of the seed instance, false if it is measured from a selected reference on the seed instance; valid only if HasOffset2 is true (see Remarks) |
+| 17 | `RevOffset1` | `system.bool` | True to reverse the direction of Offset1, false to not; valid only if HasOffset1 is true |
+| 18 | `RevOffset2` | `system.bool` | True to reverse the direction of Offset2, false to not; valid only if HasOffset2 is true |
+| 19 | `Offset1` | `system.double` | Offset in meters from a selected reference in Direction 1; valid only if HasOffset1 is true (see Remarks) |
+| 20 | `Offset2` | `system.double` | Offset in meters from a selected reference in Direction 2; valid only if HasOffset2 is true (see Remarks) |
+| 21 | `D2PatternSeedOnly` | `system.bool` | True to create a linear pattern in Direction 2 using the seed features only, without replicating the pattern instances of Direction 1; false to not |
+| 22 | `SyncSubAssemblies` | `system.bool` | True to move components in the patterned instances when components are moved in the seed flexible subassembly, false to not |
+
+**Returns:** `Feature`
+
+**Availability:** SOLIDWORKS 2017 FCS, Revision Number 25.0
+
+### `IFeatureManager.InsertFeatureChamfer`
+
+Inserts a chamfer.
+
+**Args (8):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Options` | `system.int` | Options as defined by swFeatureChamferOption_e |
+| 2 | `ChamferType` | `system.int` | Chamfer type as defined by swChamferType_e |
+| 3 | `Width` | `system.double` | If ChamferType is swChamferAngleDistance, then specify width of chamfer |
+| 4 | `Angle` | `system.double` | If ChamferType is swChamferAngleDistance, then specify the angle of the }}-->}}-->chamfer |
+| 5 | `OtherDist` | `system.double` | If ChamferType is swChamferEqualDistance, then you can specify a single value so that all distances are equal |
+| 6 | `VertexChamDist1` | `system.double` | If ChamferType is swChamferDistanceDistance or swChamferVertex, then specify a value for the distance on first side |
+| 7 | `VertexChamDist2` | `system.double` | If ChamferType is swChamferDistanceDistance or swChamferVertex, then specify a value for the distance on second side |
+| 8 | `VertexChamDist3` | `system.double` | If ChamferType is swChamferVertex, then specify a value for the distance on third side |
+
+**Returns:** `Feature`
+
+**Availability:** SOLIDWORKS 2005 FCS, Revision Number 13.0
+
+### `IFeatureManager.InsertMirrorFeature2`
+
+Mirrors selected features, faces, bodies, and structure systems about a selected plane or planar face.
+
+**Args (5):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `BMirrorBody` | `system.bool` | True to mirror solid bodies; false to mirror a feature or face |
+| 2 | `BGeometryPattern` | `system.bool` | True to mirror only the feature geometry, false to solve the entire feature; applies to mirroring features only |
+| 3 | `BMerge` | `system.bool` | True to merge any mirrored solid bodies, false to not; applies to mirroring solid bodies only |
+| 4 | `BKnit` | `system.bool` | True to knit surfaces, false to not; applies to mirroring surfaces only |
+| 5 | `ScopeOptions` | `system.int` | Feature scope as defined by swFeatureScope_e |
+
+**Returns:** `Feature`
+
+**Availability:** SOLIDWORKS 2008 FCS, Revision Number 16.0
 
 ### `IModelDoc2.AddDimension2`
 
@@ -439,6 +541,17 @@ Sets system default user preference values.
 
 ## Enums
 
+### `swChamferType_e`
+
+Chamfer types.
+
+| Name | Value | Doc |
+|------|-------|-----|
+| `swChamferAngleDistance` | `1` |  |
+| `swChamferDistanceDistance` | `2` |  |
+| `swChamferVertex` | `3` |  |
+| `swChamferEqualDistance` | `16` |  |
+
 ### `swDimensionType_e`
 
 Types of dimensions.
@@ -495,6 +608,27 @@ End conditions for creation of a variety of features.
 | `swEndCondThroughAllBoth` | `9` |  |
 | `swEndCondUpToSelection` | `10` |  |
 | `swEndCondUpToNext` | `11` |  |
+
+### `swFeatureChamferOption_e`
+
+Chamfer feature options. Bitmask.
+
+| Name | Value | Doc |
+|------|-------|-----|
+| `swFeatureChamferFlipDirection` | `1` |  |
+| `swFeatureChamferKeepFeature` | `2` |  |
+| `swFeatureChamferTangentPropagation` | `4` |  |
+| `swFeatureChamferPropagateFeatToParts` | `8` |  |
+
+### `swFeatureScope_e`
+
+Feature scope options.
+
+| Name | Value | Doc |
+|------|-------|-----|
+| `swFeatureScope_AllBodies` | `0` | All of the bodies in the multibody part are affected by the Mirror feature. |
+| `swFeatureScope_SelectedBodiesWithAutoSelect` | `1` | Only the specified bodies in the multibody part are affected by the Mirror feature when AutoSelect is true. |
+| `swFeatureScope_SelectedBodiesWithOutAutoSelect` | `2` | Only the specified bodies in the multibody part are affected by the Mirror feature when AutoSelect is false. |
 
 ### `swSelectType_e`
 

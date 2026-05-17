@@ -23,6 +23,11 @@
     ["IFeatureManager", "FeatureExtrusion3"],
     ["IFeatureManager", "FeatureCut4"],
     ["IFeatureManager", "FeatureCut5"],
+    ["IFeatureManager", "InsertFeatureChamfer"],
+    ["IFeatureManager", "FeatureLinearPattern5"],
+    ["IFeatureManager", "InsertMirrorFeature2"],
+    ["IFeatureManager", "CreateDefinition"],
+    ["IFeatureManager", "CreateFeature"],
 
     ["ISketchManager", "InsertSketch"],
     ["ISketchManager", "CreateCornerRectangle"],
@@ -39,6 +44,9 @@
     "swStartConditions_e",
     "swDocumentTypes_e",
     "swDimensionType_e",
-    "swSelectType_e"
+    "swSelectType_e",
+    "swChamferType_e",
+    "swFeatureChamferOption_e",
+    "swFeatureScope_e"
   ]
 }

@@ -55,7 +55,9 @@ def _try_dim(doc, ext, sel_coord, leader, dim_type: int, label: str) -> dict:
     sm.CreateCircle(0.0, 0.0, 0.0, 0.005, 0.0, 0.0)
 
     doc.ClearSelection2(True)
-    if not doc.SelectByID("", "SKETCHSEGMENT", sel_coord[0], sel_coord[1], sel_coord[2]):
+    if not doc.SelectByID(
+        "", "SKETCHSEGMENT", sel_coord[0], sel_coord[1], sel_coord[2]
+    ):
         sm.InsertSketch(True)
         return {"label": label, "status": "FAIL", "error": "select circle"}
 
@@ -65,8 +67,12 @@ def _try_dim(doc, ext, sel_coord, leader, dim_type: int, label: str) -> dict:
         dim = ext.AddSpecificDimension(leader[0], leader[1], leader[2], dim_type, err)
     except Exception as e:
         sm.InsertSketch(True)
-        return {"label": label, "status": "ERROR", "error": repr(e),
-                "elapsed_s": round(time.time() - t0, 3)}
+        return {
+            "label": label,
+            "status": "ERROR",
+            "error": repr(e),
+            "elapsed_s": round(time.time() - t0, 3),
+        }
     elapsed = time.time() - t0
 
     sm.InsertSketch(True)  # close the sketch
@@ -87,8 +93,11 @@ def main() -> int:
         print(json.dumps({"status": "FAIL", "error": "no active doc"}))
         return 1
     if doc.GetFeatureCount > 17:
-        print(json.dumps({"status": "FAIL",
-                          "error": "doc not blank; File>New>Part first"}))
+        print(
+            json.dumps(
+                {"status": "FAIL", "error": "doc not blank; File>New>Part first"}
+            )
+        )
         return 1
 
     # Suppress popup (per Reddit, should work for AddSpecificDimension)
@@ -100,7 +109,7 @@ def main() -> int:
     try:
         # Try a few DimType values. Circle diameter is the simplest case.
         # Leader at (5+5, 5+5, 0) mm puts it outside the circle.
-        sel = (0.005, 0.0, 0.0)         # point on perimeter
+        sel = (0.005, 0.0, 0.0)  # point on perimeter
         leader = (0.010, 0.005, 0.0)
         for dt in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
             r = _try_dim(doc, ext, sel, leader, dt, f"DimType_{dt}")
@@ -112,18 +121,23 @@ def main() -> int:
     fast = [r for r in results if r["status"] == "PASS" and not r.get("blocked")]
     slow = [r for r in results if r["status"] == "PASS" and r.get("blocked")]
 
-    print(json.dumps({
-        "status": "DONE",
-        "results": results,
-        "fast_PASS_count": len(fast),
-        "fast_dim_types": [r["dim_type_tried"] for r in fast],
-        "slow_PASS_count": len(slow),
-        "verdict": (
-            "AddSpecificDimension respects toggle 8 -> use it!"
-            if fast else
-            "AddSpecificDimension also blocks; toggle 8 still ineffective"
-        ),
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "status": "DONE",
+                "results": results,
+                "fast_PASS_count": len(fast),
+                "fast_dim_types": [r["dim_type_tried"] for r in fast],
+                "slow_PASS_count": len(slow),
+                "verdict": (
+                    "AddSpecificDimension respects toggle 8 -> use it!"
+                    if fast
+                    else "AddSpecificDimension also blocks; toggle 8 still ineffective"
+                ),
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

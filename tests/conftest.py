@@ -34,8 +34,7 @@ def simple_locals(tmp_path: Path) -> Path:
     """A tiny locals.txt file with two literal entries."""
     path = tmp_path / "locals.txt"
     path.write_text(
-        '"PART_DIAMETER"          = 25.0\n'
-        '"PART_LENGTH"            = 80.0\n',
+        '"PART_DIAMETER"          = 25.0\n' '"PART_LENGTH"            = 80.0\n',
         encoding="utf-8",
     )
     return path

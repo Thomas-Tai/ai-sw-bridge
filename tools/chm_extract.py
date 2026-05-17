@@ -38,14 +38,26 @@ from pathlib import Path
 from typing import Any
 
 # Default locations for decompiled CHM trees
-DEFAULT_API_ROOT = Path(__file__).resolve().parent.parent / "spikes" / "phase0" / "_chm_decompiled"
-DEFAULT_CONST_ROOT = Path(__file__).resolve().parent.parent / "spikes" / "phase0" / "_chm_decompiled_swconst"
+DEFAULT_API_ROOT = (
+    Path(__file__).resolve().parent.parent / "spikes" / "phase0" / "_chm_decompiled"
+)
+DEFAULT_CONST_ROOT = (
+    Path(__file__).resolve().parent.parent
+    / "spikes"
+    / "phase0"
+    / "_chm_decompiled_swconst"
+)
 
 
 def _strip_html(s: str) -> str:
     """Strip HTML tags and normalize whitespace. Decodes a few common entities."""
     s = re.sub(r"<[^>]+>", "", s)
-    s = s.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+    s = (
+        s.replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+    )
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
@@ -53,7 +65,7 @@ def _strip_html(s: str) -> str:
 # Regex to extract the C# signature block. The C# section uses a class
 # selector `LanguageSpecific id=Syntax_CS` followed by a <pre>...</pre>.
 _CS_SECTION_RE = re.compile(
-    r'id=Syntax_CS.*?<pre>(.*?)</pre>',
+    r"id=Syntax_CS.*?<pre>(.*?)</pre>",
     re.IGNORECASE | re.DOTALL,
 )
 
@@ -63,7 +75,7 @@ _CS_SECTION_RE = re.compile(
 #   <InterfaceName>   -- e.g. Callout, IFeature, Object
 # Pattern relies on the `id="<name>"` attribute uniquely tagging each param.
 _CS_ARG_RE = re.compile(
-    r'(?P<ctype>System\.\w+|[A-Z][\w]+)'
+    r"(?P<ctype>System\.\w+|[A-Z][\w]+)"
     r'\s*<i><a\s+class="parameter"\s+id="(?P<name>\w+)"',
 )
 
@@ -89,7 +101,9 @@ def _get_index(root: Path) -> dict[str, Path]:
     return _FILE_INDEX_CACHE[root]
 
 
-def extract_method(interface: str, method: str, api_root: Path) -> dict[str, Any] | None:
+def extract_method(
+    interface: str, method: str, api_root: Path
+) -> dict[str, Any] | None:
     """Find and parse the .html file for `interface.method`.
 
     Returns None if not found.
@@ -129,21 +143,25 @@ def extract_method(interface: str, method: str, api_root: Path) -> dict[str, Any
         cs_block = cs_match.group(1)
         # First line: return type + method name + opening paren
         # E.g. "Feature FeatureCut4(" -> return_type = "Feature"
-        head_match = re.search(r'^\s*(\S+)\s+\w+\s*\(', cs_block.strip().split("\n")[0])
+        head_match = re.search(r"^\s*(\S+)\s+\w+\s*\(", cs_block.strip().split("\n")[0])
         if head_match:
             return_type = head_match.group(1)
         for am in _CS_ARG_RE.finditer(cs_block):
-            args.append({
-                "name": am.group("name"),
-                "type": am.group("ctype").lower(),
-                "doc": None,
-            })
+            args.append(
+                {
+                    "name": am.group("name"),
+                    "type": am.group("ctype").lower(),
+                    "doc": None,
+                }
+            )
 
     # Extract per-param docs from popup-bubble divs (id="<name>_box")
     # Pattern: <DD class="popupbubble">...doc...</DD>
     for arg in args:
         bubble_re = re.compile(
-            r'id="' + re.escape(arg["name"]) + r'_box".*?<DD class="popupbubble">(.*?)</DD>',
+            r'id="'
+            + re.escape(arg["name"])
+            + r'_box".*?<DD class="popupbubble">(.*?)</DD>',
             re.IGNORECASE | re.DOTALL,
         )
         m = bubble_re.search(text)
@@ -153,14 +171,16 @@ def extract_method(interface: str, method: str, api_root: Path) -> dict[str, Any
     # Extract Availability
     avail_match = re.search(
         r'id="availabilitySection".*?>(.*?)</div>',
-        text, re.IGNORECASE | re.DOTALL,
+        text,
+        re.IGNORECASE | re.DOTALL,
     )
     availability = _strip_html(avail_match.group(1)) if avail_match else None
 
     # Extract one-line summary (the first text node after the body)
     summary_match = re.search(
         r'<div class="saveHistory".*?</div>\s*(.*?)<h1',
-        text, re.IGNORECASE | re.DOTALL,
+        text,
+        re.IGNORECASE | re.DOTALL,
     )
     summary = _strip_html(summary_match.group(1)) if summary_match else None
 
@@ -217,7 +237,7 @@ def extract_enum(enum_name: str, const_root: Path) -> dict[str, Any] | None:
     # or
     #   <TD CLASS="DescriptionCell">VALUE = doc text</TD>
     table_re = re.compile(
-        r'<TD CLASS=MemberNameCell>\s*<strong>(?P<name>\w+)</strong>\s*</TD>\s*'
+        r"<TD CLASS=MemberNameCell>\s*<strong>(?P<name>\w+)</strong>\s*</TD>\s*"
         r'<TD CLASS="DescriptionCell">\s*(?P<rest>[^<]+?)\s*</TD>',
         re.IGNORECASE,
     )
@@ -227,12 +247,14 @@ def extract_enum(enum_name: str, const_root: Path) -> dict[str, Any] | None:
         vm = re.match(r"(-?\d+)\s*(?:=\s*(.*))?", rest)
         if vm:
             doc = vm.group(2).strip() if vm.group(2) else None
-            values.append({"name": mm.group("name"), "value": int(vm.group(1)), "doc": doc})
+            values.append(
+                {"name": mm.group("name"), "value": int(vm.group(1)), "doc": doc}
+            )
 
     # Fallback: VB declaration block
     if not values:
         vb_re = re.compile(
-            r'<pre>.*?Public Enum\s+\w+(.*?)End Enum',
+            r"<pre>.*?Public Enum\s+\w+(.*?)End Enum",
             re.IGNORECASE | re.DOTALL,
         )
         vbm = vb_re.search(text)
@@ -242,7 +264,9 @@ def extract_enum(enum_name: str, const_root: Path) -> dict[str, Any] | None:
                 ln_clean = _strip_html(ln)
                 mm = re.match(r"(\w+)\s*=\s*(-?\d+)", ln_clean)
                 if mm:
-                    values.append({"name": mm.group(1), "value": int(mm.group(2)), "doc": None})
+                    values.append(
+                        {"name": mm.group(1), "value": int(mm.group(2)), "doc": None}
+                    )
 
     # Deduplicate (sometimes the regex catches multiple presentations)
     seen = set()
@@ -254,7 +278,8 @@ def extract_enum(enum_name: str, const_root: Path) -> dict[str, Any] | None:
 
     summary_match = re.search(
         r'<div class="saveHistory".*?</div>\s*(.*?)<h1',
-        text, re.IGNORECASE | re.DOTALL,
+        text,
+        re.IGNORECASE | re.DOTALL,
     )
     summary = _strip_html(summary_match.group(1)) if summary_match else None
 
@@ -291,7 +316,11 @@ def main() -> int:
     if args.cmd == "method":
         result = extract_method(args.interface, args.method, Path(args.api_root))
         if result is None:
-            print(json.dumps({"error": f"not found: {args.interface}.{args.method}"}, indent=2))
+            print(
+                json.dumps(
+                    {"error": f"not found: {args.interface}.{args.method}"}, indent=2
+                )
+            )
             return 1
         print(json.dumps(result, indent=2))
         return 0
@@ -324,13 +353,18 @@ def main() -> int:
 
         with open(args.output_json, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=2, ensure_ascii=False)
-        print(json.dumps({
-            "methods_found": len(out["methods"]),
-            "enums_found": len(out["enums"]),
-            "missing_count": len(out["missing"]),
-            "missing": out["missing"],
-            "written": args.output_json,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "methods_found": len(out["methods"]),
+                    "enums_found": len(out["enums"]),
+                    "missing_count": len(out["missing"]),
+                    "missing": out["missing"],
+                    "written": args.output_json,
+                },
+                indent=2,
+            )
+        )
         return 0
 
     return 1

@@ -1,0 +1,40 @@
+{
+    "schema_version": 1,
+    "name": "MirroredHoles",
+    "_comment": "v0.3 example: a 30x20 plate with a Y-offset hole on one side, mirrored about the Right Plane (YZ, x=0) to produce a symmetric hole on the other side.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Plate",
+            "plane": "Front",
+            "width": 30.0,
+            "height": 20.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Plate",
+            "sketch": "SK_Plate",
+            "depth": 4.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_HoleSeed",
+            "of_feature": "EX_Plate",
+            "face": "+z",
+            "diameter": 3.0,
+            "center": {"u": -10.0, "v": 5.0}
+        },
+        {
+            "type": "cut_extrude_through_all",
+            "name": "Hole_Seed",
+            "sketch": "SK_HoleSeed"
+        },
+        {
+            "type": "mirror_feature",
+            "name": "Mir_Hole",
+            "_comment": "Mirror the seed hole about the Right Plane (YZ plane, x=0). The mirrored hole appears at u=+10, v=5.",
+            "seed": "Hole_Seed",
+            "plane": "Right"
+        }
+    ]
+}

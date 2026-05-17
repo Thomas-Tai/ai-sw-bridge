@@ -18,6 +18,7 @@ Attempts:
 
 Preconditions: blank Part open.
 """
+
 from __future__ import annotations
 
 import json
@@ -54,11 +55,29 @@ def _build_box_with_hole(doc):
     doc.SelectByID("SK_Box", "SKETCH", 0.0, 0.0, 0.0)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False, SW_END_COND_BLIND, 0,
-        0.005, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        0.005,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude None")
@@ -78,12 +97,33 @@ def _build_box_with_hole(doc):
     doc.ClearSelection2(True)
     doc.SelectByID("SK_Hole", "SKETCH", 0.0, 0.0, 0.0)
     cut_args = (
-        True, False, False, SW_END_COND_THROUGH_ALL, 0,
-        0.0, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, False,
-        True, True, True, True, False,
-        SW_START_SKETCH_PLANE, 0.0, False, False,
+        True,
+        False,
+        False,
+        SW_END_COND_THROUGH_ALL,
+        0,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        True,
+        False,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
+        False,
     )
     feat = fm.FeatureCut4(*cut_args)
     if feat is None:
@@ -109,12 +149,33 @@ def _attempt_A_face_concentric(doc):
     doc.SelectByID("SK_A_FaceConcentric", "SKETCH", 0.0, 0.0, 0.0)
     fm = doc.FeatureManager
     cut_args = (
-        True, False, False, SW_END_COND_BLIND, 0,
-        0.001, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, False,
-        True, True, True, True, False,
-        SW_START_SKETCH_PLANE, 0.0, False, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        0.001,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        True,
+        False,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
+        False,
     )
     feat = fm.FeatureCut4(*cut_args)
     return {"attempt": "A_face_concentric", "cut_ok": feat is not None}
@@ -141,17 +202,40 @@ def _attempt_B_plane_with_start_offset(doc):
     fm = doc.FeatureManager
     # T0 = SW_START_OFFSET (3), StartOffset = 0.004m, FlipStartOffset=False
     cut_args = (
-        True, False, False, SW_END_COND_BLIND, 0,
-        0.001, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, False,
-        True, True, True, True, False,
-        SW_START_OFFSET, 0.004, False, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        0.001,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        True,
+        False,
+        SW_START_OFFSET,
+        0.004,
+        False,
+        False,
     )
     feat = fm.FeatureCut4(*cut_args)
-    return {"attempt": "B_plane_with_StartOffset",
-            "cut_ok": feat is not None,
-            "args": "T0=swStartOffset(3), StartOffset=4mm"}
+    return {
+        "attempt": "B_plane_with_StartOffset",
+        "cut_ok": feat is not None,
+        "args": "T0=swStartOffset(3), StartOffset=4mm",
+    }
 
 
 def _attempt_C_face_off_center(doc):
@@ -174,12 +258,33 @@ def _attempt_C_face_off_center(doc):
     doc.SelectByID("SK_C_FaceOffCenter", "SKETCH", 0.0, 0.0, 0.0)
     fm = doc.FeatureManager
     cut_args = (
-        True, False, False, SW_END_COND_BLIND, 0,
-        0.001, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, False,
-        True, True, True, True, False,
-        SW_START_SKETCH_PLANE, 0.0, False, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        0.001,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        True,
+        False,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
+        False,
     )
     feat = fm.FeatureCut4(*cut_args)
     return {"attempt": "C_face_off_center", "cut_ok": feat is not None}
@@ -192,8 +297,7 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": "no doc"}))
         return 1
     if doc.GetFeatureCount > 17:
-        print(json.dumps({"ok": False,
-                          "error": f"not blank ({doc.GetFeatureCount})"}))
+        print(json.dumps({"ok": False, "error": f"not blank ({doc.GetFeatureCount})"}))
         return 1
 
     try:
@@ -203,9 +307,11 @@ def main() -> int:
         return 1
 
     results = []
-    for attempt_fn in (_attempt_A_face_concentric,
-                       _attempt_B_plane_with_start_offset,
-                       _attempt_C_face_off_center):
+    for attempt_fn in (
+        _attempt_A_face_concentric,
+        _attempt_B_plane_with_start_offset,
+        _attempt_C_face_off_center,
+    ):
         try:
             r = attempt_fn(doc)
             results.append(r)

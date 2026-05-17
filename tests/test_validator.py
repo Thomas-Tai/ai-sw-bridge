@@ -220,3 +220,228 @@ def test_validation_error_path_optional() -> None:
     err = ValidationError("msg")
     assert err.path == ""
     assert str(err) == "msg"
+
+
+# -----------------------------------------------------------------------------
+# v0.3 primitives: chamfer / linear_pattern / mirror_feature
+# -----------------------------------------------------------------------------
+
+
+def _spec_with_box_and(*extra_features: dict) -> dict:
+    """Minimal spec: sketch + extrude + the extra features. The extra features
+    reference 'EX_Box' as their seed/edge target when needed."""
+    return {
+        "schema_version": 1,
+        "name": "BoxPlus",
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Box",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 20.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Box",
+                "sketch": "SK_Box",
+                "depth": 10.0,
+            },
+            *extra_features,
+        ],
+    }
+
+
+# --- chamfer_edge -----------------------------------------------------------
+
+
+def test_chamfer_equal_distance_accepts_distance_only() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "chamfer_edge",
+            "name": "Ch1",
+            "mode": "equal_distance",
+            "distance": 1.0,
+            "edges": [{"x": 10.0, "y": 0.0, "z": 10.0}],
+        }
+    )
+    validate(spec)
+
+
+def test_chamfer_equal_distance_rejects_angle() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "chamfer_edge",
+            "name": "Ch1",
+            "mode": "equal_distance",
+            "distance": 1.0,
+            "angle": 45.0,
+            "edges": [{"x": 10.0, "y": 0.0, "z": 10.0}],
+        }
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    assert "angle" in str(exc.value).lower()
+
+
+def test_chamfer_distance_angle_requires_both() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "chamfer_edge",
+            "name": "Ch1",
+            "mode": "distance_angle",
+            "distance": 1.0,
+            # angle missing
+            "edges": [{"x": 10.0, "y": 0.0, "z": 10.0}],
+        }
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    assert "angle" in str(exc.value).lower()
+
+
+def test_chamfer_distance_angle_accepts_both() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "chamfer_edge",
+            "name": "Ch1",
+            "mode": "distance_angle",
+            "distance": 1.0,
+            "angle": 30.0,
+            "edges": [{"x": 10.0, "y": 0.0, "z": 10.0}],
+        }
+    )
+    validate(spec)
+
+
+def test_chamfer_requires_at_least_one_edge() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "chamfer_edge",
+            "name": "Ch1",
+            "mode": "equal_distance",
+            "distance": 1.0,
+            "edges": [],
+        }
+    )
+    with pytest.raises(ValidationError):
+        validate(spec)
+
+
+def test_chamfer_rejects_unknown_mode() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "chamfer_edge",
+            "name": "Ch1",
+            "mode": "vertex",  # not yet supported
+            "distance": 1.0,
+            "edges": [{"x": 10.0, "y": 0.0, "z": 10.0}],
+        }
+    )
+    with pytest.raises(ValidationError):
+        validate(spec)
+
+
+# --- linear_pattern ---------------------------------------------------------
+
+
+def test_linear_pattern_accepts_valid_spec() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "linear_pattern",
+            "name": "LP1",
+            "seed": "EX_Box",
+            "direction": {"x": 10.0, "y": 0.0, "z": 10.0},
+            "count": 3,
+            "spacing": 5.0,
+        }
+    )
+    validate(spec)
+
+
+def test_linear_pattern_seed_must_exist() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "linear_pattern",
+            "name": "LP1",
+            "seed": "NotAFeature",
+            "direction": {"x": 10.0, "y": 0.0, "z": 10.0},
+            "count": 3,
+            "spacing": 5.0,
+        }
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    assert "NotAFeature" in str(exc.value)
+
+
+def test_linear_pattern_count_must_be_at_least_2() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "linear_pattern",
+            "name": "LP1",
+            "seed": "EX_Box",
+            "direction": {"x": 10.0, "y": 0.0, "z": 10.0},
+            "count": 1,
+            "spacing": 5.0,
+        }
+    )
+    with pytest.raises(ValidationError):
+        validate(spec)
+
+
+def test_linear_pattern_requires_direction() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "linear_pattern",
+            "name": "LP1",
+            "seed": "EX_Box",
+            # direction missing
+            "count": 3,
+            "spacing": 5.0,
+        }
+    )
+    with pytest.raises(ValidationError):
+        validate(spec)
+
+
+# --- mirror_feature ---------------------------------------------------------
+
+
+def test_mirror_feature_accepts_valid_spec() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "mirror_feature",
+            "name": "Mir1",
+            "seed": "EX_Box",
+            "plane": "Right",
+        }
+    )
+    validate(spec)
+
+
+def test_mirror_feature_seed_must_exist() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "mirror_feature",
+            "name": "Mir1",
+            "seed": "Nope",
+            "plane": "Front",
+        }
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    assert "Nope" in str(exc.value)
+
+
+def test_mirror_feature_rejects_unknown_plane() -> None:
+    spec = _spec_with_box_and(
+        {
+            "type": "mirror_feature",
+            "name": "Mir1",
+            "seed": "EX_Box",
+            "plane": "Diagonal",  # not a default plane
+        }
+    )
+    with pytest.raises(ValidationError):
+        validate(spec)

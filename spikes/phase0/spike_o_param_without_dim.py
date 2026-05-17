@@ -55,7 +55,10 @@ def run_com() -> dict:
     sw = get_sw_app()
     doc = get_active_doc(sw)
     if doc is None:
-        return {"status": "FAIL", "error": "no active doc; open the --no-dim cylinder first"}
+        return {
+            "status": "FAIL",
+            "error": "no active doc; open the --no-dim cylinder first",
+        }
 
     results: list[dict] = []
     for name in PROBE_NAMES:
@@ -69,11 +72,18 @@ def run_com() -> dict:
         else:
             try:
                 v = p.SystemValue
-                results.append({"name": name, "found": True,
-                                "value_mm": round(v * 1000.0, 4)})
+                results.append(
+                    {"name": name, "found": True, "value_mm": round(v * 1000.0, 4)}
+                )
             except Exception as e:
-                results.append({"name": name, "found": True,
-                                "value_mm": None, "value_read_error": repr(e)})
+                results.append(
+                    {
+                        "name": name,
+                        "found": True,
+                        "value_mm": None,
+                        "value_read_error": repr(e),
+                    }
+                )
 
     found = [r for r in results if r["found"]]
     status = "PASS" if found else "FAIL"
@@ -95,7 +105,8 @@ def run_com() -> dict:
                 "formula": formula,
                 "add2_index": idx,
                 "value_after_mm": after_val,
-                "binding_worked": after_val is not None and abs(after_val - 50.0) < 0.01,
+                "binding_worked": after_val is not None
+                and abs(after_val - 50.0) < 0.01,
             }
 
     return {
@@ -109,8 +120,8 @@ def run_com() -> dict:
             "these names in no_dim mode."
             if found
             else "No queryable internal dim names. Linkability requires "
-                 "AddDimension2, which means the popup toll is unavoidable "
-                 "if you want a locals-linked part."
+            "AddDimension2, which means the popup toll is unavoidable "
+            "if you want a locals-linked part."
         ),
     }
 

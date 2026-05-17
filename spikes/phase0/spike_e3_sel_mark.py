@@ -22,6 +22,7 @@ Mark, then try FeatureCut4 (24-arg, BLIND 5mm) and report.
 
 Preconditions: blank Part with the box already built (or auto-build).
 """
+
 from __future__ import annotations
 
 import json
@@ -52,14 +53,29 @@ def _build_box(doc):
     doc.SelectByID("SK_Box", "SKETCH", 0.0, 0.0, 0.0)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0,
-        0.005, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        0, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        0.005,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("FeatureExtrusion2 None")
@@ -83,15 +99,30 @@ def _fresh_hole_sketch(doc, suffix: int) -> str:
 
 def _cut_args_blind_5mm():
     return [
-        True, False, False,
-        SW_END_COND_BLIND, 0,
-        0.005, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
+        True,
         False,
-        True, True, True,
-        0, 0.0, False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        0.005,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     ]
 
 
@@ -102,8 +133,7 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": "no active doc"}))
         return 1
     if doc.GetFeatureCount > 17:
-        print(json.dumps({"ok": False,
-                          "error": f"not blank ({doc.GetFeatureCount})"}))
+        print(json.dumps({"ok": False, "error": f"not blank ({doc.GetFeatureCount})"}))
         return 1
 
     try:
@@ -121,43 +151,48 @@ def main() -> int:
         try:
             sk_name = _fresh_hole_sketch(doc, i)
         except Exception as e:
-            results.append({"mark": mark, "step": "sketch", "ok": False,
-                            "error": repr(e)})
+            results.append(
+                {"mark": mark, "step": "sketch", "ok": False, "error": repr(e)}
+            )
             continue
 
         # Select via SelectByID2 with the test Mark, Callout=None
         doc.ClearSelection2(True)
         try:
-            ok = ext.SelectByID2(sk_name, "SKETCH", 0.0, 0.0, 0.0,
-                                 False, mark, None, 0)
+            ok = ext.SelectByID2(sk_name, "SKETCH", 0.0, 0.0, 0.0, False, mark, None, 0)
         except Exception as e:
-            results.append({"mark": mark, "step": "select_by_id2",
-                            "ok": False, "error": repr(e)})
+            results.append(
+                {"mark": mark, "step": "select_by_id2", "ok": False, "error": repr(e)}
+            )
             continue
         if not ok:
-            results.append({"mark": mark, "step": "select_returned_False",
-                            "ok": False})
+            results.append({"mark": mark, "step": "select_returned_False", "ok": False})
             continue
 
         try:
             f = fm.FeatureCut4(*_cut_args_blind_5mm())
             ok_cut = f is not None
-            results.append({"mark": mark, "step": "cut",
-                            "ok": ok_cut, "returned": ok_cut})
+            results.append(
+                {"mark": mark, "step": "cut", "ok": ok_cut, "returned": ok_cut}
+            )
             if ok_cut:
                 try:
                     doc.EditUndo2(1)
                 except Exception:
                     pass
         except Exception as e:
-            results.append({"mark": mark, "step": "cut", "ok": False,
-                            "error": repr(e)})
+            results.append({"mark": mark, "step": "cut", "ok": False, "error": repr(e)})
 
     succ = [r for r in results if r.get("ok") and r.get("step") == "cut"]
-    print(json.dumps({
-        "results": results,
-        "winning_marks": [r["mark"] for r in succ],
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "results": results,
+                "winning_marks": [r["mark"] for r in succ],
+            },
+            indent=2,
+        )
+    )
     return 0 if succ else 1
 
 

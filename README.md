@@ -324,7 +324,7 @@ The generated [src/ai_sw_bridge/sw_types.py](src/ai_sw_bridge/sw_types.py) expor
 
 ## What you can build today
 
-Eight feature primitives, in three categories. Every primitive supports both literal mm values and `{rhs}`-bound expressions for any length field, unless the "parametric" column says otherwise.
+Twelve feature primitives, in four categories. Every primitive supports both literal mm values and `{rhs}`-bound expressions for any length field, unless the "parametric" column says otherwise.
 
 **Sketches**
 
@@ -349,23 +349,39 @@ Eight feature primitives, in three categories. Every primitive supports both lit
 | Primitive | Targets | Parametric | Limits |
 |---|---|---|---|
 | `fillet_constant_radius` | one or more edges by part-coord point | radius | Constant radius only (no variable / asymmetric / setback); edge selection by point, no "all edges of face" sugar |
+| `chamfer_edge` | one or more edges by part-coord point | distance, angle (degrees) | Two modes: `equal_distance` (one distance, symmetric) and `distance_angle` (distance + angle); no distance-distance or vertex chamfer |
+
+**Pattern**
+
+| Primitive | Seeds | Reference | Limits |
+|---|---|---|---|
+| `linear_pattern` | one earlier feature by name | a point on a model edge whose tangent gives the pattern axis | Direction 1 only (no rectangular pattern); single-seed; spacing is not yet parametric |
+| `mirror_feature` | one earlier feature by name | one of Front / Top / Right reference planes | No user-created planes or planar faces; single-seed; feature-mirror only (not body-mirror) |
 
 For full per-primitive schema details, see [docs/spec_reference.md](docs/spec_reference.md) (human-readable) or [src/ai_sw_bridge/spec/schema.py](src/ai_sw_bridge/spec/schema.py) (authoritative). For the worked examples that exercise every primitive, see [examples/](examples/).
 
-**Validated on**: SOLIDWORKS 2024 SP1 (rev 32.1.0), Python 3.14, pywin32 late-binding. The four shipped examples (cylinder, MMP, TensionBracket, filleted_box) all build clean in `--no-dim` mode.
+**Validated on**: SOLIDWORKS 2024 SP1 (rev 32.1.0), Python 3.14, pywin32 late-binding. The v0.2 examples (cylinder, MMP, TensionBracket, filleted_box) all build clean in `--no-dim` mode. The v0.3 examples (chamfered_box, patterned_plate, mirrored_holes) ship with spike-script API probes under [spikes/v0_3/](spikes/v0_3/) — run those first if you hit a `SelectByID2 returned False` or `InsertFeatureChamfer returned None` error.
 
 ## Roadmap
 
 Three tiers, prioritized by how often the missing capability blocks a real hardware part vs how much it costs to add.
 
-**Near-term (v0.3 — extend what's here)**
+**v0.3 (shipped) — three new primitives**
 
-The next four primitives each follow the same recipe as `fillet_constant_radius` did in v0.2: spike `CreateDefinition` pipeline first, fall back to a single-call API only if that fails. ~45-60 min per primitive.
+- `chamfer_edge` — equal-distance and distance-angle modes; mirrors the `fillet_constant_radius` shape
+- `linear_pattern` — replicates a seed feature along a model-edge direction
+- `mirror_feature` — mirrors a seed feature about a default reference plane
+
+Spike scripts under [spikes/v0_3/](spikes/v0_3/) probe the COM API for each before the handler is trusted in production. The pattern + mirror features depend on `doc.Extension.SelectByID2` with selection marks — if it fails under late-binding for the marked variant, those primitives surface a clear error.
+
+**Near-term (v0.4 — extend what's here)**
+
+The remaining v0.3-roadmap-shaped items, each following the same recipe as `fillet_constant_radius` did in v0.2: spike `CreateDefinition` pipeline first, fall back to a single-call API only if that fails. ~45-60 min per primitive.
 
 - `+/-x` and `+/-y` face support for child sketches — mechanical extension to `_select_extrude_face`, no new API
-- `fillet_variable_radius`, `chamfer_constant_distance` — same `CreateDefinition` family as constant-radius fillet
+- `fillet_variable_radius` — same `CreateDefinition` family as constant-radius fillet
+- `circular_pattern` — sibling to `linear_pattern`, axis + angle instead of edge-direction + spacing
 - `simple_hole` (countersinks, counterbores) — `IFeatureManager.HoleWizard5` family
-- `linear_pattern`, `circular_pattern`, `mirror` — pattern an existing feature; folds repetitive geometry into one spec entry
 
 **Mid-term (v0.4 — broaden the part vocabulary)**
 
@@ -433,8 +449,12 @@ ai-sw-bridge/
 │   ├── minimal_cylinder/          # Path C example (recorded macro → parametric)
 │   ├── minimal_cylinder_v2/       # v0.2 example (JSON spec → direct-COM)
 │   ├── motor_mount_plate/         # MMP: 10 features, 7 parametric bindings
-│   └── tension_bracket/           # stacked extrudes, face-sketch-origin offset (8 features)
+│   ├── tension_bracket/           # stacked extrudes, face-sketch-origin offset (8 features)
+│   ├── chamfered_box/             # v0.3: chamfer_edge equal-distance
+│   ├── patterned_plate/           # v0.3: linear_pattern of a hole
+│   └── mirrored_holes/            # v0.3: mirror_feature about Right Plane
 ├── spikes/phase0/                # Phase 0 de-risking spikes + MMP debug log
+├── spikes/v0_3/                  # v0.3 spikes: chamfer / linear pattern / mirror probes
 ├── USAGE.md
 ├── CHANGELOG.md
 ├── pyproject.toml

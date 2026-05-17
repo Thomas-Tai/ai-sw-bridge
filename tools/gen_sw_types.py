@@ -11,6 +11,7 @@ Output: Python module exposing
 Hand-edits should NEVER go in sw_types.py. Add new enums/methods to
 tools/_api_extract_input.json and regenerate.
 """
+
 from __future__ import annotations
 
 import json
@@ -74,9 +75,13 @@ def main() -> int:
     lines.append("from __future__ import annotations")
     lines.append("")
     lines.append("")
-    lines.append("# -----------------------------------------------------------------------------")
+    lines.append(
+        "# -----------------------------------------------------------------------------"
+    )
     lines.append("# Enum constants")
-    lines.append("# -----------------------------------------------------------------------------")
+    lines.append(
+        "# -----------------------------------------------------------------------------"
+    )
     lines.append("")
     for ename, e in sorted(data["enums"].items()):
         lines.append(f"# {ename}: {e.get('summary', '')}")
@@ -89,9 +94,13 @@ def main() -> int:
                 lines.append(f"{const_name} = {v['value']}  # {v['name']}")
         lines.append("")
 
-    lines.append("# -----------------------------------------------------------------------------")
+    lines.append(
+        "# -----------------------------------------------------------------------------"
+    )
     lines.append("# Method signatures (for arg-count validation)")
-    lines.append("# -----------------------------------------------------------------------------")
+    lines.append(
+        "# -----------------------------------------------------------------------------"
+    )
     lines.append("")
     lines.append("METHOD_SIGNATURES: dict[str, dict[str, object]] = {")
     for fq, m in sorted(data["methods"].items()):
@@ -115,16 +124,18 @@ def main() -> int:
     lines.append("def assert_args(fq_method: str, args: tuple) -> None:")
     lines.append('    """Sanity-check that a call has the documented arg count. Raise')
     lines.append('    ValueError on mismatch to catch CHM-vs-call drift at runtime."""')
-    lines.append('    sig = METHOD_SIGNATURES.get(fq_method)')
-    lines.append('    if sig is None:')
+    lines.append("    sig = METHOD_SIGNATURES.get(fq_method)")
+    lines.append("    if sig is None:")
     lines.append("        return  # uncatalogued -- trust the caller")
     lines.append('    expected = sig["args_count"]')
-    lines.append('    if len(args) != expected:')
+    lines.append("    if len(args) != expected:")
     lines.append('        names = sig["arg_names"]')
-    lines.append('        raise ValueError(')
-    lines.append('            f"{fq_method} expects {expected} args, got {len(args)}. "')
+    lines.append("        raise ValueError(")
+    lines.append(
+        '            f"{fq_method} expects {expected} args, got {len(args)}. "'
+    )
     lines.append('            f"Per CHM signature: {names}"')
-    lines.append('        )')
+    lines.append("        )")
     lines.append("")
 
     out.write_text("\n".join(lines), encoding="utf-8")

@@ -23,10 +23,7 @@ from ai_sw_bridge.locals_io import (
 
 
 def test_parse_extracts_name_and_expression() -> None:
-    text = (
-        '"PART_DIAMETER"          = 25.0\n'
-        '"PART_LENGTH"            = 80.0\n'
-    )
+    text = '"PART_DIAMETER"          = 25.0\n' '"PART_LENGTH"            = 80.0\n'
     entries = parse(text)
     assert entries == [
         LocalEntry(line_index=0, name="PART_DIAMETER", expression="25.0"),
@@ -36,11 +33,7 @@ def test_parse_extracts_name_and_expression() -> None:
 
 def test_parse_skips_blank_and_comment_lines() -> None:
     text = (
-        "# top comment\n"
-        "\n"
-        '"A" = 1\n'
-        "// other comment style\n"
-        '"B" = "A" + 3\n'
+        "# top comment\n" "\n" '"A" = 1\n' "// other comment style\n" '"B" = "A" + 3\n'
     )
     entries = parse(text)
     names = [e.name for e in entries]

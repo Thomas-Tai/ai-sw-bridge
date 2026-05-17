@@ -46,7 +46,7 @@ def _extract_vba(swp_path: Path) -> str:
     p = VBA_Parser(str(swp_path))
     if not p.detect_vba_macros():
         raise ValueError(f"no VBA macros found in {swp_path}")
-    for (_, stream, _, code) in p.extract_macros():
+    for _, stream, _, code in p.extract_macros():
         if "ThisLibrary" in stream:
             continue
         return code
@@ -92,7 +92,10 @@ def _build_param_bindings(bindings: list[dict[str, str]]) -> str:
     """
     if not bindings:
         return ""
-    out = ["", "    ' --- BRIDGE INJECTION: bind dims to linked vars via EquationMgr.Add2 ---"]
+    out = [
+        "",
+        "    ' --- BRIDGE INJECTION: bind dims to linked vars via EquationMgr.Add2 ---",
+    ]
     out.append("    Dim bridgeAddIdx As Long")
     for b in bindings:
         dim = b["dim"]

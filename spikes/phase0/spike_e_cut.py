@@ -22,6 +22,7 @@ Note: dimensions are added but builder reuses AddDimension2 -- user must
 manually tick the Modify popup + PM pane (~6 ticks for setup). This is
 the accepted limitation documented in MMP_DEBUG_SESSION.md.
 """
+
 from __future__ import annotations
 
 import json
@@ -67,16 +68,29 @@ def _build_box(doc):
         raise RuntimeError("could not select SK_Box")
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True,           # Sd
-        False,          # Flip
-        False,          # Dir
-        SW_END_COND_BLIND, 0,
-        0.005, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        0, 0.0, False,
+        True,  # Sd
+        False,  # Flip
+        False,  # Dir
+        SW_END_COND_BLIND,
+        0,
+        0.005,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("FeatureExtrusion2 returned None")
@@ -140,9 +154,15 @@ def main() -> int:
         return 1
 
     if doc.GetFeatureCount > 17:
-        print(json.dumps({"ok": False,
-                          "error": f"doc not blank ({doc.GetFeatureCount} features); "
-                          "File>New>Part first"}))
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": f"doc not blank ({doc.GetFeatureCount} features); "
+                    "File>New>Part first",
+                }
+            )
+        )
         return 1
 
     # 1. Build box
@@ -161,47 +181,110 @@ def main() -> int:
     # = 24 args.
     variants = {
         "23_args_through_all": [
-            True, False, False,
-            SW_END_COND_THROUGH_ALL, 0,
-            0.001, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0.0, False,
+            True,
+            False,
+            False,
+            SW_END_COND_THROUGH_ALL,
+            0,
+            0.001,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
+            False,
         ],
         "24_args_through_all": [
-            True, False, False,
-            SW_END_COND_THROUGH_ALL, 0,
-            0.001, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
+            True,
             False,
-            True, True, True,
-            0, 0.0, False,
+            False,
+            SW_END_COND_THROUGH_ALL,
+            0,
+            0.001,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
+            False,
         ],
         "25_args_through_all": [
-            True, False, False,
-            SW_END_COND_THROUGH_ALL, 0,
-            0.001, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            False, False,
-            True, True, True,
-            0, 0.0, False,
+            True,
+            False,
+            False,
+            SW_END_COND_THROUGH_ALL,
+            0,
+            0.001,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
+            False,
         ],
         "26_args_through_all": [
-            True, False, False,
-            SW_END_COND_THROUGH_ALL, 0,
-            0.001, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            False, False, False,
-            True, True, True,
-            0, 0.0, False,
+            True,
+            False,
+            False,
+            SW_END_COND_THROUGH_ALL,
+            0,
+            0.001,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
+            False,
         ],
     }
 
@@ -213,21 +296,39 @@ def main() -> int:
         try:
             sk_name = _build_circle_sketch_fresh(doc, i)
         except Exception as e:
-            results.append({"variant": name, "arg_count": len(args), "ok": False,
-                            "error": f"sketch setup: {e!r}"})
+            results.append(
+                {
+                    "variant": name,
+                    "arg_count": len(args),
+                    "ok": False,
+                    "error": f"sketch setup: {e!r}",
+                }
+            )
             continue
 
         # Select the sketch and try the cut
         doc.ClearSelection2(True)
         if not doc.SelectByID(sk_name, "SKETCH", 0.0, 0.0, 0.0):
-            results.append({"variant": name, "arg_count": len(args), "ok": False,
-                            "error": f"select sketch {sk_name} failed"})
+            results.append(
+                {
+                    "variant": name,
+                    "arg_count": len(args),
+                    "ok": False,
+                    "error": f"select sketch {sk_name} failed",
+                }
+            )
             continue
 
         try:
             f = fm.FeatureCut4(*args)
-            results.append({"variant": name, "arg_count": len(args), "ok": True,
-                            "feature_returned": f is not None})
+            results.append(
+                {
+                    "variant": name,
+                    "arg_count": len(args),
+                    "ok": True,
+                    "feature_returned": f is not None,
+                }
+            )
             if f is not None:
                 # Roll back so the next variant has a clean slate.
                 try:
@@ -235,15 +336,21 @@ def main() -> int:
                 except Exception:
                     pass
         except Exception as e:
-            results.append({"variant": name, "arg_count": len(args), "ok": False,
-                            "error": repr(e)})
+            results.append(
+                {"variant": name, "arg_count": len(args), "ok": False, "error": repr(e)}
+            )
 
     succeeded = [r for r in results if r.get("ok")]
-    print(json.dumps({
-        "results": results,
-        "succeeded_count": len(succeeded),
-        "winning_arg_counts": [r["arg_count"] for r in succeeded],
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "results": results,
+                "succeeded_count": len(succeeded),
+                "winning_arg_counts": [r["arg_count"] for r in succeeded],
+            },
+            indent=2,
+        )
+    )
     return 0 if succeeded else 1
 
 

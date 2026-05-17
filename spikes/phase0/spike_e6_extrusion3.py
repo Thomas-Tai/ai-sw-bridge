@@ -25,6 +25,7 @@ The FeatureExtrusion3 signature (per SW 2024 docs):
 = 26 args. The new args (FlipSideToCut, BothDirectionsAsymmetric) at
 the end may be what's needed for cut behavior.
 """
+
 from __future__ import annotations
 
 import json
@@ -50,11 +51,29 @@ def _build_box(doc):
     doc.SelectByID("SK_Box", "SKETCH", 0.0, 0.0, 0.0)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False, 0, 0,
-        0.005, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.005,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box None")
@@ -83,8 +102,7 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": "no doc"}))
         return 1
     if doc.GetFeatureCount > 17:
-        print(json.dumps({"ok": False,
-                          "error": f"not blank ({doc.GetFeatureCount})"}))
+        print(json.dumps({"ok": False, "error": f"not blank ({doc.GetFeatureCount})"}))
         return 1
 
     try:
@@ -99,10 +117,10 @@ def main() -> int:
     # 26-arg FeatureExtrusion3 with various cut-intent params
     # (label, Sd, Flip, T1, D1, Merge, FlipSideToCut)
     variants = [
-        ("E3_blind_flip_True_FSC_True",  True, True,  0, 0.005, True,  True),
-        ("E3_blind_flip_True_FSC_False", True, True,  0, 0.005, True,  False),
-        ("E3_blind_flip_False_FSC_True", True, False, 0, 0.005, True,  True),
-        ("E3_through_all_FSC_True",      True, True,  4, 0.0,   True,  True),
+        ("E3_blind_flip_True_FSC_True", True, True, 0, 0.005, True, True),
+        ("E3_blind_flip_True_FSC_False", True, True, 0, 0.005, True, False),
+        ("E3_blind_flip_False_FSC_True", True, False, 0, 0.005, True, True),
+        ("E3_through_all_FSC_True", True, True, 4, 0.0, True, True),
     ]
 
     # Try multiple arg counts since 26 was wrong.
@@ -113,20 +131,30 @@ def main() -> int:
         try:
             sk = _hole_sketch(doc, i)
         except Exception as e:
-            results.append({"label": label, "ok": False,
-                            "error": f"sketch: {e!r}"})
+            results.append({"label": label, "ok": False, "error": f"sketch: {e!r}"})
             continue
         doc.ClearSelection2(True)
         doc.SelectByID(sk, "SKETCH", 0.0, 0.0, 0.0)
 
         # Try just this variant's params at each arg count
         base_args = [
-            sd, flip, False,
-            t1, 0,
-            d1, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
+            sd,
+            flip,
+            False,
+            t1,
+            0,
+            d1,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
         ]
         # then merge + UseFeatScope + UseAutoSelect + AssemblyFeatureScope
         # + T0 + StartOffset + FlipStartOffset = 24 args total
@@ -156,9 +184,11 @@ def main() -> int:
                 except Exception:
                     fname = "?"
                 result_for_label = {
-                    "label": label, "ok": True,
+                    "label": label,
+                    "ok": True,
                     "args_n": arg_count,
-                    "feature_type": ftype, "feature_name": fname,
+                    "feature_type": ftype,
+                    "feature_name": fname,
                     "looks_like_cut": "Cut" in ftype,
                 }
                 try:
@@ -171,20 +201,25 @@ def main() -> int:
                 continue
 
         if result_for_label is None:
-            results.append({"label": label, "ok": False,
-                            "error": "no arg count worked"})
+            results.append(
+                {"label": label, "ok": False, "error": "no arg count worked"}
+            )
         else:
             results.append(result_for_label)
 
     cuts = [r for r in results if r.get("looks_like_cut")]
-    bosses = [r for r in results
-              if r.get("ok") and not r.get("looks_like_cut")]
-    print(json.dumps({
-        "results": results,
-        "cuts_count": len(cuts),
-        "bosses_count": len(bosses),
-        "winning_labels": [r["label"] for r in cuts],
-    }, indent=2))
+    bosses = [r for r in results if r.get("ok") and not r.get("looks_like_cut")]
+    print(
+        json.dumps(
+            {
+                "results": results,
+                "cuts_count": len(cuts),
+                "bosses_count": len(bosses),
+                "winning_labels": [r["label"] for r in cuts],
+            },
+            indent=2,
+        )
+    )
     return 0 if cuts else 1
 
 

@@ -20,6 +20,7 @@ Test:
 
 Preconditions: blank Part open.
 """
+
 from __future__ import annotations
 
 import json
@@ -46,11 +47,29 @@ def _build_box(doc):
     doc.SelectByID("SK_Box", "SKETCH", 0.0, 0.0, 0.0)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False, 0, 0,
-        0.005, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.005,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box FeatureExtrusion2 None")
@@ -77,8 +96,7 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": "no doc"}))
         return 1
     if doc.GetFeatureCount > 17:
-        print(json.dumps({"ok": False,
-                          "error": f"not blank ({doc.GetFeatureCount})"}))
+        print(json.dumps({"ok": False, "error": f"not blank ({doc.GetFeatureCount})"}))
         return 1
 
     try:
@@ -99,7 +117,7 @@ def main() -> int:
     results = []
 
     test_variants = [
-        ("blind_flip_True_d5_merge", True,  True,  0, 0.005, True),
+        ("blind_flip_True_d5_merge", True, True, 0, 0.005, True),
         ("blind_flip_False_d5_merge", True, False, 0, 0.005, True),
         ("through_all_flip_True", True, True, 4, 0.0, True),
         ("blind_flip_True_d5_no_merge", True, True, 0, 0.005, False),
@@ -112,24 +130,45 @@ def main() -> int:
         try:
             sk = _hole_sketch_on_top(doc)
         except Exception as e:
-            results.append({"label": label, "ok": False,
-                            "error": f"sketch: {e!r}"})
+            results.append({"label": label, "ok": False, "error": f"sketch: {e!r}"})
             continue
         doc.ClearSelection2(True)
         doc.SelectByID(sk, "SKETCH", 0.0, 0.0, 0.0)
 
         try:
             f = fm.FeatureExtrusion2(
-                sd, flip, False, t1, 0,
-                d1, 0.0,
-                False, False, False, False, 0.0, 0.0,
-                False, False, False, False,
+                sd,
+                flip,
+                False,
+                t1,
+                0,
+                d1,
+                0.0,
+                False,
+                False,
+                False,
+                False,
+                0.0,
+                0.0,
+                False,
+                False,
+                False,
+                False,
                 merge,
-                True, True, 0, 0.0, False,
+                True,
+                True,
+                0,
+                0.0,
+                False,
             )
             if f is None:
-                results.append({"label": label, "ok": False,
-                                "error": "FeatureExtrusion2 returned None"})
+                results.append(
+                    {
+                        "label": label,
+                        "ok": False,
+                        "error": "FeatureExtrusion2 returned None",
+                    }
+                )
                 continue
             # Inspect feature type
             ftype = "UNKNOWN"
@@ -143,9 +182,15 @@ def main() -> int:
             except Exception:
                 pass
             is_cut = "Cut" in ftype or "cut" in ftype.lower()
-            results.append({"label": label, "ok": True,
-                            "feature_type": ftype, "feature_name": fname,
-                            "looks_like_cut": is_cut})
+            results.append(
+                {
+                    "label": label,
+                    "ok": True,
+                    "feature_type": ftype,
+                    "feature_name": fname,
+                    "looks_like_cut": is_cut,
+                }
+            )
             # Undo to clean slate
             try:
                 doc.EditUndo2(1)

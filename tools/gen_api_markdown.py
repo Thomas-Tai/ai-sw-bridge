@@ -13,6 +13,7 @@ Output structure:
        (summary)
        Values table
 """
+
 from __future__ import annotations
 
 import json
@@ -102,7 +103,9 @@ def main() -> int:
         lines.append("")
 
     out.write_text("\n".join(lines), encoding="utf-8")
-    print(f"wrote {out} ({len(lines)} lines, {len(data['methods'])} methods, {len(data['enums'])} enums)")
+    print(
+        f"wrote {out} ({len(lines)} lines, {len(data['methods'])} methods, {len(data['enums'])} enums)"
+    )
     return 0
 
 

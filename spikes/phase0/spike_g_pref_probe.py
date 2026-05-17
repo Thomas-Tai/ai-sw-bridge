@@ -47,16 +47,23 @@ def run() -> dict:
             # a bit more in case of gaps, then stop.
             if pref_id > 50 and len([1 for k in errors if k > pref_id - 10]) > 8:
                 break
-    return {"values": values, "errors": errors,
-            "max_valid_id": max(values.keys()) if values else None}
+    return {
+        "values": values,
+        "errors": errors,
+        "max_valid_id": max(values.keys()) if values else None,
+    }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--label", default="run",
-                        help="label for this run (e.g. 'checked' or 'unchecked')")
-    parser.add_argument("--out", default=None,
-                        help="save JSON to file at this path instead of stdout")
+    parser.add_argument(
+        "--label",
+        default="run",
+        help="label for this run (e.g. 'checked' or 'unchecked')",
+    )
+    parser.add_argument(
+        "--out", default=None, help="save JSON to file at this path instead of stdout"
+    )
     args = parser.parse_args()
 
     out = run()

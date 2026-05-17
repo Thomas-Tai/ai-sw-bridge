@@ -46,22 +46,26 @@ def test_top_level_requires_name_version_features():
 
 def test_empty_features_array_rejected():
     with pytest.raises(Exception):
-        _check_schema({
-            "schema_version": 1,
-            "name": "test",
-            "features": [],
-        })
+        _check_schema(
+            {
+                "schema_version": 1,
+                "name": "test",
+                "features": [],
+            }
+        )
 
 
 def test_unknown_feature_type_rejected():
     with pytest.raises(Exception):
-        _check_schema({
-            "schema_version": 1,
-            "name": "test",
-            "features": [
-                {"type": "does_not_exist", "name": "X"},
-            ],
-        })
+        _check_schema(
+            {
+                "schema_version": 1,
+                "name": "test",
+                "features": [
+                    {"type": "does_not_exist", "name": "X"},
+                ],
+            }
+        )
 
 
 def test_comment_fields_stripped():

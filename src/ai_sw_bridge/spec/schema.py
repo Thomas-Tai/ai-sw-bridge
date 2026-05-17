@@ -42,8 +42,8 @@ LENGTH_SCHEMA: dict[str, Any] = {
                     "type": "string",
                     "description": (
                         "Right-hand side of an Equation Manager binding. "
-                        'Pasted verbatim into EquationMgr.Add2. Quote variable '
-                        'references yourself, e.g. \'"S1B_W"\' for a bare var.'
+                        "Pasted verbatim into EquationMgr.Add2. Quote variable "
+                        "references yourself, e.g. '\"S1B_W\"' for a bare var."
                     ),
                 }
             },
@@ -61,7 +61,7 @@ SKETCH_RECTANGLE_ON_PLANE: dict[str, Any] = {
         "type": {"const": "sketch_rectangle_on_plane"},
         "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
         "plane": {"enum": ["Front", "Top", "Right"]},
-        "width":  LENGTH_SCHEMA,
+        "width": LENGTH_SCHEMA,
         "height": LENGTH_SCHEMA,
         "center": {
             "type": "object",
@@ -107,7 +107,7 @@ SKETCH_RECTANGLE_ON_FACE: dict[str, Any] = {
             "enum": ["+x", "-x", "+y", "-y", "+z", "-z"],
             "description": "Outward normal direction of the face in the feature's local frame.",
         },
-        "width":  LENGTH_SCHEMA,
+        "width": LENGTH_SCHEMA,
         "height": LENGTH_SCHEMA,
         "center": {
             "type": "object",
@@ -252,6 +252,173 @@ CUT_EXTRUDE_BLIND: dict[str, Any] = {
 }
 
 
+# Edge chamfer. Two modes, selected by `mode`:
+#   - "equal_distance": single `distance` applied to both sides of each edge.
+#     Schema requires `distance` and forbids `width`/`angle`.
+#   - "distance_angle": one `distance` plus an `angle` (degrees). Schema
+#     requires both. The angle is measured from one face of the chamfered
+#     edge -- which face depends on the edge's local orientation.
+#
+# Edge selection mirrors fillet's: a point-on-edge list, one entry per edge.
+#
+# v1 limits:
+#   - No distance-distance mode (would need a second `distance2`). The two
+#     shipped modes cover the common cases; can be added later without
+#     breaking change.
+#   - No vertex chamfer. swChamferVertex requires a vertex with exactly 3
+#     adjacent edges of matching convexity -- niche, defer.
+#   - Edge selection by point only (one point per edge).
+CHAMFER_EDGE: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["type", "name", "mode", "edges"],
+    "properties": {
+        "type": {"const": "chamfer_edge"},
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+        "mode": {
+            "enum": ["equal_distance", "distance_angle"],
+            "description": (
+                "Chamfer geometry mode. 'equal_distance' takes a single "
+                "distance and applies it to both sides. 'distance_angle' "
+                "takes a distance plus an angle in degrees, measured from "
+                "one face of the chamfered edge."
+            ),
+        },
+        "distance": {
+            **LENGTH_SCHEMA,
+            "description": "Chamfer distance from edge (mm). Required for both modes.",
+        },
+        "angle": {
+            **LENGTH_SCHEMA,
+            "description": (
+                "Chamfer angle in DEGREES. Required for mode "
+                "'distance_angle', forbidden for mode 'equal_distance'. "
+                "Despite reusing LENGTH_SCHEMA for parametric support, this "
+                "is an angle in degrees -- the spec author is responsible "
+                "for not passing a length-typed locals var here."
+            ),
+        },
+        "flip": {
+            "type": "boolean",
+            "default": False,
+            "description": (
+                "Reverse the chamfer asymmetry direction. Only meaningful "
+                "for 'distance_angle' (the equal-distance case is symmetric)."
+            ),
+        },
+        "edges": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["x", "y", "z"],
+                "properties": {
+                    "x": {"type": "number"},
+                    "y": {"type": "number"},
+                    "z": {"type": "number"},
+                },
+                "description": (
+                    "A point on the target edge in part coordinates (mm). "
+                    "Builder converts to meters and calls SelectByID('EDGE')."
+                ),
+            },
+        },
+    },
+}
+
+
+# Linear pattern of an earlier feature. Replicates one or more seed features
+# along a direction reference (an edge of the model whose direction defines
+# the pattern axis), with a fixed spacing and instance count.
+#
+# v1 limits:
+#   - Direction 1 only. Direction 2 (rectangular pattern) is deferred; would
+#     add `direction2`, `count2`, `spacing2` fields.
+#   - Seed = a single earlier feature by name. Multi-seed not yet supported.
+#   - Direction reference = a point on a model edge in part coords. No
+#     reference-axis or sketched-line variants yet.
+LINEAR_PATTERN: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["type", "name", "seed", "direction", "count", "spacing"],
+    "properties": {
+        "type": {"const": "linear_pattern"},
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+        "seed": {
+            "type": "string",
+            "description": (
+                "Name of an earlier feature to pattern. The seed itself "
+                "counts as instance 1; `count` includes it."
+            ),
+        },
+        "direction": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["x", "y", "z"],
+            "properties": {
+                "x": {"type": "number"},
+                "y": {"type": "number"},
+                "z": {"type": "number"},
+            },
+            "description": (
+                "A point on a model edge whose direction defines the pattern "
+                "axis. The builder selects the edge with SelectByID and uses "
+                "its tangent at that point."
+            ),
+        },
+        "count": {
+            "type": "integer",
+            "minimum": 2,
+            "description": (
+                "Total number of instances along Direction 1 (includes the "
+                "seed). Must be >= 2 -- a count of 1 would be a no-op."
+            ),
+        },
+        "spacing": {
+            **LENGTH_SCHEMA,
+            "description": "Distance between consecutive instances (mm).",
+        },
+        "flip": {
+            "type": "boolean",
+            "default": False,
+            "description": "Reverse pattern direction relative to the selected edge's tangent.",
+        },
+    },
+}
+
+
+# Mirror of one or more seed features about a reference plane.
+#
+# v1 limits:
+#   - Mirror plane = one of the three default reference planes ("Front",
+#     "Top", "Right"). User-created reference planes / planar faces are
+#     deferred; they would need a different selection mechanism.
+#   - Seed = single feature by name. Multi-seed deferred.
+#   - Feature-mirror only, not body-mirror. The single bool flag would
+#     have to flip multiple downstream args; defer until a clear need.
+MIRROR_FEATURE: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["type", "name", "seed", "plane"],
+    "properties": {
+        "type": {"const": "mirror_feature"},
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+        "seed": {
+            "type": "string",
+            "description": "Name of an earlier feature to mirror.",
+        },
+        "plane": {
+            "enum": ["Front", "Top", "Right"],
+            "description": (
+                "Default reference plane to mirror about. Front = XY (mirrors "
+                "Z), Top = XZ (mirrors Y), Right = YZ (mirrors X)."
+            ),
+        },
+    },
+}
+
+
 # Constant-radius edge fillet. Selects N edges by part-coord points and
 # applies a single radius. Wired via the SW 2020+ canonical pipeline
 # (CreateDefinition + ISimpleFilletFeatureData2.Initialize + CreateFeature)
@@ -329,6 +496,9 @@ SCHEMA: dict[str, Any] = {
                     CUT_EXTRUDE_THROUGH_ALL,
                     CUT_EXTRUDE_BLIND,
                     FILLET_CONSTANT_RADIUS,
+                    CHAMFER_EDGE,
+                    LINEAR_PATTERN,
+                    MIRROR_FEATURE,
                 ]
             },
         },
@@ -337,22 +507,41 @@ SCHEMA: dict[str, Any] = {
 
 
 # Feature-type metadata for the validator and builder.
-SKETCH_TYPES = frozenset({
-    "sketch_rectangle_on_plane",
-    "sketch_rectangle_on_face",
-    "sketch_circle_on_plane",
-    "sketch_circle_on_face",
-    "sketch_circles_on_face",
-})
-EXTRUDE_TYPES = frozenset({
-    "boss_extrude_blind",
-    "cut_extrude_through_all",
-    "cut_extrude_blind",
-})
+SKETCH_TYPES = frozenset(
+    {
+        "sketch_rectangle_on_plane",
+        "sketch_rectangle_on_face",
+        "sketch_circle_on_plane",
+        "sketch_circle_on_face",
+        "sketch_circles_on_face",
+    }
+)
+EXTRUDE_TYPES = frozenset(
+    {
+        "boss_extrude_blind",
+        "cut_extrude_through_all",
+        "cut_extrude_blind",
+    }
+)
 # Modify-existing-geometry features (operate on existing edges/faces, do not
 # need a parent sketch). Kept separate from EXTRUDE_TYPES so the validator's
 # sketch-reference rule doesn't try to demand a sketch on them.
-MODIFY_TYPES = frozenset({
-    "fillet_constant_radius",
-})
-ALL_TYPES = SKETCH_TYPES | EXTRUDE_TYPES | MODIFY_TYPES
+MODIFY_TYPES = frozenset(
+    {
+        "fillet_constant_radius",
+        "chamfer_edge",
+    }
+)
+# Reference-an-earlier-feature types (linear pattern, mirror). These have
+# a `seed` field that names a prior feature; the validator must check
+# existence + ordering but doesn't constrain the seed's type (any built
+# feature is mirrorable / patternable in v1 -- SW will error at build
+# time if the seed is incompatible, e.g. patterning a fillet of an edge
+# that itself moves).
+PATTERN_TYPES = frozenset(
+    {
+        "linear_pattern",
+        "mirror_feature",
+    }
+)
+ALL_TYPES = SKETCH_TYPES | EXTRUDE_TYPES | MODIFY_TYPES | PATTERN_TYPES

@@ -79,12 +79,19 @@ def main() -> int:
         validate(spec)
     except ValidationError as e:
         return _emit(
-            {"ok": False, "error": "validation_failed", "path": e.path, "message": e.message},
+            {
+                "ok": False,
+                "error": "validation_failed",
+                "path": e.path,
+                "message": e.message,
+            },
             3,
         )
 
     if args.validate_only:
-        return _emit({"ok": True, "validated": True, "feature_count": len(spec["features"])}, 0)
+        return _emit(
+            {"ok": True, "validated": True, "feature_count": len(spec["features"])}, 0
+        )
 
     result = build(spec, no_dim=args.no_dim, save_as=args.save_as)
     # BuildResult.to_dict() owns the wire format; CLI only adds CLI-level

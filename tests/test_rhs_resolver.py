@@ -130,7 +130,9 @@ def test_resolve_rhs_does_not_mutate_input(simple_locals: Path) -> None:
     assert spec == snapshot
 
 
-def test_resolve_rhs_substitutes_top_level_and_nested_array(simple_locals: Path) -> None:
+def test_resolve_rhs_substitutes_top_level_and_nested_array(
+    simple_locals: Path,
+) -> None:
     spec = _spec_with_rhs(simple_locals)
     out = _resolve_rhs_in_spec(spec)
     # Top-level circle's diameter -> literal 25.0

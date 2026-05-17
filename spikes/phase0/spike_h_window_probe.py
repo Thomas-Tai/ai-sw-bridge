@@ -41,14 +41,22 @@ def main() -> int:
     EnumWindows(EnumWindowsProc(cb), 0)
 
     # Filter: anything mentioning SOLIDWORKS in title or class containing "Sld"
-    candidates = [r for r in results
-                  if "SOLIDWORKS" in r["title"].upper()
-                  or "SLD" in r["class"].upper()]
+    candidates = [
+        r
+        for r in results
+        if "SOLIDWORKS" in r["title"].upper() or "SLD" in r["class"].upper()
+    ]
 
-    print(json.dumps({
-        "candidates": candidates,
-        "all_visible_with_title": results,
-    }, indent=2, ensure_ascii=True))
+    print(
+        json.dumps(
+            {
+                "candidates": candidates,
+                "all_visible_with_title": results,
+            },
+            indent=2,
+            ensure_ascii=True,
+        )
+    )
     return 0
 
 

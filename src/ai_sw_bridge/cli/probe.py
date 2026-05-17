@@ -58,7 +58,9 @@ def probe() -> dict[str, Any]:
                 doc_info["title"] = None
             result["active_doc"] = doc_info
     except Exception as exc:
-        result["error"] = (result["error"] or "") + f" | active_doc query failed: {exc!r}"
+        result["error"] = (
+            result["error"] or ""
+        ) + f" | active_doc query failed: {exc!r}"
 
     result["ok"] = result["error"] is None
     return result

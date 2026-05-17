@@ -20,17 +20,25 @@ from typing import Any
 
 import jsonschema
 
-from .schema import SCHEMA, SKETCH_TYPES, EXTRUDE_TYPES, ALL_TYPES
+from .schema import (
+    SCHEMA,
+    SKETCH_TYPES,
+    EXTRUDE_TYPES,
+    PATTERN_TYPES,
+    ALL_TYPES,
+)
 
 # Sketch types that reference a parent feature via `of_feature` (sketched
 # on the parent extrusion's face) rather than a reference plane. Kept as a
 # named constant so the validator's reference check picks up new face-based
 # sketches automatically as they're added to the schema.
-FACE_SKETCH_TYPES = frozenset({
-    "sketch_rectangle_on_face",
-    "sketch_circle_on_face",
-    "sketch_circles_on_face",
-})
+FACE_SKETCH_TYPES = frozenset(
+    {
+        "sketch_rectangle_on_face",
+        "sketch_circle_on_face",
+        "sketch_circles_on_face",
+    }
+)
 
 
 class ValidationError(Exception):
@@ -118,6 +126,45 @@ def _check_references(spec: dict[str, Any]) -> None:
                     message=f"{ftype} requires '{target}' to be a sketch; "
                     f"got '{seen[target]}'",
                     path=f"features/{i}/sketch",
+                )
+        elif ftype in PATTERN_TYPES:
+            # linear_pattern / mirror_feature: `seed` must name an earlier
+            # feature. v1 doesn't constrain the seed's type (any built
+            # feature is in principle patternable/mirrorable; SW will
+            # error at build time if the geometry doesn't support it).
+            target = feat["seed"]
+            if target not in seen:
+                raise ValidationError(
+                    message=f"{ftype} references seed '{target}', "
+                    f"which is not an earlier feature",
+                    path=f"features/{i}/seed",
+                )
+
+        # Chamfer mode-conditional field check. The schema can't easily
+        # express "if mode=='equal_distance' then `angle` is forbidden and
+        # `distance` is required" with `additionalProperties: false` still
+        # in force, so we enforce it here for clearer error messages.
+        if ftype == "chamfer_edge":
+            mode = feat.get("mode")
+            has_distance = "distance" in feat
+            has_angle = "angle" in feat
+            if not has_distance:
+                raise ValidationError(
+                    message=f"chamfer_edge mode '{mode}' requires `distance`",
+                    path=f"features/{i}/distance",
+                )
+            if mode == "distance_angle" and not has_angle:
+                raise ValidationError(
+                    message="chamfer_edge mode 'distance_angle' requires `angle`",
+                    path=f"features/{i}/angle",
+                )
+            if mode == "equal_distance" and has_angle:
+                raise ValidationError(
+                    message=(
+                        "chamfer_edge mode 'equal_distance' must not include "
+                        "`angle` (the equal-distance case is symmetric)"
+                    ),
+                    path=f"features/{i}/angle",
                 )
 
         seen[name] = ftype

@@ -48,6 +48,7 @@ def _find_sw_window() -> int:
     "SOLIDWORKS".
     """
     from ctypes import wintypes
+
     user32 = ctypes.windll.user32
     EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
     found = []
@@ -96,6 +97,7 @@ def _arm_dismisser(
       - "sw_sendkeys_enter": sw.SendKeys "{ENTER}"
       - "sw_sendkeys_esc":   sw.SendKeys "{ESC}"
     """
+
     def _go():
         time.sleep(delay_ms / 1000.0)
         try:
@@ -150,13 +152,17 @@ def run(delay_ms: int, method: str) -> dict:
 
     fc = doc.GetFeatureCount
     if fc > 17:
-        return {"status": "FAIL",
-                "error": f"doc not blank: {fc} features. File > New > Part first."}
+        return {
+            "status": "FAIL",
+            "error": f"doc not blank: {fc} features. File > New > Part first.",
+        }
 
     hwnd = _find_sw_window()
     if hwnd == 0 and method.startswith("ctypes"):
-        return {"status": "FAIL",
-                "error": "could not find SOLIDWORKS window for ctypes method"}
+        return {
+            "status": "FAIL",
+            "error": "could not find SOLIDWORKS window for ctypes method",
+        }
 
     # Build a sketch with one circle and add a diameter dim, with the
     # dismisser armed in the background.
@@ -178,16 +184,22 @@ def run(delay_ms: int, method: str) -> dict:
     try:
         dim = doc.AddDimension2(0.010, 0.005, 0.0)
     except Exception as e:
-        return {"status": "FAIL",
-                "error": f"AddDimension2 raised: {e!r}",
-                "method": method}
+        return {
+            "status": "FAIL",
+            "error": f"AddDimension2 raised: {e!r}",
+            "method": method,
+        }
     finally:
         dismisser.join(timeout=2.0)
     elapsed = time.time() - t_start
 
     if dim is None:
-        return {"status": "FAIL", "error": "AddDimension2 returned None",
-                "elapsed_s": round(elapsed, 3), "method": method}
+        return {
+            "status": "FAIL",
+            "error": "AddDimension2 returned None",
+            "elapsed_s": round(elapsed, 3),
+            "method": method,
+        }
 
     # Close sketch and rename
     sm.InsertSketch(True)
@@ -211,14 +223,24 @@ def run(delay_ms: int, method: str) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--delay-ms", type=int, default=300,
-                        help="ms to wait before sending key (default 300)")
+    parser.add_argument(
+        "--delay-ms",
+        type=int,
+        default=300,
+        help="ms to wait before sending key (default 300)",
+    )
     parser.add_argument(
         "--method",
-        choices=["sw_sendkeys_enter", "sw_sendkeys_esc",
-                 "ctypes_enter", "ctypes_esc",
-                 "ctypes_enter_blind", "ctypes_esc_blind",
-                 "ctypes_enter_blind_double", "ctypes_enter_then_esc"],
+        choices=[
+            "sw_sendkeys_enter",
+            "sw_sendkeys_esc",
+            "ctypes_enter",
+            "ctypes_esc",
+            "ctypes_enter_blind",
+            "ctypes_esc_blind",
+            "ctypes_enter_blind_double",
+            "ctypes_enter_then_esc",
+        ],
         default="ctypes_enter_blind_double",
         help="how to dismiss the popup (default: ctypes_enter_blind_double)",
     )

@@ -274,6 +274,110 @@ Applies a constant-radius fillet to one or more edges.
 
 **No parent sketch needed.** Fillet operates on existing geometry, not a sketch profile.
 
+### `chamfer_edge`
+
+Applies an edge chamfer in one of two modes.
+
+```json
+{
+  "type": "chamfer_edge",
+  "name": "Ch_TopEdges",
+  "mode": "equal_distance",
+  "distance": 1.0,
+  "edges": [
+    {"x":  10.0, "y": 0.0, "z": 10.0},
+    {"x": -10.0, "y": 0.0, "z": 10.0}
+  ]
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"chamfer_edge"` | |
+| `name` | yes | string | Unique feature name |
+| `mode` | yes | enum | `"equal_distance"` or `"distance_angle"` |
+| `distance` | yes | length | Chamfer distance from edge (mm) |
+| `angle` | conditional | length | Angle in **degrees**. Required for `distance_angle` mode, forbidden for `equal_distance`. Reuses LENGTH_SCHEMA for parametric support; the spec author is responsible for not passing a length-typed locals var here. |
+| `flip` | no | boolean | Reverse asymmetry direction. Only meaningful for `distance_angle`. Default `false`. |
+| `edges` | yes | array | Minimum 1 item. Each is `{x, y, z}` — a point on the target edge in part coords (mm). |
+
+**Modes:**
+- `equal_distance` — symmetric chamfer. One distance applied to both sides of each edge.
+- `distance_angle` — asymmetric chamfer. The chamfer leaves one face by `distance` and the other by `distance × tan(angle)`. Use when one face must remain larger than the other (e.g. lead-in chamfer on a press fit).
+
+Same edge-selection rules as `fillet_constant_radius`. No vertex chamfer (would need three distances and adjacent-edge convexity matching).
+
+## Pattern primitives
+
+### `linear_pattern`
+
+Replicates an earlier feature along a direction reference.
+
+```json
+{
+  "type": "linear_pattern",
+  "name": "LP_Holes",
+  "seed": "Hole_Seed",
+  "direction": {"x": 15.0, "y": 0.0, "z": 4.0},
+  "count": 3,
+  "spacing": 8.0
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"linear_pattern"` | |
+| `name` | yes | string | Unique feature name |
+| `seed` | yes | string | Name of an earlier feature to pattern |
+| `direction` | yes | object | `{x, y, z}` — a point on a model edge whose tangent gives the pattern direction |
+| `count` | yes | integer | Total instances (including seed). Must be ≥ 2 |
+| `spacing` | yes | length | Distance between consecutive instances (mm) |
+| `flip` | no | boolean | Reverse pattern direction. Default `false` |
+
+**How direction selection works:** the builder calls `SelectByID('EDGE', x, y, z)` to pick whichever model edge passes through the given point. The pattern axis is the edge's tangent at that point.
+
+**Watch out:** on a box, the "+X edge" (the edge bounding the +X side) is actually oriented along Y at its midpoint. Pick a point on the edge whose **tangent** is the direction you want, not the edge "in the direction of" the axis you want. If the pattern goes the wrong way, set `"flip": true`.
+
+**v1 limits:**
+- Direction 1 only. Rectangular (Direction 2) pattern deferred.
+- Single seed by name. Multi-seed deferred.
+- Spacing not yet parametric (accepts `{rhs}` syntactically but the binding isn't wired).
+
+### `mirror_feature`
+
+Mirrors an earlier feature about a default reference plane.
+
+```json
+{
+  "type": "mirror_feature",
+  "name": "Mir_Hole",
+  "seed": "Hole_Seed",
+  "plane": "Right"
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"mirror_feature"` | |
+| `name` | yes | string | Unique feature name |
+| `seed` | yes | string | Name of an earlier feature to mirror |
+| `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` — the mirror plane |
+
+**Mirror plane effect:**
+
+| Plane | What it is | Mirror effect |
+|---|---|---|
+| `Front` | XY plane (z=0) | Flips Z |
+| `Top` | XZ plane (y=0) | Flips Y |
+| `Right` | YZ plane (x=0) | Flips X |
+
+**v1 limits:**
+- Only the three default reference planes. User-created planes and planar faces deferred.
+- Single seed by name.
+- Feature-mirror only (not body-mirror).
+
+**Selection-marked API surface (pattern + mirror):** Both primitives use `doc.Extension.SelectByID2` with selection marks (`linear_pattern`: seed=4, direction=1; `mirror_feature`: plane=2, seed=1). If you hit a `SelectByID2 returned False` error, the marked-selection variant may not marshal through pywin32 late-binding on your SW build — see [spikes/v0_3/](../spikes/v0_3/) for probe scripts.
+
 ## Comment fields
 
 Any feature or the top-level spec can include a `_comment` field with arbitrary string content. These are stripped by the validator and never sent to SOLIDWORKS. Useful for documenting design intent:
@@ -293,11 +397,11 @@ Any feature or the top-level spec can include a `_comment` field with arbitrary 
 
 The validator checks three layers, fail-fast:
 
-1. **Schema** — shape, types, required fields, `additionalProperties: false` (after stripping `_comment` fields)
-2. **References** — every `sketch` and `of_feature` must name an earlier feature of the correct type
+1. **Schema** — shape, types, required fields, `additionalProperties: false` (after stripping `_comment` fields). Includes the `chamfer_edge` mode-conditional check for `angle`.
+2. **References** — every `sketch`, `of_feature`, and `seed` must name an earlier feature of the correct type
 3. **Locals** — every `{rhs}` variable must be declared in the specified `locals` file
 
-The validator does NOT check geometric validity (e.g. whether a fillet radius exceeds the smallest adjacent edge, or whether a circle lands on material). These surface as runtime errors during the build.
+The validator does NOT check geometric validity (e.g. whether a fillet radius exceeds the smallest adjacent edge, whether a circle lands on material, or whether a pattern's direction edge actually exists at the given point). These surface as runtime errors during the build.
 
 ## Examples
 
@@ -307,3 +411,6 @@ The validator does NOT check geometric validity (e.g. whether a fillet radius ex
 | [`minimal_cylinder_v2`](../examples/minimal_cylinder_v2/) | 2 | `sketch_circle_on_plane`, `boss_extrude_blind` |
 | [`motor_mount_plate`](../examples/motor_mount_plate/) | 10 | All sketch types, all extrude types |
 | [`tension_bracket`](../examples/tension_bracket/) | 8 | `sketch_rectangle_on_plane`, `sketch_rectangle_on_face`, `sketch_circle_on_face`, `boss_extrude_blind`, `cut_extrude_through_all` |
+| [`chamfered_box`](../examples/chamfered_box/) | 3 | `sketch_rectangle_on_plane`, `boss_extrude_blind`, `chamfer_edge` (equal_distance) |
+| [`patterned_plate`](../examples/patterned_plate/) | 5 | adds `sketch_circle_on_face`, `cut_extrude_through_all`, `linear_pattern` |
+| [`mirrored_holes`](../examples/mirrored_holes/) | 5 | same as patterned_plate but `mirror_feature` instead of `linear_pattern` |

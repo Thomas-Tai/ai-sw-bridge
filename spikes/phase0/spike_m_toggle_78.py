@@ -36,7 +36,7 @@ from ai_sw_bridge.sw_com import get_sw_app  # noqa: E402
 
 
 SW_SKETCH_ENABLE_ON_SCREEN_NUMERIC_INPUT = 78  # the candidate toggle
-SW_INPUT_DIM_VAL_ON_CREATE = 8                  # previously-tried toggle (Spike I)
+SW_INPUT_DIM_VAL_ON_CREATE = 8  # previously-tried toggle (Spike I)
 
 
 def run_com() -> dict:
@@ -48,7 +48,9 @@ def run_com() -> dict:
 
     # Set toggle 78 to False (suppress the on-screen numeric input popup)
     sw.SetUserPreferenceToggle(SW_SKETCH_ENABLE_ON_SCREEN_NUMERIC_INPUT, False)
-    val78_after_set = sw.GetUserPreferenceToggle(SW_SKETCH_ENABLE_ON_SCREEN_NUMERIC_INPUT)
+    val78_after_set = sw.GetUserPreferenceToggle(
+        SW_SKETCH_ENABLE_ON_SCREEN_NUMERIC_INPUT
+    )
 
     # Also set toggle 8 to False (belt + suspenders -- we don't know which one matters)
     sw.SetUserPreferenceToggle(SW_INPUT_DIM_VAL_ON_CREATE, False)
@@ -96,7 +98,8 @@ def run_com() -> dict:
         "add_dim2_elapsed_s": elapsed_dim_s,
         "add_dim2_returned_none": dim is None,
         "interpretation": (
-            "Toggle 78 SUPPRESSED the popup -- ship it" if status == "PASS"
+            "Toggle 78 SUPPRESSED the popup -- ship it"
+            if status == "PASS"
             else "Toggle 78 did NOT suppress the popup OR dim creation broke"
         ),
         "baseline_blocking_time_s_per_dim": "~12s (Spike I)",

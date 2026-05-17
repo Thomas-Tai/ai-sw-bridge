@@ -64,9 +64,7 @@ def _load_proposal(proposal_id: str) -> dict[str, Any] | None:
 
 def _save_proposal(proposal_id: str, data: dict[str, Any]) -> None:
     _proposals_dir().mkdir(parents=True, exist_ok=True)
-    _proposal_path(proposal_id).write_text(
-        json.dumps(data, indent=2), encoding="utf-8"
-    )
+    _proposal_path(proposal_id).write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 def _get_linked_locals(doc: Any) -> Path | None:
@@ -388,9 +386,7 @@ def sw_commit(proposal_id: str) -> dict[str, Any]:
 
         with ExclusiveLock(locals_path) as lock:
             current_text = lock.read_text()
-        new_text = replace_rhs(
-            current_text, rec["line_index"], rec["new_expression"]
-        )
+        new_text = replace_rhs(current_text, rec["line_index"], rec["new_expression"])
         atomic_write(locals_path, new_text)
 
         rebuild_ok, rebuild_err = _force_rebuild(doc)
@@ -418,7 +414,9 @@ def sw_commit(proposal_id: str) -> dict[str, Any]:
         return result
 
 
-def sw_run_macro(macro_path: str, module: str = "Module1", sub: str = "main") -> dict[str, Any]:
+def sw_run_macro(
+    macro_path: str, module: str = "Module1", sub: str = "main"
+) -> dict[str, Any]:
     """Execute a SW VBA macro via RunMacro / RunMacro2.
 
     NOTE: as of 0.1.0 this only works for BINARY .swp files produced by

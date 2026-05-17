@@ -65,24 +65,36 @@ def probe_one_toggle(sw, toggle_id: int) -> dict:
         # Open a fresh part for this probe
         template = sw.GetUserPreferenceStringValue(8)
         if not template:
-            return {"toggle_id": toggle_id, "status": "SKIP",
-                    "error": "no default Part template"}
+            return {
+                "toggle_id": toggle_id,
+                "status": "SKIP",
+                "error": "no default Part template",
+            }
         doc = sw.NewDocument(template, 0, 0.0, 0.0)
         if doc is None:
-            return {"toggle_id": toggle_id, "status": "SKIP",
-                    "error": "NewDocument returned None"}
+            return {
+                "toggle_id": toggle_id,
+                "status": "SKIP",
+                "error": "NewDocument returned None",
+            }
 
         try:
             if not doc.SelectByID("Front Plane", "PLANE", 0.0, 0.0, 0.0):
-                return {"toggle_id": toggle_id, "status": "SKIP",
-                        "error": "could not select Front Plane"}
+                return {
+                    "toggle_id": toggle_id,
+                    "status": "SKIP",
+                    "error": "could not select Front Plane",
+                }
             sm = doc.SketchManager
             sm.InsertSketch(True)
             sm.CreateCircle(0.0, 0.0, 0.0, 0.005, 0.0, 0.0)
             doc.ClearSelection2(True)
             if not doc.SelectByID("", "SKETCHSEGMENT", 0.005, 0.0, 0.0):
-                return {"toggle_id": toggle_id, "status": "SKIP",
-                        "error": "could not select circle for dim"}
+                return {
+                    "toggle_id": toggle_id,
+                    "status": "SKIP",
+                    "error": "could not select circle for dim",
+                }
 
             t0 = time.perf_counter()
             dim = doc.AddDimension2(0.010, 0.005, 0.0)
@@ -114,8 +126,11 @@ def run_com() -> dict:
     winner = None
 
     for tid in CANDIDATE_IDS:
-        print(f"  probing toggle {tid} ... (this may block up to ~15s on FAIL)",
-              file=sys.stderr, flush=True)
+        print(
+            f"  probing toggle {tid} ... (this may block up to ~15s on FAIL)",
+            file=sys.stderr,
+            flush=True,
+        )
         try:
             r = probe_one_toggle(sw, tid)
         except Exception as e:
@@ -136,7 +151,7 @@ def run_com() -> dict:
             f"Patch builder.py to set this toggle False before any sketch dims."
             if winner is not None
             else "None of the probed toggles suppress the popup. "
-                 "Pivot to spike L (numeric-resolve, no AddDimension2)."
+            "Pivot to spike L (numeric-resolve, no AddDimension2)."
         ),
     }
 

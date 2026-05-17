@@ -37,8 +37,11 @@ def main() -> int:
         print(json.dumps({"status": "FAIL", "error": "no active doc"}))
         return 1
     if doc.GetFeatureCount > 17:
-        print(json.dumps({"status": "FAIL",
-                          "error": "doc not blank; File>New>Part first"}))
+        print(
+            json.dumps(
+                {"status": "FAIL", "error": "doc not blank; File>New>Part first"}
+            )
+        )
         return 1
 
     # Probe several candidate IDs near 8 (swInputDimValOnCreate is documented
@@ -79,19 +82,25 @@ def main() -> int:
     # Close sketch
     sm.InsertSketch(True)
 
-    print(json.dumps({
-        "status": "DONE",
-        "before_set": before,
-        "after_set_to_False": after_set,
-        "id_8_changed_to_False": after_set.get(8) is False and before.get(8) is True,
-        "AddDimension2_elapsed_s": round(elapsed, 3),
-        "AddDimension2_blocked": elapsed > 3.0,
-        "interpretation": (
-            "id 8 is swInputDimValOnCreate -- toggle works"
-            if elapsed < 2.0 and after_set.get(8) is False
-            else "id 8 may NOT be swInputDimValOnCreate; popup still blocks"
-        ),
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "status": "DONE",
+                "before_set": before,
+                "after_set_to_False": after_set,
+                "id_8_changed_to_False": after_set.get(8) is False
+                and before.get(8) is True,
+                "AddDimension2_elapsed_s": round(elapsed, 3),
+                "AddDimension2_blocked": elapsed > 3.0,
+                "interpretation": (
+                    "id 8 is swInputDimValOnCreate -- toggle works"
+                    if elapsed < 2.0 and after_set.get(8) is False
+                    else "id 8 may NOT be swInputDimValOnCreate; popup still blocks"
+                ),
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

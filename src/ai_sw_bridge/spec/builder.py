@@ -35,6 +35,10 @@ from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
     SW_END_COND_MID_PLANE,
     SW_END_COND_THROUGH_ALL_BOTH,
     SW_START_SKETCH_PLANE,
+    SW_CHAMFER_EQUAL_DISTANCE,
+    SW_CHAMFER_ANGLE_DISTANCE,
+    SW_FEATURE_CHAMFER_TANGENT_PROPAGATION,
+    SW_FEATURE_SCOPE_ALL_BODIES,
     assert_args,
 )
 
@@ -66,12 +70,12 @@ SW_CONST_RADIUS_FILLET = 0
 #   Right Plane = YZ plane (normal +X)
 PLANE_NORMALS: dict[str, tuple[float, float, float]] = {
     "Front": (0.0, 0.0, 1.0),
-    "Top":   (0.0, 1.0, 0.0),
+    "Top": (0.0, 1.0, 0.0),
     "Right": (1.0, 0.0, 0.0),
 }
 PLANE_FULL_NAME = {
     "Front": "Front Plane",
-    "Top":   "Top Plane",
+    "Top": "Top Plane",
     "Right": "Right Plane",
 }
 
@@ -127,6 +131,7 @@ class BuiltFeature:
 @dataclass
 class BuildContext:
     """Per-build state. Holds the SW app/doc handle and feature lookup."""
+
     sw: Any
     doc: Any
     features_by_name: dict[str, BuiltFeature] = field(default_factory=dict)
@@ -219,6 +224,7 @@ def _eval_rhs(rhs: str, lookup: Any) -> float:
     needed). The remainder is evaluated as a Python expression with no
     builtins -- only +, -, *, /, parens, and numeric literals are usable.
     """
+
     def _sub(m: "re.Match[str]") -> str:
         return repr(lookup(m.group(1)))
 
@@ -321,7 +327,9 @@ def link_locals(doc: Any, locals_path: str) -> None:
 # -----------------------------------------------------------------------------
 
 
-def _build_sketch_rectangle_on_plane(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+def _build_sketch_rectangle_on_plane(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
     plane = feat["plane"]
     full = PLANE_FULL_NAME[plane]
     ok = ctx.doc.SelectByID(full, "PLANE", 0.0, 0.0, 0.0)
@@ -346,8 +354,12 @@ def _build_sketch_rectangle_on_plane(ctx: BuildContext, feat: dict[str, Any]) ->
     # arbitrary corner and grow asymmetrically, putting features
     # off-center after the rebuild. Args: (center, opposite corner).
     sm.CreateCenterRectangle(
-        cx_m, cy_m, 0.0,
-        cx_m + width_m / 2, cy_m + height_m / 2, 0.0,
+        cx_m,
+        cy_m,
+        0.0,
+        cx_m + width_m / 2,
+        cy_m + height_m / 2,
+        0.0,
     )
 
     # Add driving dimensions so Add2 has D1/D2 to bind to. Selection order
@@ -396,7 +408,9 @@ def _build_sketch_rectangle_on_plane(ctx: BuildContext, feat: dict[str, Any]) ->
     )
 
 
-def _build_sketch_circle_on_plane(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+def _build_sketch_circle_on_plane(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
     plane = feat["plane"]
     full = PLANE_FULL_NAME[plane]
     ok = ctx.doc.SelectByID(full, "PLANE", 0.0, 0.0, 0.0)
@@ -406,7 +420,9 @@ def _build_sketch_circle_on_plane(ctx: BuildContext, feat: dict[str, Any]) -> Bu
     sm = ctx.doc.SketchManager
     sm.InsertSketch(True)
 
-    diameter_m = _literal_or_default(feat["diameter"], PLACEHOLDER_MM["circle_diameter_plane"])
+    diameter_m = _literal_or_default(
+        feat["diameter"], PLACEHOLDER_MM["circle_diameter_plane"]
+    )
     radius_m = diameter_m / 2
     center = feat.get("center", {})
     cx_m = float(center.get("x", 0.0)) / 1000.0
@@ -422,7 +438,9 @@ def _build_sketch_circle_on_plane(ctx: BuildContext, feat: dict[str, Any]) -> Bu
         ctx.doc.ClearSelection2(True)
         if not ctx.doc.SelectByID("", "SKETCHSEGMENT", cx_m + radius_m, cy_m, 0.0):
             raise RuntimeError("could not select circle for diameter dim")
-        dim_d = ctx.doc.AddDimension2(cx_m + radius_m + 0.005, cy_m + radius_m + 0.005, 0.0)
+        dim_d = ctx.doc.AddDimension2(
+            cx_m + radius_m + 0.005, cy_m + radius_m + 0.005, 0.0
+        )
         if dim_d is None:
             raise RuntimeError("AddDimension2 returned None for diameter")
         _dismiss_dim_pane(ctx.doc)
@@ -484,6 +502,7 @@ def _warn_face_sketch_offset(
     work; see docs/known_limitations.md for the full discussion.
     """
     import sys
+
     fx, fy, fz = _face_center_part_coords(parent, face)
     # For +/-z faces, the in-face tangent plane is (X, Y). For +/-y the
     # tangent is (X, Z); for +/-x the tangent is (Y, Z). v1 only ships
@@ -518,7 +537,7 @@ def _warn_face_sketch_offset(
         f"origin lands at (0, 0) (part-origin projection). The child "
         f"feature will be drawn relative to (0, 0), NOT the face center. "
         f"If you want it centered on the face, add "
-        f'`\"center\": {{\"{u_key}\": {tu_mm:.2f}, \"{v_key}\": {tv_mm:.2f}}}` '
+        f'`"center": {{"{u_key}": {tu_mm:.2f}, "{v_key}": {tv_mm:.2f}}}` '
         f"to the spec entry. See docs/known_limitations.md section 1.",
         file=sys.stderr,
     )
@@ -564,26 +583,37 @@ def _select_extrude_face(
     # problem the caller must fix by adjusting the spec.
     offsets_2d = [
         (0, 0),
-        (0.001, 0), (0, 0.001), (-0.001, 0), (0, -0.001),
-        (0.005, 0), (0, 0.005), (-0.005, 0), (0, -0.005),
-        (0.015, 0), (0, 0.015), (-0.015, 0), (0, -0.015),
-        (0.005, 0.005), (-0.005, -0.005),
-        (0.015, 0.015), (-0.015, -0.015),
+        (0.001, 0),
+        (0, 0.001),
+        (-0.001, 0),
+        (0, -0.001),
+        (0.005, 0),
+        (0, 0.005),
+        (-0.005, 0),
+        (0, -0.005),
+        (0.015, 0),
+        (0, 0.015),
+        (-0.015, 0),
+        (0, -0.015),
+        (0.005, 0.005),
+        (-0.005, -0.005),
+        (0.015, 0.015),
+        (-0.015, -0.015),
     ]
 
-    if abs(az) > 0.99:        # axis is +/-Z; tangent is (X, Y)
+    if abs(az) > 0.99:  # axis is +/-Z; tangent is (X, Y)
         for du, dv in offsets_2d:
             fx, fy, fz = fx0 + du, fy0 + dv, fz0
             ctx.doc.ClearSelection2(True)
             if ctx.doc.SelectByID("", "FACE", fx, fy, fz):
                 return True, fx, fy, fz
-    elif abs(ay) > 0.99:      # axis is +/-Y; tangent is (X, Z)
+    elif abs(ay) > 0.99:  # axis is +/-Y; tangent is (X, Z)
         for du, dv in offsets_2d:
             fx, fy, fz = fx0 + du, fy0, fz0 + dv
             ctx.doc.ClearSelection2(True)
             if ctx.doc.SelectByID("", "FACE", fx, fy, fz):
                 return True, fx, fy, fz
-    else:                     # axis is +/-X; tangent is (Y, Z)
+    else:  # axis is +/-X; tangent is (Y, Z)
         for du, dv in offsets_2d:
             fx, fy, fz = fx0, fy0 + du, fz0 + dv
             ctx.doc.ClearSelection2(True)
@@ -593,7 +623,9 @@ def _select_extrude_face(
     return False, fx0, fy0, fz0
 
 
-def _build_sketch_rectangle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+def _build_sketch_rectangle_on_face(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
     """Rectangle sketched on a face of an earlier extrusion. Used for stacked
     extrudes where each upper block's profile starts from the previous block's
     top face (e.g. TensionBracket cap-slab-cap stack)."""
@@ -632,8 +664,12 @@ def _build_sketch_rectangle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> 
     # anchors the rect at its centroid via construction diagonals so dim
     # binding resizes both halves symmetrically.
     sm.CreateCenterRectangle(
-        cu_m, cv_m, 0.0,
-        cu_m + width_m / 2, cv_m + height_m / 2, 0.0,
+        cu_m,
+        cv_m,
+        0.0,
+        cu_m + width_m / 2,
+        cv_m + height_m / 2,
+        0.0,
     )
 
     # Driving dims D1 (width) and D2 (height). On -z faces SW mirrors the
@@ -691,7 +727,9 @@ def _build_sketch_rectangle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> 
     )
 
 
-def _build_sketch_circle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+def _build_sketch_circle_on_face(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
     parent_name = feat["of_feature"]
     parent = ctx.features_by_name.get(parent_name)
     if parent is None:
@@ -722,7 +760,9 @@ def _build_sketch_circle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bui
     sm = ctx.doc.SketchManager
     sm.InsertSketch(True)
 
-    diameter_m = _literal_or_default(feat["diameter"], PLACEHOLDER_MM["circle_diameter_face"])
+    diameter_m = _literal_or_default(
+        feat["diameter"], PLACEHOLDER_MM["circle_diameter_face"]
+    )
     radius_m = diameter_m / 2
     # In a face-based sketch, the sketch origin is at the face center by default.
     # 'center' offset is in sketch-local u/v (mm).
@@ -757,7 +797,9 @@ def _build_sketch_circle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bui
                 f"could not select face-sketch circle for diameter dim "
                 f"(face={face}, u={u_m*1000:.1f}mm, r={radius_m*1000:.2f}mm)"
             )
-        dim_d = ctx.doc.AddDimension2(u_m + radius_m + 0.005, v_m + radius_m + 0.005, 0.0)
+        dim_d = ctx.doc.AddDimension2(
+            u_m + radius_m + 0.005, v_m + radius_m + 0.005, 0.0
+        )
         if dim_d is None:
             raise RuntimeError("AddDimension2 returned None for face-sketch diameter")
         _dismiss_dim_pane(ctx.doc)
@@ -772,7 +814,9 @@ def _build_sketch_circle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bui
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
 
 
-def _build_sketch_circles_on_face(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+def _build_sketch_circles_on_face(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
     """Multiple circles in one sketch on a feature face.
 
     Each circle gets its own driving diameter dim. Dim numbering follows
@@ -822,7 +866,9 @@ def _build_sketch_circles_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bu
     for k, c in enumerate(feat["circles"]):
         u_m = float(c["u"]) / 1000.0
         v_m = float(c["v"]) / 1000.0
-        diameter_m = _literal_or_default(c["diameter"], PLACEHOLDER_MM["circle_diameter_multi"])
+        diameter_m = _literal_or_default(
+            c["diameter"], PLACEHOLDER_MM["circle_diameter_multi"]
+        )
         radius_m = diameter_m / 2
         sm.CreateCircle(u_m, v_m, 0.0, u_m + radius_m, v_m, 0.0)
         if ctx.no_dim:
@@ -834,10 +880,10 @@ def _build_sketch_circles_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bu
         # Click in part-frame coords; on -z faces, the u axis is mirrored.
         u_click = mirror_u * u_m
         sel_candidates = [
-            (u_click + radius_m * mirror_u, v_m, 0.0),       # east-ish
-            (u_click, v_m + radius_m, 0.0),                  # north
-            (u_click - radius_m * mirror_u, v_m, 0.0),       # west-ish
-            (u_click, v_m - radius_m, 0.0),                  # south
+            (u_click + radius_m * mirror_u, v_m, 0.0),  # east-ish
+            (u_click, v_m + radius_m, 0.0),  # north
+            (u_click - radius_m * mirror_u, v_m, 0.0),  # west-ish
+            (u_click, v_m - radius_m, 0.0),  # south
         ]
         selected = False
         for sx, sy, sz in sel_candidates:
@@ -854,7 +900,9 @@ def _build_sketch_circles_on_face(ctx: BuildContext, feat: dict[str, Any]) -> Bu
         # Place leader offset from the circle, with stagger so consecutive
         # circles' dim leaders don't overlap.
         lead_offset = 0.005 + 0.003 * k
-        dim = ctx.doc.AddDimension2(u_m + radius_m + lead_offset, v_m + lead_offset, 0.0)
+        dim = ctx.doc.AddDimension2(
+            u_m + radius_m + lead_offset, v_m + lead_offset, 0.0
+        )
         if dim is None:
             raise RuntimeError(f"AddDimension2 returned None for circle #{k}")
         _dismiss_dim_pane(ctx.doc)
@@ -890,29 +938,29 @@ def _call_feature_extrusion(
     """
     fm = ctx.doc.FeatureManager
     args = (
-        True,           # 1  Sd (single direction)
-        flip,           # 2  Flip
-        False,          # 3  Dir (use sketch normal)
-        end_cond,       # 4  T1
-        0,              # 5  T2
-        depth_m,        # 6  D1
-        0.0,            # 7  D2
-        False,          # 8  Dchk1
-        False,          # 9  Dchk2
-        False,          # 10 Ddir1
-        False,          # 11 Ddir2
-        0.0,            # 12 Dang1
-        0.0,            # 13 Dang2
-        False,          # 14 OffsetReverse1
-        False,          # 15 OffsetReverse2
-        False,          # 16 TranslateSurface1
-        False,          # 17 TranslateSurface2
-        True,           # 18 Merge
-        True,           # 19 UseFeatScope
-        True,           # 20 UseAutoSelect
+        True,  # 1  Sd (single direction)
+        flip,  # 2  Flip
+        False,  # 3  Dir (use sketch normal)
+        end_cond,  # 4  T1
+        0,  # 5  T2
+        depth_m,  # 6  D1
+        0.0,  # 7  D2
+        False,  # 8  Dchk1
+        False,  # 9  Dchk2
+        False,  # 10 Ddir1
+        False,  # 11 Ddir2
+        0.0,  # 12 Dang1
+        0.0,  # 13 Dang2
+        False,  # 14 OffsetReverse1
+        False,  # 15 OffsetReverse2
+        False,  # 16 TranslateSurface1
+        False,  # 17 TranslateSurface2
+        True,  # 18 Merge
+        True,  # 19 UseFeatScope
+        True,  # 20 UseAutoSelect
         SW_START_SKETCH_PLANE,  # 21 T0
-        0.0,            # 22 StartOffset
-        False,          # 23 FlipStartOffset
+        0.0,  # 22 StartOffset
+        False,  # 23 FlipStartOffset
     )
     assert_args("IFeatureManager.FeatureExtrusion2", args)
     feature = fm.FeatureExtrusion2(*args)
@@ -944,33 +992,33 @@ def _call_feature_cut(
     """
     fm = ctx.doc.FeatureManager
     args = (
-        True,           # 1  Sd (single-ended)
-        flip,           # 2  Flip
-        False,          # 3  Dir
-        end_cond,       # 4  T1
-        0,              # 5  T2
-        depth_m,        # 6  D1
-        0.0,            # 7  D2
-        False,          # 8  Dchk1
-        False,          # 9  Dchk2
-        False,          # 10 Ddir1
-        False,          # 11 Ddir2
-        0.0,            # 12 Dang1
-        0.0,            # 13 Dang2
-        False,          # 14 OffsetReverse1
-        False,          # 15 OffsetReverse2
-        False,          # 16 TranslateSurface1
-        False,          # 17 TranslateSurface2
-        False,          # 18 NormalCut (sheet metal only)
-        True,           # 19 UseFeatScope
-        True,           # 20 UseAutoSelect
-        True,           # 21 AssemblyFeatureScope
-        True,           # 22 AutoSelectComponents
-        False,          # 23 PropagateFeatureToParts
+        True,  # 1  Sd (single-ended)
+        flip,  # 2  Flip
+        False,  # 3  Dir
+        end_cond,  # 4  T1
+        0,  # 5  T2
+        depth_m,  # 6  D1
+        0.0,  # 7  D2
+        False,  # 8  Dchk1
+        False,  # 9  Dchk2
+        False,  # 10 Ddir1
+        False,  # 11 Ddir2
+        0.0,  # 12 Dang1
+        0.0,  # 13 Dang2
+        False,  # 14 OffsetReverse1
+        False,  # 15 OffsetReverse2
+        False,  # 16 TranslateSurface1
+        False,  # 17 TranslateSurface2
+        False,  # 18 NormalCut (sheet metal only)
+        True,  # 19 UseFeatScope
+        True,  # 20 UseAutoSelect
+        True,  # 21 AssemblyFeatureScope
+        True,  # 22 AutoSelectComponents
+        False,  # 23 PropagateFeatureToParts
         SW_START_SKETCH_PLANE,  # 24 T0
-        0.0,            # 25 StartOffset
-        False,          # 26 FlipStartOffset
-        False,          # 27 OptimizeGeometry (sheet metal only)
+        0.0,  # 25 StartOffset
+        False,  # 26 FlipStartOffset
+        False,  # 27 OptimizeGeometry (sheet metal only)
     )
     assert_args("IFeatureManager.FeatureCut4", args)
     feature = fm.FeatureCut4(*args)
@@ -994,7 +1042,9 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
     depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["extrude_depth"])
     flip = bool(feat.get("flip", False))
 
-    f = _call_feature_extrusion(ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip)
+    f = _call_feature_extrusion(
+        ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip
+    )
     f.Name = feat["name"]
 
     # Inherit the axis from the parent sketch. For plane-based sketches
@@ -1024,11 +1074,11 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
     elif sketch.sketch_center_part is not None:
         cx, cy, _ = sketch.sketch_center_part
         ax, ay, az = sketch.parent_plane_normal
-        if abs(az) > 0.99:        # Front Plane: sketch XY -> part XY
+        if abs(az) > 0.99:  # Front Plane: sketch XY -> part XY
             extrude_origin = (cx, cy, 0.0)
-        elif abs(ay) > 0.99:      # Top Plane: sketch X -> part X, sketch Y -> part Z
+        elif abs(ay) > 0.99:  # Top Plane: sketch X -> part X, sketch Y -> part Z
             extrude_origin = (cx, 0.0, cy)
-        else:                     # Right Plane: sketch X -> part Y, sketch Y -> part Z
+        else:  # Right Plane: sketch X -> part Y, sketch Y -> part Z
             _ = ax  # axis fully determined by ax dominance
             extrude_origin = (0.0, cx, cy)
     else:
@@ -1044,7 +1094,9 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
     )
 
 
-def _build_cut_extrude_through_all(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+def _build_cut_extrude_through_all(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
     sketch_name = feat["sketch"]
     _select_sketch(ctx, sketch_name)
     flip = bool(feat.get("flip", False))
@@ -1063,7 +1115,9 @@ def _build_cut_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFe
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
 
-def _build_fillet_constant_radius(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+def _build_fillet_constant_radius(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
     """Constant-radius edge fillet via the SW 2020+ canonical pipeline.
 
     FeatureFillet3 (single-call) is marked obsolete for constant-radius
@@ -1129,6 +1183,258 @@ def _build_fillet_constant_radius(ctx: BuildContext, feat: dict[str, Any]) -> Bu
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
 
+def _build_chamfer_edge(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Edge chamfer via IFeatureManager::InsertFeatureChamfer (8-arg call).
+
+    The single-call API has shipped since SW 2005 FCS and is not marked
+    obsolete in the CHM (unlike FeatureFillet3, which is). Spike Q in
+    spikes/v0_3/ verifies whether this remains the right call on SW
+    2024 SP1 or whether the CreateDefinition + IChamferFeatureData2 path
+    is needed instead.
+
+    Selection: each edge listed in `edges[]` is selected by part-coord
+    point via SelectByID('EDGE'); InsertFeatureChamfer picks up the
+    current selection set as the chamfer target list.
+
+    Modes:
+      equal_distance -> swChamferEqualDistance=16, distance fed via OtherDist
+      distance_angle -> swChamferAngleDistance=1, distance via Width, angle
+                        via Angle (degrees, NOT radians -- SW's published
+                        signature uses degrees here despite all other length
+                        params being meters).
+    """
+    mode = feat["mode"]
+    distance_m = _literal_or_default(feat["distance"], 1.0)  # 1mm placeholder
+
+    options = SW_FEATURE_CHAMFER_TANGENT_PROPAGATION
+    if feat.get("flip", False):
+        # swFeatureChamferFlipDirection = 1; bitwise OR into options.
+        options |= 1
+
+    if mode == "equal_distance":
+        chamfer_type = SW_CHAMFER_EQUAL_DISTANCE
+        width = 0.0
+        angle_deg = 0.0
+        other_dist = distance_m
+    elif mode == "distance_angle":
+        chamfer_type = SW_CHAMFER_ANGLE_DISTANCE
+        width = distance_m
+        # `angle` is degrees per the CHM; resolve {rhs} placeholder to 45deg.
+        angle_value = feat["angle"]
+        if isinstance(angle_value, dict) and "rhs" in angle_value:
+            angle_deg = 45.0  # placeholder; rebound on next ctx rebuild
+        else:
+            angle_deg = float(angle_value)
+        other_dist = 0.0
+    else:
+        # Unreachable; validator rejects other values. Defensive for clarity.
+        raise RuntimeError(f"chamfer_edge: unknown mode {mode!r}")
+
+    # Select target edges. Same convention as fillet -- one point per edge,
+    # SelectByID(type='EDGE'). Append-mode is implicit across calls when we
+    # don't ClearSelection2 between them.
+    ctx.doc.ClearSelection2(True)
+    n_selected = 0
+    for i, p in enumerate(feat["edges"]):
+        x_m = float(p["x"]) / 1000.0
+        y_m = float(p["y"]) / 1000.0
+        z_m = float(p["z"]) / 1000.0
+        if not ctx.doc.SelectByID("", "EDGE", x_m, y_m, z_m):
+            raise RuntimeError(
+                f"could not select edge #{i} at part ({p['x']}, {p['y']}, "
+                f"{p['z']}) mm -- point not on any edge of current geometry"
+            )
+        n_selected += 1
+    if n_selected == 0:
+        raise RuntimeError("no edges selected; chamfer would no-op")
+
+    fm = ctx.doc.FeatureManager
+    args = (options, chamfer_type, width, angle_deg, other_dist, 0.0, 0.0, 0.0)
+    assert_args("IFeatureManager.InsertFeatureChamfer", args)
+    f = fm.InsertFeatureChamfer(*args)
+    if f is None:
+        raise RuntimeError(
+            f"InsertFeatureChamfer returned None for chamfer on {n_selected} "
+            f"edges, mode={mode}, distance={distance_m * 1000:.2f}mm"
+        )
+    f.Name = feat["name"]
+
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
+
+
+def _select_seed_feature(ctx: BuildContext, seed_name: str, mark: int) -> None:
+    """Select a feature by name with a SW selection mark (used by pattern/mirror).
+
+    Uses doc.Extension.SelectByID2 with 9 args. The Callout (8th arg) is
+    typed as IDispatch; passing None is the documented late-binding-safe
+    way. We've seen Callout OUT params fail on SelectByID2 in the past
+    (MMP_DEBUG_SESSION.md), but the IN form with Callout=None has not been
+    tested for the BODYFEATURE type yet -- Spike R/S verify.
+    """
+    ext = ctx.doc.Extension
+    ok = ext.SelectByID2(
+        seed_name,
+        "BODYFEATURE",
+        0.0,
+        0.0,
+        0.0,
+        True,  # Append (we keep prior selections in place for combined sel sets)
+        mark,
+        None,  # Callout
+        0,  # SelectOption
+    )
+    if not ok:
+        raise RuntimeError(
+            f"SelectByID2('{seed_name}', 'BODYFEATURE', mark={mark}) returned False"
+        )
+
+
+def _build_linear_pattern(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Linear pattern of a seed feature along a direction edge.
+
+    Uses the marked-selection convention required by pattern features:
+      mark = 4 (swSelPatternBody)  -- the seed feature
+      mark = 1 (swSelDirectionRef) -- the direction reference edge
+
+    Then calls FeatureLinearPattern5 (22 args). The CHM marks this method
+    obsolete since SW 2020, recommending CreateDefinition +
+    ILinearPatternFeatureData. We try the single-call first because it
+    works empirically on prior SW builds; if it fails on 2024 SP1 we
+    pivot.
+    """
+    seed_name = feat["seed"]
+    if seed_name not in ctx.features_by_name:
+        # Defensive: validator should already have caught this, but the
+        # build path runs after validate so a direct caller bypassing
+        # validation gets a clearer error here than in SW.
+        raise RuntimeError(f"linear_pattern seed '{seed_name}' not yet built")
+
+    spacing_m = _literal_or_default(feat["spacing"], 10.0)  # 10mm placeholder
+    count = int(feat["count"])
+    flip = bool(feat.get("flip", False))
+
+    # Select seed + direction with marks.
+    ctx.doc.ClearSelection2(True)
+    _select_seed_feature(ctx, seed_name, mark=4)
+
+    d = feat["direction"]
+    dx_m, dy_m, dz_m = (
+        float(d["x"]) / 1000.0,
+        float(d["y"]) / 1000.0,
+        float(d["z"]) / 1000.0,
+    )
+    # Direction edge: select by point with mark=1.
+    ext = ctx.doc.Extension
+    ok = ext.SelectByID2(
+        "",
+        "EDGE",
+        dx_m,
+        dy_m,
+        dz_m,
+        True,  # Append (keep the seed selection in place)
+        1,  # Mark = direction reference
+        None,
+        0,
+    )
+    if not ok:
+        raise RuntimeError(
+            f"could not select direction edge at part ({d['x']}, {d['y']}, "
+            f"{d['z']}) mm -- point not on any edge of current geometry"
+        )
+
+    fm = ctx.doc.FeatureManager
+    args = (
+        count,
+        spacing_m,
+        1,
+        0.0,  # Num1, Spacing1, Num2, Spacing2
+        flip,
+        False,  # FlipDir1, FlipDir2
+        "",
+        "",  # DName1, DName2
+        False,
+        False,  # GeometryPattern, VaryInstance
+        False,
+        False,  # HasOffset1, HasOffset2
+        False,
+        False,  # CtrlByNum1, CtrlByNum2
+        False,
+        False,  # FromCentroid1, FromCentroid2
+        False,
+        False,  # RevOffset1, RevOffset2
+        0.0,
+        0.0,  # Offset1, Offset2
+        False,
+        False,  # D2PatternSeedOnly, SyncSubAssemblies
+    )
+    assert_args("IFeatureManager.FeatureLinearPattern5", args)
+    f = fm.FeatureLinearPattern5(*args)
+    if f is None:
+        raise RuntimeError(
+            f"FeatureLinearPattern5 returned None (seed='{seed_name}', "
+            f"count={count}, spacing={spacing_m * 1000:.2f}mm). Selection "
+            f"marks may have been lost between SelectByID2 calls."
+        )
+    f.Name = feat["name"]
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
+
+
+def _build_mirror_feature(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Mirror a seed feature about one of the three default reference planes.
+
+    Selection marks (per SW API conventions):
+      mark = 2  -- the mirror plane (one of Front/Top/Right Plane)
+      mark = 1  -- the seed feature(s) to mirror
+
+    Then calls InsertMirrorFeature2 (5 args). The non-2 form (InsertMirrorFeature,
+    deprecated) had fewer ScopeOptions; we use the 2 form to be explicit.
+    """
+    seed_name = feat["seed"]
+    if seed_name not in ctx.features_by_name:
+        raise RuntimeError(f"mirror_feature seed '{seed_name}' not yet built")
+
+    plane = feat["plane"]
+    full_plane_name = PLANE_FULL_NAME[plane]
+
+    # 1) Select the mirror plane with mark=2.
+    ctx.doc.ClearSelection2(True)
+    ext = ctx.doc.Extension
+    ok_plane = ext.SelectByID2(
+        full_plane_name,
+        "PLANE",
+        0.0,
+        0.0,
+        0.0,
+        False,  # Append (start with a clean selection set)
+        2,  # Mark = mirror plane
+        None,
+        0,
+    )
+    if not ok_plane:
+        raise RuntimeError(f"could not select mirror plane '{full_plane_name}'")
+
+    # 2) Select the seed feature with mark=1.
+    _select_seed_feature(ctx, seed_name, mark=1)
+
+    fm = ctx.doc.FeatureManager
+    args = (
+        False,  # BMirrorBody (False = feature mirror)
+        False,  # BGeometryPattern
+        False,  # BMerge (body-only; irrelevant here)
+        False,  # BKnit (surface-only; irrelevant here)
+        SW_FEATURE_SCOPE_ALL_BODIES,  # ScopeOptions = 0
+    )
+    assert_args("IFeatureManager.InsertMirrorFeature2", args)
+    f = fm.InsertMirrorFeature2(*args)
+    if f is None:
+        raise RuntimeError(
+            f"InsertMirrorFeature2 returned None (seed='{seed_name}', "
+            f"plane='{plane}'). Selection marks may have been lost."
+        )
+    f.Name = feat["name"]
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
+
+
 # -----------------------------------------------------------------------------
 # Feature registry: unified handler + dim-binding + length-field metadata
 # -----------------------------------------------------------------------------
@@ -1151,6 +1457,7 @@ def _default_rhs_walker(
 ) -> Any:
     """Build a default rhs_walker that pulls from feat[field] for each
     declared dim_field. Returns a callable suitable for FeatureType.rhs_walker."""
+
     def _walk(feat: dict[str, Any]) -> list[tuple[str, str, str]]:
         out: list[tuple[str, str, str]] = []
         for field, dim_suffix in dim_fields.items():
@@ -1158,6 +1465,7 @@ def _default_rhs_walker(
             if isinstance(value, dict) and "rhs" in value:
                 out.append((field, dim_suffix, value["rhs"]))
         return out
+
     return _walk
 
 
@@ -1174,6 +1482,7 @@ def _circles_on_face_rhs_walker(feat: dict[str, Any]) -> list[tuple[str, str, st
 @dataclass(frozen=True)
 class FeatureType:
     """Per-feature-type metadata. One entry per supported feature."""
+
     name: str
     handler: Any  # Callable[[BuildContext, dict], BuiltFeature]
     # {spec_field_name: dim_suffix} for fixed dims. dim_suffix is the SW
@@ -1246,6 +1555,31 @@ FEATURE_REGISTRY: dict[str, FeatureType] = {
         # SP1, despite some forum docs suggesting RadiusDim@). Use D1.
         dim_fields={"radius": "D1"},
     ),
+    "chamfer_edge": FeatureType(
+        name="chamfer_edge",
+        handler=None,
+        # InsertFeatureChamfer's driving dim auto-name on SW 2024 SP1 is
+        # not yet verified. Empirical convention from other modify features
+        # suggests D1@<ChamferName> for the primary distance, D2@... for
+        # an angle when present. To be confirmed by Spike Q output.
+        # Initial guess: distance->D1, angle->D2.
+        dim_fields={"distance": "D1", "angle": "D2"},
+    ),
+    "linear_pattern": FeatureType(
+        name="linear_pattern",
+        handler=None,
+        # Pattern dims (spacing) are not currently parametric -- the
+        # `spacing` field accepts {rhs} but the binding is not yet
+        # wired through because pattern dim naming differs from boss
+        # extrudes. Defer parametric pattern spacing to a follow-up.
+        dim_fields={},
+    ),
+    "mirror_feature": FeatureType(
+        name="mirror_feature",
+        handler=None,
+        # Mirror has no driving dims of its own.
+        dim_fields={},
+    ),
 }
 
 
@@ -1254,14 +1588,17 @@ FEATURE_REGISTRY: dict[str, FeatureType] = {
 def _wire_handlers() -> None:
     handlers = {
         "sketch_rectangle_on_plane": _build_sketch_rectangle_on_plane,
-        "sketch_rectangle_on_face":  _build_sketch_rectangle_on_face,
-        "sketch_circle_on_plane":    _build_sketch_circle_on_plane,
-        "sketch_circle_on_face":     _build_sketch_circle_on_face,
-        "sketch_circles_on_face":    _build_sketch_circles_on_face,
-        "boss_extrude_blind":        _build_boss_extrude_blind,
-        "cut_extrude_through_all":   _build_cut_extrude_through_all,
-        "cut_extrude_blind":         _build_cut_extrude_blind,
-        "fillet_constant_radius":    _build_fillet_constant_radius,
+        "sketch_rectangle_on_face": _build_sketch_rectangle_on_face,
+        "sketch_circle_on_plane": _build_sketch_circle_on_plane,
+        "sketch_circle_on_face": _build_sketch_circle_on_face,
+        "sketch_circles_on_face": _build_sketch_circles_on_face,
+        "boss_extrude_blind": _build_boss_extrude_blind,
+        "cut_extrude_through_all": _build_cut_extrude_through_all,
+        "cut_extrude_blind": _build_cut_extrude_blind,
+        "fillet_constant_radius": _build_fillet_constant_radius,
+        "chamfer_edge": _build_chamfer_edge,
+        "linear_pattern": _build_linear_pattern,
+        "mirror_feature": _build_mirror_feature,
     }
     for name, ft in FEATURE_REGISTRY.items():
         # FeatureType is frozen; rebuild with handler in place.
@@ -1321,9 +1658,10 @@ def _apply_bindings(doc: Any, bindings: list[tuple[str, str]]) -> list[int]:
 @dataclass
 class Binding:
     """One EquationMgr.Add2 binding applied during a build."""
-    dim: str           # e.g. "D1@SK_Body"
-    rhs: str           # the RHS pasted into Add2 (verbatim from spec)
-    add2_index: int    # value returned by EquationMgr.Add2; -1 = silent failure
+
+    dim: str  # e.g. "D1@SK_Body"
+    rhs: str  # the RHS pasted into Add2 (verbatim from spec)
+    add2_index: int  # value returned by EquationMgr.Add2; -1 = silent failure
 
 
 @dataclass
@@ -1475,9 +1813,7 @@ def build(
             # default). Per pywin32 late-binding this returns a single bool.
             save_ok = bool(doc.SaveAs3(str(out_path), 0, 0))
             if not save_ok:
-                raise RuntimeError(
-                    f"doc.SaveAs3 returned False for {out_path}"
-                )
+                raise RuntimeError(f"doc.SaveAs3 returned False for {out_path}")
             saved_path = str(out_path)
 
         return BuildResult(
