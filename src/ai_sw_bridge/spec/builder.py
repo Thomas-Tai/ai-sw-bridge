@@ -83,10 +83,17 @@ class BuiltFeature:
     name: str
     type: str
     sw_object: Any = None  # the IFeature CDispatch
-    # For sketches (plane-based): the normal of the parent reference plane.
-    # Used by the subsequent extrusion to inherit its axis. None for face-
-    # based sketches (their parent is a face whose normal is already known).
+    # For sketches: the outward normal of the parent (reference plane OR
+    # face) in part coordinates. Used by the subsequent extrusion to set its
+    # axis. Set for plane-based sketches by build() after the handler runs;
+    # set for face-based sketches inside the handler (so the chain of stacked
+    # extrudes correctly inherits direction).
     parent_plane_normal: tuple[float, float, float] | None = None
+    # For face-based sketches only: world-coord origin of the parent face
+    # (the point _select_extrude_face succeeded at). The child extrude that
+    # consumes this sketch uses it as its extrude_origin so downstream face-
+    # selects find faces in the right place along stacked-extrude chains.
+    parent_face_origin: tuple[float, float, float] | None = None
     # For extrusions: the actual extrude axis (outward normal of the boss/cut),
     # origin of the base face in part coords, blind depth in meters, and the
     # `flip` flag (True = extrude in -axis direction). Used by child sketches
@@ -470,6 +477,103 @@ def _select_extrude_face(
     return False, fx0, fy0, fz0
 
 
+def _build_sketch_rectangle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Rectangle sketched on a face of an earlier extrusion. Used for stacked
+    extrudes where each upper block's profile starts from the previous block's
+    top face (e.g. TensionBracket cap-slab-cap stack)."""
+    parent_name = feat["of_feature"]
+    parent = ctx.features_by_name.get(parent_name)
+    if parent is None:
+        raise RuntimeError(f"sketch_rectangle_on_face: '{parent_name}' not built yet")
+    if parent.extrude_axis is None:
+        raise RuntimeError(f"'{parent_name}' is not an extrusion with known axis")
+
+    face = feat["face"]
+    if face not in ("+z", "-z"):
+        raise NotImplementedError(
+            f"v1 only supports +z/-z (out/in board) faces of extrusions; got {face}"
+        )
+
+    ok, fx, fy, fz = _select_extrude_face(ctx, parent, face)
+    if not ok:
+        raise RuntimeError(
+            f"SelectByID returned False for {face} face of {parent_name} -- "
+            f"tried center and offset points, none hit material"
+        )
+
+    sm = ctx.doc.SketchManager
+    sm.InsertSketch(True)
+
+    width_m = _literal_or_default(feat["width"], PLACEHOLDER_MM["rectangle_side"])
+    height_m = _literal_or_default(feat["height"], PLACEHOLDER_MM["rectangle_side"])
+    # Face-local center offset (u, v); default (0, 0) = face center.
+    c = feat.get("center", {})
+    cu_m = float(c.get("u", 0.0)) / 1000.0
+    cv_m = float(c.get("v", 0.0)) / 1000.0
+
+    # Same anchoring rationale as on-plane rectangles: CreateCenterRectangle
+    # anchors the rect at its centroid via construction diagonals so dim
+    # binding resizes both halves symmetrically.
+    sm.CreateCenterRectangle(
+        cu_m, cv_m, 0.0,
+        cu_m + width_m / 2, cv_m + height_m / 2, 0.0,
+    )
+
+    # Driving dims D1 (width) and D2 (height). On -z faces SW mirrors the
+    # sketch X axis, so SKETCHSEGMENT picks in part-frame need u-mirror.
+    if not ctx.no_dim:
+        mirror_u = -1.0 if face.startswith("-") else 1.0
+        u_click_c = mirror_u * cu_m
+
+        ctx.doc.ClearSelection2(True)
+        top_v = cv_m + height_m / 2
+        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", u_click_c, top_v, 0.0):
+            raise RuntimeError(
+                f"could not select rect top edge for width dim "
+                f"(face={face}, center=({cu_m*1000:.1f}, {cv_m*1000:.1f}) mm)"
+            )
+        dim_w = ctx.doc.AddDimension2(cu_m, top_v + 0.005, 0.0)
+        if dim_w is None:
+            raise RuntimeError("AddDimension2 returned None for width on face")
+        _dismiss_dim_pane(ctx.doc)
+
+        ctx.doc.ClearSelection2(True)
+        left_u = u_click_c - mirror_u * width_m / 2
+        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", left_u, cv_m, 0.0):
+            raise RuntimeError(
+                f"could not select rect left edge for height dim "
+                f"(face={face}, center=({cu_m*1000:.1f}, {cv_m*1000:.1f}) mm)"
+            )
+        dim_h = ctx.doc.AddDimension2(cu_m - width_m / 2 - 0.005, cv_m, 0.0)
+        if dim_h is None:
+            raise RuntimeError("AddDimension2 returned None for height on face")
+        _dismiss_dim_pane(ctx.doc)
+
+    sm.InsertSketch(True)
+
+    sketch_feat = ctx.doc.FeatureByPositionReverse(0)
+    if sketch_feat is None:
+        raise RuntimeError("no rectangle sketch produced on face")
+    sketch_feat.Name = feat["name"]
+
+    # Inherit the parent extrusion's axis as our parent_plane_normal so the
+    # downstream boss_extrude_blind picks up the correct extrude direction.
+    # For +z face on a +z-axis parent: child extrude continues in +z.
+    # For -z face on a +z-axis parent: child extrude goes in -z.
+    ax, ay, az = parent.extrude_axis
+    if parent.extrude_flip:
+        ax, ay, az = -ax, -ay, -az
+    if face.startswith("-"):
+        ax, ay, az = -ax, -ay, -az
+    return BuiltFeature(
+        name=feat["name"],
+        type=feat["type"],
+        sw_object=sketch_feat,
+        parent_plane_normal=(ax, ay, az),
+        parent_face_origin=(fx, fy, fz),
+    )
+
+
 def _build_sketch_circle_on_face(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     parent_name = feat["of_feature"]
     parent = ctx.features_by_name.get(parent_name)
@@ -769,20 +873,28 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
     f = _call_feature_extrusion(ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip)
     f.Name = feat["name"]
 
-    # Inherit the axis from the parent plane-based sketch. build() stashes
-    # the plane's outward normal on `parent_plane_normal` before this handler
-    # runs; we reuse it as our extrude axis.
+    # Inherit the axis from the parent sketch. For plane-based sketches
+    # build() stashes the plane's outward normal; for face-based sketches the
+    # handler stashes the face's outward normal directly. Either way the
+    # downstream extrude axis matches.
     if sketch.parent_plane_normal is None:
         raise RuntimeError(
             f"sketch '{sketch_name}' has no parent_plane_normal stashed; "
-            f"build() should set it on every plane-based sketch"
+            f"build() should set it on every plane-based sketch and the "
+            f"face-based sketch handlers should set it too"
         )
+    # For face-based sketches the base face of the new boss is at the parent
+    # face origin, not world origin. Without this, downstream face-selects
+    # on stacked extrudes (e.g. TensionBracket's slab on top of cap) would
+    # probe at the wrong z. Plane-based sketches default to world origin
+    # since their reference plane passes through it.
+    extrude_origin = sketch.parent_face_origin or (0.0, 0.0, 0.0)
     return BuiltFeature(
         name=feat["name"],
         type=feat["type"],
         sw_object=f,
         extrude_axis=sketch.parent_plane_normal,
-        extrude_origin=(0.0, 0.0, 0.0),
+        extrude_origin=extrude_origin,
         extrude_depth_m=depth_m,
         extrude_flip=flip,
     )
@@ -879,6 +991,11 @@ FEATURE_REGISTRY: dict[str, FeatureType] = {
         handler=None,  # filled in below after handler defs are in scope
         dim_fields={"width": "D1", "height": "D2"},
     ),
+    "sketch_rectangle_on_face": FeatureType(
+        name="sketch_rectangle_on_face",
+        handler=None,
+        dim_fields={"width": "D1", "height": "D2"},
+    ),
     "sketch_circle_on_plane": FeatureType(
         name="sketch_circle_on_plane",
         handler=None,
@@ -918,6 +1035,7 @@ FEATURE_REGISTRY: dict[str, FeatureType] = {
 def _wire_handlers() -> None:
     handlers = {
         "sketch_rectangle_on_plane": _build_sketch_rectangle_on_plane,
+        "sketch_rectangle_on_face":  _build_sketch_rectangle_on_face,
         "sketch_circle_on_plane":    _build_sketch_circle_on_plane,
         "sketch_circle_on_face":     _build_sketch_circle_on_face,
         "sketch_circles_on_face":    _build_sketch_circles_on_face,

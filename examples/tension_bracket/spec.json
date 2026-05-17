@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "name": "SM-HW-S1b-006_TensionBracket_v01_FROM_JSON",
+  "locals": "C:\\D\\WorkSpace\\[Cloud]_Company_Sync\\MSC\\OwnInfo\\MyResearchProject\\Lego_Sorter_V2\\Hardware\\S1b_Conveyor\\Model\\s1b_conveyor_locals.txt",
+  "_comment": "S1b TensionBracket per Hardware/S1b_Conveyor/SW_Design_Guide.md §13.3. Origin = center of axle bore on inboard cap face; +X = along slot, +Y = outboard (toward outside of side plate), +Z = up. Spec uses Front Plane (XY, normal +Z) for the first sketch -- the design guide says 'Top Plane' but means an XY plane with +Z extrude direction; in SW's English template Front Plane is XY. The inboard cap rectangle is offset so its -Y edge sits on the origin (inboard face at Y=0). Subsequent slabs sketch on the +z face of the previous extrude, exercising the new sketch_rectangle_on_face primitive added 2026-05-17.",
+  "features": [
+    {
+      "_comment": "Step 2: Inboard cap. 20 (X) x 15 (Y) x 3 (Z). Rectangle shifted so -Y edge sits at Y=0 (origin is on the inboard face). Center at (0, S1B_TB_Y_OUTBOARD/2 = 7.5) puts the Y span at [0, 15].",
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_InboardCap",
+      "plane": "Front",
+      "width":  {"rhs": "\"S1B_TB_X\""},
+      "height": {"rhs": "\"S1B_TB_Y_OUTBOARD\""},
+      "center": {"x": 0.0, "y": 7.5}
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "Extrude_InboardCap",
+      "sketch": "SK_InboardCap",
+      "depth": {"rhs": "\"S1B_TB_CAP_T\""}
+    },
+    {
+      "_comment": "Step 3: Slot slab on +z face of inboard cap. 8.5 (X) x 15 (Y) x 5 (Z). X-narrower than cap so cap acts as flange. EMPIRICAL: SW puts the face-sketch origin at the part-origin PROJECTION onto the face, NOT at the face geometric center. Inboard cap's +z face has part-origin projection at (0, 0, 3), but the cap centroid is at (0, 7.5, 3). To align the slab Y span with the cap Y span [0, 15], shift center +v by 7.5mm.",
+      "type": "sketch_rectangle_on_face",
+      "name": "SK_SlotSlab",
+      "of_feature": "Extrude_InboardCap",
+      "face": "+z",
+      "width":  {"rhs": "\"S1B_AXLE_CLEARANCE\""},
+      "height": {"rhs": "\"S1B_TB_Y_OUTBOARD\""},
+      "center": {"u": 0.0, "v": 7.5}
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "Extrude_SlotSlab",
+      "sketch": "SK_SlotSlab",
+      "depth": {"rhs": "\"S1B_FRAME_PLATE_T\""}
+    },
+    {
+      "_comment": "Step 4: Outboard cap on +z face of slot slab. Same footprint as inboard cap: 20 (X) x 15 (Y) x 3 (Z). Same +v shift as the slot slab to align with cap centroid (Y=7.5).",
+      "type": "sketch_rectangle_on_face",
+      "name": "SK_OutboardCap",
+      "of_feature": "Extrude_SlotSlab",
+      "face": "+z",
+      "width":  {"rhs": "\"S1B_TB_X\""},
+      "height": {"rhs": "\"S1B_TB_Y_OUTBOARD\""},
+      "center": {"u": 0.0, "v": 7.5}
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "Extrude_OutboardCap",
+      "sketch": "SK_OutboardCap",
+      "depth": {"rhs": "\"S1B_TB_CAP_T\""}
+    },
+    {
+      "_comment": "Step 5: Axle bore through all 11 mm. Circle on +z face of outboard cap, centered on the bracket centroid (X=0, Y=7.5 in part frame). Per the EMPIRICAL face-sketch-origin discovery (see SK_SlotSlab comment), sketch (u=0, v=0) lands at part-origin projection (0, 0) = inboard-edge of cap, NOT the centroid. Shift v=+7.5 to put the bore at the bracket centroid. Ø8.2 (S1B_TB_BORE = S1B_AXLE_DIA + 0.2) grips axle tightly.",
+      "type": "sketch_circle_on_face",
+      "name": "SK_AxleBore",
+      "of_feature": "Extrude_OutboardCap",
+      "face": "+z",
+      "diameter": {"rhs": "\"S1B_TB_BORE\""},
+      "center": {"u": 0.0, "v": 7.5}
+    },
+    {
+      "type": "cut_extrude_through_all",
+      "name": "Cut_AxleBore",
+      "sketch": "SK_AxleBore"
+    }
+  ]
+}

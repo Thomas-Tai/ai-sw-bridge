@@ -22,6 +22,16 @@ import jsonschema
 
 from .schema import SCHEMA, SKETCH_TYPES, EXTRUDE_TYPES, ALL_TYPES
 
+# Sketch types that reference a parent feature via `of_feature` (sketched
+# on the parent extrusion's face) rather than a reference plane. Kept as a
+# named constant so the validator's reference check picks up new face-based
+# sketches automatically as they're added to the schema.
+FACE_SKETCH_TYPES = frozenset({
+    "sketch_rectangle_on_face",
+    "sketch_circle_on_face",
+    "sketch_circles_on_face",
+})
+
 
 class ValidationError(Exception):
     """One validation failure. Use `path` to locate it in the spec.
@@ -81,7 +91,7 @@ def _check_references(spec: dict[str, Any]) -> None:
             )
 
         # Reference checks per feature type
-        if ftype in ("sketch_circle_on_face", "sketch_circles_on_face"):
+        if ftype in FACE_SKETCH_TYPES:
             target = feat["of_feature"]
             if target not in seen:
                 raise ValidationError(

@@ -92,6 +92,42 @@ SKETCH_CIRCLE_ON_PLANE: dict[str, Any] = {
 }
 
 
+SKETCH_RECTANGLE_ON_FACE: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["type", "name", "of_feature", "face", "width", "height"],
+    "properties": {
+        "type": {"const": "sketch_rectangle_on_face"},
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+        "of_feature": {
+            "type": "string",
+            "description": "Name of an earlier extrusion feature.",
+        },
+        "face": {
+            "enum": ["+x", "-x", "+y", "-y", "+z", "-z"],
+            "description": "Outward normal direction of the face in the feature's local frame.",
+        },
+        "width":  LENGTH_SCHEMA,
+        "height": LENGTH_SCHEMA,
+        "center": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"u": {"type": "number"}, "v": {"type": "number"}},
+            "description": (
+                "In-face center offset (mm) from the FACE SKETCH ORIGIN, "
+                "which empirically is the projection of the part origin onto "
+                "the face (NOT the face's geometric center). For a feature "
+                "whose base sketch was a center-rectangle on origin these "
+                "happen to coincide; for one shifted off origin (e.g. "
+                "TensionBracket cap with Y span [0,15]) they don't, and "
+                "child sketches need a u/v offset to land on the bracket "
+                "centroid instead of the part origin. Default (0, 0)."
+            ),
+        },
+    },
+}
+
+
 SKETCH_CIRCLE_ON_FACE: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -113,9 +149,10 @@ SKETCH_CIRCLE_ON_FACE: dict[str, Any] = {
             "additionalProperties": False,
             "properties": {"u": {"type": "number"}, "v": {"type": "number"}},
             "description": (
-                "In-face center offset (mm) from the face center. "
-                "u and v are arbitrary in-face axes; sign matches SW's default. "
-                "Default (0, 0) = face center."
+                "In-face center offset (mm) from the face SKETCH ORIGIN, "
+                "which is the projection of the part origin onto the face "
+                "(NOT the face's geometric center -- see SKETCH_RECTANGLE_ON_FACE). "
+                "Default (0, 0)."
             ),
         },
     },
@@ -143,7 +180,14 @@ SKETCH_CIRCLES_ON_FACE: dict[str, Any] = {
                 "additionalProperties": False,
                 "required": ["u", "v", "diameter"],
                 "properties": {
-                    "u": {"type": "number", "description": "Center u-offset (mm) from face center."},
+                    "u": {
+                        "type": "number",
+                        "description": (
+                            "Center u-offset (mm) from the face SKETCH ORIGIN "
+                            "(= part-origin projection onto the face, NOT face "
+                            "centroid -- see SKETCH_RECTANGLE_ON_FACE for the gotcha)."
+                        ),
+                    },
                     "v": {"type": "number"},
                     "diameter": LENGTH_SCHEMA,
                 },
@@ -234,6 +278,7 @@ SCHEMA: dict[str, Any] = {
             "items": {
                 "oneOf": [
                     SKETCH_RECTANGLE_ON_PLANE,
+                    SKETCH_RECTANGLE_ON_FACE,
                     SKETCH_CIRCLE_ON_PLANE,
                     SKETCH_CIRCLE_ON_FACE,
                     SKETCH_CIRCLES_ON_FACE,
@@ -250,6 +295,7 @@ SCHEMA: dict[str, Any] = {
 # Feature-type metadata for the validator and builder.
 SKETCH_TYPES = frozenset({
     "sketch_rectangle_on_plane",
+    "sketch_rectangle_on_face",
     "sketch_circle_on_plane",
     "sketch_circle_on_face",
     "sketch_circles_on_face",
