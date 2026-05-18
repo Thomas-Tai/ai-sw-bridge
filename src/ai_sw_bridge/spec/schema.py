@@ -388,6 +388,75 @@ LINEAR_PATTERN: dict[str, Any] = {
 }
 
 
+# Circular pattern of a seed feature around a rotation axis. Replicates the
+# seed N times equally spaced over a total sweep angle (default 360 degrees).
+#
+# v1 limits:
+#   - Direction 1 only. Bidirectional / symmetric variants are deferred (would
+#     add `bidirectional`, `count2`, `total_angle2`).
+#   - Seed = single feature by name. Multi-seed deferred.
+#   - Axis reference = a point on either a circular EDGE or a cylindrical FACE
+#     in part coords. Both verified GREEN on SW 2024 SP1 in Spike T (Case A:
+#     circular edge of disc top; Case B: cylindrical side face of disc).
+#   - Equal spacing always on -- variable angular spacing requires a dim ref.
+CIRCULAR_PATTERN: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["type", "name", "seed", "axis", "count"],
+    "properties": {
+        "type": {"const": "circular_pattern"},
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+        "seed": {
+            "type": "string",
+            "description": (
+                "Name of an earlier feature to pattern. The seed itself "
+                "counts as instance 1; `count` includes it."
+            ),
+        },
+        "axis": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["x", "y", "z"],
+            "properties": {
+                "x": {"type": "number"},
+                "y": {"type": "number"},
+                "z": {"type": "number"},
+            },
+            "description": (
+                "A point on the rotation-axis reference -- either a circular "
+                "EDGE (e.g. the rim of a cylindrical face) or a cylindrical "
+                "FACE. The builder tries EDGE first, then FACE on fallback. "
+                "SW infers the axis of revolution from the selected entity."
+            ),
+        },
+        "count": {
+            "type": "integer",
+            "minimum": 2,
+            "description": (
+                "Total number of instances around the axis (includes the "
+                "seed). Must be >= 2 -- a count of 1 would be a no-op."
+            ),
+        },
+        "total_angle": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 360,
+            "default": 360.0,
+            "description": (
+                "Total sweep angle in DEGREES (builder converts to radians). "
+                "Default 360 = full circle, equally spaced. For a half-fan "
+                "of 4 instances over 180 degrees, set total_angle=180."
+            ),
+        },
+        "flip": {
+            "type": "boolean",
+            "default": False,
+            "description": "Reverse the rotation direction.",
+        },
+    },
+}
+
+
 # Mirror of one or more seed features about a reference plane.
 #
 # v1 limits:
@@ -498,6 +567,7 @@ SCHEMA: dict[str, Any] = {
                     FILLET_CONSTANT_RADIUS,
                     CHAMFER_EDGE,
                     LINEAR_PATTERN,
+                    CIRCULAR_PATTERN,
                     MIRROR_FEATURE,
                 ]
             },
@@ -541,6 +611,7 @@ MODIFY_TYPES = frozenset(
 PATTERN_TYPES = frozenset(
     {
         "linear_pattern",
+        "circular_pattern",
         "mirror_feature",
     }
 )

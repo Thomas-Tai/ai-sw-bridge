@@ -812,7 +812,21 @@ def _build_sketch_circle_on_face(
         raise RuntimeError("no sketch produced on face")
     sketch_feat.Name = feat["name"]
 
-    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
+    # Inherit parent extrusion's axis as parent_plane_normal so a downstream
+    # boss_extrude_blind on this sketch picks up the right direction. Same
+    # logic as sketch_rectangle_on_face above.
+    ax, ay, az = parent.extrude_axis
+    if parent.extrude_flip:
+        ax, ay, az = -ax, -ay, -az
+    if face.startswith("-"):
+        ax, ay, az = -ax, -ay, -az
+    return BuiltFeature(
+        name=feat["name"],
+        type=feat["type"],
+        sw_object=sketch_feat,
+        parent_plane_normal=(ax, ay, az),
+        parent_face_origin=(fx, fy, fz),
+    )
 
 
 def _build_sketch_circles_on_face(
@@ -1439,6 +1453,91 @@ def _build_linear_pattern(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeatu
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
 
+def _build_circular_pattern(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Circular pattern of a seed feature around a rotation axis.
+
+    Selection marks (same as linear_pattern):
+      mark = 1 -- the axis reference (circular edge or cylindrical face)
+      mark = 4 -- the seed feature
+
+    Axis selection strategy: try EDGE first (the spec's `axis` point should
+    sit on a circular model edge such as the rim of a cylindrical hub),
+    then fall back to FACE (a cylindrical face -- SW infers the axis of
+    revolution from it). Both verified GREEN in Spike T (2026-05-17).
+
+    Calls FeatureCircularPattern5 (14 args). Marked obsolete in CHM in
+    favor of CreateDefinition+ICircularPatternFeatureData, but empirically
+    still works on SW 2024 SP1 (same outcome as the linear_pattern path).
+    """
+    import math
+
+    seed_name = feat["seed"]
+    if seed_name not in ctx.features_by_name:
+        raise RuntimeError(f"circular_pattern seed '{seed_name}' not yet built")
+    seed_built = ctx.features_by_name[seed_name]
+
+    count = int(feat["count"])
+    total_angle_deg = float(feat.get("total_angle", 360.0))
+    total_angle_rad = total_angle_deg * math.pi / 180.0
+    flip = bool(feat.get("flip", False))
+
+    a = feat["axis"]
+    ax_m = float(a["x"]) / 1000.0
+    ay_m = float(a["y"]) / 1000.0
+    az_m = float(a["z"]) / 1000.0
+
+    # 1. Axis reference -- try EDGE, then FACE (non-appending SelectByID)
+    ctx.doc.ClearSelection2(True)
+    ok = ctx.doc.SelectByID("", "EDGE", ax_m, ay_m, az_m)
+    if not ok:
+        ok = ctx.doc.SelectByID("", "FACE", ax_m, ay_m, az_m)
+        if not ok:
+            raise RuntimeError(
+                f"could not select axis reference at part ({a['x']}, "
+                f"{a['y']}, {a['z']}) mm -- point is not on any circular "
+                f"edge or cylindrical face of current geometry"
+            )
+    _mark_first_selection(ctx, mark=1)
+
+    # 2. Seed via IFeature.Select2 with append=True
+    if seed_built.sw_object is None:
+        raise RuntimeError(
+            f"circular_pattern seed '{seed_name}' has no sw_object handle"
+        )
+    if not seed_built.sw_object.Select2(True, 4):
+        raise RuntimeError(f"IFeature.Select2 on seed '{seed_name}' returned False")
+
+    fm = ctx.doc.FeatureManager
+    args = (
+        count,  # Number
+        total_angle_rad,  # Spacing (= total sweep angle when EqualSpacing=True)
+        flip,  # FlipDirection
+        "",  # DName
+        False,  # GeometryPattern
+        True,  # EqualSpacing
+        False,  # VaryInstance
+        False,  # SyncSubAssemblies
+        False,  # BDir2
+        False,  # BSymmetric
+        1,  # Number2
+        0.0,  # Spacing2
+        "",  # DName2
+        False,  # EqualSpacing2
+    )
+    assert_args("IFeatureManager.FeatureCircularPattern5", args)
+    f = fm.FeatureCircularPattern5(*args)
+    if f is None:
+        raise RuntimeError(
+            f"FeatureCircularPattern5 returned None (seed='{seed_name}', "
+            f"count={count}, total_angle={total_angle_deg:.1f}deg). The "
+            f"axis point may not lie on a circular edge or cylindrical "
+            f"face -- try a point exactly on a model edge or pick a "
+            f"cylindrical face's mid-surface point."
+        )
+    f.Name = feat["name"]
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
+
+
 def _build_mirror_feature(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Mirror a seed feature about one of the three default reference planes.
 
@@ -1631,6 +1730,14 @@ FEATURE_REGISTRY: dict[str, FeatureType] = {
         # extrudes. Defer parametric pattern spacing to a follow-up.
         dim_fields={},
     ),
+    "circular_pattern": FeatureType(
+        name="circular_pattern",
+        handler=None,
+        # Pattern dims (total_angle) are not currently parametric --
+        # `total_angle` is a plain number in the spec, no {rhs} object
+        # form yet. Same rationale as linear_pattern.
+        dim_fields={},
+    ),
     "mirror_feature": FeatureType(
         name="mirror_feature",
         handler=None,
@@ -1655,6 +1762,7 @@ def _wire_handlers() -> None:
         "fillet_constant_radius": _build_fillet_constant_radius,
         "chamfer_edge": _build_chamfer_edge,
         "linear_pattern": _build_linear_pattern,
+        "circular_pattern": _build_circular_pattern,
         "mirror_feature": _build_mirror_feature,
     }
     for name, ft in FEATURE_REGISTRY.items():

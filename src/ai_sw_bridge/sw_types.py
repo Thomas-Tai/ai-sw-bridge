@@ -23,12 +23,7 @@ from __future__ import annotations
 SW_CHAMFER_ANGLE_DISTANCE = 1  # swChamferAngleDistance
 SW_CHAMFER_DISTANCE_DISTANCE = 2  # swChamferDistanceDistance
 SW_CHAMFER_VERTEX = 3  # swChamferVertex
-SW_CHAMFER_EQUAL_DISTANCE = 16  # swChamferEqualDistance -- not functional on SW 2024 SP1
-# Spike Q12 (2026-05-17): swChamferEqualDistance=16 never commits geometry via
-# InsertFeatureChamfer on SW 2024 SP1 (feature appears in tree, 6F/12E unchanged).
-# Workarounds that DO commit:
-#   equal_distance -> use SW_CHAMFER_DISTANCE_DISTANCE=2 with Width=OtherDist=distance
-#   distance_angle -> use SW_CHAMFER_ANGLE_DISTANCE=1 with Width=distance, Angle in RADIANS
+SW_CHAMFER_EQUAL_DISTANCE = 16  # swChamferEqualDistance
 
 # swDimensionType_e: Types of dimensions.
 SW_DIMENSION_TYPE_UNKNOWN = (
@@ -144,6 +139,43 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
         "arg_types": ["system.object"],
         "return_type": "Feature",
         "summary": "Creates the specified feature.",
+    },
+    "IFeatureManager.FeatureCircularPattern5": {
+        "args_count": 14,
+        "arg_names": [
+            "Number",
+            "Spacing",
+            "FlipDirection",
+            "DName",
+            "GeometryPattern",
+            "EqualSpacing",
+            "VaryInstance",
+            "SyncSubAssemblies",
+            "BDir2",
+            "BSymmetric",
+            "Number2",
+            "Spacing2",
+            "DName2",
+            "EqualSpacing2",
+        ],
+        "arg_types": [
+            "system.int",
+            "system.double",
+            "system.bool",
+            "system.string",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.double",
+            "system.string",
+            "system.bool",
+        ],
+        "return_type": "Feature",
+        "summary": "Obsolete. See IFeatureManager::CreateFeature and the Remarks in ICircularPatternFeatureData and ILocalCircularPatternFeatureData.",
     },
     "IFeatureManager.FeatureCut4": {
         "args_count": 27,

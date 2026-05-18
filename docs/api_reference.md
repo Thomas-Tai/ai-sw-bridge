@@ -76,6 +76,33 @@ Creates the specified feature.
 
 **Availability:** SOLIDWORKS 2006 FCS, Revision Number 14.0
 
+### `IFeatureManager.FeatureCircularPattern5`
+
+Obsolete. See IFeatureManager::CreateFeature and the Remarks in ICircularPatternFeatureData and ILocalCircularPatternFeatureData.
+
+**Args (14):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Number` | `system.int` | Number of instances of the circular pattern to insert in Direction 1, including the original instance |
+| 2 | `Spacing` | `system.double` | Spacing between each instance in Direction 1 of the circular pattern or, if EqualSpacing is true, then the total angle in radians |
+| 3 | `FlipDirection` | `system.bool` | True to flip the direction of the circular pattern in Direction 1, false to not |
+| 4 | `DName` | `system.string` | Name of the angular dimension defining Direction 1 of the pattern |
+| 5 | `GeometryPattern` | `system.bool` | True to use geometry pattern, false to not |
+| 6 | `EqualSpacing` | `system.bool` | True to use equal spacing in Direction 1, false to not |
+| 7 | `VaryInstance` | `system.bool` | True to vary the dimensions or spacing of individual pattern instances, false to not; valid only if GeometryPattern = false (see Remarks) |
+| 8 | `SyncSubAssemblies` | `system.bool` | True to move components in the patterned instances when components are moved in the seed flexible subassembly, false to not |
+| 9 | `BDir2` | `system.bool` | True to create a bidirectional circular pattern feature, false to not |
+| 10 | `BSymmetric` | `system.bool` | True to create a symmetric circular pattern feature in Direction 2, false to create an asymmetrical circular pattern feature in Direction 2; valid only if BDir2 is true |
+| 11 | `Number2` | `system.int` | Number of instances to insert in Direction 2; valid only if BDir2 is true |
+| 12 | `Spacing2` | `system.double` | Distance between pattern instances in Direction 2; valid only if BDir2 is true |
+| 13 | `DName2` | `system.string` | Name of the angular dimension defining Direction 2 of the pattern; valid only if BDir2 is true |
+| 14 | `EqualSpacing2` | `system.bool` | True to use equal spacing in Direction 2, false to not; valid only if BDir2 is true and BSymmetric is false |
+
+**Returns:** `Feature`
+
+**Availability:** SOLIDWORKS 2017 FCS, Revision Number 25.0
+
 ### `IFeatureManager.FeatureCut4`
 
 Creates a cut extrude feature.

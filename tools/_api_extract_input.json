@@ -25,6 +25,7 @@
     ["IFeatureManager", "FeatureCut5"],
     ["IFeatureManager", "InsertFeatureChamfer"],
     ["IFeatureManager", "FeatureLinearPattern5"],
+    ["IFeatureManager", "FeatureCircularPattern5"],
     ["IFeatureManager", "InsertMirrorFeature2"],
     ["IFeatureManager", "CreateDefinition"],
     ["IFeatureManager", "CreateFeature"],

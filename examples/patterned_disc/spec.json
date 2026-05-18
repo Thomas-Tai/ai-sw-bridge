@@ -1,0 +1,42 @@
+{
+    "schema_version": 1,
+    "name": "PatternedDisc",
+    "_comment": "v0.4 example: a 30mm-diameter disc 5mm thick with one off-center boss seed, circular-patterned 6x around the disc's central axis (full 360 degrees, equal spacing).",
+    "features": [
+        {
+            "type": "sketch_circle_on_plane",
+            "name": "SK_Disc",
+            "plane": "Front",
+            "diameter": 30.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Disc",
+            "sketch": "SK_Disc",
+            "depth": 5.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_BossSeed",
+            "of_feature": "EX_Disc",
+            "face": "+z",
+            "diameter": 3.0,
+            "center": {"u": 10.0, "v": 0.0}
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "Boss_Seed",
+            "sketch": "SK_BossSeed",
+            "depth": 2.0
+        },
+        {
+            "type": "circular_pattern",
+            "name": "CP_Bosses",
+            "_comment": "6 instances equally spaced over 360 degrees. The axis reference point sits on the top circular EDGE of the disc -- the rim at z=5mm, radius=15mm. SW infers the rotation axis (=+z, through origin) from any point on this edge.",
+            "seed": "Boss_Seed",
+            "axis": {"x": 15.0, "y": 0.0, "z": 5.0},
+            "count": 6,
+            "total_angle": 360.0
+        }
+    ]
+}
