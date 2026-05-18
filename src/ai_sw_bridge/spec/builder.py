@@ -127,6 +127,13 @@ class BuiltFeature:
     extrude_origin: tuple[float, float, float] | None = None
     extrude_depth_m: float | None = None
     extrude_flip: bool = False
+    # For sketches built on a rectangular profile: half-extents along the
+    # sketch's local u-axis and v-axis (in meters). Set by the rectangle
+    # sketch handlers. Used by side-face frames (+/-x, +/-y) to compute
+    # the side-face plane equations on the parent extrusion. None means
+    # "profile has no flat side faces" (e.g., a circle sketch produces a
+    # cylinder whose side is curved and not accessible via this builder).
+    sketch_extent_uv: tuple[float, float] | None = None
 
 
 @dataclass
@@ -401,11 +408,14 @@ def _build_sketch_rectangle_on_plane(
     # gets the right extrude_origin. The third coord (axis-aligned) is
     # 0 here; build() handles z=0 for plane sketches and we don't know
     # the axis until build() injects parent_plane_normal.
+    # Also stash the rectangle's half-extents so a downstream face-sketch
+    # on a side face (+/-x, +/-y) can compute the side-face plane.
     return BuiltFeature(
         name=feat["name"],
         type=feat["type"],
         sw_object=sketch_feat,
         sketch_center_part=(cx_m, cy_m, 0.0),
+        sketch_extent_uv=(width_m / 2, height_m / 2),
     )
 
 
@@ -461,26 +471,186 @@ def _build_sketch_circle_on_plane(
     )
 
 
-def _face_center_part_coords(
-    parent: "BuiltFeature",
-    face: str,
-) -> tuple[float, float, float]:
-    """The un-offset center of a parent extrusion's +z or -z face in part
-    coords (meters). Used by `_select_extrude_face` to seed its probe,
-    AND by the face-sketch warning to decide whether to alert the user
-    about the part-origin-projection-vs-face-center gotcha.
+# Per-face sketch-frame table for a parent extrusion whose axis is +z
+# (the only parent orientation supported for side faces in v1). For each
+# face, we record:
+#   u_axis: the sketch +u direction in part-frame (unit vector)
+#   v_axis: the sketch +v direction in part-frame (unit vector)
+# Together with the face-center point, they let us convert any sketch
+# (u, v) point to part-frame coords for SelectByID.
+#
+# Discovered empirically by Spike U4 (2026-05-18) -- created a centered
+# 30mm cube, sketched circles at sketch (u=+5, v=+3) on each side face,
+# extruded outward bosses, and measured the boss-cap centers in part
+# coords. The mapping below reproduces those observed centers.
+#
+#   +z face (top):  sketch +u -> part +x, sketch +v -> part +y
+#   -z face (bot):  sketch +u -> part -x, sketch +v -> part +y
+#   +x face (right):sketch +u -> part -z, sketch +v -> part +y
+#   -x face (left): sketch +u -> part +z, sketch +v -> part +y
+#   +y face (back): sketch +u -> part +x, sketch +v -> part -z
+#   -y face (front):sketch +u -> part +x, sketch +v -> part +z
+_FACE_UV_AXES_PARENT_PLUSZ: dict[str, tuple[tuple[int, int, int], tuple[int, int, int]]] = {
+    "+z": ((1, 0, 0), (0, 1, 0)),
+    "-z": ((-1, 0, 0), (0, 1, 0)),
+    "+x": ((0, 0, -1), (0, 1, 0)),
+    "-x": ((0, 0, 1), (0, 1, 0)),
+    "+y": ((1, 0, 0), (0, 0, -1)),
+    "-y": ((1, 0, 0), (0, 0, 1)),
+}
+
+
+@dataclass(frozen=True)
+class FaceFrame:
+    """The part-frame embedding of a face's sketch coordinate system.
+
+    Lets a handler do:
+      part_xyz = face_center + u * u_axis + v * v_axis
+    to compute the part-frame click point for a sketch entity at (u, v).
+
+    out_normal is the face's outward-pointing unit normal in part coords;
+    used for boss/cut direction inheritance.
     """
-    assert parent.extrude_origin is not None
-    assert parent.extrude_axis is not None
-    assert parent.extrude_depth_m is not None
+
+    face_center: tuple[float, float, float]
+    u_axis: tuple[float, float, float]
+    v_axis: tuple[float, float, float]
+    out_normal: tuple[float, float, float]
+
+
+def _face_frame(parent: "BuiltFeature", face: str) -> FaceFrame:
+    """Build the part-frame transform for a +z-axis parent extrusion's face.
+
+    The parent must:
+      - have extrude_axis == +/- z (the only supported parent orientation
+        for side faces in v1; ±z faces also work for ±y, ±x parents)
+      - for ±x/±y faces specifically: have sketch_extent_uv set (i.e. the
+        parent profile is a rectangle, not a circle/arbitrary curve).
+        Without extents we don't know where the side face lives.
+
+    Raises RuntimeError with a clear message on any of these violations.
+    """
+    assert parent.extrude_origin is not None, f"{parent.name}: extrude_origin not set"
+    assert parent.extrude_axis is not None, f"{parent.name}: extrude_axis not set"
+    assert parent.extrude_depth_m is not None, f"{parent.name}: extrude_depth_m not set"
     ox, oy, oz = parent.extrude_origin
     ax, ay, az = parent.extrude_axis
     depth = parent.extrude_depth_m
     if parent.extrude_flip:
         ax, ay, az = -ax, -ay, -az
-    if face == "+z":
-        return (ox + ax * depth, oy + ay * depth, oz + az * depth)
-    return (ox, oy, oz)
+
+    # ±z faces: handled for any parent axis. Logic preserves prior behavior:
+    #   "+z" face = outboard face (extrude_origin + axis * depth)
+    #   "-z" face = inboard face (extrude_origin)
+    if face in ("+z", "-z"):
+        if face == "+z":
+            fx0 = ox + ax * depth
+            fy0 = oy + ay * depth
+            fz0 = oz + az * depth
+            out_nrm = (ax, ay, az)
+        else:
+            fx0, fy0, fz0 = ox, oy, oz
+            out_nrm = (-ax, -ay, -az)
+        # In-face sketch frame depends on parent axis orientation. Today
+        # we only have a verified table for parent axis = +z (Front Plane).
+        # For Top/Right Plane parents, fall back to the historical
+        # mirror_u convention so existing parts don't regress.
+        if abs(az) > 0.99:
+            u_ax, v_ax = _FACE_UV_AXES_PARENT_PLUSZ[face]
+        elif abs(ay) > 0.99:
+            # Top Plane parent (axis +y). Sketch X -> part X, sketch Y -> part Z.
+            # On the inboard "-z" of this parent (= -y of part), mirror u.
+            if face == "+z":
+                u_ax, v_ax = (1, 0, 0), (0, 0, 1)
+            else:
+                u_ax, v_ax = (-1, 0, 0), (0, 0, 1)
+        else:
+            # Right Plane parent (axis +x). Sketch X -> part Y, sketch Y -> part Z.
+            if face == "+z":
+                u_ax, v_ax = (0, 1, 0), (0, 0, 1)
+            else:
+                u_ax, v_ax = (0, -1, 0), (0, 0, 1)
+        return FaceFrame(
+            face_center=(fx0, fy0, fz0),
+            u_axis=(float(u_ax[0]), float(u_ax[1]), float(u_ax[2])),
+            v_axis=(float(v_ax[0]), float(v_ax[1]), float(v_ax[2])),
+            out_normal=out_nrm,
+        )
+
+    # ±x, ±y faces: side faces. Only supported when parent axis is +/-z
+    # (Front Plane parent) AND the parent profile has known half-extents
+    # (rectangle, not circle).
+    if abs(az) < 0.99:
+        raise RuntimeError(
+            f"side face '{face}' of '{parent.name}': v1 only supports +/-x "
+            f"and +/-y side faces when the parent extrude axis is +/-z "
+            f"(Front Plane). Parent's axis is ({ax:+.2f}, {ay:+.2f}, "
+            f"{az:+.2f}). Use a Front-Plane sketch parent for side-face "
+            f"work, or address the side face via +/-z on a child extrude."
+        )
+    if parent.sketch_extent_uv is None:
+        raise RuntimeError(
+            f"side face '{face}' of '{parent.name}': parent has no "
+            f"sketch_extent_uv stashed. Side faces are only addressable on "
+            f"extrusions whose profile is a rectangle (the rectangle's "
+            f"half-extents define where the side faces sit). For circle/"
+            f"arbitrary-curve profiles the side surface is curved and "
+            f"can't be sketched on through this builder."
+        )
+    half_u, half_v = parent.sketch_extent_uv
+
+    # extrude_origin records the sketch's center in part-frame (X, Y) for
+    # +z-axis parents. So:
+    #   +x side face plane: x = ox + half_u
+    #   -x side face plane: x = ox - half_u
+    #   +y side face plane: y = oy + half_v
+    #   -y side face plane: y = oy - half_v
+    # Face-center along the extrude axis: midway through the extrude depth.
+    z_mid = oz + 0.5 * az * depth
+    if face == "+x":
+        face_center = (ox + half_u, oy, z_mid)
+        out_nrm = (1.0, 0.0, 0.0)
+    elif face == "-x":
+        face_center = (ox - half_u, oy, z_mid)
+        out_nrm = (-1.0, 0.0, 0.0)
+    elif face == "+y":
+        face_center = (ox, oy + half_v, z_mid)
+        out_nrm = (0.0, 1.0, 0.0)
+    elif face == "-y":
+        face_center = (ox, oy - half_v, z_mid)
+        out_nrm = (0.0, -1.0, 0.0)
+    else:
+        raise RuntimeError(f"unknown face label {face!r}")
+
+    u_ax, v_ax = _FACE_UV_AXES_PARENT_PLUSZ[face]
+    return FaceFrame(
+        face_center=face_center,
+        u_axis=(float(u_ax[0]), float(u_ax[1]), float(u_ax[2])),
+        v_axis=(float(v_ax[0]), float(v_ax[1]), float(v_ax[2])),
+        out_normal=out_nrm,
+    )
+
+
+def _sketch_uv_to_part(frame: FaceFrame, u_m: float, v_m: float) -> tuple[float, float, float]:
+    """Convert sketch-frame (u, v) in meters to part-frame (x, y, z)."""
+    cx, cy, cz = frame.face_center
+    ux, uy, uz = frame.u_axis
+    vx, vy, vz = frame.v_axis
+    return (cx + u_m * ux + v_m * vx, cy + u_m * uy + v_m * vy,
+            cz + u_m * uz + v_m * vz)
+
+
+def _face_center_part_coords(
+    parent: "BuiltFeature",
+    face: str,
+) -> tuple[float, float, float]:
+    """The un-offset center of a parent extrusion's face in part coords (meters).
+
+    Used by `_select_extrude_face` to seed its probe, AND by the face-sketch
+    warning to decide whether to alert the user about the part-origin-
+    projection-vs-face-center gotcha.
+    """
+    return _face_frame(parent, face).face_center
 
 
 def _warn_face_sketch_offset(
@@ -493,28 +663,27 @@ def _warn_face_sketch_offset(
     land at the part-origin projection rather than the face centroid.
 
     Triggers when:
-      - parent face center (in part frame) is meaningfully non-zero
-        in the in-face tangent plane (>0.1 mm), AND
+      - parent face center (in part frame) has a meaningful in-face
+        component (>0.1 mm) -- i.e. the face doesn't sit on the part
+        origin's projection along the face normal, AND
       - the spec's `center` field is missing or zero (no explicit shift)
 
-    The warning includes the parent's face center coords so the user
-    can see what offset they'd need to add. This is the #1 source of
-    "wrong-position child feature" bugs surfaced in the TensionBracket
-    work; see docs/known_limitations.md for the full discussion.
+    The warning includes the in-face offset (in sketch u/v) the user
+    would need to add to put the child feature at the face centroid.
+    This is the #1 source of "wrong-position child feature" bugs
+    surfaced in the TensionBracket work; see docs/known_limitations.md.
     """
     import sys
 
-    fx, fy, fz = _face_center_part_coords(parent, face)
-    # For +/-z faces, the in-face tangent plane is (X, Y). For +/-y the
-    # tangent is (X, Z); for +/-x the tangent is (Y, Z). v1 only ships
-    # +/-z but we route through the tangent already to future-proof.
-    _ax, ay, az = parent.extrude_axis if parent.extrude_axis else (0.0, 0.0, 1.0)
-    if abs(az) > 0.99:
-        tu_mm, tv_mm = fx * 1000, fy * 1000
-    elif abs(ay) > 0.99:
-        tu_mm, tv_mm = fx * 1000, fz * 1000
-    else:  # axis is +/-X by elimination
-        tu_mm, tv_mm = fy * 1000, fz * 1000
+    frame = _face_frame(parent, face)
+    fx, fy, fz = frame.face_center
+    # Project the face-center vector onto the sketch u/v axes to get the
+    # in-face offset of the face center from the part-origin projection.
+    # u = (face_center - 0) . u_axis ; v likewise.
+    ux, uy, uz = frame.u_axis
+    vx, vy, vz = frame.v_axis
+    tu_mm = (fx * ux + fy * uy + fz * uz) * 1000.0
+    tv_mm = (fx * vx + fy * vy + fz * vz) * 1000.0
 
     # If face is centered on origin (within 0.1 mm), no warning needed.
     if abs(tu_mm) < 0.1 and abs(tv_mm) < 0.1:
@@ -549,40 +718,47 @@ def _select_extrude_face(
     parent: "BuiltFeature",
     face: str,
 ) -> tuple[bool, float, float, float]:
-    """Select the +z or -z face of an extrusion.
+    """Select one of the 6 faces of an extrusion (+z, -z, +x, -x, +y, -y).
 
+    Uses _face_frame to find the face center and in-face tangent axes.
     Tries the face center first; if that fails (e.g. earlier cut removed
-    material at the center), tries small offsets from center until one
-    succeeds. Returns (ok, fx, fy, fz) where the coords are the point on
-    the face that successfully selected (for downstream use as sketch
-    origin reference).
-    """
-    # Callers (the face-sketch builders) only invoke this on parents that
-    # are extrusions; the type system can't see that without a discriminator.
-    assert parent.extrude_origin is not None, f"{parent.name}: extrude_origin not set"
-    assert parent.extrude_axis is not None, f"{parent.name}: extrude_axis not set"
-    assert parent.extrude_depth_m is not None, f"{parent.name}: extrude_depth_m not set"
-    ox, oy, oz = parent.extrude_origin
-    ax, ay, az = parent.extrude_axis
-    depth = parent.extrude_depth_m
-    if parent.extrude_flip:
-        ax, ay, az = -ax, -ay, -az
-    if face == "+z":
-        fx0 = ox + ax * depth
-        fy0 = oy + ay * depth
-        fz0 = oz + az * depth
-    else:
-        fx0, fy0, fz0 = ox, oy, oz
+    material at the center), spirals outward in the face's tangent plane
+    until one offset hits material. Returns (ok, fx, fy, fz) where the
+    coords are the point on the face that successfully selected (used
+    downstream as the sketch origin reference for stacked extrudes).
 
-    # Candidate offsets in the face's tangent plane. Since +z faces lie
-    # perpendicular to the extrude axis, the tangent plane uses the OTHER
-    # two axes. For a Front-Plane sketch, axis=+Z, so tangent = (X, Y).
-    # Try center first; if that hits a hole (prior cut), expand to larger
-    # offsets. Use a spiral of 1mm, 5mm, 15mm, 50mm to handle holes of any
-    # reasonable size. Worst case (large hole, small plate): last offset
-    # still falls inside the hole AND outside the plate -- a real geometry
-    # problem the caller must fix by adjusting the spec.
-    offsets_2d = [
+    SelectByID("", "FACE", x, y, z) is unreliable on side faces of a
+    multi-boss part: it can return True while picking a DIFFERENT face
+    than the one geometrically at (x, y, z) -- empirically observed when
+    the part has multiple recently-modified faces sharing screen-space
+    proximity. We verify by querying IFace2.Normal after each pick and
+    rejecting any face whose normal doesn't match `frame.out_normal`.
+    On rejection, fall back to enumerating body faces and selecting via
+    IEntity.Select2 (no Callout, late-binding-safe).
+    """
+    frame = _face_frame(parent, face)
+    fx0, fy0, fz0 = frame.face_center
+    ux, uy, uz = frame.u_axis
+    vx, vy, vz = frame.v_axis
+    nx_e, ny_e, nz_e = frame.out_normal
+
+    def _matches_expected(face_obj: Any) -> bool:
+        try:
+            n = face_obj.Normal
+            return (
+                abs(n[0] - nx_e) < 0.1
+                and abs(n[1] - ny_e) < 0.1
+                and abs(n[2] - nz_e) < 0.1
+            )
+        except Exception:
+            return False
+
+    # Spiral of (du, dv) offsets in the face's local sketch frame. Each
+    # (du, dv) is projected to part coords via the frame's u/v axes.
+    # Distances chosen to handle small interior holes (1mm) up to large
+    # voids (15mm). Worst case: spec asks for a face entirely consumed
+    # by prior features -- raise on caller side.
+    offsets_uv = [
         (0, 0),
         (0.001, 0),
         (0, 0.001),
@@ -601,25 +777,47 @@ def _select_extrude_face(
         (0.015, 0.015),
         (-0.015, -0.015),
     ]
+    for du, dv in offsets_uv:
+        fx = fx0 + du * ux + dv * vx
+        fy = fy0 + du * uy + dv * vy
+        fz = fz0 + du * uz + dv * vz
+        ctx.doc.ClearSelection2(True)
+        if ctx.doc.SelectByID("", "FACE", fx, fy, fz):
+            face_obj = ctx.doc.SelectionManager.GetSelectedObject6(1, -1)
+            if _matches_expected(face_obj):
+                return True, fx, fy, fz
+            # Wrong face picked. Clear and keep trying other offsets;
+            # may pick the right one. (e.g. a SelectByID at face-center
+            # may hit a screen-occluding face but an off-center probe
+            # lands on the intended face.)
 
-    if abs(az) > 0.99:  # axis is +/-Z; tangent is (X, Y)
-        for du, dv in offsets_2d:
-            fx, fy, fz = fx0 + du, fy0 + dv, fz0
+    # SelectByID spiral exhausted. Fall back to body-face enumeration:
+    # find the face whose normal matches frame.out_normal AND whose
+    # closest point to (fx0, fy0, fz0) is within 1um. Then select via
+    # IEntity.Select2 (no Callout arg, late-binding-safe).
+    try:
+        bodies = ctx.doc.GetBodies2(0, True)  # swSolidBody=0
+    except Exception:
+        return False, fx0, fy0, fz0
+    for body in bodies:
+        faces = body.GetFaces()
+        if faces is None:
+            continue
+        for face_obj in faces:
+            if not _matches_expected(face_obj):
+                continue
+            try:
+                cp = face_obj.GetClosestPointOn(fx0, fy0, fz0)
+            except Exception:
+                continue
+            if cp is None or len(cp) < 3:
+                continue
+            d2 = (cp[0] - fx0) ** 2 + (cp[1] - fy0) ** 2 + (cp[2] - fz0) ** 2
+            if d2 > 1e-12:  # >1 micron away
+                continue
             ctx.doc.ClearSelection2(True)
-            if ctx.doc.SelectByID("", "FACE", fx, fy, fz):
-                return True, fx, fy, fz
-    elif abs(ay) > 0.99:  # axis is +/-Y; tangent is (X, Z)
-        for du, dv in offsets_2d:
-            fx, fy, fz = fx0 + du, fy0, fz0 + dv
-            ctx.doc.ClearSelection2(True)
-            if ctx.doc.SelectByID("", "FACE", fx, fy, fz):
-                return True, fx, fy, fz
-    else:  # axis is +/-X; tangent is (Y, Z)
-        for du, dv in offsets_2d:
-            fx, fy, fz = fx0, fy0 + du, fz0 + dv
-            ctx.doc.ClearSelection2(True)
-            if ctx.doc.SelectByID("", "FACE", fx, fy, fz):
-                return True, fx, fy, fz
+            if face_obj.Select2(False, 0):
+                return True, cp[0], cp[1], cp[2]
 
     return False, fx0, fy0, fz0
 
@@ -639,10 +837,11 @@ def _build_sketch_rectangle_on_face(
 
     face = feat["face"]
     _warn_face_sketch_offset(parent, face, feat, ("u", "v"))
-    if face not in ("+z", "-z"):
-        raise NotImplementedError(
-            f"v1 only supports +z/-z (out/in board) faces of extrusions; got {face}"
-        )
+
+    # Build the face frame (validates parent axis/extents); used for the
+    # face-center seed point and for the spiral-offset probe in
+    # _select_extrude_face.
+    _frame = _face_frame(parent, face)
 
     ok, fx, fy, fz = _select_extrude_face(ctx, parent, face)
     if not ok:
@@ -673,32 +872,34 @@ def _build_sketch_rectangle_on_face(
         0.0,
     )
 
-    # Driving dims D1 (width) and D2 (height). On -z faces SW mirrors the
-    # sketch X axis, so SKETCHSEGMENT picks in part-frame need u-mirror.
+    # Driving dims D1 (width) and D2 (height). SKETCHSEGMENT picks use
+    # part-frame coords; transform sketch (u, v) to part via FaceFrame.
+    # This works uniformly for all 6 faces (+/-z and side faces).
     if not ctx.no_dim:
-        mirror_u = -1.0 if face.startswith("-") else 1.0
-        u_click_c = mirror_u * cu_m
-
         ctx.doc.ClearSelection2(True)
         top_v = cv_m + height_m / 2
-        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", u_click_c, top_v, 0.0):
+        tx, ty, tz = _sketch_uv_to_part(_frame, cu_m, top_v)
+        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", tx, ty, tz):
             raise RuntimeError(
                 f"could not select rect top edge for width dim "
                 f"(face={face}, center=({cu_m*1000:.1f}, {cv_m*1000:.1f}) mm)"
             )
-        dim_w = ctx.doc.AddDimension2(cu_m, top_v + 0.005, 0.0)
+        dwx, dwy, dwz = _sketch_uv_to_part(_frame, cu_m, top_v + 0.005)
+        dim_w = ctx.doc.AddDimension2(dwx, dwy, dwz)
         if dim_w is None:
             raise RuntimeError("AddDimension2 returned None for width on face")
         _dismiss_dim_pane(ctx.doc)
 
         ctx.doc.ClearSelection2(True)
-        left_u = u_click_c - mirror_u * width_m / 2
-        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", left_u, cv_m, 0.0):
+        left_u = cu_m - width_m / 2
+        lx, ly, lz = _sketch_uv_to_part(_frame, left_u, cv_m)
+        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", lx, ly, lz):
             raise RuntimeError(
                 f"could not select rect left edge for height dim "
                 f"(face={face}, center=({cu_m*1000:.1f}, {cv_m*1000:.1f}) mm)"
             )
-        dim_h = ctx.doc.AddDimension2(cu_m - width_m / 2 - 0.005, cv_m, 0.0)
+        dhx, dhy, dhz = _sketch_uv_to_part(_frame, cu_m - width_m / 2 - 0.005, cv_m)
+        dim_h = ctx.doc.AddDimension2(dhx, dhy, dhz)
         if dim_h is None:
             raise RuntimeError("AddDimension2 returned None for height on face")
         _dismiss_dim_pane(ctx.doc)
@@ -710,21 +911,16 @@ def _build_sketch_rectangle_on_face(
         raise RuntimeError("no rectangle sketch produced on face")
     sketch_feat.Name = feat["name"]
 
-    # Inherit the parent extrusion's axis as our parent_plane_normal so the
-    # downstream boss_extrude_blind picks up the correct extrude direction.
-    # For +z face on a +z-axis parent: child extrude continues in +z.
-    # For -z face on a +z-axis parent: child extrude goes in -z.
-    ax, ay, az = parent.extrude_axis
-    if parent.extrude_flip:
-        ax, ay, az = -ax, -ay, -az
-    if face.startswith("-"):
-        ax, ay, az = -ax, -ay, -az
+    # The downstream boss_extrude_blind needs the FACE's outward normal as
+    # the extrude direction (so the boss grows outward from the face).
+    # _face_frame supplies this consistently for all 6 face labels.
     return BuiltFeature(
         name=feat["name"],
         type=feat["type"],
         sw_object=sketch_feat,
-        parent_plane_normal=(ax, ay, az),
+        parent_plane_normal=_frame.out_normal,
         parent_face_origin=(fx, fy, fz),
+        sketch_extent_uv=(width_m / 2, height_m / 2),
     )
 
 
@@ -739,17 +935,15 @@ def _build_sketch_circle_on_face(
         raise RuntimeError(f"'{parent_name}' is not an extrusion with known axis")
 
     # Compute the face center in part coordinates.
-    # The face spec (e.g. "+z") is in the feature's local frame; for v1 we
-    # treat the extrusion's outward normal as +z_local. So:
-    #   "+z" face = outboard face = extrude_origin + axis * depth
-    #   "-z" face = inboard face = extrude_origin
-    # Other faces (+/- x, y) are the four side faces. v1 supports only +z and -z.
+    # The face spec ("+z", "-z", "+x", "-x", "+y", "-y") is in the parent's
+    # local frame. +z/-z are the outboard/inboard faces along the parent's
+    # extrude axis; +/-x +/-y are the four SIDE faces (perpendicular to
+    # the axis). Side faces require a parent with axis +/-z AND a known
+    # rectangle profile (so we can locate the face plane).
     face = feat["face"]
     _warn_face_sketch_offset(parent, face, feat, ("u", "v"))
-    if face not in ("+z", "-z"):
-        raise NotImplementedError(
-            f"v1 only supports +z/-z (out/in board) faces of extrusions; got {face}"
-        )
+
+    _frame = _face_frame(parent, face)
 
     ok, fx, fy, fz = _select_extrude_face(ctx, parent, face)
     if not ok:
@@ -773,23 +967,22 @@ def _build_sketch_circle_on_face(
 
     sm.CreateCircle(u_m, v_m, 0.0, u_m + radius_m, v_m, 0.0)
 
-    # Add diameter dim. SelectByID for SKETCHSEGMENT uses PART-frame coords,
-    # so on -z faces we mirror u (SW mirrors the sketch X axis when looking
-    # at a -z face from outside).
+    # Add diameter dim. SelectByID for SKETCHSEGMENT uses PART-frame
+    # coords; transform sketch (u, v) perimeter probe points to part
+    # via FaceFrame. This works uniformly for all 6 faces.
     # Skipped in no_dim mode -- geometry is already at target diameter.
     if not ctx.no_dim:
-        mirror_u = -1.0 if face.startswith("-") else 1.0
-        u_click = mirror_u * u_m
-
         ctx.doc.ClearSelection2(True)
-        sel_candidates = [
-            (u_click + radius_m * mirror_u, v_m, 0.0),
-            (u_click, v_m + radius_m, 0.0),
-            (u_click - radius_m * mirror_u, v_m, 0.0),
-            (u_click, v_m - radius_m, 0.0),
+        # Four cardinal points on the circle perimeter, in sketch coords.
+        perim_uv = [
+            (u_m + radius_m, v_m),
+            (u_m, v_m + radius_m),
+            (u_m - radius_m, v_m),
+            (u_m, v_m - radius_m),
         ]
         selected = False
-        for sx, sy, sz in sel_candidates:
+        for pu, pv in perim_uv:
+            sx, sy, sz = _sketch_uv_to_part(_frame, pu, pv)
             if ctx.doc.SelectByID("", "SKETCHSEGMENT", sx, sy, sz):
                 selected = True
                 break
@@ -798,9 +991,10 @@ def _build_sketch_circle_on_face(
                 f"could not select face-sketch circle for diameter dim "
                 f"(face={face}, u={u_m*1000:.1f}mm, r={radius_m*1000:.2f}mm)"
             )
-        dim_d = ctx.doc.AddDimension2(
-            u_m + radius_m + 0.005, v_m + radius_m + 0.005, 0.0
+        dx, dy, dz = _sketch_uv_to_part(
+            _frame, u_m + radius_m + 0.005, v_m + radius_m + 0.005
         )
+        dim_d = ctx.doc.AddDimension2(dx, dy, dz)
         if dim_d is None:
             raise RuntimeError("AddDimension2 returned None for face-sketch diameter")
         _dismiss_dim_pane(ctx.doc)
@@ -812,19 +1006,12 @@ def _build_sketch_circle_on_face(
         raise RuntimeError("no sketch produced on face")
     sketch_feat.Name = feat["name"]
 
-    # Inherit parent extrusion's axis as parent_plane_normal so a downstream
-    # boss_extrude_blind on this sketch picks up the right direction. Same
-    # logic as sketch_rectangle_on_face above.
-    ax, ay, az = parent.extrude_axis
-    if parent.extrude_flip:
-        ax, ay, az = -ax, -ay, -az
-    if face.startswith("-"):
-        ax, ay, az = -ax, -ay, -az
+    # Downstream extrude direction = face's outward normal in part frame.
     return BuiltFeature(
         name=feat["name"],
         type=feat["type"],
         sw_object=sketch_feat,
-        parent_plane_normal=(ax, ay, az),
+        parent_plane_normal=_frame.out_normal,
         parent_face_origin=(fx, fy, fz),
     )
 
@@ -853,10 +1040,9 @@ def _build_sketch_circles_on_face(
     # The single-center warning would just be noise for hole patterns where
     # the natural reference is the part origin (e.g. MMP motor holes at
     # u=+/-12.5 are explicitly relative to part X=0).
-    if face not in ("+z", "-z"):
-        raise NotImplementedError(
-            f"v1 only supports +z/-z (out/in board) faces; got {face}"
-        )
+
+    # Build frame -- validates parent axis/extents for side faces.
+    _frame = _face_frame(parent, face)
 
     ok, fx, fy, fz = _select_extrude_face(ctx, parent, face)
     if not ok:
@@ -868,16 +1054,10 @@ def _build_sketch_circles_on_face(
     sm = ctx.doc.SketchManager
     sm.InsertSketch(True)
 
-    # On -z faces (and -x/-y), SW mirrors the sketch X axis: a circle drawn
-    # at sketch (u, v) lands at part (-u, v). The CreateCircle call uses
-    # sketch-local coords (so the circle ends up where the spec says relative
-    # to the face's u/v frame), but SelectByID for SKETCHSEGMENT needs PART
-    # coords on this build. Compute the click-coord mirror once.
-    if face.startswith("-"):
-        mirror_u = -1.0
-    else:
-        mirror_u = 1.0
-
+    # CreateCircle takes sketch-local coords. SelectByID and AddDimension2
+    # take PART-frame coords; transform sketch (u, v) via FaceFrame. This
+    # works uniformly for all 6 faces (the FaceFrame's u-axis encodes
+    # the X-mirror on -z faces and the in-face orientation for side faces).
     for k, c in enumerate(feat["circles"]):
         u_m = float(c["u"]) / 1000.0
         v_m = float(c["v"]) / 1000.0
@@ -892,16 +1072,15 @@ def _build_sketch_circles_on_face(
         # Dimension this circle BEFORE creating the next one, so dim
         # numbering matches array index: first circle -> D1, second -> D2.
         ctx.doc.ClearSelection2(True)
-        # Click in part-frame coords; on -z faces, the u axis is mirrored.
-        u_click = mirror_u * u_m
-        sel_candidates = [
-            (u_click + radius_m * mirror_u, v_m, 0.0),  # east-ish
-            (u_click, v_m + radius_m, 0.0),  # north
-            (u_click - radius_m * mirror_u, v_m, 0.0),  # west-ish
-            (u_click, v_m - radius_m, 0.0),  # south
+        perim_uv = [
+            (u_m + radius_m, v_m),
+            (u_m, v_m + radius_m),
+            (u_m - radius_m, v_m),
+            (u_m, v_m - radius_m),
         ]
         selected = False
-        for sx, sy, sz in sel_candidates:
+        for pu, pv in perim_uv:
+            sx, sy, sz = _sketch_uv_to_part(_frame, pu, pv)
             if ctx.doc.SelectByID("", "SKETCHSEGMENT", sx, sy, sz):
                 selected = True
                 break
@@ -909,15 +1088,15 @@ def _build_sketch_circles_on_face(
             raise RuntimeError(
                 f"could not select circle #{k} (perimeter at radius {radius_m*1000:.2f}mm "
                 f"from sketch center ({u_m*1000:.1f}, {v_m*1000:.1f}) mm, "
-                f"face={face}, mirror_u={mirror_u}) -- "
-                f"tried 4 cardinal perimeter points in part frame"
+                f"face={face}) -- tried 4 cardinal perimeter points in part frame"
             )
         # Place leader offset from the circle, with stagger so consecutive
         # circles' dim leaders don't overlap.
         lead_offset = 0.005 + 0.003 * k
-        dim = ctx.doc.AddDimension2(
-            u_m + radius_m + lead_offset, v_m + lead_offset, 0.0
+        dx, dy, dz = _sketch_uv_to_part(
+            _frame, u_m + radius_m + lead_offset, v_m + lead_offset
         )
+        dim = ctx.doc.AddDimension2(dx, dy, dz)
         if dim is None:
             raise RuntimeError(f"AddDimension2 returned None for circle #{k}")
         _dismiss_dim_pane(ctx.doc)
@@ -1106,6 +1285,7 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
         extrude_origin=extrude_origin,
         extrude_depth_m=depth_m,
         extrude_flip=flip,
+        sketch_extent_uv=sketch.sketch_extent_uv,
     )
 
 

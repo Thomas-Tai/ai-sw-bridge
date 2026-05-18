@@ -1,0 +1,76 @@
+{
+    "schema_version": 1,
+    "name": "SideFaceBosses",
+    "_comment": "v0.4 example: a 30x30x20 mm block with one Ø6 mm x 5 mm boss on each of the 4 side faces (+x, -x, +y, -y), centered on each face. Exercises side-face sketch frame support across all four orientations. Side-face sketch origins land at the part-origin projection onto the face (NOT the face center) — for this 30x30x20 block, the face-center is at part z=+10 mm but the sketch origin is at part z=0 mm; the `center` offsets below shift each boss from sketch origin to face center along that face's v-axis (or u-axis for ±x faces). Build with `--no-dim`: side-face dim mode is wired but requires manual popup ticking on SW 2024 SP1.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Block",
+            "plane": "Front",
+            "width": 30.0,
+            "height": 30.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Block",
+            "sketch": "SK_Block",
+            "depth": 20.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_BossPlusY",
+            "of_feature": "EX_Block",
+            "face": "+y",
+            "center": {"u": 0.0, "v": -10.0},
+            "diameter": 6.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "Boss_PlusY",
+            "sketch": "SK_BossPlusY",
+            "depth": 5.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_BossMinusY",
+            "of_feature": "EX_Block",
+            "face": "-y",
+            "center": {"u": 0.0, "v": 10.0},
+            "diameter": 6.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "Boss_MinusY",
+            "sketch": "SK_BossMinusY",
+            "depth": 5.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_BossPlusX",
+            "of_feature": "EX_Block",
+            "face": "+x",
+            "center": {"u": -10.0, "v": 0.0},
+            "diameter": 6.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "Boss_PlusX",
+            "sketch": "SK_BossPlusX",
+            "depth": 5.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_BossMinusX",
+            "of_feature": "EX_Block",
+            "face": "-x",
+            "center": {"u": 10.0, "v": 0.0},
+            "diameter": 6.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "Boss_MinusX",
+            "sketch": "SK_BossMinusX",
+            "depth": 5.0
+        }
+    ]
+}
