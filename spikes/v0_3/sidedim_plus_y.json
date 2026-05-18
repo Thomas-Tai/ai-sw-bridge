@@ -1,0 +1,34 @@
+{
+    "schema_version": 1,
+    "name": "SideDimPlusY",
+    "_comment": "Spike: dim-mode end-to-end test on +y side face. ONE Ø6 mm circle on +y face of a 30x30x20 block, centered on the face (v=-10). Builds in dim mode (no --no-dim). Used to verify the _sketch_uv_to_part refactor wires SKETCHSEGMENT + AddDimension2 correctly on side faces. Expect ONE AddDimension2 popup (for the circle diameter) — tick through it.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Block",
+            "plane": "Front",
+            "width": 30.0,
+            "height": 30.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Block",
+            "sketch": "SK_Block",
+            "depth": 20.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_BossPlusY",
+            "of_feature": "EX_Block",
+            "face": "+y",
+            "center": {"u": 0.0, "v": -10.0},
+            "diameter": 6.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "Boss_PlusY",
+            "sketch": "SK_BossPlusY",
+            "depth": 5.0
+        }
+    ]
+}

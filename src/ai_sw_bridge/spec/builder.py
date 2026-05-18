@@ -504,8 +504,21 @@ _FACE_UV_AXES_PARENT_PLUSZ: dict[str, tuple[tuple[int, int, int], tuple[int, int
 class FaceFrame:
     """The part-frame embedding of a face's sketch coordinate system.
 
+    Two reference points to keep separate:
+    - face_center: geometric center of the face. Used by _select_extrude_face
+      to seed the face-pick (highest probability of hitting material).
+    - sketch_origin: where SW puts the (u=0, v=0) point of a sketch
+      created on this face. Empirically, SW projects the PART ORIGIN onto
+      the face plane to define the sketch's (0,0). For +z/-z faces, that
+      lands on the face center (because the face is perpendicular to the
+      part-origin's projection axis). For side faces (+/-x, +/-y),
+      sketch_origin lands on the BOTTOM EDGE of the face (z=0), not the
+      face center -- this is the gotcha that _warn_face_sketch_offset
+      surfaces. Used by _sketch_uv_to_part to convert sketch coords to
+      part-frame coords for SKETCHSEGMENT picks and AddDimension2 leaders.
+
     Lets a handler do:
-      part_xyz = face_center + u * u_axis + v * v_axis
+      part_xyz = sketch_origin + u * u_axis + v * v_axis
     to compute the part-frame click point for a sketch entity at (u, v).
 
     out_normal is the face's outward-pointing unit normal in part coords;
@@ -513,6 +526,7 @@ class FaceFrame:
     """
 
     face_center: tuple[float, float, float]
+    sketch_origin: tuple[float, float, float]
     u_axis: tuple[float, float, float]
     v_axis: tuple[float, float, float]
     out_normal: tuple[float, float, float]
@@ -570,8 +584,12 @@ def _face_frame(parent: "BuiltFeature", face: str) -> FaceFrame:
                 u_ax, v_ax = (0, 1, 0), (0, 0, 1)
             else:
                 u_ax, v_ax = (0, -1, 0), (0, 0, 1)
+        # ±z face: sketch_origin == face_center (part origin projects onto
+        # the face center along the face normal, which is parallel to the
+        # part-origin axis).
         return FaceFrame(
             face_center=(fx0, fy0, fz0),
+            sketch_origin=(fx0, fy0, fz0),
             u_axis=(float(u_ax[0]), float(u_ax[1]), float(u_ax[2])),
             v_axis=(float(v_ax[0]), float(v_ax[1]), float(v_ax[2])),
             out_normal=out_nrm,
@@ -623,8 +641,19 @@ def _face_frame(parent: "BuiltFeature", face: str) -> FaceFrame:
         raise RuntimeError(f"unknown face label {face!r}")
 
     u_ax, v_ax = _FACE_UV_AXES_PARENT_PLUSZ[face]
+    # Side face sketch_origin: SW projects part origin (0,0,0) onto the
+    # face plane. The face plane equation is `face_center . out_normal = d`
+    # where d = face_center . out_normal (the signed distance from origin
+    # to the face plane along the normal). Projection of (0,0,0) onto the
+    # plane is then `d * out_normal`. For axis-aligned faces this reduces
+    # to setting the normal-component to face_center's normal-component
+    # and zeroing the in-face components.
+    nx, ny, nz = out_nrm
+    d = face_center[0] * nx + face_center[1] * ny + face_center[2] * nz
+    sketch_origin = (d * nx, d * ny, d * nz)
     return FaceFrame(
         face_center=face_center,
+        sketch_origin=sketch_origin,
         u_axis=(float(u_ax[0]), float(u_ax[1]), float(u_ax[2])),
         v_axis=(float(v_ax[0]), float(v_ax[1]), float(v_ax[2])),
         out_normal=out_nrm,
@@ -632,8 +661,14 @@ def _face_frame(parent: "BuiltFeature", face: str) -> FaceFrame:
 
 
 def _sketch_uv_to_part(frame: FaceFrame, u_m: float, v_m: float) -> tuple[float, float, float]:
-    """Convert sketch-frame (u, v) in meters to part-frame (x, y, z)."""
-    cx, cy, cz = frame.face_center
+    """Convert sketch-frame (u, v) in meters to part-frame (x, y, z).
+
+    Origin is `frame.sketch_origin` (where SW puts the sketch's (0,0)),
+    NOT `frame.face_center`. For +/-z faces they coincide; for side faces
+    sketch_origin sits on the face's bottom edge (z=0 in part frame for
+    a block on Front Plane).
+    """
+    cx, cy, cz = frame.sketch_origin
     ux, uy, uz = frame.u_axis
     vx, vy, vz = frame.v_axis
     return (cx + u_m * ux + v_m * vx, cy + u_m * uy + v_m * vy,
