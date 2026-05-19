@@ -5,6 +5,45 @@
 A semi-automated bridge that lets an AI assistant (Claude, ChatGPT, Codex, etc.)
 drive SOLIDWORKS through the COM API.
 
+## AI Quickstart (5 minutes)
+
+**If you are a first-time user, start here.** This is the shortest path from "fresh clone" to "AI is building parts in SOLIDWORKS for you." Detailed sections are below.
+
+**1. Install (~2 minutes).** Windows, Python 3.10+, SOLIDWORKS already installed.
+
+```powershell
+git clone https://github.com/Thomas-Tai/ai-sw-bridge.git
+cd ai-sw-bridge
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e .
+```
+
+**2. Smoke test.** Open SOLIDWORKS (any blank state is fine), then:
+
+```powershell
+ai-sw-probe                                                  # COM is alive
+ai-sw-build examples/filleted_box/spec.json --no-dim         # AI-driven part build
+```
+
+If the second command produces a small filleted box in SW in ~3 seconds, the bridge works.
+
+**3. Point your AI assistant at this repo.** Open Claude / ChatGPT / Codex and paste the following prompt (edit the goal line for what you want):
+
+> I'm using **ai-sw-bridge** (a Windows-only bridge between AI assistants and SOLIDWORKS via the COM API). Before doing anything, read **[`docs/AGENTS.md`](docs/AGENTS.md)** — it's the agent briefing and tells you the rules, the spec format, which example to copy, and what's safe vs. needs my confirmation.
+>
+> My goal: *describe your part or change here, e.g. "build a 40 × 30 × 10 mm plate with four Ø5 mm through-holes at the corners, 5 mm in from each edge."*
+>
+> Propose a JSON spec for me to review before running `ai-sw-build`.
+
+The AI will read [`docs/AGENTS.md`](docs/AGENTS.md), pick the closest [`examples/`](examples/) match, draft a spec, and stop for your review. You inspect it, give the green light, and run the resulting `ai-sw-build … --no-dim` command yourself. The AI never executes against your CAD model without your explicit approval — that's the Propose–Approve–Execute discipline this bridge is built around.
+
+**Stuck?** Two next reads:
+- [`docs/AGENTS.md`](docs/AGENTS.md) — what the AI is doing and why (also good for humans).
+- [`examples/README.md`](examples/README.md) — the 12 working specs grouped by feature.
+
+---
+
 ## What it does
 
 Today, ai-sw-bridge ships **four capabilities** along a continuum from observation to AI-driven creation:
