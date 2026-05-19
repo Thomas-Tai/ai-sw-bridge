@@ -250,6 +250,39 @@ Obsolete. See IFeatureManager::CreateFeature and the Remarks in ILinearPatternFe
 
 **Availability:** SOLIDWORKS 2017 FCS, Revision Number 25.0
 
+### `IFeatureManager.FeatureRevolve2`
+
+Creates a base-, boss-, or cut-revolve feature.
+
+**Args (20):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `SingleDir` | `system.bool` | True if the revolve is in one direction, false if in two directions (see Remarks) |
+| 2 | `IsSolid` | `system.bool` | True if this is a solid revolve feature, false if not |
+| 3 | `IsThin` | `system.bool` | True if this is a thin revolve feature, false if not |
+| 4 | `IsCut` | `system.bool` | True if this is a cut revolve feature, false if not |
+| 5 | `ReverseDir` | `system.bool` | True reverses the angle of the revolution, false does not; only applies if Dir1Type is not swEndConditions_e.swEndCondMidPlane |
+| 6 | `BothDirectionUpToSameEntity` | `system.bool` | True if the revolve is up to the same entity in both directions, false if not; only applies if SingleDir is false and Dir1Type and Dir2Type are swEndConditions_e.swEndCondUpToVertex, swEndCondition... |
+| 7 | `Dir1Type` | `system.int` | Revolve end condition as defined in swEndConditions_e |
+| 8 | `Dir2Type` | `system.int` | Revolve end condition in direction 2; as defined in swEndConditions_e and only applies if Dir1Type is not swEndConditions_e.swEndCondMidPlane |
+| 9 | `Dir1Angle` | `system.double` | Angle in radians of revolution in direction 1; only applies if Dir1Type is swEndConditions_e.swEndCondBlind |
+| 10 | `Dir2Angle` | `system.double` | Angle in radians of revolution in direction 2; only applies if Dir2Type is swEndConditions_e.swEndCondBlind |
+| 11 | `OffsetReverse1` | `system.bool` | True to reverse the offset direction in direction 1, false to not; only applies if Dir1Type is swEndConditions_e.swEndCondOffsetFromSurface |
+| 12 | `OffsetReverse2` | `system.bool` | True to reverse the offset direction in direction 2, false to not; only applies if Dir2Type is swEndConditions_e.swEndCondOffsetFromSurface |
+| 13 | `OffsetDistance1` | `system.double` | Offset distance in direction 1; only applies if Dir1Type is swEndConditions_e.swEndCondOffsetFromSurface |
+| 14 | `OffsetDistance2` | `system.double` | Offset distance in direction 2; only applies if Dir2Type is swEndConditions_e.swEndCondOffsetFromSurface |
+| 15 | `ThinType` | `system.int` | Type and direction as defined in swThinWallType_e |
+| 16 | `ThinThickness1` | `system.double` | Wall thickness in direction 1 (if ThinType is swThinWallType_e.swThinWallMidPlane, (ThinThickness1)/2 is used for each direction) |
+| 17 | `ThinThickness2` | `system.double` | Wall thickness in direction 2 (only applies if ThinType is swThinWallType_e.swThinWallTwoDirection) |
+| 18 | `Merge` | `system.bool` | True to merge the results into a multi-body part, false to not |
+| 19 | `UseFeatScope` | `system.bool` | True if the feature only affects selected bodies, false if the feature affects all bodies (see Remarks) |
+| 20 | `UseAutoSelect` | `system.bool` | True to automatically select all bodies and have the feature affect those bodies, false to select the bodies or components that the feature affects (see Remarks) |
+
+**Returns:** `Feature`
+
+**Availability:** SOLIDWORKS 2011 FCS, Revision Number 19.0
+
 ### `IFeatureManager.InsertFeatureChamfer`
 
 Inserts a chamfer.
@@ -476,6 +509,25 @@ Selects the specified entity.
 **Returns:** `System.bool`
 
 **Availability:** SOLIDWORKS 2005 FCS, Revision Number 13.0
+
+### `ISketchManager.CreateCenterLine`
+
+Creates a center line between the specified points.
+
+**Args (6):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `X1` | `system.double` | X coordinate of first end point, in meters |
+| 2 | `Y1` | `system.double` | Y coordinate of first end point, in meters |
+| 3 | `Z1` | `system.double` | Z coordinate of first end point, in meters |
+| 4 | `X2` | `system.double` | X coordinate of second end point, in meters |
+| 5 | `Y2` | `system.double` | Y coordinate of second end point, in meters |
+| 6 | `Z2` | `system.double` | Z coordinate of second end point, in meters |
+
+**Returns:** `SketchSegment`
+
+**Availability:** SOLIDWORKS 2008 FCS, Revision Number 16.0
 
 ### `ISketchManager.CreateCenterRectangle`
 
@@ -710,6 +762,17 @@ Start conditions.
 | `swStartSurface` | `1` |  |
 | `swStartVertex` | `2` |  |
 | `swStartOffset` | `3` |  |
+
+### `swThinWallType_e`
+
+Thin wall types.
+
+| Name | Value | Doc |
+|------|-------|-----|
+| `swThinWallOneDirection` | `0` |  |
+| `swThinWallOppDirection` | `1` |  |
+| `swThinWallMidPlane` | `2` |  |
+| `swThinWallTwoDirection` | `3` |  |
 
 ## Not found in CHM
 

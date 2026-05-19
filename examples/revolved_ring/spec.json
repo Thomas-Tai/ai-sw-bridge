@@ -1,0 +1,25 @@
+{
+    "schema_version": 1,
+    "name": "RevolvedRing",
+    "_comment": "v0.5 example: hollow cylindrical ring, axis along x. Profile rectangle x=[20,50] y=[2,8] on Front Plane, plus a centerline along the x-axis. Revolved 360 deg about the centerline. Result: outer radius 8 mm, inner radius 2 mm, axis from x=20 to x=50.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Profile",
+            "plane": "Front",
+            "width": 30.0,
+            "height": 6.0,
+            "center": {"x": 35.0, "y": 5.0},
+            "centerline": {
+                "start": {"x": -60.0, "y": 0.0},
+                "end":   {"x":  60.0, "y": 0.0}
+            }
+        },
+        {
+            "type": "revolve_boss",
+            "name": "REV_Ring",
+            "sketch": "SK_Profile",
+            "angle": 360.0
+        }
+    ]
+}

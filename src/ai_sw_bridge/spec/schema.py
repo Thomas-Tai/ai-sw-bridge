@@ -29,6 +29,43 @@ from typing import Any
 SCHEMA_VERSION = 1
 
 
+# A centerline (construction line) embedded in a plane-based sketch. Carries
+# no driving dim of its own -- the start/end points are baked in at build
+# time as literal mm coordinates. Used by `revolve_boss` as the axis of
+# revolution: SW auto-detects the embedded centerline when the profile
+# sketch is selected for revolve, matching the native UI workflow.
+#
+# v1 limits:
+#   - One centerline per sketch (multiple would be ambiguous as revolve axis).
+#   - Coordinates are literal mm; no {rhs} bindings on centerline endpoints.
+CENTERLINE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["start", "end"],
+    "properties": {
+        "start": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["x", "y"],
+            "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
+            "description": "Centerline start point in sketch-local coords (mm).",
+        },
+        "end": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["x", "y"],
+            "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
+            "description": "Centerline end point in sketch-local coords (mm).",
+        },
+    },
+    "description": (
+        "Construction line embedded in the sketch. Consumed by `revolve_boss` "
+        "as the axis of revolution (SW auto-detects). No driving dim; "
+        "coordinates are literal mm."
+    ),
+}
+
+
 # A length value: literal mm or a SW-equation expression to bind via Add2.
 LENGTH_SCHEMA: dict[str, Any] = {
     "oneOf": [
@@ -69,6 +106,7 @@ SKETCH_RECTANGLE_ON_PLANE: dict[str, Any] = {
             "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
             "description": "Sketch-local center (mm). Default (0, 0).",
         },
+        "centerline": CENTERLINE_SCHEMA,
     },
 }
 
@@ -88,6 +126,7 @@ SKETCH_CIRCLE_ON_PLANE: dict[str, Any] = {
             "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
             "description": "Sketch-local center (mm). Default (0, 0).",
         },
+        "centerline": CENTERLINE_SCHEMA,
     },
 }
 
@@ -586,6 +625,56 @@ FILLET_CONSTANT_RADIUS: dict[str, Any] = {
 }
 
 
+# Revolve boss feature: revolves the named profile sketch about its
+# embedded centerline (one full turn by default, partial-sweep via
+# `angle`). SW auto-detects the centerline from inside the sketch -- no
+# separate axis selection needed.
+#
+# v1 limits:
+#   - Single-direction revolves only (the profile sketch must contain
+#     exactly one centerline). Two-direction / mid-plane revolves are
+#     deferred (would need separate axis fields and an extra direction
+#     parameter).
+#   - Solid revolves only -- no thin-wall, no surface revolve.
+#   - Boss (additive) only -- the cut-revolve variant is deferred (would
+#     mirror `cut_extrude_*` family).
+#   - Profile sketch must be a `sketch_*_on_plane` type with a
+#     `centerline` field declared. Face-based sketches don't currently
+#     support centerlines; deferred.
+REVOLVE_BOSS: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["type", "name", "sketch"],
+    "properties": {
+        "type": {"const": "revolve_boss"},
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+        "sketch": {
+            "type": "string",
+            "description": (
+                "Name of an earlier plane-based sketch that contains "
+                "both a closed profile and an embedded centerline. "
+                "SW auto-picks the centerline as the axis of revolution."
+            ),
+        },
+        "angle": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 360,
+            "default": 360.0,
+            "description": (
+                "Sweep angle in DEGREES (builder converts to radians). "
+                "Default 360 = full revolution."
+            ),
+        },
+        "flip": {
+            "type": "boolean",
+            "default": False,
+            "description": "Reverse the revolve direction.",
+        },
+    },
+}
+
+
 # Top-level spec
 SCHEMA: dict[str, Any] = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -619,6 +708,7 @@ SCHEMA: dict[str, Any] = {
                     BOSS_EXTRUDE_BLIND,
                     CUT_EXTRUDE_THROUGH_ALL,
                     CUT_EXTRUDE_BLIND,
+                    REVOLVE_BOSS,
                     SIMPLE_HOLE,
                     FILLET_CONSTANT_RADIUS,
                     CHAMFER_EDGE,
@@ -647,6 +737,7 @@ EXTRUDE_TYPES = frozenset(
         "boss_extrude_blind",
         "cut_extrude_through_all",
         "cut_extrude_blind",
+        "revolve_boss",
     }
 )
 # Modify-existing-geometry features (operate on existing edges/faces, do not

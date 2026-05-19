@@ -100,6 +100,12 @@ SW_START_SURFACE = 1  # swStartSurface
 SW_START_VERTEX = 2  # swStartVertex
 SW_START_OFFSET = 3  # swStartOffset
 
+# swThinWallType_e: Thin wall types.
+SW_THIN_WALL_ONE_DIRECTION = 0  # swThinWallOneDirection
+SW_THIN_WALL_OPP_DIRECTION = 1  # swThinWallOppDirection
+SW_THIN_WALL_MID_PLANE = 2  # swThinWallMidPlane
+SW_THIN_WALL_TWO_DIRECTION = 3  # swThinWallTwoDirection
+
 # -----------------------------------------------------------------------------
 # Method signatures (for arg-count validation)
 # -----------------------------------------------------------------------------
@@ -403,6 +409,55 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
         "return_type": "Feature",
         "summary": "Obsolete. See IFeatureManager::CreateFeature and the Remarks in ILinearPatternFeatureData and ILocalLinearPatternFeatureData.",
     },
+    "IFeatureManager.FeatureRevolve2": {
+        "args_count": 20,
+        "arg_names": [
+            "SingleDir",
+            "IsSolid",
+            "IsThin",
+            "IsCut",
+            "ReverseDir",
+            "BothDirectionUpToSameEntity",
+            "Dir1Type",
+            "Dir2Type",
+            "Dir1Angle",
+            "Dir2Angle",
+            "OffsetReverse1",
+            "OffsetReverse2",
+            "OffsetDistance1",
+            "OffsetDistance2",
+            "ThinType",
+            "ThinThickness1",
+            "ThinThickness2",
+            "Merge",
+            "UseFeatScope",
+            "UseAutoSelect",
+        ],
+        "arg_types": [
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.double",
+            "system.double",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+        ],
+        "return_type": "Feature",
+        "summary": "Creates a base-, boss-, or cut-revolve feature.",
+    },
     "IFeatureManager.InsertFeatureChamfer": {
         "args_count": 8,
         "arg_names": [
@@ -597,6 +652,20 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
         ],
         "return_type": "System.bool",
         "summary": "Selects the specified entity.",
+    },
+    "ISketchManager.CreateCenterLine": {
+        "args_count": 6,
+        "arg_names": ["X1", "Y1", "Z1", "X2", "Y2", "Z2"],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
+        "return_type": "SketchSegment",
+        "summary": "Creates a center line between the specified points.",
     },
     "ISketchManager.CreateCenterRectangle": {
         "args_count": 6,

@@ -30,6 +30,12 @@ Each ships with a README that walks through the feature list and the gotchas spe
 | [`side_face_bosses/`](side_face_bosses/) | 6 | Boss extrudes on all four side faces (`±x`, `±y`) — verifies sketch-origin handling on non-`±z` faces |
 | [`drilled_plate/`](drilled_plate/) | 4 | `simple_hole` primitive: blind + through_all variants side by side |
 
+## v0.5 examples (revolve)
+
+| Example | Features | What it demonstrates |
+|---|---|---|
+| [`revolved_ring/`](revolved_ring/) | 2 | `revolve_boss` primitive + `centerline` field on plane sketch. Profile rectangle revolved 360° about an embedded centerline → hollow tube. |
+
 ## Path C example (recorded-macro parameterization)
 
 | Example | What it demonstrates |

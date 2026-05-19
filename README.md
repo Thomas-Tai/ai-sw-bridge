@@ -299,8 +299,8 @@ The bridge keeps an authoritative reference of every SW API it calls, extracted 
 | `swDimensionType_e` | 17 | Used for `AddSpecificDimension` (which is currently unreachable due to OUT-param marshalling) |
 | `swSelectType_e` | — | String form used as 2nd arg to `SelectByID` ("PLANE", "FACE", "SKETCH", "SKETCHSEGMENT") |
 
-**Not yet wired into the bridge** (but available in the CHM, candidates for v0.3+):
-`FeatureRevolve`, `FeatureChamferType`, `InsertCutSwept5`, `InsertProtrusionSwept`, `FeatureCutThin2`, `FeatureBossThin2`, `SimpleHole3`, `InsertMirrorFeature`, `InsertLinearPatternFeature`. Add them to [`tools/_api_extract_input.json`](tools/_api_extract_input.json) and regenerate to expose them via `sw_types.py`.
+**Not yet wired into the bridge** (but available in the CHM, candidates for v0.6+):
+`InsertCutSwept5`, `InsertProtrusionSwept`, `FeatureCutThin2`, `FeatureBossThin2`, `SimpleHole3`, `InsertMirrorFeature`, `InsertLinearPatternFeature`. Add them to [`tools/_api_extract_input.json`](tools/_api_extract_input.json) and regenerate to expose them via `sw_types.py`.
 
 Constant-radius fillets ARE wired (added via the CreateDefinition + ISimpleFilletFeatureData2 + CreateFeature 3-call pipeline, not the deprecated FeatureFillet3). See [`examples/filleted_box/`](examples/filleted_box/) for usage. Variable-radius / asymmetric / setback fillets remain unwired (no immediate use case).
 
@@ -383,11 +383,11 @@ The remaining v0.3-roadmap-shaped items, each following the same recipe as `fill
 - `circular_pattern` — sibling to `linear_pattern`, axis + angle instead of edge-direction + spacing
 - `simple_hole` (countersinks, counterbores) — `IFeatureManager.HoleWizard5` family
 
-**Mid-term (v0.4 — broaden the part vocabulary)**
+**Mid-term (v0.5+ — broaden the part vocabulary)**
 
 Different SW API families with their own design questions. Each is a multi-day effort, not minutes.
 
-- `revolve` — different feature family from extrudes; needs a profile sketch + axis-of-revolution element. Used for IdlerRoller, AxleEndCap, any turned/lathed part.
+- ~~`revolve`~~ — shipped in v0.5 as `revolve_boss` ([example](examples/revolved_ring/)). Single-direction solid revolves; axis via embedded `centerline` field on plane sketches. `revolve_cut`, thin-wall, and two-direction revolves still deferred.
 - `sweep` and `loft` — path-driven; the spec language needs to express path geometry, not just a profile. Will likely require a separate `path_sketch` feature type.
 - Sheet-metal features — base flange, edge flange, sketched bend, flat pattern. Whole separate SW UI mode.
 - Reference geometry — custom reference planes, axes, points. Required for any extrude that doesn't sit on Front/Top/Right.

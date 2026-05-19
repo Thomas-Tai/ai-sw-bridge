@@ -1157,6 +1157,117 @@
       "availability": "SOLIDWORKS 2009 FCS, Revision Number 17.0",
       "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~SimpleHole2.html"
     },
+    "IFeatureManager.FeatureRevolve2": {
+      "interface": "IFeatureManager",
+      "method": "FeatureRevolve2",
+      "summary": "Creates a base-, boss-, or cut-revolve feature.",
+      "return_type": "Feature",
+      "args": [
+        {
+          "name": "SingleDir",
+          "type": "system.bool",
+          "doc": "True if the revolve is in one direction, false if in two directions (see Remarks)"
+        },
+        {
+          "name": "IsSolid",
+          "type": "system.bool",
+          "doc": "True if this is a solid revolve feature, false if not"
+        },
+        {
+          "name": "IsThin",
+          "type": "system.bool",
+          "doc": "True if this is a thin revolve feature, false if not"
+        },
+        {
+          "name": "IsCut",
+          "type": "system.bool",
+          "doc": "True if this is a cut revolve feature, false if not"
+        },
+        {
+          "name": "ReverseDir",
+          "type": "system.bool",
+          "doc": "True reverses the angle of the revolution, false does not; only applies if Dir1Type is not swEndConditions_e.swEndCondMidPlane"
+        },
+        {
+          "name": "BothDirectionUpToSameEntity",
+          "type": "system.bool",
+          "doc": "True if the revolve is up to the same entity in both directions, false if not; only applies if SingleDir is false and Dir1Type and Dir2Type are swEndConditions_e.swEndCondUpToVertex, swEndConditions_e.swEndCondUpToSurface, or swEndConditions_e.swEndCondOffsetFromSurface) (see Remarks)"
+        },
+        {
+          "name": "Dir1Type",
+          "type": "system.int",
+          "doc": "Revolve end condition as defined in swEndConditions_e"
+        },
+        {
+          "name": "Dir2Type",
+          "type": "system.int",
+          "doc": "Revolve end condition in direction 2; as defined in swEndConditions_e and only applies if Dir1Type is not swEndConditions_e.swEndCondMidPlane"
+        },
+        {
+          "name": "Dir1Angle",
+          "type": "system.double",
+          "doc": "Angle in radians of revolution in direction 1; only applies if Dir1Type is swEndConditions_e.swEndCondBlind"
+        },
+        {
+          "name": "Dir2Angle",
+          "type": "system.double",
+          "doc": "Angle in radians of revolution in direction 2; only applies if Dir2Type is swEndConditions_e.swEndCondBlind"
+        },
+        {
+          "name": "OffsetReverse1",
+          "type": "system.bool",
+          "doc": "True to reverse the offset direction in direction 1, false to not; only applies if Dir1Type is swEndConditions_e.swEndCondOffsetFromSurface"
+        },
+        {
+          "name": "OffsetReverse2",
+          "type": "system.bool",
+          "doc": "True to reverse the offset direction in direction 2, false to not; only applies if Dir2Type is swEndConditions_e.swEndCondOffsetFromSurface"
+        },
+        {
+          "name": "OffsetDistance1",
+          "type": "system.double",
+          "doc": "Offset distance in direction 1; only applies if Dir1Type is swEndConditions_e.swEndCondOffsetFromSurface"
+        },
+        {
+          "name": "OffsetDistance2",
+          "type": "system.double",
+          "doc": "Offset distance in direction 2; only applies if Dir2Type is swEndConditions_e.swEndCondOffsetFromSurface"
+        },
+        {
+          "name": "ThinType",
+          "type": "system.int",
+          "doc": "Type and direction as defined in swThinWallType_e"
+        },
+        {
+          "name": "ThinThickness1",
+          "type": "system.double",
+          "doc": "Wall thickness in direction 1 (if ThinType is swThinWallType_e.swThinWallMidPlane, (ThinThickness1)/2 is used for each direction)"
+        },
+        {
+          "name": "ThinThickness2",
+          "type": "system.double",
+          "doc": "Wall thickness in direction 2 (only applies if ThinType is swThinWallType_e.swThinWallTwoDirection)"
+        },
+        {
+          "name": "Merge",
+          "type": "system.bool",
+          "doc": "True to merge the results into a multi-body part, false to not"
+        },
+        {
+          "name": "UseFeatScope",
+          "type": "system.bool",
+          "doc": "True if the feature only affects selected bodies, false if the feature affects all bodies (see Remarks)"
+        },
+        {
+          "name": "UseAutoSelect",
+          "type": "system.bool",
+          "doc": "True to automatically select all bodies and have the feature affect those bodies, false to select the bodies or components that the feature affects (see Remarks)"
+        }
+      ],
+      "args_count": 20,
+      "availability": "SOLIDWORKS 2011 FCS, Revision Number 19.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~FeatureRevolve2.html"
+    },
     "ISketchManager.InsertSketch": {
       "interface": "ISketchManager",
       "method": "InsertSketch",
@@ -1295,6 +1406,47 @@
       "args_count": 6,
       "availability": "SOLIDWORKS 2008 FCS, Revision Number 16.0",
       "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISketchManager~CreateCircle.html"
+    },
+    "ISketchManager.CreateCenterLine": {
+      "interface": "ISketchManager",
+      "method": "CreateCenterLine",
+      "summary": "Creates a center line between the specified points.",
+      "return_type": "SketchSegment",
+      "args": [
+        {
+          "name": "X1",
+          "type": "system.double",
+          "doc": "X coordinate of first end point, in meters"
+        },
+        {
+          "name": "Y1",
+          "type": "system.double",
+          "doc": "Y coordinate of first end point, in meters"
+        },
+        {
+          "name": "Z1",
+          "type": "system.double",
+          "doc": "Z coordinate of first end point, in meters"
+        },
+        {
+          "name": "X2",
+          "type": "system.double",
+          "doc": "X coordinate of second end point, in meters"
+        },
+        {
+          "name": "Y2",
+          "type": "system.double",
+          "doc": "Y coordinate of second end point, in meters"
+        },
+        {
+          "name": "Z2",
+          "type": "system.double",
+          "doc": "Z coordinate of second end point, in meters"
+        }
+      ],
+      "args_count": 6,
+      "availability": "SOLIDWORKS 2008 FCS, Revision Number 16.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.ISketchManager~CreateCenterLine.html"
     },
     "IEquationMgr.Add2": {
       "interface": "IEquationMgr",
@@ -1661,6 +1813,34 @@
       ],
       "values_count": 3,
       "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swFeatureScope_e.html"
+    },
+    "swThinWallType_e": {
+      "enum": "swThinWallType_e",
+      "summary": "Thin wall types.",
+      "values": [
+        {
+          "name": "swThinWallMidPlane",
+          "value": 2,
+          "doc": null
+        },
+        {
+          "name": "swThinWallOneDirection",
+          "value": 0,
+          "doc": null
+        },
+        {
+          "name": "swThinWallOppDirection",
+          "value": 1,
+          "doc": null
+        },
+        {
+          "name": "swThinWallTwoDirection",
+          "value": 3,
+          "doc": null
+        }
+      ],
+      "values_count": 4,
+      "source": "SolidWorks.Interop.swconst~SolidWorks.Interop.swconst.swThinWallType_e.html"
     }
   },
   "missing": [

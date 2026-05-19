@@ -40,6 +40,7 @@ from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
     SW_CHAMFER_DISTANCE_DISTANCE,
     SW_FEATURE_CHAMFER_TANGENT_PROPAGATION,
     SW_FEATURE_SCOPE_ALL_BODIES,
+    SW_THIN_WALL_ONE_DIRECTION,
     assert_args,
 )
 
@@ -337,6 +338,27 @@ def link_locals(doc: Any, locals_path: str) -> None:
 # -----------------------------------------------------------------------------
 
 
+def _draw_centerline_if_present(sm: Any, feat: dict[str, Any]) -> None:
+    """If the sketch spec has a `centerline` field, draw it as a construction
+    line in the currently open sketch via ISketchManager.CreateCenterLine.
+
+    Used by plane-based sketch handlers (rectangle, circle) to embed an
+    axis of revolution. Coordinates are sketch-local mm, converted to m.
+    Verified working under pywin32 late-binding in Spike X (2026-05-19)."""
+    cl = feat.get("centerline")
+    if cl is None:
+        return
+    x1 = float(cl["start"]["x"]) / 1000.0
+    y1 = float(cl["start"]["y"]) / 1000.0
+    x2 = float(cl["end"]["x"]) / 1000.0
+    y2 = float(cl["end"]["y"]) / 1000.0
+    seg = sm.CreateCenterLine(x1, y1, 0.0, x2, y2, 0.0)
+    if seg is None:
+        raise RuntimeError(
+            f"CreateCenterLine returned None for sketch '{feat.get('name')}'"
+        )
+
+
 def _build_sketch_rectangle_on_plane(
     ctx: BuildContext, feat: dict[str, Any]
 ) -> BuiltFeature:
@@ -398,6 +420,9 @@ def _build_sketch_rectangle_on_plane(
             raise RuntimeError("AddDimension2 returned None for height")
         _dismiss_dim_pane(ctx.doc)
 
+    # Optional embedded centerline (for revolve_boss to consume as axis).
+    _draw_centerline_if_present(sm, feat)
+
     sm.InsertSketch(True)  # close
 
     # Most-recent feature is the sketch we just created. Rename it.
@@ -457,6 +482,9 @@ def _build_sketch_circle_on_plane(
         if dim_d is None:
             raise RuntimeError("AddDimension2 returned None for diameter")
         _dismiss_dim_pane(ctx.doc)
+
+    # Optional embedded centerline (for revolve_boss to consume as axis).
+    _draw_centerline_if_present(sm, feat)
 
     sm.InsertSketch(True)
 
@@ -1354,6 +1382,60 @@ def _build_cut_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFe
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
 
+def _build_revolve_boss(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Revolve the named profile sketch about its embedded centerline.
+
+    The profile sketch must have been built via a plane-based sketch handler
+    with a `centerline` field (drawn as construction line inside the sketch).
+    SW auto-picks that centerline as the axis of revolution when the sketch
+    alone is selected -- matches the native Insert > Revolved Boss workflow
+    and verified GREEN in Spike X (2026-05-19).
+
+    20-arg FeatureRevolve2 signature is CHM-verified; no parametric angle
+    binding in v1 (angle is a literal degrees number in the spec)."""
+    import math
+
+    sketch_name = feat["sketch"]
+    _select_sketch(ctx, sketch_name)
+
+    angle_deg = float(feat.get("angle", 360.0))
+    angle_rad = math.radians(angle_deg)
+    flip = bool(feat.get("flip", False))
+
+    args = (
+        True,  # 1  SingleDir
+        True,  # 2  IsSolid
+        False,  # 3  IsThin
+        False,  # 4  IsCut
+        flip,  # 5  ReverseDir
+        False,  # 6  BothDirectionUpToSameEntity
+        SW_END_COND_BLIND,  # 7  Dir1Type (blind = explicit angle)
+        0,  # 8  Dir2Type (ignored)
+        angle_rad,  # 9  Dir1Angle (radians)
+        0.0,  # 10 Dir2Angle
+        False,  # 11 OffsetReverse1
+        False,  # 12 OffsetReverse2
+        0.0,  # 13 OffsetDistance1
+        0.0,  # 14 OffsetDistance2
+        SW_THIN_WALL_ONE_DIRECTION,  # 15 ThinType (ignored when IsThin=False)
+        0.0,  # 16 ThinThickness1
+        0.0,  # 17 ThinThickness2
+        True,  # 18 Merge
+        True,  # 19 UseFeatScope
+        True,  # 20 UseAutoSelect
+    )
+    assert_args("IFeatureManager.FeatureRevolve2", args)
+    f = ctx.doc.FeatureManager.FeatureRevolve2(*args)
+    if f is None:
+        raise RuntimeError(
+            f"FeatureRevolve2 returned None for '{feat['name']}'. "
+            f"Common causes: profile sketch contains no centerline, "
+            f"profile not closed, or profile crosses the centerline."
+        )
+    f.Name = feat["name"]
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
+
+
 def _build_simple_hole(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Drill a straight-bore hole through an existing face.
 
@@ -2050,6 +2132,14 @@ FEATURE_REGISTRY: dict[str, FeatureType] = {
         handler=None,
         dim_fields={"depth": "D1"},
     ),
+    "revolve_boss": FeatureType(
+        name="revolve_boss",
+        handler=None,
+        # `angle` is a plain number in the spec (degrees), not a length;
+        # no {rhs} object form yet. Parametric angle is a v1.1 candidate
+        # (would need an angle-type LENGTH_SCHEMA variant).
+        dim_fields={},
+    ),
     "simple_hole": FeatureType(
         name="simple_hole",
         handler=None,
@@ -2125,6 +2215,7 @@ def _wire_handlers() -> None:
         "boss_extrude_blind": _build_boss_extrude_blind,
         "cut_extrude_through_all": _build_cut_extrude_through_all,
         "cut_extrude_blind": _build_cut_extrude_blind,
+        "revolve_boss": _build_revolve_boss,
         "simple_hole": _build_simple_hole,
         "fillet_constant_radius": _build_fillet_constant_radius,
         "chamfer_edge": _build_chamfer_edge,

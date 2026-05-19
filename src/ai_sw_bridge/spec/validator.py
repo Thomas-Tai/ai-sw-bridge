@@ -93,6 +93,7 @@ def _check_references(spec: dict[str, Any]) -> None:
     """Strict topological check: every reference points to an earlier feature
     of the right kind."""
     seen: dict[str, str] = {}  # name -> type
+    features_by_name: dict[str, dict[str, Any]] = {}  # name -> full feature dict
     for i, feat in enumerate(spec["features"]):
         name = feat["name"]
         ftype = feat["type"]
@@ -132,6 +133,18 @@ def _check_references(spec: dict[str, Any]) -> None:
                     f"got '{seen[target]}'",
                     path=f"features/{i}/sketch",
                 )
+            # revolve_boss: the referenced sketch must declare a centerline.
+            # SW would fail at build time with a cryptic error otherwise.
+            if ftype == "revolve_boss":
+                target_feat = features_by_name[target]
+                if "centerline" not in target_feat:
+                    raise ValidationError(
+                        message=(
+                            f"revolve_boss requires '{target}' to declare a "
+                            f"`centerline` (used as axis of revolution)"
+                        ),
+                        path=f"features/{i}/sketch",
+                    )
         elif ftype in PATTERN_TYPES:
             # linear_pattern / mirror_feature: `seed` must name an earlier
             # feature. v1 doesn't constrain the seed's type (any built
@@ -194,6 +207,7 @@ def _check_references(spec: dict[str, Any]) -> None:
                 )
 
         seen[name] = ftype
+        features_by_name[name] = feat
 
 
 def _extract_var_refs(value: Any) -> list[str]:

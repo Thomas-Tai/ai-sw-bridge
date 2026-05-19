@@ -30,11 +30,13 @@
     ["IFeatureManager", "CreateDefinition"],
     ["IFeatureManager", "CreateFeature"],
     ["IFeatureManager", "SimpleHole2"],
+    ["IFeatureManager", "FeatureRevolve2"],
 
     ["ISketchManager", "InsertSketch"],
     ["ISketchManager", "CreateCornerRectangle"],
     ["ISketchManager", "CreateCenterRectangle"],
     ["ISketchManager", "CreateCircle"],
+    ["ISketchManager", "CreateCenterLine"],
 
     ["IEquationMgr", "Add2"],
 
@@ -49,6 +51,7 @@
     "swSelectType_e",
     "swChamferType_e",
     "swFeatureChamferOption_e",
-    "swFeatureScope_e"
+    "swFeatureScope_e",
+    "swThinWallType_e"
   ]
 }
