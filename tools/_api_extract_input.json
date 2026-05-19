@@ -29,6 +29,7 @@
     ["IFeatureManager", "InsertMirrorFeature2"],
     ["IFeatureManager", "CreateDefinition"],
     ["IFeatureManager", "CreateFeature"],
+    ["IFeatureManager", "SimpleHole2"],
 
     ["ISketchManager", "InsertSketch"],
     ["ISketchManager", "CreateCornerRectangle"],

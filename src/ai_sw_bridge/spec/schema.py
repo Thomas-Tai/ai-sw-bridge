@@ -252,6 +252,61 @@ CUT_EXTRUDE_BLIND: dict[str, Any] = {
 }
 
 
+# Single straight-bore hole drilled into an existing face. No sketch
+# needed -- the (u, v) center positions the hole on the face, and the
+# hole is automatically normal to that face.
+#
+# Two end conditions in v1:
+#   - "blind": drill `depth` mm into the part (default).
+#   - "through_all": drill all the way through.
+#
+# v1 limits:
+#   - Straight bores only (no countersink/counterbore in this primitive --
+#     use HoleWizard family for those, deferred to v1.1).
+#   - One hole per `simple_hole` feature. For arrays of holes, use a
+#     `sketch_circles_on_face` + `cut_extrude_*` pair, or wait for a
+#     future `simple_holes` (plural) primitive.
+#   - Faces: same +/-x, +/-y, +/-z support as other face-bound primitives.
+SIMPLE_HOLE: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["type", "name", "of_feature", "face", "diameter"],
+    "properties": {
+        "type": {"const": "simple_hole"},
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+        "of_feature": {
+            "type": "string",
+            "description": "Name of an earlier extrusion feature.",
+        },
+        "face": {
+            "enum": ["+x", "-x", "+y", "-y", "+z", "-z"],
+            "description": "Outward normal of the face the hole drills into.",
+        },
+        "center": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"u": {"type": "number"}, "v": {"type": "number"}},
+            "description": (
+                "In-face center (mm) of the hole from the face SKETCH ORIGIN "
+                "(= part-origin projection onto the face plane, NOT the face "
+                "centroid -- see SKETCH_CIRCLE_ON_FACE for the gotcha). "
+                "Default (0, 0)."
+            ),
+        },
+        "diameter": LENGTH_SCHEMA,
+        "end_condition": {
+            "enum": ["blind", "through_all"],
+            "default": "blind",
+            "description": (
+                "Hole depth termination. 'blind' uses `depth`; 'through_all' "
+                "drills all the way through and ignores `depth`."
+            ),
+        },
+        "depth": LENGTH_SCHEMA,
+    },
+}
+
+
 # Edge chamfer. Two modes, selected by `mode`:
 #   - "equal_distance": single `distance` applied to both sides of each edge.
 #     Schema requires `distance` and forbids `width`/`angle`.
@@ -564,6 +619,7 @@ SCHEMA: dict[str, Any] = {
                     BOSS_EXTRUDE_BLIND,
                     CUT_EXTRUDE_THROUGH_ALL,
                     CUT_EXTRUDE_BLIND,
+                    SIMPLE_HOLE,
                     FILLET_CONSTANT_RADIUS,
                     CHAMFER_EDGE,
                     LINEAR_PATTERN,
@@ -600,6 +656,7 @@ MODIFY_TYPES = frozenset(
     {
         "fillet_constant_radius",
         "chamfer_edge",
+        "simple_hole",
     }
 )
 # Reference-an-earlier-feature types (linear pattern, mirror). These have

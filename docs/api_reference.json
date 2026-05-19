@@ -1031,6 +1031,132 @@
       "availability": "SOLIDWORKS 2006 FCS, Revision Number 14.0",
       "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~CreateFeature.html"
     },
+    "IFeatureManager.SimpleHole2": {
+      "interface": "IFeatureManager",
+      "method": "SimpleHole2",
+      "summary": "Inserts a simple hole feature.",
+      "return_type": "Feature",
+      "args": [
+        {
+          "name": "Dia",
+          "type": "system.double",
+          "doc": "Hole diameter"
+        },
+        {
+          "name": "Sd",
+          "type": "system.bool",
+          "doc": "True for single-ended, false for double-ended"
+        },
+        {
+          "name": "Flip",
+          "type": "system.bool",
+          "doc": "True to flip the direction to cut, false to not"
+        },
+        {
+          "name": "Dir",
+          "type": "system.bool",
+          "doc": "True to flip direction to extrude, false to not"
+        },
+        {
+          "name": "T1",
+          "type": "system.int",
+          "doc": "Termination type for first end as defined in swEndConditions_e"
+        },
+        {
+          "name": "T2",
+          "type": "system.int",
+          "doc": "Termination type for second end as defined in swEndConditions_e"
+        },
+        {
+          "name": "D1",
+          "type": "system.double",
+          "doc": "Depth of extrusion for first end in meters"
+        },
+        {
+          "name": "D2",
+          "type": "system.double",
+          "doc": "Depth of extrusion for second end in meters"
+        },
+        {
+          "name": "Dchk1",
+          "type": "system.bool",
+          "doc": "True allows draft angle in first direction, false does not allow drafting"
+        },
+        {
+          "name": "Dchk2",
+          "type": "system.bool",
+          "doc": "True allows draft angle in second direction, false does not allow drafting"
+        },
+        {
+          "name": "Ddir1",
+          "type": "system.bool",
+          "doc": "For first draft angle to be inward use true, for draft angle outward use false"
+        },
+        {
+          "name": "Ddir2",
+          "type": "system.bool",
+          "doc": "For second draft angle to be inward use true, for draft angle outward use false"
+        },
+        {
+          "name": "Dang1",
+          "type": "system.double",
+          "doc": "Draft angle for first end"
+        },
+        {
+          "name": "Dang2",
+          "type": "system.double",
+          "doc": "Draft angle for second end"
+        },
+        {
+          "name": "OffsetReverse1",
+          "type": "system.bool",
+          "doc": "If you chose to offset the first end condition from another face or plane, then true specifies offset in direction away from the sketch, false specifies offset from the face or plane in a direction toward the sketch"
+        },
+        {
+          "name": "OffsetReverse2",
+          "type": "system.bool",
+          "doc": "If you chose to offset the second end condition from another face or plane, then true specifies offset in direction away from the sketch, false specifies offset from the face or plane in a direction toward the sketch"
+        },
+        {
+          "name": "TranslateSurface1",
+          "type": "system.bool",
+          "doc": "True to use an offset relative to the surface or the plane selected, false to use a true offset"
+        },
+        {
+          "name": "TranslateSurface2",
+          "type": "system.bool",
+          "doc": "True to use an offset relative to the surface or the plane selected, false to use a true offset"
+        },
+        {
+          "name": "UseFeatScope",
+          "type": "system.bool",
+          "doc": "True if the feature only affects selected bodies, false if the feature affects all bodies"
+        },
+        {
+          "name": "UseAutoSelect",
+          "type": "system.bool",
+          "doc": "True to automatically select all bodies and have the feature affect those bodies, false to select the bodies the feature affects"
+        },
+        {
+          "name": "AssemblyFeatureScope",
+          "type": "system.bool",
+          "doc": "True if the assembly feature only affects selected components in the assembly, false if the assembly feature affects all components in the assembly"
+        },
+        {
+          "name": "AutoSelectComponents",
+          "type": "system.bool",
+          "doc": "True to auto-select all affected components, false to not (use the selected components only)"
+        },
+        {
+          "name": "PropagateFeatureToParts",
+          "type": "system.bool",
+          "doc": "True to propagate the assembly feature to the components in the model that it affects, false to not"
+        }
+      ],
+      "args_count": 23,
+      "availability": "SOLIDWORKS 2009 FCS, Revision Number 17.0",
+      "source": "SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.IFeatureManager~SimpleHole2.html"
+    },
     "ISketchManager.InsertSketch": {
       "interface": "ISketchManager",
       "method": "InsertSketch",

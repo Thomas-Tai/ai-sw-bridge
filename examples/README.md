@@ -23,6 +23,13 @@ Run with `ai-sw-build <path>/spec.json --no-dim`. Recommended order:
 
 Each ships with a README that walks through the feature list and the gotchas specific to that primitive. The pattern + mirror primitives depend on `SelectByID2` working under late-binding for marked-selection — if you hit a `SelectByID2 returned False` error, run the corresponding spike under [`../spikes/v0_3/`](../spikes/v0_3/) to diagnose.
 
+## v0.4 examples (side faces + simple_hole)
+
+| Example | Features | What it demonstrates |
+|---|---|---|
+| [`side_face_bosses/`](side_face_bosses/) | 6 | Boss extrudes on all four side faces (`±x`, `±y`) — verifies sketch-origin handling on non-`±z` faces |
+| [`drilled_plate/`](drilled_plate/) | 4 | `simple_hole` primitive: blind + through_all variants side by side |
+
 ## Path C example (recorded-macro parameterization)
 
 | Example | What it demonstrates |

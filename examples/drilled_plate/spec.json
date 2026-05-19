@@ -1,0 +1,39 @@
+{
+    "schema_version": 1,
+    "name": "DrilledPlate",
+    "_comment": "v0.4 example: 40x30x10 mm plate with two simple_hole features. One Ø5 mm BLIND hole 6 mm deep at offset (+10, 0) from face sketch origin; one Ø3 mm THROUGH_ALL hole at (-10, 0). Demonstrates the simple_hole primitive's blind + through_all end conditions side by side.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Plate",
+            "plane": "Front",
+            "width": 40.0,
+            "height": 30.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Plate",
+            "sketch": "SK_Plate",
+            "depth": 10.0
+        },
+        {
+            "type": "simple_hole",
+            "name": "Hole_Blind",
+            "of_feature": "EX_Plate",
+            "face": "+z",
+            "center": {"u": 10.0, "v": 0.0},
+            "diameter": 5.0,
+            "end_condition": "blind",
+            "depth": 6.0
+        },
+        {
+            "type": "simple_hole",
+            "name": "Hole_Through",
+            "of_feature": "EX_Plate",
+            "face": "+z",
+            "center": {"u": -10.0, "v": 0.0},
+            "diameter": 3.0,
+            "end_condition": "through_all"
+        }
+    ]
+}

@@ -289,6 +289,42 @@ Mirrors selected features, faces, bodies, and structure systems about a selected
 
 **Availability:** SOLIDWORKS 2008 FCS, Revision Number 16.0
 
+### `IFeatureManager.SimpleHole2`
+
+Inserts a simple hole feature.
+
+**Args (23):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Dia` | `system.double` | Hole diameter |
+| 2 | `Sd` | `system.bool` | True for single-ended, false for double-ended |
+| 3 | `Flip` | `system.bool` | True to flip the direction to cut, false to not |
+| 4 | `Dir` | `system.bool` | True to flip direction to extrude, false to not |
+| 5 | `T1` | `system.int` | Termination type for first end as defined in swEndConditions_e |
+| 6 | `T2` | `system.int` | Termination type for second end as defined in swEndConditions_e |
+| 7 | `D1` | `system.double` | Depth of extrusion for first end in meters |
+| 8 | `D2` | `system.double` | Depth of extrusion for second end in meters |
+| 9 | `Dchk1` | `system.bool` | True allows draft angle in first direction, false does not allow drafting |
+| 10 | `Dchk2` | `system.bool` | True allows draft angle in second direction, false does not allow drafting |
+| 11 | `Ddir1` | `system.bool` | For first draft angle to be inward use true, for draft angle outward use false |
+| 12 | `Ddir2` | `system.bool` | For second draft angle to be inward use true, for draft angle outward use false |
+| 13 | `Dang1` | `system.double` | Draft angle for first end |
+| 14 | `Dang2` | `system.double` | Draft angle for second end |
+| 15 | `OffsetReverse1` | `system.bool` | If you chose to offset the first end condition from another face or plane, then true specifies offset in direction away from the sketch, false specifies offset from the face or plane in a direction... |
+| 16 | `OffsetReverse2` | `system.bool` | If you chose to offset the second end condition from another face or plane, then true specifies offset in direction away from the sketch, false specifies offset from the face or plane in a directio... |
+| 17 | `TranslateSurface1` | `system.bool` | True to use an offset relative to the surface or the plane selected, false to use a true offset |
+| 18 | `TranslateSurface2` | `system.bool` | True to use an offset relative to the surface or the plane selected, false to use a true offset |
+| 19 | `UseFeatScope` | `system.bool` | True if the feature only affects selected bodies, false if the feature affects all bodies |
+| 20 | `UseAutoSelect` | `system.bool` | True to automatically select all bodies and have the feature affect those bodies, false to select the bodies the feature affects |
+| 21 | `AssemblyFeatureScope` | `system.bool` | True if the assembly feature only affects selected components in the assembly, false if the assembly feature affects all components in the assembly |
+| 22 | `AutoSelectComponents` | `system.bool` | True to auto-select all affected components, false to not (use the selected components only) |
+| 23 | `PropagateFeatureToParts` | `system.bool` | True to propagate the assembly feature to the components in the model that it affects, false to not |
+
+**Returns:** `Feature`
+
+**Availability:** SOLIDWORKS 2009 FCS, Revision Number 17.0
+
 ### `IModelDoc2.AddDimension2`
 
 Creates a display dimension at the specified location for selected entities.

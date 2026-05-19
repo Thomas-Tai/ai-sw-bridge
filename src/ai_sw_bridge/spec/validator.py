@@ -40,6 +40,11 @@ FACE_SKETCH_TYPES = frozenset(
     }
 )
 
+# All feature types that take `of_feature` to bind to a parent extrusion's
+# face -- includes the face-sketches plus modify primitives like simple_hole
+# that drill directly into a face without a separate sketch step.
+FACE_BOUND_TYPES = FACE_SKETCH_TYPES | frozenset({"simple_hole"})
+
 
 class ValidationError(Exception):
     """One validation failure. Use `path` to locate it in the spec.
@@ -99,7 +104,7 @@ def _check_references(spec: dict[str, Any]) -> None:
             )
 
         # Reference checks per feature type
-        if ftype in FACE_SKETCH_TYPES:
+        if ftype in FACE_BOUND_TYPES:
             target = feat["of_feature"]
             if target not in seen:
                 raise ValidationError(
@@ -138,6 +143,27 @@ def _check_references(spec: dict[str, Any]) -> None:
                     message=f"{ftype} references seed '{target}', "
                     f"which is not an earlier feature",
                     path=f"features/{i}/seed",
+                )
+
+        # simple_hole: `depth` is required when end_condition='blind' (the
+        # default) and forbidden when end_condition='through_all'. Schema's
+        # additionalProperties=false makes this hard to express purely in
+        # JSON schema, so enforce here.
+        if ftype == "simple_hole":
+            end_cond = feat.get("end_condition", "blind")
+            has_depth = "depth" in feat
+            if end_cond == "blind" and not has_depth:
+                raise ValidationError(
+                    message="simple_hole with end_condition='blind' requires `depth`",
+                    path=f"features/{i}/depth",
+                )
+            if end_cond == "through_all" and has_depth:
+                raise ValidationError(
+                    message=(
+                        "simple_hole with end_condition='through_all' must not "
+                        "include `depth` (the hole runs to the opposite side)"
+                    ),
+                    path=f"features/{i}/depth",
                 )
 
         # Chamfer mode-conditional field check. The schema can't easily
