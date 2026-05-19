@@ -230,14 +230,17 @@ A spec is a small JSON file declaring features in build order. Lengths are liter
 
 The builder validates the spec (schema + topological references + locals-file vars), creates a fresh part via `NewDocument`, walks features in order, and emits direct-COM calls. Output is JSON with `features_built` and (in parametric mode) `bindings_added`.
 
-#### Two build modes
+#### Three build modes
 
 | Mode | Flag | When to use | Trade-off |
 |---|---|---|---|
 | `--no-dim` (recommended) | `--no-dim` | First-time testing. Anything where the spec is the source of truth. AI-driven flows where the bridge re-runs on every edit. | Resulting SLDPRT has NO equation link to `locals.txt`. Editing locals afterwards requires re-running `ai-sw-build`. |
-| Parametric (default) | *(no flag)* | When humans will hand-edit the SLDPRT downstream and need the live link to `locals.txt`. | Each `AddDimension2` call opens a blocking "Modify Dimension" popup that requires manual mouse tick. An MMP-sized part is ~16 clicks. Cannot be suppressed on SW 2024 SP1; see [docs/known_limitations.md](docs/known_limitations.md) for the chain of failed suppression attempts. |
+| `--deferred-dim` (preview) | `--deferred-dim` | Circle/hole-only specs where you want both no-popups-during-build AND a live equation link. | Per-sketch popup batching: each sketch's popups cluster right after its geometry is built. **Known limitation on SW 2024 SP1**: rectangle sketches (`sketch_rectangle_on_plane`/`_on_face`) have their 2nd edge-dim demoted to driven (red equation, broken locals link). CLI warns when rectangles are detected. |
+| Parametric (default) | *(no flag)* | When humans will hand-edit the SLDPRT downstream and need the live link to `locals.txt`, including for rectangle specs. | Each `AddDimension2` call opens a blocking "Modify Dimension" popup that requires manual mouse tick. An MMP-sized part is ~16 clicks. Cannot be suppressed on SW 2024 SP1; see [docs/known_limitations.md](docs/known_limitations.md) for the chain of failed suppression attempts. |
 
 In `--no-dim` mode, every `{"rhs": "..."}` reference is resolved against `spec['locals']` in Python upfront and substituted with a literal mm value before any SOLIDWORKS call. Geometry comes out at the right size; the SLDPRT just has no equations.
+
+In `--deferred-dim` mode, geometry builds at placeholder sizes; immediately after each sketch handler returns, the bridge re-enters that sketch via `EditSketch`, replays all of its `AddDimension2` calls in one session, then applies the feature's `EquationMgr.Add2` bindings and rebuilds. The full spike trail justifying the cadence + limitations is in `PM/` and the `spikes/v0_6/spike_z*` series.
 
 #### Before authoring your own spec
 

@@ -104,6 +104,20 @@ Three failed suppression approaches documented in [spikes/phase0/MMP_DEBUG_SESSI
 
 The forum-canonical advice (set toggle 8) is reported to work inside SW's own VBA editor but does not propagate to external pywin32 COM clients on this build. A VBA-macro fallback (emit `.bas`, run via `RunMacro2`) is the only remaining avenue and carries its own risks; see [Roadmap "Not on the roadmap"](../README.md#roadmap).
 
+### Second workaround (preview): `--deferred-dim`
+
+For specs **without rectangle sketches** (i.e. pure circle/hole geometry), `--deferred-dim` gives you both no-popups-during-build AND a live equation link:
+
+```powershell
+ai-sw-build my_spec.json --deferred-dim
+```
+
+In this mode, geometry builds at placeholder sizes with no `AddDimension2` calls; immediately after each sketch handler returns, the bridge re-enters the sketch via `EditSketch`, replays all of its `AddDimension2` calls in one session, then applies the feature's `EquationMgr.Add2` bindings and rebuilds. The popups arrive per-sketch instead of interleaved through the multi-minute geometry phase.
+
+**Known limitation on SW 2024 SP1:** rectangle sketches (`sketch_rectangle_on_plane`, `sketch_rectangle_on_face`) have their second edge-dim demoted to driven (reference) by SW after the close/re-open cycle. The binding equation is flagged red in Equation Manager and does not drive the dim. The CLI emits a `WARN` when a spec containing rectangle sketches is built with `--deferred-dim`.
+
+Spike trail Z1-Z8 (2026-05-19) explored four mitigation routes (per-sketch dim grouping, construction-diagonal deletion, `IDisplayDimension.DrivenState` override, mid-edit `EditRebuild3`, manual `CornerRectangle` + Midpoint relation); none succeeded due to a combination of SW solver behavior and pywin32 late-binding limitations. `IDisplayDimension.DrivenState` not being exposed via late-binding is the same family of typelib-only-access limitation that killed the `SendKeystrokes` popup-dismissal angle.
+
 ---
 
 ## 4. Edge selection uses literal part coordinates

@@ -3,9 +3,10 @@ ai-sw-build CLI entry point. Validates a v0.2 spec JSON, then builds it in
 a fresh blank part on the running SOLIDWORKS session.
 
 Usage:
-    ai-sw-build <spec.json>            # validate + build (parametric, AddDimension2 popups)
-    ai-sw-build <spec.json> --no-dim   # resolve rhs upfront, no popups, no equation links
-    ai-sw-build <spec.json> --validate-only   # validate, do not touch SW
+    ai-sw-build <spec.json>                # parametric mode (default): inline AddDimension2 popups interleaved with build
+    ai-sw-build <spec.json> --deferred-dim # geometry first (no popups), then batched popup-ticking at end; keeps live equation link
+    ai-sw-build <spec.json> --no-dim       # resolve rhs upfront, zero popups, no equation links
+    ai-sw-build <spec.json> --validate-only
 
 Exits with non-zero status and prints a JSON error object on failure.
 """
@@ -50,6 +51,20 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--deferred-dim",
+        dest="deferred_dim",
+        action="store_true",
+        help=(
+            "Build all geometry FIRST with zero AddDimension2 calls (Phase 1), "
+            "then re-enter each sketch in turn and replay the AddDimension2 "
+            "calls in a contiguous batch at the end (Phase 2). The user ticks "
+            "N popups in a row rather than having them interleaved through "
+            "a multi-minute build. The resulting SLDPRT retains the live "
+            "equation link to locals.txt -- same as default parametric mode. "
+            "Mutually exclusive with --no-dim. Verified by Spikes Z1/Z3/Z4."
+        ),
+    )
+    parser.add_argument(
         "--save-as",
         dest="save_as",
         default=None,
@@ -62,6 +77,17 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
+
+    # Mode conflict check runs before anything else so --validate-only
+    # doesn't mask a misuse of flags.
+    if args.no_dim and args.deferred_dim:
+        return _emit(
+            {
+                "ok": False,
+                "error": "--no-dim and --deferred-dim are mutually exclusive",
+            },
+            2,
+        )
 
     p = Path(args.spec_path)
     if not p.exists():
@@ -88,16 +114,43 @@ def main() -> int:
             3,
         )
 
+    # Warn at the CLI surface (visible in --validate-only too) when
+    # --deferred-dim meets rectangle sketches. See builder.py's build()
+    # docstring for the SW 2024 SP1 driven-D2 limitation.
+    if args.deferred_dim:
+        rect_types = {"sketch_rectangle_on_plane", "sketch_rectangle_on_face"}
+        rect_feats = [
+            f.get("name", "<unnamed>")
+            for f in spec.get("features", [])
+            if f.get("type") in rect_types
+        ]
+        if rect_feats:
+            print(
+                "WARN: --deferred-dim has a known SW 2024 SP1 limitation on "
+                "rectangle sketches: the second edge-dim is demoted to "
+                "DRIVEN, so its locals.txt binding will be flagged red in "
+                f"Equation Manager. Affected sketches: {', '.join(rect_feats)}. "
+                "Use --no-dim or the default mode for full equation links "
+                "on rectangle-heavy specs.",
+                file=sys.stderr,
+            )
+
     if args.validate_only:
         return _emit(
             {"ok": True, "validated": True, "feature_count": len(spec["features"])}, 0
         )
 
-    result = build(spec, no_dim=args.no_dim, save_as=args.save_as)
+    result = build(
+        spec,
+        no_dim=args.no_dim,
+        deferred_dim=args.deferred_dim,
+        save_as=args.save_as,
+    )
     # BuildResult.to_dict() owns the wire format; CLI only adds CLI-level
-    # context (here: the --no-dim flag the caller passed in).
+    # context (here: which mode the caller picked).
     payload = result.to_dict()
     payload["no_dim"] = args.no_dim
+    payload["deferred_dim"] = args.deferred_dim
     return _emit(payload, 0 if result.ok else 4)
 
 

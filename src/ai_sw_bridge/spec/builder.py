@@ -140,6 +140,28 @@ class BuiltFeature:
 
 
 @dataclass
+class DeferredDim:
+    """One AddDimension2 call deferred to the batch phase at the end of build().
+
+    Populated by per-feature handlers when ctx.deferred_dim is True. Replayed
+    by _apply_deferred_dims() AFTER all geometry has been built, so the user
+    sees a contiguous burst of Modify-Dimension popups at the end instead of
+    popups interleaved through a ~60-second build.
+
+    The dim-placement coords (select_xyz + leader_xyz) are computed by the
+    handler using its existing logic (sketch_uv_to_part, etc.) -- the handler
+    knows where the dim goes; the deferred pass just replays the COM calls.
+    """
+
+    sketch_name: str  # name of the parent sketch (re-opened via EditSketch)
+    select_type: str  # "SKETCHSEGMENT" for edges/perimeters
+    select_xyz: tuple[float, float, float]  # part-coord point for SelectByID
+    leader_xyz: tuple[float, float, float]  # AddDimension2 leader position
+    expected_dim_name: str  # e.g. "D1@SK_Box" -- for error reporting
+    field_label: str  # human-readable for errors, e.g. "width of SK_Box"
+
+
+@dataclass
 class BuildContext:
     """Per-build state. Holds the SW app/doc handle and feature lookup."""
 
@@ -152,6 +174,16 @@ class BuildContext:
     # before any handler runs). The resulting part has no equation links to
     # locals.txt -- editing locals requires re-running ai-sw-build.
     no_dim: bool = False
+    # deferred_dim mode: build all geometry without AddDimension2 calls
+    # (popup-free Phase 1), then replay the dim calls in a contiguous batch
+    # at the end (Phase 3). The resulting part HAS the live equation link
+    # to locals.txt -- same as the legacy parametric mode but with N popups
+    # batched at the end instead of interleaved through a ~60-second build.
+    # See _apply_deferred_dims() for the replay logic.
+    deferred_dim: bool = False
+    # Populated by handlers when deferred_dim is True. One entry per dim that
+    # would have been created by AddDimension2 in inline mode.
+    deferred_dims: list[DeferredDim] = field(default_factory=list)
 
 
 def _mm_to_m(value: Any) -> float:
@@ -399,11 +431,36 @@ def _build_sketch_rectangle_on_plane(
     # -> D2 = height (matches DIM_FIELD_MAP).
     # AddDimension2 places the dim leader at the given coord; we offset
     # outside the rectangle so the leader doesn't overlap entities.
-    # Skipped in no_dim mode -- geometry is already at target size and no
-    # parametric binding will happen.
-    if not ctx.no_dim:
+    # Three modes:
+    #   - no_dim: skip entirely (geometry is at target size, no binding).
+    #   - deferred_dim: record dim placement; do not call AddDimension2 yet.
+    #     The deferred batch at end-of-build() replays the calls then.
+    #   - default (inline): create the dim immediately, popup blocks per call.
+    top_y = cy_m + height_m / 2
+    left_x = cx_m - width_m / 2
+    if ctx.deferred_dim:
+        ctx.deferred_dims.append(
+            DeferredDim(
+                sketch_name=feat["name"],
+                select_type="SKETCHSEGMENT",
+                select_xyz=(cx_m, top_y, 0.0),
+                leader_xyz=(cx_m, top_y + 0.005, 0.0),
+                expected_dim_name=f"D1@{feat['name']}",
+                field_label=f"width of {feat['name']}",
+            )
+        )
+        ctx.deferred_dims.append(
+            DeferredDim(
+                sketch_name=feat["name"],
+                select_type="SKETCHSEGMENT",
+                select_xyz=(left_x, cy_m, 0.0),
+                leader_xyz=(left_x - 0.005, cy_m, 0.0),
+                expected_dim_name=f"D2@{feat['name']}",
+                field_label=f"height of {feat['name']}",
+            )
+        )
+    elif not ctx.no_dim:
         ctx.doc.ClearSelection2(True)
-        top_y = cy_m + height_m / 2
         if not ctx.doc.SelectByID("", "SKETCHSEGMENT", cx_m, top_y, 0.0):
             raise RuntimeError("could not select rectangle top edge for width dim")
         dim_w = ctx.doc.AddDimension2(cx_m, top_y + 0.005, 0.0)
@@ -412,7 +469,6 @@ def _build_sketch_rectangle_on_plane(
         _dismiss_dim_pane(ctx.doc)
 
         ctx.doc.ClearSelection2(True)
-        left_x = cx_m - width_m / 2
         if not ctx.doc.SelectByID("", "SKETCHSEGMENT", left_x, cy_m, 0.0):
             raise RuntimeError("could not select rectangle left edge for height dim")
         dim_h = ctx.doc.AddDimension2(left_x - 0.005, cy_m, 0.0)
@@ -471,8 +527,19 @@ def _build_sketch_circle_on_plane(
 
     # Add a diameter dim. Select the circle by clicking on its perimeter,
     # then place the dim leader outside the circle.
-    # Skipped in no_dim mode.
-    if not ctx.no_dim:
+    # See _build_sketch_rectangle_on_plane for the three-mode logic.
+    if ctx.deferred_dim:
+        ctx.deferred_dims.append(
+            DeferredDim(
+                sketch_name=feat["name"],
+                select_type="SKETCHSEGMENT",
+                select_xyz=(cx_m + radius_m, cy_m, 0.0),
+                leader_xyz=(cx_m + radius_m + 0.005, cy_m + radius_m + 0.005, 0.0),
+                expected_dim_name=f"D1@{feat['name']}",
+                field_label=f"diameter of {feat['name']}",
+            )
+        )
+    elif not ctx.no_dim:
         ctx.doc.ClearSelection2(True)
         if not ctx.doc.SelectByID("", "SKETCHSEGMENT", cx_m + radius_m, cy_m, 0.0):
             raise RuntimeError("could not select circle for diameter dim")
@@ -947,9 +1014,36 @@ def _build_sketch_rectangle_on_face(
     # Driving dims D1 (width) and D2 (height). SKETCHSEGMENT picks use
     # part-frame coords; transform sketch (u, v) to part via FaceFrame.
     # This works uniformly for all 6 faces (+/-z and side faces).
-    if not ctx.no_dim:
+    # Three modes: see _build_sketch_rectangle_on_plane for the rationale.
+    top_v = cv_m + height_m / 2
+    left_u = cu_m - width_m / 2
+    if ctx.deferred_dim:
+        tx, ty, tz = _sketch_uv_to_part(_frame, cu_m, top_v)
+        dwx, dwy, dwz = _sketch_uv_to_part(_frame, cu_m, top_v + 0.005)
+        lx, ly, lz = _sketch_uv_to_part(_frame, left_u, cv_m)
+        dhx, dhy, dhz = _sketch_uv_to_part(_frame, cu_m - width_m / 2 - 0.005, cv_m)
+        ctx.deferred_dims.append(
+            DeferredDim(
+                sketch_name=feat["name"],
+                select_type="SKETCHSEGMENT",
+                select_xyz=(tx, ty, tz),
+                leader_xyz=(dwx, dwy, dwz),
+                expected_dim_name=f"D1@{feat['name']}",
+                field_label=f"width of {feat['name']} (on {face})",
+            )
+        )
+        ctx.deferred_dims.append(
+            DeferredDim(
+                sketch_name=feat["name"],
+                select_type="SKETCHSEGMENT",
+                select_xyz=(lx, ly, lz),
+                leader_xyz=(dhx, dhy, dhz),
+                expected_dim_name=f"D2@{feat['name']}",
+                field_label=f"height of {feat['name']} (on {face})",
+            )
+        )
+    elif not ctx.no_dim:
         ctx.doc.ClearSelection2(True)
-        top_v = cv_m + height_m / 2
         tx, ty, tz = _sketch_uv_to_part(_frame, cu_m, top_v)
         if not ctx.doc.SelectByID("", "SKETCHSEGMENT", tx, ty, tz):
             raise RuntimeError(
@@ -963,7 +1057,6 @@ def _build_sketch_rectangle_on_face(
         _dismiss_dim_pane(ctx.doc)
 
         ctx.doc.ClearSelection2(True)
-        left_u = cu_m - width_m / 2
         lx, ly, lz = _sketch_uv_to_part(_frame, left_u, cv_m)
         if not ctx.doc.SelectByID("", "SKETCHSEGMENT", lx, ly, lz):
             raise RuntimeError(
@@ -1042,8 +1135,23 @@ def _build_sketch_circle_on_face(
     # Add diameter dim. SelectByID for SKETCHSEGMENT uses PART-frame
     # coords; transform sketch (u, v) perimeter probe points to part
     # via FaceFrame. This works uniformly for all 6 faces.
-    # Skipped in no_dim mode -- geometry is already at target diameter.
-    if not ctx.no_dim:
+    # Three modes: see _build_sketch_rectangle_on_plane.
+    sx0, sy0, sz0 = _sketch_uv_to_part(_frame, u_m + radius_m, v_m)
+    dx, dy, dz = _sketch_uv_to_part(
+        _frame, u_m + radius_m + 0.005, v_m + radius_m + 0.005
+    )
+    if ctx.deferred_dim:
+        ctx.deferred_dims.append(
+            DeferredDim(
+                sketch_name=feat["name"],
+                select_type="SKETCHSEGMENT",
+                select_xyz=(sx0, sy0, sz0),
+                leader_xyz=(dx, dy, dz),
+                expected_dim_name=f"D1@{feat['name']}",
+                field_label=f"diameter of {feat['name']} (on {face})",
+            )
+        )
+    elif not ctx.no_dim:
         ctx.doc.ClearSelection2(True)
         # Four cardinal points on the circle perimeter, in sketch coords.
         perim_uv = [
@@ -1063,9 +1171,6 @@ def _build_sketch_circle_on_face(
                 f"could not select face-sketch circle for diameter dim "
                 f"(face={face}, u={u_m*1000:.1f}mm, r={radius_m*1000:.2f}mm)"
             )
-        dx, dy, dz = _sketch_uv_to_part(
-            _frame, u_m + radius_m + 0.005, v_m + radius_m + 0.005
-        )
         dim_d = ctx.doc.AddDimension2(dx, dy, dz)
         if dim_d is None:
             raise RuntimeError("AddDimension2 returned None for face-sketch diameter")
@@ -1141,6 +1246,26 @@ def _build_sketch_circles_on_face(
         if ctx.no_dim:
             # Geometry already at target size; no dim binding needed.
             continue
+        # Place leader offset from the circle, with stagger so consecutive
+        # circles' dim leaders don't overlap.
+        lead_offset = 0.005 + 0.003 * k
+        dx, dy, dz = _sketch_uv_to_part(
+            _frame, u_m + radius_m + lead_offset, v_m + lead_offset
+        )
+        if ctx.deferred_dim:
+            # Record a single cardinal pick; replay will select then dim.
+            sx0, sy0, sz0 = _sketch_uv_to_part(_frame, u_m + radius_m, v_m)
+            ctx.deferred_dims.append(
+                DeferredDim(
+                    sketch_name=feat["name"],
+                    select_type="SKETCHSEGMENT",
+                    select_xyz=(sx0, sy0, sz0),
+                    leader_xyz=(dx, dy, dz),
+                    expected_dim_name=f"D{k+1}@{feat['name']}",
+                    field_label=f"diameter of circle #{k} in {feat['name']} (on {face})",
+                )
+            )
+            continue
         # Dimension this circle BEFORE creating the next one, so dim
         # numbering matches array index: first circle -> D1, second -> D2.
         ctx.doc.ClearSelection2(True)
@@ -1162,12 +1287,6 @@ def _build_sketch_circles_on_face(
                 f"from sketch center ({u_m*1000:.1f}, {v_m*1000:.1f}) mm, "
                 f"face={face}) -- tried 4 cardinal perimeter points in part frame"
             )
-        # Place leader offset from the circle, with stagger so consecutive
-        # circles' dim leaders don't overlap.
-        lead_offset = 0.005 + 0.003 * k
-        dx, dy, dz = _sketch_uv_to_part(
-            _frame, u_m + radius_m + lead_offset, v_m + lead_offset
-        )
         dim = ctx.doc.AddDimension2(dx, dy, dz)
         if dim is None:
             raise RuntimeError(f"AddDimension2 returned None for circle #{k}")
@@ -2273,6 +2392,122 @@ def _apply_bindings(doc: Any, bindings: list[tuple[str, str]]) -> list[int]:
     return indices
 
 
+def _apply_deferred_dims(
+    ctx: BuildContext,
+    entries: list[DeferredDim] | None = None,
+    *,
+    label_prefix: str = "Deferred-dim phase",
+) -> None:
+    """Replay a batch of deferred AddDimension2 calls, GROUPED by sketch.
+
+    For each sketch_name in the input entries (group order = first-occurrence
+    order), run a SINGLE EditSketch session that adds all of that sketch's
+    deferred dims back-to-back before closing. This is REQUIRED -- not just
+    an optimization. Empirically (Z6, 2026-05-19), closing the sketch and
+    re-opening it between dims causes SW to treat the second+ dim as
+    DRIVEN (reference) rather than DRIVING. A driven dim cannot be bound
+    via EquationMgr.Add2 with a dependent variable. Keeping the sketch
+    open across all of its dims preserves them as driving constraints.
+
+    Cadence per sketch group:
+      1. SelectByID(sketch_name, "SKETCH", 0,0,0)
+      2. doc.EditSketch()  -- re-opens the closed sketch for editing
+      3. For each DeferredDim in the group:
+           a. ClearSelection2, then SelectByID(select_type, select_xyz)
+           b. AddDimension2(*leader_xyz) -- popup fires; user ticks
+      4. SketchManager.InsertSketch(True)  -- close sketch
+
+    The Modify-Dimension popup still requires manual user ticking on SW
+    2024 SP1 -- this method does NOT automate that. The benefit is that
+    popups arrive in a predictable batch.
+
+    `entries` defaults to all of ctx.deferred_dims if not provided. The
+    per-sketch-deferred caller in build() passes just the entries that
+    were appended by the most recent handler (sliced via a watermark).
+
+    Errors from AddDimension2 (returning None) are recorded but don't abort
+    the loop -- subsequent dims still get a chance. A RuntimeError is
+    raised at the end if any failed."""
+    items = entries if entries is not None else ctx.deferred_dims
+    if not items:
+        return
+
+    # Group by sketch_name, preserving first-occurrence order. Within each
+    # group, dims stay in their original recording order so D1, D2, ...
+    # numbering matches the handler's expectations.
+    groups: list[tuple[str, list[DeferredDim]]] = []
+    group_by_name: dict[str, list[DeferredDim]] = {}
+    for dd in items:
+        if dd.sketch_name not in group_by_name:
+            new_list: list[DeferredDim] = []
+            group_by_name[dd.sketch_name] = new_list
+            groups.append((dd.sketch_name, new_list))
+        group_by_name[dd.sketch_name].append(dd)
+
+    sm = ctx.doc.SketchManager
+    failures: list[tuple[str, str]] = []  # (dim_name, reason)
+
+    print(
+        f"=== {label_prefix}: {len(items)} dim(s) across "
+        f"{len(groups)} sketch(es). Each dim opens a Modify-Dimension popup. ===",
+        file=__import__("sys").stderr,
+    )
+
+    dim_counter = 0
+    for sketch_name, group in groups:
+        # Open the sketch ONCE for all of its dims
+        ctx.doc.ClearSelection2(True)
+        ok_sk = ctx.doc.SelectByID(sketch_name, "SKETCH", 0.0, 0.0, 0.0)
+        if not ok_sk:
+            for dd in group:
+                failures.append(
+                    (dd.expected_dim_name, f"could not select sketch '{sketch_name}'")
+                )
+            continue
+        try:
+            ctx.doc.EditSketch()
+        except Exception as e:
+            for dd in group:
+                failures.append(
+                    (dd.expected_dim_name, f"EditSketch('{sketch_name}') failed: {e!r}")
+                )
+            continue
+
+        # Add each dim while the sketch is in active edit mode -- this is
+        # what keeps them all as driving dims rather than the 2nd+ being
+        # demoted to driven.
+        for dd in group:
+            dim_counter += 1
+            print(
+                f"  [{dim_counter}/{len(items)}] {dd.field_label} "
+                f"({dd.expected_dim_name}) -- tick the popup to continue",
+                file=__import__("sys").stderr,
+            )
+            ctx.doc.ClearSelection2(True)
+            sx, sy, sz = dd.select_xyz
+            ok_seg = ctx.doc.SelectByID("", dd.select_type, sx, sy, sz)
+            if not ok_seg:
+                failures.append(
+                    (
+                        dd.expected_dim_name,
+                        f"could not select {dd.select_type} at {dd.select_xyz}",
+                    )
+                )
+                continue
+
+            lx, ly, lz = dd.leader_xyz
+            dim = ctx.doc.AddDimension2(lx, ly, lz)
+            if dim is None:
+                failures.append((dd.expected_dim_name, "AddDimension2 returned None"))
+
+        # Close the sketch only after all of its dims are added
+        sm.InsertSketch(True)
+
+    if failures:
+        msg = "; ".join(f"{n}: {r}" for n, r in failures)
+        raise RuntimeError(f"deferred-dim phase: {len(failures)} dim(s) failed: {msg}")
+
+
 # -----------------------------------------------------------------------------
 # Public entry point
 # -----------------------------------------------------------------------------
@@ -2324,19 +2559,61 @@ class BuildResult:
 def build(
     spec: dict[str, Any],
     no_dim: bool = False,
+    deferred_dim: bool = False,
     save_as: str | None = None,
 ) -> BuildResult:
     """Build the spec into a fresh blank part on the running SW session.
 
     Caller is responsible for validating the spec first via spec.validator.validate.
 
-    If `no_dim` is True: every {"rhs": "..."} in the spec is resolved against
-    spec['locals'] upfront and substituted with a literal mm value. No
-    AddDimension2 calls are made; no EquationMgr.Add2 bindings are applied.
-    The resulting part has no equation links to locals.txt (editing locals
-    will not propagate -- user must re-run ai-sw-build). This is the only
-    way to avoid the ~16 manual ticks per MMP build on SW 2024 SP1 where
-    the AddDimension2 popup can't be suppressed via any known toggle.
+    Three modes (see PM/.../popup-suppression-notes for full rationale):
+
+    1) Default (inline parametric, no_dim=False, deferred_dim=False):
+       AddDimension2 calls fire inline as each feature builds; Add2 bindings
+       run per-feature. ~16 Modify-Dimension popups scattered through the
+       build. The resulting SLDPRT has a live equation link to locals.txt.
+
+    2) --no-dim (no_dim=True): {rhs} refs are resolved against spec['locals']
+       in Python upfront, geometry builds at literal target sizes, no
+       AddDimension2 calls, no Add2 bindings. Zero popups but the SLDPRT
+       has no link back to locals.txt; editing locals requires re-running.
+
+    3) --deferred-dim (deferred_dim=True): each sketch builds at PLACEHOLDER
+       sizes with NO inline AddDimension2 calls; immediately after the
+       sketch handler returns, build() re-enters the sketch and replays
+       just that sketch's deferred AddDimension2 calls in one EditSketch
+       session, then applies the feature's Add2 bindings and rebuilds.
+
+       The user-facing effect: instead of popups being scattered through
+       long-running COM calls (inline mode), each feature's dim popups
+       arrive together as a tight cluster right after that feature's
+       geometry is built. Total popup count = same as inline; cadence
+       is predictable. Verified GREEN on circle/hole specs like
+       minimal_cylinder_v2.
+
+       KNOWN LIMITATION (SW 2024 SP1): rectangle sketches have their
+       SECOND deferred edge-dim demoted to DRIVEN (reference) by SW
+       after the close/re-open cycle, regardless of the mitigations we
+       tried (per-sketch grouping, construction-diagonal deletion, mid-
+       edit rebuild, IDisplayDimension.DrivenState override). The
+       equation binding to locals.txt is then flagged red in the
+       Equation Manager and does NOT drive the dim. Geometry is
+       correct because per-feature Add2 + EditRebuild3 resizes via
+       D1 alone (D2 gets demoted to reference state matching D1's
+       width but isn't driven by locals).
+
+       Recommendation: use --no-dim or default inline mode for rect-
+       heavy specs (e.g. MMP). --deferred-dim is reliable for specs
+       composed of circle/hole sketches. A WARN is emitted at build
+       start if any rectangle sketch is detected with --deferred-dim.
+
+       Spike trail for context: Z1 (mechanic GREEN), Z3 (multi-dim
+       same sketch GREEN), Z4 (multi-feature circle GREEN), Z5/Z6
+       (diagonal deletion FALSIFIED), Z7 (DrivenState API unreachable;
+       mid-edit rebuild breaks segment selection), Z8 (CornerRectangle
+       toggle confound, inconclusive).
+
+    `no_dim` and `deferred_dim` are mutually exclusive.
 
     If `save_as` is provided: after all features build successfully, the
     resulting part is saved to that absolute path via IModelDoc2.SaveAs3
@@ -2344,18 +2621,36 @@ def build(
     be absolute; missing parent directories are created. If the extension
     is not '.sldprt', it is appended.
 
-    TRADE-OFF: SaveAs3 fires only after `build()` returns from the
-    feature loop. In non-no_dim mode, the AddDimension2 popups still
-    block the build mid-flight on SW 2024 SP1 -- the user must tick
-    through them (~16 per MMP) BEFORE the save call happens. To save
-    without any popups, combine `save_as` with `no_dim=True`.
+    TRADE-OFF: SaveAs3 fires after build() returns from the feature loop
+    AND (in --deferred-dim mode) after the deferred-dim phase. So in
+    --deferred-dim, the user must tick all popups before SaveAs3 fires.
+    To save without any popups, combine `save_as` with `no_dim=True`.
     """
+    if no_dim and deferred_dim:
+        raise ValueError("no_dim and deferred_dim are mutually exclusive")
+
+    # NOTE: the CLI emits a user-facing WARN when --deferred-dim is used
+    # with rectangle sketches, since rectangles hit a SW 2024 SP1
+    # driven-D2 limitation (see docstring above). build() itself proceeds
+    # so the rest of the spec still ships; only the rect dim's locals
+    # binding is non-functional.
+
+    # --no-dim resolves {rhs} upfront so geometry builds at correct sizes
+    # (no AddDimension2 ever called, no equation links applied).
+    #
+    # --deferred-dim does NOT resolve upfront. Each handler builds its
+    # sketch at PLACEHOLDER sizes (under-constrained for size), records
+    # DeferredDim entries describing the dims to add, and returns. The
+    # build() loop then immediately replays just that handler's new
+    # entries (popup batch for THIS sketch), applies the feature's
+    # bindings, and rebuilds. This per-sketch cadence is required for
+    # two reasons -- see the in-loop comment for the full rationale.
     if no_dim:
         spec = _resolve_rhs_in_spec(spec)
 
     sw = get_sw_app()
     doc = create_blank_part(sw)
-    ctx = BuildContext(sw=sw, doc=doc, no_dim=no_dim)
+    ctx = BuildContext(sw=sw, doc=doc, no_dim=no_dim, deferred_dim=deferred_dim)
 
     # Suppress the "Modify Dimension" popup that AddDimension2 fires by
     # default. App-level only; doc-level call was found to RE-ENABLE the
@@ -2368,6 +2663,8 @@ def build(
         # In no_dim mode, all rhs's have been resolved upfront so there
         # are no bindings to add; skip the link to avoid littering the
         # part with unused equation-manager state.
+        # In deferred-dim mode we DO need the link, since per-feature
+        # bindings still fire inside the loop and reference locals.
         if spec.get("locals") and not no_dim:
             link_locals(doc, spec["locals"])
 
@@ -2377,6 +2674,10 @@ def build(
         # can report which one failed. Separated from the loop variable so
         # the typechecker can see it's always a string (or None).
         current_feat_name: str | None = None
+        # Watermark into ctx.deferred_dims: each handler may append entries;
+        # we replay only the new entries (slice [watermark:]) after the
+        # handler returns. This is the per-sketch-deferred flow.
+        deferred_watermark = 0
         try:
             for feat in spec["features"]:
                 current_feat_name = feat.get("name")
@@ -2395,12 +2696,38 @@ def build(
                     # rhs's were resolved upfront -- nothing to bind.
                     continue
 
+                if deferred_dim:
+                    # Per-sketch deferred: replay just THIS handler's new
+                    # DeferredDim entries (popup batch for this sketch only),
+                    # then apply this feature's bindings + rebuild. This is
+                    # NECESSARY because:
+                    #   - End-of-build replay against geometry built at
+                    #     placeholder sizes fails on cuts like MMP's
+                    #     Cut_FlangeRecess (placeholder 10mm host < 20.5mm
+                    #     cut sketch -> FeatureCut4 returns None).
+                    #   - End-of-build replay against rhs-resolved-upfront
+                    #     geometry produces driven (reference) dims when the
+                    #     sketch is already fully-constrained by construction
+                    #     diagonals (CreateCenterRectangle), making Add2
+                    #     fail with "driven dim not selectable as dependent
+                    #     variable" -- empirically observed on MMP 2026-05-19.
+                    # Per-sketch replay keeps the dim driving (sketch was
+                    # under-constrained until D1/D2 added) AND resizes
+                    # geometry before downstream features.
+                    new_dims = ctx.deferred_dims[deferred_watermark:]
+                    if new_dims:
+                        _apply_deferred_dims(
+                            ctx,
+                            new_dims,
+                            label_prefix=f"Deferred dims for {bf.name}",
+                        )
+                        deferred_watermark = len(ctx.deferred_dims)
+
                 # Apply this feature's parametric bindings BEFORE the next
                 # feature. Without this, a downstream cut may operate on a
-                # sketch still at placeholder size, with no material to
-                # remove (the original MMP Cut_FlangeRecess failure mode --
-                # placeholder diameter 6mm was smaller than the 12mm
-                # through-hole it sat over).
+                # sketch still at placeholder size (the original MMP
+                # Cut_FlangeRecess failure mode -- placeholder diameter 6mm
+                # was smaller than the 12mm through-hole).
                 feat_bindings = _collect_feature_bindings(feat)
                 if feat_bindings:
                     indices = _apply_bindings(doc, feat_bindings)
