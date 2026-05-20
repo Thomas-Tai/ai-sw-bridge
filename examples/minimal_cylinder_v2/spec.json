@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "MinimalCylinder_v2",
-  "locals": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\examples\\minimal_cylinder\\locals.txt",
+  "locals": "../minimal_cylinder/locals.txt",
   "features": [
     {
       "type": "sketch_circle_on_plane",

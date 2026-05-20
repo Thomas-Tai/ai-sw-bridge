@@ -263,9 +263,15 @@ def _collect_rhs_var_refs(spec: dict[str, Any]) -> dict[str, list[tuple[str, str
     return refs
 
 
-def _check_locals(spec: dict[str, Any]) -> None:
+def _check_locals(spec: dict[str, Any], spec_path: Path | None = None) -> None:
     """If any feature uses {rhs}, the spec must declare a `locals` path,
-    that file must exist, and every quoted var ref must be defined in it."""
+    that file must exist, and every quoted var ref must be defined in it.
+
+    If `spec_path` is supplied and `spec["locals"]` is a relative path, the
+    locals path is resolved relative to the spec file's directory. Absolute
+    `locals` paths are used as-is (typical for production specs that point
+    at a locals file in a sibling project).
+    """
     refs = _collect_rhs_var_refs(spec)
     if not refs:
         return
@@ -284,6 +290,8 @@ def _check_locals(spec: dict[str, Any]) -> None:
         )
 
     p = Path(locals_path)
+    if not p.is_absolute() and spec_path is not None:
+        p = (spec_path.parent / p).resolve()
     if not p.exists():
         raise ValidationError(
             message=f"locals file not found: {p}",
@@ -318,8 +326,13 @@ def _check_locals(spec: dict[str, Any]) -> None:
             )
 
 
-def validate(spec: dict[str, Any]) -> None:
-    """Run all three checks. Raises ValidationError on first failure."""
+def validate(spec: dict[str, Any], spec_path: Path | None = None) -> None:
+    """Run all three checks. Raises ValidationError on first failure.
+
+    `spec_path` is optional. When supplied, relative `locals` paths in the
+    spec are resolved relative to the spec file's directory. Callers that
+    already pass absolute paths in `spec["locals"]` can omit it.
+    """
     _check_schema(spec)
     _check_references(spec)
-    _check_locals(spec)
+    _check_locals(spec, spec_path=spec_path)

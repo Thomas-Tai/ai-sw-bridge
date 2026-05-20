@@ -19,9 +19,17 @@ from ai_sw_bridge.spec.validator import (
 # -----------------------------------------------------------------------------
 
 
-def test_validate_accepts_cylinder_spec(cylinder_spec: dict) -> None:
-    # cylinder spec references its own locals path that exists on disk.
-    validate(cylinder_spec)
+def test_validate_accepts_cylinder_spec(
+    cylinder_spec: dict, cylinder_spec_path: Path
+) -> None:
+    # Cylinder spec's `locals` is a relative path -- the validator resolves
+    # it against the spec file's directory when spec_path is supplied.
+    # Safety net: skip if the locals file is somehow missing (e.g. a fresh
+    # checkout where the file wasn't pulled), mirroring the MMP pattern.
+    resolved_locals = (cylinder_spec_path.parent / cylinder_spec["locals"]).resolve()
+    if not resolved_locals.exists():
+        pytest.skip(f"cylinder locals file not present: {resolved_locals}")
+    validate(cylinder_spec, spec_path=cylinder_spec_path)
 
 
 def test_validate_accepts_mmp_spec(mmp_spec: dict) -> None:

@@ -25,6 +25,13 @@ def cylinder_spec() -> dict:
 
 
 @pytest.fixture
+def cylinder_spec_path() -> Path:
+    """Filesystem path to the cylinder spec, for callers that need to
+    resolve its `locals` field relative to the spec's own directory."""
+    return EXAMPLES_ROOT / "minimal_cylinder_v2" / "spec.json"
+
+
+@pytest.fixture
 def mmp_spec() -> dict:
     """v1 declarative spec for the S1b motor-mount plate."""
     return _load_spec("motor_mount_plate/spec.json")

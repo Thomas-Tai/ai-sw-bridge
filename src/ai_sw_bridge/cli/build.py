@@ -102,7 +102,7 @@ def main() -> int:
         )
 
     try:
-        validate(spec)
+        validate(spec, spec_path=p)
     except ValidationError as e:
         return _emit(
             {
