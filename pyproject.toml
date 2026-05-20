@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "pytest-cov"]
+dev = ["pytest>=7", "pytest-cov", "black==25.12.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
