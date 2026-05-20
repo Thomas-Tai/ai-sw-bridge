@@ -26,6 +26,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import pythoncom
+import win32com.client
+
 from ..locals_io import parse as parse_locals
 from ..sw_com import get_sw_app
 from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
@@ -391,6 +394,90 @@ def _draw_centerline_if_present(sm: Any, feat: dict[str, Any]) -> None:
         )
 
 
+# swConstraintType_e enum (the subset we observe on CenterRectangle)
+_SW_CONSTRAINT_MIDPOINT_2D = 14
+
+
+def _identify_rect_edge(rect_segs: Any, which: str, cx_m: float, cy_m: float) -> Any:
+    """Find the requested edge (horiz_top, horiz_bot, vert_left, vert_right) from
+    the segment tuple CreateCenterRectangle returns. Uses each segment's
+    GetStartPoint2/GetEndPoint2 to classify by orientation and position.
+
+    Returns the matching ISketchSegment, or None if not found. Skips
+    construction-geometry segments (the two diagonals).
+    """
+    if rect_segs is None:
+        return None
+    target_horiz = which.startswith("horiz")
+    target_top = which.endswith("_top")
+    target_left = which.endswith("_left")
+    for s in rect_segs:
+        try:
+            if s.ConstructionGeometry:
+                continue
+            sp, ep = s.GetStartPoint2, s.GetEndPoint2
+            if sp is None or ep is None:
+                continue
+            x1, y1 = sp.X, sp.Y
+            x2, y2 = ep.X, ep.Y
+            is_horiz = abs(y1 - y2) < 1e-9
+            is_vert = abs(x1 - x2) < 1e-9
+            if target_horiz and is_horiz:
+                # Top: y > cy_m. Bot: y < cy_m.
+                if (target_top and y1 > cy_m) or (not target_top and y1 < cy_m):
+                    return s
+            elif not target_horiz and is_vert:
+                # Left: x < cx_m. Right: x > cx_m.
+                if (target_left and x1 < cx_m) or (not target_left and x1 > cx_m):
+                    return s
+        except Exception:
+            continue
+    return None
+
+
+def _strip_centerrectangle_midpoint_relation(doc: Any) -> bool:
+    """Delete the spurious Midpoint relation that API-side CreateCenterRectangle
+    adds but UI-side CenterRectangle does not.
+
+    This relation pins the diagonal-midpoint to the part origin, removing one
+    DOF and forcing a square-collapse (D2 becomes redundant/driven once D1 is
+    placed). Empirically verified 2026-05-20 against SW 2024 SP1: deleting
+    this relation before adding dims makes D1 and D2 land independently
+    driving, AND the rectangle still stays centered on origin under driven
+    resizing (SW's solver defaults to symmetric placement).
+
+    See [spike_zf in the deferred-dim investigation] for the full evidence
+    trail.
+
+    Must be called inside the open sketch session, immediately after
+    sm.CreateCenterRectangle(...) and before any AddDimension2 call.
+
+    Returns True if a Midpoint relation was found and deleted; False if no
+    Midpoint relation was present (e.g. SW version behaved like the UI by
+    default, or the sketch is empty).
+    """
+    sk = doc.GetActiveSketch2
+    if sk is None:
+        return False
+    try:
+        rm = sk.RelationManager
+    except Exception:
+        return False
+    if rm is None:
+        return False
+    rels = rm.GetRelations(0)
+    if not rels:
+        return False
+    for r in rels:
+        try:
+            if r.GetRelationType == _SW_CONSTRAINT_MIDPOINT_2D:
+                rm.DeleteRelation(r)
+                return True
+        except Exception:
+            continue
+    return False
+
+
 def _build_sketch_rectangle_on_plane(
     ctx: BuildContext, feat: dict[str, Any]
 ) -> BuiltFeature:
@@ -417,7 +504,13 @@ def _build_sketch_rectangle_on_plane(
     # corner-rectangle equivalent would let SW's solver anchor at an
     # arbitrary corner and grow asymmetrically, putting features
     # off-center after the rebuild. Args: (center, opposite corner).
-    sm.CreateCenterRectangle(
+    # Capture the returned tuple of ISketchSegments (4 perimeter + 2
+    # construction diagonals) so the inline path can select edges via
+    # Select4(captured_ptr) instead of coordinate-based SelectByID --
+    # the post-Midpoint-delete sketch state has unsettled selection
+    # priorities that cause SelectByID to pick midpoint vertices instead
+    # of line segments, breaking AddDimension2.
+    rect_segs = sm.CreateCenterRectangle(
         cx_m,
         cy_m,
         0.0,
@@ -425,6 +518,18 @@ def _build_sketch_rectangle_on_plane(
         cy_m + height_m / 2,
         0.0,
     )
+
+    # API-side CreateCenterRectangle adds a spurious Midpoint relation that
+    # the UI version does not, collapsing 2-DOF to 1-DOF and demoting D2 to
+    # driven. Strip it before adding dimensions. Symmetric centering is
+    # preserved by SW's solver default placement.
+    _strip_centerrectangle_midpoint_relation(ctx.doc)
+
+    # Identify top (horizontal, y>cy) and left (vertical, x<cx) edges via
+    # captured segment pointers. _strip_... ran above, so the captured
+    # tuple is still valid (delete affects relations, not segments).
+    top_edge = _identify_rect_edge(rect_segs, "horiz_top", cx_m, cy_m)
+    left_edge = _identify_rect_edge(rect_segs, "vert_left", cx_m, cy_m)
 
     # Add driving dimensions so Add2 has D1/D2 to bind to. Selection order
     # determines dim numbering: top edge first -> D1 = width, left edge second
@@ -439,6 +544,10 @@ def _build_sketch_rectangle_on_plane(
     top_y = cy_m + height_m / 2
     left_x = cx_m - width_m / 2
     if ctx.deferred_dim:
+        # Deferred mode: SelectByID is run later in a REOPENED sketch session,
+        # which has settled selection state that correctly picks segments.
+        # The captured segment pointers don't survive across close-reopen, so
+        # we still pass coordinates to the deferred replay.
         ctx.deferred_dims.append(
             DeferredDim(
                 sketch_name=feat["name"],
@@ -460,8 +569,14 @@ def _build_sketch_rectangle_on_plane(
             )
         )
     elif not ctx.no_dim:
+        # Inline mode: select via captured segment pointer (Select4) to avoid
+        # the post-Midpoint-delete selection-priority issue where SelectByID
+        # picks a midpoint vertex (type 79) instead of the line segment
+        # (type 10), causing AddDimension2 to silently return None.
+        vt_disp_none = win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)
+
         ctx.doc.ClearSelection2(True)
-        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", cx_m, top_y, 0.0):
+        if top_edge is None or not top_edge.Select4(False, vt_disp_none):
             raise RuntimeError("could not select rectangle top edge for width dim")
         dim_w = ctx.doc.AddDimension2(cx_m, top_y + 0.005, 0.0)
         if dim_w is None:
@@ -469,7 +584,7 @@ def _build_sketch_rectangle_on_plane(
         _dismiss_dim_pane(ctx.doc)
 
         ctx.doc.ClearSelection2(True)
-        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", left_x, cy_m, 0.0):
+        if left_edge is None or not left_edge.Select4(False, vt_disp_none):
             raise RuntimeError("could not select rectangle left edge for height dim")
         dim_h = ctx.doc.AddDimension2(left_x - 0.005, cy_m, 0.0)
         if dim_h is None:
@@ -1002,7 +1117,9 @@ def _build_sketch_rectangle_on_face(
     # Same anchoring rationale as on-plane rectangles: CreateCenterRectangle
     # anchors the rect at its centroid via construction diagonals so dim
     # binding resizes both halves symmetrically.
-    sm.CreateCenterRectangle(
+    # Capture segments so inline mode can select via Select4(captured_ptr)
+    # -- see on-plane handler for why this matters post-Midpoint-delete.
+    rect_segs = sm.CreateCenterRectangle(
         cu_m,
         cv_m,
         0.0,
@@ -1010,6 +1127,13 @@ def _build_sketch_rectangle_on_face(
         cv_m + height_m / 2,
         0.0,
     )
+
+    # Strip the spurious Midpoint relation -- see on-plane handler comment.
+    _strip_centerrectangle_midpoint_relation(ctx.doc)
+
+    # Identify edges via captured pointers (sketch-local frame).
+    top_edge = _identify_rect_edge(rect_segs, "horiz_top", cu_m, cv_m)
+    left_edge = _identify_rect_edge(rect_segs, "vert_left", cu_m, cv_m)
 
     # Driving dims D1 (width) and D2 (height). SKETCHSEGMENT picks use
     # part-frame coords; transform sketch (u, v) to part via FaceFrame.
@@ -1043,9 +1167,12 @@ def _build_sketch_rectangle_on_face(
             )
         )
     elif not ctx.no_dim:
+        # Inline mode: select via captured segment pointer to avoid the
+        # post-Midpoint-delete vertex-selection issue. See on-plane handler.
+        vt_disp_none = win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)
+
         ctx.doc.ClearSelection2(True)
-        tx, ty, tz = _sketch_uv_to_part(_frame, cu_m, top_v)
-        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", tx, ty, tz):
+        if top_edge is None or not top_edge.Select4(False, vt_disp_none):
             raise RuntimeError(
                 f"could not select rect top edge for width dim "
                 f"(face={face}, center=({cu_m*1000:.1f}, {cv_m*1000:.1f}) mm)"
@@ -1057,8 +1184,7 @@ def _build_sketch_rectangle_on_face(
         _dismiss_dim_pane(ctx.doc)
 
         ctx.doc.ClearSelection2(True)
-        lx, ly, lz = _sketch_uv_to_part(_frame, left_u, cv_m)
-        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", lx, ly, lz):
+        if left_edge is None or not left_edge.Select4(False, vt_disp_none):
             raise RuntimeError(
                 f"could not select rect left edge for height dim "
                 f"(face={face}, center=({cu_m*1000:.1f}, {cv_m*1000:.1f}) mm)"
@@ -2591,27 +2717,13 @@ def build(
        is predictable. Verified GREEN on circle/hole specs like
        minimal_cylinder_v2.
 
-       KNOWN LIMITATION (SW 2024 SP1): rectangle sketches have their
-       SECOND deferred edge-dim demoted to DRIVEN (reference) by SW
-       after the close/re-open cycle, regardless of the mitigations we
-       tried (per-sketch grouping, construction-diagonal deletion, mid-
-       edit rebuild, IDisplayDimension.DrivenState override). The
-       equation binding to locals.txt is then flagged red in the
-       Equation Manager and does NOT drive the dim. Geometry is
-       correct because per-feature Add2 + EditRebuild3 resizes via
-       D1 alone (D2 gets demoted to reference state matching D1's
-       width but isn't driven by locals).
-
-       Recommendation: use --no-dim or default inline mode for rect-
-       heavy specs (e.g. MMP). --deferred-dim is reliable for specs
-       composed of circle/hole sketches. A WARN is emitted at build
-       start if any rectangle sketch is detected with --deferred-dim.
-
-       Spike trail for context: Z1 (mechanic GREEN), Z3 (multi-dim
-       same sketch GREEN), Z4 (multi-feature circle GREEN), Z5/Z6
-       (diagonal deletion FALSIFIED), Z7 (DrivenState API unreachable;
-       mid-edit rebuild breaks segment selection), Z8 (CornerRectangle
-       toggle confound, inconclusive).
+       Rectangle sketches: previously --deferred-dim had a SW 2024 SP1
+       limitation where D2 was demoted to DRIVEN. Root cause identified
+       2026-05-20 (Spike ZF): API CreateCenterRectangle adds a Midpoint
+       relation absent from UI version, collapsing 2-DOF to 1-DOF. Fix
+       is in _strip_centerrectangle_midpoint_relation, called from both
+       rectangle handlers. Rectangle specs now ship clean equation links
+       in all three modes.
 
     `no_dim` and `deferred_dim` are mutually exclusive.
 
@@ -2628,12 +2740,6 @@ def build(
     """
     if no_dim and deferred_dim:
         raise ValueError("no_dim and deferred_dim are mutually exclusive")
-
-    # NOTE: the CLI emits a user-facing WARN when --deferred-dim is used
-    # with rectangle sketches, since rectangles hit a SW 2024 SP1
-    # driven-D2 limitation (see docstring above). build() itself proceeds
-    # so the rest of the spec still ships; only the rect dim's locals
-    # binding is non-functional.
 
     # --no-dim resolves {rhs} upfront so geometry builds at correct sizes
     # (no AddDimension2 ever called, no equation links applied).

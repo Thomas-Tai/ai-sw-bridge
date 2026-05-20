@@ -104,19 +104,28 @@ Three failed suppression approaches documented in [spikes/phase0/MMP_DEBUG_SESSI
 
 The forum-canonical advice (set toggle 8) is reported to work inside SW's own VBA editor but does not propagate to external pywin32 COM clients on this build. A VBA-macro fallback (emit `.bas`, run via `RunMacro2`) is the only remaining avenue and carries its own risks; see [Roadmap "Not on the roadmap"](../README.md#roadmap).
 
-### Second workaround (preview): `--deferred-dim`
+### Second workaround: `--deferred-dim`
 
-For specs **without rectangle sketches** (i.e. pure circle/hole geometry), `--deferred-dim` gives you both no-popups-during-build AND a live equation link:
+`--deferred-dim` gives you a live equation link with the popup ticks **time-localized per-sketch** (all popups for a single sketch arrive consecutively with no COM-call delay between them) instead of interleaved through the multi-minute geometry phase:
 
 ```powershell
 ai-sw-build my_spec.json --deferred-dim
 ```
 
-In this mode, geometry builds at placeholder sizes with no `AddDimension2` calls; immediately after each sketch handler returns, the bridge re-enters the sketch via `EditSketch`, replays all of its `AddDimension2` calls in one session, then applies the feature's `EquationMgr.Add2` bindings and rebuilds. The popups arrive per-sketch instead of interleaved through the multi-minute geometry phase.
+In this mode, geometry builds at placeholder sizes with no `AddDimension2` calls; immediately after each sketch handler returns, the bridge re-enters the sketch via `EditSketch`, replays all of its `AddDimension2` calls in one session, then applies the feature's `EquationMgr.Add2` bindings and rebuilds.
 
-**Known limitation on SW 2024 SP1:** rectangle sketches (`sketch_rectangle_on_plane`, `sketch_rectangle_on_face`) have their second edge-dim demoted to driven (reference) by SW after the close/re-open cycle. The binding equation is flagged red in Equation Manager and does not drive the dim. The CLI emits a `WARN` when a spec containing rectangle sketches is built with `--deferred-dim`.
+**Per-dim popup tick still required.** Each individual `AddDimension2` call still blocks for one manual "Modify Dimension" popup tick. The total popup count is the **same as default-inline mode** — one tick per dimensioned entity. The user-visible improvement is *timing*, not *count*:
 
-Spike trail Z1-Z8 (2026-05-19) explored four mitigation routes (per-sketch dim grouping, construction-diagonal deletion, `IDisplayDimension.DrivenState` override, mid-edit `EditRebuild3`, manual `CornerRectangle` + Midpoint relation); none succeeded due to a combination of SW solver behavior and pywin32 late-binding limitations. `IDisplayDimension.DrivenState` not being exposed via late-binding is the same family of typelib-only-access limitation that killed the `SendKeystrokes` popup-dismissal angle.
+- Inline mode: popup → multi-second COM call → popup → multi-second COM call → ... (popups spread over the whole build)
+- `--deferred-dim`: COM-only geometry build (no popups) → consecutive cluster of N popups for sketch A → COM-only build for sketch B → consecutive cluster of M popups for sketch B → ...
+
+You still tick the same number of popups. They just arrive in predictable clusters separated by COM-only build phases.
+
+If you need zero popups, use `--no-dim` (no equation link). There is no fourth mode that gives both live-link AND no-popups — empirically falsified after 12 candidate suppression paths tested (see [deferred_dim_investigation.md](deferred_dim_investigation.md)).
+
+**Rectangle support (fixed 2026-05-20, Spike ZF):** rectangle sketches (`sketch_rectangle_on_plane`, `sketch_rectangle_on_face`) previously had their second edge-dim demoted to driven on SW 2024 SP1, breaking the equation binding for that dim. Root cause: the API-side `CreateCenterRectangle` adds a spurious Midpoint relation absent from the UI-drawn equivalent, collapsing 2-DOF to 1-DOF. Fix is `_strip_centerrectangle_midpoint_relation()` in [`builder.py`](../src/ai_sw_bridge/spec/builder.py), called from both rectangle handlers immediately after `CreateCenterRectangle()`. Rectangle specs now ship clean equation links in all three modes (default-inline, `--deferred-dim`, `--no-dim`). Verified on `motor_mount_plate` end-to-end with both D1 and D2 driving their `S1B_MMP_H`/`S1B_MMP_W` bindings.
+
+Spike trail Z1–ZF (2026-05-19 to 2026-05-20) explored 11 mitigation routes before ZF identified the root cause via user UI inspection. Routes that did NOT work and are documented for the historical record: per-sketch dim grouping, construction-diagonal deletion, `IDisplayDimension.DrivenState` override (via pywin32 AND via VBA injector — both unreachable), mid-edit `EditRebuild3`, manual `CornerRectangle` + Midpoint, `gencache.EnsureModule` by explicit GUID, `MakeSelectedDriving`, `LinkValue` property, `Add3` with `swAllConfiguration`, `SetEquationAndConfigurationOption`, inline-dim with deferred bindings.
 
 ---
 

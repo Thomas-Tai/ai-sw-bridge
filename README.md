@@ -59,17 +59,18 @@ The long-term target is the fourth capability: an AI agent reads a design guide,
 
 Designed around a **Propose–Approve–Execute** discipline: every mutation runs as a dry-run with rollback first, surfaces a delta, and only commits after explicit approval. The AI never gets a `do-anything` button into your CAD model.
 
-## Current status (2026-05-17)
+## Current status (2026-05-20)
 
 **v0.1 capabilities — production-validated** on SOLIDWORKS 2024 SP1:
 - `ai-sw-probe`, `ai-sw-observe`, `ai-sw-mutate` end-to-end working
 - Path C parameterization verified on a single-extrude cylinder
 
-**v0.2 capabilities — Phase 1 GREEN:**
+**v0.2 capabilities — Phase 1 GREEN, rectangle equation-link fix landed (2026-05-20):**
 - Phase 0 spikes: **GREEN** — direct-COM late-binding is viable for the v0.2 architecture
 - Phase 1 (JSON-spec builder): **GREEN**
   - Cylinder example builds end-to-end with parametric bindings
-  - **Motor Mount Plate (MMP) builds 10/10 features end-to-end** with 7 parametric bindings (50×50 plate with concentric Ø12 coupler hole + Ø20.5 flange recess + pairs of motor/frame holes at ±15mm). Geometry verified centered.
+  - **Motor Mount Plate (MMP) builds 10/10 features end-to-end** with 7 parametric bindings (50×50 plate with concentric Ø12 coupler hole + Ø20.5 flange recess + pairs of motor/frame holes at ±15mm). Geometry verified centered. Equation links clean in all three modes.
+- **Rectangle equation-link fix (Spike ZF, 2026-05-20):** previously rectangle sketches in `--deferred-dim` had their second edge-dim demoted to driven, breaking the equation binding. Root cause: API-side `CreateCenterRectangle` adds a spurious Type-14 Midpoint relation absent from the UI-drawn version, collapsing 2-DOF to 1-DOF. Fix is `_strip_centerrectangle_midpoint_relation()` in `builder.py`, called from both rectangle handlers immediately after `CreateCenterRectangle`. All three modes now ship clean equation links for rectangle specs. See [docs/deferred_dim_investigation.md](docs/deferred_dim_investigation.md).
 - **CHM-verified API reference** ([docs/api_reference.md](docs/api_reference.md)) — 23 in-use SW methods + 5 enums extracted from the official `sldworksapi.chm`, with arg-count assertion at runtime
 
 ## Why this matters
@@ -235,8 +236,8 @@ The builder validates the spec (schema + topological references + locals-file va
 | Mode | Flag | When to use | Trade-off |
 |---|---|---|---|
 | `--no-dim` (recommended) | `--no-dim` | First-time testing. Anything where the spec is the source of truth. AI-driven flows where the bridge re-runs on every edit. | Resulting SLDPRT has NO equation link to `locals.txt`. Editing locals afterwards requires re-running `ai-sw-build`. |
-| `--deferred-dim` (preview) | `--deferred-dim` | Circle/hole-only specs where you want both no-popups-during-build AND a live equation link. | Per-sketch popup batching: each sketch's popups cluster right after its geometry is built. **Known limitation on SW 2024 SP1**: rectangle sketches (`sketch_rectangle_on_plane`/`_on_face`) have their 2nd edge-dim demoted to driven (red equation, broken locals link). CLI warns when rectangles are detected. |
-| Parametric (default) | *(no flag)* | When humans will hand-edit the SLDPRT downstream and need the live link to `locals.txt`, including for rectangle specs. | Each `AddDimension2` call opens a blocking "Modify Dimension" popup that requires manual mouse tick. An MMP-sized part is ~16 clicks. Cannot be suppressed on SW 2024 SP1; see [docs/known_limitations.md](docs/known_limitations.md) for the chain of failed suppression attempts. |
+| `--deferred-dim` | `--deferred-dim` | Specs where you want a live equation link AND want the popup ticks to be time-localized (all popups for a single sketch arrive back-to-back, with no COM-call delay between them) instead of interleaved through the multi-minute geometry phase. | **Same total popup count as parametric mode** — one tick per AddDimension2 call. Improvement is timing, not count: you tick a sketch's popups consecutively, then SW does the next sketch's geometry (no popups), then the next sketch's popups arrive, etc. Rectangle support fixed 2026-05-20 (Spike ZF): rect specs ship clean equation links in all three modes. |
+| Parametric (default) | *(no flag)* | When humans will hand-edit the SLDPRT downstream and need the live link to `locals.txt`. | Each `AddDimension2` call opens a blocking "Modify Dimension" popup that requires manual mouse tick. An MMP-sized part is ~16 clicks. Cannot be suppressed on SW 2024 SP1; see [docs/known_limitations.md](docs/known_limitations.md) for the chain of failed suppression attempts. |
 
 In `--no-dim` mode, every `{"rhs": "..."}` reference is resolved against `spec['locals']` in Python upfront and substituted with a literal mm value before any SOLIDWORKS call. Geometry comes out at the right size; the SLDPRT just has no equations.
 

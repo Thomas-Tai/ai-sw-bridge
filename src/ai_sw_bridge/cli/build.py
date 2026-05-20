@@ -114,27 +114,6 @@ def main() -> int:
             3,
         )
 
-    # Warn at the CLI surface (visible in --validate-only too) when
-    # --deferred-dim meets rectangle sketches. See builder.py's build()
-    # docstring for the SW 2024 SP1 driven-D2 limitation.
-    if args.deferred_dim:
-        rect_types = {"sketch_rectangle_on_plane", "sketch_rectangle_on_face"}
-        rect_feats = [
-            f.get("name", "<unnamed>")
-            for f in spec.get("features", [])
-            if f.get("type") in rect_types
-        ]
-        if rect_feats:
-            print(
-                "WARN: --deferred-dim has a known SW 2024 SP1 limitation on "
-                "rectangle sketches: the second edge-dim is demoted to "
-                "DRIVEN, so its locals.txt binding will be flagged red in "
-                f"Equation Manager. Affected sketches: {', '.join(rect_feats)}. "
-                "Use --no-dim or the default mode for full equation links "
-                "on rectangle-heavy specs.",
-                file=sys.stderr,
-            )
-
     if args.validate_only:
         return _emit(
             {"ok": True, "validated": True, "feature_count": len(spec["features"])}, 0
