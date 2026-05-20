@@ -248,36 +248,6 @@ def link_locals(doc: Any, locals_path: str) -> None:
 # -----------------------------------------------------------------------------
 
 
-def _build_sketch_rectangle_on_plane(
-    ctx: BuildContext, feat: dict[str, Any]
-) -> BuiltFeature:
-    return RectangleOnPlaneHandler().build(ctx, feat)
-
-
-def _build_sketch_circle_on_plane(
-    ctx: BuildContext, feat: dict[str, Any]
-) -> BuiltFeature:
-    return CircleOnPlaneHandler().build(ctx, feat)
-
-
-def _build_sketch_rectangle_on_face(
-    ctx: BuildContext, feat: dict[str, Any]
-) -> BuiltFeature:
-    return RectangleOnFaceHandler().build(ctx, feat)
-
-
-def _build_sketch_circle_on_face(
-    ctx: BuildContext, feat: dict[str, Any]
-) -> BuiltFeature:
-    return CircleOnFaceHandler().build(ctx, feat)
-
-
-def _build_sketch_circles_on_face(
-    ctx: BuildContext, feat: dict[str, Any]
-) -> BuiltFeature:
-    return CirclesOnFaceHandler().build(ctx, feat)
-
-
 def _call_feature_extrusion(
     ctx: BuildContext,
     *,
@@ -1279,11 +1249,11 @@ FEATURE_REGISTRY: dict[str, FeatureType] = {
 # handler functions are defined above).
 def _wire_handlers() -> None:
     handlers = {
-        "sketch_rectangle_on_plane": _build_sketch_rectangle_on_plane,
-        "sketch_rectangle_on_face": _build_sketch_rectangle_on_face,
-        "sketch_circle_on_plane": _build_sketch_circle_on_plane,
-        "sketch_circle_on_face": _build_sketch_circle_on_face,
-        "sketch_circles_on_face": _build_sketch_circles_on_face,
+        "sketch_rectangle_on_plane": RectangleOnPlaneHandler().build,
+        "sketch_rectangle_on_face": RectangleOnFaceHandler().build,
+        "sketch_circle_on_plane": CircleOnPlaneHandler().build,
+        "sketch_circle_on_face": CircleOnFaceHandler().build,
+        "sketch_circles_on_face": CirclesOnFaceHandler().build,
         "boss_extrude_blind": _build_boss_extrude_blind,
         "cut_extrude_through_all": _build_cut_extrude_through_all,
         "cut_extrude_blind": _build_cut_extrude_blind,
