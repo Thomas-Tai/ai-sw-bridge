@@ -8,9 +8,16 @@ Use this prompt with Claude Sonnet, GLM-4.6, GPT-5, or any other capable LLM to 
 2. Replace the four `{{...}}` placeholders at the top of the prompt with your target language details. For the two currently planned languages, use:
    - **Traditional Chinese**: `{{LANGUAGE_NAME}} = Traditional Chinese (繁體中文)`, `{{LOCALE}} = zh-TW`, `{{REGION_NOTE}} = Use Traditional Chinese characters as written in Taiwan. Prefer Taiwanese technical vocabulary (e.g. 軟體 not 软件, 程式 not 程序).`, `{{TARGET_DIR}} = docs/i18n/zh-TW/`
    - **Simplified Chinese**: `{{LANGUAGE_NAME}} = Simplified Chinese (简体中文)`, `{{LOCALE}} = zh-CN`, `{{REGION_NOTE}} = Use Simplified Chinese characters as written in mainland China. Prefer mainland technical vocabulary (e.g. 软件 not 軟體, 程序 not 程式).`, `{{TARGET_DIR}} = docs/i18n/zh-CN/`
-3. Paste the two source files (`README.md` and `docs/known_limitations.md`) as attachments or inline below the prompt.
-4. Run. The model should produce two output files at the paths specified.
-5. Review the **DO-NOT-TRANSLATE list** output (the model is asked to emit this as a checkpoint) against the actual translation to catch any leaked technical terms.
+3. Paste the source files as attachments or inline below the prompt. The
+   minimum translation surface is `README.md` and `docs/known_limitations.md`;
+   `docs/why_no_addim2.md` is recommended because the new README links to it
+   from the build-modes line. Other docs (`spec_reference.md`, `known_gotchas.md`,
+   `architecture.md`) can be added as the project's translation appetite grows.
+4. Run. The model should produce one output file per source file at the paths
+   specified.
+5. Review the **DO-NOT-TRANSLATE list** output (the model is asked to emit this
+   as a checkpoint) against the actual translation to catch any leaked
+   technical terms.
 
 ## The prompt
 
@@ -26,6 +33,8 @@ Region/dialect note: {{REGION_NOTE}}
 Write the translated files to these paths (relative to the repo root):
   {{TARGET_DIR}}README.md
   {{TARGET_DIR}}known_limitations.md
+  (and one output file per additional source file pasted below, mirroring
+  the source's filename under {{TARGET_DIR}})
 
 # Your goals, in order of priority
 
@@ -61,40 +70,72 @@ If you find yourself "naturalizing" any of these (e.g. transliterating
 
 ## SW API surface (interfaces, methods, enums)
 - ISldWorks, IModelDoc2, IModelDocExtension, IFeatureManager, ISketchManager,
-  IEquationMgr, IFeature, ISimpleFilletFeatureData2
+  IEquationMgr, IFeature, ISimpleFilletFeatureData2, ISketch, ISketchSegment,
+  ISketchRelation, IRelationManager, IFace2, IEntity, IBody2
 - NewDocument, GetUserPreferenceStringValue, GetUserPreferenceToggle,
   SetUserPreferenceToggle, SendKeys, SelectByID, SelectByID2, ClearSelection2,
   AddDimension2, AddSpecificDimension, FeatureByPositionReverse, EditRebuild3,
   EditUndo2, Parameter, GetFeatureCount, SaveBMP, GetPartBox, FeatureExtrusion2,
   FeatureExtrusion3, FeatureCut4, FeatureCut5, FeatureFillet3, CreateDefinition,
   CreateFeature, InsertSketch, CreateCornerRectangle, CreateCenterRectangle,
-  CreateCircle, CreateCircleByRadius, Add2, GetTypeName, GetNextFeature,
-  RunMacro, RunMacro2, SaveAs3, GetEquationMgr, FilePath, LinkToFile,
-  AutomaticRebuild, UpdateValuesFromExternalEquationFile, Initialize,
-  DefaultRadius, GetTitle, GetFirstDocument, GetNext, ActiveDoc, FirstFeature,
-  ShowNamedView2, ActivateDoc2, ActivateDoc3, ViewZoomtofit2, ActiveView,
-  Scale2, GetPartBox, Extension, RunCommand
+  CreateCircle, CreateCircleByRadius, CreateCenterLine, Add2, GetTypeName,
+  GetTypeName2, GetNextFeature, RunMacro, RunMacro2, SaveAs3, GetEquationMgr,
+  FilePath, LinkToFile, AutomaticRebuild, UpdateValuesFromExternalEquationFile,
+  Initialize, DefaultRadius, GetTitle, GetFirstDocument, GetNext, ActiveDoc,
+  FirstFeature, ShowNamedView2, ActivateDoc2, ActivateDoc3, ViewZoomtofit2,
+  ActiveView, Scale2, GetPartBox, Extension, RunCommand, GetActiveSketch2,
+  RelationManager, GetRelations, DeleteRelation, GetRelationType, Suppressed,
+  Select2, Select4, Normal, GetClosestPointOn, GetBodies2, GetFaces, EditSketch,
+  GetStartPoint2, GetEndPoint2, ConstructionGeometry, FeatureManager,
+  GetPathName, OpenDoc6, GetCount, Equation, Value
 - swEndConditions_e, swStartConditions_e, swDocumentTypes_e, swDimensionType_e,
   swSelectType_e, swSimpleFilletType_e, swFeatureNameID_e,
   swFeatureFilletOptions_e, swFeatureFilletType_e, swFilletOverFlowType_e,
-  swFeatureFilletProfileType_e
+  swFeatureFilletProfileType_e, swConstraintType_e, swFileSaveError_e
 - swEndCondBlind, swEndCondThroughAll, swEndCondThroughNext, swEndCondMidPlane,
   swEndCondThroughAllBoth, swEndCondUpToSurface, swStartSketchPlane,
   swConstRadiusFillet, swFaceFillet, swFullRoundFillet, swFmFillet,
   swInputDimValOnCreate, swSketchEnableOnScreenNumericInput,
-  swDefaultTemplatePart, swDocPART, swDocASSEMBLY, swDocDRAWING
+  swDefaultTemplatePart, swDocPART, swDocASSEMBLY, swDocDRAWING,
+  swFileSaveError_NoError, swSolidBody
+
+## Bridge-internal Python identifiers (post-2026-05 class refactor)
+
+The class hierarchy under `src/ai_sw_bridge/spec/sketches/` and its
+supporting modules are part of the public layout shown in the README.
+Never localize:
+
+- SketchHandler, SketchFrame
+- RectangleOnPlaneHandler, RectangleOnFaceHandler, CircleOnPlaneHandler,
+  CircleOnFaceHandler, CirclesOnFaceHandler
+- BuildContext, BuiltFeature, DeferredDim, FeatureType, FaceFrame
+- Module paths: `src/ai_sw_bridge/spec/_build_context.py`,
+  `src/ai_sw_bridge/spec/_face_geometry.py`,
+  `src/ai_sw_bridge/spec/_sketch_primitives.py`,
+  `src/ai_sw_bridge/spec/sketches/base.py`,
+  `src/ai_sw_bridge/spec/sketches/rectangle_on_plane.py` (and the four
+  siblings under `sketches/`)
+- Method names on these classes: `build`, `_enter_sketch`, `_draw_geometry`,
+  `_add_dimensions_inline`, `_record_deferred_dimensions`,
+  `_strip_relations`, `_finalize`
+- Tool script names: `tools/feature_tree_diff.py`, `tools/chm_extract.py`,
+  `tools/gen_api_markdown.py`, `tools/gen_sw_types.py`
 
 ## Spec schema and CLI flags (NEVER translate)
 - schema_version, name, locals, features, type, plane, sketch, of_feature,
-  face, width, height, depth, diameter, radius, center, edges, circles, flip,
-  rhs, u, v, x, y, z
+  face, width, height, depth, diameter, radius, distance, angle, count,
+  spacing, center, edges, circles, centerline, start, end, axis, mode, seed,
+  spec_path, flip, rhs, u, v, x, y, z
 - sketch_rectangle_on_plane, sketch_rectangle_on_face, sketch_circle_on_plane,
   sketch_circle_on_face, sketch_circles_on_face, boss_extrude_blind,
-  cut_extrude_through_all, cut_extrude_blind, fillet_constant_radius
+  cut_extrude_through_all, cut_extrude_blind, fillet_constant_radius,
+  chamfer_edge, linear_pattern, circular_pattern, mirror_feature,
+  revolve_boss, simple_hole
+- equal_distance, distance_angle (chamfer modes)
 - Front, Top, Right (when used as plane names in spec context)
 - +x, -x, +y, -y, +z, -z (face direction codes)
-- --no-dim, --save-as, --validate-only, --width, --height, --fit-view,
-  --filename
+- --no-dim, --deferred-dim, --save-as, --validate-only, --use-active-doc,
+  --width, --height, --fit-view, --filename
 - Propose-Approve-Execute, propose, dry_run, commit, undo_last_commit,
   proposal_id, var, new_value
 
@@ -102,8 +143,12 @@ If you find yourself "naturalizing" any of these (e.g. transliterating
 - Paths like src/ai_sw_bridge/spec/builder.py, docs/known_limitations.md,
   spikes/phase0/spike_p_fillet_pipeline.py, examples/tension_bracket/spec.json
 - File extensions: .py, .json, .md, .swp, .bas, .sldprt, .txt, .chm
-- Commit hashes: 83256d5, c560e97, e44aaa6, 66822a5, c3b5af4, 437ffe5,
-  bd3b5a9, and any other 7-char hex
+- Commit hashes: any 7-character hex token following a word like "commit",
+  appearing in parens like "(see 83256d5)", or formatted as a markdown link
+  to a GitHub commit URL. Examples currently appearing in the docs:
+  83256d5, c560e97, e44aaa6, 66822a5, c3b5af4, 437ffe5, bd3b5a9, 67bda48,
+  45dce1e, 8320a60, 778e300, c760600, d80182e, 4b7477e. (When adding a new
+  hash to the docs, list it here so future re-translations preserve it.)
 - URLs (github.com/..., codestack.net/..., etc.)
 - Code snippets inside ``` fences, regardless of language
 - JSON object keys (translate prose VALUES inside string fields where they
@@ -222,3 +267,27 @@ When the English docs change (e.g. a new feature primitive ships), the translati
 - **Diff-based update**: paste only the `git diff` of the English doc since the last translation, plus the current translated file, and ask the model to apply the equivalent change in the target language. Preserves prior phrasings but requires more careful prompting.
 
 Recommended: keep a `translated-from: <commit_hash>` line in the frontmatter of each translated file so future re-translation can target the diff from that commit rather than the whole file.
+
+### Structural rewrites: do a full re-translation, not a diff
+
+If the English source has been substantially restructured (sections deleted, moved, or rewritten — not just edited paragraph-by-paragraph), the diff-based update is the *wrong* tool. The current `docs/i18n/zh-{TW,CN}/README.md` files were translated against an older 514-line README; the current English README is 164 lines after a 2026-05-20 audience-pivot rewrite. A re-translator pointed at the diff will produce a Frankenstein file with paragraphs from both versions.
+
+How to recognize this case:
+
+- Source line count changed by more than ~30%
+- A whole section heading was added, removed, or renamed in the source
+- The README's lede paragraph changed audience or framing
+
+When any of these is true: ignore the existing translation entirely, re-run this prompt fresh, and replace the translated file wholesale. Carry over only the `> **Language**: ...` switcher line at the top.
+
+### New docs added since last translation
+
+The original prompt translated only `README.md` and `docs/known_limitations.md`. The bridge has since added several user-facing docs that are linked from the new README:
+
+- `docs/why_no_addim2.md` — build-modes deep-dive (linked from README's CLI table)
+- `docs/spec_reference.md` — per-primitive schema reference
+- `docs/known_gotchas.md` — pywin32 marshalling surprises
+- `docs/architecture.md` — phases + design rationale
+- `docs/AGENTS.md` — agent briefing (also user-facing as "what the AI reads first")
+
+These are not yet translated. Add any of them to the source-file list when pasting the prompt; they are user-facing and benefit from translation. The DO-NOT-TRANSLATE list above already covers identifiers that appear in them.
