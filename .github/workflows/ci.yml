@@ -8,15 +8,25 @@ on:
 
 jobs:
   test:
-    runs-on: windows-latest
+    # Pin the runner explicitly rather than tracking `windows-latest`.
+    # GitHub announced (2026-05) that windows-latest will redirect to
+    # windows-2025-vs2026 on 2026-06-15; pinning avoids the implicit
+    # swap. Bump intentionally when we want the newer image.
+    runs-on: windows-2025
     strategy:
       matrix:
         python-version: ["3.10", "3.12", "3.14"]
     steps:
-      - uses: actions/checkout@v4
+      # v5 runs on Node 24; v4 ran on Node 20 which GitHub announced
+      # is deprecated and will be removed from runners 2026-09-16.
+      - uses: actions/checkout@v5
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        # v6 runs on Node 24; v5 ran on Node 20. Our usage (just
+        # python-version + pip install) is on the stable surface;
+        # v6's breaking changes are in caching / pyproject.toml
+        # consumption which we don't use.
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -38,12 +48,13 @@ jobs:
         run: pytest -v
 
   import-check:
-    runs-on: ubuntu-latest
+    # Pin runner version (see comment on test job).
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
