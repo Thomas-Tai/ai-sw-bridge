@@ -4,7 +4,7 @@ translated-from: c8ce816
 
 # 為什麼 `--no-dim` 存在：AddDimension2 彈窗事後剖析
 
-> **Language**: [English](../../../docs/why_no_addim2.md) · 繁體中文
+> **Language**: [English](../../why_no_addim2.md) · 繁體中文
 
 > 目標讀者：未來的工程師（人類或 AI），那些忍不住想「修好」
 > AddDimension2 彈窗阻擋器的人。本文記錄了我們嘗試了什麼、什麼
@@ -33,7 +33,7 @@ translated-from: c8ce816
 | 切換 78（`swSketchEnableOnScreenNumericInput` 類別，論壇建議為「真正的」切換） | [spike_m_toggle_78.py](../../../spikes/phase0/spike_m_toggle_78.py) | 失敗 | 結果與切換 8 相同。Pywin32 + SW 2024 SP1 兩者皆忽略。 |
 | `keybd_event(VK_RETURN)` 盲注入 | [spike_h_sendkeys.py](../../../spikes/phase0/spike_h_sendkeys.py) | 部分有效 | 盲 keybd_event 確實能關閉 Modify 彈窗，但 PM 窗格仍保持焦點。雙重 ENTER（間隔 200ms）不可靠 — 第一個 ENTER 關閉彈窗後，焦點回到啟動終端機，第二個 ENTER 不會落在 SW 中。`sw.SendKeys("{ENTER}")` 和 keybd_event + `SetForegroundWindow` 都完全失敗（焦點從強制回應視窗被搶到主視窗）。 |
 | `doc.Extension.RunCommand(1, "")` 關閉 PM 窗格 | [spike_f_close_pm.py](../../../spikes/phase0/spike_f_close_pm.py) | 失敗 | 回傳 True 但窗格仍然開啟。`doc.ClosePropertyManager()` 和 `doc.Extension.CloseAndDestroyPropertyManagers()` 都拋出 AttributeError（在此版本上不是成員）。 |
-| `AddSpecificDimension`（AddDimension2 的型別替代方案） | [spike_j_specific_dim.py](../../../spikes/phase0/spike_j_specific_dim.py) | 失敗 | 全部 9 個 `DimType` 值（1-9）回傳 `com_error('Type mismatch.', ..., 5)`，每個約 0.1 秒。OUT `Error` 參數無法透過 pywin32 晚期繫結綁定 — 與 `SelectByID2` 的 `Callout` 參數同類失敗（參見 [known_gotchas.md](known_gotchas.md)）。此方法在此用戶端上無法使用。 |
+| `AddSpecificDimension`（AddDimension2 的型別替代方案） | [spike_j_specific_dim.py](../../../spikes/phase0/spike_j_specific_dim.py) | 失敗 | 全部 9 個 `DimType` 值（1-9）回傳 `com_error('Type mismatch.', ..., 5)`，每個約 0.1 秒。OUT `Error` 參數無法透過 pywin32 晚期繫結綁定 — 與 `SelectByID2` 的 `Callout` 參數同類失敗（參見 [known_gotchas.md](../../known_gotchas.md)）。此方法在此用戶端上無法使用。 |
 | 查詢內部 `D1`/`D2`/`Diameter@...` 尺寸參數**而不**呼叫 AddDimension2 | [spike_o_param_without_dim.py](../../../spikes/phase0/spike_o_param_without_dim.py) | 失敗 | 對 `--no-dim` 圓柱探測了 9 個候選名稱。全部 9 個回傳 None。SW 不會自動在草圖/特徵上建立可查詢的尺寸參數；透過 `EquationMgr.Add2` 的可連結性需要一個具名尺寸，而這需要 AddDimension2。 |
 
 附註：SW 2024 SP1 主視窗類別不是 `"SldWorks"` — 而是 `Afx:*` 類別。標題前綴 `"SOLIDWORKS"` 可用於 `FindWindow`。記錄於此，以防下次嘗試基於焦點的替代方案時需要用到。

@@ -4,11 +4,11 @@ translated-from: c8ce816
 
 # 已知限制
 
-> **Language**: [English](../../../docs/known_limitations.md) · 繁體中文
+> **Language**: [English](../../known_limitations.md) · 繁體中文
 
 在撰寫你的第一份規格之前，請先閱讀本文。每個章節說明一個坑、如何辨識你踩到了，以及替代方案。
 
-關於程式碼庫擴充的注意事項（pywin32 封送處理、SW API 怪異行為），請參閱 [known_gotchas.md](known_gotchas.md)。
+關於程式碼庫擴充的注意事項（pywin32 封送處理、SW API 怪異行為），請參閱 [known_gotchas.md](../../known_gotchas.md)。
 
 ---
 
@@ -76,7 +76,7 @@ RuntimeError: v1 only supports +z/-z (out/in board) faces of extrusions; got +x
 
 ### 移除此限制需要什麼
 
-機械層面：擴充 `_select_extrude_face` 以在擠出軸為 `+/-Y` 或 `+/-X` 時（目前只接了 `+/-Z`）計算切平面偏移，並擴充面草圖處理器中的 mirror-u 邏輯。估計：60-90 分鐘，包含規格測試。已追蹤於 [Roadmap](../../../README.md#roadmap) 的「近期」層級。
+機械層面：擴充 `_select_extrude_face` 以在擠出軸為 `+/-Y` 或 `+/-X` 時（目前只接了 `+/-Z`）計算切平面偏移，並擴充面草圖處理器中的 mirror-u 邏輯。估計：60-90 分鐘，包含規格測試。已追蹤於 [CHANGELOG](../../../CHANGELOG.md) 的「近期」層級。
 
 ---
 
@@ -108,7 +108,7 @@ ai-sw-build my_spec.json --no-dim
 - `keybd_event(VK_RETURN)` 透過 Win32 — 可以關閉浮動彈窗，但 PM 窗格仍阻擋
 - 完全繞過 AddDimension2，改用可查詢的內部 SW 尺寸（Spike O）— SW 不會自動建立可連結的尺寸物件
 
-論壇上公認的建議（設定切換 8）據報在 SW 自身的 VBA 編輯器中有效，但不會傳播到此版本上的外部 pywin32 COM 用戶端。VBA 巨集回退方案（輸出 `.bas`，透過 `RunMacro2` 執行）是唯一剩餘的途徑，但也有其自身的風險；參見 [Roadmap "Not on the roadmap"](../../../README.md#roadmap)。
+論壇上公認的建議（設定切換 8）據報在 SW 自身的 VBA 編輯器中有效，但不會傳播到此版本上的外部 pywin32 COM 用戶端。VBA 巨集回退方案（輸出 `.bas`，透過 `RunMacro2` 執行）是唯一剩餘的途徑，但也有其自身的風險；參見 [CHANGELOG "Not on the roadmap"](../../../CHANGELOG.md)。
 
 ### 第二個替代方案：`--deferred-dim`
 
@@ -127,7 +127,7 @@ ai-sw-build my_spec.json --deferred-dim
 
 你仍然按相同數量的彈窗。它們只是以可預測的叢集到達，中間穿插僅 COM 的建構階段。
 
-如果你需要零彈窗，請使用 `--no-dim`（無方程式連結）。不存在同時提供即時連結和零彈窗的第四種模式 — 在測試了 12 種候選抑制路徑後已經實證否定（參見 [deferred_dim_investigation.md](deferred_dim_investigation.md)）。
+如果你需要零彈窗，請使用 `--no-dim`（無方程式連結）。不存在同時提供即時連結和零彈窗的第四種模式 — 在測試了 12 種候選抑制路徑後已經實證否定（參見 [deferred_dim_investigation.md](../../deferred_dim_investigation.md)）。
 
 **矩形支援（已於 2026-05-20 修復，Spike ZF）：** 矩形草圖（`sketch_rectangle_on_plane`、`sketch_rectangle_on_face`）先前在 SW 2024 SP1 上的第二個邊尺寸會被降級為從動 (driven)，破壞了該尺寸的方程式連結。根本原因：API 端的 `CreateCenterRectangle` 會加入一個 UI 繪製等價物中不存在的多餘 Midpoint 關係，將 2-DOF 坍縮為 1-DOF。修復是 [`builder.py`](../../../src/ai_sw_bridge/spec/builder.py) 中的 `_strip_centerrectangle_midpoint_relation()`，從兩個矩形處理器在 `CreateCenterRectangle()` 之後立即呼叫。矩形規格現在在三種模式（預設行內、`--deferred-dim`、`--no-dim`）下都能提供完整的方程式連結。已在 `motor_mount_plate` 端對端驗證，D1 和 D2 都正確驅動其 `S1B_MMP_H`/`S1B_MMP_W` 連結。
 
