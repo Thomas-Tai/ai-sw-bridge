@@ -1663,10 +1663,14 @@ def build(
             out_path = out_path.resolve()
             out_path.parent.mkdir(parents=True, exist_ok=True)
             # SaveAs3(path, version_int=0 i.e. current, save_options=0 i.e.
-            # default). Per pywin32 late-binding this returns a single bool.
-            save_ok = bool(doc.SaveAs3(str(out_path), 0, 0))
-            if not save_ok:
-                raise RuntimeError(f"doc.SaveAs3 returned False for {out_path}")
+            # default). The SW API doc says SaveAs3 returns an int from
+            # swFileSaveError_e where 0 == swFileSaveError_NoError. Prior
+            # code wrapped this in bool() and tripped on the success case
+            # (bool(0) is False). Trust the disk: the call succeeded if
+            # the file exists after the call returns.
+            doc.SaveAs3(str(out_path), 0, 0)
+            if not out_path.exists():
+                raise RuntimeError(f"doc.SaveAs3 did not produce {out_path}")
             saved_path = str(out_path)
 
         return BuildResult(
