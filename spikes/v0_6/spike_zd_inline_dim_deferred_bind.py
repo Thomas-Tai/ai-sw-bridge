@@ -59,6 +59,7 @@ Acceptance signal:
 Run from venv-freshtest with SW open. Expected popup ticks: 2 per case
 x 3 cases = 6 ticks total (D1 and D2 each add).
 """
+
 import os
 import pythoncom
 import win32com.client
@@ -90,7 +91,9 @@ def build_rect_with_inline_dims(doc, sketch_name):
         sm.InsertSketch(True)
         return None, None, None
     perimeter = [s for s in segs if not s.ConstructionGeometry]
-    print(f"  CreateCenterRectangle returned {len(segs)} segs ({len(perimeter)} perimeter)")
+    print(
+        f"  CreateCenterRectangle returned {len(segs)} segs ({len(perimeter)} perimeter)"
+    )
 
     # The four perimeter lines correspond to top/right/bottom/left edges.
     # We need ONE horizontal edge for D1 (width) and ONE vertical edge for
@@ -168,8 +171,10 @@ def check_d2_state(doc, sketch_name, label, expected_val_mm):
         print(f"  [{label}] Parameter(D2@{sketch_name}) = {val!r} mm (no expectation)")
         return val
     matches = val is not None and abs(val - expected_val_mm) < 0.01
-    print(f"  [{label}] Parameter(D2@{sketch_name}) = {val!r} mm "
-          f"(expected ~{expected_val_mm}, matches={matches})")
+    print(
+        f"  [{label}] Parameter(D2@{sketch_name}) = {val!r} mm "
+        f"(expected ~{expected_val_mm}, matches={matches})"
+    )
     return val
 
 
@@ -290,25 +295,39 @@ def main():
     print()
     print("=" * 60)
     print("=== Spike ZD summary ===")
-    for tag, res in (("Z8d-a (baseline, no binds)", res_a),
-                     ("Z8d-b (D1 bind only)",        res_b),
-                     ("Z8d-c (both bind, full)",     res_c)):
+    for tag, res in (
+        ("Z8d-a (baseline, no binds)", res_a),
+        ("Z8d-b (D1 bind only)", res_b),
+        ("Z8d-c (both bind, full)", res_c),
+    ):
         if res is None:
             print(f"  {tag}: skipped/failed")
         else:
             print(f"  {tag}: {res}")
     print()
     print(">>> Visual check (definitive):")
-    print( "    1. Open SK_ZDa. Are D1 AND D2 black (driving)? Expected YES per Z4.")
-    print( "    2. Open SK_ZDb Equation Manager. Is D1 equation clean? Is D2 still driving in sketch?")
-    print( "    3. Open SK_ZDc Equation Manager. Are BOTH equations clean (D1=ZDC_W and D2=ZDC_H)?")
-    print( "       Open the sketch -- are D1 and D2 both black?")
+    print("    1. Open SK_ZDa. Are D1 AND D2 black (driving)? Expected YES per Z4.")
+    print(
+        "    2. Open SK_ZDb Equation Manager. Is D1 equation clean? Is D2 still driving in sketch?"
+    )
+    print(
+        "    3. Open SK_ZDc Equation Manager. Are BOTH equations clean (D1=ZDC_W and D2=ZDC_H)?"
+    )
+    print("       Open the sketch -- are D1 and D2 both black?")
     print()
     print(">>> Decision matrix:")
-    print( "    Z8d-a both driving        -> Z4 generalizes to CenterRectangle inline case.")
-    print( "    Z8d-c d2_drives=True      -> PRODUCTION FIX. Modify rectangle handler to add")
-    print( "                                 dims inline + defer bindings. Ship Z8d-c pattern.")
-    print( "    Z8d-c d2_drives=False     -> Add2 retroactively demotes driving D2. Solution 2 stands.")
+    print(
+        "    Z8d-a both driving        -> Z4 generalizes to CenterRectangle inline case."
+    )
+    print(
+        "    Z8d-c d2_drives=True      -> PRODUCTION FIX. Modify rectangle handler to add"
+    )
+    print(
+        "                                 dims inline + defer bindings. Ship Z8d-c pattern."
+    )
+    print(
+        "    Z8d-c d2_drives=False     -> Add2 retroactively demotes driving D2. Solution 2 stands."
+    )
 
 
 if __name__ == "__main__":

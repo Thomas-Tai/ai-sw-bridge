@@ -49,12 +49,29 @@ def _create_box(doc):
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, 0.01, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        0.01,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude failed")
@@ -77,7 +94,9 @@ def _try_strategy_A(doc, sel):
     for i, (x, y, z) in enumerate(EDGES):
         try:
             ok = ext.SelectByID2("", "EDGE", x, y, z, True, 0, None, 0)
-            print(f"  #{i}: SelectByID2 -> ok={ok}, count={sel.GetSelectedObjectCount2(-1)}")
+            print(
+                f"  #{i}: SelectByID2 -> ok={ok}, count={sel.GetSelectedObjectCount2(-1)}"
+            )
         except Exception as e:
             print(f"  #{i}: raised {e!r}")
             return False
@@ -121,7 +140,7 @@ def _try_strategy_C(doc, sel):
             cp = edge.GetClosestPointOn(p[0], p[1], p[2])
             if cp is None:
                 return 1e9
-            return (cp[0]-p[0])**2 + (cp[1]-p[1])**2 + (cp[2]-p[2])**2
+            return (cp[0] - p[0]) ** 2 + (cp[1] - p[1]) ** 2 + (cp[2] - p[2]) ** 2
         except Exception:
             return 1e9
 
@@ -142,7 +161,9 @@ def _try_strategy_C(doc, sel):
             # this should work.
             ok = target.Select2(True, 0)  # append=True, mark=0
             n = sel.GetSelectedObjectCount2(-1)
-            print(f"  #{i}: edge idx {best_idx}, d2={best_d2:.3e} -> Select2 ok={ok}, count={n}")
+            print(
+                f"  #{i}: edge idx {best_idx}, d2={best_d2:.3e} -> Select2 ok={ok}, count={n}"
+            )
         except Exception as e:
             print(f"  #{i}: Select2 raised {e!r}")
             return False
@@ -184,11 +205,14 @@ def main() -> int:
         print("\n--- End-to-end: Strategy C + InsertFeatureChamfer ---")
         fm = doc.FeatureManager
         f = fm.InsertFeatureChamfer(
-            4,   # tangent propagation
+            4,  # tangent propagation
             16,  # equal distance
-            0.0, 0.0,
+            0.0,
+            0.0,
             0.001,  # 1mm
-            0.0, 0.0, 0.0,
+            0.0,
+            0.0,
+            0.0,
         )
         if f is None:
             print("  ! InsertFeatureChamfer returned None")

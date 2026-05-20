@@ -67,6 +67,7 @@ Run from venv-freshtest with SW open. Expected popup ticks:
   - Probe C: 0 ticks
   - Probe D: 0 extra ticks if Probe C green; skipped otherwise
 """
+
 import os
 import sys
 import time
@@ -78,8 +79,8 @@ GENCACHE_MAJOR = 32  # SW 2024 per external diagnostic. Verify via HKCR\TypeLib 
 GENCACHE_MINOR = 0
 GENCACHE_LCID = 0
 
-SW_DIM_DRIVEN_STATE_DRIVING = 1   # swDimensionDriving (best guess from enum)
-SW_DIM_DRIVEN_STATE_DRIVEN = 2    # swDimensionDriven
+SW_DIM_DRIVEN_STATE_DRIVING = 1  # swDimensionDriving (best guess from enum)
+SW_DIM_DRIVEN_STATE_DRIVEN = 2  # swDimensionDriven
 
 
 def safe_dir(obj, label):
@@ -87,7 +88,9 @@ def safe_dir(obj, label):
     try:
         return list(dir(obj))
     except Exception as e:
-        print(f"  [{label}] dir() ERR (expected on late-binding): {type(e).__name__}: {e}")
+        print(
+            f"  [{label}] dir() ERR (expected on late-binding): {type(e).__name__}: {e}"
+        )
         return []
 
 
@@ -147,7 +150,9 @@ def reproduce_driven_d2(sw):
     sketch_name = "SK_Z9"
     build_center_rect_and_close(doc, sketch_name)
     add_edge_dim_with_reopen(doc, sketch_name, (0, 0.010, 0), (0, 0.015, 0), "D1")
-    dim2 = add_edge_dim_with_reopen(doc, sketch_name, (-0.010, 0, 0), (-0.015, 0, 0), "D2")
+    dim2 = add_edge_dim_with_reopen(
+        doc, sketch_name, (-0.010, 0, 0), (-0.015, 0, 0), "D2"
+    )
 
     if dim2 is None:
         print("  ! D2 AddDimension2 failed -- spike cannot proceed")
@@ -198,19 +203,31 @@ def probe_a_cosmetic_check(doc, sketch_name):
     val_after = (p_after.SystemValue * 1000) if p_after is not None else None
     print(f"  after RHS=8.5: D2 = {val_after!r} mm")
 
-    tracks = (val_initial is not None and val_after is not None
-              and abs(val_initial - 5.0) < 0.01 and abs(val_after - 8.5) < 0.01)
+    tracks = (
+        val_initial is not None
+        and val_after is not None
+        and abs(val_initial - 5.0) < 0.01
+        and abs(val_after - 8.5) < 0.01
+    )
 
     if tracks:
         print()
         print("  >>> PROBE A GREEN: the equation drives D2 even though it shows red.")
-        print("  >>> The limitation is COSMETIC. Doc-patch only; no geometry workaround needed.")
+        print(
+            "  >>> The limitation is COSMETIC. Doc-patch only; no geometry workaround needed."
+        )
         return {"cosmetic_only": True, "val_at_5": val_initial, "val_at_8_5": val_after}
     else:
         print()
-        print("  >>> PROBE A RED: D2 does NOT track the RHS. The driven-D2 limitation is real.")
+        print(
+            "  >>> PROBE A RED: D2 does NOT track the RHS. The driven-D2 limitation is real."
+        )
         print("  >>> Continue to Probe B (MakeSelectedDriving).")
-        return {"cosmetic_only": False, "val_at_5": val_initial, "val_at_8_5": val_after}
+        return {
+            "cosmetic_only": False,
+            "val_at_5": val_initial,
+            "val_at_8_5": val_after,
+        }
 
 
 # =====================================================================
@@ -226,9 +243,14 @@ def probe_b_make_driving(doc, dim2, sketch_name):
     # B1: enumerate candidate method names on SketchManager (best-effort -- dir()
     # may error on late-binding per Z2b finding)
     sm_attrs = safe_dir(sm, "SketchManager")
-    candidates = [n for n in sm_attrs
-                  if any(k in n for k in ("Driving", "Driven", "MakeSelected"))]
-    print(f"  SketchManager candidate attrs: {candidates if candidates else '(dir empty -- expected on late-binding)'}")
+    candidates = [
+        n
+        for n in sm_attrs
+        if any(k in n for k in ("Driving", "Driven", "MakeSelected"))
+    ]
+    print(
+        f"  SketchManager candidate attrs: {candidates if candidates else '(dir empty -- expected on late-binding)'}"
+    )
 
     # B2: try the two documented names regardless of dir() result.
     # The dim object's selection state is what matters; we need to put dim2
@@ -259,7 +281,9 @@ def probe_b_make_driving(doc, dim2, sketch_name):
         doc.ClearSelection2(True)
         vt_disp_none = win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)
         try:
-            ok = doc.Extension.SelectByID2(f"D2@{sketch_name}", "DIMENSION", 0, 0, 0, False, 0, vt_disp_none, 0)
+            ok = doc.Extension.SelectByID2(
+                f"D2@{sketch_name}", "DIMENSION", 0, 0, 0, False, 0, vt_disp_none, 0
+            )
             print(f"    SelectByID2('D2@{sketch_name}','DIMENSION',...) -> {ok}")
             selected = bool(ok)
         except Exception as e:
@@ -301,7 +325,9 @@ def probe_b_make_driving(doc, dim2, sketch_name):
         p = doc.Parameter(f"D2@{sketch_name}")
         val = (p.SystemValue * 1000) if p is not None else None
         print(f"  D2 after MakeSelectedDriving + rebuild = {val!r} mm")
-        print(f"  >>> VISUAL CHECK NEEDED: open EqMgr, is 'D2@{sketch_name}' still red?")
+        print(
+            f"  >>> VISUAL CHECK NEEDED: open EqMgr, is 'D2@{sketch_name}' still red?"
+        )
         results["d2_after_mm"] = val
 
     return results
@@ -328,12 +354,16 @@ def probe_c_typelib_bootstrap():
         dt = (time.perf_counter() - t0) * 1000
     except Exception as e:
         print(f"  EnsureModule ERR: {type(e).__name__}: {e}")
-        print(f"  If wrong-major: check HKCR\\TypeLib\\{SW_TLB_GUID} for the registered version")
+        print(
+            f"  If wrong-major: check HKCR\\TypeLib\\{SW_TLB_GUID} for the registered version"
+        )
         print(f"  If compile-fails-same-as-Z2b: typelib path is dead-end on this build")
         return {"bootstrap": False, "error": str(e)}
 
     if mod is None:
-        print(f"  EnsureModule returned None ({dt:.1f}ms) -- typelib not registered at v{GENCACHE_MAJOR}.{GENCACHE_MINOR}")
+        print(
+            f"  EnsureModule returned None ({dt:.1f}ms) -- typelib not registered at v{GENCACHE_MAJOR}.{GENCACHE_MINOR}"
+        )
         return {"bootstrap": False, "error": "module is None"}
 
     print(f"  EnsureModule OK ({dt:.1f}ms) -- module: {mod!r}")
@@ -353,7 +383,11 @@ def probe_c_typelib_bootstrap():
         print("  >>> typelib at runtime (GetTypeInfo 'Invalid index' on this build).")
         print("  >>> Probe D is meaningless -- skip it.")
 
-    return {"bootstrap": True, "is_early": is_early, "sw_early": sw if is_early else None}
+    return {
+        "bootstrap": True,
+        "is_early": is_early,
+        "sw_early": sw if is_early else None,
+    }
 
 
 # =====================================================================
@@ -371,7 +405,9 @@ def probe_d_drivenstate(sw_early):
     sketch_name = "SK_Z9D"
     build_center_rect_and_close(doc, sketch_name)
     add_edge_dim_with_reopen(doc, sketch_name, (0, 0.010, 0), (0, 0.015, 0), "D1")
-    dim2 = add_edge_dim_with_reopen(doc, sketch_name, (-0.010, 0, 0), (-0.015, 0, 0), "D2")
+    dim2 = add_edge_dim_with_reopen(
+        doc, sketch_name, (-0.010, 0, 0), (-0.015, 0, 0), "D2"
+    )
     if dim2 is None:
         return None
 
@@ -391,7 +427,7 @@ def probe_d_drivenstate(sw_early):
 
     after, err2 = safe_getattr(dim2, "DrivenState", "dim2")
     print(f"  after write: DrivenState = {after!r}")
-    write_ok = (after == SW_DIM_DRIVEN_STATE_DRIVING)
+    write_ok = after == SW_DIM_DRIVEN_STATE_DRIVING
 
     # Bind D2 and force rebuild to check if solver respects the override
     eq = doc.GetEquationMgr
@@ -424,7 +460,9 @@ def main():
 
     sw = win32com.client.Dispatch("SldWorks.Application")
     print(f"SW revision: {sw.RevisionNumber}")
-    print(f"Dispatch type: {type(sw).__module__}.{type(sw).__name__} (late-binding for probes A/B)")
+    print(
+        f"Dispatch type: {type(sw).__module__}.{type(sw).__name__} (late-binding for probes A/B)"
+    )
 
     # Reproduce the failing case ONCE; reuse the doc for Probes A and B
     print()
@@ -441,20 +479,30 @@ def main():
     if a.get("cosmetic_only") is True:
         print()
         print("=== Z9 EARLY EXIT: limitation is cosmetic ===")
-        print("Recommended action: update docs/known_limitations.md §3 second workaround")
-        print("to reframe rectangle D2 as 'shows red in EqMgr but parameter drives correctly'.")
+        print(
+            "Recommended action: update docs/known_limitations.md §3 second workaround"
+        )
+        print(
+            "to reframe rectangle D2 as 'shows red in EqMgr but parameter drives correctly'."
+        )
         print("No geometry workaround or typelib spike needed.")
         return
 
     # --- Probe B ---
     b = probe_b_make_driving(doc, dim2, sketch_name)
 
-    b_called = b.get("MakeSelectedDriving", (None,))[0] == "called" if isinstance(b, dict) else False
+    b_called = (
+        b.get("MakeSelectedDriving", (None,))[0] == "called"
+        if isinstance(b, dict)
+        else False
+    )
     if b_called:
         print()
         print(">>> Probe B called MakeSelectedDriving successfully.")
         print(">>> Manual visual check on the current part: is D2 still red in EqMgr?")
-        print(">>> If clean: ship a builder patch calling this after each rectangle's D2.")
+        print(
+            ">>> If clean: ship a builder patch calling this after each rectangle's D2."
+        )
         print(">>> If still red: continue to Probe C.")
         # Continue to C anyway -- visual check happens out-of-band
 
@@ -487,7 +535,9 @@ def main():
     print("    A green        -> ship doc patch. STOP.")
     print("    A red, B clean -> ship MakeSelectedDriving builder patch. STOP.")
     print("    A red, B red, C+D green -> early-binding migration is the fix (large.)")
-    print("    All red        -> Z8-retry (CornerRectangle + SketchAddConstraints('sgMIDPOINT'))")
+    print(
+        "    All red        -> Z8-retry (CornerRectangle + SketchAddConstraints('sgMIDPOINT'))"
+    )
 
 
 if __name__ == "__main__":

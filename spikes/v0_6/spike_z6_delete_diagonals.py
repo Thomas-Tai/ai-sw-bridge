@@ -33,6 +33,7 @@ driving/driven status (color). Driving = black, driven = grey/special.
 Run from venv-freshtest with SW open. User ticks 2 popups per test
 case (6 total).
 """
+
 import pythoncom
 import win32com.client
 
@@ -66,6 +67,7 @@ def delete_n_construction_segments(doc, sketch_name, how_many):
                 # Variant 1: Select4 with VARIANT-empty for the callout arg
                 try:
                     import win32com.client
+
                     empty_variant = win32com.client.VARIANT(
                         win32com.client.pythoncom.VT_DISPATCH, None
                     )
@@ -152,22 +154,30 @@ def build_case(sw, doc, sketch_name, delete_count, label):
         sk = feat.GetSpecificFeature2
         segs = sk.GetSketchSegments
         n_seg = len(segs) if segs is not None else -1
-        n_con = sum(1 for s in (segs or []) if getattr(s, "ConstructionGeometry", False))
+        n_con = sum(
+            1 for s in (segs or []) if getattr(s, "ConstructionGeometry", False)
+        )
         print(f"  after delete: segments={n_seg}, construction={n_con}")
 
     # Add D1 (top edge)
     print(f"  -- adding D1 (top edge), tick popup --")
     add_edge_dim(doc, sketch_name, (0, 0.010, 0), (0, 0.015, 0), f"{label}.D1")
     p1 = doc.Parameter(f"D1@{sketch_name}")
-    print(f"  D1@{sketch_name} = "
-          f"{(p1.SystemValue * 1000):.3f} mm" if p1 is not None else "None")
+    print(
+        f"  D1@{sketch_name} = " f"{(p1.SystemValue * 1000):.3f} mm"
+        if p1 is not None
+        else "None"
+    )
 
     # Add D2 (left edge)
     print(f"  -- adding D2 (left edge), tick popup --")
     add_edge_dim(doc, sketch_name, (-0.010, 0, 0), (-0.015, 0, 0), f"{label}.D2")
     p2 = doc.Parameter(f"D2@{sketch_name}")
-    print(f"  D2@{sketch_name} = "
-          f"{(p2.SystemValue * 1000):.3f} mm" if p2 is not None else "None")
+    print(
+        f"  D2@{sketch_name} = " f"{(p2.SystemValue * 1000):.3f} mm"
+        if p2 is not None
+        else "None"
+    )
 
     # Try the binding to see if SW accepts it -- this is the actual test.
     # If D2 is driven, Add2 fails with the driven-dim error.
@@ -179,8 +189,10 @@ def build_case(sw, doc, sketch_name, delete_count, label):
     idx = eq.Add2(-1, formula_d2, True)
     print(f"  Add2({formula_d2!r}) -> idx={idx}")
     val = eq.Value(idx) if idx >= 0 else None
-    print(f"  Value({idx}) = {val!r}  (None or wrong = driven dim, "
-          f"correct mm value = driving dim)")
+    print(
+        f"  Value({idx}) = {val!r}  (None or wrong = driven dim, "
+        f"correct mm value = driving dim)"
+    )
     return idx, val
 
 

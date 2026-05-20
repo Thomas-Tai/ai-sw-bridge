@@ -48,12 +48,29 @@ def _create_centered_box(doc, side_mm: float) -> None:
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, side_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        side_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude returned None")
@@ -91,13 +108,23 @@ def _face_centers_with_size(doc) -> list[tuple[tuple[float, float, float], float
     return out
 
 
-def _probe_one_face(sw, template: str, face_label: str, click_pt_mm,
-                    sketch_u_mm: float, sketch_v_mm: float) -> None:
+def _probe_one_face(
+    sw,
+    template: str,
+    face_label: str,
+    click_pt_mm,
+    sketch_u_mm: float,
+    sketch_v_mm: float,
+) -> None:
     print(f"\n--- probing {face_label} ---")
-    print(f"  click @ part ({click_pt_mm[0]:+.2f}, {click_pt_mm[1]:+.2f}, "
-          f"{click_pt_mm[2]:+.2f}) mm")
-    print(f"  sketch circle center @ sketch (u={sketch_u_mm:+.2f}, "
-          f"v={sketch_v_mm:+.2f}) mm")
+    print(
+        f"  click @ part ({click_pt_mm[0]:+.2f}, {click_pt_mm[1]:+.2f}, "
+        f"{click_pt_mm[2]:+.2f}) mm"
+    )
+    print(
+        f"  sketch circle center @ sketch (u={sketch_u_mm:+.2f}, "
+        f"v={sketch_v_mm:+.2f}) mm"
+    )
 
     doc = sw.NewDocument(template, 0, 0.0, 0.0)
     if doc is None:
@@ -137,13 +164,33 @@ def _probe_one_face(sw, template: str, face_label: str, click_pt_mm,
             sketch_feat.Select2(False, 0)
             fm = doc.FeatureManager
             cut = fm.FeatureCut4(
-                True, False, dir_flag,
-                SW_END_COND_BLIND, 0,
-                0.005, 0.0,  # 5mm depth
-                False, False, False, False, 0.0, 0.0,
-                False, False, False, False, False,
-                True, True, True, True,
-                False, 0, 0.0, False, False,
+                True,
+                False,
+                dir_flag,
+                SW_END_COND_BLIND,
+                0,
+                0.005,
+                0.0,  # 5mm depth
+                False,
+                False,
+                False,
+                False,
+                0.0,
+                0.0,
+                False,
+                False,
+                False,
+                False,
+                False,
+                True,
+                True,
+                True,
+                True,
+                False,
+                0,
+                0.0,
+                False,
+                False,
             )
             if cut is not None:
                 print(f"  cut succeeded with Dir={dir_flag}")
@@ -169,14 +216,18 @@ def _probe_one_face(sw, template: str, face_label: str, click_pt_mm,
                 cx_mm = c[0] * 1000
                 cy_mm = c[1] * 1000
                 cz_mm = c[2] * 1000
-                print(f"    new[{i}] center=({cx_mm:+7.2f}, {cy_mm:+7.2f}, "
-                      f"{cz_mm:+7.2f}) mm extent={ext*1000:.2f}mm")
+                print(
+                    f"    new[{i}] center=({cx_mm:+7.2f}, {cy_mm:+7.2f}, "
+                    f"{cz_mm:+7.2f}) mm extent={ext*1000:.2f}mm"
+                )
             # The smallest is the dimple bottom; report its center
             smallest = new_faces[0]
             sc = smallest[0]
-            print(f"  *** sketch (u=+5, v=+3) on {face_label} maps to "
-                  f"part ({sc[0]*1000:+.2f}, {sc[1]*1000:+.2f}, "
-                  f"{sc[2]*1000:+.2f}) mm ***")
+            print(
+                f"  *** sketch (u=+5, v=+3) on {face_label} maps to "
+                f"part ({sc[0]*1000:+.2f}, {sc[1]*1000:+.2f}, "
+                f"{sc[2]*1000:+.2f}) mm ***"
+            )
     except Exception as e:
         print(f"  ! probe raised: {e!r}")
         traceback.print_exc()
@@ -204,8 +255,7 @@ def main() -> int:
         ("-y face (normal -y)", (0.0, -15.0, 15.0)),
     ]
     for label, click_pt in probes:
-        _probe_one_face(sw, template, label, click_pt,
-                        sketch_u_mm=5.0, sketch_v_mm=3.0)
+        _probe_one_face(sw, template, label, click_pt, sketch_u_mm=5.0, sketch_v_mm=3.0)
 
     print("\n== Summary ==")
     print("== Read 'sketch (u=+5, v=+3) on FACE maps to (a, b, c) mm'.")

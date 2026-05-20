@@ -65,21 +65,38 @@ def _create_disc(doc, dia_mm: float, thick_mm: float) -> None:
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0,
-        thick_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        thick_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("disc extrude returned None")
     feat.Name = "EX_Disc"
 
 
-def _create_boss_seed(doc, thick_mm: float, offset_mm: float, seed_dia_mm: float,
-                      seed_height_mm: float):
+def _create_boss_seed(
+    doc, thick_mm: float, offset_mm: float, seed_dia_mm: float, seed_height_mm: float
+):
     """Off-center boss on the top face of the disc. Returns IFeature."""
     fm = doc.FeatureManager
     doc.ClearSelection2(True)
@@ -102,13 +119,29 @@ def _create_boss_seed(doc, thick_mm: float, offset_mm: float, seed_dia_mm: float
     sketch_feat.Select2(False, 0)
 
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0,
-        seed_height_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        seed_height_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("seed boss extrude returned None")
@@ -170,24 +203,26 @@ def _select_cylindrical_face_for_axis(doc, dia_mm: float, thick_mm: float) -> bo
 
 
 def _try_circular_pattern(fm, count: int, total_angle_rad: float) -> int:
-    print(f"-- FeatureCircularPattern5 (14 args), count={count},"
-          f" total={math.degrees(total_angle_rad):.1f}deg --")
+    print(
+        f"-- FeatureCircularPattern5 (14 args), count={count},"
+        f" total={math.degrees(total_angle_rad):.1f}deg --"
+    )
     try:
         f = fm.FeatureCircularPattern5(
-            count,             # Number
-            total_angle_rad,   # Spacing (=total angle when EqualSpacing=True)
-            False,             # FlipDirection
-            "",                # DName
-            False,             # GeometryPattern
-            True,              # EqualSpacing
-            False,             # VaryInstance
-            False,             # SyncSubAssemblies
-            False,             # BDir2
-            False,             # BSymmetric
-            1,                 # Number2
-            0.0,               # Spacing2
-            "",                # DName2
-            False,             # EqualSpacing2
+            count,  # Number
+            total_angle_rad,  # Spacing (=total angle when EqualSpacing=True)
+            False,  # FlipDirection
+            "",  # DName
+            False,  # GeometryPattern
+            True,  # EqualSpacing
+            False,  # VaryInstance
+            False,  # SyncSubAssemblies
+            False,  # BDir2
+            False,  # BSymmetric
+            1,  # Number2
+            0.0,  # Spacing2
+            "",  # DName2
+            False,  # EqualSpacing2
         )
         print(f"  FeatureCircularPattern5 -> {f!r}")
         if f is None:
@@ -214,8 +249,9 @@ def _run_case(sw, template: str, case_name: str, axis_picker) -> int:
         f_before_seed = _face_count(doc)
         print(f"  disc built; faces = {f_before_seed} (expect 3 = top+bottom+side)")
 
-        seed = _create_boss_seed(doc, thick_mm=thick_mm, offset_mm=10.0,
-                                 seed_dia_mm=3.0, seed_height_mm=2.0)
+        seed = _create_boss_seed(
+            doc, thick_mm=thick_mm, offset_mm=10.0, seed_dia_mm=3.0, seed_height_mm=2.0
+        )
         f_after_seed = _face_count(doc)
         print(f"  seed boss built; faces = {f_after_seed} (expect +2)")
 
@@ -234,16 +270,19 @@ def _run_case(sw, template: str, case_name: str, axis_picker) -> int:
             print(f"    sel[{idx}] mark={m} type={t}")
 
         fm = doc.FeatureManager
-        rc = _try_circular_pattern(fm, count=6,
-                                   total_angle_rad=2 * math.pi)
+        rc = _try_circular_pattern(fm, count=6, total_angle_rad=2 * math.pi)
         f_after = _face_count(doc)
-        print(f"  faces after pattern = {f_after} (expect {f_after_seed} + 5*2 = {f_after_seed + 10})")
+        print(
+            f"  faces after pattern = {f_after} (expect {f_after_seed} + 5*2 = {f_after_seed + 10})"
+        )
         if rc == 0 and f_after == f_after_seed + 10:
             print(f"  GREEN: {case_name}")
             return 0
         elif rc == 0:
-            print(f"  YELLOW: pattern feature created but face count "
-                  f"{f_after} != expected {f_after_seed + 10}")
+            print(
+                f"  YELLOW: pattern feature created but face count "
+                f"{f_after} != expected {f_after_seed + 10}"
+            )
             return 4
         else:
             print(f"  RED: pattern returned None or raised")
@@ -269,10 +308,12 @@ def main() -> int:
 
     print("== Spike T: circular pattern via FeatureCircularPattern5 ==")
 
-    rc_a = _run_case(sw, template, "Case A: top circular EDGE as axis ref",
-                     _select_circular_edge_top)
-    rc_b = _run_case(sw, template, "Case B: cylindrical side FACE as axis ref",
-                     _select_side_face)
+    rc_a = _run_case(
+        sw, template, "Case A: top circular EDGE as axis ref", _select_circular_edge_top
+    )
+    rc_b = _run_case(
+        sw, template, "Case B: cylindrical side FACE as axis ref", _select_side_face
+    )
 
     print(f"\n== Summary ==")
     print(f"  Case A (circular EDGE): rc={rc_a}")

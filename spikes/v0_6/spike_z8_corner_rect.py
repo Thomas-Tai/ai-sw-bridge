@@ -34,6 +34,7 @@ and check whether D2 is driven (grey) or driving (black).
 Run from venv-freshtest with SW open. 2 popups per case x 2 cases
 = 4 ticks total.
 """
+
 import os
 import pythoncom
 import win32com.client
@@ -118,7 +119,9 @@ def case_a_corner_rectangle(sw):
 
 def case_b_corner_plus_midpoint(sw):
     print()
-    print("=== Z8b: CornerRectangle + construction diagonal + Midpoint(origin) relation ===")
+    print(
+        "=== Z8b: CornerRectangle + construction diagonal + Midpoint(origin) relation ==="
+    )
     doc = make_part(sw)
     if doc is None:
         print("  ! NewDocument failed")
@@ -134,12 +137,16 @@ def case_b_corner_plus_midpoint(sw):
     if diag is None:
         print("  ! CreateLine returned None")
     else:
-        print(f"  diagonal line created, ConstructionGeometry before set: "
-              f"{getattr(diag, 'ConstructionGeometry', '?')!r}")
+        print(
+            f"  diagonal line created, ConstructionGeometry before set: "
+            f"{getattr(diag, 'ConstructionGeometry', '?')!r}"
+        )
         try:
             diag.ConstructionGeometry = True
-            print(f"  set ConstructionGeometry=True; read back: "
-                  f"{getattr(diag, 'ConstructionGeometry', '?')!r}")
+            print(
+                f"  set ConstructionGeometry=True; read back: "
+                f"{getattr(diag, 'ConstructionGeometry', '?')!r}"
+            )
         except Exception as e:
             print(f"  set ConstructionGeometry ERR: {e!r}")
 
@@ -150,7 +157,9 @@ def case_b_corner_plus_midpoint(sw):
     # (or sm.MakeSymmetric / sm.AddMidpoint -- API name varies by SW version).
     doc.ClearSelection2(True)
     # Select the diagonal
-    ok_diag = doc.SelectByID("", "SKETCHSEGMENT", 0, 0, 0)  # midpoint of diagonal at origin
+    ok_diag = doc.SelectByID(
+        "", "SKETCHSEGMENT", 0, 0, 0
+    )  # midpoint of diagonal at origin
     print(f"  select diagonal via SKETCHSEGMENT @ origin: {ok_diag}")
     # Add origin to selection
     ok_orig = doc.SelectByID("Point1@Origin", "EXTSKETCHPOINT", 0, 0, 0)
@@ -163,7 +172,9 @@ def case_b_corner_plus_midpoint(sw):
             ("Point", "SKETCHPOINT"),
         ):
             ok_orig = doc.SelectByID(try_name, try_type, 0, 0, 0)
-            print(f"  fallback SelectByID({try_name!r}, {try_type!r}, 0,0,0): {ok_orig}")
+            print(
+                f"  fallback SelectByID({try_name!r}, {try_type!r}, 0,0,0): {ok_orig}"
+            )
             if ok_orig:
                 break
 
@@ -174,7 +185,9 @@ def case_b_corner_plus_midpoint(sw):
             fn = getattr(sm, attr, None)
             if fn is None:
                 continue
-            print(f"  calling sm.{attr}(swConstraintType_MIDPOINT={SW_CONSTRAINT_MIDPOINT})")
+            print(
+                f"  calling sm.{attr}(swConstraintType_MIDPOINT={SW_CONSTRAINT_MIDPOINT})"
+            )
             try:
                 fn(SW_CONSTRAINT_MIDPOINT)
                 relation_applied = True
@@ -225,7 +238,9 @@ def main():
     SW_PREF_INPUT_DIM_VAL_ON_CREATE = 8
     prev = sw.GetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE)
     sw.SetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE, False)
-    print(f"  swInputDimValOnCreate was {prev}, set to False to match production --deferred-dim path")
+    print(
+        f"  swInputDimValOnCreate was {prev}, set to False to match production --deferred-dim path"
+    )
 
     only = os.environ.get("Z8_ONLY")
     res_a = None
@@ -241,8 +256,10 @@ def main():
 
     print()
     print("=== Z8 summary ===")
-    for tag, res in (("Z8a corner-rect baseline", res_a),
-                     ("Z8b corner-rect + midpoint", res_b)):
+    for tag, res in (
+        ("Z8a corner-rect baseline", res_a),
+        ("Z8b corner-rect + midpoint", res_b),
+    ):
         if res is None:
             print(f"  {tag}: skipped")
             continue
@@ -252,7 +269,9 @@ def main():
     print(">>> Visual check: open Equation Manager and the sketch for SK_A (and SK_B).")
     print("    Z8a clean (no red, D2 driving) -> CornerRectangle is the fix")
     print("    Z8a red (D2 driven)             -> bug is structural across rectangles;")
-    print("                                       Z8b's midpoint may or may not change it")
+    print(
+        "                                       Z8b's midpoint may or may not change it"
+    )
 
 
 if __name__ == "__main__":

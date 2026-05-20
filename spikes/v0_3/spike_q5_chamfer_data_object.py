@@ -52,12 +52,29 @@ def _create_box(doc):
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, 0.01, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        0.01,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude failed")
@@ -116,7 +133,9 @@ def main() -> int:
             candidates.append((v, score, matched))
             print(f"  v={v}: score={score}, matched={matched}")
     if not candidates:
-        print("RED: no CreateDefinition value yielded an object matching >=3 chamfer props")
+        print(
+            "RED: no CreateDefinition value yielded an object matching >=3 chamfer props"
+        )
         return 3
 
     # Highest score wins
@@ -158,7 +177,7 @@ def main() -> int:
             cp = e.GetClosestPointOn(*p)
             if cp is None:
                 continue
-            d2 = (cp[0]-p[0])**2 + (cp[1]-p[1])**2 + (cp[2]-p[2])**2
+            d2 = (cp[0] - p[0]) ** 2 + (cp[1] - p[1]) ** 2 + (cp[2] - p[2]) ** 2
             if d2 < best_d2:
                 best_d2, best_edge = d2, e
         ok = best_edge.Select2(True, 0)

@@ -48,12 +48,29 @@ def _create_box(doc, half_mm: float = 10.0, depth_mm: float = 10.0) -> None:
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, depth_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        depth_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude failed")
@@ -81,7 +98,7 @@ def _select_top_edges(doc, top_z_m: float) -> None:
             cp = e.GetClosestPointOn(*p)
             if cp is None:
                 continue
-            d2 = (cp[0]-p[0])**2 + (cp[1]-p[1])**2 + (cp[2]-p[2])**2
+            d2 = (cp[0] - p[0]) ** 2 + (cp[1] - p[1]) ** 2 + (cp[2] - p[2]) ** 2
             if d2 < best_d2:
                 best_d2, best_edge = d2, e
         if best_edge is None or best_d2 > 1e-12:
@@ -92,7 +109,9 @@ def _select_top_edges(doc, top_z_m: float) -> None:
         raise RuntimeError(f"expected 4 selected, got {n}")
 
 
-def _build_chamfer_via_pipeline(doc, fm, mode: str, distance_m: float, angle_deg: float, name: str):
+def _build_chamfer_via_pipeline(
+    doc, fm, mode: str, distance_m: float, angle_deg: float, name: str
+):
     print(f"\n-- Building chamfer '{name}' (mode={mode}) --")
     data = fm.CreateDefinition(SW_FM_CHAMFER)
     if data is None:
@@ -108,8 +127,11 @@ def _build_chamfer_via_pipeline(doc, fm, mode: str, distance_m: float, angle_deg
         try:
             # CHM says EdgeChamferAngle is in radians (despite InsertFeatureChamfer's Angle being degrees)
             import math
+
             data.EdgeChamferAngle = angle_deg * math.pi / 180
-            print(f"   Type={data.Type}, DefaultDistance={data.DefaultDistance}, EdgeChamferAngle={data.EdgeChamferAngle:.4f}rad")
+            print(
+                f"   Type={data.Type}, DefaultDistance={data.DefaultDistance}, EdgeChamferAngle={data.EdgeChamferAngle:.4f}rad"
+            )
         except Exception as e:
             print(f"   ! setting EdgeChamferAngle failed: {e!r}")
     else:
@@ -121,7 +143,9 @@ def _build_chamfer_via_pipeline(doc, fm, mode: str, distance_m: float, angle_deg
     f.Name = name
     # Verify
     data2 = f.GetDefinition
-    print(f"   created: GetEdgeCount={data2.GetEdgeCount}, GetIsFlipped={data2.GetIsFlipped if hasattr(data2, 'GetIsFlipped') else 'n/a'}")
+    print(
+        f"   created: GetEdgeCount={data2.GetEdgeCount}, GetIsFlipped={data2.GetIsFlipped if hasattr(data2, 'GetIsFlipped') else 'n/a'}"
+    )
     return f
 
 

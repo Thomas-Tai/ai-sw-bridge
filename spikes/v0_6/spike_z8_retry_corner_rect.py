@@ -68,6 +68,7 @@ Run from venv-freshtest with SW open. Expected popup ticks:
   - Z8r-c: 2 ticks (D1, D2)
   = 6 ticks total
 """
+
 import os
 import pythoncom
 import win32com.client
@@ -149,8 +150,9 @@ def case_a_corner_only(sw):
     return try_d2_binding(doc, "SK_Z8ra", "Z8r-a")
 
 
-def build_centered_corner_rect(doc, sketch_name, w_half=0.010, h_half=0.010,
-                                verify=False):
+def build_centered_corner_rect(
+    doc, sketch_name, w_half=0.010, h_half=0.010, verify=False
+):
     """Per the 2026-05-20 external diagnostic. Returns (sketch_feature,
     diag_line) and prints diagnostics. If verify=True, queries the sketch
     relations after applying sgMIDPOINT.
@@ -174,20 +176,26 @@ def build_centered_corner_rect(doc, sketch_name, w_half=0.010, h_half=0.010,
 
     # 1. Corner rectangle
     sm.CreateCornerRectangle(-w_half, -h_half, 0, w_half, h_half, 0)
-    print(f"  CreateCornerRectangle ({-w_half*1000:.1f}, {-h_half*1000:.1f}) to "
-          f"({w_half*1000:.1f}, {h_half*1000:.1f}) mm")
+    print(
+        f"  CreateCornerRectangle ({-w_half*1000:.1f}, {-h_half*1000:.1f}) to "
+        f"({w_half*1000:.1f}, {h_half*1000:.1f}) mm"
+    )
 
     # 2. Diagonal + construction
     diag_line = sm.CreateLine(-w_half, -h_half, 0, w_half, h_half, 0)
     if diag_line is None:
         print("  !! CreateLine returned None -- cannot build centered rect")
         return None, None
-    print(f"  diagonal line created; ConstructionGeometry pre-set: "
-          f"{getattr(diag_line, 'ConstructionGeometry', '?')!r}")
+    print(
+        f"  diagonal line created; ConstructionGeometry pre-set: "
+        f"{getattr(diag_line, 'ConstructionGeometry', '?')!r}"
+    )
     try:
         diag_line.ConstructionGeometry = True
-        print(f"  set ConstructionGeometry=True; readback: "
-              f"{getattr(diag_line, 'ConstructionGeometry', '?')!r}")
+        print(
+            f"  set ConstructionGeometry=True; readback: "
+            f"{getattr(diag_line, 'ConstructionGeometry', '?')!r}"
+        )
     except Exception as e:
         print(f"  !! set ConstructionGeometry ERR: {e!r}")
 
@@ -216,7 +224,9 @@ def build_centered_corner_rect(doc, sketch_name, w_half=0.010, h_half=0.010,
             print(f"  diag_line.{sel_name} ERR: {type(e).__name__}: {e}")
 
     if not ok_diag:
-        print("  !! could not select diagonal via object methods -- trying SelectByID at midpoint")
+        print(
+            "  !! could not select diagonal via object methods -- trying SelectByID at midpoint"
+        )
         # Fallback: the diagonal passes through (0,0); SelectByID at origin
         # MAY pick it but the perimeter line midpoints also sit there. Best
         # effort only.
@@ -235,13 +245,19 @@ def build_centered_corner_rect(doc, sketch_name, w_half=0.010, h_half=0.010,
     ok_orig = False
     try:
         ok_orig = doc.Extension.SelectByID2(
-            "Point1@Origin", "EXTSKETCHPOINT", 0, 0, 0,
-            True,   # Append
-            0,      # Mark
+            "Point1@Origin",
+            "EXTSKETCHPOINT",
+            0,
+            0,
+            0,
+            True,  # Append
+            0,  # Mark
             vt_disp_none,  # Callout
-            0,      # Options
+            0,  # Options
         )
-        print(f"  Extension.SelectByID2('Point1@Origin', 'EXTSKETCHPOINT', append=True) -> {ok_orig}")
+        print(
+            f"  Extension.SelectByID2('Point1@Origin', 'EXTSKETCHPOINT', append=True) -> {ok_orig}"
+        )
     except Exception as e:
         print(f"  Extension.SelectByID2 ERR: {type(e).__name__}: {e}")
 
@@ -380,14 +396,16 @@ def main():
     finally:
         sw.SetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE, original_toggle)
         final = sw.GetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE)
-        print(f"  restored swInputDimValOnCreate to {original_toggle}; readback = {final}")
+        print(
+            f"  restored swInputDimValOnCreate to {original_toggle}; readback = {final}"
+        )
 
     print()
     print("=" * 60)
     print("=== Z8-retry summary ===")
     for tag, res in (
-        ("Z8r-a (corner only)",      res_a),
-        ("Z8r-b (corner+midpoint)",  res_b),
+        ("Z8r-a (corner only)", res_a),
+        ("Z8r-b (corner+midpoint)", res_b),
         ("Z8r-c (corner+midpoint+verify)", res_c),
     ):
         if res is None:
@@ -397,18 +415,26 @@ def main():
     print()
     print(">>> Decision matrix:")
     print("    Z8r-a drives  -> macro-feature WAS the cause; centering is optional")
-    print("                     (rectangle handler can switch to CornerRectangle directly)")
+    print(
+        "                     (rectangle handler can switch to CornerRectangle directly)"
+    )
     print("    Z8r-b drives  -> the production fix is corner+midpoint as drafted")
     print("                     (update builder.py rectangle handler)")
     print("    Z8r-c diverges from Z8r-b -> relation didn't apply consistently;")
     print("                                 investigate sgMIDPOINT selection state")
-    print("    All red       -> demotion is structural across ALL rectangle close-reopen")
+    print(
+        "    All red       -> demotion is structural across ALL rectangle close-reopen"
+    )
     print("                     (consider Direction B' VBA fallback)")
     print()
     print(">>> Visual checks needed (no late-binding API for these):")
     print("    1. Open Equation Manager: are 'D2@SK_Z8r*' bindings red or clean?")
-    print("    2. Open each sketch tree: is 'Midpoint1' under Relations in SK_Z8rb / SK_Z8rc?")
-    print("    3. Drag the rectangle corner: does it stay centered on origin in SK_Z8rb / SK_Z8rc?")
+    print(
+        "    2. Open each sketch tree: is 'Midpoint1' under Relations in SK_Z8rb / SK_Z8rc?"
+    )
+    print(
+        "    3. Drag the rectangle corner: does it stay centered on origin in SK_Z8rb / SK_Z8rc?"
+    )
 
 
 if __name__ == "__main__":

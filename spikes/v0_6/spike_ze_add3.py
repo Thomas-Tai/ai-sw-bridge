@@ -45,6 +45,7 @@ Three cases:
 
 Run from venv-freshtest with SW open. Expected popup ticks: 6 (2 per case).
 """
+
 import os
 import pythoncom
 import win32com.client
@@ -140,19 +141,30 @@ def case_a_add3_all_config(sw):
         print(f"  Add3('ZEA_W = 7.0', swAllConfiguration) -> idx={idx_w}")
         idx_h = eq.Add3(-1, '"ZEA_H" = 9.0', True, SW_CONFIG_ALL, vt_disp_none)
         print(f"  Add3('ZEA_H = 9.0', swAllConfiguration) -> idx={idx_h}")
-        idx_d1 = eq.Add3(-1, f'"D1@{sketch_name}" = "ZEA_W"', True, SW_CONFIG_ALL, vt_disp_none)
+        idx_d1 = eq.Add3(
+            -1, f'"D1@{sketch_name}" = "ZEA_W"', True, SW_CONFIG_ALL, vt_disp_none
+        )
         print(f"  Add3('D1 = ZEA_W', swAllConfiguration) -> idx={idx_d1}")
-        idx_d2 = eq.Add3(-1, f'"D2@{sketch_name}" = "ZEA_H"', True, SW_CONFIG_ALL, vt_disp_none)
+        idx_d2 = eq.Add3(
+            -1, f'"D2@{sketch_name}" = "ZEA_H"', True, SW_CONFIG_ALL, vt_disp_none
+        )
         print(f"  Add3('D2 = ZEA_H', swAllConfiguration) -> idx={idx_d2}")
     except Exception as e:
         print(f"  Add3 ERR: {type(e).__name__}: {e}")
         # Try without VT_DISPATCH for ConfigNames
         try:
-            idx_d2 = eq.Add3(-1, f'"D2@{sketch_name}" = "ZEA_H"', True, SW_CONFIG_ALL, None)
+            idx_d2 = eq.Add3(
+                -1, f'"D2@{sketch_name}" = "ZEA_H"', True, SW_CONFIG_ALL, None
+            )
             print(f"  Add3 with raw None for ConfigNames -> idx={idx_d2}")
         except Exception as e2:
             print(f"  Add3 with None ERR: {type(e2).__name__}: {e2}")
-            return {"add3_reachable": True, "drives": False, "d2_mm": None, "error": str(e)}
+            return {
+                "add3_reachable": True,
+                "drives": False,
+                "d2_mm": None,
+                "error": str(e),
+            }
 
     print(f"  ForceRebuild3 post-Add3 -> {doc.ForceRebuild3(True)}")
 
@@ -186,8 +198,12 @@ def case_b_add3_this_config(sw):
     try:
         eq.Add3(-1, '"ZEB_W" = 7.0', True, SW_CONFIG_THIS, vt_disp_none)
         eq.Add3(-1, '"ZEB_H" = 9.0', True, SW_CONFIG_THIS, vt_disp_none)
-        idx_d1 = eq.Add3(-1, f'"D1@{sketch_name}" = "ZEB_W"', True, SW_CONFIG_THIS, vt_disp_none)
-        idx_d2 = eq.Add3(-1, f'"D2@{sketch_name}" = "ZEB_H"', True, SW_CONFIG_THIS, vt_disp_none)
+        idx_d1 = eq.Add3(
+            -1, f'"D1@{sketch_name}" = "ZEB_W"', True, SW_CONFIG_THIS, vt_disp_none
+        )
+        idx_d2 = eq.Add3(
+            -1, f'"D2@{sketch_name}" = "ZEB_H"', True, SW_CONFIG_THIS, vt_disp_none
+        )
         print(f"  D1 bind idx={idx_d1}, D2 bind idx={idx_d2}")
     except Exception as e:
         print(f"  Add3 ERR: {type(e).__name__}: {e}")
@@ -238,13 +254,22 @@ def case_c_set_equation_retrofit(sw):
     #   SetEquationAndConfigurationOption(Index, Equation, ConfigOption, ConfigNames)
     try:
         r = eq.SetEquationAndConfigurationOption(
-            idx_d2, f'"D2@{sketch_name}" = "ZEC_H"',
-            SW_CONFIG_ALL, win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)
+            idx_d2,
+            f'"D2@{sketch_name}" = "ZEC_H"',
+            SW_CONFIG_ALL,
+            win32com.client.VARIANT(pythoncom.VT_DISPATCH, None),
         )
-        print(f"  SetEquationAndConfigurationOption(idx={idx_d2}, swAllConfiguration) -> {r!r}")
+        print(
+            f"  SetEquationAndConfigurationOption(idx={idx_d2}, swAllConfiguration) -> {r!r}"
+        )
     except Exception as e:
         print(f"  SetEquationAndConfigurationOption ERR: {type(e).__name__}: {e}")
-        return {"setequation_reachable": True, "drives": False, "d2_mm": None, "error": str(e)}
+        return {
+            "setequation_reachable": True,
+            "drives": False,
+            "d2_mm": None,
+            "error": str(e),
+        }
 
     print(f"  ForceRebuild3 post-SetEquation -> {doc.ForceRebuild3(True)}")
     p2 = doc.Parameter(f"D2@{sketch_name}")
@@ -283,19 +308,27 @@ def main():
     print()
     print("=" * 60)
     print("=== Spike ZE summary ===")
-    for tag, res in (("ZE-a Add3+AllConfig",     res_a),
-                     ("ZE-b Add3+ThisConfig",    res_b),
-                     ("ZE-c Add2+SetEqRetrofit", res_c)):
+    for tag, res in (
+        ("ZE-a Add3+AllConfig", res_a),
+        ("ZE-b Add3+ThisConfig", res_b),
+        ("ZE-c Add2+SetEqRetrofit", res_c),
+    ):
         print(f"  {tag}: {res}")
 
     drives_anywhere = any(r and r.get("drives") for r in (res_a, res_b, res_c))
     print()
     if drives_anywhere:
         print(">>> ZE GREEN: at least one method drove D2 successfully.")
-        print(">>> Production fix path identified. Investigate which one and integrate.")
+        print(
+            ">>> Production fix path identified. Investigate which one and integrate."
+        )
     else:
-        print(">>> ZE RED: neither Add3 nor SetEquationAndConfigurationOption drove D2.")
-        print(">>> Solution 2 (mutate-against-template) stands as the production answer.")
+        print(
+            ">>> ZE RED: neither Add3 nor SetEquationAndConfigurationOption drove D2."
+        )
+        print(
+            ">>> Solution 2 (mutate-against-template) stands as the production answer."
+        )
 
 
 if __name__ == "__main__":

@@ -59,12 +59,29 @@ def _create_box(doc, side_mm: float, thick_mm: float) -> None:
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, thick_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        thick_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude returned None")
@@ -77,13 +94,13 @@ def _select_top_edges(doc) -> int:
     Each SelectByID call appends (no ClearSelection2 between)."""
     doc.ClearSelection2(True)
     edges = [
-        (0.01, 0.0, 0.01),    # +X edge midpoint
-        (-0.01, 0.0, 0.01),   # -X edge midpoint
-        (0.0, 0.01, 0.01),    # +Y edge midpoint
-        (0.0, -0.01, 0.01),   # -Y edge midpoint
+        (0.01, 0.0, 0.01),  # +X edge midpoint
+        (-0.01, 0.0, 0.01),  # -X edge midpoint
+        (0.0, 0.01, 0.01),  # +Y edge midpoint
+        (0.0, -0.01, 0.01),  # -Y edge midpoint
     ]
     n = 0
-    for (x, y, z) in edges:
+    for x, y, z in edges:
         if doc.SelectByID("", "EDGE", x, y, z):
             n += 1
     return n
@@ -143,9 +160,12 @@ def _make_chamfer(doc, fm) -> object:
     f = fm.InsertFeatureChamfer(
         SW_FCO_TANGENT_PROPAGATION,
         SW_CHAMFER_EQUAL_DISTANCE,
-        0.0, 0.0,
+        0.0,
+        0.0,
         0.001,  # 1mm
-        0.0, 0.0, 0.0,
+        0.0,
+        0.0,
+        0.0,
     )
     if f is None:
         raise RuntimeError("InsertFeatureChamfer returned None")
@@ -156,8 +176,12 @@ def _try_strategy(label: str, doc, fm, mover) -> None:
     """Build a fresh box, add a chamfer, run the mover, report bbox change."""
     print(f"\n=== Strategy: {label} ===")
     # Clean slate: new doc each strategy
-    template = win32com.client.Dispatch("SldWorks.Application").GetUserPreferenceStringValue(8)
-    fresh = win32com.client.Dispatch("SldWorks.Application").NewDocument(template, 0, 0.0, 0.0)
+    template = win32com.client.Dispatch(
+        "SldWorks.Application"
+    ).GetUserPreferenceStringValue(8)
+    fresh = win32com.client.Dispatch("SldWorks.Application").NewDocument(
+        template, 0, 0.0, 0.0
+    )
     if fresh is None:
         print("  ! could not open fresh doc; skipping")
         return
@@ -229,8 +253,10 @@ def main() -> int:
         ("T2 ClearSelection2(True)", lambda d: d.ClearSelection2(True)),
         ("T3 RunCommand(8211, '')", lambda d: d.Extension.RunCommand(8211, "")),
         ("T4 RunCommand(-1, '')", lambda d: d.Extension.RunCommand(-1, "")),
-        ("T5 ClearSelection2 + EditRebuild3",
-         lambda d: (d.ClearSelection2(True), getattr(d, "EditRebuild3"))),
+        (
+            "T5 ClearSelection2 + EditRebuild3",
+            lambda d: (d.ClearSelection2(True), getattr(d, "EditRebuild3")),
+        ),
     ]
 
     # Close the initial doc we made; each strategy opens its own.

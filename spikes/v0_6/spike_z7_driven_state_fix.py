@@ -48,11 +48,12 @@ D2 equation is red (driven, fix failed) or clean (driving, fix worked).
 Run from venv-freshtest with SW open. 2 popup ticks per case x 3
 cases = 6 ticks total.
 """
+
 import pythoncom
 import win32com.client
 
-SW_DIM_DRIVEN_STATE_DRIVING = 1   # swDimensionDriving (best guess)
-SW_DIM_DRIVEN_STATE_DRIVEN = 2    # swDimensionDriven (best guess)
+SW_DIM_DRIVEN_STATE_DRIVING = 1  # swDimensionDriving (best guess)
+SW_DIM_DRIVEN_STATE_DRIVEN = 2  # swDimensionDriven (best guess)
 
 
 def make_part(sw):
@@ -155,7 +156,9 @@ def case_b_mid_edit_rebuild(sw):
     """Route 3: single EditSketch session, mid-edit EditRebuild3 between
     D1 and D2."""
     print()
-    print("=== Z7b: Route 3 -- single EditSketch session, EditRebuild3 between D1 and D2 ===")
+    print(
+        "=== Z7b: Route 3 -- single EditSketch session, EditRebuild3 between D1 and D2 ==="
+    )
     doc = make_part(sw)
     if doc is None:
         print("  ! NewDocument failed")
@@ -192,7 +195,10 @@ def case_b_mid_edit_rebuild(sw):
         (-0.010, -0.005, 0),
     ]
     add_edge_dim_inline(
-        doc, (-0.010, 0, 0), (-0.015, 0, 0), "Z7b.D2",
+        doc,
+        (-0.010, 0, 0),
+        (-0.015, 0, 0),
+        "Z7b.D2",
         fallback_picks=fallback_d2,
     )
 
@@ -234,7 +240,9 @@ def case_c_driven_state_override(sw):
         try:
             dim2.DrivenState = SW_DIM_DRIVEN_STATE_DRIVING
             after = dim2.DrivenState
-            print(f"    after dim2.DrivenState = SW_DIM_DRIVEN_STATE_DRIVING -> read back {after!r}")
+            print(
+                f"    after dim2.DrivenState = SW_DIM_DRIVEN_STATE_DRIVING -> read back {after!r}"
+            )
         except Exception as e:
             print(f"    write dim2.DrivenState ERR: {e!r}")
     else:
@@ -247,6 +255,7 @@ def case_c_driven_state_override(sw):
 
 def main():
     import os
+
     pythoncom.CoInitialize()
     sw = win32com.client.Dispatch("SldWorks.Application")
     print(f"SW revision: {sw.RevisionNumber}")
@@ -265,7 +274,11 @@ def main():
 
     print()
     print("=== Z7 summary ===")
-    for tag, res in (("Z7a control", res_a), ("Z7b mid-edit rebuild", res_b), ("Z7c DrivenState override", res_c)):
+    for tag, res in (
+        ("Z7a control", res_a),
+        ("Z7b mid-edit rebuild", res_b),
+        ("Z7c DrivenState override", res_c),
+    ):
         if res is None:
             print(f"  {tag}: skipped / failed")
             continue
@@ -274,7 +287,9 @@ def main():
     print()
     print(">>> ACCEPTANCE TEST is visual:")
     print("    For each part (SK_A, SK_B, SK_C):")
-    print("      1. Open Equation Manager. Is 'D2@SK_*' = '\"Z7_TEST_VAR\"' red or clean?")
+    print(
+        "      1. Open Equation Manager. Is 'D2@SK_*' = '\"Z7_TEST_VAR\"' red or clean?"
+    )
     print("      2. Open the sketch. Is D2 driven (grey/special) or driving (black)?")
     print("    Z7a expected: red + driven (reproduces the bug).")
     print("    Z7b green = Route 3 (mid-edit rebuild) is the fix.")

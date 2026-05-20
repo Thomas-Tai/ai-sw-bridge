@@ -72,12 +72,29 @@ def _create_box(doc, side_mm: float) -> None:
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, side_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        side_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude returned None")
@@ -110,7 +127,9 @@ def _list_faces_with_centers(doc) -> list:
             cy = (box[1] + box[4]) / 2.0
             cz = (box[2] + box[5]) / 2.0
         try:
-            normal_at_center = face.GetClosestPointOn(cx, cy, cz) if cx is not None else None
+            normal_at_center = (
+                face.GetClosestPointOn(cx, cy, cz) if cx is not None else None
+            )
         except Exception:
             normal_at_center = None
         # Try IFace2.Normal property
@@ -124,8 +143,14 @@ def _list_faces_with_centers(doc) -> list:
     return out
 
 
-def _probe_one_face(doc, face_name: str, click_point_mm, sketch_u_mm: float,
-                    sketch_v_mm: float, dimple_depth_mm: float = 1.0):
+def _probe_one_face(
+    doc,
+    face_name: str,
+    click_point_mm,
+    sketch_u_mm: float,
+    sketch_v_mm: float,
+    dimple_depth_mm: float = 1.0,
+):
     """Sketch a small circle at (sketch_u, sketch_v) on the named face, cut
     a 1mm dimple, then find the new face the cut created and print its
     centroid in part coords.
@@ -135,10 +160,14 @@ def _probe_one_face(doc, face_name: str, click_point_mm, sketch_u_mm: float,
     circle center.
     """
     print(f"\n--- probing {face_name} ---")
-    print(f"  click @ part ({click_point_mm[0]:+.2f}, {click_point_mm[1]:+.2f}, "
-          f"{click_point_mm[2]:+.2f}) mm")
-    print(f"  sketch circle center @ sketch (u={sketch_u_mm:+.2f}, "
-          f"v={sketch_v_mm:+.2f}) mm")
+    print(
+        f"  click @ part ({click_point_mm[0]:+.2f}, {click_point_mm[1]:+.2f}, "
+        f"{click_point_mm[2]:+.2f}) mm"
+    )
+    print(
+        f"  sketch circle center @ sketch (u={sketch_u_mm:+.2f}, "
+        f"v={sketch_v_mm:+.2f}) mm"
+    )
 
     n_faces_before = len([f for f in _list_faces_with_centers(doc)])
     print(f"  faces before dimple: {n_faces_before}")
@@ -170,13 +199,33 @@ def _probe_one_face(doc, face_name: str, click_point_mm, sketch_u_mm: float,
 
     fm = doc.FeatureManager
     cut = fm.FeatureCut4(
-        True, False, False,
-        SW_END_COND_BLIND, 0,
-        dimple_depth_mm / 1000.0, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, False,
-        True, True, True, True,
-        False, 0, 0.0, False, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        dimple_depth_mm / 1000.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        True,
+        False,
+        0,
+        0.0,
+        False,
+        False,
     )
     if cut is None:
         print("  ! cut returned None")
@@ -202,12 +251,26 @@ def _probe_one_face(doc, face_name: str, click_point_mm, sketch_u_mm: float,
         # Skip the big box faces -- their centers are at +/-15 or 0
         # If |cx|, |cy|, |cz| matches a box face center, skip
         is_box_face = (
-            (abs(abs(cx_mm) - 15.0) < 0.01 and abs(cy_mm) < 0.01 and abs(cz_mm - 15.0) < 0.01) or
-            (abs(cx_mm) < 0.01 and abs(abs(cy_mm) - 15.0) < 0.01 and abs(cz_mm - 15.0) < 0.01) or
-            (abs(cx_mm) < 0.01 and abs(cy_mm) < 0.01 and (abs(cz_mm) < 0.01 or abs(cz_mm - 30.0) < 0.01))
+            (
+                abs(abs(cx_mm) - 15.0) < 0.01
+                and abs(cy_mm) < 0.01
+                and abs(cz_mm - 15.0) < 0.01
+            )
+            or (
+                abs(cx_mm) < 0.01
+                and abs(abs(cy_mm) - 15.0) < 0.01
+                and abs(cz_mm - 15.0) < 0.01
+            )
+            or (
+                abs(cx_mm) < 0.01
+                and abs(cy_mm) < 0.01
+                and (abs(cz_mm) < 0.01 or abs(cz_mm - 30.0) < 0.01)
+            )
         )
         marker = "  " if is_box_face else "* "
-        print(f"    {marker}face[{fi}] center=({cx_mm:+7.2f}, {cy_mm:+7.2f}, {cz_mm:+7.2f}) mm")
+        print(
+            f"    {marker}face[{fi}] center=({cx_mm:+7.2f}, {cy_mm:+7.2f}, {cz_mm:+7.2f}) mm"
+        )
 
     return cut
 
@@ -233,20 +296,24 @@ def main() -> int:
 
         # +x face: outward normal +x, click at (15, 0, 15) -- midpoint of
         # right side, mid-height z (box runs z=0..30, so mid = 15)
-        _probe_one_face(doc, "+x face", (15.0, 0.0, 15.0),
-                        sketch_u_mm=5.0, sketch_v_mm=3.0)
+        _probe_one_face(
+            doc, "+x face", (15.0, 0.0, 15.0), sketch_u_mm=5.0, sketch_v_mm=3.0
+        )
 
         # -x face: outward normal -x, click at (-15, 0, 15)
-        _probe_one_face(doc, "-x face", (-15.0, 0.0, 15.0),
-                        sketch_u_mm=5.0, sketch_v_mm=3.0)
+        _probe_one_face(
+            doc, "-x face", (-15.0, 0.0, 15.0), sketch_u_mm=5.0, sketch_v_mm=3.0
+        )
 
         # +y face: outward normal +y, click at (0, 15, 15)
-        _probe_one_face(doc, "+y face", (0.0, 15.0, 15.0),
-                        sketch_u_mm=5.0, sketch_v_mm=3.0)
+        _probe_one_face(
+            doc, "+y face", (0.0, 15.0, 15.0), sketch_u_mm=5.0, sketch_v_mm=3.0
+        )
 
         # -y face: outward normal -y, click at (0, -15, 15)
-        _probe_one_face(doc, "-y face", (0.0, -15.0, 15.0),
-                        sketch_u_mm=5.0, sketch_v_mm=3.0)
+        _probe_one_face(
+            doc, "-y face", (0.0, -15.0, 15.0), sketch_u_mm=5.0, sketch_v_mm=3.0
+        )
 
         print("\n== End of probe ==")
         print("== For each face above, find the planar (non-cylindrical)")

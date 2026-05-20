@@ -17,6 +17,7 @@ to either narrow the search or rule out hypotheses cheaply.
 Run from venv-freshtest with SW open. Creates its own part; closes it
 without saving on exit.
 """
+
 import time
 import pythoncom
 import win32com.client
@@ -62,7 +63,9 @@ def time_addim(sw, doc, label):
     dim = doc.AddDimension2(0, 0.015, 0)
     t1 = time.perf_counter()
     elapsed_ms = (t1 - t0) * 1000
-    print(f"  [{label}] edge select={ok}, AddDimension2 returned in {elapsed_ms:.1f}ms, dim={dim is not None}")
+    print(
+        f"  [{label}] edge select={ok}, AddDimension2 returned in {elapsed_ms:.1f}ms, dim={dim is not None}"
+    )
     # Close the sketch without committing the dim (avoid stuck popup
     # blocking subsequent SW operations)
     sm.InsertSketch(True)
@@ -91,8 +94,10 @@ def main():
     sw.SetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE, not orig_8)
     rb_8 = sw.GetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE)
     sw.SetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE, orig_8)
-    print(f"  [baseline] toggle 8 (swInputDimValOnCreate): orig={orig_8}, "
-          f"toggles via Set/Get? {rb_8 == (not orig_8)}")
+    print(
+        f"  [baseline] toggle 8 (swInputDimValOnCreate): orig={orig_8}, "
+        f"toggles via Set/Get? {rb_8 == (not orig_8)}"
+    )
     print()
 
     if not togglable_ids:
@@ -118,10 +123,10 @@ def main():
     print()
 
     configs = [
-        ("CONTROL (both unchanged)",        None,  None),
-        ("only toggle 8 = False",           False, None),
-        (f"only toggle {instant2d_id} = False", None,  False),
-        ("BOTH = False",                    False, False),
+        ("CONTROL (both unchanged)", None, None),
+        ("only toggle 8 = False", False, None),
+        (f"only toggle {instant2d_id} = False", None, False),
+        ("BOTH = False", False, False),
     ]
 
     docs_to_close = []
@@ -130,12 +135,16 @@ def main():
             print(f"--- {label} ---")
             # Apply toggle config
             if dim_val_set is not None:
-                sw.SetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE, dim_val_set)
+                sw.SetUserPreferenceToggle(
+                    SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE, dim_val_set
+                )
             if instant2d_set is not None:
                 sw.SetUserPreferenceToggle(instant2d_id, instant2d_set)
             actual_8 = sw.GetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE)
             actual_i2d = sw.GetUserPreferenceToggle(instant2d_id)
-            print(f"  toggle 8 now = {actual_8}, toggle {instant2d_id} now = {actual_i2d}")
+            print(
+                f"  toggle 8 now = {actual_8}, toggle {instant2d_id} now = {actual_i2d}"
+            )
             # Fresh part for clean state
             doc = sw.NewDocument(template, 0, 0.0, 0.0)
             if doc is None:
@@ -145,7 +154,9 @@ def main():
             time_addim(sw, doc, label)
             print()
             # Reset toggles to initial before next config (so each is independent)
-            sw.SetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE, initial_dim_val)
+            sw.SetUserPreferenceToggle(
+                SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE, initial_dim_val
+            )
             sw.SetUserPreferenceToggle(instant2d_id, initial_instant2d)
     finally:
         sw.SetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE, initial_dim_val)

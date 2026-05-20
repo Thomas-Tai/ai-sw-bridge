@@ -40,12 +40,29 @@ def _create_box(doc, side_mm: float, depth_mm: float) -> None:
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, depth_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        depth_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
 
 
@@ -74,8 +91,10 @@ def main() -> int:
     if sketch_feat is None:
         print("! no sketch produced via FeatureByPositionReverse")
         return 4
-    print(f"  sketch obtained via FBPR(0): name='{sketch_feat.Name}', "
-          f"type='{sketch_feat.GetTypeName2}'")
+    print(
+        f"  sketch obtained via FBPR(0): name='{sketch_feat.Name}', "
+        f"type='{sketch_feat.GetTypeName2}'"
+    )
 
     sketch_feat.Name = "SK_TestPlusX"
     print(f"  after Name='SK_TestPlusX' set, sketch_feat.Name='{sketch_feat.Name}'")

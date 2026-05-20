@@ -1,4 +1,5 @@
 """Spike V2: enumerate the feature tree before and after sketch_circle_on_face('+x')."""
+
 import pythoncom
 import win32com.client
 
@@ -14,10 +15,29 @@ sm.CreateCenterRectangle(0.0, 0.0, 0.0, 0.015, 0.015, 0.0)
 sm.InsertSketch(True)
 fm = doc.FeatureManager
 fm.FeatureExtrusion2(
-    True, False, False, 0, 0, 0.020, 0.0,
-    False, False, False, False, 0.0, 0.0,
-    False, False, False, False,
-    True, True, True, 0, 0.0, False,
+    True,
+    False,
+    False,
+    0,
+    0,
+    0.020,
+    0.0,
+    False,
+    False,
+    False,
+    False,
+    0.0,
+    0.0,
+    False,
+    False,
+    False,
+    False,
+    True,
+    True,
+    True,
+    0,
+    0.0,
+    False,
 )
 
 print("=== after box build, top features (FBPR) ===")

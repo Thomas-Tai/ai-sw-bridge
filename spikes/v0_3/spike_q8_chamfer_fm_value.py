@@ -43,12 +43,29 @@ def _create_box(doc, half_mm=10.0, depth_mm=10.0):
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, depth_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        depth_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude failed")
@@ -78,8 +95,10 @@ def _select_top_edges(doc):
         all_edges = all_edges()
     doc.ClearSelection2(True)
     targets = [
-        (0.01, 0.0, 0.01), (-0.01, 0.0, 0.01),
-        (0.0, 0.01, 0.01), (0.0, -0.01, 0.01),
+        (0.01, 0.0, 0.01),
+        (-0.01, 0.0, 0.01),
+        (0.0, 0.01, 0.01),
+        (0.0, -0.01, 0.01),
     ]
     n = 0
     for p in targets:
@@ -115,7 +134,9 @@ def main() -> int:
     _create_box(doc)
     fm = doc.FeatureManager
 
-    print("== Part A: probe CreateDefinition(v), v=0..300, for chamfer-specific props ==")
+    print(
+        "== Part A: probe CreateDefinition(v), v=0..300, for chamfer-specific props =="
+    )
 
     chamfer_candidates = []
     fillet_v = -1
@@ -128,9 +149,18 @@ def main() -> int:
             continue
 
         props = {}
-        for name in ["Type", "DefaultDistance", "DefaultRadius", "EdgeChamferAngle",
-                     "EqualDistance", "IsFlipped", "GetEdgeCount", "Initialize",
-                     "GetFaceCount", "AccessSelections"]:
+        for name in [
+            "Type",
+            "DefaultDistance",
+            "DefaultRadius",
+            "EdgeChamferAngle",
+            "EqualDistance",
+            "IsFlipped",
+            "GetEdgeCount",
+            "Initialize",
+            "GetFaceCount",
+            "AccessSelections",
+        ]:
             try:
                 val = getattr(data, name)
                 props[name] = val
@@ -152,7 +182,9 @@ def main() -> int:
             print(f"  v={v}: props={list(props)}")
 
     if not chamfer_candidates:
-        print("\nNo EqualDistance/EdgeChamferAngle hit. Printing raw props for v=0..30:")
+        print(
+            "\nNo EqualDistance/EdgeChamferAngle hit. Printing raw props for v=0..30:"
+        )
         for v in range(0, 31):
             try:
                 data = fm.CreateDefinition(v)
@@ -161,9 +193,19 @@ def main() -> int:
             if data is None:
                 continue
             props = []
-            for name in ["Type", "DefaultDistance", "DefaultRadius", "EdgeChamferAngle",
-                         "EqualDistance", "IsFlipped", "GetEdgeCount", "GetFaceCount",
-                         "Initialize", "AccessSelections", "Count"]:
+            for name in [
+                "Type",
+                "DefaultDistance",
+                "DefaultRadius",
+                "EdgeChamferAngle",
+                "EqualDistance",
+                "IsFlipped",
+                "GetEdgeCount",
+                "GetFaceCount",
+                "Initialize",
+                "AccessSelections",
+                "Count",
+            ]:
                 try:
                     _ = getattr(data, name)
                     props.append(name)
@@ -185,7 +227,9 @@ def main() -> int:
         fm2 = doc2.FeatureManager
         n_sel = _select_top_edges(doc2)
         f_before, e_before = _face_edge_count(doc2)
-        print(f"\n  Options={options_val}: selected {n_sel} edges, body={f_before}F/{e_before}E")
+        print(
+            f"\n  Options={options_val}: selected {n_sel} edges, body={f_before}F/{e_before}E"
+        )
 
         result = fm2.InsertFeatureChamfer(
             options_val, 16, 0.0, 0.0, 0.001, 0.0, 0.0, 0.0
@@ -193,7 +237,9 @@ def main() -> int:
         print(f"  InsertFeatureChamfer -> {type(result).__name__!r}: {result!r}")
         doc2.EditRebuild3
         f_after, e_after = _face_edge_count(doc2)
-        print(f"  body after rebuild: {f_after}F/{e_after}E (chamfered=10F/20E, plain=6F/12E)")
+        print(
+            f"  body after rebuild: {f_after}F/{e_after}E (chamfered=10F/20E, plain=6F/12E)"
+        )
 
     # -------------------------------------------------------------------------
     # Part C: if chamfer candidate found, test its CreateFeature pipeline

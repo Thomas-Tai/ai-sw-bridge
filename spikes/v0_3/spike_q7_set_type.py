@@ -43,12 +43,29 @@ def _create_box(doc, half_mm=10.0, depth_mm=10.0):
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, depth_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        depth_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude failed")
@@ -83,7 +100,9 @@ def main() -> int:
     target_value = 16  # swChamferEqualDistance
     try:
         # Invoke signature (pywin32): Invoke(dispid, lcid, wFlags, bResultWanted, *args)
-        result = data._oleobj_.Invoke(dispid, 0, DISPATCH_PROPERTYPUT, False, target_value)
+        result = data._oleobj_.Invoke(
+            dispid, 0, DISPATCH_PROPERTYPUT, False, target_value
+        )
         print(f"  Invoke PROPERTYPUT Type={target_value} -> {result!r}")
         readback = data.Type
         print(f"  readback Type = {readback}")

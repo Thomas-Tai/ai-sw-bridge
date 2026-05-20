@@ -54,12 +54,29 @@ def _create_box(doc):
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, 0.01, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        0.01,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude failed")
@@ -82,10 +99,10 @@ def main() -> int:
     # Reproduce the chamfered_box edge selection sequence exactly.
     # spec.json: 4 top edges at z=10mm
     edges = [
-        (0.01, 0.0, 0.01),    # +X
-        (-0.01, 0.0, 0.01),   # -X
-        (0.0, 0.01, 0.01),    # +Y
-        (0.0, -0.01, 0.01),   # -Y
+        (0.01, 0.0, 0.01),  # +X
+        (-0.01, 0.0, 0.01),  # -X
+        (0.0, 0.01, 0.01),  # +Y
+        (0.0, -0.01, 0.01),  # -Y
     ]
 
     doc.ClearSelection2(True)
@@ -93,22 +110,29 @@ def main() -> int:
     for i, (x, y, z) in enumerate(edges):
         ok = doc.SelectByID("", "EDGE", x, y, z)
         n = sel.GetSelectedObjectCount2(-1)
-        print(f"  SelectByID #{i} ({x*1000:.0f},{y*1000:.0f},{z*1000:.0f}) -> ok={ok}, count={n}")
+        print(
+            f"  SelectByID #{i} ({x*1000:.0f},{y*1000:.0f},{z*1000:.0f}) -> ok={ok}, count={n}"
+        )
 
     # Now: insert the chamfer
     fm = doc.FeatureManager
     f = fm.InsertFeatureChamfer(
         SW_FCO_TANGENT_PROPAGATION,
         SW_CHAMFER_EQUAL_DISTANCE,
-        0.0, 0.0,
+        0.0,
+        0.0,
         0.001,  # 1mm
-        0.0, 0.0, 0.0,
+        0.0,
+        0.0,
+        0.0,
     )
     print(f"\nInsertFeatureChamfer -> {f!r}")
     if f is None:
         print("RED: returned None")
         return 3
-    print(f"  Name={f.Name}, GetTypeName={f.GetTypeName}, IsSuppressed={f.IsSuppressed}")
+    print(
+        f"  Name={f.Name}, GetTypeName={f.GetTypeName}, IsSuppressed={f.IsSuppressed}"
+    )
 
     # Pull GetDefinition to inspect what edges were actually recorded
     try:

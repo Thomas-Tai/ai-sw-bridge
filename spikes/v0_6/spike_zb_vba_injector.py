@@ -51,6 +51,7 @@ PATCH NOTES vs the 2026-05-20 snippet:
 Run from venv-freshtest with SW open. Expected popup ticks: 2 (D1, D2
 on the reproduction part).
 """
+
 import os
 import sys
 import tempfile
@@ -168,7 +169,9 @@ def reproduce_driven_d2(sw):
     print(f"  built sketch: {feat.Name!r}")
 
     add_edge_dim_with_reopen(doc, sketch_name, (0, 0.010, 0), (0, 0.015, 0), "D1")
-    dim2 = add_edge_dim_with_reopen(doc, sketch_name, (-0.010, 0, 0), (-0.015, 0, 0), "D2")
+    dim2 = add_edge_dim_with_reopen(
+        doc, sketch_name, (-0.010, 0, 0), (-0.015, 0, 0), "D2"
+    )
     if dim2 is None:
         print("  ! D2 AddDimension2 failed; cannot run injector")
         return None, None
@@ -184,8 +187,10 @@ def reproduce_driven_d2(sw):
         print(f"  EditRebuild3 ERR: {type(e).__name__}: {e}")
     p2 = doc.Parameter(f"D2@{sketch_name}")
     pre_val = (p2.SystemValue * 1000) if p2 is not None else None
-    print(f"  pre-injection Parameter(D2@{sketch_name}) = {pre_val!r} mm "
-          f"(20.0=placeholder, 5.0=binding-drives)")
+    print(
+        f"  pre-injection Parameter(D2@{sketch_name}) = {pre_val!r} mm "
+        f"(20.0=placeholder, 5.0=binding-drives)"
+    )
 
     return doc, sketch_name
 
@@ -304,9 +309,9 @@ def main():
         # RunMacro silently returns False on signature mismatch; we don't know
         # which form this build expects, so try them in order.
         attempts = [
-            ("param form / .swb",        VBA_TEMPLATE_PARAM,        ".swb"),
+            ("param form / .swb", VBA_TEMPLATE_PARAM, ".swb"),
             ("CreateObject form / .swb", VBA_TEMPLATE_CREATEOBJECT, ".swb"),
-            ("param form / .swp",        VBA_TEMPLATE_PARAM,        ".swp"),
+            ("param form / .swp", VBA_TEMPLATE_PARAM, ".swp"),
         ]
         macro_ok = False
         for label, template, suffix in attempts:
@@ -323,8 +328,12 @@ def main():
             print(">>> All 3 macro forms returned False from RunMacro.")
             print(">>> Possibilities: (a) RunMacro requires compiled .swp not .swb;")
             print(">>>                (b) Sub signature uses yet another convention;")
-            print(">>>                (c) the macro engine isn't licensed/enabled on this SW seat.")
-            print(">>> Check whether SW's VBA editor opened a window with the macro loaded.")
+            print(
+                ">>>                (c) the macro engine isn't licensed/enabled on this SW seat."
+            )
+            print(
+                ">>> Check whether SW's VBA editor opened a window with the macro loaded."
+            )
             return
 
         result = verify_injection(doc, sketch_name)
@@ -337,21 +346,33 @@ def main():
         print(f"  D2 readback:               {result['post_val_mm']!r} mm")
         print()
         print(">>> Visual check (the only definitive signal for cosmetic state):")
-        print(f"    Open Equation Manager. Is 'D2@{sketch_name} = \"ZB_POSTINJECT_VAR\"' red?")
-        print( "    Open the sketch. Is D2 black (driving) or grey (driven)?")
+        print(
+            f"    Open Equation Manager. Is 'D2@{sketch_name} = \"ZB_POSTINJECT_VAR\"' red?"
+        )
+        print("    Open the sketch. Is D2 black (driving) or grey (driven)?")
         print()
         print(">>> Decision matrix:")
         print("    Drives=True + EqMgr clean  -> production fix path viable;")
-        print("                                  emit+run macro per rectangle D2 in builder")
+        print(
+            "                                  emit+run macro per rectangle D2 in builder"
+        )
         print("    Drives=True + EqMgr red    -> impossible state; investigate")
-        print("    Drives=False + macro ran   -> VBA injection blocked at SW solver level;")
-        print("                                  the demotion is enforced post-property-write")
-        print("    Drives=False + macro errored -> Sub signature wrong, try CreateObject form")
+        print(
+            "    Drives=False + macro ran   -> VBA injection blocked at SW solver level;"
+        )
+        print(
+            "                                  the demotion is enforced post-property-write"
+        )
+        print(
+            "    Drives=False + macro errored -> Sub signature wrong, try CreateObject form"
+        )
     finally:
         sw.SetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE, original_toggle)
         final = sw.GetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE)
         print()
-        print(f"  restored swInputDimValOnCreate to {original_toggle}; readback = {final}")
+        print(
+            f"  restored swInputDimValOnCreate to {original_toggle}; readback = {final}"
+        )
 
 
 if __name__ == "__main__":

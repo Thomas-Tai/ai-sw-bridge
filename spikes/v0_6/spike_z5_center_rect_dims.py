@@ -45,6 +45,7 @@ Decision tree:
 Run from venv-freshtest with SW open. User ticks 2 popups during the
 run.
 """
+
 import pythoncom
 import win32com.client
 
@@ -100,9 +101,11 @@ def probe_sketch(doc, sketch_name, label):
         except Exception:
             n_rel = -1
 
-    print(f"  [{label}] sketch={sketch_name!r}: "
-          f"segments={n_seg} (of which construction={n_construction}), "
-          f"relations={n_rel}")
+    print(
+        f"  [{label}] sketch={sketch_name!r}: "
+        f"segments={n_seg} (of which construction={n_construction}), "
+        f"relations={n_rel}"
+    )
     return n_seg, n_construction, n_rel
 
 
@@ -121,11 +124,15 @@ def report_dim_status(doc, param_name, label):
         # p is IDimension; SystemValue and FullName work via late-binding.
         # IsDriving may need to be accessed as a property.
         is_driving = getattr(p, "IsDriving", None)
-        print(f"  [{label}] Parameter({param_name!r}) = {val:.3f} mm, "
-              f"IsDriving={is_driving!r}")
+        print(
+            f"  [{label}] Parameter({param_name!r}) = {val:.3f} mm, "
+            f"IsDriving={is_driving!r}"
+        )
     except Exception as e:
-        print(f"  [{label}] Parameter({param_name!r}) = {val:.3f} mm, "
-              f"IsDriving access ERR: {e!r}")
+        print(
+            f"  [{label}] Parameter({param_name!r}) = {val:.3f} mm, "
+            f"IsDriving access ERR: {e!r}"
+        )
 
 
 def main():
@@ -145,7 +152,9 @@ def main():
     print("=== Phase 1: CreateCenterRectangle on Front plane, then close ===")
     doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
     sm.InsertSketch(True)
-    sm.CreateCenterRectangle(0, 0, 0, 0.010, 0.010, 0)  # center at origin, corner at (10,10)
+    sm.CreateCenterRectangle(
+        0, 0, 0, 0.010, 0.010, 0
+    )  # center at origin, corner at (10,10)
     sm.InsertSketch(True)  # close
     sk_feat = doc.FeatureByPositionReverse(0)
     sk_feat.Name = "SK_TestBox"

@@ -10,6 +10,7 @@ Patterns:
   D. Use SelectByID with the face's IFace2 entity instead of by-coord
   E. (A) + read FBPR(0..N) IMMEDIATELY (no other ops)
 """
+
 import pythoncom
 import win32com.client
 
@@ -26,10 +27,29 @@ def make_box(doc):
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     fm.FeatureExtrusion2(
-        True, False, False, 0, 0, 0.020, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.020,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
 
 

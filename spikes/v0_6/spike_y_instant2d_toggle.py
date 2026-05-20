@@ -56,6 +56,7 @@ correlate.
 Run from venv-freshtest with SW open and a clean state. The spike
 creates its own part; doesn't depend on or modify any existing doc.
 """
+
 import pythoncom
 import win32com.client
 
@@ -94,7 +95,9 @@ def find_instant2d_toggle_id(sw):
             # human inspection -- the right ID has to be picked by
             # observed SW behavior (Instant2D ribbon button highlight).
         else:
-            print(f"  toggle {tid}: read back {readback} after Set({not original}) -- NOT togglable")
+            print(
+                f"  toggle {tid}: read back {readback} after Set({not original}) -- NOT togglable"
+            )
     return None  # Decision deferred to human observation in step 4
 
 
@@ -139,16 +142,18 @@ def main():
     # We'll capture Instant2D candidate states too -- the most likely ID first
     instant2d_id = SW_TOGGLE_INSTANT_2D_ENABLE_CANDIDATES[0]  # 433
     initial_instant2d = sw.GetUserPreferenceToggle(instant2d_id)
-    print(f"  toggle {instant2d_id} (likely swInstant2DEnable) initial: {initial_instant2d}")
+    print(
+        f"  toggle {instant2d_id} (likely swInstant2DEnable) initial: {initial_instant2d}"
+    )
 
     print()
     print("=== Step 3: test 4 toggle configurations ===")
     # Each config: open a fresh part to avoid sketch-state contamination
     configs = [
-        ("CONTROL (both unchanged)",       None, None),
-        ("only toggle 8 = False",          False, None),
-        ("only toggle 433 = False",        None, False),
-        ("BOTH = False",                   False, False),
+        ("CONTROL (both unchanged)", None, None),
+        ("only toggle 8 = False", False, None),
+        ("only toggle 433 = False", None, False),
+        ("BOTH = False", False, False),
     ]
 
     try:
@@ -163,15 +168,25 @@ def main():
 
             # Apply config
             if dim_val_set is not None:
-                sw.SetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE, dim_val_set)
-                print(f"  set toggle 8 = {dim_val_set}, readback = {sw.GetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE)}")
+                sw.SetUserPreferenceToggle(
+                    SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE, dim_val_set
+                )
+                print(
+                    f"  set toggle 8 = {dim_val_set}, readback = {sw.GetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE)}"
+                )
             else:
-                print(f"  toggle 8 unchanged = {sw.GetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE)}")
+                print(
+                    f"  toggle 8 unchanged = {sw.GetUserPreferenceToggle(SW_TOGGLE_INPUT_DIM_VAL_ON_CREATE)}"
+                )
             if instant2d_set is not None:
                 sw.SetUserPreferenceToggle(instant2d_id, instant2d_set)
-                print(f"  set toggle {instant2d_id} = {instant2d_set}, readback = {sw.GetUserPreferenceToggle(instant2d_id)}")
+                print(
+                    f"  set toggle {instant2d_id} = {instant2d_set}, readback = {sw.GetUserPreferenceToggle(instant2d_id)}"
+                )
             else:
-                print(f"  toggle {instant2d_id} unchanged = {sw.GetUserPreferenceToggle(instant2d_id)}")
+                print(
+                    f"  toggle {instant2d_id} unchanged = {sw.GetUserPreferenceToggle(instant2d_id)}"
+                )
 
             sm = open_sketch(doc)
             draw_and_dim(doc, sm, label)

@@ -6,6 +6,7 @@ equation is red in the UI, this script reports the equation text exactly
 as SW sees it and tells us whether the Parameter the equation references
 actually exists.
 """
+
 import pythoncom
 import win32com.client
 
@@ -68,7 +69,9 @@ def main():
     ]:
         p = doc.Parameter(pname)
         if p is None:
-            print(f"  Parameter({pname!r}) = None  [RED -- dim does NOT exist on this name]")
+            print(
+                f"  Parameter({pname!r}) = None  [RED -- dim does NOT exist on this name]"
+            )
         else:
             try:
                 val = p.SystemValue * 1000

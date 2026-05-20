@@ -14,6 +14,7 @@ before re-running Z2.
 
 Run from venv-freshtest with SW open.
 """
+
 import pythoncom
 import win32com.client
 

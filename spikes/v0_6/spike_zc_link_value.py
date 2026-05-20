@@ -62,6 +62,7 @@ DECISION MATRIX:
 Run from venv-freshtest with SW open. Expected popup ticks: 2 (D1, D2 on
 the reproduction part).
 """
+
 import os
 import sys
 import pythoncom
@@ -72,7 +73,9 @@ def safe_dir(obj, label):
     try:
         return list(dir(obj))
     except Exception as e:
-        print(f"  [{label}] dir() ERR (expected on late-binding): {type(e).__name__}: {e}")
+        print(
+            f"  [{label}] dir() ERR (expected on late-binding): {type(e).__name__}: {e}"
+        )
         return []
 
 
@@ -123,8 +126,12 @@ def reproduce_driven_d2(sw):
     feat.Name = sketch_name
     print(f"  built sketch: {feat.Name!r}")
 
-    dim1 = add_edge_dim_with_reopen(doc, sketch_name, (0, 0.010, 0), (0, 0.015, 0), "D1")
-    dim2 = add_edge_dim_with_reopen(doc, sketch_name, (-0.010, 0, 0), (-0.015, 0, 0), "D2")
+    dim1 = add_edge_dim_with_reopen(
+        doc, sketch_name, (0, 0.010, 0), (0, 0.015, 0), "D1"
+    )
+    dim2 = add_edge_dim_with_reopen(
+        doc, sketch_name, (-0.010, 0, 0), (-0.015, 0, 0), "D2"
+    )
     if dim2 is None:
         return None, None, None
     return doc, dim1, dim2
@@ -140,7 +147,7 @@ DIM_CANDIDATES_PROPERTY_GET = [
     "LinkValue",
     "LinkValueName",
     "GetLinkedVariable",
-    "Name",        # IDimension.Name is the link-value name when linked per some docs
+    "Name",  # IDimension.Name is the link-value name when linked per some docs
     "FullName",
     "Variable",
     "VariableName",
@@ -172,11 +179,15 @@ DIM_CANDIDATES_METHOD = [
 def probe_dim_attrs(dim, label):
     """Phase 2: probe the dim object's attribute surface."""
     print()
-    print(f"=== Phase 2: probe {label} ({type(dim).__module__}.{type(dim).__name__}) ===")
+    print(
+        f"=== Phase 2: probe {label} ({type(dim).__module__}.{type(dim).__name__}) ==="
+    )
 
     # 2a: best-effort dir() enumeration
     attrs = safe_dir(dim, label)
-    relevant = [a for a in attrs if any(k in a.lower() for k in ("link", "shar", "var"))]
+    relevant = [
+        a for a in attrs if any(k in a.lower() for k in ("link", "shar", "var"))
+    ]
     if relevant:
         print(f"  dir() showed relevant attrs: {relevant}")
     else:
@@ -257,8 +268,10 @@ def verify_link_propagation(doc, sketch_name, link_var_name):
 
     p2 = doc.Parameter(f"D2@{sketch_name}")
     p2_val = (p2.SystemValue * 1000) if p2 is not None else None
-    print(f"  Parameter(D2@{sketch_name}) = {p2_val!r} mm "
-          f"(7.0=full win, 20.0=placeholder/unchanged)")
+    print(
+        f"  Parameter(D2@{sketch_name}) = {p2_val!r} mm "
+        f"(7.0=full win, 20.0=placeholder/unchanged)"
+    )
     drives = p2_val is not None and abs(p2_val - 7.0) < 0.01
     print(f"  >>> link value drives D2: {drives}")
     return drives
@@ -313,15 +326,25 @@ def main():
         print(f"  Phase 4 D2-tracks-link result: {drives}")
         print()
         print(">>> Visual check (definitive for partial wins):")
-        print( "    1. Open SK_ZC. Right-click D1 or D2. Is 'Link Values...' option present?")
-        print( "    2. In Property Manager / FeatureManager tree, is there a 'Link Values'")
-        print( "       node listing ZC_LINK_W with D1 and D2 as members?")
-        print( "    3. Equation Manager: is 'ZC_LINK_W = 7.0' clean or red?")
+        print(
+            "    1. Open SK_ZC. Right-click D1 or D2. Is 'Link Values...' option present?"
+        )
+        print(
+            "    2. In Property Manager / FeatureManager tree, is there a 'Link Values'"
+        )
+        print("       node listing ZC_LINK_W with D1 and D2 as members?")
+        print("    3. Equation Manager: is 'ZC_LINK_W = 7.0' clean or red?")
         print()
         print(">>> Decision:")
-        print( "    All AttributeError                       -> Solution 2 stands. LinkValue is typelib-hidden.")
-        print( "    Setter accepted but D2 didn't track (drives=False) -> partial mechanism; not a fix.")
-        print( "    drives=True                              -> production fix path; ship Spike ZD to integrate.")
+        print(
+            "    All AttributeError                       -> Solution 2 stands. LinkValue is typelib-hidden."
+        )
+        print(
+            "    Setter accepted but D2 didn't track (drives=False) -> partial mechanism; not a fix."
+        )
+        print(
+            "    drives=True                              -> production fix path; ship Spike ZD to integrate."
+        )
     finally:
         sw.SetUserPreferenceToggle(SW_PREF, original_toggle)
         print()

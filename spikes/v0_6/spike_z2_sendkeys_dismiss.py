@@ -35,6 +35,7 @@ Decision tree:
 
 Run from venv-freshtest with SW open and ready.
 """
+
 import threading
 import time
 import pythoncom
@@ -83,10 +84,29 @@ def main():
     doc.ClearSelection2(True)
     doc.SelectByID("SK_Box1", "SKETCH", 0, 0, 0)
     f = fm.FeatureExtrusion2(
-        True, False, False, 0, 0, 0.010, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.010,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if f is None:
         print("  ! FeatureExtrusion2 failed")
@@ -105,7 +125,9 @@ def main():
     print(f"  top edge selected: {ok}")
 
     # Spawn dismissal thread, then call AddDimension2 from main thread
-    t = threading.Thread(target=dismiss_after_delay, args=(sw, 500, "test1"), daemon=True)
+    t = threading.Thread(
+        target=dismiss_after_delay, args=(sw, 500, "test1"), daemon=True
+    )
     t.start()
     t0 = time.perf_counter()
     dim = doc.AddDimension2(0, 0.015, 0)
@@ -115,7 +137,9 @@ def main():
     print(f"  AddDimension2 returned in {elapsed_ms:.1f}ms, dim={dim is not None}")
 
     if elapsed_ms < 100:
-        verdict_1 = "INSTANT (popup likely never opened OR dim creation failed silently)"
+        verdict_1 = (
+            "INSTANT (popup likely never opened OR dim creation failed silently)"
+        )
     elif elapsed_ms < 2000:
         verdict_1 = "FAST (SendKeys likely dismissed the popup)"
     elif elapsed_ms < 6000:
@@ -150,7 +174,9 @@ def main():
     ok = doc.SelectByID("", "SKETCHSEGMENT", -0.010, 0, 0)  # left edge
     print(f"  left edge selected: {ok}")
 
-    t = threading.Thread(target=dismiss_after_delay, args=(sw, 200, "test2"), daemon=True)
+    t = threading.Thread(
+        target=dismiss_after_delay, args=(sw, 200, "test2"), daemon=True
+    )
     t.start()
     t0 = time.perf_counter()
     dim2 = doc.AddDimension2(-0.015, 0, 0)
@@ -159,7 +185,9 @@ def main():
     t.join(timeout=2.0)
     print(f"  AddDimension2 returned in {elapsed_ms:.1f}ms, dim={dim2 is not None}")
     if elapsed_ms < 100:
-        verdict_2 = "INSTANT (popup likely never opened OR dim creation failed silently)"
+        verdict_2 = (
+            "INSTANT (popup likely never opened OR dim creation failed silently)"
+        )
     elif elapsed_ms < 2000:
         verdict_2 = "FAST (SendKeys likely dismissed the popup)"
     elif elapsed_ms < 6000:
@@ -183,14 +211,18 @@ def main():
     # ----- Verify bbox unchanged -----
     bb = doc.GetBodies2(0, True)[0].GetBodyBox()
     print()
-    print(f"final bbox (mm): x=[{bb[0]*1000:.1f},{bb[3]*1000:.1f}] "
-          f"y=[{bb[1]*1000:.1f},{bb[4]*1000:.1f}] "
-          f"z=[{bb[2]*1000:.1f},{bb[5]*1000:.1f}]")
+    print(
+        f"final bbox (mm): x=[{bb[0]*1000:.1f},{bb[3]*1000:.1f}] "
+        f"y=[{bb[1]*1000:.1f},{bb[4]*1000:.1f}] "
+        f"z=[{bb[2]*1000:.1f},{bb[5]*1000:.1f}]"
+    )
     print(f"expected:        x=[-10.0,10.0] y=[-10.0,10.0] z=[0.0,10.0]")
 
     print()
     print(">>> Decision:")
-    print("    Both tests FAST (<2s) AND both dims REAL -> Option A viable (autonomous batching)")
+    print(
+        "    Both tests FAST (<2s) AND both dims REAL -> Option A viable (autonomous batching)"
+    )
     print("    Either test SLOW (>6s) -> Option B (human ticks at end)")
     print("    Either dim None -> SendKeys broke dim creation; investigate")
 

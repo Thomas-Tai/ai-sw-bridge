@@ -42,12 +42,29 @@ def _create_centered_box(doc, side_mm: float) -> None:
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        SW_END_COND_BLIND, 0, side_mm / 1000, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        side_mm / 1000,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("box extrude returned None")
@@ -83,14 +100,24 @@ def _face_data(doc) -> list[tuple[tuple[float, float, float], float]]:
     return out
 
 
-def _probe_one_face(sw, template: str, face_label: str, click_pt_mm,
-                    sketch_u_mm: float, sketch_v_mm: float,
-                    boss_height_mm: float = 3.0) -> None:
+def _probe_one_face(
+    sw,
+    template: str,
+    face_label: str,
+    click_pt_mm,
+    sketch_u_mm: float,
+    sketch_v_mm: float,
+    boss_height_mm: float = 3.0,
+) -> None:
     print(f"\n--- probing {face_label} ---")
-    print(f"  click @ part ({click_pt_mm[0]:+.2f}, {click_pt_mm[1]:+.2f}, "
-          f"{click_pt_mm[2]:+.2f}) mm")
-    print(f"  sketch circle center @ sketch (u={sketch_u_mm:+.2f}, "
-          f"v={sketch_v_mm:+.2f}) mm")
+    print(
+        f"  click @ part ({click_pt_mm[0]:+.2f}, {click_pt_mm[1]:+.2f}, "
+        f"{click_pt_mm[2]:+.2f}) mm"
+    )
+    print(
+        f"  sketch circle center @ sketch (u={sketch_u_mm:+.2f}, "
+        f"v={sketch_v_mm:+.2f}) mm"
+    )
 
     doc = sw.NewDocument(template, 0, 0.0, 0.0)
     if doc is None:
@@ -129,13 +156,29 @@ def _probe_one_face(sw, template: str, face_label: str, click_pt_mm,
 
         fm = doc.FeatureManager
         feat = fm.FeatureExtrusion2(
-            True, False, False,
-            SW_END_COND_BLIND, 0,
-            boss_height_mm / 1000.0, 0.0,
-            False, False, False, False, 0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            SW_START_SKETCH_PLANE, 0.0, False,
+            True,
+            False,
+            False,
+            SW_END_COND_BLIND,
+            0,
+            boss_height_mm / 1000.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            SW_START_SKETCH_PLANE,
+            0.0,
+            False,
         )
         if feat is None:
             print("  ! boss extrude returned None (tried Dir=False, Flip=False)")
@@ -154,8 +197,10 @@ def _probe_one_face(sw, template: str, face_label: str, click_pt_mm,
             return
         new_faces.sort(key=lambda x: x[1])
         for i, (c, ext) in enumerate(new_faces):
-            print(f"    new[{i}] center=({c[0]*1000:+7.2f}, {c[1]*1000:+7.2f}, "
-                  f"{c[2]*1000:+7.2f}) mm extent={ext*1000:.2f}mm")
+            print(
+                f"    new[{i}] center=({c[0]*1000:+7.2f}, {c[1]*1000:+7.2f}, "
+                f"{c[2]*1000:+7.2f}) mm extent={ext*1000:.2f}mm"
+            )
         # Smallest extent = boss top (planar circular cap, 2mm extent).
         # That cap's center = boss axis at the OUTWARD end. We want the
         # center IN-FACE projection. Take the cap center, subtract the
@@ -163,8 +208,10 @@ def _probe_one_face(sw, template: str, face_label: str, click_pt_mm,
         cap = new_faces[0]
         cap_center = cap[0]
         print(f"  *** sketch (u=+5, v=+3) on {face_label} ***")
-        print(f"  *** boss CAP center @ part ({cap_center[0]*1000:+.2f}, "
-              f"{cap_center[1]*1000:+.2f}, {cap_center[2]*1000:+.2f}) mm")
+        print(
+            f"  *** boss CAP center @ part ({cap_center[0]*1000:+.2f}, "
+            f"{cap_center[1]*1000:+.2f}, {cap_center[2]*1000:+.2f}) mm"
+        )
         print(f"  *** boss STARTED at (face_plane, ?, ?) -- the sketch circle's")
         print(f"  *** in-face center is at the same (u, v) projection as the cap.")
     except Exception as e:
@@ -194,8 +241,7 @@ def main() -> int:
         ("-y face", (0.0, -15.0, 15.0)),
     ]
     for label, click_pt in probes:
-        _probe_one_face(sw, template, label, click_pt,
-                        sketch_u_mm=5.0, sketch_v_mm=3.0)
+        _probe_one_face(sw, template, label, click_pt, sketch_u_mm=5.0, sketch_v_mm=3.0)
     return 0
 
 

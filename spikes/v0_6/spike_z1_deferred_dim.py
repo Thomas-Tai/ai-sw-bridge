@@ -36,6 +36,7 @@ Decision tree:
 Run from venv-freshtest. Creates a fresh part; user tick required
 in Phase 2; closes the test doc after observation.
 """
+
 import time
 import pythoncom
 import win32com.client
@@ -71,10 +72,29 @@ def main():
     doc.ClearSelection2(True)
     doc.SelectByID("SK_Box", "SKETCH", 0, 0, 0)
     f = fm.FeatureExtrusion2(
-        True, False, False, 0, 0, 0.010, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.010,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if f is None:
         print("  ! FeatureExtrusion2 failed")
@@ -84,9 +104,11 @@ def main():
     print(f"  extrude built: name={f.Name!r}")
     print(f"  Phase 1 elapsed: {(t1-t0)*1000:.1f}ms (popups should NOT have appeared)")
     bb = doc.GetBodies2(0, True)[0].GetBodyBox()
-    print(f"  body bbox (mm): x=[{bb[0]*1000:.1f},{bb[3]*1000:.1f}] "
-          f"y=[{bb[1]*1000:.1f},{bb[4]*1000:.1f}] "
-          f"z=[{bb[2]*1000:.1f},{bb[5]*1000:.1f}]")
+    print(
+        f"  body bbox (mm): x=[{bb[0]*1000:.1f},{bb[3]*1000:.1f}] "
+        f"y=[{bb[1]*1000:.1f},{bb[4]*1000:.1f}] "
+        f"z=[{bb[2]*1000:.1f},{bb[5]*1000:.1f}]"
+    )
     print(f"  expected:        x=[-10.0,10.0] y=[-10.0,10.0] z=[0.0,10.0]")
 
     # ----- Phase 2: deferred dim on closed sketch -----
@@ -145,14 +167,18 @@ def main():
 
     # Verify bbox unchanged (just adding a dim shouldn't change geometry)
     bb2 = doc.GetBodies2(0, True)[0].GetBodyBox()
-    print(f"  body bbox after dim (mm): x=[{bb2[0]*1000:.1f},{bb2[3]*1000:.1f}] "
-          f"y=[{bb2[1]*1000:.1f},{bb2[4]*1000:.1f}] "
-          f"z=[{bb2[2]*1000:.1f},{bb2[5]*1000:.1f}]")
+    print(
+        f"  body bbox after dim (mm): x=[{bb2[0]*1000:.1f},{bb2[3]*1000:.1f}] "
+        f"y=[{bb2[1]*1000:.1f},{bb2[4]*1000:.1f}] "
+        f"z=[{bb2[2]*1000:.1f},{bb2[5]*1000:.1f}]"
+    )
 
     print()
     print(">>> Spike Z1 complete. Did the popup appear in Phase 2? (Y/N)")
     print(">>> If Y and Parameter('D1@SK_Box') is non-None: GREEN, refactor viable.")
-    print(">>> If popup did not appear but Parameter is non-None: GREEN AND popup-free!")
+    print(
+        ">>> If popup did not appear but Parameter is non-None: GREEN AND popup-free!"
+    )
     print(">>> If Parameter is None: investigate before refactoring.")
 
 

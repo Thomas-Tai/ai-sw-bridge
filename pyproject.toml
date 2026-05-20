@@ -39,6 +39,15 @@ dev = ["pytest>=7", "pytest-cov"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.black]
+# Pin target so local + CI matrix entries (3.10, 3.12, 3.14) all produce
+# the same output. Without this pin, black 25.x auto-targets py315 on the
+# CI runners and the older Python versions can't re-parse the result,
+# leading to "would reformat" errors against files that ARE already
+# formatted -- they were formatted for py315, the safety check needs them
+# in py3.x-current syntax.
+target-version = ["py310"]
+
 [project.urls]
 Homepage = "https://github.com/Thomas-Tai/ai-sw-bridge"
 Issues = "https://github.com/Thomas-Tai/ai-sw-bridge/issues"

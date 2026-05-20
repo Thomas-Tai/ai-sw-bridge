@@ -45,6 +45,7 @@ along x from x=20 to x=50.
 Run from venv-freshtest. Standalone -- prints diagnostics and leaves
 the part open for inspection.
 """
+
 import math
 import pythoncom
 import win32com.client
@@ -92,8 +93,10 @@ def main():
                 try:
                     line.ConstructionGeometry = True
                     construction_method = "CreateLine+CG"
-                    print(f"  ConstructionGeometry=True set; readback: "
-                          f"{line.ConstructionGeometry}")
+                    print(
+                        f"  ConstructionGeometry=True set; readback: "
+                        f"{line.ConstructionGeometry}"
+                    )
                 except Exception as e_cg:
                     print(f"  ConstructionGeometry set ERR: {e_cg!r}")
                     construction_method = "CreateLine_noCG"
@@ -119,26 +122,26 @@ def main():
     print("=== Calling FeatureRevolve2 (20 args, CHM-verified) ===")
     try:
         rev = fm.FeatureRevolve2(
-            True,                       # 1  SingleDir
-            True,                       # 2  IsSolid
-            False,                      # 3  IsThin
-            False,                      # 4  IsCut
-            False,                      # 5  ReverseDir
-            False,                      # 6  BothDirectionUpToSameEntity
-            SW_END_COND_BLIND,          # 7  Dir1Type
-            0,                          # 8  Dir2Type (ignored)
-            angle_rad,                  # 9  Dir1Angle (radians)
-            0.0,                        # 10 Dir2Angle
-            False,                      # 11 OffsetReverse1
-            False,                      # 12 OffsetReverse2
-            0.0,                        # 13 OffsetDistance1
-            0.0,                        # 14 OffsetDistance2
-            SW_THIN_WALL_ONE_DIRECTION, # 15 ThinType
-            0.0,                        # 16 ThinThickness1
-            0.0,                        # 17 ThinThickness2
-            True,                       # 18 Merge
-            True,                       # 19 UseFeatScope
-            True,                       # 20 UseAutoSelect
+            True,  # 1  SingleDir
+            True,  # 2  IsSolid
+            False,  # 3  IsThin
+            False,  # 4  IsCut
+            False,  # 5  ReverseDir
+            False,  # 6  BothDirectionUpToSameEntity
+            SW_END_COND_BLIND,  # 7  Dir1Type
+            0,  # 8  Dir2Type (ignored)
+            angle_rad,  # 9  Dir1Angle (radians)
+            0.0,  # 10 Dir2Angle
+            False,  # 11 OffsetReverse1
+            False,  # 12 OffsetReverse2
+            0.0,  # 13 OffsetDistance1
+            0.0,  # 14 OffsetDistance2
+            SW_THIN_WALL_ONE_DIRECTION,  # 15 ThinType
+            0.0,  # 16 ThinThickness1
+            0.0,  # 17 ThinThickness2
+            True,  # 18 Merge
+            True,  # 19 UseFeatScope
+            True,  # 20 UseAutoSelect
         )
         print(f"  result: {rev!r}")
         if rev is not None:
@@ -153,10 +156,12 @@ def main():
     bodies = doc.GetBodies2(0, True)
     if bodies and len(bodies) > 0:
         bb = bodies[0].GetBodyBox()
-        print(f"body bbox (mm): "
-              f"x=[{bb[0]*1000:.2f},{bb[3]*1000:.2f}] "
-              f"y=[{bb[1]*1000:.2f},{bb[4]*1000:.2f}] "
-              f"z=[{bb[2]*1000:.2f},{bb[5]*1000:.2f}]")
+        print(
+            f"body bbox (mm): "
+            f"x=[{bb[0]*1000:.2f},{bb[3]*1000:.2f}] "
+            f"y=[{bb[1]*1000:.2f},{bb[4]*1000:.2f}] "
+            f"z=[{bb[2]*1000:.2f},{bb[5]*1000:.2f}]"
+        )
         print("expected:        x=[20.00,50.00] y=[-8.00,8.00] z=[-8.00,8.00]")
         faces = bodies[0].GetFaces()
         n_faces = len(faces) if faces else 0

@@ -37,6 +37,7 @@ Decision tree:
 
 Run from venv-freshtest with SW open. User ticks 5 popups total.
 """
+
 import time
 import pythoncom
 import win32com.client
@@ -52,33 +53,33 @@ def _cut_args(end_cond, depth_m, flip=False):
     """Return the 27-arg tuple for IFeatureManager.FeatureCut4, mirroring
     builder.py's _call_feature_cut wrapper."""
     return (
-        True,            # 1  Sd
-        flip,            # 2  Flip
-        False,           # 3  Dir
-        end_cond,        # 4  T1
-        0,               # 5  T2
-        depth_m,         # 6  D1
-        0.0,             # 7  D2
-        False,           # 8  Dchk1
-        False,           # 9  Dchk2
-        False,           # 10 Ddir1
-        False,           # 11 Ddir2
-        0.0,             # 12 Dang1
-        0.0,             # 13 Dang2
-        False,           # 14 OffsetReverse1
-        False,           # 15 OffsetReverse2
-        False,           # 16 TranslateSurface1
-        False,           # 17 TranslateSurface2
-        False,           # 18 NormalCut
-        True,            # 19 UseFeatScope
-        True,            # 20 UseAutoSelect
-        True,            # 21 AssemblyFeatureScope
-        True,            # 22 AutoSelectComponents
-        False,           # 23 PropagateFeatureToParts
+        True,  # 1  Sd
+        flip,  # 2  Flip
+        False,  # 3  Dir
+        end_cond,  # 4  T1
+        0,  # 5  T2
+        depth_m,  # 6  D1
+        0.0,  # 7  D2
+        False,  # 8  Dchk1
+        False,  # 9  Dchk2
+        False,  # 10 Ddir1
+        False,  # 11 Ddir2
+        0.0,  # 12 Dang1
+        0.0,  # 13 Dang2
+        False,  # 14 OffsetReverse1
+        False,  # 15 OffsetReverse2
+        False,  # 16 TranslateSurface1
+        False,  # 17 TranslateSurface2
+        False,  # 18 NormalCut
+        True,  # 19 UseFeatScope
+        True,  # 20 UseAutoSelect
+        True,  # 21 AssemblyFeatureScope
+        True,  # 22 AutoSelectComponents
+        False,  # 23 PropagateFeatureToParts
         SW_START_SKETCH_PLANE,  # 24 T0
-        0.0,             # 25 StartOffset
-        False,           # 26 FlipStartOffset
-        False,           # 27 OptimizeGeometry
+        0.0,  # 25 StartOffset
+        False,  # 26 FlipStartOffset
+        False,  # 27 OptimizeGeometry
     )
 
 
@@ -101,10 +102,29 @@ def build_phase1_geometry(doc):
     doc.ClearSelection2(True)
     doc.SelectByID("SK_Box", "SKETCH", 0, 0, 0)
     f_box = fm.FeatureExtrusion2(
-        True, False, False, 0, 0, 0.010, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.010,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if f_box is None:
         raise RuntimeError("FeatureExtrusion2 for EX_Box failed")
@@ -190,8 +210,10 @@ def add_deferred_dim(doc, sketch_name, segment_pick, dim_pos, label):
     dim = doc.AddDimension2(*dim_pos)
     t1 = time.perf_counter()
     elapsed_ms = (t1 - t0) * 1000
-    print(f"    [{label}] AddDimension2 -> dim={dim is not None}, "
-          f"elapsed={elapsed_ms:.1f}ms")
+    print(
+        f"    [{label}] AddDimension2 -> dim={dim is not None}, "
+        f"elapsed={elapsed_ms:.1f}ms"
+    )
     doc.SketchManager.InsertSketch(True)  # close sketch
     return elapsed_ms, (dim is not None)
 
@@ -234,21 +256,25 @@ def main():
 
     body = doc.GetBodies2(0, True)[0]
     bb = body.GetBodyBox()
-    print(f"  body bbox (mm): x=[{bb[0]*1000:.1f},{bb[3]*1000:.1f}] "
-          f"y=[{bb[1]*1000:.1f},{bb[4]*1000:.1f}] "
-          f"z=[{bb[2]*1000:.1f},{bb[5]*1000:.1f}]")
+    print(
+        f"  body bbox (mm): x=[{bb[0]*1000:.1f},{bb[3]*1000:.1f}] "
+        f"y=[{bb[1]*1000:.1f},{bb[4]*1000:.1f}] "
+        f"z=[{bb[2]*1000:.1f},{bb[5]*1000:.1f}]"
+    )
 
     # ----- Phase 2: SK_Box dims (D1 top edge, D2 left edge) -----
     print()
     print("=== Phase 2: SK_Box deferred dims (2 popups expected) ===")
     add_deferred_dim(
-        doc, "SK_Box",
-        segment_pick=(0, 0.010, 0),   # top edge (y=+10mm in sketch)
+        doc,
+        "SK_Box",
+        segment_pick=(0, 0.010, 0),  # top edge (y=+10mm in sketch)
         dim_pos=(0, 0.015, 0),
         label="SK_Box.D1 top edge",
     )
     add_deferred_dim(
-        doc, "SK_Box",
+        doc,
+        "SK_Box",
         segment_pick=(-0.010, 0, 0),  # left edge (x=-10mm)
         dim_pos=(-0.015, 0, 0),
         label="SK_Box.D2 left edge",
@@ -262,14 +288,16 @@ def main():
     # Simpler: just add one dim per re-entry, twice.
     # Pick the circle edge at its rightmost point (x=+4mm, since r=4mm).
     add_deferred_dim(
-        doc, "SK_Hole",
+        doc,
+        "SK_Hole",
         segment_pick=(0.004, 0, 0),
         dim_pos=(0.008, 0, 0),
         label="SK_Hole.D1 diameter",
     )
     # Try a second dim on the same circle, picked from top (y=+4mm).
     add_deferred_dim(
-        doc, "SK_Hole",
+        doc,
+        "SK_Hole",
         segment_pick=(0, 0.004, 0),
         dim_pos=(0, 0.008, 0),
         label="SK_Hole.D2 second-pick",
@@ -281,7 +309,8 @@ def main():
     # SK_Slot is on +Z top face. Circle center=(6mm,6mm), r=2mm.
     # Pick the circle edge at its rightmost point (x=8mm, y=6mm).
     add_deferred_dim(
-        doc, "SK_Slot",
+        doc,
+        "SK_Slot",
         segment_pick=(0.008, 0.006, 0),
         dim_pos=(0.012, 0.006, 0),
         label="SK_Slot.D1 diameter",
@@ -291,8 +320,8 @@ def main():
     print()
     print("=== Verification: Parameter readback ===")
     results = {
-        "D1@SK_Box":  report_param(doc, "D1@SK_Box"),
-        "D2@SK_Box":  report_param(doc, "D2@SK_Box"),
+        "D1@SK_Box": report_param(doc, "D1@SK_Box"),
+        "D2@SK_Box": report_param(doc, "D2@SK_Box"),
         "D1@SK_Hole": report_param(doc, "D1@SK_Hole"),
         "D2@SK_Hole": report_param(doc, "D2@SK_Hole"),
         "D1@SK_Slot": report_param(doc, "D1@SK_Slot"),
@@ -302,9 +331,11 @@ def main():
 
     bb2 = doc.GetBodies2(0, True)[0].GetBodyBox()
     print()
-    print(f"final bbox (mm): x=[{bb2[0]*1000:.1f},{bb2[3]*1000:.1f}] "
-          f"y=[{bb2[1]*1000:.1f},{bb2[4]*1000:.1f}] "
-          f"z=[{bb2[2]*1000:.1f},{bb2[5]*1000:.1f}]")
+    print(
+        f"final bbox (mm): x=[{bb2[0]*1000:.1f},{bb2[3]*1000:.1f}] "
+        f"y=[{bb2[1]*1000:.1f},{bb2[4]*1000:.1f}] "
+        f"z=[{bb2[2]*1000:.1f},{bb2[5]*1000:.1f}]"
+    )
 
     print()
     print(f">>> Z4 result: {landed}/{total} deferred dims landed as real Parameters")
@@ -312,7 +343,9 @@ def main():
         print("    GREEN: all dims landed. --deferred-dim refactor pattern is verified")
         print("           for multi-feature builds.")
     else:
-        print("    PARTIAL or RED. Missing parameters constrain what the refactor can do.")
+        print(
+            "    PARTIAL or RED. Missing parameters constrain what the refactor can do."
+        )
         for name, ok in results.items():
             if not ok:
                 print(f"      - {name} did NOT land")

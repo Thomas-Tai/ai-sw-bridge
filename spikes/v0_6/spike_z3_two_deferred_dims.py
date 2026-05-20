@@ -38,6 +38,7 @@ Decision tree:
 Run from venv-freshtest with SW open. Creates a fresh part; user ticks
 TWO popups during the run; closes test doc after observation.
 """
+
 import time
 import pythoncom
 import win32com.client
@@ -70,10 +71,29 @@ def main():
     doc.ClearSelection2(True)
     doc.SelectByID("SK_Box", "SKETCH", 0, 0, 0)
     f = fm.FeatureExtrusion2(
-        True, False, False, 0, 0, 0.010, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.010,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if f is None:
         print("  ! FeatureExtrusion2 failed")
@@ -82,9 +102,11 @@ def main():
     print(f"  extrude: {f.Name!r}")
 
     bb = doc.GetBodies2(0, True)[0].GetBodyBox()
-    print(f"  body bbox (mm): x=[{bb[0]*1000:.1f},{bb[3]*1000:.1f}] "
-          f"y=[{bb[1]*1000:.1f},{bb[4]*1000:.1f}] "
-          f"z=[{bb[2]*1000:.1f},{bb[5]*1000:.1f}]")
+    print(
+        f"  body bbox (mm): x=[{bb[0]*1000:.1f},{bb[3]*1000:.1f}] "
+        f"y=[{bb[1]*1000:.1f},{bb[4]*1000:.1f}] "
+        f"z=[{bb[2]*1000:.1f},{bb[5]*1000:.1f}]"
+    )
     print(f"  expected:        x=[-10.0,10.0] y=[-10.0,10.0] z=[0.0,10.0]")
 
     # ----- Phase 2: first deferred dim (top edge -> D1) -----
@@ -118,7 +140,9 @@ def main():
             print(f"  Parameter exists but SystemValue ERR: {e!r}")
     else:
         print("  RED: Parameter('D1@SK_Box') is None")
-        print("       First deferred dim didn't land -- cannot continue Z3 meaningfully")
+        print(
+            "       First deferred dim didn't land -- cannot continue Z3 meaningfully"
+        )
         return
 
     # ----- Phase 3: second deferred dim (left edge -> D2) on SAME sketch -----
@@ -157,23 +181,37 @@ def main():
             print(f"  Parameter exists but SystemValue ERR: {e!r}")
     else:
         print("  RED: Parameter('D2@SK_Box') is None")
-        print("       Second deferred dim did NOT land. This was Z2 Test 2's failure mode.")
-        print("       Confirms (b): SW won't take multiple deferred dims on same sketch via this path.")
+        print(
+            "       Second deferred dim did NOT land. This was Z2 Test 2's failure mode."
+        )
+        print(
+            "       Confirms (b): SW won't take multiple deferred dims on same sketch via this path."
+        )
 
     # ----- Verify bbox unchanged -----
     bb2 = doc.GetBodies2(0, True)[0].GetBodyBox()
     print()
-    print(f"final bbox (mm): x=[{bb2[0]*1000:.1f},{bb2[3]*1000:.1f}] "
-          f"y=[{bb2[1]*1000:.1f},{bb2[4]*1000:.1f}] "
-          f"z=[{bb2[2]*1000:.1f},{bb2[5]*1000:.1f}]")
+    print(
+        f"final bbox (mm): x=[{bb2[0]*1000:.1f},{bb2[3]*1000:.1f}] "
+        f"y=[{bb2[1]*1000:.1f},{bb2[4]*1000:.1f}] "
+        f"z=[{bb2[2]*1000:.1f},{bb2[5]*1000:.1f}]"
+    )
     print(f"expected:        x=[-10.0,10.0] y=[-10.0,10.0] z=[0.0,10.0]")
 
     print()
     print(">>> Decision:")
-    print("    D1 and D2 BOTH non-None -> GREEN, Z2 Test 2 was pollution; refactor is safe.")
-    print("    D1 non-None, D2 None    -> RED, can't stack deferred dims on one sketch.")
-    print("                               Refactor must put each dim on its own sketch,")
-    print("                               or fall back to in-line dims (today's behavior).")
+    print(
+        "    D1 and D2 BOTH non-None -> GREEN, Z2 Test 2 was pollution; refactor is safe."
+    )
+    print(
+        "    D1 non-None, D2 None    -> RED, can't stack deferred dims on one sketch."
+    )
+    print(
+        "                               Refactor must put each dim on its own sketch,"
+    )
+    print(
+        "                               or fall back to in-line dims (today's behavior)."
+    )
 
 
 if __name__ == "__main__":
