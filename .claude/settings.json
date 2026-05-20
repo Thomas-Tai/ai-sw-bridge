@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ai-sw-observe *)",
+      "Bash(ai-sw-probe *)"
+    ]
+  }
+}
