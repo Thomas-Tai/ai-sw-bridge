@@ -7,9 +7,10 @@ from pathlib import Path
 
 import pytest
 
-EXAMPLES_ROOT = Path(
-    r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\ai-sw-bridge\examples"
-)
+# Resolve relative to this file so the tests run anywhere the repo is checked
+# out -- previously this was hardcoded to one developer's laptop, which
+# silently "worked" locally for that developer and broke on every CI runner.
+EXAMPLES_ROOT = Path(__file__).resolve().parent.parent / "examples"
 
 
 def _load_spec(rel_path: str) -> dict:
