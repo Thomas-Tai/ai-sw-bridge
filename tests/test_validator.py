@@ -552,3 +552,96 @@ def test_revolve_boss_rejects_angle_above_360() -> None:
     )
     with pytest.raises(ValidationError):
         validate(spec)
+
+
+# --- revolve_cut ------------------------------------------------------------
+# Same shape as revolve_boss tests; revolve_cut shares schema structure with
+# the boss variant (only the `type` const differs) and the same centerline
+# validator rule.
+
+
+def test_revolve_cut_accepts_sketch_with_centerline() -> None:
+    spec = _revolve_spec_with(
+        sketch={
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Prof",
+            "plane": "Front",
+            "width": 30.0,
+            "height": 6.0,
+            "center": {"x": 35.0, "y": 5.0},
+            "centerline": {
+                "start": {"x": -60.0, "y": 0.0},
+                "end": {"x": 60.0, "y": 0.0},
+            },
+        },
+        revolve={
+            "type": "revolve_cut",
+            "name": "CUT1",
+            "sketch": "SK_Prof",
+            "angle": 360.0,
+        },
+    )
+    validate(spec)
+
+
+def test_revolve_cut_rejects_sketch_without_centerline() -> None:
+    spec = _revolve_spec_with(
+        sketch={
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Prof",
+            "plane": "Front",
+            "width": 30.0,
+            "height": 6.0,
+            "center": {"x": 35.0, "y": 5.0},
+        },
+        revolve={
+            "type": "revolve_cut",
+            "name": "CUT1",
+            "sketch": "SK_Prof",
+        },
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    assert "centerline" in str(exc.value).lower()
+
+
+def test_revolve_cut_rejects_missing_sketch_ref() -> None:
+    spec = {
+        "schema_version": 1,
+        "name": "RevolveCutTest",
+        "features": [
+            {
+                "type": "revolve_cut",
+                "name": "CUT1",
+                "sketch": "SK_DoesNotExist",
+            }
+        ],
+    }
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    assert "earlier" in str(exc.value).lower() or "not" in str(exc.value).lower()
+
+
+def test_revolve_cut_rejects_angle_above_360() -> None:
+    spec = _revolve_spec_with(
+        sketch={
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Prof",
+            "plane": "Front",
+            "width": 30.0,
+            "height": 6.0,
+            "center": {"x": 35.0, "y": 5.0},
+            "centerline": {
+                "start": {"x": -60.0, "y": 0.0},
+                "end": {"x": 60.0, "y": 0.0},
+            },
+        },
+        revolve={
+            "type": "revolve_cut",
+            "name": "CUT1",
+            "sketch": "SK_Prof",
+            "angle": 450.0,
+        },
+    )
+    with pytest.raises(ValidationError):
+        validate(spec)

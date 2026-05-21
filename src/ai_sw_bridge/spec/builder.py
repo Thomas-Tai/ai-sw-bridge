@@ -458,6 +458,29 @@ def _build_revolve_boss(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature
 
     20-arg FeatureRevolve2 signature is CHM-verified; no parametric angle
     binding in v1 (angle is a literal degrees number in the spec)."""
+    return _call_feature_revolve(ctx, feat, is_cut=False)
+
+
+def _build_revolve_cut(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Revolve-cut: subtractive sibling of revolve_boss.
+
+    Same centerline-in-sketch axis pattern. The profile must, on revolution,
+    intersect existing body material -- if it sweeps through empty space,
+    FeatureRevolve2 silently returns None (the handler surfaces this with a
+    diagnostic that points the human at the most common cause).
+
+    The first attempt at this primitive on 2026-05-21 produced 8 spikes of
+    silent-None failures (ZG-ZN) before Spike ZP/ZQ traced the root cause to
+    a Right Plane sketch-coordinate-mapping bug in the spike harness, not a
+    bridge or pywin32 issue. The actual handler is structurally identical to
+    revolve_boss with one bit flipped (IsCut=True at FeatureRevolve2 arg 4)."""
+    return _call_feature_revolve(ctx, feat, is_cut=True)
+
+
+def _call_feature_revolve(
+    ctx: BuildContext, feat: dict[str, Any], *, is_cut: bool
+) -> BuiltFeature:
+    """Shared implementation for revolve_boss / revolve_cut."""
     import math
 
     sketch_name = feat["sketch"]
@@ -471,7 +494,7 @@ def _build_revolve_boss(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature
         True,  # 1  SingleDir
         True,  # 2  IsSolid
         False,  # 3  IsThin
-        False,  # 4  IsCut
+        is_cut,  # 4  IsCut (False=boss, True=cut)
         flip,  # 5  ReverseDir
         False,  # 6  BothDirectionUpToSameEntity
         SW_END_COND_BLIND,  # 7  Dir1Type (blind = explicit angle)
@@ -492,6 +515,17 @@ def _build_revolve_boss(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature
     assert_args("IFeatureManager.FeatureRevolve2", args)
     f = ctx.doc.FeatureManager.FeatureRevolve2(*args)
     if f is None:
+        if is_cut:
+            raise RuntimeError(
+                f"FeatureRevolve2(IsCut=True) returned None for "
+                f"'{feat['name']}'. Most common cause: the swept profile "
+                f"doesn't intersect any existing body material -- SW "
+                f"silently produces no geometry rather than erroring. "
+                f"Other causes: profile sketch contains no centerline, "
+                f"profile not closed, profile crosses the centerline, "
+                f"or sketch coords land in empty space due to a "
+                f"plane-axis mapping bug in the spec."
+            )
         raise RuntimeError(
             f"FeatureRevolve2 returned None for '{feat['name']}'. "
             f"Common causes: profile sketch contains no centerline, "
@@ -1182,6 +1216,12 @@ FEATURE_REGISTRY: dict[str, FeatureType] = {
         # (would need an angle-type LENGTH_SCHEMA variant).
         dim_fields={},
     ),
+    "revolve_cut": FeatureType(
+        name="revolve_cut",
+        handler=None,
+        # Same as revolve_boss -- no parametric angle in v1.
+        dim_fields={},
+    ),
     "simple_hole": FeatureType(
         name="simple_hole",
         handler=None,
@@ -1258,6 +1298,7 @@ def _wire_handlers() -> None:
         "cut_extrude_through_all": _build_cut_extrude_through_all,
         "cut_extrude_blind": _build_cut_extrude_blind,
         "revolve_boss": _build_revolve_boss,
+        "revolve_cut": _build_revolve_cut,
         "simple_hole": _build_simple_hole,
         "fillet_constant_radius": _build_fillet_constant_radius,
         "chamfer_edge": _build_chamfer_edge,

@@ -675,6 +675,53 @@ REVOLVE_BOSS: dict[str, Any] = {
 }
 
 
+# Revolve cut feature: subtractive sibling of revolve_boss. Same
+# centerline-in-sketch axis pattern; calls FeatureRevolve2 with IsCut=True.
+# Requires existing body for the cut to subtract from -- if the profile
+# doesn't intersect any material on revolution, FeatureRevolve2 silently
+# returns None (per Spike ZP/ZQ, 2026-05-21). The handler surfaces this
+# as a clear error message.
+#
+# v1 limits: identical to revolve_boss (single-direction, solid-only,
+# literal-degrees angle, profile must not cross centerline). Additionally,
+# the existing body must intersect the swept profile -- not validatable
+# pre-build, but the handler emits a precise diagnostic when SW returns None.
+REVOLVE_CUT: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["type", "name", "sketch"],
+    "properties": {
+        "type": {"const": "revolve_cut"},
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+        "sketch": {
+            "type": "string",
+            "description": (
+                "Name of an earlier plane-based sketch that contains "
+                "both a closed profile and an embedded centerline. "
+                "SW auto-picks the centerline as the axis of revolution. "
+                "The profile, when revolved, must intersect existing body "
+                "material -- otherwise SW silently produces no geometry."
+            ),
+        },
+        "angle": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 360,
+            "default": 360.0,
+            "description": (
+                "Sweep angle in DEGREES (builder converts to radians). "
+                "Default 360 = full revolution."
+            ),
+        },
+        "flip": {
+            "type": "boolean",
+            "default": False,
+            "description": "Reverse the revolve direction.",
+        },
+    },
+}
+
+
 # Top-level spec
 SCHEMA: dict[str, Any] = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -709,6 +756,7 @@ SCHEMA: dict[str, Any] = {
                     CUT_EXTRUDE_THROUGH_ALL,
                     CUT_EXTRUDE_BLIND,
                     REVOLVE_BOSS,
+                    REVOLVE_CUT,
                     SIMPLE_HOLE,
                     FILLET_CONSTANT_RADIUS,
                     CHAMFER_EDGE,
@@ -738,6 +786,7 @@ EXTRUDE_TYPES = frozenset(
         "cut_extrude_through_all",
         "cut_extrude_blind",
         "revolve_boss",
+        "revolve_cut",
     }
 )
 # Modify-existing-geometry features (operate on existing edges/faces, do not

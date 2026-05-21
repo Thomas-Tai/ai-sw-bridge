@@ -1,0 +1,43 @@
+{
+    "schema_version": 1,
+    "name": "GroovedShaft",
+    "_comment": "v0.7 example: solid Ø25 mm cylinder along x-axis, length 80 mm, with a circumferential O-ring groove (1 mm deep, 5 mm wide) at the mid-length. Demonstrates revolve_cut chained after revolve_boss on the same axis. Both profiles are on Front Plane with an x-axis centerline. NOTE: the boss profile sits on the +y side of the centerline (so the cylinder body forms on the +y revolved-volume side), and the cut profile sits on the -y side. Empirically this opposite-side placement is required for the chained cut to commit -- a +y cut profile after a +y boss returns None silently. See README 'A note on opposite-side cuts' for the rule.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Body",
+            "plane": "Front",
+            "width": 80.0,
+            "height": 12.5,
+            "center": {"x": 40.0, "y": 6.25},
+            "centerline": {
+                "start": {"x": -60.0, "y": 0.0},
+                "end":   {"x":  140.0, "y": 0.0}
+            }
+        },
+        {
+            "type": "revolve_boss",
+            "name": "REV_Body",
+            "sketch": "SK_Body",
+            "angle": 360.0
+        },
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Groove",
+            "plane": "Front",
+            "width": 5.0,
+            "height": 1.0,
+            "center": {"x": 40.0, "y": -12.0},
+            "centerline": {
+                "start": {"x": -60.0, "y": 0.0},
+                "end":   {"x":  140.0, "y": 0.0}
+            }
+        },
+        {
+            "type": "revolve_cut",
+            "name": "CUT_Groove",
+            "sketch": "SK_Groove",
+            "angle": 360.0
+        }
+    ]
+}

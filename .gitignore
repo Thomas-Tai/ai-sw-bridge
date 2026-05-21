@@ -47,3 +47,6 @@ spikes/phase0/_chm_decompiled_progguide/
 # Temp files from debug sessions
 spikes/phase0/_tmp_*.json
 docs/_test*.json
+
+# Smoke-test scratch outputs (feature_tree_diff captures, etc.)
+tools/snapshots-e2e/

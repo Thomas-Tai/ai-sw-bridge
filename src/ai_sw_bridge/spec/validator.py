@@ -133,14 +133,15 @@ def _check_references(spec: dict[str, Any]) -> None:
                     f"got '{seen[target]}'",
                     path=f"features/{i}/sketch",
                 )
-            # revolve_boss: the referenced sketch must declare a centerline.
-            # SW would fail at build time with a cryptic error otherwise.
-            if ftype == "revolve_boss":
+            # revolve_boss / revolve_cut: the referenced sketch must declare
+            # a centerline. SW would fail at build time with a cryptic error
+            # (boss) or silently return None (cut) otherwise.
+            if ftype in ("revolve_boss", "revolve_cut"):
                 target_feat = features_by_name[target]
                 if "centerline" not in target_feat:
                     raise ValidationError(
                         message=(
-                            f"revolve_boss requires '{target}' to declare a "
+                            f"{ftype} requires '{target}' to declare a "
                             f"`centerline` (used as axis of revolution)"
                         ),
                         path=f"features/{i}/sketch",
