@@ -83,6 +83,50 @@ CENTERLINE_SCHEMA: dict[str, Any] = {
 }
 
 
+# Per-feature postcondition expectation. Declared as `_expect` on any feature;
+# underscore-prefixed so _strip_comments removes it before the JSON Schema
+# validator sees it (which would reject it via additionalProperties=false).
+# The validator checks _expect blocks on the RAW spec BEFORE stripping.
+#
+# mass_delta_mm3: expected change in part mass (mm³) after this feature.
+#   Positive for additive (boss), negative for subtractive (cut). Zero is
+#   allowed for features that don't change volume (e.g. a mirror whose seed
+#   was already counted). The builder's verify_mass mode reads
+#   CreateMassProperty after each feature and compares the actual delta.
+#
+# tolerance_mm3: acceptable deviation from mass_delta_mm3. Defaults to 1.0
+#   if omitted. Must be >= 0.
+EXPECT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["mass_delta_mm3"],
+    "properties": {
+        "mass_delta_mm3": {
+            "type": "number",
+            "description": (
+                "Expected change in part mass in mm³ after this feature. "
+                "Positive for bosses, negative for cuts."
+            ),
+        },
+        "tolerance_mm3": {
+            "type": "number",
+            "minimum": 0,
+            "default": 1.0,
+            "description": (
+                "Acceptable deviation from mass_delta_mm3. Defaults to 1.0 "
+                "if omitted. Must be non-negative."
+            ),
+        },
+    },
+    "description": (
+        "Per-feature postcondition expectation. The validator checks these "
+        "before _strip_comments removes _-prefixed keys. The builder's "
+        "--verify-mass mode compares actual volume deltas against these "
+        "values after each feature."
+    ),
+}
+
+
 # A length value: literal mm or a SW-equation expression to bind via Add2.
 LENGTH_SCHEMA: dict[str, Any] = {
     "oneOf": [

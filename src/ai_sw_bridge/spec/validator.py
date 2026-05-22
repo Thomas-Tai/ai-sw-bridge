@@ -26,6 +26,7 @@ from .schema import (
     EXTRUDE_TYPES,
     PATTERN_TYPES,
     ALL_TYPES,
+    EXPECT_SCHEMA,
 )
 
 # Sketch types that reference a parent feature via `of_feature` (sketched
@@ -327,13 +328,38 @@ def _check_locals(spec: dict[str, Any], spec_path: Path | None = None) -> None:
             )
 
 
+def _check_expect_blocks(spec: dict[str, Any]) -> None:
+    """Validate any `_expect` blocks on features against EXPECT_SCHEMA.
+
+    Runs on the RAW spec (before _strip_comments) because _expect is
+    underscore-prefixed and would be stripped otherwise. Called after
+    _check_schema so that malformed features fail fast with a clear path
+    before we inspect their _expect blocks.
+    """
+    for i, feat in enumerate(spec.get("features", [])):
+        if "_expect" not in feat:
+            continue
+        expect = feat["_expect"]
+        try:
+            jsonschema.validate(instance=expect, schema=EXPECT_SCHEMA)
+        except jsonschema.ValidationError as e:
+            path = "/".join(str(p) for p in e.absolute_path)
+            raise ValidationError(
+                message=f"invalid _expect block: {e.message}",
+                path=(
+                    f"features/{i}/_expect/{path}" if path else f"features/{i}/_expect"
+                ),
+            ) from e
+
+
 def validate(spec: dict[str, Any], spec_path: Path | None = None) -> None:
-    """Run all three checks. Raises ValidationError on first failure.
+    """Run all checks. Raises ValidationError on first failure.
 
     `spec_path` is optional. When supplied, relative `locals` paths in the
     spec are resolved relative to the spec file's directory. Callers that
     already pass absolute paths in `spec["locals"]` can omit it.
     """
     _check_schema(spec)
+    _check_expect_blocks(spec)
     _check_references(spec)
     _check_locals(spec, spec_path=spec_path)

@@ -1,16 +1,20 @@
 {
-  "_comment": "Minimal cylinder example. Set locals_path to the absolute path of locals.txt in this folder before running ai-sw-codegen parameterize.",
-  "locals_path": "REPLACE_WITH_ABSOLUTE_PATH_TO_examples/minimal_cylinder/locals.txt",
-  "bindings": [
+  "schema_version": 1,
+  "name": "MinimalCylinder",
+  "_comment": "Legacy minimal cylinder example, now using v2 declarative spec format. Superseded by minimal_cylinder_v2 which uses {rhs} parametric bindings.",
+  "features": [
     {
-      "_comment": "First sketch in a fresh doc is always Sketch1. Bind its diameter dim (D1) to PART_DIAMETER.",
-      "dim": "D1@Sketch1",
-      "var": "PART_DIAMETER"
+      "type": "sketch_circle_on_plane",
+      "name": "SK_Body",
+      "plane": "Front",
+      "diameter": 25.0,
+      "center": {"x": 0.0, "y": 0.0}
     },
     {
-      "_comment": "If you renamed Boss-Extrude1 to Extrude_Body during recording, this matches. Otherwise change to D1@Boss-Extrude1.",
-      "dim": "D1@Extrude_Body",
-      "var": "PART_LENGTH"
+      "type": "boss_extrude_blind",
+      "name": "Extrude_Body",
+      "sketch": "SK_Body",
+      "depth": 80.0
     }
   ]
 }

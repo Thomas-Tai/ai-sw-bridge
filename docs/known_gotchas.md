@@ -97,8 +97,20 @@ Every wheel-scroll during recording emits `Scale2`/`Translation3` calls. Harmles
 
 ## Where to extend this list
 
+For incident-registry entries (API said "OK" but wasn't), add a row in
+[`com_failure_modes.md`](com_failure_modes.md) instead. That doc is the
+canonical taxonomy of silent-failure modes with stable IDs (S-*, G-*,
+X-*, E-*, U-*). This file is for gotchas and workarounds; that file is
+for "the return code lied" incidents.
+
 When you hit something new and weird:
 
-1. Add a section here with the symptom, root cause, and mitigation
-2. If there's a mechanical workaround, add a `try/except` + structured error message in the relevant module
-3. If the mitigation needs a global change (e.g. always set some user-pref before doing X), update `architecture.md` too
+1. If it's a silent-failure incident (misleading sentinel), add a row in
+   [`com_failure_modes.md`](com_failure_modes.md) following its ID
+   convention
+2. If it's a gotcha or workaround, add a section here with the symptom,
+   root cause, and mitigation
+3. If there's a mechanical workaround, add a `try/except` + structured
+   error message in the relevant module
+4. If the mitigation needs a global change (e.g. always set some
+   user-pref before doing X), update `architecture.md` too

@@ -65,12 +65,31 @@ Creates a centered rectangle on one of the three default reference planes.
 | `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
 | `width` | yes | length | Rectangle width (mm) |
 | `height` | yes | length | Rectangle height (mm) |
-| `center` | no | object | `{x, y}` offset in sketch-local mm. Default `{"x": 0, "y": 0}` (part origin). |
+| `center` | no | object | `{x, y, z}` offset in sketch-local mm. Default `{"x": 0, "y": 0}` (part origin). See **center.z** below. |
+
+**center.z** (Top/Right Plane sketches): The optional `z` field offsets the sketch geometry along the part-frame Z axis. On Front Plane, `z` is redundant (the plane already lies at Z=0). On Top Plane, `center.z` positions the rectangle at the given part-Z — the builder applies a sign flip (`sketch_Y = -part_Z`) internally. On Right Plane, `center.z` positions along part-Z similarly. This is essential when a Top/Right Plane sketch must land at a non-zero Z position (e.g. a groove at mid-length of a cylinder). See [sketch_axes.md](sketch_axes.md) for the full axis-mapping reference.
 
 **Axis mapping:**
 - Front Plane: X = width, Y = height, extrude direction = +Z
 - Top Plane: X = width, Y = height, extrude direction = -Y (downward)
 - Right Plane: X = width, Y = height, extrude direction = +X
+
+**centerline** (optional): Adds a construction line to the sketch, consumed by `revolve_boss` / `revolve_cut` as the axis of revolution. SW auto-detects the centerline when the sketch is selected for a revolve operation.
+
+```json
+"centerline": {
+  "start": {"x": 0.0, "y": 0.0, "z": -5.0},
+  "end":   {"x": 0.0, "y": 0.0, "z": 85.0}
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `centerline` | no | object | `{start, end}` — each endpoint has `{x, y}` (required) and optional `z` (same meaning as `center.z`). One centerline per sketch. Coordinates are literal mm; no `{rhs}` bindings. |
+
+The centerline `start`/`end` use the same projection as `center`: on Top Plane, the `y` component maps to part-Z (with sign flip) and the optional `z` provides an additional part-frame Z offset. See [sketch_axes.md](sketch_axes.md) for details.
+
+**Lint warning:** A Top Plane sketch with a `centerline` but no `center.z` triggers a lint finding — the centerline will default to part Z=0, which is almost never what you want for a revolved feature. Run `--lint` to catch this.
 
 ### `sketch_rectangle_on_face`
 
@@ -122,7 +141,7 @@ Creates a circle on one of the three default reference planes.
 | `name` | yes | string | Unique feature name |
 | `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
 | `diameter` | yes | length | Circle diameter (mm) |
-| `center` | no | object | `{x, y}` offset in sketch-local mm. Default `{0, 0}` (part origin). |
+| `center` | no | object | `{x, y, z}` offset in sketch-local mm. Default `{0, 0}` (part origin). The optional `z` offsets along part-frame Z — see `sketch_rectangle_on_plane` **center.z** for details. |
 
 ### `sketch_circle_on_face`
 
@@ -223,6 +242,34 @@ Removes material through the entire part in both directions.
 
 No `depth` — cuts go through everything.
 
+### `simple_hole`
+
+Drills a hole on a face of an earlier extrusion. Combines sketch + cut into a single feature.
+
+```json
+{
+  "type": "simple_hole",
+  "name": "Hole_Mount",
+  "of_feature": "Extrude_Plate",
+  "face": "+z",
+  "diameter": 3.2,
+  "end_condition": "through_all"
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"simple_hole"` | |
+| `name` | yes | string | Unique feature name |
+| `of_feature` | yes | string | Name of an earlier extrusion feature |
+| `face` | yes | enum | `"+x"`, `"-x"`, `"+y"`, `"-y"`, `"+z"`, `"-z"` — face the hole drills into |
+| `diameter` | yes | length | Hole diameter (mm) |
+| `center` | no | object | `{u, v}` offset from face-sketch origin (mm). Default `{0, 0}`. |
+| `end_condition` | no | enum | `"blind"` (default) or `"through_all"`. |
+| `depth` | conditional | length | Required for `"blind"` end condition. Ignored for `"through_all"`. |
+
+Same face-sketch-origin gotcha as `sketch_rectangle_on_face` — `center` offsets from the part-origin projection, not the face centroid.
+
 ### `cut_extrude_blind`
 
 Removes material to a specified depth.
@@ -244,6 +291,60 @@ Removes material to a specified depth.
 | `sketch` | yes | string | Name of an earlier sketch feature |
 | `depth` | yes | length | Cut depth (mm) |
 | `flip` | no | boolean | Cut in -normal direction. Default `false`. |
+
+## Revolve primitives
+
+### `revolve_boss`
+
+Adds material by revolving a sketch profile about its embedded centerline. SW auto-detects the centerline from inside the sketch — no separate axis selection needed.
+
+```json
+{
+  "type": "revolve_boss",
+  "name": "Revolve_Hub",
+  "sketch": "SK_Hub",
+  "angle": 360.0
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"revolve_boss"` | |
+| `name` | yes | string | Unique feature name |
+| `sketch` | yes | string | Name of an earlier plane-based sketch containing a closed profile and a `centerline` |
+| `angle` | no | number | Sweep angle in degrees. Default `360.0` (full revolution). Must be > 0 and ≤ 360. |
+| `flip` | no | boolean | Reverse the revolve direction. Default `false`. |
+
+The referenced sketch must have a `centerline` declared. The profile must not cross the centerline — SW will reject the geometry. Only plane-based sketches support centerlines currently; face-based sketches do not.
+
+**v1 limits:** Single-direction, solid-only, literal-degrees angle. Two-direction / mid-plane revolves deferred.
+
+### `revolve_cut`
+
+Removes material by revolving a sketch profile about its embedded centerline. Same axis detection as `revolve_boss`, but subtractive.
+
+```json
+{
+  "type": "revolve_cut",
+  "name": "Cut_Groove",
+  "sketch": "SK_Groove",
+  "angle": 360.0
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"revolve_cut"` | |
+| `name` | yes | string | Unique feature name |
+| `sketch` | yes | string | Name of an earlier plane-based sketch containing a closed profile and a `centerline` |
+| `angle` | no | number | Sweep angle in degrees. Default `360.0` (full revolution). |
+| `flip` | no | boolean | Reverse the revolve direction. Default `false`. |
+
+**Important:** The revolved profile must intersect existing body material. If it doesn't, SW silently returns no geometry — the builder surfaces this as an error. This cannot be validated pre-build; the builder emits a precise diagnostic when it detects the silent-no-op.
+
+**Top Plane center.z:** When using a Top Plane sketch with `centerline`, you must set `center.z` to position the sketch at the correct part-Z. The lint checker (`--lint`) warns if a Top Plane sketch has a centerline but no `center.z`. See the DriveRoller example below for a working Top Plane `revolve_cut`.
+
+**v1 limits:** Same as `revolve_boss`. Additionally, requires existing body to cut from.
 
 ## Modify primitives
 
@@ -343,6 +444,35 @@ Replicates an earlier feature along a direction reference.
 - Single seed by name. Multi-seed deferred.
 - Spacing not yet parametric (accepts `{rhs}` syntactically but the binding isn't wired).
 
+### `circular_pattern`
+
+Replicates an earlier feature equally spaced around a rotation axis.
+
+```json
+{
+  "type": "circular_pattern",
+  "name": "CP_Holes",
+  "seed": "Hole_Seed",
+  "axis": {"x": 0.0, "y": 0.0, "z": 5.0},
+  "count": 6,
+  "total_angle": 360.0
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"circular_pattern"` | |
+| `name` | yes | string | Unique feature name |
+| `seed` | yes | string | Name of an earlier feature to pattern |
+| `axis` | yes | object | `{x, y, z}` — a point on a circular EDGE or cylindrical FACE in part coords. The builder tries EDGE first, then FACE on fallback. SW infers the axis of revolution from the selected entity. |
+| `count` | yes | integer | Total instances (including seed). Must be ≥ 2. |
+| `total_angle` | no | number | Total sweep angle in degrees. Default `360.0`. Must be > 0 and ≤ 360. |
+| `flip` | no | boolean | Reverse rotation direction. Default `false`. |
+
+**How axis selection works:** The builder calls `SelectByID2('EDGE', x, y, z)` first; if that fails (no circular edge at that point), it tries `SelectByID2('FACE', ...)`. Both paths verified on SW 2024 SP1 (Spike T).
+
+**v1 limits:** Direction 1 only. Equal spacing always on. Single seed by name.
+
 ### `mirror_feature`
 
 Mirrors an earlier feature about a default reference plane.
@@ -398,10 +528,42 @@ Any feature or the top-level spec can include a `_comment` field with arbitrary 
 The validator checks three layers, fail-fast:
 
 1. **Schema** — shape, types, required fields, `additionalProperties: false` (after stripping `_comment` fields). Includes the `chamfer_edge` mode-conditional check for `angle`.
-2. **References** — every `sketch`, `of_feature`, and `seed` must name an earlier feature of the correct type
-3. **Locals** — every `{rhs}` variable must be declared in the specified `locals` file
+2. **Expect blocks** — validates `_expect` fields (see below) on the raw spec before `_comment` stripping.
+3. **References** — every `sketch`, `of_feature`, and `seed` must name an earlier feature of the correct type
+4. **Locals** — every `{rhs}` variable must be declared in the specified `locals` file
 
 The validator does NOT check geometric validity (e.g. whether a fillet radius exceeds the smallest adjacent edge, whether a circle lands on material, or whether a pattern's direction edge actually exists at the given point). These surface as runtime errors during the build.
+
+## Postcondition expectations (`_expect`)
+
+Any feature can declare an `_expect` block for post-build verification:
+
+```json
+{
+  "type": "boss_extrude_blind",
+  "name": "Extrude_Box",
+  "sketch": "SK_Box",
+  "depth": 10.0,
+  "_expect": {"mass_delta_mm3": 5000.0, "tolerance_mm3": 50.0}
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `mass_delta_mm3` | yes | number | Expected change in part volume (mm³). Positive for bosses, negative for cuts. |
+| `tolerance_mm3` | no | number | Acceptable deviation. Default `1.0`. Must be ≥ 0. |
+
+The validator checks `_expect` blocks on the raw spec (before `_comment` stripping) to ensure correct shape. The builder's `--verify-mass` flag reads `CreateMassProperty` after each feature and compares the actual volume delta against the declared expectation, fail-fast on mismatch.
+
+## Lint checks
+
+The `--lint` flag runs semantic checks beyond schema validation:
+
+- **Unconsumed sketch** — a sketch not referenced by any downstream extrude/cut
+- **Missing center.z on Top Plane centerline** — a Top Plane sketch with `centerline` but no `center.z` will produce incorrect geometry at part Z=0
+- **center.z thread-through** — a Top Plane sketch with non-zero `center.z` consumed by `boss_extrude_blind` (known gap, extrude_origin remap ignores center.z)
+
+Lint findings are warnings, not errors. The spec is valid but likely buggy. Exit code 6 if any findings.
 
 ## Examples
 
@@ -414,3 +576,4 @@ The validator does NOT check geometric validity (e.g. whether a fillet radius ex
 | [`chamfered_box`](../examples/chamfered_box/) | 3 | `sketch_rectangle_on_plane`, `boss_extrude_blind`, `chamfer_edge` (equal_distance) |
 | [`patterned_plate`](../examples/patterned_plate/) | 5 | adds `sketch_circle_on_face`, `cut_extrude_through_all`, `linear_pattern` |
 | [`mirrored_holes`](../examples/mirrored_holes/) | 5 | same as patterned_plate but `mirror_feature` instead of `linear_pattern` |
+| [`drive_roller`](../examples/drive_roller/) | 9 | `sketch_circle_on_plane`, `boss_extrude_blind`, `cut_extrude_through_all`, `cut_extrude_blind`, `sketch_rectangle_on_plane` (Top Plane + center.z + centerline), `revolve_cut` |

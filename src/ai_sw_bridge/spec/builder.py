@@ -20,7 +20,9 @@ Phase 0 findings baked in:
 from __future__ import annotations
 
 import copy
+import logging
 import re
+import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -80,6 +82,8 @@ from .sketches import (
 # the popup. Kept in place because it's harmless and may help on some
 # SW builds; see MMP_DEBUG_SESSION.md for the full investigation.
 SW_PREF_INPUT_DIM_VAL_ON_CREATE = 8
+
+logger = logging.getLogger("ai_sw_bridge.builder")
 
 # swFeatureNameID_e.swFmFillet -- numeric value not exposed in the
 # decompiled CHM enum table (text-only). Found empirically in Spike P
@@ -1488,6 +1492,66 @@ def _apply_deferred_dims(
 # -----------------------------------------------------------------------------
 
 
+def _save_as_with_verification(doc: Any, out_path: Path) -> tuple[str, bool]:
+    """Drive doc.SaveAs3 and verify three independent postconditions.
+
+    Why this is not a one-liner: SaveAs3 has shipped silent-failure modes
+    on this build that the return code alone does NOT catch.
+
+    - 2026-05 DriveRoller session: build reported `ok=True` with a
+      `save_as` path, but `doc.GetSaveFlag` was True and the .sldprt was
+      absent on disk. A manual `doc.SaveAs3(path, 0, 0)` afterwards did
+      persist the file. Root cause: OneDrive sync client held an
+      exclusive handle on the parent directory just long enough that
+      SW's write was queued but not flushed by the time `out_path.exists`
+      was probed. The prior verification (`out_path.exists()` only)
+      bounced True for a few ms then went False.
+
+    Three independent checks, each catches a failure mode the others
+    miss:
+      1. swFileSaveError_e return code (0 == NoError).
+      2. doc.GetSaveFlag must be False (= SW thinks the file is clean).
+      3. File exists on disk with non-zero size.
+
+    Retry (3 attempts, 200/400/600 ms backoff) absorbs the OneDrive /
+    Dropbox post-write handle hold. If all retries fail, raise loudly --
+    callers should treat this as a hard error, not a warning.
+
+    Returns (resolved_path_string, True) on verified success. Raises
+    RuntimeError otherwise. The bool in the return type leaves room for
+    a future "soft-verify" mode that returns False instead of raising;
+    today it is always True when the function returns.
+    """
+    err = doc.SaveAs3(str(out_path), 0, 0)
+    err_code = int(err) if err is not None else 0
+    if err_code != 0:
+        raise RuntimeError(
+            f"doc.SaveAs3({out_path}) returned swFileSaveError={err_code} "
+            f"(0 == NoError); file not written"
+        )
+
+    dirty: bool = True
+    size: int = 0
+    for attempt in range(3):
+        try:
+            dirty = bool(doc.GetSaveFlag)
+        except Exception:
+            dirty = True
+        size = out_path.stat().st_size if out_path.exists() else 0
+        if not dirty and size > 0:
+            return str(out_path), True
+        time.sleep(0.2 * (attempt + 1))
+
+    raise RuntimeError(
+        f"doc.SaveAs3({out_path}) returned NoError but postconditions "
+        f"unsatisfied after 3 retries: dirty={dirty}, "
+        f"exists={out_path.exists()}, size_bytes={size}. "
+        f"This commonly indicates a cloud-sync client (OneDrive, Dropbox) "
+        f"holding an exclusive handle on the target -- try a non-synced "
+        f"path or wait for sync to complete."
+    )
+
+
 @dataclass
 class Binding:
     """One EquationMgr.Add2 binding applied during a build."""
@@ -1498,6 +1562,17 @@ class Binding:
 
 
 @dataclass
+class MassCheck:
+    """One feature's mass-verification result (populated when verify_mass=True)."""
+
+    feature: str
+    actual_mm3: float
+    expected_mm3: float | None = None
+    tolerance_mm3: float = 1.0
+    passed: bool = True
+
+
+@dataclass
 class BuildResult:
     ok: bool
     features_built: list[str]
@@ -1505,10 +1580,14 @@ class BuildResult:
     error: str | None = None
     error_feature: str | None = None
     save_as: str | None = None
-    # Full Python traceback if the build raised. Includes COM error codes
-    # (HRESULT, PROGID, description) when the underlying exception is
-    # pywintypes.com_error -- essential for debugging late-binding failures.
+    save_as_verified: bool | None = None
     traceback: str | None = None
+    # Populated when verify_mass=True. None otherwise. Each entry records
+    # the actual volume delta for one feature; entries with expected_mm3
+    # also record pass/fail against the _expect block.
+    mass_verification: list[dict[str, Any]] | None = None
+    build_time_s: float | None = None
+    mode: str | None = None  # "no_dim", "deferred_dim", or "parametric"
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-serializable shape for CLI output. Single source of truth
@@ -1521,6 +1600,7 @@ class BuildResult:
                 for b in self.bindings_added
             ],
             "save_as": self.save_as,
+            "save_as_verified": self.save_as_verified,
         }
         if self.error is not None:
             out["error"] = self.error
@@ -1528,6 +1608,12 @@ class BuildResult:
             out["error_feature"] = self.error_feature
         if self.traceback is not None:
             out["traceback"] = self.traceback
+        if self.mass_verification is not None:
+            out["mass_verification"] = self.mass_verification
+        if self.build_time_s is not None:
+            out["build_time_s"] = round(self.build_time_s, 3)
+        if self.mode is not None:
+            out["mode"] = self.mode
         return out
 
 
@@ -1536,6 +1622,7 @@ def build(
     no_dim: bool = False,
     deferred_dim: bool = False,
     save_as: str | None = None,
+    verify_mass: bool = False,
 ) -> BuildResult:
     """Build the spec into a fresh blank part on the running SW session.
 
@@ -1582,6 +1669,16 @@ def build(
     be absolute; missing parent directories are created. If the extension
     is not '.sldprt', it is appended.
 
+    If `verify_mass` is True: after each feature's geometry settles
+    (post-rebuild), the builder reads the part volume via
+    CreateMassProperty, computes the delta vs the previous reading, and
+    checks it against the feature's `_expect.mass_delta_mm3` (if any).
+    A failed _expect check causes the build to fail-fast (matching the
+    existing exception-handling style). Results are recorded in
+    BuildResult.mass_verification. NOTE: this adds one COM call per
+    feature (CreateMassProperty + Volume) which is typically <50ms but
+    adds up on large specs.
+
     TRADE-OFF: SaveAs3 fires after build() returns from the feature loop
     AND (in --deferred-dim mode) after the deferred-dim phase. So in
     --deferred-dim, the user must tick all popups before SaveAs3 fires.
@@ -1589,6 +1686,14 @@ def build(
     """
     if no_dim and deferred_dim:
         raise ValueError("no_dim and deferred_dim are mutually exclusive")
+
+    t0 = time.time()
+    mode = "no_dim" if no_dim else ("deferred_dim" if deferred_dim else "parametric")
+    spec_name = spec.get("name", "unnamed")
+    feature_count = len(spec.get("features", []))
+    logger.info(
+        "build start: name=%s mode=%s features=%d", spec_name, mode, feature_count
+    )
 
     # --no-dim resolves {rhs} upfront so geometry builds at correct sizes
     # (no AddDimension2 ever called, no equation links applied).
@@ -1625,6 +1730,8 @@ def build(
 
         built: list[str] = []
         binding_results: list[Binding] = []
+        mass_results: list[dict[str, Any]] = []
+        prev_volume_mm3: float = 0.0  # 0 before any feature
         # Track the most recent feature we touched, so a mid-loop exception
         # can report which one failed. Separated from the loop variable so
         # the typechecker can see it's always a string (or None).
@@ -1636,6 +1743,7 @@ def build(
         try:
             for feat in spec["features"]:
                 current_feat_name = feat.get("name")
+                logger.debug("feature: %s (%s)", current_feat_name, feat["type"])
                 handler = HANDLERS[feat["type"]]
                 bf = handler(ctx, feat)
 
@@ -1646,6 +1754,37 @@ def build(
 
                 ctx.features_by_name[bf.name] = bf
                 built.append(bf.name)
+
+                # Mass verification: read volume after this feature and
+                # compare delta against _expect if declared. Runs in ALL
+                # modes (no_dim, deferred_dim, default) because the volume
+                # delta is mode-independent.
+                if verify_mass:
+                    _ = doc.EditRebuild3  # ensure geometry is up to date
+                    mp = doc.Extension.CreateMassProperty()
+                    vol_mm3 = mp.Volume * 1e9  # SW returns m³
+                    delta_mm3 = vol_mm3 - prev_volume_mm3
+                    expect = feat.get("_expect")
+                    entry: dict[str, Any] = {
+                        "feature": bf.name,
+                        "actual_mm3": round(delta_mm3, 2),
+                    }
+                    if expect and "mass_delta_mm3" in expect:
+                        expected = expect["mass_delta_mm3"]
+                        tol = expect.get("tolerance_mm3", 1.0)
+                        passed = abs(delta_mm3 - expected) <= tol
+                        entry["expected_mm3"] = expected
+                        entry["tolerance_mm3"] = tol
+                        entry["pass"] = passed
+                        if not passed:
+                            raise RuntimeError(
+                                f"mass verification failed for '{bf.name}': "
+                                f"actual delta {delta_mm3:.2f} mm³ vs "
+                                f"expected {expected} mm³ "
+                                f"(tolerance ±{tol} mm³)"
+                            )
+                    mass_results.append(entry)
+                    prev_volume_mm3 = vol_mm3
 
                 if no_dim:
                     # rhs's were resolved upfront -- nothing to bind.
@@ -1692,6 +1831,13 @@ def build(
                     # updated dim values, not the placeholder.
                     _ = doc.EditRebuild3
         except Exception as e:
+            elapsed = time.time() - t0
+            logger.info(
+                "build fail: name=%s error=%s elapsed=%.1fs",
+                spec_name,
+                str(e)[:80],
+                elapsed,
+            )
             return BuildResult(
                 ok=False,
                 features_built=built,
@@ -1699,12 +1845,16 @@ def build(
                 error=str(e),
                 error_feature=current_feat_name,
                 traceback=traceback.format_exc(),
+                mass_verification=mass_results if verify_mass else None,
+                build_time_s=elapsed,
+                mode=mode,
             )
 
         # Final rebuild for good measure
         _ = doc.EditRebuild3
 
         saved_path: str | None = None
+        save_as_verified: bool | None = None
         if save_as is not None:
             # Resolve to absolute (SW requires absolute paths for SaveAs)
             # and force the .sldprt extension. Create the parent dir if
@@ -1714,22 +1864,24 @@ def build(
                 out_path = out_path.with_suffix(".sldprt")
             out_path = out_path.resolve()
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            # SaveAs3(path, version_int=0 i.e. current, save_options=0 i.e.
-            # default). The SW API doc says SaveAs3 returns an int from
-            # swFileSaveError_e where 0 == swFileSaveError_NoError. Prior
-            # code wrapped this in bool() and tripped on the success case
-            # (bool(0) is False). Trust the disk: the call succeeded if
-            # the file exists after the call returns.
-            doc.SaveAs3(str(out_path), 0, 0)
-            if not out_path.exists():
-                raise RuntimeError(f"doc.SaveAs3 did not produce {out_path}")
-            saved_path = str(out_path)
+            saved_path, save_as_verified = _save_as_with_verification(doc, out_path)
 
+        elapsed = time.time() - t0
+        logger.info(
+            "build ok: name=%s features=%d elapsed=%.1fs",
+            spec_name,
+            len(built),
+            elapsed,
+        )
         return BuildResult(
             ok=True,
             features_built=built,
             bindings_added=binding_results,
             save_as=saved_path,
+            save_as_verified=save_as_verified,
+            mass_verification=mass_results if verify_mass else None,
+            build_time_s=elapsed,
+            mode=mode,
         )
     finally:
         # Always restore the user's preference, even on exception

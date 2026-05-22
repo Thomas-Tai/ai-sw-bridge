@@ -12,6 +12,24 @@ You are pair-programming with a human engineer who has SOLIDWORKS open and this 
 
 You never call the SOLIDWORKS COM API directly. You write JSON specs or invoke CLIs. The bridge handles COM.
 
+## Quickstart (2 minutes)
+
+1. **Install**: `pip install -e ".[dev]"` from the repo root. Requires Windows + SOLIDWORKS running.
+2. **Validate a spec**: `ai-sw-build examples/filleted_box/spec.json --validate-only`
+3. **Dry-run (no SW needed)**: `ai-sw-build examples/filleted_box/spec.json --dry-run`
+4. **Lint check**: `ai-sw-build examples/filleted_box/spec.json --lint`
+5. **Build a part**: `ai-sw-build examples/filleted_box/spec.json --no-dim` (creates a fresh part in SW)
+6. **Observe the result**: `ai-sw-observe features` / `ai-sw-observe bbox` / `ai-sw-observe volume`
+
+The 16 feature types available:
+
+| Category | Types |
+|---|---|
+| Sketch | `sketch_rectangle_on_plane`, `sketch_rectangle_on_face`, `sketch_circle_on_plane`, `sketch_circle_on_face`, `sketch_circles_on_face` |
+| Extrude | `boss_extrude_blind`, `cut_extrude_through_all`, `cut_extrude_blind`, `revolve_boss`, `revolve_cut` |
+| Modify | `fillet_constant_radius`, `chamfer_edge`, `simple_hole` |
+| Pattern | `linear_pattern`, `circular_pattern`, `mirror_feature` |
+
 ## The rules
 
 1. **Propose first, execute second.** Show the human the spec/proposal before running it. Mutations go dry-run → review → commit. Builds default to `--no-dim` so you can re-run cheaply.
@@ -49,7 +67,7 @@ Full spec reference: [`docs/spec_reference.md`](spec_reference.md).
 
 ## Which feature type to pick
 
-14 feature types ship today. The right starting example by goal:
+16 feature types ship today. The right starting example by goal:
 
 | Goal | Best example to copy | Primitives it uses |
 |---|---|---|
@@ -62,6 +80,7 @@ Full spec reference: [`docs/spec_reference.md`](spec_reference.md).
 | A mirrored feature | [`mirrored_holes/`](../examples/mirrored_holes/) | `mirror_feature` |
 | A chamfered edge | [`chamfered_box/`](../examples/chamfered_box/) | `chamfer_edge` |
 | A turned/lathed part (ring, shaft) | [`revolved_ring/`](../examples/revolved_ring/) | `revolve_boss` + `centerline` |
+| A revolved groove or channel | [`drive_roller/`](../examples/drive_roller/) | `revolve_cut` + Top Plane `center.z` + `centerline` |
 | Bosses on side faces | [`side_face_bosses/`](../examples/side_face_bosses/) | side-face support on existing types |
 
 Every example has its own README explaining the gotchas specific to that primitive.
@@ -92,7 +111,8 @@ If the human's part has a `*_locals.txt` equation file (Equation Manager linked 
 
 - **`AddDimension2` opens a blocking popup** in parametric mode that cannot be suppressed via API on SW 2024 SP1. **Always start with `--no-dim`.** Only switch to parametric mode if the human explicitly needs the live equation link.
 - **SW selects faces by 3D coordinate**, not by name. The builder computes coords from feature geometry. For face-bound primitives (`sketch_*_on_face`, `simple_hole`), `(u, v)` is measured from the **face SKETCH ORIGIN** — the projection of the part origin onto the face plane — *not* the face's geometric centroid. They coincide for `±z` faces of centered rectangles but diverge for everything else. See `examples/side_face_bosses/README.md` and `examples/tension_bracket/README.md` for the exact rule.
-- **`revolve_boss` needs the axis inside the profile sketch** as a `centerline` field. Don't try to declare the axis as a separate feature.
+- **`revolve_boss` and `revolve_cut` need the axis inside the profile sketch** as a `centerline` field. Don't try to declare the axis as a separate feature.
+- **Top Plane sketches with `centerline` need `center.z`.** On Top Plane, `center.y` is sketch-local (maps to part-Z with a sign flip). The `center.z` field positions the sketch at the correct part-Z. Without it, the centerline defaults to part Z=0. Run `--lint` to catch this.
 - **One centerline per sketch.** Multiple would be ambiguous.
 - **The profile of a revolve must not cross its centerline.** SW rejects it with a cryptic error.
 - **Pattern/mirror seeds are referenced by name**, and the seed must already exist earlier in the `features` array. The validator catches forward references.
@@ -108,9 +128,26 @@ If the human's part has a `*_locals.txt` equation file (Equation Manager linked 
 
 ## Roadmap awareness
 
-14 feature primitives ship as of v0.5. **Not yet supported**: sweep, loft, sheet metal, custom reference planes/axes, assemblies, mates, drawings, HoleWizard countersink/counterbore, variable-radius fillet. If the human asks for one of these, say so — don't fake it with a worse primitive.
+16 feature primitives ship as of v0.10. **Not yet supported**: sweep, loft, sheet metal, custom reference planes/axes, assemblies, mates, drawings, HoleWizard countersink/counterbore, variable-radius fillet. If the human asks for one of these, say so — don't fake it with a worse primitive.
 
 The full not-yet-shipped list and the v0.6+ plan: [`README.md`](../README.md) bottom section.
+
+## Why late binding (and the type stubs)
+
+The bridge uses `win32com.client.Dispatch("SldWorks.Application")` — late binding only. Early binding (`gencache.EnsureDispatch`) fails with *"this COM object can not automate the makepy process"* on most installs.
+
+Consequences:
+- Zero-arg COM methods auto-invoke as properties on `getattr` — you never "call" them with parens.
+- Some args (Callout, OUT params) can't be marshalled — we use legacy 5-arg `SelectByID` instead of 9-arg `SelectByID2`.
+- No compile-time type checking — mypy sees `Any` everywhere.
+
+Type stubs in [`src/ai_sw_bridge/sw_stubs.pyi`](../src/ai_sw_bridge/sw_stubs.pyi) describe the API surface we actually use. They're not loaded at runtime (the real objects are `CDispatch`), but they serve as documentation and can be used for manual mypy validation. Do NOT attempt to switch to early binding — the typelib limitation is an SW install constraint, not a code issue.
+
+## Session handoff
+
+When ending a session, fill in [`docs/HANDOFF_TEMPLATE.md`](HANDOFF_TEMPLATE.md) and paste it into the next session's opening message. This preserves context across the two-session workflow (Sonnet part-build sessions + Opus primitive-development sessions).
+
+**Memory enforcement**: Before ending any session, write at least one memory file (project, feedback, or reference type) covering what you learned. The memory index at `~/.claude/projects/.../memory/MEMORY.md` must stay current.
 
 ## Where the source of truth lives
 

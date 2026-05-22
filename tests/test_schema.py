@@ -5,8 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from ai_sw_bridge.spec.schema import SCHEMA, SCHEMA_VERSION
+from ai_sw_bridge.spec.schema import SCHEMA, SCHEMA_VERSION, EXPECT_SCHEMA
 from ai_sw_bridge.spec.validator import _check_schema
+
+import jsonschema
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
@@ -92,3 +94,40 @@ def test_comment_fields_stripped():
         ],
     }
     _check_schema(spec)
+
+
+# -----------------------------------------------------------------------------
+# EXPECT_SCHEMA (_expect block)
+# -----------------------------------------------------------------------------
+
+
+def test_expect_schema_accepts_valid_block():
+    jsonschema.validate(instance={"mass_delta_mm3": 27000.0}, schema=EXPECT_SCHEMA)
+
+
+def test_expect_schema_accepts_with_tolerance():
+    jsonschema.validate(
+        instance={"mass_delta_mm3": -500.0, "tolerance_mm3": 5.0},
+        schema=EXPECT_SCHEMA,
+    )
+
+
+def test_expect_schema_rejects_negative_tolerance():
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(
+            instance={"mass_delta_mm3": 100.0, "tolerance_mm3": -1.0},
+            schema=EXPECT_SCHEMA,
+        )
+
+
+def test_expect_schema_rejects_missing_mass_delta():
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(instance={"tolerance_mm3": 5.0}, schema=EXPECT_SCHEMA)
+
+
+def test_expect_schema_rejects_extra_keys():
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(
+            instance={"mass_delta_mm3": 100.0, "bogus": True},
+            schema=EXPECT_SCHEMA,
+        )

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — v0.10 reliability + DX bundle
+
+- **`--lint` flag** for `ai-sw-build`. Semantic checks beyond validation:
+  unconsumed sketches, missing `center.z` on Top Plane centerlines,
+  `center.z` thread-through warnings. Exit code 6 on findings.
+- **`--verify-mass` flag** for `ai-sw-build`. Per-feature CreateMassProperty
+  volume check against `_expect` blocks. Fail-fast on mismatch.
+- **`_expect` schema** for per-feature postcondition expectations
+  (`mass_delta_mm3`, `tolerance_mm3`). Validated before `_strip_comments`.
+- **`--verbose` flag** for `ai-sw-build`. Enables debug logging from builder.
+- **Build metrics**: `build_time_s` and `mode` fields in BuildResult output.
+- **Structured logging** via Python stdlib `logging` in builder.py.
+- **Type stubs** for 21 COM interfaces in `src/ai_sw_bridge/sw_stubs.pyi`.
+- **Pre-commit hook**: `tools/pre_commit_hook.py install/uninstall` — lints
+  staged spec.json files before commit.
+- **Doc-coverage CI gate**: `tools/doc_coverage_gate.py` — checks all 16
+  schema types are documented in spec_reference.md.
+- **Golden mass regression tool**: `tools/regression_check.py --capture/--check`.
+- **PM-pane dismiss spike**: `spikes/v0_10/spike_p16_pm_dismiss.py` (6 strategies,
+  requires live SW).
+- **`docs/sketch_axes.md`**: verified axis mappings (Front, Top, Right).
+- **`docs/HANDOFF_TEMPLATE.md`**: session handoff for two-session workflow.
+- **`examples/drive_roller/README.md`**: Top-Plane sign-flip walkthrough.
+- **spec_reference.md**: added `revolve_boss`, `revolve_cut`, `circular_pattern`,
+  `simple_hole` sections; `center.z` and `centerline` docs; `_expect`
+  postcondition docs; lint checks section.
+- **AGENTS.md**: quickstart section, 16-type feature table, late-binding
+  explanation, session handoff + memory enforcement rules.
+
 ### Added — `ai-sw-build --no-dim` (zero-popup build mode)
 
 - **`--no-dim` flag** for `ai-sw-build`. When set, every `{"rhs": "..."}`

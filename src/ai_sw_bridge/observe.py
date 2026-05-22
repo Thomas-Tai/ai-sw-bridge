@@ -16,6 +16,7 @@ from PIL import Image
 
 from .sw_com import (
     DOC_TYPE_NAMES,
+    SW_DOC_PART,
     get_active_doc,
     get_sw_app,
     resolve,
@@ -374,6 +375,229 @@ def sw_get_equations() -> dict[str, Any]:
         result["ok"] = True
         return result
 
+    except Exception as exc:
+        result["error"] = f"dispatch failed: {exc!r}"
+        return result
+
+
+def sw_get_bbox() -> dict[str, Any]:
+    """Return the active part's axis-aligned bounding box in part coords.
+
+    Uses ``IPartDoc.GetPartBox(bUseDefaultMode=True)`` which returns a
+    6-tuple [Xmin, Ymin, Zmin, Xmax, Ymax, Zmax] in METERS in the part's
+    coordinate system. Values are reported in BOTH meters (the SW-native
+    unit) and millimetres (the spec-layer unit) so tools downstream don't
+    have to guess; spans are pre-computed.
+
+    Parts only. Assemblies/drawings get a typed error result -- assembly
+    bbox would need a different call (and a different normalization
+    decision, since per-component bboxes are useful in different ways).
+
+    The reported bbox includes every solid body in the part. For single-
+    body bboxes use ``IBody2.GetBodyBox``; not exposed here yet because
+    no caller has asked for it.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "doc_path": None,
+        "x_min_mm": None,
+        "x_max_mm": None,
+        "x_span_mm": None,
+        "y_min_mm": None,
+        "y_max_mm": None,
+        "y_span_mm": None,
+        "z_min_mm": None,
+        "z_max_mm": None,
+        "z_span_mm": None,
+        "x_min_m": None,
+        "x_max_m": None,
+        "y_min_m": None,
+        "y_max_m": None,
+        "z_min_m": None,
+        "z_max_m": None,
+        "error": None,
+    }
+    try:
+        sw = get_sw_app()
+        doc = get_active_doc(sw)
+        if doc is None:
+            result["error"] = "no_active_doc"
+            return result
+        try:
+            result["doc_path"] = str(resolve(doc, "GetPathName"))
+        except Exception:
+            pass
+        try:
+            doc_type = int(resolve(doc, "GetType"))
+        except Exception as exc:
+            result["error"] = f"GetType failed: {exc!r}"
+            return result
+        if doc_type != SW_DOC_PART:
+            result["error"] = (
+                f"sw_get_bbox requires a part (swDocPART={SW_DOC_PART}); active "
+                f"doc is type {doc_type} ({DOC_TYPE_NAMES.get(doc_type)})"
+            )
+            return result
+        try:
+            box = doc.GetPartBox(True)
+        except Exception as exc:
+            result["error"] = f"GetPartBox failed: {exc!r}"
+            return result
+        # An empty part (no bodies) returns a degenerate 6-tuple of zeros
+        # rather than None on SW 2024 SP1; surface that as ok=True with
+        # all spans = 0 so callers can distinguish "no geometry" from
+        # "API failure" via the error field.
+        if box is None or len(box) < 6:
+            result["error"] = f"GetPartBox returned unexpected shape: {box!r}"
+            return result
+        x_min, y_min, z_min = float(box[0]), float(box[1]), float(box[2])
+        x_max, y_max, z_max = float(box[3]), float(box[4]), float(box[5])
+        result.update(
+            x_min_m=x_min,
+            x_max_m=x_max,
+            y_min_m=y_min,
+            y_max_m=y_max,
+            z_min_m=z_min,
+            z_max_m=z_max,
+            x_min_mm=x_min * 1000.0,
+            x_max_mm=x_max * 1000.0,
+            y_min_mm=y_min * 1000.0,
+            y_max_mm=y_max * 1000.0,
+            z_min_mm=z_min * 1000.0,
+            z_max_mm=z_max * 1000.0,
+            x_span_mm=(x_max - x_min) * 1000.0,
+            y_span_mm=(y_max - y_min) * 1000.0,
+            z_span_mm=(z_max - z_min) * 1000.0,
+        )
+        result["ok"] = True
+        return result
+    except Exception as exc:
+        result["error"] = f"dispatch failed: {exc!r}"
+        return result
+
+
+def sw_get_volume() -> dict[str, Any]:
+    """Return volume + surface area + mass of the active part.
+
+    Uses ``IModelDocExtension.CreateMassProperty`` (returns an
+    IMassProperty2), then reads ``Volume`` (m^3), ``SurfaceArea`` (m^2),
+    ``Mass`` (kg), ``Density`` (kg/m^3), and ``CenterOfMass`` (3-tuple, m).
+
+    Volume + surface area are converted to mm^3 / mm^2 for the spec
+    layer; raw SI values are also reported so callers don't have to
+    re-derive. Mass is honest about the source: if no material is
+    assigned to the part, SW falls back to the default density
+    (~1000 kg/m^3) and `mass_kg` is meaningless on its own -- combine
+    with `density_kg_m3` to know whether to trust it.
+
+    Parts only. Returns a typed error result for assemblies/drawings.
+
+    Volume oracle hook (see P0.5 in the enhancement plan): the
+    `volume_mm3` field here is the single source of truth that the
+    upcoming `_expect` checker compares spec-declared volumes against.
+    Do not change its units, name, or sign without updating the checker.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "doc_path": None,
+        "volume_mm3": None,
+        "volume_m3": None,
+        "surface_area_mm2": None,
+        "surface_area_m2": None,
+        "mass_kg": None,
+        "density_kg_m3": None,
+        "center_of_mass_mm": None,
+        "body_count": None,
+        "error": None,
+    }
+    try:
+        sw = get_sw_app()
+        doc = get_active_doc(sw)
+        if doc is None:
+            result["error"] = "no_active_doc"
+            return result
+        try:
+            result["doc_path"] = str(resolve(doc, "GetPathName"))
+        except Exception:
+            pass
+        try:
+            doc_type = int(resolve(doc, "GetType"))
+        except Exception as exc:
+            result["error"] = f"GetType failed: {exc!r}"
+            return result
+        if doc_type != SW_DOC_PART:
+            result["error"] = (
+                f"sw_get_volume requires a part (swDocPART={SW_DOC_PART}); "
+                f"active doc is type {doc_type} ({DOC_TYPE_NAMES.get(doc_type)})"
+            )
+            return result
+
+        # Body count is purely diagnostic -- a zero-body part with
+        # volume == 0 is the "silent-no-op" signature we want callers to
+        # be able to detect at a glance.
+        try:
+            bodies = doc.GetBodies2(0, True)  # swBodyType_e.swSolidBody=0
+            result["body_count"] = len(bodies) if bodies is not None else 0
+        except Exception:
+            pass
+
+        try:
+            ext = resolve(doc, "Extension")
+        except Exception as exc:
+            result["error"] = f"Extension unavailable: {exc!r}"
+            return result
+        try:
+            mp = resolve(ext, "CreateMassProperty")
+        except Exception as exc:
+            result["error"] = f"CreateMassProperty failed: {exc!r}"
+            return result
+        if mp is None:
+            result["error"] = "CreateMassProperty returned None"
+            return result
+
+        try:
+            vol_m3 = float(resolve(mp, "Volume"))
+        except Exception as exc:
+            result["error"] = f"MassProperty.Volume failed: {exc!r}"
+            return result
+
+        # The remaining fields are best-effort -- volume is the load-bearing
+        # one for the silent-no-op check, so any of these missing should
+        # not fail the call.
+        area_m2 = None
+        try:
+            area_m2 = float(resolve(mp, "SurfaceArea"))
+        except Exception:
+            pass
+        mass_kg = None
+        try:
+            mass_kg = float(resolve(mp, "Mass"))
+        except Exception:
+            pass
+        density = None
+        try:
+            density = float(resolve(mp, "Density"))
+        except Exception:
+            pass
+        com_mm: list[float] | None = None
+        try:
+            com = resolve(mp, "CenterOfMass")
+            if com is not None and len(com) >= 3:
+                com_mm = [float(com[i]) * 1000.0 for i in range(3)]
+        except Exception:
+            pass
+
+        result.update(
+            volume_m3=vol_m3,
+            volume_mm3=vol_m3 * 1e9,
+            surface_area_m2=area_m2,
+            surface_area_mm2=area_m2 * 1e6 if area_m2 is not None else None,
+            mass_kg=mass_kg,
+            density_kg_m3=density,
+            center_of_mass_mm=com_mm,
+        )
+        result["ok"] = True
+        return result
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result

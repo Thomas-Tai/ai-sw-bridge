@@ -645,3 +645,75 @@ def test_revolve_cut_rejects_angle_above_360() -> None:
     )
     with pytest.raises(ValidationError):
         validate(spec)
+
+
+# -----------------------------------------------------------------------------
+# _expect block validation
+# -----------------------------------------------------------------------------
+
+
+def test_expect_with_valid_shape_passes() -> None:
+    spec = _minimal_spec()
+    spec["features"][0]["_expect"] = {"mass_delta_mm3": 490.9}
+    spec["features"][1]["_expect"] = {"mass_delta_mm3": 4909.0, "tolerance_mm3": 10.0}
+    validate(spec)
+
+
+def test_expect_with_negative_tolerance_fails() -> None:
+    spec = _minimal_spec()
+    spec["features"][0]["_expect"] = {"mass_delta_mm3": 100.0, "tolerance_mm3": -5.0}
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    assert "tolerance" in str(exc.value).lower() or "_expect" in str(exc.value)
+
+
+def test_expect_missing_mass_delta_fails() -> None:
+    spec = _minimal_spec()
+    spec["features"][0]["_expect"] = {"tolerance_mm3": 5.0}
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    assert "_expect" in str(exc.value)
+
+
+def test_expect_on_feature_without_other_issues_does_not_break_validation() -> None:
+    """A valid _expect block on a valid feature should not interfere."""
+    spec = _minimal_spec()
+    spec["features"][1]["_expect"] = {"mass_delta_mm3": 4909.0}
+    validate(spec)  # should not raise
+
+
+def test_expect_negative_mass_delta_passes() -> None:
+    """Cuts have negative mass delta."""
+    spec = {
+        "schema_version": 1,
+        "name": "CutTest",
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Box",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 20.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Box",
+                "sketch": "SK_Box",
+                "depth": 10.0,
+                "_expect": {"mass_delta_mm3": 4000.0},
+            },
+            {
+                "type": "sketch_circle_on_plane",
+                "name": "SK_Hole",
+                "plane": "Front",
+                "diameter": 5.0,
+            },
+            {
+                "type": "cut_extrude_through_all",
+                "name": "CUT_Hole",
+                "sketch": "SK_Hole",
+                "_expect": {"mass_delta_mm3": -196.3, "tolerance_mm3": 2.0},
+            },
+        ],
+    }
+    validate(spec)

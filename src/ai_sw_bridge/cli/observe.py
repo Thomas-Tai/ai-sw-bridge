@@ -4,6 +4,8 @@ Subcommands:
   active_doc          -> sw_get_active_doc()
   feature_errors      -> sw_get_feature_errors()
   equations           -> sw_get_equations()
+  bbox                -> sw_get_bbox()             [part only]
+  volume              -> sw_get_volume()           [part only]
   screenshot          -> sw_screenshot(width, height, fit_view, filename)
   measure             -> sw_measure(entity_a, entity_b)
   mate_errors         -> sw_get_mate_errors()  [assembly only]
@@ -22,9 +24,11 @@ from typing import Any
 
 from ..observe import (
     sw_get_active_doc,
+    sw_get_bbox,
     sw_get_equations,
     sw_get_feature_errors,
     sw_get_mate_errors,
+    sw_get_volume,
     sw_measure,
     sw_screenshot,
 )
@@ -44,6 +48,14 @@ def _run_equations(_args: argparse.Namespace) -> dict[str, Any]:
 
 def _run_mate_errors(_args: argparse.Namespace) -> dict[str, Any]:
     return sw_get_mate_errors()
+
+
+def _run_bbox(_args: argparse.Namespace) -> dict[str, Any]:
+    return sw_get_bbox()
+
+
+def _run_volume(_args: argparse.Namespace) -> dict[str, Any]:
+    return sw_get_volume()
 
 
 def _run_screenshot(args: argparse.Namespace) -> dict[str, Any]:
@@ -84,6 +96,31 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Dump every equation in the active doc with value and status.",
     )
     p.set_defaults(func=_run_equations)
+
+    p = subs.add_parser(
+        "bbox",
+        help="Report the active part's axis-aligned bounding box (part only).",
+        description=(
+            "Read the active part's bounding box via IPartDoc.GetPartBox. "
+            "Reports min/max corners and spans in BOTH mm and m. Part docs "
+            "only -- returns a typed error result for assemblies/drawings."
+        ),
+    )
+    p.set_defaults(func=_run_bbox)
+
+    p = subs.add_parser(
+        "volume",
+        help="Report the active part's volume, surface area, and mass (part only).",
+        description=(
+            "Read the active part's mass properties via "
+            "IModelDocExtension.CreateMassProperty. Reports volume in mm^3 "
+            "and m^3, surface area, mass (only meaningful with an assigned "
+            "material; see density_kg_m3), and center of mass. The "
+            "volume_mm3 field is the oracle compared against per-feature "
+            "spec _expect.mass_delta_mm3 in the upcoming P0.5 verifier."
+        ),
+    )
+    p.set_defaults(func=_run_volume)
 
     p = subs.add_parser(
         "screenshot",

@@ -13,10 +13,18 @@ Why late binding only:
 
 from __future__ import annotations
 
+import logging
+import warnings
 from typing import Any
 
 import pythoncom
 import win32com.client
+
+logger = logging.getLogger("ai_sw_bridge.sw_com")
+
+# Minimum supported SOLIDWORKS version. All API surfaces in this package
+# have been verified on this build. Older versions may work but are untested.
+SW_VERSION_FLOOR = (32, 1)  # SW 2024 SP1 -> RevisionNumber "32.1.0"
 
 
 SW_DOC_PART = 1
@@ -67,7 +75,25 @@ def get_sw_app() -> Any:
         _COINIT_DONE = True
     if _CACHED_SW_APP is None:
         _CACHED_SW_APP = win32com.client.Dispatch("SldWorks.Application")
+        _check_sw_version(_CACHED_SW_APP)
     return _CACHED_SW_APP
+
+
+def _check_sw_version(sw: Any) -> None:
+    """Warn if the running SW version is below the tested floor."""
+    try:
+        rev = sw.RevisionNumber  # e.g. "32.1.0"
+        parts = tuple(int(x) for x in str(rev).split("."))
+        if parts[:2] < SW_VERSION_FLOOR:
+            msg = (
+                f"SW version {rev} is below the tested floor "
+                f"{'.'.join(str(x) for x in SW_VERSION_FLOOR)}. "
+                f"Some API surfaces may not work correctly."
+            )
+            warnings.warn(msg, stacklevel=3)
+            logger.warning(msg)
+    except Exception:
+        pass  # non-fatal; don't block the build if version check fails
 
 
 def release_sw_app() -> None:
