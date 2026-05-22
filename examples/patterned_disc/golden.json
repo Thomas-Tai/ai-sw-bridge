@@ -1,27 +1,29 @@
 {
-  "spec_name": "PatternedDisc",
-  "schema_version": 1,
+  "spec_name": null,
   "feature_count": 5,
+  "equation_count": 0,
+  "total_mass_mm3": 3619.12,
+  "tolerance_mm3": 50.0,
   "features": [
     {
       "name": "SK_Disc",
-      "type": "sketch_circle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "EX_Disc",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 3534.29
     },
     {
       "name": "SK_BossSeed",
-      "type": "sketch_circle_on_face"
+      "actual_mm3": 0.0
     },
     {
       "name": "Boss_Seed",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 14.14
     },
     {
       "name": "CP_Bosses",
-      "type": "circular_pattern"
+      "actual_mm3": 70.69
     }
   ]
 }

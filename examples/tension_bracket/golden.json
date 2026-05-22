@@ -1,39 +1,41 @@
 {
-  "spec_name": "SM-HW-S1b-006_TensionBracket_v01",
-  "schema_version": 1,
+  "spec_name": null,
   "feature_count": 8,
+  "equation_count": 0,
+  "total_mass_mm3": 1856.59,
+  "tolerance_mm3": 50.0,
   "features": [
     {
       "name": "SK_InboardCap",
-      "type": "sketch_rectangle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "Extrude_InboardCap",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 900.0
     },
     {
       "name": "SK_SlotSlab",
-      "type": "sketch_rectangle_on_face"
+      "actual_mm3": 0.0
     },
     {
       "name": "Extrude_SlotSlab",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 637.5
     },
     {
       "name": "SK_OutboardCap",
-      "type": "sketch_rectangle_on_face"
+      "actual_mm3": 0.0
     },
     {
       "name": "Extrude_OutboardCap",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 900.0
     },
     {
       "name": "SK_AxleBore",
-      "type": "sketch_circle_on_face"
+      "actual_mm3": 0.0
     },
     {
       "name": "Cut_AxleBore",
-      "type": "cut_extrude_through_all"
+      "actual_mm3": -580.91
     }
   ]
 }

@@ -1,23 +1,25 @@
 {
-  "spec_name": "DrilledPlate",
-  "schema_version": 1,
+  "spec_name": null,
   "feature_count": 4,
+  "equation_count": 0,
+  "total_mass_mm3": 11811.5,
+  "tolerance_mm3": 50.0,
   "features": [
     {
       "name": "SK_Plate",
-      "type": "sketch_rectangle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "EX_Plate",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 12000.0
     },
     {
       "name": "Hole_Blind",
-      "type": "simple_hole"
+      "actual_mm3": -117.81
     },
     {
       "name": "Hole_Through",
-      "type": "simple_hole"
+      "actual_mm3": -70.69
     }
   ]
 }

@@ -36,7 +36,7 @@ The 16 feature types available:
 2. **The spec is the source of truth.** When in doubt, write or edit `spec.json` and rebuild. Do not hand-edit the SLDPRT in SW UI between runs unless the human asked.
 3. **Default to `--no-dim`.** It builds in seconds with zero manual clicks. Use parametric mode (no flag) only if the human explicitly needs a live equation link to `locals.txt`.
 4. **One feature at a time when debugging.** If a build fails at feature 7 of 10, trim the spec to features 1–7, fix, re-run, then add the rest back.
-5. **Read the example most like your target.** Don't write specs from scratch. The [`examples/`](../examples/) folder has 12 working specs covering every shipped feature type. Find the closest match, copy it, modify.
+5. **Read the example most like your target.** Don't write specs from scratch. The [`examples/`](../examples/) folder has 15 working specs covering every shipped feature type. Find the closest match, copy it, modify.
 
 ## What the spec looks like
 
@@ -141,11 +141,11 @@ Consequences:
 - Some args (Callout, OUT params) can't be marshalled — we use legacy 5-arg `SelectByID` instead of 9-arg `SelectByID2`.
 - No compile-time type checking — mypy sees `Any` everywhere.
 
-Type stubs in [`src/ai_sw_bridge/sw_stubs.pyi`](../src/ai_sw_bridge/sw_stubs.pyi) describe the API surface we actually use. They're not loaded at runtime (the real objects are `CDispatch`), but they serve as documentation and can be used for manual mypy validation. Do NOT attempt to switch to early binding — the typelib limitation is an SW install constraint, not a code issue.
+Type stubs in [`src/ai_sw_bridge/_sw_stubs/sw_stubs.pyi`](../src/ai_sw_bridge/_sw_stubs/sw_stubs.pyi) describe the API surface we actually use. They're not loaded at runtime (the real objects are `CDispatch`), but they serve as documentation and can be used for manual mypy validation. Do NOT attempt to switch to early binding — the typelib limitation is an SW install constraint, not a code issue.
 
 ## Session handoff
 
-When ending a session, fill in [`docs/HANDOFF_TEMPLATE.md`](HANDOFF_TEMPLATE.md) and paste it into the next session's opening message. This preserves context across the two-session workflow (Sonnet part-build sessions + Opus primitive-development sessions).
+When ending a session, fill in [`docs/handoff_template.md`](handoff_template.md) and paste it into the next session's opening message. This preserves context across the two-session workflow (Sonnet part-build sessions + Opus primitive-development sessions).
 
 **Memory enforcement**: Before ending any session, write at least one memory file (project, feedback, or reference type) covering what you learned. The memory index at `~/.claude/projects/.../memory/MEMORY.md` must stay current.
 

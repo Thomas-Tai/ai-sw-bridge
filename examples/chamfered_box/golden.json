@@ -1,19 +1,21 @@
 {
-  "spec_name": "ChamferedBox",
-  "schema_version": 1,
+  "spec_name": null,
   "feature_count": 3,
+  "equation_count": 0,
+  "total_mass_mm3": 3961.33,
+  "tolerance_mm3": 50.0,
   "features": [
     {
       "name": "SK_Box",
-      "type": "sketch_rectangle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "EX_Box",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 4000.0
     },
     {
       "name": "Ch_TopEdges",
-      "type": "chamfer_edge"
+      "actual_mm3": -38.67
     }
   ]
 }

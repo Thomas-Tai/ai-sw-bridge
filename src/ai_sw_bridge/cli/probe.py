@@ -42,7 +42,7 @@ def probe() -> dict[str, Any]:
         if doc is None:
             result["active_doc"] = None
         else:
-            doc_info = {}
+            doc_info: dict[str, str | None] = {}
             try:
                 doc_info["path"] = str(resolve(doc, "GetPathName"))
             except Exception:

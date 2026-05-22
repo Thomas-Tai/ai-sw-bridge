@@ -28,9 +28,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import pythoncom
-import win32com.client
-
 from ..locals_io import parse as parse_locals
 from ..sw_com import get_sw_app
 from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
@@ -50,7 +47,6 @@ from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
 )
 from ._build_context import BuildContext, BuiltFeature, DeferredDim, FeatureType
 from ._face_geometry import (
-    FaceFrame,
     PLANE_FULL_NAME,
     _face_frame,
     _select_extrude_face,
@@ -59,13 +55,7 @@ from ._face_geometry import (
 )
 from ._sketch_primitives import (
     PLACEHOLDER_MM,
-    _dismiss_dim_pane,
-    _draw_centerline_if_present,
-    _identify_rect_edge,
-    _is_rhs,
     _literal_or_default,
-    _mm_to_m,
-    _strip_centerrectangle_midpoint_relation,
 )
 from .sketches import (
     CircleOnFaceHandler,
@@ -98,7 +88,8 @@ SW_FM_FILLET = 1
 SW_CONST_RADIUS_FILLET = 0
 
 
-# Plane name -> outward-normal vector (in part coordinates, +X right, +Y up, +Z out of screen)
+# Plane name -> outward-normal vector in part coordinates
+# (+X right, +Y up, +Z out of screen).
 # Matches SW's default English template orientation:
 #   Front Plane = XY plane (normal +Z)
 #   Top   Plane = XZ plane (normal +Y)
@@ -1588,6 +1579,9 @@ class BuildResult:
     mass_verification: list[dict[str, Any]] | None = None
     build_time_s: float | None = None
     mode: str | None = None  # "no_dim", "deferred_dim", or "parametric"
+    # Per-feature build timings (observability triad, P3.1). Each entry:
+    # {"name": ..., "type": ..., "build_time_s": ...}. None until populated.
+    feature_metrics: list[dict[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-serializable shape for CLI output. Single source of truth
@@ -1614,6 +1608,8 @@ class BuildResult:
             out["build_time_s"] = round(self.build_time_s, 3)
         if self.mode is not None:
             out["mode"] = self.mode
+        if self.feature_metrics is not None:
+            out["feature_metrics"] = self.feature_metrics
         return out
 
 
@@ -1731,6 +1727,7 @@ def build(
         built: list[str] = []
         binding_results: list[Binding] = []
         mass_results: list[dict[str, Any]] = []
+        feature_metrics: list[dict[str, Any]] = []  # per-feature timing (P3.1)
         prev_volume_mm3: float = 0.0  # 0 before any feature
         # Track the most recent feature we touched, so a mid-loop exception
         # can report which one failed. Separated from the loop variable so
@@ -1745,7 +1742,15 @@ def build(
                 current_feat_name = feat.get("name")
                 logger.debug("feature: %s (%s)", current_feat_name, feat["type"])
                 handler = HANDLERS[feat["type"]]
+                _feat_t0 = time.time()
                 bf = handler(ctx, feat)
+                feature_metrics.append(
+                    {
+                        "name": current_feat_name,
+                        "type": feat["type"],
+                        "build_time_s": round(time.time() - _feat_t0, 3),
+                    }
+                )
 
                 # Stash plane info for plane-based sketches so child extrudes
                 # can inherit the parent plane's outward normal as their axis.
@@ -1852,6 +1857,7 @@ def build(
                 mass_verification=mass_results if verify_mass else None,
                 build_time_s=elapsed,
                 mode=mode,
+                feature_metrics=feature_metrics,
             )
 
         # Final rebuild for good measure
@@ -1886,6 +1892,7 @@ def build(
             mass_verification=mass_results if verify_mass else None,
             build_time_s=elapsed,
             mode=mode,
+            feature_metrics=feature_metrics,
         )
     finally:
         # Always restore the user's preference, even on exception

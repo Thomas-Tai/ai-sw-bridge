@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .schema import SKETCH_TYPES, EXTRUDE_TYPES, PATTERN_TYPES, MODIFY_TYPES
+from .schema import SKETCH_TYPES, EXTRUDE_TYPES
 
 
 class LintFinding:
@@ -70,35 +70,48 @@ def _check_unconsumed_sketches(spec: dict[str, Any]) -> list[LintFinding]:
     return findings
 
 
-def _check_face_references(spec: dict[str, Any]) -> list[LintFinding]:
-    """Warn if a face reference like '+x' is unlikely to exist on the parent.
+# Face-bound features (sketch_*_on_face, simple_hole) address the parent by a
+# +/-x/y/z normal and assume box-like geometry. Boss/cut extrudes have those
+# clean orthogonal faces; revolves produce curved side faces and annular end
+# faces where the face-selection heuristic is unreliable.
+_ORTHO_FACE_PARENTS = frozenset(
+    {"boss_extrude_blind", "cut_extrude_through_all", "cut_extrude_blind"}
+)
 
-    Checks that the parent feature is an extrusion-type (boss/cut) and
-    that the referenced face direction makes geometric sense. A thin
-    extrude may not have meaningful +x/-x faces, for example, but we
-    can't know that statically — we only check that the parent exists
-    and is an extrusion.
+
+def _check_face_references(spec: dict[str, Any]) -> list[LintFinding]:
+    """Warn if a face-bound feature takes a face of a parent that has no
+    clean orthogonal faces.
+
+    `sketch_*_on_face` and `simple_hole` select the parent face by a
+    +/-x/y/z normal and assume box-like geometry. The validator already
+    rejects a missing or non-extrude parent; this advisory catches the
+    subtler case of a *revolve* parent, whose faces are curved/annular and
+    do not map cleanly to a +/-x/y/z direction.
     """
     features = spec.get("features", [])
-    seen: dict[str, str] = {}  # name -> type
+    seen: dict[str, str] = {}  # name -> type, of features declared so far
     findings: list[LintFinding] = []
 
     for i, feat in enumerate(features):
-        ftype = feat.get("type", "")
-        name = feat.get("name", "")
-        seen[name] = ftype
-
         if "of_feature" in feat:
             parent = feat["of_feature"]
-            face = feat.get("face", "")
-            if parent not in seen:
-                # This is caught by the validator as a reference error;
-                # skip here to avoid duplicate reporting.
-                continue
-            parent_type = seen[parent]
-            if parent_type not in EXTRUDE_TYPES:
-                # Also caught by validator; skip.
-                continue
+            parent_type = seen.get(parent)
+            # Missing parent / forward reference is the validator's job.
+            if parent_type is not None and parent_type not in _ORTHO_FACE_PARENTS:
+                findings.append(
+                    LintFinding(
+                        severity="warning",
+                        path=f"features/{i}/of_feature",
+                        message=(
+                            f"feature '{feat.get('name', '')}' takes face "
+                            f"'{feat.get('face', '')}' of '{parent}' "
+                            f"({parent_type}), which has no clean orthogonal "
+                            f"faces -- face selection may pick the wrong surface"
+                        ),
+                    )
+                )
+        seen[feat.get("name", "")] = feat.get("type", "")
 
     return findings
 
@@ -118,7 +131,6 @@ def _check_top_plane_centerline_center_z(
     findings: list[LintFinding] = []
 
     for i, feat in enumerate(features):
-        ftype = feat.get("type", "")
         plane = feat.get("plane", "")
         if plane != "Top":
             continue

@@ -1,15 +1,17 @@
 {
-  "spec_name": "RevolvedRing",
-  "schema_version": 1,
+  "spec_name": null,
   "feature_count": 2,
+  "equation_count": 0,
+  "total_mass_mm3": 5654.87,
+  "tolerance_mm3": 50.0,
   "features": [
     {
       "name": "SK_Profile",
-      "type": "sketch_rectangle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "REV_Ring",
-      "type": "revolve_boss"
+      "actual_mm3": 5654.87
     }
   ]
 }

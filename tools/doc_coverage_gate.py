@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Doc-coverage gate: every type in schema.ALL_TYPES must have a section in spec_reference.md.
+"""Doc-coverage gate: every schema.ALL_TYPES feature type must have a
+section heading in docs/spec_reference.md.
 
 Exit 0 if all types are documented, 1 otherwise. Prints a diff-style report.
 Run from the repo root: python tools/doc_coverage_gate.py

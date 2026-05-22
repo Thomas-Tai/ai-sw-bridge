@@ -3,11 +3,11 @@ ai-sw-build CLI entry point. Validates a v0.2 spec JSON, then builds it in
 a fresh blank part on the running SOLIDWORKS session.
 
 Usage:
-    ai-sw-build <spec.json>                # parametric mode (default): inline AddDimension2 popups interleaved with build
-    ai-sw-build <spec.json> --deferred-dim # geometry first (no popups), then batched popup-ticking at end; keeps live equation link
-    ai-sw-build <spec.json> --no-dim       # resolve rhs upfront, zero popups, no equation links
+    ai-sw-build <spec.json>                 # parametric (default): inline popups
+    ai-sw-build <spec.json> --deferred-dim  # geometry first, popups batched at end
+    ai-sw-build <spec.json> --no-dim        # resolve rhs upfront, zero popups
     ai-sw-build <spec.json> --validate-only
-    ai-sw-build <spec.json> --dry-run      # validate + resolve locals + dump planned feature list; never touches SW
+    ai-sw-build <spec.json> --dry-run       # validate + plan; never touches SW
 
 Exits with non-zero status and prints a JSON error object on failure.
 """
@@ -29,6 +29,34 @@ from ..spec.lint import lint as spec_lint
 def _emit(payload: dict, code: int) -> int:
     print(json.dumps(payload, indent=2))
     return code
+
+
+def _write_build_metrics(result: Any, spec: dict[str, Any], sldprt_path: str) -> str:
+    """Write a build_metrics.json sidecar next to the saved .sldprt.
+
+    Observability triad (P3.1), Metrics leg. Captures per-feature build
+    times, total build time, mode, and binding/mass-check counts -- enough
+    to spot a regression (a feature whose time spikes flags an added retry
+    loop). Returns the metrics file path.
+    """
+    part = Path(sldprt_path)
+    metrics_path = part.with_name(part.stem + ".build_metrics.json")
+    metrics = {
+        "schema": "ai-sw-bridge/build_metrics/1",
+        "part": spec.get("name"),
+        "saved_part": sldprt_path,
+        "mode": result.mode,
+        "ok": result.ok,
+        "feature_count": len(result.features_built),
+        "total_build_time_s": (
+            round(result.build_time_s, 3) if result.build_time_s is not None else None
+        ),
+        "features": result.feature_metrics or [],
+        "bindings_added": len(result.bindings_added),
+        "mass_verification": result.mass_verification or [],
+    }
+    metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
+    return str(metrics_path)
 
 
 # Fields that aren't user-interesting in a planned-feature summary --
@@ -76,6 +104,17 @@ def _plan_entry(feat: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _count_rhs(node: Any) -> int:
+    """Count {"rhs": "..."} binding objects anywhere in the spec tree."""
+    if isinstance(node, dict):
+        if "rhs" in node and isinstance(node["rhs"], str):
+            return 1
+        return sum(_count_rhs(v) for v in node.values())
+    if isinstance(node, list):
+        return sum(_count_rhs(x) for x in node)
+    return 0
+
+
 def _dry_run(spec: dict[str, Any]) -> dict[str, Any]:
     """Resolve locals (catches rhs lookup errors) and emit a planned-feature list.
 
@@ -91,10 +130,14 @@ def _dry_run(spec: dict[str, Any]) -> dict[str, Any]:
         "resolved": False,
         "error": None,
     }
+    # locals_resolved: count of {rhs} bindings successfully resolved against
+    # the locals file, or null when no locals is declared / resolution failed.
+    locals_resolved: int | None = None
     if spec.get("locals"):
         try:
             _ = _resolve_rhs_in_spec(spec)
             locals_status["resolved"] = True
+            locals_resolved = _count_rhs(spec)
         except Exception as exc:
             locals_status["error"] = f"{type(exc).__name__}: {exc}"
     return {
@@ -103,6 +146,7 @@ def _dry_run(spec: dict[str, Any]) -> dict[str, Any]:
         "spec_name": spec.get("name"),
         "schema_version": spec.get("schema_version"),
         "feature_count": feature_count,
+        "locals_resolved": locals_resolved,
         "locals": locals_status,
         "features": [_plan_entry(f) for f in spec["features"]],
     }
@@ -194,19 +238,30 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--log-level",
+        dest="log_level",
+        choices=["debug", "info", "warning", "error"],
+        default="warning",
+        help=(
+            "Logging verbosity for the build (observability triad, P3.1). "
+            "'debug' emits a record per feature. Default 'warning'."
+        ),
+    )
+    parser.add_argument(
         "--verbose",
         dest="verbose",
         action="store_true",
-        help="Enable debug logging from the builder.",
+        help="Alias for --log-level debug.",
     )
     args = parser.parse_args()
 
-    if args.verbose:
-        logging.basicConfig(
-            level=logging.DEBUG, format="%(name)s %(levelname)s %(message)s"
-        )
-    else:
-        logging.basicConfig(level=logging.WARNING)
+    # Observability triad (P3.1): leveled logging. --verbose is shorthand
+    # for --log-level debug.
+    level_name = "debug" if args.verbose else args.log_level
+    logging.basicConfig(
+        level=getattr(logging, level_name.upper()),
+        format="%(name)s %(levelname)s %(message)s",
+    )
 
     # Mode conflict check runs before anything else so --validate-only
     # doesn't mask a misuse of flags.
@@ -299,6 +354,10 @@ def main() -> int:
     payload = result.to_dict()
     payload["no_dim"] = args.no_dim
     payload["deferred_dim"] = args.deferred_dim
+    # Observability triad (P3.1): drop a build_metrics.json sidecar next to
+    # the saved part so a later run can diff per-feature timings.
+    if result.save_as:
+        payload["build_metrics"] = _write_build_metrics(result, spec, result.save_as)
     return _emit(payload, 0 if result.ok else 4)
 
 

@@ -21,12 +21,21 @@ pip install -e ".[dev]"
 
 ## Code style
 
-- **Formatter:** `black` (line-length 88, default settings). Run before committing:
-  ```powershell
-  pip install black
-  black .
-  ```
-- **No type-checking CI yet**, but the codebase uses type annotations. Keep them accurate.
+- **Formatter:** `black` (line-length 88, default settings).
+- **Linter:** `flake8`. **Type checker:** `mypy` (config in `mypy.ini`).
+
+### Pre-commit hooks
+
+Install the hooks once, after cloning:
+
+```powershell
+pip install pre-commit
+pre-commit install
+```
+
+`pre-commit` then runs `black`, `flake8`, `mypy`, and the spec linter on every
+`git commit` — the same gates CI enforces. Run them across the whole tree at
+any time with `pre-commit run --all-files`.
 
 ## Tests
 

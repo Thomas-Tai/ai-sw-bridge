@@ -1,0 +1,35 @@
+# Pre-commit hooks for ai-sw-bridge.  One-time setup:  pre-commit install
+#
+# Runs on `git commit`. Mirrors the CI gates (black, flake8, mypy) and adds
+# the project's own spec linter so a bad spec.json never reaches CI.
+# (Enhancement plan P2.1.)
+repos:
+  - repo: https://github.com/psf/black
+    rev: 25.12.0
+    hooks:
+      - id: black
+        # Pin the target so local + CI (py3.10/3.12/3.14) agree -- see the
+        # [tool.black] comment in pyproject.toml.
+        args: ["--target-version", "py310"]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        args: ["--config-file", "mypy.ini"]
+        additional_dependencies: ["types-jsonschema"]
+
+  - repo: local
+    hooks:
+      # Semantic lint of spec.json files (ai_sw_bridge.spec.lint). Depends on
+      # P1.3. Blocks the commit if any staged spec has lint findings.
+      - id: ai-sw-build-lint
+        name: ai-sw-build --lint (spec.json semantic checks)
+        entry: python tools/lint_specs.py
+        language: system
+        files: '(^|/)spec\.json$'

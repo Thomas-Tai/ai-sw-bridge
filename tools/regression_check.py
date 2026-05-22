@@ -1,27 +1,34 @@
 #!/usr/bin/env python3
-"""Golden mass regression check.
+"""Golden volume regression check.
 
-Builds every examples/*/spec.json with --no-dim --verify-mass and compares
-the actual volume deltas against the golden baseline. Fails if any feature's
-volume delta drifts beyond tolerance.
+Builds every examples/*/spec.json on the running SOLIDWORKS session in
+``--no-dim --verify-mass`` mode and records the resulting total part volume
+(mm^3 -- the field is named ``total_mass_mm3`` for consistency with the
+spec's ``_expect.mass_delta_mm3``) plus the per-feature volume deltas to
+examples/<name>/golden.json. ``--check`` rebuilds and fails if any total
+drifts beyond tolerance.
 
-Usage:
-    # Capture golden baseline (requires live SW):
-    python tools/regression_check.py --capture
+Both modes require a running SOLIDWORKS (enhancement plan P1.2). Wire
+``--check`` as a manual nightly job -- there is no Windows+SW CI runner.
 
-    # Check against baseline (requires live SW):
-    python tools/regression_check.py --check
+    python tools/regression_check.py --capture   # record golden baselines
+    python tools/regression_check.py --check      # verify against baselines
 
-The golden baseline lives in examples/<name>/golden.json. Each file maps
-feature names to their expected mass_delta_mm3 and tolerance_mm3.
+golden.json shape:
+    {
+      "spec_name": ..., "feature_count": N, "equation_count": 0,
+      "total_mass_mm3": ..., "tolerance_mm3": 50.0,
+      "features": [{"name": ..., "actual_mm3": ...}, ...]
+    }
 
-Exit codes: 0=pass, 1=regression detected, 2=capture error.
+Exit codes: 0=pass, 1=regression detected, 2=capture/build error.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -30,35 +37,60 @@ EXAMPLES_DIR = REPO_ROOT / "examples"
 VENV_PYTHON = REPO_ROOT / ".venv-freshtest" / "Scripts" / "python.exe"
 BUILD_MODULE = "ai_sw_bridge.cli.build"
 
+# Default acceptable drift for a part's total volume between builds (mm^3).
+DEFAULT_TOLERANCE_MM3 = 50.0
+
 
 def _find_specs() -> list[Path]:
-    """Find all example spec.json files, sorted."""
+    """All example spec.json files, sorted by directory name."""
     return sorted(EXAMPLES_DIR.glob("*/spec.json"))
 
 
-def _capture_one(spec_path: Path) -> dict | None:
-    """Build one spec with --dry-run and --lint, capture the result.
+def _build_with_mass(spec_path: Path) -> dict | None:
+    """Build one spec via `ai-sw-build --no-dim --verify-mass` on live SW.
 
-    Returns the full build output dict, or None on failure.
+    Returns the parsed JSON result on success, or None if the build failed
+    (non-ok result, non-JSON output, or timeout).
     """
-    import subprocess
-
-    result = subprocess.run(
-        [str(VENV_PYTHON), "-m", BUILD_MODULE, "--dry-run", str(spec_path)],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    if result.returncode != 0:
+    try:
+        result = subprocess.run(
+            [
+                str(VENV_PYTHON),
+                "-m",
+                BUILD_MODULE,
+                str(spec_path),
+                "--no-dim",
+                "--verify-mass",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=240,
+        )
+    except subprocess.TimeoutExpired:
         return None
     try:
-        return json.loads(result.stdout)
+        data = json.loads(result.stdout)
     except json.JSONDecodeError:
         return None
+    return data if data.get("ok") else None
+
+
+def _total_mass_and_features(data: dict) -> tuple[float, list[dict]]:
+    """Total volume (mm^3) and per-feature deltas from a --verify-mass result.
+
+    The per-feature actual_mm3 deltas telescope to the part's total volume
+    (sketches contribute 0, bosses add, cuts subtract).
+    """
+    mv = data.get("mass_verification") or []
+    features = [
+        {"name": e.get("feature"), "actual_mm3": e.get("actual_mm3")} for e in mv
+    ]
+    total = round(sum(e.get("actual_mm3") or 0.0 for e in mv), 2)
+    return total, features
 
 
 def capture() -> int:
-    """Capture golden baselines for all examples."""
+    """Build every example and record its golden baseline."""
     specs = _find_specs()
     if not specs:
         print("No example specs found", file=sys.stderr)
@@ -67,118 +99,80 @@ def capture() -> int:
     ok = True
     for spec_path in specs:
         name = spec_path.parent.name
-        golden_path = spec_path.parent / "golden.json"
-        print(f"Capturing {name}...", end=" ")
-
-        data = _capture_one(spec_path)
+        print(f"Capturing {name}...", end=" ", flush=True)
+        data = _build_with_mass(spec_path)
         if data is None:
-            print("FAILED (dry-run error)")
+            print("FAILED (build error)")
             ok = False
             continue
-
+        total, features = _total_mass_and_features(data)
         golden = {
-            "spec_name": data.get("spec_name"),
-            "schema_version": data.get("schema_version"),
-            "feature_count": data.get("feature_count"),
-            "features": [],
+            "spec_name": data.get("spec_name") or data.get("name"),
+            "feature_count": len(data.get("features_built", [])),
+            "equation_count": len(data.get("bindings_added", [])),
+            "total_mass_mm3": total,
+            "tolerance_mm3": DEFAULT_TOLERANCE_MM3,
+            "features": features,
         }
-        for feat in data.get("features", []):
-            entry = {
-                "name": feat["name"],
-                "type": feat["type"],
-            }
-            if "expect" in feat:
-                entry["expect"] = feat["expect"]
-            golden["features"].append(entry)
-
-        golden_path.write_text(json.dumps(golden, indent=2) + "\n", encoding="utf-8")
-        print(f"OK ({golden['feature_count']} features)")
-
+        (spec_path.parent / "golden.json").write_text(
+            json.dumps(golden, indent=2) + "\n", encoding="utf-8"
+        )
+        print(f"OK ({golden['feature_count']} features, {total} mm^3)")
     return 0 if ok else 2
 
 
 def check() -> int:
-    """Check each example against its golden baseline.
-
-    For examples with _expect blocks, we verify that --verify-mass would pass.
-    For examples without _expect blocks, we just verify the spec still validates.
-    """
+    """Rebuild every example and compare its total volume to the baseline."""
     specs = _find_specs()
     if not specs:
         print("No example specs found", file=sys.stderr)
         return 2
 
     regressions = 0
+    checked = 0
     for spec_path in specs:
         name = spec_path.parent.name
         golden_path = spec_path.parent / "golden.json"
-
         if not golden_path.exists():
             print(f"SKIP {name} (no golden.json; run --capture first)")
             continue
-
-        try:
-            spec = json.loads(spec_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as e:
-            print(f"FAIL {name}: spec is not valid JSON: {e}")
+        golden = json.loads(golden_path.read_text(encoding="utf-8"))
+        data = _build_with_mass(spec_path)
+        if data is None:
+            print(f"FAIL {name}: build error")
             regressions += 1
             continue
-
-        try:
-            golden = json.loads(golden_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as e:
-            print(f"FAIL {name}: golden.json is not valid JSON: {e}")
-            regressions += 1
-            continue
-
-        # Basic structural check: same feature count and names
-        spec_feats = spec.get("features", [])
-        golden_feats = golden.get("features", [])
-        if len(spec_feats) != len(golden_feats):
+        checked += 1
+        total, _ = _total_mass_and_features(data)
+        expected = golden.get("total_mass_mm3", 0.0)
+        tol = golden.get("tolerance_mm3", DEFAULT_TOLERANCE_MM3)
+        if abs(total - expected) > tol:
             print(
-                f"FAIL {name}: feature count mismatch "
-                f"(spec={len(spec_feats)}, golden={len(golden_feats)})"
+                f"FAIL {name}: total {total} mm^3 vs golden {expected} mm^3 "
+                f"(tolerance +/-{tol})"
             )
             regressions += 1
-            continue
-
-        feat_ok = True
-        for sf, gf in zip(spec_feats, golden_feats):
-            if sf["name"] != gf["name"]:
-                print(
-                    f"FAIL {name}: feature name mismatch ({sf['name']} != {gf['name']})"
-                )
-                feat_ok = False
-                break
-            if sf["type"] != gf["type"]:
-                print(f"FAIL {name}: feature type mismatch for {sf['name']}")
-                feat_ok = False
-                break
-
-        if feat_ok:
-            print(f"OK   {name} ({len(spec_feats)} features)")
         else:
-            regressions += 1
+            print(f"OK   {name} ({total} mm^3)")
 
     if regressions:
         print(f"\n{regressions} regression(s) detected")
         return 1
-    print("\nAll examples pass golden baseline check")
+    print(f"\nAll {checked} checked example(s) within tolerance")
     return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Golden mass regression check")
+    parser = argparse.ArgumentParser(description="Golden volume regression check")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "--capture", action="store_true", help="Capture golden baselines"
+        "--capture", action="store_true", help="Record golden baselines (live SW)"
     )
-    group.add_argument("--check", action="store_true", help="Check against baselines")
+    group.add_argument(
+        "--check", action="store_true", help="Verify against baselines (live SW)"
+    )
     args = parser.parse_args()
-
-    if args.capture:
-        return capture()
-    return check()
+    return capture() if args.capture else check()
 
 
 if __name__ == "__main__":

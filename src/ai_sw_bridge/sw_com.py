@@ -14,7 +14,6 @@ Why late binding only:
 from __future__ import annotations
 
 import logging
-import warnings
 from typing import Any
 
 import pythoncom
@@ -22,9 +21,10 @@ import win32com.client
 
 logger = logging.getLogger("ai_sw_bridge.sw_com")
 
-# Minimum supported SOLIDWORKS version. All API surfaces in this package
-# have been verified on this build. Older versions may work but are untested.
-SW_VERSION_FLOOR = (32, 1)  # SW 2024 SP1 -> RevisionNumber "32.1.0"
+# Minimum verified SOLIDWORKS version. Every COM API surface this package
+# drives has been validated on this build; get_sw_app() refuses to run on
+# anything older (see _check_sw_version).
+SW_VERSION_VERIFIED = (32, 1)  # SW 2024 SP1 -> RevisionNumber "32.1.0"
 
 
 SW_DOC_PART = 1
@@ -80,20 +80,28 @@ def get_sw_app() -> Any:
 
 
 def _check_sw_version(sw: Any) -> None:
-    """Warn if the running SW version is below the tested floor."""
+    """Fail fast if the running SW version is below the verified minimum.
+
+    The COM API surfaces this package drives are validated on
+    SW_VERSION_VERIFIED (SOLIDWORKS 2024 SP1). An older build can marshal
+    calls differently; rather than fail deep inside a build with a cryptic
+    COM error, refuse up front with a clear message. (Enhancement plan P3.3.)
+    """
     try:
         rev = sw.RevisionNumber  # e.g. "32.1.0"
         parts = tuple(int(x) for x in str(rev).split("."))
-        if parts[:2] < SW_VERSION_FLOOR:
-            msg = (
-                f"SW version {rev} is below the tested floor "
-                f"{'.'.join(str(x) for x in SW_VERSION_FLOOR)}. "
-                f"Some API surfaces may not work correctly."
-            )
-            warnings.warn(msg, stacklevel=3)
-            logger.warning(msg)
     except Exception:
-        pass  # non-fatal; don't block the build if version check fails
+        # RevisionNumber unreadable -- log and continue rather than block.
+        logger.warning("could not read SW RevisionNumber; skipping version check")
+        return
+    if parts[:2] < SW_VERSION_VERIFIED:
+        floor = ".".join(str(x) for x in SW_VERSION_VERIFIED)
+        raise RuntimeError(
+            f"SOLIDWORKS {rev} is older than the verified minimum {floor} "
+            f"(SW 2024 SP1). ai-sw-bridge's COM calls are not validated on "
+            f"this build -- upgrade SOLIDWORKS, or relax SW_VERSION_VERIFIED "
+            f"in sw_com.py at your own risk."
+        )
 
 
 def release_sw_app() -> None:

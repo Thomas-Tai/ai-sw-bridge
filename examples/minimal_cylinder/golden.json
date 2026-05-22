@@ -1,15 +1,17 @@
 {
-  "spec_name": "MinimalCylinder",
-  "schema_version": 1,
+  "spec_name": null,
   "feature_count": 2,
+  "equation_count": 0,
+  "total_mass_mm3": 39269.91,
+  "tolerance_mm3": 50.0,
   "features": [
     {
       "name": "SK_Body",
-      "type": "sketch_circle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "Extrude_Body",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 39269.91
     }
   ]
 }

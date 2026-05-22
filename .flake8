@@ -1,0 +1,43 @@
+# flake8 configuration.
+#
+# max-line-length is 88 to match black exactly so the two tools never
+# disagree. E203 (whitespace before ':') and W503 (line break before binary
+# operator) are disabled per black's documented guidance.
+#
+# Pattern note: per-file-ignores keys use a leading `*` so they match
+# regardless of the OS path separator -- flake8 fnmatch-compares against the
+# reported path, which uses backslashes on Windows.
+[flake8]
+max-line-length = 88
+extend-ignore = E203, W503
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    .venv-freshtest,
+    captures,
+    spikes,
+    sw_types.py
+
+# Baselined pre-existing findings in modules that predate the flake8 gate
+# (enhancement plan P2.1): E501 in legacy docstrings/comments that black does
+# not wrap, plus minor dead code. New code must be clean -- ratchet these
+# down whenever one of these files is next touched.
+per-file-ignores =
+    *codegen.py:E501
+    *observe.py:E501
+    *locals_io.py:E501,F841
+    *mutate.py:E501
+    *parameterize.py:E741
+    *schema.py:E501
+    *validator.py:F401
+    *chm_extract.py:E501
+    *gen_api_markdown.py:E501
+    *gen_sw_types.py:E501
+    *test_cli_build_dry_run.py:F401
+    *test_doc_coverage.py:F401
+    *test_lint.py:F401
+    *test_pre_commit_hook.py:F401
+    *test_schema.py:F401
+    *test_validator.py:F401

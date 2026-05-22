@@ -1,23 +1,25 @@
 {
-  "spec_name": "GroovedShaft",
-  "schema_version": 1,
+  "spec_name": null,
   "feature_count": 4,
+  "equation_count": 0,
+  "total_mass_mm3": 38892.92,
+  "tolerance_mm3": 50.0,
   "features": [
     {
       "name": "SK_Body",
-      "type": "sketch_rectangle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "REV_Body",
-      "type": "revolve_boss"
+      "actual_mm3": 39269.91
     },
     {
       "name": "SK_Groove",
-      "type": "sketch_rectangle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "CUT_Groove",
-      "type": "revolve_cut"
+      "actual_mm3": -376.99
     }
   ]
 }

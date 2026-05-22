@@ -1,27 +1,29 @@
 {
-  "spec_name": "MirroredHoles",
-  "schema_version": 1,
+  "spec_name": null,
   "feature_count": 5,
+  "equation_count": 0,
+  "total_mass_mm3": 2343.46,
+  "tolerance_mm3": 50.0,
   "features": [
     {
       "name": "SK_Plate",
-      "type": "sketch_rectangle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "EX_Plate",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 2400.0
     },
     {
       "name": "SK_HoleSeed",
-      "type": "sketch_circle_on_face"
+      "actual_mm3": 0.0
     },
     {
       "name": "Hole_Seed",
-      "type": "cut_extrude_through_all"
+      "actual_mm3": -28.27
     },
     {
       "name": "Mir_Hole",
-      "type": "mirror_feature"
+      "actual_mm3": -28.27
     }
   ]
 }

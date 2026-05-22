@@ -1,19 +1,21 @@
 {
-  "spec_name": "filleted_box_demo",
-  "schema_version": 1,
+  "spec_name": null,
   "feature_count": 3,
+  "equation_count": 0,
+  "total_mass_mm3": 3982.83,
+  "tolerance_mm3": 50.0,
   "features": [
     {
       "name": "SK_Box",
-      "type": "sketch_rectangle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "Extrude_Box",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 4000.0
     },
     {
       "name": "Fillet_TopRightEdge",
-      "type": "fillet_constant_radius"
+      "actual_mm3": -17.17
     }
   ]
 }

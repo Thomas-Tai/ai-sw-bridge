@@ -1,31 +1,33 @@
 {
-  "spec_name": "SM-HW-S1b-006b_SpringEndCap_v01",
-  "schema_version": 1,
+  "spec_name": null,
   "feature_count": 6,
+  "equation_count": 0,
+  "total_mass_mm3": 1541.63,
+  "tolerance_mm3": 50.0,
   "features": [
     {
       "name": "SK_BodySlab",
-      "type": "sketch_rectangle_on_plane"
+      "actual_mm3": 0.0
     },
     {
       "name": "Extrude_Body",
-      "type": "boss_extrude_blind"
+      "actual_mm3": 1800.0
     },
     {
       "name": "SK_SpringPocket",
-      "type": "sketch_circle_on_face"
+      "actual_mm3": 0.0
     },
     {
       "name": "Cut_SpringPocket",
-      "type": "cut_extrude_blind"
+      "actual_mm3": -113.1
     },
     {
       "name": "SK_MountHoles",
-      "type": "sketch_circles_on_face"
+      "actual_mm3": 0.0
     },
     {
       "name": "Cut_MountHoles",
-      "type": "cut_extrude_through_all"
+      "actual_mm3": -145.27
     }
   ]
 }

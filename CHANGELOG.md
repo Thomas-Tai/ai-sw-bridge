@@ -7,34 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-05-22
+
 ### Added — v0.10 reliability + DX bundle
 
 - **`--lint` flag** for `ai-sw-build`. Semantic checks beyond validation:
   unconsumed sketches, missing `center.z` on Top Plane centerlines,
-  `center.z` thread-through warnings. Exit code 6 on findings.
+  `center.z` thread-through, and face references on parents without clean
+  orthogonal faces. Exit code 6 on findings.
 - **`--verify-mass` flag** for `ai-sw-build`. Per-feature CreateMassProperty
   volume check against `_expect` blocks. Fail-fast on mismatch.
 - **`_expect` schema** for per-feature postcondition expectations
   (`mass_delta_mm3`, `tolerance_mm3`). Validated before `_strip_comments`.
-- **`--verbose` flag** for `ai-sw-build`. Enables debug logging from builder.
-- **Build metrics**: `build_time_s` and `mode` fields in BuildResult output.
+- **`--log-level` flag** for `ai-sw-build` (debug/info/warning/error);
+  `--verbose` is the shorthand for `--log-level debug`.
+- **`build_metrics.json` sidecar** written next to a `--save-as` part:
+  per-feature build timings, total time, mode, binding/mass-check counts.
+- **`build_time_s`, `mode`, `feature_metrics`** fields in BuildResult.
 - **Structured logging** via Python stdlib `logging` in builder.py.
-- **Type stubs** for 21 COM interfaces in `src/ai_sw_bridge/sw_stubs.pyi`.
-- **Pre-commit hook**: `tools/pre_commit_hook.py install/uninstall` — lints
-  staged spec.json files before commit.
-- **Doc-coverage CI gate**: `tools/doc_coverage_gate.py` — checks all 16
-  schema types are documented in spec_reference.md.
-- **Golden mass regression tool**: `tools/regression_check.py --capture/--check`.
-- **PM-pane dismiss spike**: `spikes/v0_10/spike_p16_pm_dismiss.py` (6 strategies,
-  requires live SW).
-- **`docs/sketch_axes.md`**: verified axis mappings (Front, Top, Right).
-- **`docs/HANDOFF_TEMPLATE.md`**: session handoff for two-session workflow.
-- **`examples/drive_roller/README.md`**: Top-Plane sign-flip walkthrough.
-- **spec_reference.md**: added `revolve_boss`, `revolve_cut`, `circular_pattern`,
-  `simple_hole` sections; `center.z` and `centerline` docs; `_expect`
-  postcondition docs; lint checks section.
-- **AGENTS.md**: quickstart section, 16-type feature table, late-binding
-  explanation, session handoff + memory enforcement rules.
+- **`--dry-run`** now reports a `locals_resolved` count.
+- **Type stubs** for 21 COM interfaces in `src/ai_sw_bridge/_sw_stubs/`,
+  with a README on why late binding is load-bearing.
+- **Pre-commit framework**: `.pre-commit-config.yaml` (black, flake8, mypy,
+  spec-lint) plus `mypy.ini` and `.flake8`. Enable with `pre-commit install`.
+- **Doc-coverage gate**: `tools/doc_coverage_gate.py`, wired as a CI step;
+  checks all 16 schema types are documented in spec_reference.md.
+- **Golden volume regression**: `tools/regression_check.py --capture/--check`
+  builds each example with `--verify-mass` and records total part volume.
+- **SW version floor**: `get_sw_app()` fails fast below SW 2024 SP1
+  (`SW_VERSION_VERIFIED` in `sw_com.py`).
+- **PM-pane dismiss spike**: `spikes/v0_10/spike_p16_pm_dismiss.py`.
+- **New docs**: `docs/sketch_axes.md`, `docs/com_failure_modes.md`,
+  `docs/deprecation_policy.md`, `docs/handoff_template.md`,
+  `examples/drive_roller/README.md`.
+- **spec_reference.md**: added `revolve_boss`, `revolve_cut`,
+  `circular_pattern`, `simple_hole` sections; `center.z` and `centerline`
+  docs; `_expect` postcondition docs; lint checks section.
+- **AGENTS.md**: quickstart, 16-type feature table, late-binding explanation,
+  session handoff + memory enforcement rules.
+
+### Fixed — v0.10 live-SW validation
+
+- **`--verify-mass` was dead on arrival**: `CreateMassProperty()` was called
+  with parens, but pywin32 late binding auto-invokes the zero-arg COM method
+  on attribute access, so `()` called the returned object and raised
+  DISP_E_MEMBERNOTFOUND. Drop the parens.
+- **Relative `locals` paths**: the builder resolved them against the process
+  CWD while the validator used the spec directory, so `minimal_cylinder_v2`
+  passed validation then failed the build. Normalized to absolute at the CLI
+  entry point.
+- **`examples/drive_roller/spec.json`**: 4 of 5 `_expect.mass_delta_mm3`
+  values were mis-authored (uncheckable until `--verify-mass` worked).
+  Corrected to SW-measured, analytically cross-checked actuals.
+
+### Changed
+
+- The pre-commit hook is now the standard `pre-commit` framework
+  (`.pre-commit-config.yaml`); the earlier bespoke `tools/pre_commit_hook.py`
+  was removed in favor of it.
 
 ### Added — `ai-sw-build --no-dim` (zero-popup build mode)
 
