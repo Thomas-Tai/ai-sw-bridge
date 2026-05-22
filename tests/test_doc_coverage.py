@@ -8,13 +8,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GATE_SCRIPT = REPO_ROOT / "tools" / "doc_coverage_gate.py"
-VENV_PYTHON = REPO_ROOT / ".venv-freshtest" / "Scripts" / "python.exe"
 
 
 def test_doc_coverage_passes() -> None:
     """The doc coverage gate should pass on the current repo."""
+    # Run the gate with the interpreter running the tests, so this works on
+    # CI (no .venv-freshtest there) as well as locally.
     result = subprocess.run(
-        [str(VENV_PYTHON), str(GATE_SCRIPT)],
+        [sys.executable, str(GATE_SCRIPT)],
         capture_output=True,
         text=True,
         timeout=15,
