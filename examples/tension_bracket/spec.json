@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "SM-HW-S1b-006_TensionBracket_v01",
-  "locals": "C:\\D\\WorkSpace\\[Cloud]_Company_Sync\\MSC\\OwnInfo\\MyResearchProject\\Lego_Sorter_V2\\Hardware\\S1b_Conveyor\\Model\\s1b_conveyor_locals.txt",
+  "locals": "../s1b_conveyor_locals.txt",
   "_comment": "S1b TensionBracket per Hardware/S1b_Conveyor/SW_Design_Guide.md §13.3. Origin = center of axle bore on inboard cap face; +X = along slot, +Y = outboard (toward outside of side plate), +Z = up. Spec uses Front Plane (XY, normal +Z) for the first sketch -- the design guide says 'Top Plane' but means an XY plane with +Z extrude direction; in SW's English template Front Plane is XY. The inboard cap rectangle is offset so its -Y edge sits on the origin (inboard face at Y=0). Subsequent slabs sketch on the +z face of the previous extrude, exercising the new sketch_rectangle_on_face primitive added 2026-05-17.",
   "features": [
     {

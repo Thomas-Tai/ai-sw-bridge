@@ -34,7 +34,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLES_DIR = REPO_ROOT / "examples"
-VENV_PYTHON = REPO_ROOT / ".venv-freshtest" / "Scripts" / "python.exe"
 BUILD_MODULE = "ai_sw_bridge.cli.build"
 
 # Default acceptable drift for a part's total volume between builds (mm^3).
@@ -55,7 +54,7 @@ def _build_with_mass(spec_path: Path) -> dict | None:
     try:
         result = subprocess.run(
             [
-                str(VENV_PYTHON),
+                sys.executable,
                 "-m",
                 BUILD_MODULE,
                 str(spec_path),

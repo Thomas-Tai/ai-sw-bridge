@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "SM-HW-S1b-006b_SpringEndCap_v01",
-  "locals": "C:\\D\\WorkSpace\\[Cloud]_Company_Sync\\MSC\\OwnInfo\\MyResearchProject\\Lego_Sorter_V2\\Hardware\\S1b_Conveyor\\Model\\s1b_conveyor_locals.txt",
+  "locals": "../s1b_conveyor_locals.txt",
   "_comment": "S1b SpringEndCap per SW_Design_Guide.md §13.6b (v1.7). Small PETG slab that hosts the Ø6x4mm compression-spring pocket on its +X face (bracket-facing). Built with Front Plane body (XY sketch extruded +Z=8mm outboard). Bridge axes: part-X=slot-travel(15mm), part-Y=vertical(15mm), part-Z=outboard(8mm). Origin at center of -Z face = plate-mating face. Spring pocket on +x side face (bracket-facing); mount holes through Z on -z face. HANDOFF_center_z.md does not block this part (no Top-Plane sketch with non-zero Z offset).",
   "features": [
     {

@@ -32,13 +32,14 @@ def test_validate_accepts_cylinder_spec(
     validate(cylinder_spec, spec_path=cylinder_spec_path)
 
 
-def test_validate_accepts_mmp_spec(mmp_spec: dict) -> None:
-    # MMP spec references a locals file under the Lego Sorter repo. If that
-    # file doesn't exist on this machine, skip rather than fail (it's an
-    # integration-with-other-repo concern).
-    if not Path(mmp_spec["locals"]).exists():
-        pytest.skip(f"MMP locals file not present: {mmp_spec['locals']}")
-    validate(mmp_spec)
+def test_validate_accepts_mmp_spec(mmp_spec: dict, mmp_spec_path: Path) -> None:
+    # MMP spec's `locals` is a relative path; the validator resolves it
+    # against the spec file's directory when spec_path is supplied. Skip if
+    # the locals file is missing (mirrors the cylinder pattern).
+    resolved_locals = (mmp_spec_path.parent / mmp_spec["locals"]).resolve()
+    if not resolved_locals.exists():
+        pytest.skip(f"MMP locals file not present: {resolved_locals}")
+    validate(mmp_spec, spec_path=mmp_spec_path)
 
 
 # -----------------------------------------------------------------------------

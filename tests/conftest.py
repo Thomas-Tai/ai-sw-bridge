@@ -38,6 +38,13 @@ def mmp_spec() -> dict:
 
 
 @pytest.fixture
+def mmp_spec_path() -> Path:
+    """Filesystem path to the MMP spec, so callers can resolve its `locals`
+    field relative to the spec's own directory."""
+    return EXAMPLES_ROOT / "motor_mount_plate" / "spec.json"
+
+
+@pytest.fixture
 def simple_locals(tmp_path: Path) -> Path:
     """A tiny locals.txt file with two literal entries."""
     path = tmp_path / "locals.txt"

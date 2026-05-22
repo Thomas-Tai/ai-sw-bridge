@@ -165,13 +165,13 @@ def test_cli_lint_flag() -> None:
     import sys
 
     repo_root = Path(__file__).resolve().parent.parent
-    venv_python = repo_root / ".venv-freshtest" / "Scripts" / "python.exe"
-    # Use a spec that has no center.z on a Top Plane centerline sketch
     spec_path = repo_root / "examples" / "drive_roller" / "spec.json"
     if not spec_path.exists():
         pytest.skip("drive_roller spec not found")
+    # Run the CLI with the interpreter that's running the tests, so this
+    # works on CI (no .venv-freshtest there) as well as locally.
     result = subprocess.run(
-        [str(venv_python), "-m", "ai_sw_bridge.cli.build", "--lint", str(spec_path)],
+        [sys.executable, "-m", "ai_sw_bridge.cli.build", "--lint", str(spec_path)],
         capture_output=True,
         text=True,
         timeout=15,

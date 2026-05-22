@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "SM-HW-S1b-004_DriveRoller_v01",
-  "locals": "C:\\D\\WorkSpace\\[Cloud]_Company_Sync\\MSC\\OwnInfo\\MyResearchProject\\Lego_Sorter_V2\\Hardware\\S1b_Conveyor\\Model\\s1b_conveyor_locals.txt",
+  "locals": "../s1b_conveyor_locals.txt",
   "_comment": "S1b DriveRoller per SW_Design_Guide.md §13.2. Roller body built via boss_extrude_blind (circle on Front Plane, axis=+Z), NOT revolve_boss, so face sketches on the end faces work normally. Z=0 = one bearing-end face (part origin at center of this face); Z=80mm = other end. Bearing pockets 7mm deep from each end face. O-ring groove (5mm wide x 1mm deep) at Z=40 mid-length, sketched on Top Plane (sketch_x=part_X, sketch_y=part_Z), centerline along sketch_y at sketch_x=0, profile at sketch_x=+12.0 (positive-X side -- no opposite-side handedness constraint since body is extruded not revolved). Profile top edge at sketch_x=12.5 = body outer surface; bottom at 11.5 = 1mm into body.",
   "features": [
     {
