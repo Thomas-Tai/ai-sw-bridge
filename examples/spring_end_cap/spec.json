@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "name": "SM-HW-S1b-006b_SpringEndCap_v01",
+  "locals": "C:\\D\\WorkSpace\\[Cloud]_Company_Sync\\MSC\\OwnInfo\\MyResearchProject\\Lego_Sorter_V2\\Hardware\\S1b_Conveyor\\Model\\s1b_conveyor_locals.txt",
+  "_comment": "S1b SpringEndCap per SW_Design_Guide.md §13.6b (v1.7). Small PETG slab that hosts the Ø6x4mm compression-spring pocket on its +X face (bracket-facing). Built with Front Plane body (XY sketch extruded +Z=8mm outboard). Bridge axes: part-X=slot-travel(15mm), part-Y=vertical(15mm), part-Z=outboard(8mm). Origin at center of -Z face = plate-mating face. Spring pocket on +x side face (bracket-facing); mount holes through Z on -z face. HANDOFF_center_z.md does not block this part (no Top-Plane sketch with non-zero Z offset).",
+  "features": [
+    {
+      "_comment": "Step 2: Body slab. 15mm(X) x 15mm(Y) rect on Front Plane, extruded 8mm in +Z. Origin at center of XY face. Part bbox: X=[-7.5,+7.5], Y=[-7.5,+7.5], Z=[0,+8].",
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_BodySlab",
+      "plane": "Front",
+      "width": 15.0,
+      "height": 15.0,
+      "center": {"x": 0.0, "y": 0.0}
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "Extrude_Body",
+      "sketch": "SK_BodySlab",
+      "depth": 8.0
+    },
+    {
+      "_comment": "Step 3: Spring pocket on +X face (bracket-facing). Face +x of Front-Plane extrude: u_axis=(0,0,-1), v_axis=(0,1,0). sketch_origin=(7.5,0,0). Face center=(7.5,0,4). To land pocket at face center: u=-4.0 (maps to part_Z=+4 via u->part -Z), v=0.0. Pocket Ø6mm (S1B_TB_SPRING_DIA=6.0), 4mm deep (cut goes in -X into body). Back-wall = 15-4 = 11mm.",
+      "type": "sketch_circle_on_face",
+      "name": "SK_SpringPocket",
+      "of_feature": "Extrude_Body",
+      "face": "+x",
+      "diameter": {"rhs": "\"S1B_TB_SPRING_DIA\""},
+      "center": {"u": -4.0, "v": 0.0}
+    },
+    {
+      "type": "cut_extrude_blind",
+      "name": "Cut_SpringPocket",
+      "sketch": "SK_SpringPocket",
+      "depth": {"rhs": "\"S1B_TB_SPRING_DEPTH\""}
+    },
+    {
+      "_comment": "Step 4: Mount holes on -Z face (plate-mating face). Face -z: u_axis=(-1,0,0), v_axis=(0,1,0). sketch_origin=(0,0,0). Hole #1 at part(-5,+5,0): u=+5 (part_X=-5 via u->-X), v=+5 (part_Y=+5). Hole #2 at part(-5,-5,0): u=+5, v=-5. Z-pitch=10mm (design-guide Z maps to bridge Y). Holes at X=-5 clear the pocket footprint at X=[+3.5,+7.5].",
+      "type": "sketch_circles_on_face",
+      "name": "SK_MountHoles",
+      "of_feature": "Extrude_Body",
+      "face": "-z",
+      "circles": [
+        {"u": 5.0, "v":  5.0, "diameter": 3.4},
+        {"u": 5.0, "v": -5.0, "diameter": 3.4}
+      ]
+    },
+    {
+      "type": "cut_extrude_through_all",
+      "name": "Cut_MountHoles",
+      "sketch": "SK_MountHoles"
+    }
+  ]
+}

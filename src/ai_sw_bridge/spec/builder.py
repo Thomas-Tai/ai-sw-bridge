@@ -400,6 +400,17 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
     #   downstream face-selects would probe the wrong centroid -- the
     #   original TensionBracket "slab hanging off in -Y" failure mode.
     # - Plane-based sketch centered on origin: defaults to (0, 0, 0).
+    #
+    # NOTE on `center.z`: v0.8 added optional `center.z` for Top Plane
+    # rectangle/circle sketches (DriveRoller O-ring groove). When set, the
+    # `cz` component carries an explicit part-frame Z that does not pass
+    # through the sketch-local-to-part-frame remap below -- callers that
+    # extrude a Top Plane sketch with non-zero `center.z` will currently
+    # see extrude_origin's part-Z come from the sketch-local-Y remap, not
+    # from `center.z`. Only `revolve_cut`/`revolve_boss` are exercised on
+    # such sketches today, and those don't consume `extrude_origin`. If a
+    # future spec extrudes a Top Plane sketch with non-zero `center.z`,
+    # this remap needs revisiting.
     if sketch.parent_face_origin is not None:
         extrude_origin = sketch.parent_face_origin
     elif sketch.sketch_center_part is not None:

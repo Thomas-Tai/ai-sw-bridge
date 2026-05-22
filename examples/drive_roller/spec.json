@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "name": "SM-HW-S1b-004_DriveRoller_v01",
+  "locals": "C:\\D\\WorkSpace\\[Cloud]_Company_Sync\\MSC\\OwnInfo\\MyResearchProject\\Lego_Sorter_V2\\Hardware\\S1b_Conveyor\\Model\\s1b_conveyor_locals.txt",
+  "_comment": "S1b DriveRoller per SW_Design_Guide.md §13.2. Roller body built via boss_extrude_blind (circle on Front Plane, axis=+Z), NOT revolve_boss, so face sketches on the end faces work normally. Z=0 = one bearing-end face (part origin at center of this face); Z=80mm = other end. Bearing pockets 7mm deep from each end face. O-ring groove (5mm wide x 1mm deep) at Z=40 mid-length, sketched on Top Plane (sketch_x=part_X, sketch_y=part_Z), centerline along sketch_y at sketch_x=0, profile at sketch_x=+12.0 (positive-X side -- no opposite-side handedness constraint since body is extruded not revolved). Profile top edge at sketch_x=12.5 = body outer surface; bottom at 11.5 = 1mm into body.",
+  "features": [
+    {
+      "type": "sketch_circle_on_plane",
+      "name": "SK_Body",
+      "plane": "Front",
+      "diameter": {"rhs": "\"S1B_ROLLER_DIA\""},
+      "center": {"x": 0.0, "y": 0.0}
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "Extrude_Roller",
+      "sketch": "SK_Body",
+      "depth": {"rhs": "\"S1B_ROLLER_W\""}
+    },
+    {
+      "type": "sketch_circle_on_face",
+      "name": "SK_CentreBore",
+      "of_feature": "Extrude_Roller",
+      "face": "-z",
+      "diameter": {"rhs": "\"S1B_ROLLER_BORE\""},
+      "center": {"u": 0.0, "v": 0.0}
+    },
+    {
+      "type": "cut_extrude_through_all",
+      "name": "Cut_CentreBore",
+      "sketch": "SK_CentreBore"
+    },
+    {
+      "type": "sketch_circle_on_face",
+      "name": "SK_BearingPocket_NZ",
+      "of_feature": "Extrude_Roller",
+      "face": "-z",
+      "diameter": {"rhs": "\"S1B_BEARING_POCKET_OD\""},
+      "center": {"u": 0.0, "v": 0.0}
+    },
+    {
+      "type": "cut_extrude_blind",
+      "name": "Cut_BearingPocket_NZ",
+      "sketch": "SK_BearingPocket_NZ",
+      "depth": {"rhs": "\"S1B_BEARING_POCKET_DEPTH\""}
+    },
+    {
+      "type": "sketch_circle_on_face",
+      "name": "SK_BearingPocket_PZ",
+      "of_feature": "Extrude_Roller",
+      "face": "+z",
+      "diameter": {"rhs": "\"S1B_BEARING_POCKET_OD\""},
+      "center": {"u": 0.0, "v": 0.0}
+    },
+    {
+      "type": "cut_extrude_blind",
+      "name": "Cut_BearingPocket_PZ",
+      "sketch": "SK_BearingPocket_PZ",
+      "depth": {"rhs": "\"S1B_BEARING_POCKET_DEPTH\""}
+    },
+    {
+      "_comment": "O-ring groove: 5mm wide along part-Z, 1mm deep into part-X, at Z=40 (mid-length). Sketched on Top Plane (XZ). Convention: center.x/y/z are part-frame; width extends along the plane's first in-plane axis (Top Plane => part-X), height along the second (Top Plane => part-Z). So width=1 carves 1mm radially (part-X spans [11.5, 12.5], just under the cylinder surface at R=12.5) and height=5 spans 5mm along the cylinder axis (part-Z spans [37.5, 42.5], straddling Z=40). The centerline IS the cylinder's central Z axis (part_X=0, part_Y=0), running Z=-5 to Z=85 so the rect profile can revolve fully without crossing it.",
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_BeltGripGroove",
+      "plane": "Top",
+      "width": 1.0,
+      "height": 5.0,
+      "center": {"x": 12.0, "y": 0.0, "z": 40.0},
+      "centerline": {
+        "start": {"x": 0.0, "y": 0.0, "z": -5.0},
+        "end":   {"x": 0.0, "y": 0.0, "z": 85.0}
+      }
+    },
+    {
+      "type": "revolve_cut",
+      "name": "Cut_BeltGripGroove",
+      "sketch": "SK_BeltGripGroove",
+      "angle": 360.0
+    }
+  ]
+}

@@ -47,15 +47,32 @@ CENTERLINE_SCHEMA: dict[str, Any] = {
             "type": "object",
             "additionalProperties": False,
             "required": ["x", "y"],
-            "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
-            "description": "Centerline start point in sketch-local coords (mm).",
+            "properties": {
+                "x": {"type": "number"},
+                "y": {"type": "number"},
+                "z": {"type": "number"},
+            },
+            "description": (
+                "Centerline start point in sketch-local coords (mm). "
+                "Optional z is the part-frame z offset of the sketch plane "
+                "(default 0). Used when the parent sketch's center.z is "
+                "non-zero (e.g. Top Plane sketch positioned at part-Z != 0)."
+            ),
         },
         "end": {
             "type": "object",
             "additionalProperties": False,
             "required": ["x", "y"],
-            "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
-            "description": "Centerline end point in sketch-local coords (mm).",
+            "properties": {
+                "x": {"type": "number"},
+                "y": {"type": "number"},
+                "z": {"type": "number"},
+            },
+            "description": (
+                "Centerline end point in sketch-local coords (mm). "
+                "Optional z is the part-frame z offset of the sketch plane "
+                "(default 0)."
+            ),
         },
     },
     "description": (
@@ -103,8 +120,19 @@ SKETCH_RECTANGLE_ON_PLANE: dict[str, Any] = {
         "center": {
             "type": "object",
             "additionalProperties": False,
-            "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
-            "description": "Sketch-local center (mm). Default (0, 0).",
+            "properties": {
+                "x": {"type": "number"},
+                "y": {"type": "number"},
+                "z": {"type": "number"},
+            },
+            "description": (
+                "Sketch-local center (mm). Default (0, 0, 0). The optional "
+                "z offsets the sketch geometry along the part-frame Z axis "
+                "and is required when sketching on Top Plane (XZ) at "
+                "part-Z != 0, e.g. an O-ring groove at the mid-length of "
+                "a +Z-extruded shaft. For Front (XY) and Right (YZ) planes "
+                "leave z=0; only Top Plane's normal aligns with part-Z."
+            ),
         },
         "centerline": CENTERLINE_SCHEMA,
     },
@@ -123,8 +151,16 @@ SKETCH_CIRCLE_ON_PLANE: dict[str, Any] = {
         "center": {
             "type": "object",
             "additionalProperties": False,
-            "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
-            "description": "Sketch-local center (mm). Default (0, 0).",
+            "properties": {
+                "x": {"type": "number"},
+                "y": {"type": "number"},
+                "z": {"type": "number"},
+            },
+            "description": (
+                "Sketch-local center (mm). Default (0, 0, 0). See "
+                "SKETCH_RECTANGLE_ON_PLANE for when the optional z is needed "
+                "(Top Plane sketches positioned at part-Z != 0)."
+            ),
         },
         "centerline": CENTERLINE_SCHEMA,
     },

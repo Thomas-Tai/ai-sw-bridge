@@ -119,8 +119,8 @@ class RectangleOnFaceHandler(SketchHandler):
         face_geom = geometry["face_geom"]
         face = feat["face"]
 
-        top_edge = _identify_rect_edge(rect_segs, "horiz_top", cu_m, cv_m)
-        left_edge = _identify_rect_edge(rect_segs, "vert_left", cu_m, cv_m)
+        top_edge = _identify_rect_edge(rect_segs, "horiz_top")
+        left_edge = _identify_rect_edge(rect_segs, "vert_left")
         top_v = cv_m + height_m / 2
 
         vt_disp_none = win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)

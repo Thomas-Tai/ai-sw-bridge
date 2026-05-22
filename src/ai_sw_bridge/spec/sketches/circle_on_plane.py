@@ -34,7 +34,8 @@ class CircleOnPlaneHandler(SketchHandler):
         center = feat.get("center", {})
         cx_m = float(center.get("x", 0.0)) / 1000.0
         cy_m = float(center.get("y", 0.0)) / 1000.0
-        return SketchFrame(center_part=(cx_m, cy_m, 0.0))
+        cz_m = float(center.get("z", 0.0)) / 1000.0
+        return SketchFrame(center_part=(cx_m, cy_m, cz_m))
 
     def _draw_geometry(
         self, ctx: BuildContext, feat: dict[str, Any], frame: SketchFrame
@@ -43,11 +44,34 @@ class CircleOnPlaneHandler(SketchHandler):
             feat["diameter"], PLACEHOLDER_MM["circle_diameter_plane"]
         )
         radius_m = diameter_m / 2
-        cx_m, cy_m, _ = frame.center_part
+        cx_m, cy_m, cz_m = frame.center_part
 
-        # CreateCircle(xc, yc, zc, xp, yp, zp) -- perimeter point at (cx+r, cy).
-        ctx.doc.SketchManager.CreateCircle(cx_m, cy_m, 0.0, cx_m + radius_m, cy_m, 0.0)
-        return {"cx_m": cx_m, "cy_m": cy_m, "radius_m": radius_m}
+        # Project part-frame center onto the sketch plane's two in-plane
+        # axes -- CreateCircle expects sketch-local 2D coords (3rd arg
+        # ignored by SW when called inside an open sketch). See
+        # rectangle_on_plane._draw_geometry for the full rationale; this
+        # is the same projection convention.
+        # See rectangle_on_plane._draw_geometry for the empirically-verified
+        # sketch-axis-to-part-axis mapping (Spike 2026-05-22 transform read).
+        plane = feat["plane"]
+        if plane == "Front":
+            sx_m, sy_m = cx_m, cy_m
+        elif plane == "Top":
+            sx_m, sy_m = cx_m, -cz_m
+        else:  # Right
+            sx_m, sy_m = cz_m, cy_m
+
+        # CreateCircle(xc, yc, zc, xp, yp, zp) -- perimeter point at
+        # (sx + radius, sy) in sketch-local 2D.
+        ctx.doc.SketchManager.CreateCircle(sx_m, sy_m, 0.0, sx_m + radius_m, sy_m, 0.0)
+        return {
+            "cx_m": cx_m,
+            "cy_m": cy_m,
+            "cz_m": cz_m,
+            "sx_m": sx_m,
+            "sy_m": sy_m,
+            "radius_m": radius_m,
+        }
 
     def _add_dimensions_inline(
         self,
@@ -56,14 +80,14 @@ class CircleOnPlaneHandler(SketchHandler):
         frame: SketchFrame,
         geometry: Any,
     ) -> None:
-        cx_m = geometry["cx_m"]
-        cy_m = geometry["cy_m"]
+        sx_m = geometry["sx_m"]
+        sy_m = geometry["sy_m"]
         radius_m = geometry["radius_m"]
 
-        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", cx_m + radius_m, cy_m, 0.0):
+        if not ctx.doc.SelectByID("", "SKETCHSEGMENT", sx_m + radius_m, sy_m, 0.0):
             raise RuntimeError("could not select circle for diameter dim")
         dim_d = ctx.doc.AddDimension2(
-            cx_m + radius_m + 0.005, cy_m + radius_m + 0.005, 0.0
+            sx_m + radius_m + 0.005, sy_m + radius_m + 0.005, 0.0
         )
         if dim_d is None:
             raise RuntimeError("AddDimension2 returned None for diameter")
@@ -76,15 +100,15 @@ class CircleOnPlaneHandler(SketchHandler):
         frame: SketchFrame,
         geometry: Any,
     ) -> None:
-        cx_m = geometry["cx_m"]
-        cy_m = geometry["cy_m"]
+        sx_m = geometry["sx_m"]
+        sy_m = geometry["sy_m"]
         radius_m = geometry["radius_m"]
         ctx.deferred_dims.append(
             DeferredDim(
                 sketch_name=feat["name"],
                 select_type="SKETCHSEGMENT",
-                select_xyz=(cx_m + radius_m, cy_m, 0.0),
-                leader_xyz=(cx_m + radius_m + 0.005, cy_m + radius_m + 0.005, 0.0),
+                select_xyz=(sx_m + radius_m, sy_m, 0.0),
+                leader_xyz=(sx_m + radius_m + 0.005, sy_m + radius_m + 0.005, 0.0),
                 expected_dim_name=f"D1@{feat['name']}",
                 field_label=f"diameter of {feat['name']}",
             )
@@ -108,9 +132,10 @@ class CircleOnPlaneHandler(SketchHandler):
 
         cx_m = geometry["cx_m"]
         cy_m = geometry["cy_m"]
+        cz_m = geometry["cz_m"]
         return BuiltFeature(
             name=feat["name"],
             type=feat["type"],
             sw_object=sketch_feat,
-            sketch_center_part=(cx_m, cy_m, 0.0),
+            sketch_center_part=(cx_m, cy_m, cz_m),
         )

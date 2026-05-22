@@ -41,14 +41,44 @@ class RectangleOnPlaneHandler(SketchHandler):
         center = feat.get("center", {})
         cx_m = float(center.get("x", 0.0)) / 1000.0
         cy_m = float(center.get("y", 0.0)) / 1000.0
-        return SketchFrame(center_part=(cx_m, cy_m, 0.0))
+        cz_m = float(center.get("z", 0.0)) / 1000.0
+        return SketchFrame(center_part=(cx_m, cy_m, cz_m))
 
     def _draw_geometry(
         self, ctx: BuildContext, feat: dict[str, Any], frame: SketchFrame
     ) -> dict[str, Any]:
         width_m = _literal_or_default(feat["width"], PLACEHOLDER_MM["rectangle_side"])
         height_m = _literal_or_default(feat["height"], PLACEHOLDER_MM["rectangle_side"])
-        cx_m, cy_m, _ = frame.center_part
+        cx_m, cy_m, cz_m = frame.center_part
+
+        # The user's `center` is in PART-frame mm. The COM call
+        # CreateCenterRectangle, however, takes SKETCH-local 2D coords
+        # (the 3rd arg is ignored when called inside an open sketch).
+        # We project the user's part-frame center onto the sketch plane's
+        # two in-plane axes to get sketch-local (sx, sy), then issue the
+        # COM call in those coords. Width extends along the plane's first
+        # in-plane axis; height extends along the second. Front Plane:
+        # sketch_X=part_X, sketch_Y=part_Y (preserves legacy behavior).
+        # Top Plane: sketch_X=part_X, sketch_Y=part_Z. Right Plane:
+        # sketch_X=part_Y, sketch_Y=part_Z. The original DriveRoller
+        # groove failure mode was passing part-frame coords directly to
+        # the COM call without this projection, landing the rectangle
+        # outside the cylinder body.
+        # Sketch-local 2D axis directions on each default plane, verified
+        # empirically via ISketch.ModelToSketchTransform (Spike 2026-05-22):
+        # Front Plane (XY): sketch_X = +part_X, sketch_Y = +part_Y.
+        # Top Plane (XZ):   sketch_X = +part_X, sketch_Y = -part_Z (!!).
+        # Right Plane (YZ): sketch_X = +part_Z, sketch_Y = +part_Y (TBD --
+        #   not exercised by shipped specs as of this date).
+        plane = feat["plane"]
+        if plane == "Front":
+            sx_m, sy_m = cx_m, cy_m
+        elif plane == "Top":
+            sx_m, sy_m = cx_m, -cz_m
+        else:  # Right
+            sx_m, sy_m = cz_m, cy_m
+        half_w = width_m / 2
+        half_h = height_m / 2
 
         # CreateCenterRectangle (NOT CreateCornerRectangle) so the rectangle
         # is internally anchored to its CENTER via construction diagonals.
@@ -57,11 +87,11 @@ class RectangleOnPlaneHandler(SketchHandler):
         # the post-Midpoint-delete sketch has unsettled selection priorities
         # that cause SelectByID to pick midpoint vertices instead of edges.
         rect_segs = ctx.doc.SketchManager.CreateCenterRectangle(
-            cx_m,
-            cy_m,
+            sx_m,
+            sy_m,
             0.0,
-            cx_m + width_m / 2,
-            cy_m + height_m / 2,
+            sx_m + half_w,
+            sy_m + half_h,
             0.0,
         )
         return {
@@ -70,6 +100,9 @@ class RectangleOnPlaneHandler(SketchHandler):
             "height_m": height_m,
             "cx_m": cx_m,
             "cy_m": cy_m,
+            "cz_m": cz_m,
+            "sx_m": sx_m,
+            "sy_m": sy_m,
         }
 
     def _strip_relations(
@@ -84,16 +117,22 @@ class RectangleOnPlaneHandler(SketchHandler):
         frame: SketchFrame,
         geometry: Any,
     ) -> None:
-        cx_m = geometry["cx_m"]
-        cy_m = geometry["cy_m"]
+        sx_m = geometry["sx_m"]
+        sy_m = geometry["sy_m"]
         width_m = geometry["width_m"]
         height_m = geometry["height_m"]
         rect_segs = geometry["rect_segs"]
 
-        top_edge = _identify_rect_edge(rect_segs, "horiz_top", cx_m, cy_m)
-        left_edge = _identify_rect_edge(rect_segs, "vert_left", cx_m, cy_m)
-        top_y = cy_m + height_m / 2
-        left_x = cx_m - width_m / 2
+        top_edge = _identify_rect_edge(rect_segs, "horiz_top")
+        left_edge = _identify_rect_edge(rect_segs, "vert_left")
+
+        # Leader points are in SKETCH-local 2D coords (same convention as
+        # CreateCenterRectangle above). Width-dim leader sits just above
+        # the top edge; height-dim leader sits just left of the left edge.
+        # The 5 thou epsilon nudges the leader off the edge so
+        # AddDimension2 anchors to the edge instead of the leader vertex.
+        top_y = sy_m + height_m / 2
+        left_x = sx_m - width_m / 2
 
         vt_disp_none = win32com.client.VARIANT(pythoncom.VT_DISPATCH, None)
 
@@ -101,7 +140,7 @@ class RectangleOnPlaneHandler(SketchHandler):
         # between picks so each AddDimension2 sees only its own edge.
         if top_edge is None or not top_edge.Select4(False, vt_disp_none):
             raise RuntimeError("could not select rectangle top edge for width dim")
-        dim_w = ctx.doc.AddDimension2(cx_m, top_y + 0.005, 0.0)
+        dim_w = ctx.doc.AddDimension2(sx_m, top_y + 0.005, 0.0)
         if dim_w is None:
             raise RuntimeError("AddDimension2 returned None for width")
         _dismiss_dim_pane(ctx.doc)
@@ -109,7 +148,7 @@ class RectangleOnPlaneHandler(SketchHandler):
         ctx.doc.ClearSelection2(True)
         if left_edge is None or not left_edge.Select4(False, vt_disp_none):
             raise RuntimeError("could not select rectangle left edge for height dim")
-        dim_h = ctx.doc.AddDimension2(left_x - 0.005, cy_m, 0.0)
+        dim_h = ctx.doc.AddDimension2(left_x - 0.005, sy_m, 0.0)
         if dim_h is None:
             raise RuntimeError("AddDimension2 returned None for height")
         _dismiss_dim_pane(ctx.doc)
@@ -121,19 +160,22 @@ class RectangleOnPlaneHandler(SketchHandler):
         frame: SketchFrame,
         geometry: Any,
     ) -> None:
-        cx_m = geometry["cx_m"]
-        cy_m = geometry["cy_m"]
+        sx_m = geometry["sx_m"]
+        sy_m = geometry["sy_m"]
         width_m = geometry["width_m"]
         height_m = geometry["height_m"]
-        top_y = cy_m + height_m / 2
-        left_x = cx_m - width_m / 2
+        top_y = sy_m + height_m / 2
+        left_x = sx_m - width_m / 2
 
+        # Sketch-local 2D coords for select+leader (third arg ignored by
+        # the deferred-dim consumer in the same way CreateCenterRectangle
+        # ignores it for the 3rd component).
         ctx.deferred_dims.append(
             DeferredDim(
                 sketch_name=feat["name"],
                 select_type="SKETCHSEGMENT",
-                select_xyz=(cx_m, top_y, 0.0),
-                leader_xyz=(cx_m, top_y + 0.005, 0.0),
+                select_xyz=(sx_m, top_y, 0.0),
+                leader_xyz=(sx_m, top_y + 0.005, 0.0),
                 expected_dim_name=f"D1@{feat['name']}",
                 field_label=f"width of {feat['name']}",
             )
@@ -142,8 +184,8 @@ class RectangleOnPlaneHandler(SketchHandler):
             DeferredDim(
                 sketch_name=feat["name"],
                 select_type="SKETCHSEGMENT",
-                select_xyz=(left_x, cy_m, 0.0),
-                leader_xyz=(left_x - 0.005, cy_m, 0.0),
+                select_xyz=(left_x, sy_m, 0.0),
+                leader_xyz=(left_x - 0.005, sy_m, 0.0),
                 expected_dim_name=f"D2@{feat['name']}",
                 field_label=f"height of {feat['name']}",
             )
@@ -169,10 +211,11 @@ class RectangleOnPlaneHandler(SketchHandler):
         height_m = geometry["height_m"]
         cx_m = geometry["cx_m"]
         cy_m = geometry["cy_m"]
+        cz_m = geometry["cz_m"]
         return BuiltFeature(
             name=feat["name"],
             type=feat["type"],
             sw_object=sketch_feat,
-            sketch_center_part=(cx_m, cy_m, 0.0),
+            sketch_center_part=(cx_m, cy_m, cz_m),
             sketch_extent_uv=(width_m / 2, height_m / 2),
         )

@@ -78,26 +78,54 @@ def _draw_centerline_if_present(sm: Any, feat: dict[str, Any]) -> None:
     line in the currently open sketch via ISketchManager.CreateCenterLine.
 
     Used by plane-based sketch handlers (rectangle, circle) to embed an
-    axis of revolution. Coordinates are sketch-local mm, converted to m.
-    Verified working under pywin32 late-binding in Spike X (2026-05-19)."""
+    axis of revolution. Centerline endpoint coords are in part-frame mm;
+    the third (out-of-plane) component is informational for the spec
+    author but ignored when calling SW -- SW's CreateCenterLine inside an
+    open non-Front sketch interprets its args as sketch-local 2D, so we
+    remap `(part_X, part_Y, part_Z)` to the parent sketch's two in-plane
+    axes before the COM call.
+
+    Front Plane: sketch_X = part_X, sketch_Y = part_Y, part_Z ignored.
+    Top   Plane: sketch_X = part_X, sketch_Y = part_Z, part_Y ignored.
+    Right Plane: sketch_X = part_Y, sketch_Y = part_Z, part_X ignored.
+
+    Front Plane behavior preserved bit-for-bit for legacy specs lacking
+    a `z` field (defaults to 0, dropped by the remap)."""
     cl = feat.get("centerline")
     if cl is None:
         return
-    x1 = float(cl["start"]["x"]) / 1000.0
-    y1 = float(cl["start"]["y"]) / 1000.0
-    x2 = float(cl["end"]["x"]) / 1000.0
-    y2 = float(cl["end"]["y"]) / 1000.0
-    seg = sm.CreateCenterLine(x1, y1, 0.0, x2, y2, 0.0)
+    plane = feat.get("plane", "Front")
+    px1 = float(cl["start"]["x"]) / 1000.0
+    py1 = float(cl["start"]["y"]) / 1000.0
+    pz1 = float(cl["start"].get("z", 0.0)) / 1000.0
+    px2 = float(cl["end"]["x"]) / 1000.0
+    py2 = float(cl["end"]["y"]) / 1000.0
+    pz2 = float(cl["end"].get("z", 0.0)) / 1000.0
+    # Sketch-axis sign convention: see rectangle_on_plane._draw_geometry.
+    # Top Plane sketch_Y = -part_Z.
+    if plane == "Front":
+        sx1, sy1, sx2, sy2 = px1, py1, px2, py2
+    elif plane == "Top":
+        sx1, sy1, sx2, sy2 = px1, -pz1, px2, -pz2
+    else:  # Right
+        sx1, sy1, sx2, sy2 = pz1, py1, pz2, py2
+    seg = sm.CreateCenterLine(sx1, sy1, 0.0, sx2, sy2, 0.0)
     if seg is None:
         raise RuntimeError(
             f"CreateCenterLine returned None for sketch '{feat.get('name')}'"
         )
 
 
-def _identify_rect_edge(rect_segs: Any, which: str, cx_m: float, cy_m: float) -> Any:
+def _identify_rect_edge(rect_segs: Any, which: str) -> Any:
     """Find the requested edge (horiz_top, horiz_bot, vert_left, vert_right) from
     the segment tuple CreateCenterRectangle returns. Uses each segment's
     GetStartPoint2/GetEndPoint2 to classify by orientation and position.
+
+    The center used for top/bot and left/right disambiguation is computed
+    from the segments themselves (average of horizontal segments' Y for the
+    Y-center, average of vertical segments' X for the X-center), so this
+    function works regardless of which reference plane the sketch is on --
+    GetStartPoint2/.GetEndPoint2 always return sketch-local 2D coords.
 
     Returns the matching ISketchSegment, or None if not found. Skips
     construction-geometry segments (the two diagonals).
@@ -107,6 +135,10 @@ def _identify_rect_edge(rect_segs: Any, which: str, cx_m: float, cy_m: float) ->
     target_horiz = which.startswith("horiz")
     target_top = which.endswith("_top")
     target_left = which.endswith("_left")
+
+    horiz_ys: list[float] = []
+    vert_xs: list[float] = []
+    edges: list[tuple[bool, bool, float, float, Any]] = []
     for s in rect_segs:
         try:
             if s.ConstructionGeometry:
@@ -118,16 +150,24 @@ def _identify_rect_edge(rect_segs: Any, which: str, cx_m: float, cy_m: float) ->
             x2, y2 = ep.X, ep.Y
             is_horiz = abs(y1 - y2) < 1e-9
             is_vert = abs(x1 - x2) < 1e-9
-            if target_horiz and is_horiz:
-                # Top: y > cy_m. Bot: y < cy_m.
-                if (target_top and y1 > cy_m) or (not target_top and y1 < cy_m):
-                    return s
-            elif not target_horiz and is_vert:
-                # Left: x < cx_m. Right: x > cx_m.
-                if (target_left and x1 < cx_m) or (not target_left and x1 > cx_m):
-                    return s
+            if is_horiz:
+                horiz_ys.append(y1)
+            if is_vert:
+                vert_xs.append(x1)
+            edges.append((is_horiz, is_vert, x1, y1, s))
         except Exception:
             continue
+
+    y_mid = sum(horiz_ys) / len(horiz_ys) if horiz_ys else 0.0
+    x_mid = sum(vert_xs) / len(vert_xs) if vert_xs else 0.0
+
+    for is_horiz, is_vert, x1, y1, s in edges:
+        if target_horiz and is_horiz:
+            if (target_top and y1 > y_mid) or (not target_top and y1 < y_mid):
+                return s
+        elif not target_horiz and is_vert:
+            if (target_left and x1 < x_mid) or (not target_left and x1 > x_mid):
+                return s
     return None
 
 
