@@ -1,0 +1,27 @@
+{
+  "spec_name": "PatternedPlate",
+  "schema_version": 1,
+  "feature_count": 5,
+  "features": [
+    {
+      "name": "SK_Plate",
+      "type": "sketch_rectangle_on_plane"
+    },
+    {
+      "name": "EX_Plate",
+      "type": "boss_extrude_blind"
+    },
+    {
+      "name": "SK_HoleSeed",
+      "type": "sketch_circle_on_face"
+    },
+    {
+      "name": "Hole_Seed",
+      "type": "cut_extrude_through_all"
+    },
+    {
+      "name": "LP_Holes",
+      "type": "linear_pattern"
+    }
+  ]
+}

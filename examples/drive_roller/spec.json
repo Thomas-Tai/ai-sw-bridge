@@ -30,7 +30,7 @@
       "type": "cut_extrude_through_all",
       "name": "Cut_CentreBore",
       "sketch": "SK_CentreBore",
-      "_expect": {"mass_delta_mm3": -7539.82, "tolerance_mm3": 50.0}
+      "_expect": {"mass_delta_mm3": -4539.6, "tolerance_mm3": 50.0}
     },
     {
       "type": "sketch_circle_on_face",
@@ -45,7 +45,7 @@
       "name": "Cut_BearingPocket_NZ",
       "sketch": "SK_BearingPocket_NZ",
       "depth": {"rhs": "\"S1B_BEARING_POCKET_DEPTH\""},
-      "_expect": {"mass_delta_mm3": -944.0, "tolerance_mm3": 50.0}
+      "_expect": {"mass_delta_mm3": -2287.96, "tolerance_mm3": 50.0}
     },
     {
       "type": "sketch_circle_on_face",
@@ -60,7 +60,7 @@
       "name": "Cut_BearingPocket_PZ",
       "sketch": "SK_BearingPocket_PZ",
       "depth": {"rhs": "\"S1B_BEARING_POCKET_DEPTH\""},
-      "_expect": {"mass_delta_mm3": -944.0, "tolerance_mm3": 50.0}
+      "_expect": {"mass_delta_mm3": -2287.96, "tolerance_mm3": 50.0}
     },
     {
       "_comment": "O-ring groove: 5mm wide along part-Z, 1mm deep into part-X, at Z=40 (mid-length). Sketched on Top Plane (XZ). Convention: center.x/y/z are part-frame; width extends along the plane's first in-plane axis (Top Plane => part-X), height along the second (Top Plane => part-Z). So width=1 carves 1mm radially (part-X spans [11.5, 12.5], just under the cylinder surface at R=12.5) and height=5 spans 5mm along the cylinder axis (part-Z spans [37.5, 42.5], straddling Z=40). The centerline IS the cylinder's central Z axis (part_X=0, part_Y=0), running Z=-5 to Z=85 so the rect profile can revolve fully without crossing it.",
@@ -80,7 +80,7 @@
       "name": "Cut_BeltGripGroove",
       "sketch": "SK_BeltGripGroove",
       "angle": 360.0,
-      "_expect": {"mass_delta_mm3": -564.69, "tolerance_mm3": 50.0}
+      "_expect": {"mass_delta_mm3": -376.99, "tolerance_mm3": 50.0}
     }
   ]
 }

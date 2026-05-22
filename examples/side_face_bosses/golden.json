@@ -1,0 +1,47 @@
+{
+  "spec_name": "SideFaceBosses",
+  "schema_version": 1,
+  "feature_count": 10,
+  "features": [
+    {
+      "name": "SK_Block",
+      "type": "sketch_rectangle_on_plane"
+    },
+    {
+      "name": "EX_Block",
+      "type": "boss_extrude_blind"
+    },
+    {
+      "name": "SK_BossPlusY",
+      "type": "sketch_circle_on_face"
+    },
+    {
+      "name": "Boss_PlusY",
+      "type": "boss_extrude_blind"
+    },
+    {
+      "name": "SK_BossMinusY",
+      "type": "sketch_circle_on_face"
+    },
+    {
+      "name": "Boss_MinusY",
+      "type": "boss_extrude_blind"
+    },
+    {
+      "name": "SK_BossPlusX",
+      "type": "sketch_circle_on_face"
+    },
+    {
+      "name": "Boss_PlusX",
+      "type": "boss_extrude_blind"
+    },
+    {
+      "name": "SK_BossMinusX",
+      "type": "sketch_circle_on_face"
+    },
+    {
+      "name": "Boss_MinusX",
+      "type": "boss_extrude_blind"
+    }
+  ]
+}

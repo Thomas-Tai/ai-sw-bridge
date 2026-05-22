@@ -231,6 +231,16 @@ def main() -> int:
             2,
         )
 
+    # Normalize a relative `locals` path against the spec file's directory so
+    # every downstream consumer (validator, --dry-run, builder) reads the same
+    # file regardless of process CWD. The validator resolves this itself when
+    # given spec_path; the builder's _load_locals_map does not -- so normalize
+    # here, once, at the entry point.
+    if isinstance(spec.get("locals"), str):
+        _locals = Path(spec["locals"])
+        if not _locals.is_absolute():
+            spec["locals"] = str((p.parent / _locals).resolve())
+
     try:
         validate(spec, spec_path=p)
     except ValidationError as e:

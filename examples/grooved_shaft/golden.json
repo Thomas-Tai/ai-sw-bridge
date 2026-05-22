@@ -1,0 +1,23 @@
+{
+  "spec_name": "GroovedShaft",
+  "schema_version": 1,
+  "feature_count": 4,
+  "features": [
+    {
+      "name": "SK_Body",
+      "type": "sketch_rectangle_on_plane"
+    },
+    {
+      "name": "REV_Body",
+      "type": "revolve_boss"
+    },
+    {
+      "name": "SK_Groove",
+      "type": "sketch_rectangle_on_plane"
+    },
+    {
+      "name": "CUT_Groove",
+      "type": "revolve_cut"
+    }
+  ]
+}

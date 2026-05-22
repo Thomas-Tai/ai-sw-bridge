@@ -1,0 +1,19 @@
+{
+  "spec_name": "filleted_box_demo",
+  "schema_version": 1,
+  "feature_count": 3,
+  "features": [
+    {
+      "name": "SK_Box",
+      "type": "sketch_rectangle_on_plane"
+    },
+    {
+      "name": "Extrude_Box",
+      "type": "boss_extrude_blind"
+    },
+    {
+      "name": "Fillet_TopRightEdge",
+      "type": "fillet_constant_radius"
+    }
+  ]
+}

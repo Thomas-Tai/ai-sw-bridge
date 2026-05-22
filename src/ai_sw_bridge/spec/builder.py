@@ -1761,7 +1761,11 @@ def build(
                 # delta is mode-independent.
                 if verify_mass:
                     _ = doc.EditRebuild3  # ensure geometry is up to date
-                    mp = doc.Extension.CreateMassProperty()
+                    # CreateMassProperty is a zero-arg COM method: pywin32
+                    # late-binding auto-invokes it on attribute access. Adding
+                    # () would call the *returned* IMassProperty and raise
+                    # DISP_E_MEMBERNOTFOUND. Same idiom as observe.sw_get_volume.
+                    mp = doc.Extension.CreateMassProperty
                     vol_mm3 = mp.Volume * 1e9  # SW returns m³
                     delta_mm3 = vol_mm3 - prev_volume_mm3
                     expect = feat.get("_expect")

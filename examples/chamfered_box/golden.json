@@ -1,0 +1,19 @@
+{
+  "spec_name": "ChamferedBox",
+  "schema_version": 1,
+  "feature_count": 3,
+  "features": [
+    {
+      "name": "SK_Box",
+      "type": "sketch_rectangle_on_plane"
+    },
+    {
+      "name": "EX_Box",
+      "type": "boss_extrude_blind"
+    },
+    {
+      "name": "Ch_TopEdges",
+      "type": "chamfer_edge"
+    }
+  ]
+}

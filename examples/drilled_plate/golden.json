@@ -1,0 +1,23 @@
+{
+  "spec_name": "DrilledPlate",
+  "schema_version": 1,
+  "feature_count": 4,
+  "features": [
+    {
+      "name": "SK_Plate",
+      "type": "sketch_rectangle_on_plane"
+    },
+    {
+      "name": "EX_Plate",
+      "type": "boss_extrude_blind"
+    },
+    {
+      "name": "Hole_Blind",
+      "type": "simple_hole"
+    },
+    {
+      "name": "Hole_Through",
+      "type": "simple_hole"
+    }
+  ]
+}

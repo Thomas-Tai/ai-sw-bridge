@@ -1,0 +1,47 @@
+{
+  "spec_name": "SM-HW-S1b-007_MotorMountPlate_v01_FROM_JSON",
+  "schema_version": 1,
+  "feature_count": 10,
+  "features": [
+    {
+      "name": "SK_PlateSlab",
+      "type": "sketch_rectangle_on_plane"
+    },
+    {
+      "name": "Extrude_Plate",
+      "type": "boss_extrude_blind"
+    },
+    {
+      "name": "SK_CouplerHole",
+      "type": "sketch_circle_on_face"
+    },
+    {
+      "name": "Cut_CouplerHole",
+      "type": "cut_extrude_through_all"
+    },
+    {
+      "name": "SK_FlangeRecess",
+      "type": "sketch_circle_on_face"
+    },
+    {
+      "name": "Cut_FlangeRecess",
+      "type": "cut_extrude_blind"
+    },
+    {
+      "name": "SK_MotorHoles",
+      "type": "sketch_circles_on_face"
+    },
+    {
+      "name": "Cut_MotorHoles",
+      "type": "cut_extrude_through_all"
+    },
+    {
+      "name": "SK_FrameHoles",
+      "type": "sketch_circles_on_face"
+    },
+    {
+      "name": "Cut_FrameHoles",
+      "type": "cut_extrude_through_all"
+    }
+  ]
+}

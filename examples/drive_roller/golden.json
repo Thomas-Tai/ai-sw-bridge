@@ -1,0 +1,67 @@
+{
+  "spec_name": "SM-HW-S1b-004_DriveRoller_v01",
+  "schema_version": 1,
+  "feature_count": 10,
+  "features": [
+    {
+      "name": "SK_Body",
+      "type": "sketch_circle_on_plane"
+    },
+    {
+      "name": "Extrude_Roller",
+      "type": "boss_extrude_blind",
+      "expect": {
+        "mass_delta_mm3": 39269.91,
+        "tolerance_mm3": 50.0
+      }
+    },
+    {
+      "name": "SK_CentreBore",
+      "type": "sketch_circle_on_face"
+    },
+    {
+      "name": "Cut_CentreBore",
+      "type": "cut_extrude_through_all",
+      "expect": {
+        "mass_delta_mm3": -4539.6,
+        "tolerance_mm3": 50.0
+      }
+    },
+    {
+      "name": "SK_BearingPocket_NZ",
+      "type": "sketch_circle_on_face"
+    },
+    {
+      "name": "Cut_BearingPocket_NZ",
+      "type": "cut_extrude_blind",
+      "expect": {
+        "mass_delta_mm3": -2287.96,
+        "tolerance_mm3": 50.0
+      }
+    },
+    {
+      "name": "SK_BearingPocket_PZ",
+      "type": "sketch_circle_on_face"
+    },
+    {
+      "name": "Cut_BearingPocket_PZ",
+      "type": "cut_extrude_blind",
+      "expect": {
+        "mass_delta_mm3": -2287.96,
+        "tolerance_mm3": 50.0
+      }
+    },
+    {
+      "name": "SK_BeltGripGroove",
+      "type": "sketch_rectangle_on_plane"
+    },
+    {
+      "name": "Cut_BeltGripGroove",
+      "type": "revolve_cut",
+      "expect": {
+        "mass_delta_mm3": -376.99,
+        "tolerance_mm3": 50.0
+      }
+    }
+  ]
+}
