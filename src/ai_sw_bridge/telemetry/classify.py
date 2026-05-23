@@ -29,7 +29,7 @@ def classify_hresult(hresult: int | str) -> str:
 
     Returns one of: "A", "B", "C", or "unknown".
     """
-    key = hex(hresult) if isinstance(hresult, int) else hresult.lower()
+    key = f"0x{hresult:08X}" if isinstance(hresult, int) else hresult.upper()
     if key in _TIER_B_HRESULTS:
         return "B"
     if key in _TIER_C_HRESULTS:
