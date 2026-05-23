@@ -31,6 +31,7 @@ nul
 # Runtime data (per-user, auto-created)
 captures/
 proposals/
+.telemetry/
 
 # Build metrics sidecars (written next to a saved .sldprt; observability P3.1)
 *.build_metrics.json
@@ -54,3 +55,6 @@ docs/_test*.json
 
 # Smoke-test scratch outputs (feature_tree_diff captures, etc.)
 tools/snapshots-e2e/
+
+
+docs/central_idea/

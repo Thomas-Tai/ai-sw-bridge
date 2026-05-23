@@ -30,6 +30,9 @@ from typing import Any
 
 from ..locals_io import parse as parse_locals
 from ..sw_com import get_sw_app
+from ..telemetry import counter as telemetry_counter
+from ..telemetry import histogram as telemetry_histogram
+from ..telemetry import new_trace_id, trace_id
 from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
     SW_END_COND_BLIND,
     SW_END_COND_THROUGH_ALL,
@@ -1582,6 +1585,7 @@ class BuildResult:
     # Per-feature build timings (observability triad, P3.1). Each entry:
     # {"name": ..., "type": ..., "build_time_s": ...}. None until populated.
     feature_metrics: list[dict[str, Any]] | None = None
+    trace_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-serializable shape for CLI output. Single source of truth
@@ -1596,6 +1600,8 @@ class BuildResult:
             "save_as": self.save_as,
             "save_as_verified": self.save_as_verified,
         }
+        if self.trace_id is not None:
+            out["trace_id"] = self.trace_id
         if self.error is not None:
             out["error"] = self.error
         if self.error_feature is not None:
@@ -1683,6 +1689,7 @@ def build(
     if no_dim and deferred_dim:
         raise ValueError("no_dim and deferred_dim are mutually exclusive")
 
+    new_trace_id()
     t0 = time.time()
     mode = "no_dim" if no_dim else ("deferred_dim" if deferred_dim else "parametric")
     spec_name = spec.get("name", "unnamed")
@@ -1841,6 +1848,8 @@ def build(
                     _ = doc.EditRebuild3
         except Exception as e:
             elapsed = time.time() - t0
+            telemetry_counter("builds_total", mode=mode, outcome="fail")
+            telemetry_histogram("build_duration_seconds", elapsed, mode=mode)
             logger.info(
                 "build fail: name=%s error=%s elapsed=%.1fs",
                 spec_name,
@@ -1858,6 +1867,7 @@ def build(
                 build_time_s=elapsed,
                 mode=mode,
                 feature_metrics=feature_metrics,
+                trace_id=trace_id(),
             )
 
         # Final rebuild for good measure
@@ -1877,6 +1887,8 @@ def build(
             saved_path, save_as_verified = _save_as_with_verification(doc, out_path)
 
         elapsed = time.time() - t0
+        telemetry_counter("builds_total", mode=mode, outcome="ok")
+        telemetry_histogram("build_duration_seconds", elapsed, mode=mode)
         logger.info(
             "build ok: name=%s features=%d elapsed=%.1fs",
             spec_name,
@@ -1893,6 +1905,7 @@ def build(
             build_time_s=elapsed,
             mode=mode,
             feature_metrics=feature_metrics,
+            trace_id=trace_id(),
         )
     finally:
         # Always restore the user's preference, even on exception
