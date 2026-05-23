@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from ..flags import FLAG_REGISTRY, parse_flag_args, resolve as resolve_flags
 from ..spec import validate, ValidationError
 from ..spec.builder import _resolve_rhs_in_spec, build
 from ..spec.lint import lint as spec_lint
@@ -270,6 +271,22 @@ def main() -> int:
         action="store_true",
         help="Alias for --log-level debug.",
     )
+    flag_names = sorted(FLAG_REGISTRY)
+    flag_group = parser.add_argument_group("feature flags")
+    flag_group.add_argument(
+        "--enable-flag",
+        dest="enable_flag",
+        action="append",
+        choices=flag_names,
+        help=f"Enable a feature flag. Choices: {', '.join(flag_names)}.",
+    )
+    flag_group.add_argument(
+        "--disable-flag",
+        dest="disable_flag",
+        action="append",
+        choices=flag_names,
+        help=f"Disable a feature flag. Choices: {', '.join(flag_names)}.",
+    )
     args = parser.parse_args()
 
     # Observability triad (P3.1): leveled logging. --verbose is shorthand
@@ -279,6 +296,13 @@ def main() -> int:
         level=getattr(logging, level_name.upper()),
         format="%(name)s %(levelname)s %(message)s",
     )
+
+    # Feature-flag resolution (spec.md §8.7): CLI > env > toml > defaults.
+    try:
+        cli_overrides = parse_flag_args(args.enable_flag, args.disable_flag)
+    except ValueError as exc:
+        return _emit({"ok": False, "error": str(exc)}, 2)
+    args.flags = resolve_flags(cli_overrides=cli_overrides)
 
     # Mode conflict check runs before anything else so --validate-only
     # doesn't mask a misuse of flags.
