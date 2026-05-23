@@ -45,6 +45,9 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "onboarding: quickstart smoke tests (no SW required)",
+]
 
 [tool.black]
 # Pin target so local + CI matrix entries (3.10, 3.12, 3.14) all produce
