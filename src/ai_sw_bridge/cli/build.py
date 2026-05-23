@@ -241,6 +241,20 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--reconnect",
+        dest="reconnect",
+        action="store_true",
+        help=(
+            "Attempt mid-build COM handle recovery when SW disconnects "
+            "(experimental). On stale-handle errors (RPC_S_SERVER_UNAVAILABLE, "
+            "RPC_E_DISCONNECTED), tears down the old IDispatch chain and "
+            "re-acquires SldWorks.Application, then retries the current "
+            "operation once. WARNING: the new SW process has no knowledge of "
+            "the partially-built part; review the checkpoint to verify state. "
+            "Without this flag, stale-handle errors surface as Tier-B failures."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         dest="log_level",
         choices=["debug", "info", "warning", "error"],
@@ -351,12 +365,14 @@ def main() -> int:
         deferred_dim=args.deferred_dim,
         save_as=args.save_as,
         verify_mass=args.verify_mass,
+        reconnect=args.reconnect,
     )
     # BuildResult.to_dict() owns the wire format; CLI only adds CLI-level
     # context (here: which mode the caller picked).
     payload = result.to_dict()
     payload["no_dim"] = args.no_dim
     payload["deferred_dim"] = args.deferred_dim
+    payload["reconnect"] = args.reconnect
     # Observability triad (P3.1): drop a build_metrics.json sidecar next to
     # the saved part so a later run can diff per-feature timings.
     if result.save_as:

@@ -30,6 +30,7 @@ from typing import Any
 
 from ..locals_io import parse as parse_locals
 from ..sw_com import get_sw_app
+from ..com.connection import with_reconnect
 from ..telemetry import counter as telemetry_counter
 from ..telemetry import histogram as telemetry_histogram
 from ..telemetry import new_trace_id, trace_id
@@ -1625,6 +1626,7 @@ def build(
     deferred_dim: bool = False,
     save_as: str | None = None,
     verify_mass: bool = False,
+    reconnect: bool = False,
 ) -> BuildResult:
     """Build the spec into a fresh blank part on the running SW session.
 
@@ -1685,6 +1687,14 @@ def build(
     AND (in --deferred-dim mode) after the deferred-dim phase. So in
     --deferred-dim, the user must tick all popups before SaveAs3 fires.
     To save without any popups, combine `save_as` with `no_dim=True`.
+
+    If `reconnect` is True: when a feature handler raises a stale-handle
+    COM error (RPC_S_SERVER_UNAVAILABLE or RPC_E_DISCONNECTED), the build
+    tears down the old SW Application proxy, re-acquires it, and retries
+    the current handler once. WARNING: the new SW session has no knowledge
+    of the partially-built part; the resulting model state is undefined.
+    Without `reconnect`, stale-handle errors propagate as normal Tier-B
+    failures. Per spec.md §6.9 ComExecutor death-recovery and audit §6.5.
     """
     if no_dim and deferred_dim:
         raise ValueError("no_dim and deferred_dim are mutually exclusive")
@@ -1750,7 +1760,7 @@ def build(
                 logger.debug("feature: %s (%s)", current_feat_name, feat["type"])
                 handler = HANDLERS[feat["type"]]
                 _feat_t0 = time.time()
-                bf = handler(ctx, feat)
+                bf = with_reconnect(handler, ctx, feat, reconnect=reconnect)
                 feature_metrics.append(
                     {
                         "name": current_feat_name,
