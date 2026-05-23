@@ -162,3 +162,5 @@ MIT. See [LICENSE](LICENSE).
 ## Acknowledgments
 
 SOLIDWORKS API patterns: [CodeStack](https://www.codestack.net/solidworks-api/). The Path C dim-binding fix (`EquationMgr.Add2` 3-arg form) came from their `document/dimensions/add-equation/` example.
+
+Includes adapted code from [SolidworksMCP-python](https://github.com/espocrm/SolidworksMCP-python) (MIT, ESPO Corp 2025).

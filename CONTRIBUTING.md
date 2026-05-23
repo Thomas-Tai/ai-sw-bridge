@@ -84,6 +84,19 @@ Please include:
 
 See [`docs/i18n/TRANSLATION_PROMPT.md`](docs/i18n/TRANSLATION_PROMPT.md) for the parameterized translation prompt. The DO-NOT-TRANSLATE list in that prompt is the authoritative reference for which technical terms must survive translation verbatim.
 
+## Port attribution
+
+When porting code from upstream repositories, three attribution surfaces are
+required (see `docs/central_idea/harvest_plan.md` §5 for the full process):
+
+1. **Docstring** — module-level SPDX tags + upstream commit SHA
+2. **This table** — one row per ported file
+3. **README.md** — one consolidated-credit line per upstream repo
+
+| Target file | Source repo | Source path | License | Upstream commit |
+|---|---|---|---|---|
+| `src/ai_sw_bridge/errors/circuit_breaker.py` | [SolidworksMCP-python](https://github.com/espocrm/SolidworksMCP-python) | `src/solidworks_mcp/adapters/circuit_breaker.py` | MIT | TBD (pin at first merge) |
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
