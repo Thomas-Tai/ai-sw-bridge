@@ -1,0 +1,37 @@
+name: License lint
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src/**"
+      - "CONTRIBUTING.md"
+      - "README.md"
+      - "LICENSE"
+      - "pyproject.toml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "src/**"
+      - "CONTRIBUTING.md"
+      - "README.md"
+      - "LICENSE"
+      - "pyproject.toml"
+
+jobs:
+  license-lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # Non-blocking initially (continue-on-error: true).
+      # Promote to blocking (remove the line) after one clean cycle
+      # per harvest_plan.md §9.2.
+      - name: Run license lint
+        continue-on-error: true
+        run: python tools/license_lint.py src/
