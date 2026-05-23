@@ -8,9 +8,9 @@ COM calls fail repeatedly.  The state machine has three states:
   HALF_OPEN → allows a limited number of probe calls; success closes the
               circuit, failure re-opens it
 
-Ported from SolidworksMCP-python (MIT, ESPO Corp 2025).
-SPDX-Port-Source: https://github.com/espocrm/SolidworksMCP-python
-SPDX-Port-Commit: <to-be-pinned-at-first-merge>
+Ported from SolidworksMCP-python (MIT, ESPO Corporation 2025).
+SPDX-Port-Source: https://github.com/andrewbartels1/SolidworksMCP-python
+SPDX-Port-Commit: a10fb74933bb681a5d1569621b33bdcb213faae0
 SPDX-License-Identifier: MIT
 
 The original is an async adapter wrapper (``CircuitBreakerAdapter``).  This

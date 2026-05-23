@@ -118,8 +118,33 @@ def _parse_contributing_table(contributing: Path) -> dict[str, str]:
     return rows
 
 
+def _normalize_repo(name: str) -> str:
+    """Normalize repo names for license-matrix comparison.
+
+    The license matrix uses local-archive naming (`-main` / `-develop` /
+    `-master` suffixes from GitHub ZIP downloads); docstrings and the README
+    use the canonical upstream name. Strip the trailing suffix so both
+    forms compare equal.
+    """
+    for suffix in ("-main", "-master", "-develop"):
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return name
+
+
+_NORMALIZED_ALLOWED = {_normalize_repo(r): r for r in ALLOWED_REPOS}
+_NORMALIZED_FORBIDDEN = {_normalize_repo(r): r for r in FORBIDDEN_REPOS}
+
+
 def _parse_readme_acknowledgments(readme: Path) -> set[str]:
-    """Extract upstream repo names mentioned in README Acknowledgments section."""
+    """Extract upstream repo names mentioned in README Acknowledgments section.
+
+    Returns matrix-form names (with `-main`/`-master`/`-develop` suffixes
+    as they appear in the license matrix). The canonical form (without
+    suffix) is also recognized in the README text but normalized back to
+    the matrix-form name on return so downstream callers can compare to
+    the matrix without ambiguity.
+    """
     if not readme.exists():
         return set()
     text = readme.read_text(encoding="utf-8")
@@ -129,21 +154,27 @@ def _parse_readme_acknowledgments(readme: Path) -> set[str]:
     ack_section = text[m.end():]
     found: set[str] = set()
     for repo_name in REPO_LICENSE:
-        if repo_name in ack_section:
+        canonical = _normalize_repo(repo_name)
+        if repo_name in ack_section or canonical in ack_section:
             found.add(repo_name)
     return found
 
 
 def _check_license_classification(upstream_repo: str, file_path: Path) -> list[str]:
-    """Cross-reference the upstream repo against the license matrix."""
+    """Cross-reference the upstream repo against the license matrix.
+
+    Comparison normalizes the local-archive `-main` / `-master` / `-develop`
+    suffix so canonical names from docstrings match license-matrix entries.
+    """
     errors: list[str] = []
-    if upstream_repo in FORBIDDEN_REPOS:
-        lic = FORBIDDEN_REPOS[upstream_repo]
+    canonical = _normalize_repo(upstream_repo)
+    if canonical in _NORMALIZED_FORBIDDEN:
+        lic = FORBIDDEN_REPOS[_NORMALIZED_FORBIDDEN[canonical]]
         errors.append(
             f"{file_path}: upstream {upstream_repo} is {lic} — "
             f"study-only, porting is forbidden (harvest_plan.md §1)"
         )
-    elif upstream_repo not in ALLOWED_REPOS:
+    elif canonical not in _NORMALIZED_ALLOWED:
         errors.append(
             f"{file_path}: upstream {upstream_repo} not found in "
             f"license matrix (harvest_plan.md §1) — classify before porting"
@@ -227,7 +258,9 @@ def main() -> int:
             )
 
         # Surface (c): README.md Acknowledgments line
-        if upstream_repo not in ack_repos:
+        canonical = _normalize_repo(upstream_repo)
+        ack_canonicals = {_normalize_repo(r) for r in ack_repos}
+        if canonical not in ack_canonicals:
             all_errors.append(
                 f"{rel}: upstream {upstream_repo} not mentioned in "
                 f"README.md Acknowledgments"

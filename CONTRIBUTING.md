@@ -95,7 +95,7 @@ required (see `docs/central_idea/harvest_plan.md` §5 for the full process):
 
 | Target file | Source repo | Source path | License | Upstream commit |
 |---|---|---|---|---|
-| `src/ai_sw_bridge/errors/circuit_breaker.py` | [SolidworksMCP-python](https://github.com/espocrm/SolidworksMCP-python) | `src/solidworks_mcp/adapters/circuit_breaker.py` | MIT | TBD (pin at first merge) |
+| `src/ai_sw_bridge/errors/circuit_breaker.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | `src/solidworks_mcp/adapters/circuit_breaker.py` | MIT | a10fb74933bb681a5d1569621b33bdcb213faae0 |
 
 ## License
 
