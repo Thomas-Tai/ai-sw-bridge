@@ -25,6 +25,7 @@ import sys
 from pathlib import Path
 
 from ..parameterize import parameterize
+from .stability import add_tier, cli_stability
 
 
 def cmd_parameterize(swp_path: Path, spec_path: Path) -> dict:
@@ -60,6 +61,7 @@ def _handle_parameterize(args: argparse.Namespace) -> dict:
         return {"ok": False, "error": f"parameterize failed: {exc!r}"}
 
 
+@cli_stability("experimental")
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="ai-sw-codegen",
@@ -68,6 +70,7 @@ def main() -> int:
             "parametric .bas file linked to a locals.txt."
         ),
     )
+    add_tier(parser, "experimental")
     subs = parser.add_subparsers(dest="command", required=True, metavar="command")
 
     sub_param = subs.add_parser(

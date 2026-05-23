@@ -24,6 +24,7 @@ from typing import Any
 from ..spec import validate, ValidationError
 from ..spec.builder import _resolve_rhs_in_spec, build
 from ..spec.lint import lint as spec_lint
+from .stability import add_tier, cli_stability
 
 
 def _emit(payload: dict, code: int) -> int:
@@ -152,11 +153,13 @@ def _dry_run(spec: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+@cli_stability("stable")
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="ai-sw-build",
         description="Build a SOLIDWORKS part from a declarative JSON spec.",
     )
+    add_tier(parser, "stable")
     parser.add_argument("spec_path", help="Path to a part spec JSON")
     parser.add_argument(
         "--validate-only",

@@ -31,6 +31,7 @@ from ..mutate import (
     sw_run_macro,
     sw_undo_last_commit,
 )
+from .stability import add_tier, cli_stability
 
 
 def _run_propose(args: argparse.Namespace) -> dict[str, Any]:
@@ -136,8 +137,10 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+@cli_stability("stable")
 def main() -> int:
     parser = _build_parser()
+    add_tier(parser, "stable")
     args = parser.parse_args()
     result = args.func(args)
     print(json.dumps(result, indent=2, default=str))
