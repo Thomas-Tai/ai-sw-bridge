@@ -268,3 +268,141 @@ Fails (exit 1) when p95 regresses by >15% or p99 by >25% vs the baseline, or whe
 ### 11.3 Updating a baseline
 
 Baselines are updated only when a deliberate performance improvement lands or when the hardware baseline changes. CI gates the update: the PR must carry the `perf-baseline-bump` label (per spec.md §8.3).
+
+---
+
+## 12. Automated release pipeline (CI)
+
+The `.github/workflows/release.yml` workflow runs when a `v*.*.*` tag is pushed. It:
+
+1. Builds sdist + wheel via `python -m build`
+2. Computes SHA-256 checksums into `checksums.txt`
+3. Signs `checksums.txt` with the project GPG key
+4. Creates a GitHub Release with all artifacts + generated release notes
+5. Marks pre-release if the tag contains `a`, `b`, or `rc`
+
+**Required GitHub secrets:**
+
+- `GPG_SIGNING_KEY` — ASCII-armored private key export
+- `GPG_PASSPHRASE` — key passphrase
+
+### 12.1 Cutting a release via CI
+
+```bash
+# 1. Bump version in pyproject.toml
+# 2. Update CHANGELOG.md
+# 3. Commit and tag
+git commit -am "v0.11.0"
+git tag v0.11.0
+git push origin master v0.11.0
+```
+
+The CI workflow handles build, signing, and GitHub Release creation. This is the preferred path; the manual procedure in §6 is the fallback.
+
+---
+
+## 13. Manual fallback (CI unavailable)
+
+If GitHub Actions is unavailable (outage, runner quota, network issue), the release engineer can cut the release locally:
+
+```bash
+# 1. Build
+python -m build
+
+# 2. Checksum
+sha256sum dist/*.tar.gz dist/*.whl > checksums.txt
+
+# 3. Sign
+gpg --default-key ai-sw-bridge-release --detach-sign --armor checksums.txt
+
+# 4. Create release via gh CLI
+gh release create v0.11.0 \
+  dist/*.tar.gz dist/*.whl \
+  checksums.txt checksums.txt.asc \
+  --title "v0.11.0" \
+  --notes-file /tmp/release_notes.txt
+
+# 5. Verify
+gpg --verify checksums.txt.asc
+```
+
+If GPG is unavailable, unsigned checksums may be published with a note in the release body: *"Checksums are unsigned due to [reason]. Verify against the CI run log for commit <sha>."*
+
+---
+
+## 14. GPG key management
+
+### 14.1 Key details
+
+- **Key type:** RSA 4096 or Ed25519
+- **User ID:** `ai-sw-bridge-release <maintainer@example.com>`
+- **Storage:** GPG secret key stored in GitHub Secrets (`GPG_SIGNING_KEY`). The corresponding public key is committed to the repo at `release-key.asc` for user verification.
+
+### 14.2 Key rotation policy
+
+- Rotate if the private key is suspected compromised.
+- Rotate every 2 years as a hygiene measure.
+- Rotation procedure:
+  1. Generate a new key pair.
+  2. Update `GPG_SIGNING_KEY` and `GPG_PASSPHRASE` in GitHub Secrets.
+  3. Commit the new public key to `release-key.asc`.
+  4. Sign the next release with the new key.
+  5. Document the rotation in this file's changelog below.
+- Old public keys remain in the repo (renamed to `release-key-<year>.asc`) so historical releases can still be verified.
+
+### 14.3 Verification (user-facing)
+
+Users verify a release with:
+
+```bash
+# Import the project's public key (one-time)
+gpg --import release-key.asc
+
+# Verify
+gpg --verify checksums.txt.asc
+sha256sum -c checksums.txt
+```
+
+### 14.4 Initial key setup
+
+Before the first signed release, a maintainer must:
+
+1. Generate a signing-only subkey under an existing or new key:
+   ```bash
+   gpg --quick-add-key <fingerprint> rsa4096 sign 2y
+   ```
+2. Export the ASCII-armored private key (subkey only):
+   ```bash
+   gpg --export-secret-subkeys --armor <subkey-id> > /tmp/signing-subkey.asc
+   ```
+3. Store the export in the `GPG_SIGNING_KEY` GitHub secret.
+4. Store the passphrase in `GPG_PASSPHRASE`.
+5. Export and commit the public key:
+   ```bash
+   gpg --export --armor <subkey-id> > release-key.asc
+   git add release-key.asc && git commit -m "chore: add release signing public key"
+   ```
+
+Until this setup is complete, releases carry unsigned checksums with a note in the release body (see §13).
+
+---
+
+## 15. First release dry-run
+
+Before trusting the automated pipeline on a real tag, run a dry-run:
+
+```bash
+# Build locally
+python -m build
+ls dist/
+
+# Verify the wheel is importable
+pip install dist/*.whl
+python -c "import ai_sw_bridge; print(ai_sw_bridge.__version__)"
+
+# Test the checksum flow
+cd dist && sha256sum *.tar.gz *.whl > ../checksums.txt && cd ..
+cat checksums.txt
+```
+
+If the local build succeeds, push a pre-release tag (e.g. `v0.10.1a1`) to test the CI pipeline end-to-end without affecting real users. Verify the GitHub Release appears with all four artifacts. Delete the pre-release and its tag once verified.
