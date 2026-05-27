@@ -32,6 +32,12 @@ nul
 captures/
 proposals/
 .telemetry/
+# L4 checkpoint store — per privacy_review.md §4.1, the .sqlite files
+# contain full *_locals.txt snapshots at each feature commit and must
+# never enter version control. Users who want some sub-set committed
+# (e.g. an audited reproducible build) can negate per-line in their
+# own project .gitignore.
+.checkpoints/
 
 # Build metrics sidecars (written next to a saved .sldprt; observability P3.1)
 *.build_metrics.json
