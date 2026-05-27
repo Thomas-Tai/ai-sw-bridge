@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import re
 
-from ai_sw_bridge.telemetry.trace import clear_trace_id, new_trace_id, set_trace_id, trace_id
+from ai_sw_bridge.telemetry.trace import (
+    clear_trace_id,
+    new_trace_id,
+    set_trace_id,
+    trace_id,
+)
 
 
 def test_new_trace_id_format():

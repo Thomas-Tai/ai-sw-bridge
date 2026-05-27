@@ -98,13 +98,15 @@ def _collect_telemetry_export(
             k: redact_string(v, trade_secret_patterns) if isinstance(v, str) else v
             for k, v in labels.items()
         }
-        export_rows.append({
-            "id": r["id"],
-            "timestamp": r["timestamp"],
-            "metric_name": r["metric_name"],
-            "labels": scrubbed_labels,
-            "value": r["value"],
-        })
+        export_rows.append(
+            {
+                "id": r["id"],
+                "timestamp": r["timestamp"],
+                "metric_name": r["metric_name"],
+                "labels": scrubbed_labels,
+                "value": r["value"],
+            }
+        )
     data = {
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "window": "last_24h",
@@ -167,7 +169,9 @@ def _build_readme(
         "",
     ]
     if has_specs:
-        lines.append("- `specs/` — spec.json files from working directory (paths redacted)")
+        lines.append(
+            "- `specs/` — spec.json files from working directory (paths redacted)"
+        )
     if has_locals:
         lines.append("- `locals/` — *_locals.txt files (contents fully redacted)")
     if has_telemetry:

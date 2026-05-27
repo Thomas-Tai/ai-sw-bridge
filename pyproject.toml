@@ -45,6 +45,11 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "onboarding: quickstart smoke tests (no SW required)",
+    "fault_injection: COM fault injection tests (run as separate CI job)",
+]
 
 [tool.black]
 # Pin target so local + CI matrix entries (3.10, 3.12, 3.14) all produce

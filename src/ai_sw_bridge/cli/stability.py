@@ -63,9 +63,7 @@ def add_tier(parser: argparse.ArgumentParser, tier: Tier) -> None:
         )
 
 
-def add_subcommand_tier(
-    sub: argparse.ArgumentParser, tier: Tier
-) -> None:
+def add_subcommand_tier(sub: argparse.ArgumentParser, tier: Tier) -> None:
     """Inject *tier* into a subcommand parser.
 
     Same visual treatment as :func:`add_tier`.  Call this after

@@ -34,7 +34,7 @@ _bound_histograms: dict[str, Histogram] = {}
 
 
 def _get_store() -> TelemetryStore:
-    global _store, _bound_counters, _bound_histograms
+    global _store
     if _store is None:
         _store = TelemetryStore()
         _bound_counters.clear()
@@ -58,7 +58,7 @@ def counter(name: str, **label_values: str) -> None:
             return
         bound = c.bind(_get_store())
         _bound_counters[name] = bound
-    bound.inc(**label_values)
+    bound.inc(1, **label_values)
 
 
 def histogram(name: str, value: float, **label_values: str) -> None:

@@ -41,8 +41,7 @@ def load_trade_secret_patterns(config_path: Path) -> list[re.Pattern[str]]:
             compiled.append(re.compile(p))
         except re.error as e:
             raise ValueError(
-                f"invalid trade-secret regex in {config_path}: "
-                f"{p!r} -- {e}"
+                f"invalid trade-secret regex in {config_path}: " f"{p!r} -- {e}"
             ) from e
     return compiled
 

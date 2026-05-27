@@ -119,13 +119,15 @@ class TelemetryStore:
             if labels:
                 if not all(row_labels.get(k) == v for k, v in labels.items()):
                     continue
-            results.append({
-                "id": row[0],
-                "timestamp": row[1],
-                "metric_name": row[2],
-                "labels": row_labels,
-                "value": row[4],
-            })
+            results.append(
+                {
+                    "id": row[0],
+                    "timestamp": row[1],
+                    "metric_name": row[2],
+                    "labels": row_labels,
+                    "value": row[4],
+                }
+            )
         return results
 
     def close(self) -> None:

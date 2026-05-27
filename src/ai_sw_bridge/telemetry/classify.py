@@ -12,16 +12,20 @@ envelope waits for Task 1.2 (errors/ package creation).
 from __future__ import annotations
 
 # Known HRESULTs from spec.md §6.9 and audit §4.2.
-_TIER_B_HRESULTS: frozenset[str] = frozenset({
-    "0x800706BA",  # RPC_S_SERVER_UNAVAILABLE
-    "0x80010108",  # RPC_E_DISCONNECTED
-    "0x80020003",  # DISP_E_MEMBERNOTFOUND
-    "0x8002000B",  # DISP_E_BADINDEX
-})
+_TIER_B_HRESULTS: frozenset[str] = frozenset(
+    {
+        "0x800706BA",  # RPC_S_SERVER_UNAVAILABLE
+        "0x80010108",  # RPC_E_DISCONNECTED
+        "0x80020003",  # DISP_E_MEMBERNOTFOUND
+        "0x8002000B",  # DISP_E_BADINDEX
+    }
+)
 
-_TIER_C_HRESULTS: frozenset[str] = frozenset({
-    "0x800401F0",  # CO_E_NOTINITIALIZED (STA discipline violation)
-})
+_TIER_C_HRESULTS: frozenset[str] = frozenset(
+    {
+        "0x800401F0",  # CO_E_NOTINITIALIZED (STA discipline violation)
+    }
+)
 
 
 def classify_hresult(hresult: int | str) -> str:
@@ -29,7 +33,7 @@ def classify_hresult(hresult: int | str) -> str:
 
     Returns one of: "A", "B", "C", or "unknown".
     """
-    key = hex(hresult) if isinstance(hresult, int) else hresult.lower()
+    key = f"0x{hresult:08X}" if isinstance(hresult, int) else hresult.upper()
     if key in _TIER_B_HRESULTS:
         return "B"
     if key in _TIER_C_HRESULTS:

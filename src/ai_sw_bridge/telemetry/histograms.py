@@ -13,7 +13,21 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .store import TelemetryStore
 
-_DEFAULT_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0)
+_DEFAULT_BUCKETS = (
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    10.0,
+    25.0,
+    50.0,
+)
 
 
 class Histogram:
@@ -64,6 +78,7 @@ class Histogram:
         elapsed_us = (time.perf_counter() - t0) * 1e6
         if elapsed_us > 200:
             import sys
+
             print(
                 f"telemetry: Histogram.observe took {elapsed_us:.0f} µs "
                 f"(budget: 200 µs) for {self._name}",
@@ -72,14 +87,10 @@ class Histogram:
 
 
 HISTOGRAMS: dict[str, Histogram] = {
-    "build_duration_seconds": Histogram(
-        "build_duration_seconds", labels=("mode",)
-    ),
+    "build_duration_seconds": Histogram("build_duration_seconds", labels=("mode",)),
     "brep_interrogation_seconds": Histogram(
         "brep_interrogation_seconds",
         labels=("feature_type", "mode"),
     ),
-    "rag_query_seconds": Histogram(
-        "rag_query_seconds", labels=("subcommand",)
-    ),
+    "rag_query_seconds": Histogram("rag_query_seconds", labels=("subcommand",)),
 }

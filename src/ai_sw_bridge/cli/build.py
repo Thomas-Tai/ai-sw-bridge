@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from ..flags import FLAG_REGISTRY, parse_flag_args, resolve as resolve_flags
 from ..spec import validate, ValidationError
 from ..spec.builder import _resolve_rhs_in_spec, build
 from ..spec.lint import lint as spec_lint
@@ -241,6 +242,20 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--reconnect",
+        dest="reconnect",
+        action="store_true",
+        help=(
+            "Attempt mid-build COM handle recovery when SW disconnects "
+            "(experimental). On stale-handle errors (RPC_S_SERVER_UNAVAILABLE, "
+            "RPC_E_DISCONNECTED), tears down the old IDispatch chain and "
+            "re-acquires SldWorks.Application, then retries the current "
+            "operation once. WARNING: the new SW process has no knowledge of "
+            "the partially-built part; review the checkpoint to verify state. "
+            "Without this flag, stale-handle errors surface as Tier-B failures."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         dest="log_level",
         choices=["debug", "info", "warning", "error"],
@@ -256,6 +271,22 @@ def main() -> int:
         action="store_true",
         help="Alias for --log-level debug.",
     )
+    flag_names = sorted(FLAG_REGISTRY)
+    flag_group = parser.add_argument_group("feature flags")
+    flag_group.add_argument(
+        "--enable-flag",
+        dest="enable_flag",
+        action="append",
+        choices=flag_names,
+        help=f"Enable a feature flag. Choices: {', '.join(flag_names)}.",
+    )
+    flag_group.add_argument(
+        "--disable-flag",
+        dest="disable_flag",
+        action="append",
+        choices=flag_names,
+        help=f"Disable a feature flag. Choices: {', '.join(flag_names)}.",
+    )
     args = parser.parse_args()
 
     # Observability triad (P3.1): leveled logging. --verbose is shorthand
@@ -265,6 +296,13 @@ def main() -> int:
         level=getattr(logging, level_name.upper()),
         format="%(name)s %(levelname)s %(message)s",
     )
+
+    # Feature-flag resolution (spec.md §8.7): CLI > env > toml > defaults.
+    try:
+        cli_overrides = parse_flag_args(args.enable_flag, args.disable_flag)
+    except ValueError as exc:
+        return _emit({"ok": False, "error": str(exc)}, 2)
+    args.flags = resolve_flags(cli_overrides=cli_overrides)
 
     # Mode conflict check runs before anything else so --validate-only
     # doesn't mask a misuse of flags.
@@ -351,12 +389,14 @@ def main() -> int:
         deferred_dim=args.deferred_dim,
         save_as=args.save_as,
         verify_mass=args.verify_mass,
+        reconnect=args.reconnect,
     )
     # BuildResult.to_dict() owns the wire format; CLI only adds CLI-level
     # context (here: which mode the caller picked).
     payload = result.to_dict()
     payload["no_dim"] = args.no_dim
     payload["deferred_dim"] = args.deferred_dim
+    payload["reconnect"] = args.reconnect
     # Observability triad (P3.1): drop a build_metrics.json sidecar next to
     # the saved part so a later run can diff per-feature timings.
     if result.save_as:
