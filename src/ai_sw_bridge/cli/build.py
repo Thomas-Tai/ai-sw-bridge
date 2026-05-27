@@ -256,6 +256,20 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--checkpoint",
+        dest="checkpoint",
+        action="store_true",
+        help=(
+            "[experimental] Write a per-feature L4 checkpoint row to "
+            "./.checkpoints/<part>.sqlite (spec.md §5.2). Each row captures "
+            "the spec's locals snapshot, the feature name/type, and a "
+            "canonical tree hash over already-built features. Use "
+            "`ai-sw-history` to query and `rollback_to` to revert the "
+            "locals file after a bad feature. Does NOT touch the running "
+            "SW session on rollback (software-side only)."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         dest="log_level",
         choices=["debug", "info", "warning", "error"],
@@ -390,6 +404,7 @@ def main() -> int:
         save_as=args.save_as,
         verify_mass=args.verify_mass,
         reconnect=args.reconnect,
+        checkpoint=args.checkpoint,
     )
     # BuildResult.to_dict() owns the wire format; CLI only adds CLI-level
     # context (here: which mode the caller picked).
@@ -397,6 +412,7 @@ def main() -> int:
     payload["no_dim"] = args.no_dim
     payload["deferred_dim"] = args.deferred_dim
     payload["reconnect"] = args.reconnect
+    payload["checkpoint"] = args.checkpoint
     # Observability triad (P3.1): drop a build_metrics.json sidecar next to
     # the saved part so a later run can diff per-feature timings.
     if result.save_as:

@@ -49,6 +49,7 @@ pythonpath = ["."]
 markers = [
     "onboarding: quickstart smoke tests (no SW required)",
     "fault_injection: COM fault injection tests (run as separate CI job)",
+    "solidworks_only: live-SW regression tests (require a running SOLIDWORKS session; run as separate CI job)",
 ]
 
 [tool.black]

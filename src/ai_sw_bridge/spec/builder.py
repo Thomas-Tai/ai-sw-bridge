@@ -1667,6 +1667,8 @@ def build(
     save_as: str | None = None,
     verify_mass: bool = False,
     reconnect: bool = False,
+    checkpoint: bool = False,
+    checkpoint_root: "Path | None" = None,
 ) -> BuildResult:
     """Build the spec into a fresh blank part on the running SW session.
 
@@ -1735,6 +1737,17 @@ def build(
     of the partially-built part; the resulting model state is undefined.
     Without `reconnect`, stale-handle errors propagate as normal Tier-B
     failures. Per spec.md §6.9 ComExecutor death-recovery and audit §6.5.
+
+    If `checkpoint` is True: after every feature handler returns (and
+    after any deferred-dim / binding / mass-verification work), the
+    builder writes a ``committed`` checkpoint row capturing the spec's
+    locals snapshot, the feature name/type, and canonical tree hashes
+    over the already-built feature dicts. Uses
+    :class:`ai_sw_bridge.checkpoint.store.CheckpointStore` scoped to
+    the spec name. Gated by ``flags.checkpoint`` at the CLI layer;
+    this kwarg is the direct hook for in-process callers and tests.
+    `checkpoint_root` overrides the default ``./.checkpoints`` location
+    (tests pass ``tmp_path``).
     """
     if no_dim and deferred_dim:
         raise ValueError("no_dim and deferred_dim are mutually exclusive")
@@ -1758,6 +1771,17 @@ def build(
     # entries (popup batch for THIS sketch), applies the feature's
     # bindings, and rebuilds. This per-sketch cadence is required for
     # two reasons -- see the in-loop comment for the full rationale.
+    #
+    # L4 checkpoint: capture the locals name->value dict BEFORE rhs
+    # resolution rewrites spec['locals'] into the resolved spec. The
+    # snapshot needs the equation content, not the absolute path.
+    cp_locals_dict: dict[str, Any] | None = None
+    if checkpoint and isinstance(spec.get("locals"), str):
+        try:
+            cp_locals_dict = _load_locals_map(spec["locals"])
+        except Exception as e:
+            logger.warning("checkpoint locals capture failed: %s", e)
+            cp_locals_dict = None
     if no_dim:
         spec = _resolve_rhs_in_spec(spec)
 
@@ -1776,6 +1800,31 @@ def build(
     sw = get_sw_app()
     doc = create_blank_part(sw)
     ctx = BuildContext(sw=sw, doc=doc, no_dim=no_dim, deferred_dim=deferred_dim)
+
+    # L4 checkpoint store (spec.md §5.2). Lazy-imported so flag-OFF builds
+    # don't pay the import cost. None when checkpoint=False.
+    cp_store: Any | None = None
+    if checkpoint:
+        try:
+            from ..checkpoint.snapshot import (
+                commit_post_feature as _cp_commit,
+                write_pre_feature as _cp_write,
+            )
+            from ..checkpoint.store import CheckpointStore as _CpStore
+        except Exception as e:
+            logger.warning("checkpoint init failed: %s", e)
+            cp_store = None
+        else:
+            try:
+                cp_store = _CpStore(
+                    part_name=spec_name,
+                    root=checkpoint_root,
+                )
+            except Exception as e:
+                logger.warning("checkpoint store init failed: %s", e)
+                cp_store = None
+    cp_row_id: int | None = None
+    cp_built: list[dict[str, Any]] = []
 
     # Suppress the "Modify Dimension" popup that AddDimension2 fires by
     # default. App-level only; doc-level call was found to RE-ENABLE the
@@ -1811,6 +1860,26 @@ def build(
                 current_feat_name = feat.get("name")
                 logger.debug("feature: %s (%s)", current_feat_name, feat["type"])
                 handler = HANDLERS[feat["type"]]
+                # L4 checkpoint: open a pending row BEFORE the handler runs
+                # so a mid-handler failure leaves a rollback target at the
+                # prior post_tree_hash. Row transitions to committed after
+                # all per-feature work (bindings / deferred dims / mass
+                # verification) completes, or to failed on exception.
+                cp_row_id = None
+                if cp_store is not None:
+                    try:
+                        cp_row_id = _cp_write(
+                            cp_store,
+                            spec=spec,
+                            feature=feat,
+                            feature_index=len(cp_built),
+                            already_built=cp_built,
+                            build_mode=mode,
+                            locals_snapshot=cp_locals_dict,
+                        )
+                    except Exception as e:
+                        logger.warning("checkpoint pre-write failed: %s", e)
+                        cp_row_id = None
                 _feat_t0 = time.time()
                 try:
                     with com_error_boundary(
@@ -1899,34 +1968,64 @@ def build(
 
                 if no_dim:
                     # rhs's were resolved upfront -- nothing to bind.
-                    continue
+                    pass
+                else:
+                    if deferred_dim:
+                        # Per-sketch deferred: replay just THIS handler's new
+                        # DeferredDim entries (popup batch for this sketch only),
+                        # then apply this feature's bindings + rebuild. This is
+                        # NECESSARY because:
+                        #   - End-of-build replay against geometry built at
+                        #     placeholder sizes fails on cuts like MMP's
+                        #     Cut_FlangeRecess (placeholder 10mm host < 20.5mm
+                        #     cut sketch -> FeatureCut4 returns None).
+                        #   - End-of-build replay against rhs-resolved-upfront
+                        #     geometry produces driven (reference) dims when the
+                        #     sketch is already fully-constrained by construction
+                        #     diagonals (CreateCenterRectangle), making Add2
+                        #     fail with "driven dim not selectable as dependent
+                        #     variable" -- empirically observed on MMP 2026-05-19.
+                        # Per-sketch replay keeps the dim driving (sketch was
+                        # under-constrained until D1/D2 added) AND resizes
+                        # geometry before downstream features.
+                        new_dims = ctx.deferred_dims[deferred_watermark:]
+                        if new_dims:
+                            _apply_deferred_dims(
+                                ctx,
+                                new_dims,
+                                label_prefix=f"Deferred dims for {bf.name}",
+                            )
+                            deferred_watermark = len(ctx.deferred_dims)
 
-                if deferred_dim:
-                    # Per-sketch deferred: replay just THIS handler's new
-                    # DeferredDim entries (popup batch for this sketch only),
-                    # then apply this feature's bindings + rebuild. This is
-                    # NECESSARY because:
-                    #   - End-of-build replay against geometry built at
-                    #     placeholder sizes fails on cuts like MMP's
-                    #     Cut_FlangeRecess (placeholder 10mm host < 20.5mm
-                    #     cut sketch -> FeatureCut4 returns None).
-                    #   - End-of-build replay against rhs-resolved-upfront
-                    #     geometry produces driven (reference) dims when the
-                    #     sketch is already fully-constrained by construction
-                    #     diagonals (CreateCenterRectangle), making Add2
-                    #     fail with "driven dim not selectable as dependent
-                    #     variable" -- empirically observed on MMP 2026-05-19.
-                    # Per-sketch replay keeps the dim driving (sketch was
-                    # under-constrained until D1/D2 added) AND resizes
-                    # geometry before downstream features.
-                    new_dims = ctx.deferred_dims[deferred_watermark:]
-                    if new_dims:
-                        _apply_deferred_dims(
-                            ctx,
-                            new_dims,
-                            label_prefix=f"Deferred dims for {bf.name}",
+                    # Apply this feature's parametric bindings BEFORE the next
+                    # feature. Without this, a downstream cut may operate on a
+                    # sketch still at placeholder size (the original MMP
+                    # Cut_FlangeRecess failure mode -- placeholder diameter 6mm
+                    # was smaller than the 12mm through-hole).
+                    feat_bindings = _collect_feature_bindings(feat)
+                    if feat_bindings:
+                        indices = _apply_bindings(doc, feat_bindings)
+                        for (d, r), i in zip(feat_bindings, indices):
+                            binding_results.append(Binding(dim=d, rhs=r, add2_index=i))
+                        # Force a rebuild so subsequent geometry sees the
+                        # updated dim values, not the placeholder.
+                        _ = doc.EditRebuild3
+
+                # L4 checkpoint: transition the pending row to committed now
+                # that handler + bindings + deferred dims + mass verification
+                # all succeeded. cp_built grows by one feature per iteration;
+                # the post_tree_hash covers the list INCLUDING this feature.
+                cp_built.append({"name": bf.name, "type": bf.type})
+                if cp_store is not None and cp_row_id is not None:
+                    try:
+                        _cp_commit(
+                            cp_store,
+                            cp_row_id,
+                            already_built=cp_built,
                         )
-                        deferred_watermark = len(ctx.deferred_dims)
+                    except Exception as e:
+                        logger.warning("checkpoint post-commit failed: %s", e)
+                    deferred_watermark = len(ctx.deferred_dims)
 
                 # Apply this feature's parametric bindings BEFORE the next
                 # feature. Without this, a downstream cut may operate on a
@@ -1952,6 +2051,14 @@ def build(
                     # updated dim values, not the placeholder.
                     _ = doc.EditRebuild3
         except Exception as e:
+            # L4 checkpoint: mark the in-flight pending row failed so the
+            # history records which feature was being attempted. Swallow
+            # store errors -- the build error is the primary signal.
+            if cp_store is not None and cp_row_id is not None:
+                try:
+                    cp_store.mark_failed(cp_row_id)
+                except Exception:
+                    pass
             elapsed = time.time() - t0
             telemetry_counter("builds_total", mode=mode, outcome="fail")
             telemetry_histogram("build_duration_seconds", elapsed, mode=mode)
@@ -2030,3 +2137,10 @@ def build(
     finally:
         # Always restore the user's preference, even on exception
         sw.SetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE, prev_input_dim)
+        # L4 checkpoint: release the SQLite handle. Swallow close errors
+        # so they don't mask the primary build result.
+        if cp_store is not None:
+            try:
+                cp_store.close()
+            except Exception:
+                pass
