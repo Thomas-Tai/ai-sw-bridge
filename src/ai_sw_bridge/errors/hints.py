@@ -259,12 +259,21 @@ _IFACE_HRESULT_MAP: dict[tuple[str, str], str] = {
 
 _IFACE_FEATURE_MAP: dict[tuple[str, str], str] = {
     # (iface_method, feature_type) -> hint_key
-    ("IFeatureManager.FeatureExtrusion2", "boss_extrude_blind"): "end_condition_mismatch",
+    (
+        "IFeatureManager.FeatureExtrusion2",
+        "boss_extrude_blind",
+    ): "end_condition_mismatch",
     ("IFeatureManager.FeatureCut4", "simple_hole"): "end_condition_mismatch",
     ("IModelDoc2.SelectByID", "sketch_on_plane"): "plane_not_found",
-    ("ISketchManager.CreateCornerRectangle", "sketch_under_constrained"): "sketch_under_constrained",
+    (
+        "ISketchManager.CreateCornerRectangle",
+        "sketch_under_constrained",
+    ): "sketch_under_constrained",
     ("IFeatureManager.FeatureExtrusion2", "unconsumed_sketch"): "unconsumed_sketch",
-    ("IFeatureManager.FeatureExtrusion2", "negative_offset_clash"): "negative_offset_clash",
+    (
+        "IFeatureManager.FeatureExtrusion2",
+        "negative_offset_clash",
+    ): "negative_offset_clash",
 }
 
 
@@ -278,18 +287,14 @@ def _hresult_to_key(hresult: str) -> str:
     return s.upper()
 
 
-def _matches_hresult_entry(
-    hint: Hint, iface_method: str, hresult_key: str
-) -> bool:
+def _matches_hresult_entry(hint: Hint, iface_method: str, hresult_key: str) -> bool:
     for (im, hr), key in _IFACE_HRESULT_MAP.items():
         if key == hint.key and im == iface_method and hr == hresult_key:
             return True
     return False
 
 
-def _matches_feature_entry(
-    hint: Hint, iface_method: str, feature_type: str
-) -> bool:
+def _matches_feature_entry(hint: Hint, iface_method: str, feature_type: str) -> bool:
     for (im, ft), key in _IFACE_FEATURE_MAP.items():
         if key == hint.key and im == iface_method and ft == feature_type:
             return True

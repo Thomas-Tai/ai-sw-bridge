@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import traceback as _tb
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass
 from typing import Literal, Optional
 
 Tier = Literal["A", "B", "C", "unknown"]
@@ -26,9 +26,7 @@ _ENVELOPE_VERSION = 1
 def _coerce_tier(tier: str) -> Tier:
     if tier in ("A", "B", "C", "unknown"):
         return tier  # type: ignore[return-value]
-    raise ValueError(
-        f"tier must be one of 'A', 'B', 'C', 'unknown'; got {tier!r}"
-    )
+    raise ValueError(f"tier must be one of 'A', 'B', 'C', 'unknown'; got {tier!r}")
 
 
 @dataclass(frozen=True)
@@ -100,9 +98,7 @@ def build_error_from_exception(
     hint_key: Optional[str] = None,
 ) -> BuildError:
     """Construct a :class:`BuildError` capturing the caller's traceback."""
-    tb = "".join(
-        _tb.format_exception(type(exc), exc, exc.__traceback__)
-    )
+    tb = "".join(_tb.format_exception(type(exc), exc, exc.__traceback__))
     return BuildError(
         feature=feature,
         json_path=json_path,

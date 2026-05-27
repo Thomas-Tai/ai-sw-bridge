@@ -24,7 +24,6 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterable
 
 logger = logging.getLogger("ai_sw_bridge.checkpoint.gc")
 
@@ -53,15 +52,11 @@ class GCPolicy:
             return cls()
         kwargs: dict = {}
         if "max_count_per_part" in checkpoint_section:
-            kwargs["max_count_per_part"] = int(
-                checkpoint_section["max_count_per_part"]
-            )
+            kwargs["max_count_per_part"] = int(checkpoint_section["max_count_per_part"])
         if "max_age_days" in checkpoint_section:
             kwargs["max_age_days"] = int(checkpoint_section["max_age_days"])
         if "max_db_size_mb" in checkpoint_section:
-            kwargs["max_db_size_mb"] = float(
-                checkpoint_section["max_db_size_mb"]
-            )
+            kwargs["max_db_size_mb"] = float(checkpoint_section["max_db_size_mb"])
         return cls(**kwargs)
 
 
@@ -134,9 +129,7 @@ def run(
 # ---------------------------------------------------------------------------
 
 
-def _prune_one(
-    db_path: Path, *, policy: GCPolicy, now: datetime
-) -> tuple[int, int]:
+def _prune_one(db_path: Path, *, policy: GCPolicy, now: datetime) -> tuple[int, int]:
     """Prune one per-part SQLite file. Returns (pruned, remaining)."""
     conn = sqlite3.connect(str(db_path))
     try:

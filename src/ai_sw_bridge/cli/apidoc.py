@@ -35,7 +35,7 @@ from pathlib import Path
 from typing import Any
 
 from ..rag.corpus import ApiChunk
-from ..rag.embed import make_embedder
+from ..rag.embed import DEFAULT_DIM, make_embedder
 from ..rag.index import VectorIndex
 from .stability import add_subcommand_tier, add_tier, cli_stability
 
@@ -87,7 +87,18 @@ def _chunk_to_dict(c: ApiChunk) -> dict[str, Any]:
 
 def _cmd_search(args: argparse.Namespace) -> int:
     with _open_index(args.index) as idx:
-        emb = make_embedder(backend=args.backend)
+        # When backend="auto", match the index's embedding dim — a
+        # 256-dim index was built with HashEmbedder; anything else
+        # came from a sentence-transformer model. Without this, a
+        # CLI run against a hash-built index with sentence-transformers
+        # installed would emit a 384-dim query against a 256-dim
+        # column and raise a sqlite-vec dimension mismatch.
+        backend = args.backend
+        if backend == "auto":
+            idx_dim = idx.stats().get("dim")
+            if idx_dim == DEFAULT_DIM:
+                backend = "hash"
+        emb = make_embedder(backend=backend)
         hits = idx.search(
             args.query,
             embedder=emb,
@@ -132,13 +143,13 @@ def _cmd_members(args: argparse.Namespace) -> int:
             "ORDER BY name",
             (args.interface, args.corpus, args.corpus),
         ).fetchall()
-    names = [{"name": r["name"], "retrieval_key": r["retrieval_key"]} for r in rows]
+    members = [{"name": r["name"], "retrieval_key": r["retrieval_key"]} for r in rows]
     _emit_json(
         {
             "ok": True,
             "interface": args.interface,
-            "members": names,
-            "count": len(names),
+            "members": members,
+            "count": len(members),
         }
     )
     return 0

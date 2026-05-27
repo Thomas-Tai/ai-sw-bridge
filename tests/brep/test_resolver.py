@@ -79,9 +79,7 @@ def test_resolve_ambiguous_role_lists_candidates() -> None:
         ("+z_Outboard", "+z_outboard"),
     ],
 )
-def test_case_insensitive_matching(
-    role_in_spec: str, role_in_manifest: str
-) -> None:
+def test_case_insensitive_matching(role_in_spec: str, role_in_manifest: str) -> None:
     parent = _parent_block(_face(role_in_manifest))
     match = resolve_face_role(
         feature_name="Hole_1",
@@ -124,7 +122,10 @@ def test_non_string_face_role_raises() -> None:
 def test_faces_without_role_hint_are_ignored() -> None:
     """Faces missing a role_hint (e.g. surfaces with 'oblique' unset) are
     not candidates for resolution."""
-    parent = {"feature": "P", "faces": [{"fingerprint": "x" * 16}, _face("+z_outboard")]}
+    parent = {
+        "feature": "P",
+        "faces": [{"fingerprint": "x" * 16}, _face("+z_outboard")],
+    }
     match = resolve_face_role(
         feature_name="H",
         face_role="+z_outboard",

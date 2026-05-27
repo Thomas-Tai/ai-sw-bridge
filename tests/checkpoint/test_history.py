@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import time
 from pathlib import Path
 
@@ -37,9 +36,7 @@ def store(tmp_path: Path) -> CheckpointStore:
 def _commit(store: CheckpointStore, *, index: int = 0, spec: dict | None = None) -> int:
     spec = spec or _spec()
     feat = spec["features"][min(index, len(spec["features"]) - 1)]
-    row_id = write_pre_feature(
-        store, spec=spec, feature=feat, feature_index=index
-    )
+    row_id = write_pre_feature(store, spec=spec, feature=feat, feature_index=index)
     commit_post_feature(store, row_id, already_built=[feat])
     return row_id
 
@@ -142,9 +139,7 @@ def test_feature_diff_tree_change(store: CheckpointStore) -> None:
     # Force a different post_tree_hash by committing with a different
     # already_built list.
     feat = _spec()["features"][0]
-    row_id = write_pre_feature(
-        store, spec=_spec(), feature=feat, feature_index=0
-    )
+    row_id = write_pre_feature(store, spec=_spec(), feature=feat, feature_index=0)
     commit_post_feature(store, row_id, already_built=[])  # empty vs [feat]
     a = store.get(id_a)
     b = store.get(row_id)

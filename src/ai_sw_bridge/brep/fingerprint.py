@@ -75,18 +75,14 @@ def fingerprint(
     centroid = face_dict.get(centroid_key)
     area_mm2 = face_dict.get(area_key)
     if normal is None or centroid is None or area_mm2 is None:
-        raise ValueError(
-            "face_dict must contain 'normal', 'centroid', and 'area_mm2'"
-        )
+        raise ValueError("face_dict must contain 'normal', 'centroid', and 'area_mm2'")
 
     payload = {
         "normal": _quantize_vec(normal, _NORMAL_DECIMALS),
         "centroid": _quantize_vec(centroid, _CENTROID_DECIMALS),
         "area_mm2": _quantize(area_mm2, _AREA_DECIMALS),
     }
-    blob = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
+    blob = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()[:_FINGERPRINT_LEN]
 
 

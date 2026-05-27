@@ -150,6 +150,6 @@ def test_builder_module_import_does_not_load_brep() -> None:
     importlib.reload(builder)
 
     brep_modules = [n for n in sys.modules if n.startswith("ai_sw_bridge.brep")]
-    assert brep_modules == [], (
-        f"builder.py import pulled in brep modules: {brep_modules}"
-    )
+    assert (
+        brep_modules == []
+    ), f"builder.py import pulled in brep modules: {brep_modules}"

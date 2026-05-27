@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS chunks (
 def _register_vec(conn: sqlite3.Connection) -> None:
     """Load the sqlite-vec extension on a fresh connection."""
     try:
-        import sqlite_vec  # type: ignore
+        import sqlite_vec
     except ImportError as e:  # pragma: no cover
         raise ImportError(
             "sqlite-vec is not installed; install with `pip install sqlite-vec`."
@@ -172,7 +172,7 @@ class VectorIndex:
     def close(self) -> None:
         if self._conn is not None:
             self._conn.close()
-            self._conn = None
+            self._conn = None  # type: ignore[assignment]
 
     def __enter__(self) -> "VectorIndex":
         return self

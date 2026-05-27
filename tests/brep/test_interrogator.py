@@ -11,7 +11,6 @@ tuples. The mock emulates the E2.1 spike's load-bearing findings:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 import pytest
 
@@ -97,11 +96,15 @@ def _box_face(
 
 
 def test_interrogate_returns_none_when_flag_off(disable_brep) -> None:
-    feature = MockFeature(faces=(_box_face(
-        (0.0, 0.0, 0.0),
-        (0.01, 0.01, 0.005),
-        (0.0, 0.0, 1.0),
-    ),))
+    feature = MockFeature(
+        faces=(
+            _box_face(
+                (0.0, 0.0, 0.0),
+                (0.01, 0.01, 0.005),
+                (0.0, 0.0, 1.0),
+            ),
+        )
+    )
     assert interrogate(feature) is None
 
 

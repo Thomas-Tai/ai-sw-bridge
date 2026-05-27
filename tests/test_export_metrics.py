@@ -31,7 +31,7 @@ def telemetry_db(tmp_path):
     conn.execute(
         "INSERT INTO metrics (timestamp, metric_name, labels_json, value) "
         "VALUES ('2026-05-27T00:00:00+00:00', 'builds_total', "
-        "'{\"mode\": \"no_dim\"}', 1.0)"
+        '\'{"mode": "no_dim"}\', 1.0)'
     )
     conn.commit()
     conn.close()

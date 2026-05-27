@@ -15,7 +15,6 @@ from pathlib import Path
 import pytest
 
 from ai_sw_bridge.checkpoint.store import (
-    Checkpoint,
     CheckpointStatus,
     CheckpointStore,
 )
@@ -66,8 +65,7 @@ class TestSchema:
         store._connect()
         conn = sqlite3.connect(str(store.db_path))
         cols = [
-            row[1]
-            for row in conn.execute("PRAGMA table_info(checkpoints)").fetchall()
+            row[1] for row in conn.execute("PRAGMA table_info(checkpoints)").fetchall()
         ]
         conn.close()
         store.close()
@@ -158,7 +156,11 @@ class TestInsertPending:
         row = store.get(row_id)
         assert row is not None
         parsed = datetime.fromisoformat(row.timestamp)
-        assert parsed.tzinfo is not None or row.timestamp.endswith("Z") or "+" in row.timestamp
+        assert (
+            parsed.tzinfo is not None
+            or row.timestamp.endswith("Z")
+            or "+" in row.timestamp
+        )
         store.close()
 
     def test_timestamp_explicit(self, tmp_path: Path) -> None:
@@ -465,7 +467,9 @@ class TestTelemetryCounter:
         store.mark_failed(row_id2)
         store.close()
 
-        outcomes = [labels["outcome"] for _, labels in events if _ == "checkpoint_writes_total"]
+        outcomes = [
+            labels["outcome"] for _, labels in events if _ == "checkpoint_writes_total"
+        ]
         assert "pending" in outcomes
         assert "committed" in outcomes
         assert "failed" in outcomes

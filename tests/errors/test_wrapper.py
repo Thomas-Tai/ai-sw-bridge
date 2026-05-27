@@ -2,22 +2,16 @@
 
 from __future__ import annotations
 
-import io
-import json
-import sys
-from contextlib import contextmanager
-
 import pytest
 
 from ai_sw_bridge.errors.build_error import BuildError
-from ai_sw_bridge.errors.hints import HINT_CATALOG
 from ai_sw_bridge.errors.wrapper import (
     com_error_boundary,
     emit_envelope_to_stderr,
 )
 from ai_sw_bridge.telemetry.counters import COUNTERS
 from ai_sw_bridge.telemetry.store import TelemetryStore
-from ai_sw_bridge.telemetry.trace import clear_trace_id, new_trace_id, set_trace_id
+from ai_sw_bridge.telemetry.trace import clear_trace_id, new_trace_id
 
 # The synthetic ComError from fault_injection/conftest.py is a plain
 # dataclass (not an Exception subclass). For the boundary to catch it
@@ -29,7 +23,9 @@ from tests.fault_injection.conftest import HRESULT
 class SyntheticComError(_ComErrorDataclass, Exception):  # type: ignore[misc]
     """Raisable version of the synthetic ComError for unit tests."""
 
-    def __init__(self, hresult: int, strerror: str, details: tuple = ("", "", "")) -> None:
+    def __init__(
+        self, hresult: int, strerror: str, details: tuple = ("", "", "")
+    ) -> None:
         _ComErrorDataclass.__init__(self, hresult, strerror, details)
         Exception.__init__(self, strerror)
 

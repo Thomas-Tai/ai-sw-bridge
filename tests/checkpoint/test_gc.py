@@ -6,9 +6,11 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
-
-from ai_sw_bridge.checkpoint import CheckpointStore, commit_post_feature, write_pre_feature
+from ai_sw_bridge.checkpoint import (
+    CheckpointStore,
+    commit_post_feature,
+    write_pre_feature,
+)
 from ai_sw_bridge.checkpoint.gc import GCReport, GCPolicy, run
 
 

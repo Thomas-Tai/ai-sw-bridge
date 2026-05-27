@@ -58,9 +58,7 @@ def since(
     return store.query(since=ts)
 
 
-def feature_diff(
-    a: Checkpoint, b: Checkpoint
-) -> dict[str, Any]:
+def feature_diff(a: Checkpoint, b: Checkpoint) -> dict[str, Any]:
     """Return a structural diff between two checkpoints.
 
     The diff reports whether the spec hash, locals snapshot, and
@@ -82,8 +80,7 @@ def feature_diff(
         "b_id": b.id,
         "spec_changed": a.spec_hash != b.spec_hash,
         "locals_changed": (
-            _canonical_json(a.locals_snapshot)
-            != _canonical_json(b.locals_snapshot)
+            _canonical_json(a.locals_snapshot) != _canonical_json(b.locals_snapshot)
         ),
         "tree_changed": (
             a.pre_tree_hash != b.pre_tree_hash

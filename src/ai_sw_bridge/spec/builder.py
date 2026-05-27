@@ -1514,9 +1514,7 @@ def _write_brep_sidecar(
         )
         return str(sidecar)
     except OSError as e:
-        logger.warning(
-            "brep sidecar write failed at %s: %s", sidecar, e
-        )
+        logger.warning("brep sidecar write failed at %s: %s", sidecar, e)
         return None
 
 
@@ -1912,15 +1910,13 @@ def build(
                 # returns, walk its faces and accumulate into the
                 # manifest. Flag-gated; interrogate() itself returns
                 # None when the flag is OFF.
-                if brep_enabled:
+                if brep_enabled and brep_manifest is not None:
                     try:
                         from ..brep import interrogate as _brep_interrogate
 
                         result = _brep_interrogate(bf.sw_object, ctx)
                         if result is not None:
-                            brep_manifest.add_feature(
-                                result, feature_type=bf.type
-                            )
+                            brep_manifest.add_feature(result, feature_type=bf.type)
                     except Exception as e:
                         # Fail-soft: interrogation must never break
                         # the build. Log + continue; the brep block
@@ -2105,9 +2101,7 @@ def build(
         # saved part (or in cwd if no save_as). Only when the flag is ON.
         brep_sidecar_path: str | None = None
         if brep_manifest is not None:
-            brep_sidecar_path = _write_brep_sidecar(
-                brep_manifest, save_as=saved_path
-            )
+            brep_sidecar_path = _write_brep_sidecar(brep_manifest, save_as=saved_path)
 
         elapsed = time.time() - t0
         telemetry_counter("builds_total", mode=mode, outcome="ok")

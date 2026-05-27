@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -73,9 +72,7 @@ def test_rollback_pending_target_rejected(store: CheckpointStore) -> None:
         rollback_to(store, row_id)
 
 
-def test_rollback_restores_locals_file(
-    store: CheckpointStore, tmp_path: Path
-) -> None:
+def test_rollback_restores_locals_file(store: CheckpointStore, tmp_path: Path) -> None:
     target_id = _commit_one(store)
     locals_path = tmp_path / "locals.txt"
     rollback_to(store, target_id, locals_path=locals_path)

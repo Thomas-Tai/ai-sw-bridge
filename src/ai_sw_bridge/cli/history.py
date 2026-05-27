@@ -46,7 +46,8 @@ def _checkpoint_to_dict(cp: Any) -> dict[str, Any]:
     """Serialize a Checkpoint dataclass to a JSON-safe dict."""
     d = dataclasses.asdict(cp)
     # Enum -> str so json.dumps is happy.
-    d["status"] = d["status"].value if hasattr(d["status"], "value") else str(d["status"])
+    status = d["status"]
+    d["status"] = status.value if hasattr(status, "value") else str(status)
     return d
 
 
@@ -204,9 +205,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_since.set_defaults(func=_cmd_since)
     add_subcommand_tier(p_since, "experimental")
 
-    p_diff = sub.add_parser(
-        "diff", help="Structural diff between two checkpoint ids."
-    )
+    p_diff = sub.add_parser("diff", help="Structural diff between two checkpoint ids.")
     p_diff.add_argument("part_name")
     p_diff.add_argument("id_a", type=int)
     p_diff.add_argument("id_b", type=int)

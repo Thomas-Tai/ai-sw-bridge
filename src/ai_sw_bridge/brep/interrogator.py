@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any, Optional
 
 from ..flags import resolve as resolve_flags
@@ -99,9 +99,7 @@ def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
         return {"feature": _feature_name(feature), "faces": [], "error": str(e)}
     elapsed = time.perf_counter() - t0
     try:
-        telemetry_histogram(
-            "brep_interrogation_seconds", elapsed, mode="eager"
-        )
+        telemetry_histogram("brep_interrogation_seconds", elapsed, mode="eager")
     except Exception:
         # Telemetry failure must never break the build.
         pass

@@ -20,7 +20,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 from .store import Checkpoint, CheckpointStore
 
@@ -59,8 +58,7 @@ def rollback_to(
     target = store.get(checkpoint_id)
     if target is None:
         raise RollbackError(
-            f"checkpoint id={checkpoint_id} not found for part "
-            f"{store.part_name!r}"
+            f"checkpoint id={checkpoint_id} not found for part " f"{store.part_name!r}"
         )
     if target.status.value not in ("committed", "rolled_back"):
         raise RollbackError(
@@ -94,9 +92,7 @@ def _restore_locals(locals_snapshot: str, locals_path: Path) -> None:
     try:
         data = json.loads(locals_snapshot)
     except json.JSONDecodeError as e:
-        raise RollbackError(
-            f"locals_snapshot is not valid JSON: {e}"
-        ) from e
+        raise RollbackError(f"locals_snapshot is not valid JSON: {e}") from e
     if not isinstance(data, dict):
         raise RollbackError(
             f"locals_snapshot must be a JSON object; got {type(data).__name__}"

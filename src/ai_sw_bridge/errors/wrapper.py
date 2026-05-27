@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import traceback as _tb
 from contextlib import contextmanager
-from typing import Any, Iterator, Optional
+from typing import Iterator, Optional
 
 from ..telemetry.classify import classify_hresult
 from ..telemetry.counters import COUNTERS
@@ -33,7 +33,7 @@ from .hints import default_hint, resolve_hint
 # CI environments without pywin32 installed.
 _COM_ERROR: tuple[type[BaseException], ...] = ()
 try:  # pragma: no cover - exercised only with pywin32 installed
-    import pywintypes  # type: ignore[import-not-found]
+    import pywintypes
 
     _COM_ERROR = (pywintypes.com_error,)
 except ImportError:
@@ -45,10 +45,13 @@ except ImportError:
 # fixtures.
 def _synthetic_com_error_type() -> type[BaseException] | None:
     try:
-        from tests.fault_injection.conftest import ComError  # type: ignore
+        from tests.fault_injection.conftest import ComError
     except ImportError:
         return None
-    return ComError
+    # ComError is a dataclass — tests subclass it with Exception to make
+    # it raisable; the module-level dataclass alone isn't a BaseException
+    # subclass, so a runtime isinstance() check still works.
+    return ComError  # type: ignore[return-value]
 
 
 def _all_com_error_types() -> tuple[type[BaseException], ...]:
@@ -185,12 +188,13 @@ def _build_error_from_com(
     fallback_iface_method: str,
     feature_type: Optional[str],
 ) -> BuildError:
+    from .build_error import _coerce_tier  # local import: avoids cycle
+
     hresult_int = _extract_hresult(exc)
     hresult_hex = _hresult_to_hex(hresult_int)
-    tier = classify_hresult(hresult_int) if hresult_int is not None else "unknown"
-    iface_method = (
-        _extract_iface_method_from_excepinfo(exc) or fallback_iface_method
-    )
+    raw_tier = classify_hresult(hresult_int) if hresult_int is not None else "unknown"
+    tier = _coerce_tier(raw_tier)
+    iface_method = _extract_iface_method_from_excepinfo(exc) or fallback_iface_method
 
     hint = resolve_hint(hresult_hex, iface_method, feature_type)
     if hint is None:

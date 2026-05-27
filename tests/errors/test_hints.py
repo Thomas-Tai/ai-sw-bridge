@@ -125,9 +125,7 @@ def test_every_feature_mapped_entry_is_reachable() -> None:
     from ai_sw_bridge.errors.hints import _IFACE_FEATURE_MAP
 
     for (iface, ftype), expected_key in _IFACE_FEATURE_MAP.items():
-        hint = resolve_hint(
-            hresult=None, iface_method=iface, feature_type=ftype
-        )
+        hint = resolve_hint(hresult=None, iface_method=iface, feature_type=ftype)
         assert hint is not None, f"unreachable feature entry: ({iface}, {ftype})"
         assert hint.key == expected_key
 

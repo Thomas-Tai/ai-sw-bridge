@@ -368,9 +368,7 @@ def _check_face_role_shapes(spec: dict[str, Any]) -> None:
         role = feat["face_role"]
         if not isinstance(role, str) or not role.strip():
             raise ValidationError(
-                message=(
-                    f"face_role must be a non-empty string; got {role!r}"
-                ),
+                message=(f"face_role must be a non-empty string; got {role!r}"),
                 path=f"features/{i}/face_role",
             )
         if feat.get("type") not in FACE_BOUND_TYPES:

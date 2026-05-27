@@ -226,6 +226,7 @@ class CheckpointStore:
         )
         conn.commit()
         self._emit("pending")
+        assert cur.lastrowid is not None
         return int(cur.lastrowid)
 
     def commit(
@@ -324,6 +325,7 @@ class CheckpointStore:
         )
         conn.commit()
         self._emit("rolled_back")
+        assert cur.lastrowid is not None
         return int(cur.lastrowid)
 
     def get(self, row_id: int) -> Checkpoint | None:
