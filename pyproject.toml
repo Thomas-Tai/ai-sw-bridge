@@ -31,6 +31,8 @@ dependencies = [
     "Pillow>=10.0",
     "oletools>=0.60",
     "jsonschema>=4.0",
+    "numpy>=1.24",
+    "sqlite-vec>=0.1",
 ]
 
 [project.optional-dependencies]
@@ -41,6 +43,7 @@ dev = [
     "flake8>=7",
     "mypy>=1.13",
     "pre-commit>=3",
+    "sentence-transformers>=2.2",
 ]
 
 [tool.pytest.ini_options]
