@@ -38,6 +38,7 @@ from ..rag.corpus import ApiChunk
 from ..rag.embed import DEFAULT_DIM, make_embedder
 from ..rag.index import VectorIndex
 from .stability import add_subcommand_tier, add_tier, cli_stability
+from .streams import add_quiet_flag, apply_quiet
 
 
 _DEFAULT_INDEX = (
@@ -268,7 +269,9 @@ def _build_parser() -> argparse.ArgumentParser:
 @cli_stability("experimental")
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
+    add_quiet_flag(parser)
     args = parser.parse_args(argv)
+    apply_quiet(args)
     return args.func(args)
 
 

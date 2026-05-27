@@ -26,6 +26,7 @@ from pathlib import Path
 
 from ..parameterize import parameterize
 from .stability import add_tier, cli_stability
+from .streams import add_quiet_flag, apply_quiet
 
 
 def cmd_parameterize(swp_path: Path, spec_path: Path) -> dict:
@@ -85,7 +86,9 @@ def main() -> int:
     sub_param.add_argument("spec", help="Path to the spec JSON file")
     sub_param.set_defaults(func=_handle_parameterize)
 
+    add_quiet_flag(parser)
     args = parser.parse_args()
+    apply_quiet(args)
     result = args.func(args)
     print(json.dumps(result, indent=2, default=str))
     return 0 if result.get("ok") else 1
