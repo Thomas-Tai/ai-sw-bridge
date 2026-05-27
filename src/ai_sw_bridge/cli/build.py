@@ -302,6 +302,21 @@ def main() -> int:
         choices=flag_names,
         help=f"Disable a feature flag. Choices: {', '.join(flag_names)}.",
     )
+    parser.add_argument(
+        "--auto-retry",
+        dest="auto_retry",
+        action="store_true",
+        default=False,
+        help=(
+            "Refuse to re-submit a spec identical to one already "
+            "attempted in this session (FR-v0.11-L2-04). The "
+            "RetryGuard hashes the canonical-JSON spec; an identical "
+            "hash on the next invocation exits non-zero with a "
+            "BuildError diagnosis pointing at the prior attempt's "
+            "envelope. Caps implicit retry chains at 3 attempts; the "
+            "fourth identical submission is refused. Off by default."
+        ),
+    )
     add_quiet_flag(parser)
     args = parser.parse_args()
     apply_quiet(args)
@@ -371,6 +386,40 @@ def main() -> int:
         return _emit(
             {"ok": True, "validated": True, "feature_count": len(spec["features"])}, 0
         )
+
+    # FR-v0.11-L2-04: --auto-retry refuses an identical re-submission
+    # of a spec already attempted in this session. The RetryGuard
+    # persists via the telemetry store, so the check works across CLI
+    # invocations within the same trace_id session.
+    if args.auto_retry:
+        from ..errors.auto_retry import IdenticalSpecError, RetryGuard
+
+        guard = RetryGuard()
+        try:
+            guard.check(spec)
+        except IdenticalSpecError as ise:
+            return _emit(
+                {
+                    "ok": False,
+                    "error": "identical_spec_resubmitted",
+                    "spec_hash": ise.spec_hash,
+                    "prior_attempt_count": ise.attempt_count,
+                    "prior_error": ise.last_error,
+                    "prior_hint_key": ise.last_hint_key,
+                    "diagnosis": (
+                        "Auto-retry detected a stuck loop: the same spec "
+                        "(canonical hash) has been submitted before "
+                        "without material change. See "
+                        "errors/auto_retry.py and spec.md §3.6.1."
+                    ),
+                },
+                7,  # Tier B build error per UIUX §3.2
+            )
+        # Record the attempt up-front; on failure, the recorded entry
+        # carries the error envelope so the next --auto-retry sees the
+        # prior context. (The builder wires error + hint_key via its
+        # own RetryGuard usage when it raises.)
+        guard.record_attempt(spec)
 
     # --lint runs semantic checks after validation. It implies --dry-run
     # unless a build mode (--no-dim, --deferred-dim) was also selected.
