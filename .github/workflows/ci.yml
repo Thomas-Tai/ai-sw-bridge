@@ -94,7 +94,11 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
+          # User-perspective install (no [dev] extras) + pytest so the
+          # quickstart smoke test can actually run. Adding pytest alone
+          # keeps the install footprint close to what a new contributor
+          # would set up, without pulling black/mypy/flake8.
+          pip install -e . pytest
 
       - name: Quickstart smoke test
         run: pytest -m onboarding -v
