@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-05-27
+
+### Added
+
+- **L1 P0-8 edge cases** (`brep/interrogator.py`): the three cases audit
+  §1.8 enumerated but v0.12 only partially covered.
+  - **Suppressed features** (`IFeature.IsSuppressed()`): interrogator
+    skips face walking and returns `{"faces": [], "status": "suppressed"}`
+    so resolvers see a well-formed manifest entry instead of stale data
+    from before suppression.
+  - **Hidden faces** (`IFace2.IsHidden`, fallback to `Visible`):
+    `BrepFace.is_hidden` flag added to the dataclass and manifest
+    serializer; surfaces in the resolver as a deprioritization signal.
+  - **Imported features** (`GetTypeName2() == "ImportFeature"`):
+    interrogator skips `IFeature.GetFaces` (which doesn't expose
+    topology through the dispatch proxy for imports) and falls back to
+    body-level walk via `IFeature.GetBody`. Records `status: "imported"`
+    when even the body walk returns no faces.
+- New gotcha entries in `docs/known_gotchas.md` for each of the three
+  edge cases with how-to-recognize / workaround sections.
+
+### Changed
+
+- `Manifest.add_feature` now propagates the optional `status` key from
+  the interrogator output into the brep block, alongside the existing
+  `error` propagation.
+
 ## [0.12.0] - 2026-05-27
 
 ### Added — v0.12 capability lanes GREEN

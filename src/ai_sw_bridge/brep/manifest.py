@@ -95,6 +95,11 @@ class Manifest:
             block["type"] = feature_type
         if "error" in interrogation_result:
             block["error"] = interrogation_result["error"]
+        if "status" in interrogation_result:
+            # Edge-case markers from P0-8: "suppressed" / "imported".
+            # Surface them in the manifest so the resolver knows why
+            # the face list is empty.
+            block["status"] = interrogation_result["status"]
 
         self.features[name] = block
         return name

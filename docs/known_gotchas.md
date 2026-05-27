@@ -92,26 +92,72 @@ inside, so "inboard" would be a fabrication.
 See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 2
 (surface body).
 
-### B-rep: suppressed features emit no brep block
+### B-rep: suppressed features emit an empty brep block with `status: "suppressed"`
 
 If a feature is suppressed in the feature tree, `IFeature.IsSuppressed()`
-returns True and the interrogator skips it entirely. The manifest
-omits the brep block for that feature — downstream `face_role`
-resolution against the suppressed feature will fail with
-:class:`FaceResolutionError` because no parent brep block exists.
+returns True and the interrogator skips face walking entirely. The
+manifest still contains the brep block for the feature, but its
+`faces` list is empty and the block carries `status: "suppressed"` so
+downstream resolvers can distinguish "intentionally absent" from "bug
+in interrogation."
 
 **How to recognize**
-- `brep_manifest.lookup("<suppressed_feature_name>")` returns None.
-- `FaceResolutionError` with `available_roles=[]` (no parent faces).
+- `brep_manifest.features["<name>"]["status"] == "suppressed"`
+- `brep_manifest.features["<name>"]["faces"] == []`
+- `FaceResolutionError` with `available_roles=[]` from any child
+  feature targeting the suppressed parent.
 
 **Workaround**
-- Unsuspend the feature in SW before running the build, OR
-- Add the feature to the spec's `_skip_brep` list (planned) so
-  the resolver knows to skip it too, OR
-- Use a different parent feature as the `of_feature` reference.
+- Unsuppress the feature in SW before running the build, OR
+- Use a different parent feature as the `of_feature` reference, OR
+- Move the suppressed feature later in the tree so child features
+  don't reference it as a `face_role` source.
 
 See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 4
 (suppressed feature).
+
+### B-rep: hidden faces are included but flagged `is_hidden: true`
+
+A face hidden via `Hide` in the feature manager still exists in the
+SW model — `IFeature.GetFaces()` returns it and `IFace2.GetBox` /
+`Normal` / `GetArea` all read normally. The interrogator includes
+the face in the manifest but sets `is_hidden: true` so the resolver
+can deprioritize it when scoring `face_role` candidates.
+
+Order of fallback on older SW builds: `IFace2.IsHidden` is preferred;
+if that read fails, the interrogator falls back to `IFace2.Visible`
+(the inverse).
+
+**How to recognize**
+- `manifest["features"][i]["faces"][j]["is_hidden"] == true`
+
+**Workaround (only if needed)**
+- Make the face visible in the SW feature manager before the build.
+- Hidden faces don't break interrogation — this gotcha is informational.
+
+### B-rep: ImportFeature falls back to body-level walk
+
+An `IFeature` returned by an imported body (STEP / IGES / Parasolid)
+has `GetTypeName2() == "ImportFeature"`. These features do NOT expose
+native face topology through the feature handle — `IFeature.GetFaces`
+returns nothing useful on the dispatch proxy. The interrogator
+detects the case and walks `IFeature.GetBody()` directly.
+
+If body-level walk also can't reach geometry (rare — happens when the
+import is corrupt or `GetBody` returns null), the manifest entry's
+`faces` is `[]` and `status == "imported"`.
+
+**How to recognize**
+- `manifest["features"][i]["status"] == "imported"` AND `faces == []`
+  → SW returned no body chain for the import.
+- The same feature works as a `face_role` parent if `faces` is
+  non-empty — body-level walk produced real topology.
+
+**Workaround**
+- Re-import the source file (STEP/IGES) with a different option set
+  (heal solids, knit surfaces) so SW exposes the body topology.
+- Or use the imported feature's downstream child features as
+  `face_role` parents instead.
 
 ## File I/O gotchas (Windows)
 

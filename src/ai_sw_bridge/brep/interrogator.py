@@ -57,6 +57,7 @@ class BrepFace:
     role_hint: str
     fingerprint: str = ""
     is_surface: bool = False
+    is_hidden: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-serializable form for the manifest brep block."""
@@ -71,6 +72,7 @@ class BrepFace:
             "role_hint": self.role_hint,
             "fingerprint": self.fingerprint,
             "is_surface": self.is_surface,
+            "is_hidden": self.is_hidden,
         }
 
 
@@ -79,6 +81,21 @@ def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
 
     Returns a dict shaped ``{"feature": str, "faces": [BrepFace.to_dict()]}``
     or ``None`` when the ``brep_interrogation`` flag is OFF.
+
+    Edge cases per spec.md §2.8:
+
+    * Suppressed features (``IFeature.IsSuppressed()`` truthy) skip face
+      walking entirely and return ``{"faces": [], "status": "suppressed"}``
+      so downstream resolvers see a well-formed brep block instead of
+      stale data from before suppression.
+    * Hidden faces (``IFace2.IsHidden`` truthy) are still included but
+      flagged with ``is_hidden=true`` so the resolver can deprioritize
+      them when scoring ``face_role`` candidates.
+    * Imported features (``IFeature.GetTypeName2() == "ImportFeature"``)
+      have no native face topology accessible via the feature handle;
+      the walker falls back to body-level enumeration via
+      ``IFeature.GetBody`` if reachable, else returns
+      ``{"faces": [], "status": "imported"}``.
 
     The ``ctx`` parameter is reserved for future use (e.g. active
     configuration name, parent feature bounding box for in/out
@@ -89,9 +106,18 @@ def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
     if not flags.get("brep_interrogation", False):
         return None
 
+    if _is_suppressed(feature):
+        return {
+            "feature": _feature_name(feature),
+            "faces": [],
+            "status": "suppressed",
+        }
+
+    is_import = _is_import_feature(feature)
+
     t0 = time.perf_counter()
     try:
-        faces = _walk_faces(feature)
+        faces = _walk_faces(feature, force_body_walk=is_import)
     except Exception as e:
         # Fail-soft: if interrogation fails, the build still succeeds.
         # The brep block is additive; its absence is not a build error.
@@ -104,10 +130,16 @@ def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
         # Telemetry failure must never break the build.
         pass
 
-    return {
+    payload: dict[str, Any] = {
         "feature": _feature_name(feature),
         "faces": [f.to_dict() for f in faces],
     }
+    if is_import and not faces:
+        # Body-level fallback couldn't reach any geometry on this
+        # imported feature — record the case explicitly so the
+        # resolver doesn't silently assume "feature has no faces".
+        payload["status"] = "imported"
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -122,22 +154,27 @@ def _feature_name(feature: Any) -> str:
         return "unknown"
 
 
-def _walk_faces(feature: Any) -> list[BrepFace]:
+def _walk_faces(feature: Any, *, force_body_walk: bool = False) -> list[BrepFace]:
     """Walk bodies → faces. Falls back to feature.GetFaces when bodies
     aren't reachable on the dispatch proxy.
+
+    ``force_body_walk`` skips ``IFeature.GetFaces`` entirely — used for
+    ImportFeature where the feature handle doesn't carry native face
+    topology and the only path is via ``IFeature.GetBody``.
     """
     faces: list[BrepFace] = []
 
-    # Preferred path: IFeature.GetFaces() returns a SAFEARRAY marshaled
-    # as a tuple under late binding. Treat it as the fast path; if it
-    # raises or returns empty, fall back to body walk.
-    direct = _try_feature_getfaces(feature)
-    if direct:
-        for idx, face in enumerate(direct):
-            bf = _probe_face(face, body_id=0, face_idx=idx)
-            if bf is not None:
-                faces.append(bf)
-        return faces
+    if not force_body_walk:
+        # Preferred path: IFeature.GetFaces() returns a SAFEARRAY
+        # marshaled as a tuple under late binding. Treat it as the fast
+        # path; if it raises or returns empty, fall back to body walk.
+        direct = _try_feature_getfaces(feature)
+        if direct:
+            for idx, face in enumerate(direct):
+                bf = _probe_face(face, body_id=0, face_idx=idx)
+                if bf is not None:
+                    faces.append(bf)
+            return faces
 
     # Fallback: walk bodies via the parent IPartDoc. ctx is not
     # plumbed through the current interrogate() signature, so this
@@ -216,6 +253,7 @@ def _probe_face(face: Any, *, body_id: int, face_idx: int) -> Optional[BrepFace]
     temp_id = _synthetic_temp_id(body_id, face_idx)
     role = _role_hint(normal, centroid, box)
     is_surface = _read_is_surface(face)
+    is_hidden = _read_is_hidden(face)
 
     return BrepFace(
         face_idx=face_idx,
@@ -227,6 +265,7 @@ def _probe_face(face: Any, *, body_id: int, face_idx: int) -> Optional[BrepFace]
         area_mm2=area_mm2 if area_mm2 is not None else 0.0,
         role_hint=role,
         is_surface=is_surface,
+        is_hidden=is_hidden,
     )
 
 
@@ -280,6 +319,66 @@ def _read_is_surface(face: Any) -> bool:
         if callable(result):
             result = result()
         return bool(result)
+    except Exception:
+        return False
+
+
+def _read_is_hidden(face: Any) -> bool:
+    """Read IFace2.IsHidden — true when the face is hidden from view.
+
+    Some SW builds expose ``Visible`` as the inverse instead; fall back
+    to that when ``IsHidden`` isn't reachable.
+    """
+    try:
+        result = face.IsHidden
+        if callable(result):
+            result = result()
+        return bool(result)
+    except Exception:
+        pass
+    try:
+        visible = face.Visible
+        if callable(visible):
+            visible = visible()
+        return not bool(visible)
+    except Exception:
+        return False
+
+
+def _is_suppressed(feature: Any) -> bool:
+    """Check IFeature.IsSuppressed() — true when the feature is suppressed
+    in the active configuration. Suppressed features have stale or
+    absent geometry; interrogation must skip them entirely.
+    """
+    try:
+        result = feature.IsSuppressed
+        if callable(result):
+            result = result()
+        return bool(result)
+    except Exception:
+        return False
+
+
+def _is_import_feature(feature: Any) -> bool:
+    """Check IFeature.GetTypeName2() == "ImportFeature".
+
+    Imported features (from STEP, IGES, Parasolid, etc.) have no
+    native face topology accessible via ``IFeature.GetFaces`` — the
+    walker has to fall back to body-level enumeration.
+    """
+    try:
+        result = feature.GetTypeName2
+        if callable(result):
+            result = result()
+        return str(result) == "ImportFeature"
+    except Exception:
+        pass
+    # Older SW builds only expose GetTypeName.
+    try:
+        result = feature.GetTypeName
+        if callable(result):
+            result = result()
+        return str(result) == "ImportFeature"
     except Exception:
         return False
 
