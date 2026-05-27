@@ -45,6 +45,74 @@ SW only consumes BINARY `.swp` files produced by its own VBA editor. The format 
 
 If you figure out how to write back a valid binary `.swp` from a `.bas` file, the `run_macro` CLI is ready to invoke it. PRs welcome.
 
+### B-rep: multi-body features duplicate role hints across bodies
+
+A feature that produces two or more solid bodies (e.g. a multi-body
+boss extrude, or a pattern whose instances don't merge) yields one
+face set **per body**. Each body's `+z_outboard` face carries the
+same `role_hint`, so a downstream `face_role="+z_outboard"` lookup
+will hit :class:`FaceAmbiguityError` unless you disambiguate.
+
+**How to recognize**
+- `brep_interrogation` manifest shows `body_id` values `0` and `1`
+  (or higher) on faces of the same feature.
+- :class:`brep.resolver.FaceAmbiguityError` at build time, with
+  the candidate fingerprints listed in the error message.
+
+**Workaround**
+- Resolve by body: prefer `body_id=0` for the "main" body when you
+  know the feature's intent. The resolver will grow a
+  `body_id_hint` tiebreaker in a follow-up.
+- Or split the feature in the spec so each body has its own
+  feature name — the manifest then keys by feature, and the
+  ambiguity goes away.
+
+See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 1
+(multi-body part).
+
+### B-rep: surface bodies have no volume — `inboard`/`outboard` is meaningless
+
+A sheet / surface body (the result of a surface-extrude or an
+imported STL) is interrogated the same way as a solid, but the
+`role_hint` heuristic deliberately skips the
+`{+/-}{axis}_{inboard|outboard}` disambiguation: a surface has no
+inside, so "inboard" would be a fabrication.
+
+**How to recognize**
+- `brep.faces[*].is_surface == true` in the manifest.
+- `role_hint == "oblique"` even when the normal is axis-aligned
+  (the heuristic falls back to oblique because the inboard/outboard
+  comparison requires a signed volume).
+
+**Workaround**
+- Target surface faces by `fingerprint` (stable across rebuilds)
+  or by `normal` directly. `face_role` matching still works for the
+  axis-aligned case when the surface is on the part boundary.
+
+See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 2
+(surface body).
+
+### B-rep: suppressed features emit no brep block
+
+If a feature is suppressed in the feature tree, `IFeature.IsSuppressed()`
+returns True and the interrogator skips it entirely. The manifest
+omits the brep block for that feature — downstream `face_role`
+resolution against the suppressed feature will fail with
+:class:`FaceResolutionError` because no parent brep block exists.
+
+**How to recognize**
+- `brep_manifest.lookup("<suppressed_feature_name>")` returns None.
+- `FaceResolutionError` with `available_roles=[]` (no parent faces).
+
+**Workaround**
+- Unsuspend the feature in SW before running the build, OR
+- Add the feature to the spec's `_skip_brep` list (planned) so
+  the resolver knows to skip it too, OR
+- Use a different parent feature as the `of_feature` reference.
+
+See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 4
+(suppressed feature).
+
 ## File I/O gotchas (Windows)
 
 ### `msvcrt.locking` unlocks at the CURRENT file position
