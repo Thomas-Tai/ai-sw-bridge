@@ -1489,6 +1489,37 @@ def _apply_deferred_dims(
 # -----------------------------------------------------------------------------
 
 
+def _write_brep_sidecar(
+    brep_manifest: Any,
+    *,
+    save_as: str | None,
+) -> str | None:
+    """Write build_brep.json alongside the saved part (or cwd).
+
+    Returns the sidecar path string on success, ``None`` on write
+    failure (the build still succeeds — the brep block rides on
+    BuildResult.to_dict() as a fallback).
+    """
+    import json as _json
+
+    if save_as is not None:
+        sidecar = Path(save_as).with_name("build_brep.json")
+    else:
+        sidecar = Path.cwd() / "build_brep.json"
+    try:
+        sidecar.parent.mkdir(parents=True, exist_ok=True)
+        sidecar.write_text(
+            _json.dumps(brep_manifest.to_dict(), indent=2),
+            encoding="utf-8",
+        )
+        return str(sidecar)
+    except OSError as e:
+        logger.warning(
+            "brep sidecar write failed at %s: %s", sidecar, e
+        )
+        return None
+
+
 def _save_as_with_verification(doc: Any, out_path: Path) -> tuple[str, bool]:
     """Drive doc.SaveAs3 and verify three independent postconditions.
 
@@ -1589,6 +1620,11 @@ class BuildResult:
     # {"name": ..., "type": ..., "build_time_s": ...}. None until populated.
     feature_metrics: list[dict[str, Any]] | None = None
     trace_id: str | None = None
+    # Populated when flags.brep_interrogation is ON. The manifest dict
+    # (schema_version + features[]) mirrors the build_brep.json sidecar
+    # file. None when the flag is OFF — in which case the field is
+    # omitted from to_dict() output so the v0.11 wire format is preserved.
+    brep_manifest: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-serializable shape for CLI output. Single source of truth
@@ -1619,6 +1655,8 @@ class BuildResult:
             out["mode"] = self.mode
         if self.feature_metrics is not None:
             out["feature_metrics"] = self.feature_metrics
+        if self.brep_manifest is not None:
+            out["brep_manifest"] = self.brep_manifest
         return out
 
 
@@ -1723,6 +1761,18 @@ def build(
     if no_dim:
         spec = _resolve_rhs_in_spec(spec)
 
+    # B-rep interrogation (E2.6) is gated by flags.brep_interrogation.
+    # The manifest is allocated only when the flag is ON so v0.11
+    # builds (flag OFF) pay no import or memory cost.
+    from ..flags import resolve as _resolve_flags
+
+    brep_enabled = bool(_resolve_flags().get("brep_interrogation", False))
+    brep_manifest = None
+    if brep_enabled:
+        from ..brep.manifest import Manifest as _BrepManifest
+
+        brep_manifest = _BrepManifest()
+
     sw = get_sw_app()
     doc = create_blank_part(sw)
     ctx = BuildContext(sw=sw, doc=doc, no_dim=no_dim, deferred_dim=deferred_dim)
@@ -1788,6 +1838,29 @@ def build(
 
                 ctx.features_by_name[bf.name] = bf
                 built.append(bf.name)
+
+                # B-rep interrogation (E2.6): after the feature handler
+                # returns, walk its faces and accumulate into the
+                # manifest. Flag-gated; interrogate() itself returns
+                # None when the flag is OFF.
+                if brep_enabled:
+                    try:
+                        from ..brep import interrogate as _brep_interrogate
+
+                        result = _brep_interrogate(bf.sw_object, ctx)
+                        if result is not None:
+                            brep_manifest.add_feature(
+                                result, feature_type=bf.type
+                            )
+                    except Exception as e:
+                        # Fail-soft: interrogation must never break
+                        # the build. Log + continue; the brep block
+                        # for this feature will simply be absent.
+                        logger.warning(
+                            "brep interrogation failed for '%s': %s",
+                            bf.name,
+                            e,
+                        )
 
                 # Mass verification: read volume after this feature and
                 # compare delta against _expect if declared. Runs in ALL
@@ -1900,6 +1973,9 @@ def build(
                 mode=mode,
                 feature_metrics=feature_metrics,
                 trace_id=trace_id(),
+                brep_manifest=(
+                    brep_manifest.to_dict() if brep_manifest is not None else None
+                ),
             )
 
         # Final rebuild for good measure
@@ -1918,14 +1994,23 @@ def build(
             out_path.parent.mkdir(parents=True, exist_ok=True)
             saved_path, save_as_verified = _save_as_with_verification(doc, out_path)
 
+        # B-rep sidecar (E2.6): write build_brep.json alongside the
+        # saved part (or in cwd if no save_as). Only when the flag is ON.
+        brep_sidecar_path: str | None = None
+        if brep_manifest is not None:
+            brep_sidecar_path = _write_brep_sidecar(
+                brep_manifest, save_as=saved_path
+            )
+
         elapsed = time.time() - t0
         telemetry_counter("builds_total", mode=mode, outcome="ok")
         telemetry_histogram("build_duration_seconds", elapsed, mode=mode)
         logger.info(
-            "build ok: name=%s features=%d elapsed=%.1fs",
+            "build ok: name=%s features=%d elapsed=%.1fs brep=%s",
             spec_name,
             len(built),
             elapsed,
+            brep_sidecar_path or "off",
         )
         return BuildResult(
             ok=True,
@@ -1938,6 +2023,9 @@ def build(
             mode=mode,
             feature_metrics=feature_metrics,
             trace_id=trace_id(),
+            brep_manifest=(
+                brep_manifest.to_dict() if brep_manifest is not None else None
+            ),
         )
     finally:
         # Always restore the user's preference, even on exception
