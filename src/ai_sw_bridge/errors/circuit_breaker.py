@@ -10,7 +10,7 @@ COM calls fail repeatedly.  The state machine has three states:
 
 Ported from SolidworksMCP-python (MIT, ESPO Corporation 2025).
 SPDX-Port-Source: https://github.com/andrewbartels1/SolidworksMCP-python
-SPDX-Port-Commit: a10fb74933bb681a5d1569621b33bdcb213faae0
+SPDX-Port-Commit: 82e505d88da07fd81acd66b3cd85f6da65323ee4
 SPDX-License-Identifier: MIT
 
 The original is an async adapter wrapper (``CircuitBreakerAdapter``).  This
