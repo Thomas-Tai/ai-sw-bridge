@@ -20,6 +20,7 @@ is passed (latter drops telemetry from bundle but still emits the rest).
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import subprocess
@@ -259,11 +260,35 @@ def bundle(
     return zip_path
 
 
-def main() -> None:
-    no_telemetry = "--no-telemetry" in sys.argv
-    consent = _CONSENT_FILE
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        prog="bundle_bug_report",
+        description=(
+            "Bundle a bug-report ZIP for ai-sw-bridge issue filing. "
+            "Collects spec.json files, telemetry metrics (last 24 h), "
+            "pip freeze output, and SOLIDWORKS version info. "
+            "All content is scrubbed for sensitive data before bundling."
+        ),
+    )
+    parser.add_argument(
+        "--no-telemetry",
+        action="store_true",
+        default=False,
+        help=(
+            "Produce a bundle without telemetry data. "
+            "Use this when .telemetry/consent.txt does not exist."
+        ),
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Directory to write the ZIP to (default: current working directory).",
+    )
+    args = parser.parse_args(argv)
 
-    if not consent.exists() and not no_telemetry:
+    consent = _CONSENT_FILE
+    if not consent.exists() and not args.no_telemetry:
         print(
             f"error: telemetry consent file not found at {consent}. "
             f"Create it to include telemetry, or use --no-telemetry to "
@@ -272,7 +297,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    zip_path = bundle(no_telemetry=no_telemetry)
+    zip_path = bundle(output_dir=args.output_dir, no_telemetry=args.no_telemetry)
     print(f"bug report bundle: {zip_path}", file=sys.stderr)
 
 

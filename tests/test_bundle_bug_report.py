@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -127,3 +130,31 @@ class TestZipIntegrity:
             assert len(locals_files) >= 1
             content = zf.read(locals_files[0]).decode("utf-8")
             assert content == "<redacted_locals>"
+
+
+class TestHelpFlag:
+    def test_help_prints_usage_and_exits_zero(self, tmp_path):
+        result = subprocess.run(
+            [sys.executable, "tools/bundle_bug_report.py", "--help"],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).resolve().parent.parent),
+        )
+        assert result.returncode == 0
+        assert "usage:" in result.stdout.lower() or "usage:" in result.stdout
+        assert "bundle_bug_report" in result.stdout
+        assert "--no-telemetry" in result.stdout
+
+    def test_help_creates_no_side_effects(self, tmp_path):
+        before = set(p.name for p in tmp_path.iterdir()) if tmp_path.exists() else set()
+        subprocess.run(
+            [sys.executable, "tools/bundle_bug_report.py", "--help"],
+            capture_output=True,
+            text=True,
+            cwd=str(tmp_path),
+        )
+        after = set(p.name for p in tmp_path.iterdir()) if tmp_path.exists() else set()
+        created = after - before
+        zip_files = [f for f in created if f.endswith(".zip")]
+        assert not zip_files, f"--help created zip files: {zip_files}"
+        assert "--help" not in created, "--help created a file named '--help'"
