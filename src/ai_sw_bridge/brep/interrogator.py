@@ -97,10 +97,14 @@ def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
       ``IFeature.GetBody`` if reachable, else returns
       ``{"faces": [], "status": "imported"}``.
 
-    The ``ctx`` parameter is reserved for future use (e.g. active
-    configuration name, parent feature bounding box for in/out
-    disambiguation). Today's role_hint uses the face centroid vs the
-    face bbox midpoint, which is ctx-free.
+    Lazy mode (spec.md §2.11): when ``ctx.referenced_face_roles`` is a
+    non-None set, features not referenced by any downstream feature skip
+    face walking entirely (``status: "no_downstream_refs"``). Features
+    that are referenced have their faces walked normally but only faces
+    whose ``role_hint`` matches an entry in the set are included.
+
+    The ``ctx`` parameter carries build state (BuildContext). When it
+    exposes a ``referenced_face_roles`` attribute, lazy mode activates.
     """
     flags = resolve_flags()
     if not flags.get("brep_interrogation", False):
@@ -115,29 +119,59 @@ def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
 
     is_import = _is_import_feature(feature)
 
+    # Lazy mode (spec.md §2.11): extract the referenced-face set from ctx.
+    referenced_face_roles: Optional[set] = None
+    if ctx is not None:
+        referenced_face_roles = getattr(ctx, "referenced_face_roles", None)
+
+    feat_name = _feature_name(feature)
+    mode_label = "eager"
+
+    if referenced_face_roles is not None:
+        mode_label = "lazy"
+        roles_for_feature = {
+            role for (name, role) in referenced_face_roles if name == feat_name
+        }
+        if not roles_for_feature:
+            t0 = time.perf_counter()
+            elapsed = time.perf_counter() - t0
+            try:
+                telemetry_histogram(
+                    "brep_interrogation_seconds", elapsed, mode="lazy"
+                )
+            except Exception:
+                pass
+            return {
+                "feature": feat_name,
+                "faces": [],
+                "status": "no_downstream_refs",
+            }
+
     t0 = time.perf_counter()
     try:
         faces = _walk_faces(feature, force_body_walk=is_import)
     except Exception as e:
-        # Fail-soft: if interrogation fails, the build still succeeds.
-        # The brep block is additive; its absence is not a build error.
         logger.warning("brep interrogation failed: %s", e)
-        return {"feature": _feature_name(feature), "faces": [], "error": str(e)}
+        return {"feature": feat_name, "faces": [], "error": str(e)}
     elapsed = time.perf_counter() - t0
     try:
-        telemetry_histogram("brep_interrogation_seconds", elapsed, mode="eager")
+        telemetry_histogram(
+            "brep_interrogation_seconds", elapsed, mode=mode_label
+        )
     except Exception:
-        # Telemetry failure must never break the build.
         pass
 
+    if referenced_face_roles is not None:
+        roles_for_feature = {
+            role for (name, role) in referenced_face_roles if name == feat_name
+        }
+        faces = [f for f in faces if f.role_hint in roles_for_feature]
+
     payload: dict[str, Any] = {
-        "feature": _feature_name(feature),
+        "feature": feat_name,
         "faces": [f.to_dict() for f in faces],
     }
     if is_import and not faces:
-        # Body-level fallback couldn't reach any geometry on this
-        # imported feature — record the case explicitly so the
-        # resolver doesn't silently assume "feature has no faces".
         payload["status"] = "imported"
     return payload
 

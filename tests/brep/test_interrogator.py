@@ -436,3 +436,125 @@ def test_interrogate_import_feature_with_no_body_records_status(enable_brep) -> 
     assert result is not None
     assert result["faces"] == []
     assert result["status"] == "imported"
+
+
+# ---------------------------------------------------------------------------
+# Tests — lazy mode (spec.md §2.11)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class LazyCtx:
+    """Minimal ctx carrying referenced_face_roles for lazy-mode tests."""
+
+    referenced_face_roles: set[tuple[str, str]] | None = None
+
+
+def test_lazy_unreferenced_feature_skips_face_walk(enable_brep) -> None:
+    """A feature not in the referenced set returns no_downstream_refs."""
+    faces = (
+        _box_face((-0.01, -0.01, 0.0), (0.01, 0.01, 0.005), (0.0, 0.0, 1.0)),
+        _box_face((-0.01, -0.01, 0.0), (0.01, 0.01, 0.0), (0.0, 0.0, -1.0)),
+    )
+    feature = MockFeature(Name="SK_PlateSlab", faces=faces)
+    ctx = LazyCtx(referenced_face_roles={("Other_Feature", "+z_outboard")})
+    result = interrogate(feature, ctx)
+    assert result is not None
+    assert result["feature"] == "SK_PlateSlab"
+    assert result["faces"] == []
+    assert result["status"] == "no_downstream_refs"
+
+
+def test_lazy_referenced_feature_filters_to_matching_roles(enable_brep) -> None:
+    """A referenced feature walks all faces but keeps only matching roles."""
+    faces = (
+        _box_face((-0.01, -0.01, 0.0), (0.01, 0.01, 0.005), (0.0, 0.0, 1.0)),
+        _box_face((-0.01, -0.01, 0.0), (0.01, 0.01, 0.0), (0.0, 0.0, -1.0)),
+        _box_face((0.01, -0.01, 0.0), (0.01, 0.01, 0.005), (1.0, 0.0, 0.0)),
+    )
+    feature = MockFeature(Name="Boss_Box", faces=faces)
+    ctx = LazyCtx(referenced_face_roles={("Boss_Box", "+z_outboard")})
+    result = interrogate(feature, ctx)
+    assert result is not None
+    assert result["feature"] == "Boss_Box"
+    assert "status" not in result
+    assert len(result["faces"]) == 1
+    assert result["faces"][0]["role_hint"] == "+z_outboard"
+
+
+def test_lazy_multiple_roles_included(enable_brep) -> None:
+    """Multiple roles for the same feature are all included."""
+    faces = (
+        _box_face((-0.01, -0.01, 0.0), (0.01, 0.01, 0.005), (0.0, 0.0, 1.0)),
+        _box_face((-0.01, -0.01, 0.0), (0.01, 0.01, 0.0), (0.0, 0.0, -1.0)),
+    )
+    feature = MockFeature(Name="Boss_Box", faces=faces)
+    ctx = LazyCtx(
+        referenced_face_roles={
+            ("Boss_Box", "+z_outboard"),
+            ("Boss_Box", "-z_outboard"),
+        }
+    )
+    result = interrogate(feature, ctx)
+    assert result is not None
+    assert len(result["faces"]) == 2
+
+
+def test_lazy_eager_when_ctx_has_no_referenced_set(enable_brep) -> None:
+    """ctx without referenced_face_roles (None) behaves as eager mode."""
+    face = _box_face(
+        (-0.01, -0.01, 0.0),
+        (0.01, 0.01, 0.005),
+        (0.0, 0.0, 1.0),
+    )
+    feature = MockFeature(faces=(face,))
+    ctx = LazyCtx(referenced_face_roles=None)
+    result = interrogate(feature, ctx)
+    assert result is not None
+    assert len(result["faces"]) == 1
+    assert "status" not in result
+
+
+def test_lazy_many_features_only_referenced_walked(enable_brep) -> None:
+    """Acceptance: 100 features, only 3 referenced — only 3 walk faces."""
+    walk_count = 0
+
+    class CountingFace:
+        def __init__(self, box, normal):
+            self.box = box
+            self.normal = normal
+            self.area_m2 = 1e-4
+
+        def GetBox(self):
+            nonlocal walk_count
+            walk_count += 1
+            return self.box
+
+        def Normal(self):
+            return self.normal
+
+        def GetArea(self):
+            return self.area_m2
+
+    face = CountingFace(
+        (0.0, 0.0, 0.0, 0.01, 0.01, 0.005), (0.0, 0.0, 1.0)
+    )
+    referenced_names = {"feat_3", "feat_47", "feat_99"}
+    refs = {(n, "+z_outboard") for n in referenced_names}
+
+    results = []
+    for i in range(100):
+        name = f"feat_{i}"
+        feature = MockFeature(Name=name, faces=(face,))
+        ctx = LazyCtx(referenced_face_roles=refs)
+        r = interrogate(feature, ctx)
+        results.append(r)
+
+    referenced_results = [
+        r for r in results if r.get("status") != "no_downstream_refs"
+    ]
+    assert len(referenced_results) == 3
+    unreferenced_results = [
+        r for r in results if r.get("status") == "no_downstream_refs"
+    ]
+    assert len(unreferenced_results) == 97

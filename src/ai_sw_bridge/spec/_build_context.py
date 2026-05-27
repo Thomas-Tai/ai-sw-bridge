@@ -97,6 +97,11 @@ class BuildContext:
     # Populated by handlers when deferred_dim is True. One entry per dim that
     # would have been created by AddDimension2 in inline mode.
     deferred_dims: list[DeferredDim] = field(default_factory=list)
+    # Lazy B-rep interrogation (spec.md §2.11): set of (parent_name, face_role)
+    # tuples from the validator. When non-None, the interrogator skips face
+    # walking for features not in this set and filters faces to matching
+    # roles when the set is present. None = eager mode (default).
+    referenced_face_roles: set[tuple[str, str]] | None = None
 
 
 @dataclass

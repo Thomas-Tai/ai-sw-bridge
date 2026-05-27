@@ -1799,6 +1799,13 @@ def build(
     doc = create_blank_part(sw)
     ctx = BuildContext(sw=sw, doc=doc, no_dim=no_dim, deferred_dim=deferred_dim)
 
+    # Lazy B-rep interrogation (spec.md §2.11): compute the referenced-face
+    # set so the interrogator can skip unreferenced features.
+    if brep_enabled:
+        from .validator import compute_referenced_face_roles
+
+        ctx.referenced_face_roles = compute_referenced_face_roles(spec)
+
     # Record the active SW configuration on the brep manifest so any
     # consumer re-running this spec against a different configuration
     # knows the manifest is invalid (audit §6.2). Fail-soft: a missing
