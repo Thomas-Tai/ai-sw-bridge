@@ -1,0 +1,312 @@
+{
+  "version": 1,
+  "corpus": "sldworksapiprogguide",
+  "pairs_count": 50,
+  "query_word_budget": 50,
+  "gate": {
+    "precision_at_1_min": 0.8
+  },
+  "calibration_note": "Pairs were chosen so the HashEmbedder baseline hits precision@1 >= 0.80 on the committed index. A regression in embed / index / chunk code drops the score below the gate; swapping in sentence-transformers should raise it toward 1.0.",
+  "pairs": [
+    {
+      "query": "CommandManager requirements install_dir description Background Categories Appearance Dimension Customize Thumbnail displayed software includes document Commands provides function toolbar bitmaps Buttons located Tooltip message provide pointer create assign bitmap button sample pixels colors dialog Select Choose images custom Prompt status Action macro Color white click Tools Image icons brief meet open",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Assign SOLIDWORKS Macro to Button:0",
+      "interface": "GettingStarted",
+      "name": "Assign SOLIDWORKS Macro to Button"
+    },
+    {
+      "query": "CommandManager Applications description Properties displayed impacting Customize function navigate selected document Tooltip message provide pointer default develop toolbar Prompt status bitmap Action folder stored dialog Select Macros adding offers Visual Studio assign button brief Click macro Tools later close right Type tool Path VSTA NOTE Open want edit",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Assign SOLIDWORKS Macro to Button:1",
+      "interface": "GettingStarted",
+      "name": "Assign SOLIDWORKS Macro to Button"
+    },
+    {
+      "query": "CommandManager information Properties Customize assigning document toolbars toolbar Recycle button Select dialog delete macros right click macro close Tools want edit open drag drop Help",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Assign SOLIDWORKS Macro to Button:2",
+      "interface": "GettingStarted",
+      "name": "Assign SOLIDWORKS Macro to Button"
+    },
+    {
+      "query": "install_dir enumerator registered integrated installing Preference HelpViewer HTMLHelp2x sensitive available interface installed Microsoft configure selecting delivered property displays catalogs compiled versions Context install machine earlier macros Select editor Visual Studio Viewer launch Please Press later helps users help edit VSTA note msha HTML",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Context-Sensitive SOLIDWORKS API Help:0",
+      "interface": "GettingStarted",
+      "name": "Context-Sensitive SOLIDWORKS API Help"
+    },
+    {
+      "query": "install_dir enumerator registered integrated installing Preference HelpViewer HTMLHelp2x installed sensitive Microsoft configure selecting delivered displays catalogs compiled versions context install machine earlier Visual Studio Viewer launch Please later helps users help note msha HTML VSTA",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Context-Sensitive SOLIDWORKS API Help:1",
+      "interface": "GettingStarted",
+      "name": "Context-Sensitive SOLIDWORKS API Help"
+    },
+    {
+      "query": "registering installing Configure displayed compiled displays programs examples manually editing browser display macros Visual Studio either Viewer launch press while links local HTML help VSTA work open APIs",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Context-Sensitive SOLIDWORKS API Help:2",
+      "interface": "GettingStarted",
+      "name": "Context-Sensitive SOLIDWORKS API Help"
+    },
+    {
+      "query": "helpcontentsetup install_dir sldworksapi installing Preference HelpViewer sensitive installed previous register location clicking Navigate Security version context already another Content remove Viewer Visual Studio select Launch Manage Action column Update bottom source dialog Click help View Disk msha Open",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Context-Sensitive SOLIDWORKS API Help:3",
+      "interface": "GettingStarted",
+      "name": "Context-Sensitive SOLIDWORKS API Help"
+    },
+    {
+      "query": "helpcontentsetup install_dir enumerator Preference HelpViewer register location clicking Navigate Security Content swconst Visual Studio Viewer select Launch Manage source Action column Update bottom dialog Click help View Disk msha Open",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Context-Sensitive SOLIDWORKS API Help:4",
+      "interface": "GettingStarted",
+      "name": "Context-Sensitive SOLIDWORKS API Help"
+    },
+    {
+      "query": "automatically declarations descriptions performance categories Substitute properties referenced increases detecting implement reference libraries available constants variables ModelDoc2 Variable assigned declared specific improves checking software SldWorks Constant swEntity binding program assists version Library swconst Provide objects methods swModel occurs errors actual number events record prefix Visual Change Entity Early macro tells",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Early and Late Binding:0",
+      "interface": "GettingStarted",
+      "name": "Early and Late Binding"
+    },
+    {
+      "query": "swStopDebuggingVstaOnExit swUserPreferenceToggle_e PropertyManager automatically Applications manipulators components persistent Microsoft impacting developed debugging interface recording debugger continue deselect sessions selected recorded multiple objects handler located Options running Systems General setting macros offers Visual Studio events Either system option dialog select across unless csproj vbproj effect debug NOTES Tools later pages macro",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Edit or Debug SOLIDWORKS Macro:0",
+      "interface": "GettingStarted",
+      "name": "Edit or Debug SOLIDWORKS Macro"
+    },
+    {
+      "query": "IModelDocExtension ClearSelection2 automatically Applications longwarnings FeatureData SelectByID2 immediately boolstatus longstatus IModelDoc2 Explicitly variables Component appearing ModelDoc2 Microsoft inserted declared created Boolean Feature However declare offers Visual Studio Delete change Tools macro tasks extra lines swApp calls Early Read VSTA code Part Long view bind",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Edit or Debug SOLIDWORKS Macro:1",
+      "interface": "GettingStarted",
+      "name": "Edit or Debug SOLIDWORKS Macro"
+    },
+    {
+      "query": "Prerequisite Professional Installing Enterprise Upgrading Microsoft Community installed activated converted Software Creating versions previous releases Editing created earlier Running Premium version install runtime default Windows Visual Studio record macros ensure opened macro order debug later Notes VSTA edit able DLLs",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Microsoft Visual Studio Tools for Applications (VSTA):0",
+      "interface": "GettingStarted",
+      "name": "Microsoft Visual Studio Tools for Applications (VSTA)"
+    },
+    {
+      "query": "Installing Microsoft installed activated converted versions previous releases install version runtime default Windows created Visual Studio ensure record macros opened Notes later debug able edit VSTA DLLs",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Microsoft Visual Studio Tools for Applications (VSTA):1",
+      "interface": "GettingStarted",
+      "name": "Microsoft Visual Studio Tools for Applications (VSTA)"
+    },
+    {
+      "query": "automatically Prerequisite installing conversion activated converted dropdowns versions previous releases instance Software dropdown contains nstalled default Windows created editing contain macros opened Visual Studio vbproj csproj dialog opens macro Tools VSTA Edit Open File name Save type",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Microsoft Visual Studio Tools for Applications (VSTA):2",
+      "interface": "GettingStarted",
+      "name": "Microsoft Visual Studio Tools for Applications (VSTA)"
+    },
+    {
+      "query": "SolidWorksMacro project_folder configuration upgradedmacro Prerequisite VstaProjects successfully install_dir Installing References assemblies directory attribute Upgrading Creating navigate instance Software Solution Explorer sldworks assigned dropdown selected entities upgraded previous original modified project Specify swconst interop compile Release Editing created earlier upgrade Execute present renamed SwMacro Running select dialog vbproj csproj Visual Studio",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Microsoft Visual Studio Tools for Applications (VSTA):5",
+      "interface": "GettingStarted",
+      "name": "Microsoft Visual Studio Tools for Applications (VSTA)"
+    },
+    {
+      "query": "project_folder automatically upgradedmacro instructions Installing converted Upgrading dropdown Navigate default created earlier SwMacro active macros Follow Select macro Tools Click Read VSTA file type Open",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Microsoft Visual Studio Tools for Applications (VSTA):6",
+      "interface": "GettingStarted",
+      "name": "Microsoft Visual Studio Tools for Applications (VSTA)"
+    },
+    {
+      "query": "Alternatively applications application Microsoft primarily embedded software attaches instance retrieve Because enabled operate running density created general develop Access create active attach inter Excel Visio sheet shows value data code cell part",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Other Microsoft VBA-enabled Applications:0",
+      "interface": "GettingStarted",
+      "name": "Other Microsoft VBA-enabled Applications"
+    },
+    {
+      "query": "automatically Applications executable recording extension debugging selected filename Building projects toolbar Perform actions project created creates folders record dialog select offers Visual Studio Macros vbproj csproj macro Click Pause Tools NOTES added Basic Types want done Stop type name File Save VSTA",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Record SOLIDWORKS Macro:0",
+      "interface": "GettingStarted",
+      "name": "Record SOLIDWORKS Macro"
+    },
+    {
+      "query": "automatically executable extension debugging selected filename Building projects project created creates folders Macros vbproj Visual csproj folder added Macro Basic Types vbnet VSTA file name plus",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Record SOLIDWORKS Macro:1",
+      "interface": "GettingStarted",
+      "name": "Record SOLIDWORKS Macro"
+    },
+    {
+      "query": "Applications toolbar buttons dialog select offers Visual Studio locate assign macros Opens macro Tools Click lets want VSTA file Open",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Run SOLIDWORKS Macro:0",
+      "interface": "GettingStarted",
+      "name": "Run SOLIDWORKS Macro"
+    },
+    {
+      "query": "functionality installations applications installation Microsoft installed directory Connected resources installer Downloads Agreement Upgrading contains Download Continue Products Installs develop install Program win_b64 version product service English Manager Ensure Visual Studio apisdk select button Accept bottom manual Files media local whose click need Copy page want link pack EULA list",
+      "expected_key": "sldworksapiprogguide:GettingStarted:SOLIDWORKS API Getting Started Overview:0",
+      "interface": "GettingStarted",
+      "name": "SOLIDWORKS API Getting Started Overview"
+    },
+    {
+      "query": "InstallShield interactively Installation applications programming developing Authorized Agreement Upgrading directory languages tutorials including Download Continue Products Installs Packages Optional familiar software Complete training English Install Manager version Service product updates courses offered Support Centers button Accept bottom manual select Double apisdk Wizard intend online access Attend click table local Prior",
+      "expected_key": "sldworksapiprogguide:GettingStarted:SOLIDWORKS API Getting Started Overview:1",
+      "interface": "GettingStarted",
+      "name": "SOLIDWORKS API Getting Started Overview"
+    },
+    {
+      "query": "ISketchSegment ISketchSpline application indirectly ISldWorks hierarchy interface reference accessed directly compiled contains clicking SldWorks Navigate objects located Diagram section another because context Access higher cannot exists within level below topic Click exist help link open",
+      "expected_key": "sldworksapiprogguide:GettingStarted:SOLIDWORKS API Object Model Overview:0",
+      "interface": "GettingStarted",
+      "name": "SOLIDWORKS API Object Model Overview"
+    },
+    {
+      "query": "ISketchSegment FeatureManager ISketchSpline functionality corresponding indirectly correspond accessible IAttribute reference hierarchy interface accessed IFeature features another because context objects however several provide through higher cannot exists within access design exist user lets tree",
+      "expected_key": "sldworksapiprogguide:GettingStarted:SOLIDWORKS API Object Model Overview:1",
+      "interface": "GettingStarted",
+      "name": "SOLIDWORKS API Object Model Overview"
+    },
+    {
+      "query": "programmatically applications programming standalone languages ISldWorks LoadAddIn language supports commonly creating selected session create Visual Please though dialog files Basic Start note load even call",
+      "expected_key": "sldworksapiprogguide:GettingStarted:SOLIDWORKS API Standalone and Add-in Applications Overview:0",
+      "interface": "GettingStarted",
+      "name": "SOLIDWORKS API Standalone and Add-in Applications Overview"
+    },
+    {
+      "query": "Applications programming correspond performed interface Microsoft quickest contains embedded software Recorded easiest actions toolset record modify Visual Studio macros start macro calls Basic Tools needs based saved files user VSTA work site lets edit",
+      "expected_key": "sldworksapiprogguide:GettingStarted:SOLIDWORKS Macros:0",
+      "interface": "GettingStarted",
+      "name": "SOLIDWORKS Macros"
+    },
+    {
+      "query": "interactive orientation application explicitly interface recording eliminate variables Microsoft debugging familiar changing rotating modified actions changes zooming panning declare testing Record macros couple delete create modify assign button macro times model extra lines early Debug Plan user NOTE view Edit code bind test VSTA work done",
+      "expected_key": "sldworksapiprogguide:GettingStarted:SOLIDWORKS Macros:1",
+      "interface": "GettingStarted",
+      "name": "SOLIDWORKS Macros"
+    },
+    {
+      "query": "ISwPEManager entitlement registered expiration according implement Connected Solution verified registry Desktop partner license current updated because listed proper passed lists match value still Tools Gold type open send back load time date",
+      "expected_key": "sldworksapiprogguide:GettingStarted:SOLIDWORKS Partner Program:0",
+      "interface": "GettingStarted",
+      "name": "SOLIDWORKS Partner Program"
+    },
+    {
+      "query": "IWeldmentCutListAnnotation IRevisionTableAnnotation swTableAnnotationType_e IHoleTableAnnotation IBomTableAnnotation ITableAnnotation Implementation QueryInterface IAssemblyDoc inheritance information IDrawingDoc Interfaces assignment IModelDoc2 annotation hierarchy libraries Interface specified currently graphical implement document complete diagrams existing reserved IPartDoc IFeature diagram heavily Classes Casting benefit However Factory methods objects through returns pointer IVertex IEntity famous reason static return client direct",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Understanding the SOLIDWORKS API Class Hierarchy:0",
+      "interface": "GettingStarted",
+      "name": "Understanding the SOLIDWORKS API Class Hierarchy"
+    },
+    {
+      "query": "QueryInterface information inheritance Programming interfaces Components Accessors interface Reference Microsoft specific material Rogerson ISketch objects located classes casting IMate2 others bottom Inside Reilly topic Press Juval find link Dale Lowy",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Understanding the SOLIDWORKS API Class Hierarchy:2",
+      "interface": "GettingStarted",
+      "name": "Understanding the SOLIDWORKS API Class Hierarchy"
+    },
+    {
+      "query": "Applications Additionally Standalone references libraries instance software Template included project contain similar details create Visual files lines added Basic code type",
+      "expected_key": "sldworksapiprogguide:GettingStarted:Visual Basic .NET Standalone and Add-in Applications:0",
+      "interface": "GettingStarted",
+      "name": "Visual Basic .NET Standalone and Add-in Applications"
+    },
+    {
+      "query": "IPropertyManagerPage2 IModifyDefinition2 IMacroFeatureData IAccessSelections AccessSelections ModifyDefinition IGetEditBodies interaction application definition selections parameters EditBodies parametric interface acquiring function IFeature rollback Provides modifies features possibly whenever activity handling required UserForm external feature Obtains creates ensures Nothing needing rebuild editing options allows change modify called handle needed suited macro input Calls state flags",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Edit Definition Function:0",
+      "interface": "Macro_Features",
+      "name": "Edit Definition Function"
+    },
+    {
+      "query": "IPropertyManagerPage2 IModifyDefinition2 IMacroFeatureData ModifyDefinition interaction application illustrates definition selections parametric operations interface acquiring validated function whenever activity handling required UserForm external IFeature feature editing options checked calling rebuild called handle needed suited stored inputs causes edits macro based edit user data well body",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Edit Definition Function:1",
+      "interface": "Macro_Features",
+      "name": "Edit Definition Function"
+    },
+    {
+      "query": "IInsertMacroFeature3 InsertMacroFeature3 IFeatureManager ISwComFeature implemented appropriate definition Regenerate implement interface associate features behavior function Security argument methods feature rebuild program define server supply macro needs three Edit",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Exposed COM DLL or Executable and Macro Features:0",
+      "interface": "Macro_Features",
+      "name": "Exposed COM DLL or Executable and Macro Features"
+    },
+    {
+      "query": "ReleaseSelectionAccess IMacroFeatureData IAccessSelections AccessSelections GetIntegerByName SetIntegerByName GetStringByName SetStringByName GetDoubleByName SetDoubleByName IGetEditBodies IMacroFeature EditBodies parameters interface supports defines feature Typical methods allows access macro input data body",
+      "expected_key": "sldworksapiprogguide:Macro_Features:IMacroFeatureData Interface:0",
+      "interface": "Macro_Features",
+      "name": "IMacroFeatureData Interface"
+    },
+    {
+      "query": "IInsertMacroFeature3method IInsertMacroFeature3 InsertMacroFeature3 IMacroFeatureData IFeatureManager FeatureManager parameters accessible definition Selections arguments interface dependent important selection specified existing features argument function inserted modified feature appears rebuild through becomes several options Create bodies become Modify insert design needed stored effect define manage passed macro model part Pass base name tree edit list",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Inserting Macro Features:0",
+      "interface": "Macro_Features",
+      "name": "Inserting Macro Features"
+    },
+    {
+      "query": "EnableMultiBodyConsume IMacroFeatureData definition identifies functions associate features callback multiple rebuild feature working passed module ProgId server output bodies macro names found input edit well file true",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Inserting Macro Features:1",
+      "interface": "Macro_Features",
+      "name": "Inserting Macro Features"
+    },
+    {
+      "query": "GetEditTargetTransfrom IMacroFeatureData IGetSelections3 GetSelections3 regenerating transforms component transform direction calculate entities selected assembly feature resides editing allows select entity vector actual screen macro users looks order need know edge want make",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Macro Features and Component Transforms:0",
+      "interface": "Macro_Features",
+      "name": "Macro Features and Component Transforms"
+    },
+    {
+      "query": "ISetSystemValue3 SetSystemValue3 configurations consideration configurable dimensions definition IDimension interface modifying function working feature changes similar rebuild attempt modify values across macro works edit take user",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Macro Features and Configurations:0",
+      "interface": "Macro_Features",
+      "name": "Macro Features and Configurations"
+    },
+    {
+      "query": "uninstalling applications implemented distinguish application unaffected installing compatible versioning different beginning Otherwise implement Increment versions strongly features servers created feature version ensures running perform release library system within cannot invoke naming strong allows choose either server create number major macro wrong steps name file type",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Macro Features and Strong Name Versioning:0",
+      "interface": "Macro_Features",
+      "name": "Macro Features and Strong Name Versioning"
+    },
+    {
+      "query": "IInsertMacroFeature3 IFeatureManager increment including Register registry Replace version feature similar creates number ProgID server CLSID macro files UUID file line code",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Macro Features and Strong Name Versioning:1",
+      "interface": "Macro_Features",
+      "name": "Macro Features and Strong Name Versioning"
+    },
+    {
+      "query": "IMacroFeatureData application swmSecurity techniques associated executable definition suppressed swmRebuild functions contained instances Interface features programs intended behavior function Required whenever rebuilds Security Optional supports defined feature develop specify exposed Comment Rebuild whether deleted swmEdit program creates effect either within server cannot record macros define Called Allows edited Macro users model",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Overview of Macro Features:0",
+      "interface": "Macro_Features",
+      "name": "Overview of Macro Features"
+    },
+    {
+      "query": "functionReturnValue IMacroFeatureData IGetEditBodies interaction Independent information introduced containing Definition selections parameters additional swmRebuild Regenerate EditBodies functions Interacts Processes according Validates databases indicates displayed variant_t function performs features existing geometry IFeature external CComBSTR vBSTRRet Modifies rebuild feature Actions Obtains Updates success failure message during modify create inputs design Return values String",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Rebuild Function:0",
+      "interface": "Macro_Features",
+      "name": "Rebuild Function"
+    },
+    {
+      "query": "GetEntitiesNeedUserId functionReturnValue IMacroFeatureData IGetEditBodies SetFaceUserId SetEdgeUserId respectively reproducible information additional swmRebuild Regenerate EditBodies selections parameters consistent Processes according Validates databases indicates displayed variant_t numbering external CComBSTR vBSTRRet Modifies selected geometry feature Updates success failure message Obtains Creates inputs design Return values String output retval Modify bodies Copies Places scheme based",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Rebuild Function:1",
+      "interface": "Macro_Features",
+      "name": "Rebuild Function"
+    },
+    {
+      "query": "EnableMultiBodyConsume functionReturnValue IMacroFeatureData FeatureManager reproducible information consistent additional swmRebuild Regenerate containing selections parameters numbering indicates displayed variant_t SafeArray modifying multibody Processes according provided CComBSTR vBSTRRet function multiple creating features original appended replaced selected geometry success failure message feature rebuild VARIANT objects specify whether default Creates Obtains scheme Return values String",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Rebuild Function:3",
+      "interface": "Macro_Features",
+      "name": "Rebuild Function"
+    },
+    {
+      "query": "EnableMultiBodyConsume functionReturnValue IMacroFeatureData FeatureManager information containign additional swmRebuild Regenerate containing SafeArray indicates displayed variant_t modifying multibody multiple provides CComBSTR vBSTRRet function creating features original appended replaced created VARIANT objects failure message feature rebuild specify whether default IBody2 String output retval return either bodies within design folder newly False error Macro",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Rebuild Function:5",
+      "interface": "Macro_Features",
+      "name": "Rebuild Function"
+    },
+    {
+      "query": "WaitforPendingFinalizers IDisplayDimension ReferencePoints regenerating IDimension finalizers continuing reference dimension property complete feature display Collect points NOTES macro cases gets sets Wait",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Rebuild Function:6",
+      "interface": "Macro_Features",
+      "name": "Rebuild Function"
+    },
+    {
+      "query": "swMacroFeatureSecurityOptions_e IMacroFeatureData GetDefinition information combination illustrates Optionally properties processes ascertain arguments determine recursion hardcodes security function optional required IFeature hardcode infinite whenever possible feature runtime whether prevent obtain return values static itself edited called global macro based calls input value Steps cause check first above gets data step NOTE call",
+      "expected_key": "sldworksapiprogguide:Macro_Features:Security Function:0",
+      "interface": "Macro_Features",
+      "name": "Security Function"
+    },
+    {
+      "query": "IAssemblyDoc IDrawingDoc functions arguments ISldWorks interface different features function declared IPartDoc IFeature feature VARIANT calling process belongs macros define reside accept itself module Macro files three Model exist type file",
+      "expected_key": "sldworksapiprogguide:Macro_Features:VBA Macro Files and Macro Features:0",
+      "interface": "Macro_Features",
+      "name": "VBA Macro Files and Macro Features"
+    },
+    {
+      "query": "ICosmeticThreadFeatureData ReleaseSelectionAccess IExtrudeFeatureData2 IRevolveFeatureData2 IModifyDefinition2 ISweepFeatureData AccessSelections ModifyDefinition automatically selections features modified IFeature released feature desired Finally release access define modify First call data",
+      "expected_key": "sldworksapiprogguide:Miscellaneous:Accessing Selections that Define Features:0",
+      "interface": "Miscellaneous",
+      "name": "Accessing Selections that Define Features"
+    }
+  ]
+}

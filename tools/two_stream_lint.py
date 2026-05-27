@@ -39,6 +39,7 @@ CLI_EMITTERS = frozenset(
         "codegen.py",
         "probe.py",
         "history.py",
+        "apidoc.py",
     }
 )
 

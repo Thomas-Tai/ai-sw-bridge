@@ -48,6 +48,7 @@ examples/**/*_parameterized.bas
 spikes/phase0/_chm_decompiled/
 spikes/phase0/_chm_decompiled_swconst/
 spikes/phase0/_chm_decompiled_progguide/
+spikes/phase0/_chm_decompiled_apiprogguide/
 
 # Temp files from debug sessions
 spikes/phase0/_tmp_*.json
