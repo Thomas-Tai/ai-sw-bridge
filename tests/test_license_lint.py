@@ -25,7 +25,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 from license_lint import (
     _check_docstring,
     _check_license_classification,
-    _check_top_level_license,
     _find_ported_files,
     _parse_contributing_table,
     _parse_readme_acknowledgments,

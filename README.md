@@ -128,9 +128,10 @@ A short list. The [full known-limitations doc](docs/known_limitations.md) is req
 ## Project status
 
 - **v0.1 — production-validated** on SOLIDWORKS 2024 SP1. `probe` / `observe` / `mutate` / Path C `codegen` all working.
-- **v0.2 (JSON-spec builder) — Phase 1 GREEN.** Motor Mount Plate builds 10/10 features with 7 parametric bindings, in all three modes. Rectangle equation-link demotion fixed 2026-05-20 (Spike ZF). [See CHANGELOG](CHANGELOG.md) for the full trail.
+- **v0.2 (JSON-spec builder) — Phase 1 GREEN.** Motor Mount Plate builds 10/10 features with 7 parametric bindings, in all three modes. Rectangle equation-link demotion fixed 2026-05-20 (Spike ZF).
 - **v0.3 — primitives shipped:** chamfer, linear pattern, mirror, revolve, simple hole.
-- **v0.4 next:** circular pattern, variable-radius fillet, ±x/±y face sketches. [See CHANGELOG →](CHANGELOG.md)
+- **v0.10 — reliability + DX bundle GREEN.** `--lint`, `--verify-mass`, `_expect`, structured logging, `build_metrics.json`, pre-commit framework, doc-coverage gate, golden-volume regression check, SW version floor.
+- **v0.11 — reliability / observability / supply-chain GREEN** (2026-05-27). 15-lane Phase 1: feature flags, circuit breaker, SLI baselines (p50/p95/p99), local telemetry SQLite, license-lint, upstream-drift, AGENTS.md drift, quickstart smoke, CLI stability tiers, bug-report bundler, two-stream contract, COM reconnect, fault-injection harness, release-engineering CI, anti-loop retry guard. Validated against SW 32.1.0; 342/342 tests pass; CI green on Win-2025 × Py 3.10/3.12/3.14. [See CHANGELOG →](CHANGELOG.md)
 
 ## Layout
 
@@ -150,9 +151,9 @@ ai-sw-bridge/
 │   ├── known_limitations.md  #   sharp edges + workarounds
 │   ├── known_gotchas.md      #   things we learned the hard way
 │   └── ai_driven_architecture_review.md  # field survey + v0.2 design
-├── tools/                    # CHM extractor + the feature-tree diff harness
+├── tools/                    # CHM extractor, drift/license lint, bundle, perf baselines
 ├── spikes/                   # Phase 0 / v0.3 / v0.5 / v0.6 API probes
-└── tests/                    # 84 tests, all green on Python 3.10 / 3.12 / 3.14
+└── tests/                    # 342 tests, all green on Python 3.10 / 3.12 / 3.14
 ```
 
 ## License

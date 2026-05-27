@@ -21,8 +21,6 @@ import textwrap
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 # tools/ is not on the default import path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 

@@ -20,9 +20,8 @@ Ref: spec.md §8.7, audit §1.6.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 
 @dataclass(frozen=True)
@@ -129,7 +128,7 @@ def _read_toml(flag_name: str, toml_path: Path | None = None) -> bool | None:
         try:
             import tomllib
         except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]
+            import tomli as tomllib
     except ImportError:
         return None
 

@@ -112,10 +112,6 @@ class FaultInjector:
         """Clear call counters (preserves registered faults)."""
         self._call_counts.clear()
 
-    @property
-    def active(self) -> bool:
-        return self._active
-
     class _ActiveContext:
         def __init__(self, injector: FaultInjector) -> None:
             self._injector = injector

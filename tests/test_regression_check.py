@@ -17,13 +17,9 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 
 from regression_check import (
-    BASELINE_P95_REGRESSION_PCT,
-    BASELINE_P99_REGRESSION_PCT,
     SLO_01_P95_MAX_S,
     SLO_02_P99_MAX_S,
     _check_slo_and_baseline,

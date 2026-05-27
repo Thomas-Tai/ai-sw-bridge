@@ -7,6 +7,152 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-05-27
+
+### Added — v0.11 reliability, observability, and supply-chain bundle
+
+Phase 1 of the strategic crossroads plan (B+ → S-tier upgrade). Fifteen
+parallel lanes; all merged to master after a six-phase audit (static,
+per-task acceptance, live-SW E2E on SW 32.1.0, CI matrix on Windows-2025
+× Py 3.10/3.12/3.14, human review, push).
+
+**Reliability**
+
+- **Task 1.1 — Feature-flag module** (`src/ai_sw_bridge/flags.py`). Four-level
+  precedence resolver: CLI override → env var (`AI_SW_BRIDGE_FLAG_*`) →
+  `.ai-sw-bridge.toml` `[flags]` section → module default. Curated registry
+  (no general-purpose config framework). Every v0.11 lane ships behind a
+  flag so a subtle bug in one lane can be disabled per-installation.
+- **Task 1.2 — Circuit breaker** (`src/ai_sw_bridge/errors/circuit_breaker.py`).
+  Three-state machine (closed/open/half-open) with configurable threshold,
+  cooldown, and half-open probe. Ported from
+  [`SolidworksMCP-python`](https://github.com/andrewbartels1/SolidworksMCP-python)
+  `adapters/circuit_breaker.py` at SHA `a10fb74933bb681a5d1569621b33bdcb213faae0`
+  (MIT, ESPO Corporation 2025) — sync wrapper extracted from the upstream
+  async version.
+- **Task 1.12 — Reconnect-on-stale-handle** (`src/ai_sw_bridge/com/connection.py`,
+  `ai-sw-build --reconnect`). HRESULT detector for `RPC_S_SERVER_UNAVAILABLE`
+  (0x800706BA), `RPC_E_DISCONNECTED` (0x80010108), and
+  `CO_E_OBJNOTCONNECTED` (0x800401FD); `with_reconnect()` decorator drops
+  the cached SwApp and re-dispatches when the stale-handle predicate fires.
+- **Task 1.14 — Fault-injection harness** (`tests/fault_injection/`).
+  `FaultInjector` fixture maps `(iface_method, attempt_number) → ComError`,
+  with HRESULT catalog mapped to Tier A/B/C per `spec.md §3.2`. CI job
+  runs the suite as a separate matrix entry.
+- **Task 2.1 — Anti-loop retry guard** (`src/ai_sw_bridge/errors/auto_retry.py`).
+  Canonical spec hashing (`spec_hash()` over JSON with `sort_keys`,
+  whitespace-normalized); `RetryGuard` raises `IdenticalSpecError` on
+  re-submission of a spec hash seen within the window. Prevents the
+  AI-assisted "try the same broken spec again" failure mode.
+
+**Observability**
+
+- **Task 1.3 — SLI instrumentation + baseline regression**
+  (`tools/regression_check.py --baseline-compare`,
+  `tools/perf_baselines/v0.10.json`). Per-build wall time recorded as
+  `build_duration_seconds` histogram; p50/p95/p99 computed and compared
+  against the previous version's baseline. Regression gate fails CI on
+  >15% p95 or >25% p99 deltas. Baseline captured from live SW (15 example
+  specs): p50=5.985s, p95=11.933s, p99=12.537s.
+- **Task 1.4 — Telemetry module** (`src/ai_sw_bridge/telemetry/`). Local
+  SQLite store at `~/.ai-sw-bridge/telemetry.sqlite`; seven mandatory
+  counters (`builds_total`, `com_errors_total`, `hint_emissions_total`,
+  `auto_retry_outcomes_total`, `checkpoint_writes_total`,
+  `feature_flag_state`, `com_disconnects_total`); one mandatory histogram
+  (`rag_query_seconds`); trace-id propagation via contextvar. Per
+  `spec.md §8.8`: `Counter.inc < 100 µs` budget enforced with warning
+  on overrun. No PII, no automatic upload (`privacy_review.md`).
+
+**Supply chain & releases**
+
+- **Task 1.5 — License-compliance lint** (`tools/license_lint.py`,
+  `tests/test_license_lint.py`). Three-surface attribution check:
+  (1) per-file SPDX docstring tags
+  (`Port-Source`/`Port-Commit`/`License-Identifier`); (2) per-file row in
+  `CONTRIBUTING.md` "Third-party derivations" 7-column table;
+  (3) consolidated per-repo line in README "Acknowledgments". License
+  classification (MIT/Apache/BSD/GPL) gated against compatible-license
+  matrix; 40-char SHA pinning required.
+- **Task 1.6 — Upstream drift monitor** (`tools/check_upstream_drift.py`).
+  Reads pinned SHAs from `harvest_plan.md` §5 recipes + `CONTRIBUTING.md`
+  derivations table; queries GitHub compare API for commit count since
+  pin. Flags repos with >50 commits drift. As of this release:
+  `SolidworksMCP-python` is 51 commits ahead of the pinned SHA — first
+  trip of the gate; bump pin or vendor scoped delta in the next cycle.
+- **Task 1.7 — AGENTS.md drift CI check** (`tools/agents_md_drift.py`
+  + CI step). Three structural assertions: schema-type list parity with
+  `src/ai_sw_bridge/spec/schema.py`, example-spec list parity with
+  `examples/`, and command-table parity with `pyproject.toml`
+  `[project.scripts]`.
+- **Task 1.13 — Release engineering** (`.github/workflows/ci.yml`,
+  `docs/release_engineering.md`). Windows-2025 × Py 3.10/3.12/3.14 matrix
+  with separate onboarding job (no SW required), import-check, and
+  fault-injection job. Trigger config: `push` to `master` and
+  `v*-integration`, `pull_request` to `master`.
+
+**DX & contract**
+
+- **Task 1.8 — Quickstart smoke test** (`tests/onboarding/`,
+  `@pytest.mark.onboarding`). No-SW-required quickstart that a fresh
+  developer can run in under 30s. CI runs it as a separate job.
+- **Task 1.9 — CLI stability tier markers**
+  (`src/ai_sw_bridge/cli/stability.py`, `@cli_stability(Tier.STABLE)`).
+  Decorator registers each CLI entry point with a stability tier (STABLE/
+  BETA/EXPERIMENTAL); registry is queryable via `--stability` flag.
+- **Task 1.10 — Bug-report bundler** (`tools/bundle_bug_report.py`). Zips
+  last N spec.json files, telemetry export (last 24h), pip freeze,
+  best-effort SW version — all run through `telemetry.scrub` (path
+  redaction, `S1B_*` locals scrubbing, configurable trade-secret
+  patterns). Consent gate: refuses unless `.telemetry/consent.txt`
+  exists or `--no-telemetry` is passed.
+- **Task 1.11 — Two-stream contract enforcement**
+  (`tools/two_stream_lint.py`, `tests/test_two_stream_contract.py`). AST
+  scan asserts all CLI entry points emit JSON to stdout and human text
+  to stderr only. No mixed streams; no `print()` to stdout outside the
+  JSON envelope.
+
+### Changed
+
+- **`pyproject.toml`** — added `[tool.pytest.ini_options]` with
+  `pythonpath = ["."]` so `tests/` can import from `tools/` (`tools/` is
+  not a package). Added two pytest markers: `onboarding`, `fault_injection`.
+- **`pyproject.toml`** — pinned `black==25.12.0` and
+  `[tool.black] target-version = ["py310"]` so local + CI matrix entries
+  produce identical output. Without the pin, black 25.x auto-targets py315
+  on the CI runners and older Python versions cannot re-parse the result.
+
+### Fixed
+
+- **`CONTRIBUTING.md` derivations table** — schema raised from 5 to
+  7 columns to match the drift script + tests (target / upstream / license
+  / commit / ported / DRI / notes).
+- **`tools/check_upstream_drift.py`** — corrected
+  `SolidworksMCP-python` repo mapping to `andrewbartels1/...` (was
+  pointing at an empty fork); added markdown-link regex
+  (`[name](https://github.com/owner/repo)`) so the parser handles all
+  three notation forms; skips recipes without a `Commit:` line.
+- **CI trigger** (`.github/workflows/ci.yml`) — added `v*-integration`
+  to the `push` branch list so integration branches get the same matrix
+  as master.
+- **CI onboarding job** — install was `pip install -e .` but pytest is
+  in `[dev]`; changed to `pip install -e . pytest` so the onboarding
+  smoke test can actually run.
+- **`telemetry/counters.py` docstring** — listed 8 mandatory counters
+  but only 7 are counters; `rag_query_seconds` is a histogram. Rewrote
+  the heading and cross-referenced `histograms.py`.
+
+### Known limitations (v0.11)
+
+- **`tools/bundle_bug_report.py` and `tools/export_metrics.py` use raw
+  `sys.argv` instead of argparse.** `--help` is silently consumed as a
+  positional argument (output filename / no-op flag), so neither tool
+  prints usage on `--help`. Both work correctly when called with valid
+  args. Will be migrated to argparse next cycle.
+- **Upstream drift gate is at 51/50 for `SolidworksMCP-python`** as of
+  release. The pinned SHA is still the porting source-of-truth; the
+  bump-or-vendor decision goes through the standard derivations PR
+  flow next cycle.
+
 ## [0.10.0] - 2026-05-22
 
 ### Added — v0.10 reliability + DX bundle

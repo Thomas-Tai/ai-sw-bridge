@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
-from ai_sw_bridge.cli.stability import TIER_REGISTRY, Tier, add_tier, cli_stability
+from ai_sw_bridge.cli.stability import TIER_REGISTRY, add_tier, cli_stability
 from ai_sw_bridge.cli import build, codegen, mutate, observe, probe
 
 

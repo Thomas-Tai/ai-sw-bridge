@@ -29,7 +29,7 @@ def load_trade_secret_patterns(config_path: Path) -> list[re.Pattern[str]]:
         import tomllib
     except ImportError:
         try:
-            import tomli as tomllib  # type: ignore[no-redef]
+            import tomli as tomllib
         except ImportError:
             return []
     with open(config_path, "rb") as f:
