@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..errors.wrapper import com_error_boundary, emit_envelope_to_stderr
+from ..errors.build_error import BuildError
 from ..locals_io import parse as parse_locals
 from ..sw_com import get_sw_app
 from ..com.connection import with_reconnect
@@ -1760,7 +1762,17 @@ def build(
                 logger.debug("feature: %s (%s)", current_feat_name, feat["type"])
                 handler = HANDLERS[feat["type"]]
                 _feat_t0 = time.time()
-                bf = with_reconnect(handler, ctx, feat, reconnect=reconnect)
+                try:
+                    with com_error_boundary(
+                        feature_name=current_feat_name or "unknown",
+                        json_path=f"features[{len(built)}]",
+                        iface_method=f"HANDLERS[{feat['type']}]",
+                        feature_type=feat["type"],
+                    ):
+                        bf = with_reconnect(handler, ctx, feat, reconnect=reconnect)
+                except BuildError as be:
+                    emit_envelope_to_stderr(be)
+                    raise RuntimeError(be.diagnosis) from be
                 feature_metrics.append(
                     {
                         "name": current_feat_name,
@@ -1850,7 +1862,17 @@ def build(
                 # was smaller than the 12mm through-hole).
                 feat_bindings = _collect_feature_bindings(feat)
                 if feat_bindings:
-                    indices = _apply_bindings(doc, feat_bindings)
+                    try:
+                        with com_error_boundary(
+                            feature_name=current_feat_name or "unknown",
+                            json_path=f"features[{len(built)-1}].bindings",
+                            iface_method="IEquationMgr.Add2",
+                            feature_type=feat["type"],
+                        ):
+                            indices = _apply_bindings(doc, feat_bindings)
+                    except BuildError as be:
+                        emit_envelope_to_stderr(be)
+                        raise RuntimeError(be.diagnosis) from be
                     for (d, r), i in zip(feat_bindings, indices):
                         binding_results.append(Binding(dim=d, rhs=r, add2_index=i))
                     # Force a rebuild so subsequent geometry sees the
