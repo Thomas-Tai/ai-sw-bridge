@@ -3,7 +3,8 @@
 Counters are monotonically increasing integers. Each increment is recorded
 as a row in the telemetry store. Per spec.md §8.8: Counter.inc < 100 µs.
 
-Mandatory counters for v0.11 (audit §1.2, spec §8.8):
+Mandatory counters for v0.11 — 7 counters here + 1 histogram in
+histograms.py (audit §1.2, spec §8.8):
   1. builds_total{mode, outcome}
   2. com_errors_total{iface_method, hresult}
   3. hint_emissions_total{hint_key, iface_method}
@@ -11,7 +12,9 @@ Mandatory counters for v0.11 (audit §1.2, spec §8.8):
   5. checkpoint_writes_total{outcome}
   6. feature_flag_state{flag, state}
   7. com_disconnects_total{hresult}
-  8. rag_query_seconds is a histogram, not a counter — see histograms.py
+
+The 8th mandatory metric, rag_query_seconds, is a histogram rather
+than a counter — defined in histograms.py.
 """
 
 from __future__ import annotations
