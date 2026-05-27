@@ -1,0 +1,331 @@
+{
+  "overall": "PASS",
+  "sw_revision": "32.1.0",
+  "face_count": 6,
+  "summary": {
+    "GetBox": "marshal-clean",
+    "Normal": "marshal-clean",
+    "GetSelectByIDString": "ATTRIBUTE_MISSING"
+  },
+  "build": {
+    "skipped": false,
+    "built": true,
+    "feature_name": "Boss-Extrude1",
+    "feat_type": "CDispatch(<unknown>)"
+  },
+  "probes": [
+    {
+      "face_idx": 0,
+      "GetBox": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 14.263000000937609,
+        "length": 6,
+        "element_types": [
+          "float",
+          "float",
+          "float",
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          -0.01,
+          -0.01,
+          0.0,
+          -0.01,
+          0.01,
+          0.005
+        ]
+      },
+      "Normal": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 17.764400001397007,
+        "length": 3,
+        "element_types": [
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          -1.0,
+          -0.0,
+          -0.0
+        ]
+      },
+      "GetSelectByIDString": {
+        "status": "ATTRIBUTE_MISSING",
+        "message": "GetFaces.GetSelectByIDString",
+        "elapsed_ms": 16.102700001283665
+      },
+      "GetFaceId": {
+        "status": "OK",
+        "python_type": "int",
+        "raw_value": 0,
+        "elapsed_ms": 14.265600000726408
+      }
+    },
+    {
+      "face_idx": 1,
+      "GetBox": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 12.464699999327422,
+        "length": 6,
+        "element_types": [
+          "float",
+          "float",
+          "float",
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          -0.01,
+          -0.01,
+          0.0,
+          0.01,
+          -0.01,
+          0.005
+        ]
+      },
+      "Normal": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 13.018699999520322,
+        "length": 3,
+        "element_types": [
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          -0.0,
+          -1.0,
+          -0.0
+        ]
+      },
+      "GetSelectByIDString": {
+        "status": "ATTRIBUTE_MISSING",
+        "message": "GetFaces.GetSelectByIDString",
+        "elapsed_ms": 8.307699999932083
+      },
+      "GetFaceId": {
+        "status": "OK",
+        "python_type": "int",
+        "raw_value": 0,
+        "elapsed_ms": 16.364000000976375
+      }
+    },
+    {
+      "face_idx": 2,
+      "GetBox": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 14.9957000012364,
+        "length": 6,
+        "element_types": [
+          "float",
+          "float",
+          "float",
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          0.01,
+          -0.01,
+          0.0,
+          0.01,
+          0.01,
+          0.005
+        ]
+      },
+      "Normal": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 13.453999999910593,
+        "length": 3,
+        "element_types": [
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          1.0,
+          -0.0,
+          -0.0
+        ]
+      },
+      "GetSelectByIDString": {
+        "status": "ATTRIBUTE_MISSING",
+        "message": "GetFaces.GetSelectByIDString",
+        "elapsed_ms": 14.907300001141266
+      },
+      "GetFaceId": {
+        "status": "OK",
+        "python_type": "int",
+        "raw_value": 0,
+        "elapsed_ms": 13.996300000144402
+      }
+    },
+    {
+      "face_idx": 3,
+      "GetBox": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 14.362800000526477,
+        "length": 6,
+        "element_types": [
+          "float",
+          "float",
+          "float",
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          -0.01,
+          0.01,
+          0.0,
+          0.01,
+          0.01,
+          0.005
+        ]
+      },
+      "Normal": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 15.99499999974796,
+        "length": 3,
+        "element_types": [
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          -0.0,
+          1.0,
+          -0.0
+        ]
+      },
+      "GetSelectByIDString": {
+        "status": "ATTRIBUTE_MISSING",
+        "message": "GetFaces.GetSelectByIDString",
+        "elapsed_ms": 13.75960000041232
+      },
+      "GetFaceId": {
+        "status": "OK",
+        "python_type": "int",
+        "raw_value": 0,
+        "elapsed_ms": 14.131800000541261
+      }
+    },
+    {
+      "face_idx": 4,
+      "GetBox": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 13.443699999697856,
+        "length": 6,
+        "element_types": [
+          "float",
+          "float",
+          "float",
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          -0.01,
+          -0.01,
+          0.005,
+          0.01,
+          0.01,
+          0.005
+        ]
+      },
+      "Normal": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 15.095499999006279,
+        "length": 3,
+        "element_types": [
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          -0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      "GetSelectByIDString": {
+        "status": "ATTRIBUTE_MISSING",
+        "message": "GetFaces.GetSelectByIDString",
+        "elapsed_ms": 13.974099998449674
+      },
+      "GetFaceId": {
+        "status": "OK",
+        "python_type": "int",
+        "raw_value": 0,
+        "elapsed_ms": 14.275999999881606
+      }
+    },
+    {
+      "face_idx": 5,
+      "GetBox": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 13.545199999498436,
+        "length": 6,
+        "element_types": [
+          "float",
+          "float",
+          "float",
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          -0.01,
+          -0.01,
+          0.0,
+          0.01,
+          0.01,
+          0.0
+        ]
+      },
+      "Normal": {
+        "status": "OK",
+        "python_type": "tuple",
+        "elapsed_ms": 14.379899999767076,
+        "length": 3,
+        "element_types": [
+          "float",
+          "float",
+          "float"
+        ],
+        "raw_values": [
+          0.0,
+          0.0,
+          -1.0
+        ]
+      },
+      "GetSelectByIDString": {
+        "status": "ATTRIBUTE_MISSING",
+        "message": "GetFaces.GetSelectByIDString",
+        "elapsed_ms": 14.2266999991989
+      },
+      "GetFaceId": {
+        "status": "OK",
+        "python_type": "int",
+        "raw_value": 0,
+        "elapsed_ms": 23.83889999873645
+      }
+    }
+  ],
+  "failures": []
+}
