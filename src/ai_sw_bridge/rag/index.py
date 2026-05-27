@@ -251,6 +251,56 @@ class VectorIndex:
 
     # -- read path ----------------------------------------------------------
 
+    def get_chunk(self, retrieval_key: str) -> ApiChunk | None:
+        """Fetch one chunk by its retrieval key.
+
+        Returns ``None`` when no row matches. Used by the CLI's
+        ``detail`` subcommand (E5.5) so callers can go from a
+        search-result key to the full chunk payload.
+        """
+        row = self._conn.execute(
+            "SELECT * FROM chunks WHERE retrieval_key = ?", (retrieval_key,)
+        ).fetchone()
+        return _row_to_chunk(row) if row is not None else None
+
+    def list_interfaces(self, *, corpus_filter: str | None = None) -> list[str]:
+        """Return the distinct ``interface`` values in the index.
+
+        For the programmer's-guide corpus this is the topic category
+        (``Overview``, ``GettingStarted``, ...). For the API-reference
+        corpus (E5.1 follow-up, not yet batch-extracted) this will be
+        the COM interface name. Used by the CLI's ``members``
+        subcommand.
+        """
+        sql = "SELECT DISTINCT interface FROM chunks"
+        params: tuple[Any, ...] = ()
+        if corpus_filter is not None:
+            sql += " WHERE corpus = ?"
+            params = (corpus_filter,)
+        sql += " ORDER BY interface"
+        return [r[0] for r in self._conn.execute(sql, params).fetchall()]
+
+    def find_with_code(
+        self,
+        *,
+        limit: int = 10,
+        corpus_filter: str | None = None,
+    ) -> list[ApiChunk]:
+        """Return chunks that carry an ``example_code`` block.
+
+        Used by the CLI's ``examples`` subcommand (E5.5) to surface
+        chunks with runnable snippets. Ordered by (interface, name)
+        for stable pagination.
+        """
+        sql = "SELECT * FROM chunks WHERE example_code IS NOT NULL"
+        params: list[Any] = []
+        if corpus_filter is not None:
+            sql += " AND corpus = ?"
+            params.append(corpus_filter)
+        sql += " ORDER BY interface, name LIMIT ?"
+        params.append(limit)
+        return [_row_to_chunk(r) for r in self._conn.execute(sql, params).fetchall()]
+
     def search(
         self,
         query: str,
