@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.0] - TBD
+
+### Added — v0.12 capability lanes (in progress)
+
+Four additive lanes behind feature flags (all default OFF). Every v0.11
+spec builds byte-identical with all flags disabled.
+
+- **L1 — B-rep interrogation** (`brep_interrogation`): per-feature
+  topological fingerprint manifest (`build_brep.json`) with face roles,
+  normals, centroids, and body-local indices. Enables symbolic `face_role`
+  targeting on downstream features. Gated by E2.1 marshal spike (PASS
+  with caveat on SW 32.1.0).
+- **L2 — Error hints** (Tier A/B/C catalog in `errors/hints.py`):
+  structured remediation hints attached to `BuildError` payloads; wired
+  into `RetryGuard` feedback loop.
+- **L3 — RAG API-doc retrieval** (`rag_apidoc`): vector-indexed SolidWorks
+  API docs surfaced during spec authoring.
+- **L4 — Checkpoint + rollback** (`checkpoint`): per-feature SQLite
+  snapshot store (`<part>.sqlite`) plus `ai-sw-history` CLI for query
+  and rollback.
+
+### Migration
+
+Upgrading from v0.11 is additive-only. See
+[`docs/migration_to_v0.12.md`](docs/migration_to_v0.12.md) for the full
+schema / CLI / sidecar diff and the backward-compatibility statement.
+
+Full lane-by-lane changelog entries land as E1–E5 merge.
+
 ## [0.11.0] - 2026-05-27
 
 ### Added — v0.11 reliability, observability, and supply-chain bundle
