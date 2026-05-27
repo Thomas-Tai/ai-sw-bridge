@@ -181,6 +181,79 @@ HINT_CATALOG: dict[str, Hint] = {
         ),
         ref_doc="docs/central_idea/spec.md §6 (locals validation)",
     ),
+    # Sketch contour validity entries — audit §6.4. SW silently degrades
+    # on the four cases below; without these hints the LLM gets a
+    # cryptic HRESULT with no path to a fix.
+    "sketch_self_intersect": Hint(
+        key="sketch_self_intersect",
+        summary=(
+            "Sketch profile crosses itself. SW warns but can still "
+            "consume the sketch — downstream FeatureExtrusion2 or "
+            "FeatureCut4 then fails with a non-specific 0x80004005 "
+            "because the resulting region is ambiguous."
+        ),
+        remedy=(
+            "Inspect the sketch in SW (Tools > Sketch Tools > Check "
+            "Sketch For Feature). Remove crossing segments or split "
+            "the profile into separate sketches. For procedurally "
+            "generated paths, validate non-self-intersection before "
+            "emitting the spec — the bridge does not currently lint "
+            "for this."
+        ),
+        ref_doc="docs/central_idea/audit_review.md §6.4",
+    ),
+    "sketch_open_contour_needed_closed": Hint(
+        key="sketch_open_contour_needed_closed",
+        summary=(
+            "Feature consumes a closed contour but the sketch is "
+            "open. Boss/Cut features (boss_extrude_blind, "
+            "cut_extrude_blind, simple_hole) require a closed "
+            "region; SW raises a cryptic 'No closed profile' error."
+        ),
+        remedy=(
+            "Add the missing segment to close the contour, OR use a "
+            "feature that accepts open contours (revolve_cut surface, "
+            "thin extrude with the open-profile option). Check by "
+            "selecting all sketch endpoints — every endpoint should "
+            "be coincident with another."
+        ),
+        ref_doc="docs/central_idea/audit_review.md §6.4",
+    ),
+    "sketch_construction_only": Hint(
+        key="sketch_construction_only",
+        summary=(
+            "Sketch contains only construction geometry (centerlines, "
+            "construction circles). FeatureExtrusion2 and FeatureCut4 "
+            "fail late because there are no real entities to sweep."
+        ),
+        remedy=(
+            "Add real sketch entities (lines, arcs, circles, or "
+            "rectangles in non-construction mode) to the sketch. "
+            "Construction lines are allowed as references inside a "
+            "sketch with real geometry, but a construction-only "
+            "sketch cannot drive a boss/cut. Verify with Tools > "
+            "Sketch Tools > Repair Sketch."
+        ),
+        ref_doc="docs/central_idea/audit_review.md §6.4",
+    ),
+    "sketch_tangent_dim_conflict": Hint(
+        key="sketch_tangent_dim_conflict",
+        summary=(
+            "A tangent geometric relation conflicts with a "
+            "dimensional constraint on the same sketch entity. SW "
+            "silently picks one and the resulting geometry doesn't "
+            "match the spec — manifest area / centroid drift."
+        ),
+        remedy=(
+            "Drop either the tangent relation or the dimensional "
+            "constraint; the spec should encode whichever is "
+            "load-bearing. If both are needed, split the profile "
+            "into two adjacent sketches with one constraint each. "
+            "Check Tools > Sketch Tools > Display/Delete Relations "
+            "to see which the solver chose."
+        ),
+        ref_doc="docs/central_idea/audit_review.md §6.4",
+    ),
 }
 
 # Fallback used when callers want a non-None placeholder for unknown
@@ -274,6 +347,35 @@ _IFACE_FEATURE_MAP: dict[tuple[str, str], str] = {
         "IFeatureManager.FeatureExtrusion2",
         "negative_offset_clash",
     ): "negative_offset_clash",
+    # Sketch contour validity (audit §6.4) — synthetic feature_type
+    # tags emitted by the validator / lint pass when it detects a
+    # sketch in one of these degraded states pre-build, or by the
+    # builder when SW's cryptic 0x80004005 maps to one of these
+    # patterns via post-mortem sketch inspection.
+    (
+        "IFeatureManager.FeatureExtrusion2",
+        "sketch_self_intersect",
+    ): "sketch_self_intersect",
+    (
+        "IFeatureManager.FeatureCut4",
+        "sketch_self_intersect",
+    ): "sketch_self_intersect",
+    (
+        "IFeatureManager.FeatureExtrusion2",
+        "sketch_open_contour_needed_closed",
+    ): "sketch_open_contour_needed_closed",
+    (
+        "IFeatureManager.FeatureCut4",
+        "sketch_open_contour_needed_closed",
+    ): "sketch_open_contour_needed_closed",
+    (
+        "IFeatureManager.FeatureExtrusion2",
+        "sketch_construction_only",
+    ): "sketch_construction_only",
+    (
+        "ISketchManager.AddRelation",
+        "sketch_tangent_dim_conflict",
+    ): "sketch_tangent_dim_conflict",
 }
 
 

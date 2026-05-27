@@ -24,15 +24,23 @@ REQUIRED_KEYS = [
     "parametric_value_out_of_range",
 ]
 
+# Sketch contour validity entries added in v0.12.2 (audit §6.4).
+SKETCH_VALIDITY_KEYS = [
+    "sketch_self_intersect",
+    "sketch_open_contour_needed_closed",
+    "sketch_construction_only",
+    "sketch_tangent_dim_conflict",
+]
 
-def test_catalog_has_nine_required_entries() -> None:
-    for key in REQUIRED_KEYS:
+
+def test_catalog_has_thirteen_required_entries() -> None:
+    for key in REQUIRED_KEYS + SKETCH_VALIDITY_KEYS:
         assert key in HINT_CATALOG, f"missing catalog entry: {key}"
-    # exactly 9 per E1.3 spec
-    assert len(HINT_CATALOG) == 9
+    # 9 from E1.3 + 4 sketch validity entries from audit §6.4
+    assert len(HINT_CATALOG) == 13
 
 
-@pytest.mark.parametrize("key", REQUIRED_KEYS)
+@pytest.mark.parametrize("key", REQUIRED_KEYS + SKETCH_VALIDITY_KEYS)
 def test_each_hint_has_non_empty_fields(key: str) -> None:
     hint = HINT_CATALOG[key]
     assert isinstance(hint, Hint)
@@ -40,6 +48,53 @@ def test_each_hint_has_non_empty_fields(key: str) -> None:
     assert hint.summary.strip(), f"{key} has empty summary"
     assert hint.remedy.strip(), f"{key} has empty remedy"
     assert hint.ref_doc.strip(), f"{key} has empty ref_doc"
+
+
+@pytest.mark.parametrize(
+    "iface_method,feature_type,expected_key",
+    [
+        (
+            "IFeatureManager.FeatureExtrusion2",
+            "sketch_self_intersect",
+            "sketch_self_intersect",
+        ),
+        (
+            "IFeatureManager.FeatureCut4",
+            "sketch_self_intersect",
+            "sketch_self_intersect",
+        ),
+        (
+            "IFeatureManager.FeatureExtrusion2",
+            "sketch_open_contour_needed_closed",
+            "sketch_open_contour_needed_closed",
+        ),
+        (
+            "IFeatureManager.FeatureCut4",
+            "sketch_open_contour_needed_closed",
+            "sketch_open_contour_needed_closed",
+        ),
+        (
+            "IFeatureManager.FeatureExtrusion2",
+            "sketch_construction_only",
+            "sketch_construction_only",
+        ),
+        (
+            "ISketchManager.AddRelation",
+            "sketch_tangent_dim_conflict",
+            "sketch_tangent_dim_conflict",
+        ),
+    ],
+)
+def test_sketch_validity_hints_resolve(
+    iface_method: str, feature_type: str, expected_key: str
+) -> None:
+    hint = resolve_hint(
+        hresult=None,
+        iface_method=iface_method,
+        feature_type=feature_type,
+    )
+    assert hint is not None, f"hint not found for {iface_method}/{feature_type}"
+    assert hint.key == expected_key
 
 
 def test_hint_is_frozen() -> None:
