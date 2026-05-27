@@ -124,26 +124,54 @@ def build_single_boss(doc: Any) -> dict[str, Any]:
     fm = doc.FeatureManager
     try:
         feat = fm.FeatureExtrusion2(
-            True, False, False,
-            0, 0,
-            BOSS_DEPTH_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0.0,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOSS_DEPTH_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
             False,
         )
     except Exception:
         feat = fm.FeatureExtrusion2(
-            True, False, False,
-            0, 0,
-            BOSS_DEPTH_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0.0,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOSS_DEPTH_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
         )
     if feat is None:
         return {
@@ -299,7 +327,9 @@ def run_com(skip_build: bool) -> dict[str, Any]:
             fail_reasons.append(f"face {p['face_idx']}.GetBox: {box.get('status')}")
         elif box.get("length") != 6:
             verdict = "FAIL"
-            fail_reasons.append(f"face {p['face_idx']}.GetBox length {box.get('length')} != 6")
+            fail_reasons.append(
+                f"face {p['face_idx']}.GetBox length {box.get('length')} != 6"
+            )
         elif not all(t == "float" for t in box.get("element_types", [])):
             verdict = "FAIL"
             fail_reasons.append(f"face {p['face_idx']}.GetBox non-float elements")
@@ -312,7 +342,9 @@ def run_com(skip_build: bool) -> dict[str, Any]:
             fail_reasons.append(f"face {p['face_idx']}.Normal: {nrm.get('status')}")
         elif nrm.get("length") != 3:
             verdict = "FAIL"
-            fail_reasons.append(f"face {p['face_idx']}.Normal length {nrm.get('length')} != 3")
+            fail_reasons.append(
+                f"face {p['face_idx']}.Normal length {nrm.get('length')} != 3"
+            )
         elif not all(t == "float" for t in nrm.get("element_types", [])):
             verdict = "FAIL"
             fail_reasons.append(f"face {p['face_idx']}.Normal non-float elements")
