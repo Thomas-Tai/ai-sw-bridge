@@ -63,6 +63,23 @@ same pattern: stop trusting "the call returned, therefore it worked."
 | U-01 | `AddDimension2` opens Modify-Dimension popup mid-build | App-level `swInputDimValOnCreate` toggle (ID=8) is read True but does NOT suppress the popup on SW 2024 SP1. No combination of doc-level toggles works either. | Set the toggle to False, call `AddDimension2`, popup still fires | Three build modes — see `build()` docstring (`builder.py:1534+`). Production paths: `--no-dim` (zero popups, no equation link) and `--deferred-dim` (popups batched per sketch). | Pre-v0.2 |
 | U-02 | `_dismiss_dim_pane` is a no-op; PM-pane stays leaky after `AddDimension2` | `RunCommand(-1)` regressed cylinder; no clean dismiss API found yet | Tick a popup, observe pane state via UI inspector | Known limitation; documented in `_sketch_primitives.py`. Spike P1.6 (`spikes/v0_10/spike_p16_pm_dismiss.py`) prepared with untested approaches (RunCommand(2421), ClosePM after ForceRebuild3, toggle 78) — requires live SW session to run | MMP debug 2026-05 |
 
+### Lane M — MCP transport (placeholder, populates when Lane M opens)
+
+Reserved for FastMCP-specific (or chosen-framework-specific)
+failure modes per [`docs/central_idea/spec.md`](central_idea/spec.md)
+§6.8 risk register. Lane M is deferred per
+[`decisions.md`](central_idea/decisions.md) 2026-05-23 entry #2
+("adoption-driven"); rows below get populated only after the lane
+opens.
+
+Anticipated rows (sketched from `SolidworksMCP-python/CLAUDE.md`
+runbook; promoted to real entries once observed):
+
+| # | Symptom | Real cause | Diagnostic | Mitigation | First seen |
+|---|---|---|---|---|---|
+| M-XX | (placeholder) `AttributeError` at attribute lookup on a COM call from an MCP-handler thread | pywin32 late-binding surfaces cross-thread invocation as `AttributeError`, not `pywintypes.com_error` — boundaries that catch only the latter miss it | The error trace shows attribute access in the MCP transport thread, not the STA worker | Route every COM-touching call through `ComExecutor.submit(...)` (FR-v0.11-M-02); cross-thread `AttributeError` becomes a typed `MCPThreadingError` at the boundary | TBD (Lane M E1 port) |
+| M-XX | (placeholder) `0x800401FD` / `0x80010108` after user closes SW mid-MCP-session | SW process death; cached `IDispatch` handle goes stale | `ComExecutor` `_sw_app_is_dead` flag flips on `_DEAD_HRESULTS` (spec.md §6.9) | `--reconnect` flag fires `pythoncom.CoInitialize` on a fresh STA thread + re-Dispatch + `RevisionNumber` floor check | TBD |
+
 ## How to add a row
 
 When you spend > 30 minutes triaging a "the API said success and nothing
@@ -76,6 +93,7 @@ happened" failure:
    - `X-*` selection / accumulator
    - `E-*` equation manager
    - `U-*` popup / UX
+   - `M-*` Lane M / MCP transport (populates when Lane M opens)
    - new prefix if none fit (document the convention here)
 3. Cross-link: the **Mitigation** column MUST point to the file/function
    where the fix lives. Tests must reference the row ID in a comment
