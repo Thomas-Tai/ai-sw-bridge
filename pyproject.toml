@@ -71,6 +71,7 @@ ai-sw-observe  = "ai_sw_bridge.cli.observe:main"
 ai-sw-mutate   = "ai_sw_bridge.cli.mutate:main"
 ai-sw-codegen  = "ai_sw_bridge.cli.codegen:main"
 ai-sw-build    = "ai_sw_bridge.cli.build:main"
+ai-sw-history  = "ai_sw_bridge.cli.history:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
