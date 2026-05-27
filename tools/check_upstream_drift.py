@@ -75,7 +75,7 @@ _CONTRIB_TABLE_ROW_RE = re.compile(
 )
 
 _UPSTREAM_REPO_MAP: dict[str, str] = {
-    "SolidworksMCP-python": "ESPO-Corporation/SolidworksMCP-python",
+    "SolidworksMCP-python": "andrewbartels1/SolidworksMCP-python",
     "mcp-server-solidworks": "eyfel/mcp-server-solidworks",
     "Solidworks-MCP": "Samsaam-Ali-Baig/Solidworks-MCP",
     "CAD-MCP": "ruicao/CAD-MCP",
@@ -86,10 +86,21 @@ _UPSTREAM_REPO_MAP: dict[str, str] = {
     "codestack": "Xarial/Xarial.CadPlus",
 }
 
+_MD_LINK_RE = re.compile(r"\[([^\]]+)\]\(https?://github\.com/([^/\s)]+/[^/\s)]+?)/?\)")
+
 
 def _resolve_repo_name(raw: str) -> str:
-    """Map a loose upstream name to 'owner/repo' for the GitHub API."""
+    """Map a loose upstream name to 'owner/repo' for the GitHub API.
+
+    Accepts:
+      - "owner/repo"            → returned as-is
+      - "[name](github URL)"    → owner/repo extracted from the URL
+      - "name" (bare)           → looked up in _UPSTREAM_REPO_MAP
+    """
     raw = raw.strip()
+    md = _MD_LINK_RE.search(raw)
+    if md:
+        return md.group(2)
     if "/" in raw:
         return raw
     return _UPSTREAM_REPO_MAP.get(raw, raw)
@@ -118,7 +129,9 @@ def read_pins_from_harvest_plan(path: Path | None = None) -> list[UpstreamPin]:
             continue
         source_raw = source_match.group(1).strip()
         target_raw = target_match.group(1).strip() if target_match else ""
-        pinned_sha = sha_match.group(1) if sha_match else ""
+        if not sha_match:
+            continue
+        pinned_sha = sha_match.group(1)
         repo = _resolve_repo_name(source_raw.split("/")[0].replace("-main", ""))
         if repo and "/" in repo:
             pins.append(
@@ -177,6 +190,7 @@ def collect_pins() -> list[UpstreamPin]:
 # ---------------------------------------------------------------------------
 # GitHub API queries
 # ---------------------------------------------------------------------------
+
 
 def _github_get(url: str, etag: str = "") -> tuple[Any, str]:
     """GET *url* from the GitHub API. Returns (parsed_json, etag)."""
@@ -247,6 +261,7 @@ def check_drift(pin: UpstreamPin) -> DriftResult:
 # Output formatters
 # ---------------------------------------------------------------------------
 
+
 def format_table(results: list[DriftResult]) -> str:
     """Format results as a markdown table."""
     lines = [
@@ -286,6 +301,7 @@ def format_json(results: list[DriftResult]) -> str:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Check upstream repo drift against pinned commits.",
@@ -307,7 +323,10 @@ def main(argv: list[str] | None = None) -> int:
 
     pins = collect_pins()
     if not pins:
-        print("No upstream pins found in harvest_plan.md or CONTRIBUTING.md.", file=sys.stderr)
+        print(
+            "No upstream pins found in harvest_plan.md or CONTRIBUTING.md.",
+            file=sys.stderr,
+        )
         return 0
 
     results: list[DriftResult] = []

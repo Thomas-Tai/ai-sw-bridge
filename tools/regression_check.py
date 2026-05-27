@@ -163,11 +163,17 @@ def _check_slo_and_baseline(
     # SLO-01: p95 < 12 s
     if p95 is not None and p95 > SLO_01_P95_MAX_S:
         ok = False
-        print(f"FAIL SLO-01: p95 = {p95:.3f}s exceeds {SLO_01_P95_MAX_S}s", file=sys.stderr)
+        print(
+            f"FAIL SLO-01: p95 = {p95:.3f}s exceeds {SLO_01_P95_MAX_S}s",
+            file=sys.stderr,
+        )
     # SLO-02: p99 < 25 s
     if p99 is not None and p99 > SLO_02_P99_MAX_S:
         ok = False
-        print(f"FAIL SLO-02: p99 = {p99:.3f}s exceeds {SLO_02_P99_MAX_S}s", file=sys.stderr)
+        print(
+            f"FAIL SLO-02: p99 = {p99:.3f}s exceeds {SLO_02_P99_MAX_S}s",
+            file=sys.stderr,
+        )
 
     # Baseline comparison
     if baseline_path is not None and baseline_path.exists():
@@ -229,7 +235,9 @@ def capture(
         print(f"OK ({golden['feature_count']} features, {total} mm^3, {elapsed:.1f}s)")
 
     percentiles = _compute_percentiles(spec_times)
-    print(f"\nSLI: p50={percentiles['p50']}s p95={percentiles['p95']}s p99={percentiles['p99']}s ({len(spec_times)} specs)")
+    print(
+        f"\nSLI: p50={percentiles['p50']}s p95={percentiles['p95']}s p99={percentiles['p99']}s ({len(spec_times)} specs)"
+    )
 
     if not _check_slo_and_baseline(percentiles, baseline_compare):
         ok = False
@@ -237,7 +245,9 @@ def capture(
     if write_baseline is not None:
         payload = _make_perf_payload(percentiles, len(specs), spec_times)
         write_baseline.parent.mkdir(parents=True, exist_ok=True)
-        write_baseline.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        write_baseline.write_text(
+            json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+        )
         print(f"Baseline written to {write_baseline}", file=sys.stderr)
 
     return 0 if ok else 2
@@ -282,7 +292,9 @@ def check(
             print(f"OK   {name} ({total} mm^3, {elapsed:.1f}s)")
 
     percentiles = _compute_percentiles(spec_times)
-    print(f"\nSLI: p50={percentiles['p50']}s p95={percentiles['p95']}s p99={percentiles['p99']}s ({len(spec_times)} specs)")
+    print(
+        f"\nSLI: p50={percentiles['p50']}s p95={percentiles['p95']}s p99={percentiles['p99']}s ({len(spec_times)} specs)"
+    )
 
     slo_ok = _check_slo_and_baseline(percentiles, baseline_compare)
 
@@ -296,7 +308,9 @@ def check(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Golden volume regression check with SLI instrumentation")
+    parser = argparse.ArgumentParser(
+        description="Golden volume regression check with SLI instrumentation"
+    )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "--capture", action="store_true", help="Record golden baselines (live SW)"
@@ -320,7 +334,9 @@ def main() -> int:
     )
     args = parser.parse_args()
     if args.capture:
-        return capture(write_baseline=args.write_baseline, baseline_compare=args.baseline_compare)
+        return capture(
+            write_baseline=args.write_baseline, baseline_compare=args.baseline_compare
+        )
     return check(baseline_compare=args.baseline_compare)
 
 

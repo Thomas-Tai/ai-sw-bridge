@@ -141,9 +141,7 @@ class TestWithReconnect:
     @patch("ai_sw_bridge.com.connection.reconnect_sw_app")
     def test_stale_error_with_reconnect_retries_once(self, mock_reconnect):
         mock_reconnect.return_value = MagicMock()
-        fn = MagicMock(
-            side_effect=[ComError(0x800706BA), "recovered"]
-        )
+        fn = MagicMock(side_effect=[ComError(0x800706BA), "recovered"])
         result = with_reconnect(fn, reconnect=True)
         assert result == "recovered"
         assert fn.call_count == 2
@@ -192,9 +190,7 @@ class TestAcceptance:
         """With --reconnect, a stale-handle error triggers one reconnect
         and retry, allowing the operation to succeed."""
         mock_reconnect.return_value = MagicMock()
-        fn = MagicMock(
-            side_effect=[ComError(0x800706BA), "success"]
-        )
+        fn = MagicMock(side_effect=[ComError(0x800706BA), "success"])
         result = with_reconnect(fn, reconnect=True)
         assert result == "success"
         mock_reconnect.assert_called_once()

@@ -69,6 +69,7 @@ class Counter:
         elapsed_us = (time.perf_counter() - t0) * 1e6
         if elapsed_us > 100:
             import sys
+
             print(
                 f"telemetry: Counter.inc took {elapsed_us:.0f} µs "
                 f"(budget: 100 µs) for {self._name}",
@@ -81,7 +82,9 @@ class Counter:
 COUNTERS: dict[str, Counter] = {
     "builds_total": Counter("builds_total", labels=("mode", "outcome")),
     "com_errors_total": Counter("com_errors_total", labels=("iface_method", "hresult")),
-    "hint_emissions_total": Counter("hint_emissions_total", labels=("hint_key", "iface_method")),
+    "hint_emissions_total": Counter(
+        "hint_emissions_total", labels=("hint_key", "iface_method")
+    ),
     "auto_retry_outcomes_total": Counter(
         "auto_retry_outcomes_total", labels=("attempt", "outcome")
     ),

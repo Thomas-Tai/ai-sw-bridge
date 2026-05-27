@@ -38,7 +38,12 @@ def _agents_md_types(agents_md: Path) -> set[str]:
     (e.g. ``sketch_rectangle_on_plane``).
     """
     text = agents_md.read_text(encoding="utf-8")
-    return set(re.findall(r"`(sketch_\w+|boss_\w+|cut_\w+|revolve_\w+|fillet_\w+|chamfer_\w+|simple_\w+|linear_\w+|circular_\w+|mirror_\w+)`", text))
+    return set(
+        re.findall(
+            r"`(sketch_\w+|boss_\w+|cut_\w+|revolve_\w+|fillet_\w+|chamfer_\w+|simple_\w+|linear_\w+|circular_\w+|mirror_\w+)`",
+            text,
+        )
+    )
 
 
 def _example_spec_types() -> set[str]:
@@ -128,13 +133,18 @@ def check_agents_md_drift(schema: set[str]) -> bool:
         missing_docs = schema - documented
         if missing_docs:
             ok = False
-            print("MISSING from spec_reference.md (schema type has no section heading):")
+            print(
+                "MISSING from spec_reference.md (schema type has no section heading):"
+            )
             for t in sorted(missing_docs):
                 print(f"  - {t}")
         else:
             print(f"OK: all {len(schema)} schema types have spec_reference.md headings")
     else:
-        print(f"WARN: {spec_ref} not found, skipping spec_reference.md check", file=sys.stderr)
+        print(
+            f"WARN: {spec_ref} not found, skipping spec_reference.md check",
+            file=sys.stderr,
+        )
 
     return ok
 

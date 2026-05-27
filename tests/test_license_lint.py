@@ -81,11 +81,13 @@ def test_find_ported_files_ignores_non_ported(tmp_path: Path) -> None:
 
 
 def test_check_docstring_clean() -> None:
-    text = textwrap.dedent("""\
+    text = textwrap.dedent(
+        """\
         Ported from SolidworksMCP-python-main.
         Upstream commit: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
         License: MIT
-    """)
+    """
+    )
     errors = _check_docstring(Path("src/foo.py"), text)
     assert errors == []
 
@@ -108,9 +110,7 @@ def test_check_docstring_missing_commit(tmp_path: Path) -> None:
 
 
 def test_gpl_upstream_rejected() -> None:
-    errors = _check_license_classification(
-        "pySolidWorks-main", Path("src/foo.py")
-    )
+    errors = _check_license_classification("pySolidWorks-main", Path("src/foo.py"))
     assert any("GPL" in e and "forbidden" in e for e in errors)
 
 
@@ -122,9 +122,7 @@ def test_no_license_upstream_rejected() -> None:
 
 
 def test_unknown_upstream_flagged() -> None:
-    errors = _check_license_classification(
-        "some-unknown-repo", Path("src/foo.py")
-    )
+    errors = _check_license_classification("some-unknown-repo", Path("src/foo.py"))
     assert any("not found in license matrix" in e for e in errors)
 
 
@@ -144,13 +142,15 @@ def test_parse_contributing_table(tmp_path: Path) -> None:
     contrib = _write(
         tmp_path,
         "CONTRIBUTING.md",
-        textwrap.dedent("""\
+        textwrap.dedent(
+            """\
             ## Third-party derivations
 
             | Target file | Upstream repo | License | Upstream commit | Ported | DRI | Notes |
             | --- | --- | --- | --- | --- | --- | --- |
             | src/ai_sw_bridge/errors/circuit_breaker.py | SolidworksMCP-python-main | MIT | abc123 | 2026-01-01 | TBD | test |
-        """),
+        """
+        ),
     )
     rows = _parse_contributing_table(contrib)
     assert "src/ai_sw_bridge/errors/circuit_breaker.py" in rows
@@ -188,14 +188,16 @@ def test_license_lint_catches_gpl_port(tmp_path: Path) -> None:
     src = tmp_path / "src" / "pkg"
     src.mkdir(parents=True)
     (src / "gpl_mod.py").write_text(
-        textwrap.dedent("""\
+        textwrap.dedent(
+            """\
             \"\"\"Bad port.
 
             Ported from pySolidWorks-main.
             Upstream commit: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
             License: GPL-3.0
             \"\"\"
-        """),
+        """
+        ),
         encoding="utf-8",
     )
     # Minimal CONTRIBUTING.md and README.md so the lint doesn't complain
@@ -229,13 +231,15 @@ def test_license_lint_catches_no_license_port(tmp_path: Path) -> None:
     src = tmp_path / "src" / "pkg"
     src.mkdir(parents=True)
     (src / "nolicense_mod.py").write_text(
-        textwrap.dedent("""\
+        textwrap.dedent(
+            """\
             \"\"\"Bad port.
 
             Ported from swapi-pilot-solidworks-mcp-main.
             Upstream commit: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
             \"\"\"
-        """),
+        """
+        ),
         encoding="utf-8",
     )
     (tmp_path / "CONTRIBUTING.md").write_text("", encoding="utf-8")
@@ -260,14 +264,16 @@ def test_license_lint_catches_missing_contributing_row(tmp_path: Path) -> None:
     src = tmp_path / "src" / "pkg"
     src.mkdir(parents=True)
     (src / "clean_port.py").write_text(
-        textwrap.dedent("""\
+        textwrap.dedent(
+            """\
             \"\"\"Good port.
 
             Ported from SolidworksMCP-python-main.
             Upstream commit: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
             License: MIT
             \"\"\"
-        """),
+        """
+        ),
         encoding="utf-8",
     )
     (tmp_path / "CONTRIBUTING.md").write_text("", encoding="utf-8")

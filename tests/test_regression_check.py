@@ -139,7 +139,9 @@ class TestBaselineRegression:
 class TestMakePerfPayload:
     def test_structure(self):
         percentiles = {"p50": 3.0, "p95": 8.0, "p99": 15.0}
-        payload = _make_perf_payload(percentiles, n_specs=15, spec_times=[1.0, 2.0, 3.0])
+        payload = _make_perf_payload(
+            percentiles, n_specs=15, spec_times=[1.0, 2.0, 3.0]
+        )
         assert payload["p50"] == 3.0
         assert payload["p95"] == 8.0
         assert payload["p99"] == 15.0

@@ -74,7 +74,9 @@ class TestTwoStreamLint:
 
     def test_cli_emitter_bare_print_allowed(self, tmp_path):
         src = tmp_path / "build.py"
-        src.write_text('import json\nprint(json.dumps({"ok": True}))\n', encoding="utf-8")
+        src.write_text(
+            'import json\nprint(json.dumps({"ok": True}))\n', encoding="utf-8"
+        )
         proc = _run_lint(tmp_path)
         assert proc.returncode == 0
 
@@ -91,7 +93,7 @@ class TestTwoStreamLint:
         """f-strings with incidental braces (e.g. example JSON in warnings) are OK."""
         src = tmp_path / "mymod.py"
         src.write_text(
-            'import sys\nprint(f\'add `center: {{"u": 1}}`\', file=sys.stderr)\n',
+            "import sys\nprint(f'add `center: {{\"u\": 1}}`', file=sys.stderr)\n",
             encoding="utf-8",
         )
         proc = _run_lint(tmp_path)
@@ -112,7 +114,13 @@ class TestTwoStreamContractIntegration:
     def test_build_validate_only_stdout_is_json(self):
         spec = REPO_ROOT / "examples" / "filleted_box" / "spec.json"
         proc = subprocess.run(
-            [sys.executable, "-m", "ai_sw_bridge.cli.build", str(spec), "--validate-only"],
+            [
+                sys.executable,
+                "-m",
+                "ai_sw_bridge.cli.build",
+                str(spec),
+                "--validate-only",
+            ],
             capture_output=True,
             text=True,
             timeout=15,

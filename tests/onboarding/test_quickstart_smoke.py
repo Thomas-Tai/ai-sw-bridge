@@ -41,7 +41,13 @@ class TestQuickstartSmoke:
     def test_validate_only_succeeds(self):
         """ai-sw-build <spec> --validate-only exits 0 and returns ok:true."""
         proc = _run(
-            [sys.executable, "-m", "ai_sw_bridge.cli.build", str(EXAMPLE_SPEC), "--validate-only"]
+            [
+                sys.executable,
+                "-m",
+                "ai_sw_bridge.cli.build",
+                str(EXAMPLE_SPEC),
+                "--validate-only",
+            ]
         )
         assert proc.returncode == 0, f"stderr: {proc.stderr}"
         payload = json.loads(proc.stdout)
@@ -52,7 +58,13 @@ class TestQuickstartSmoke:
     def test_dry_run_succeeds(self):
         """ai-sw-build <spec> --dry-run exits 0 and returns a feature plan."""
         proc = _run(
-            [sys.executable, "-m", "ai_sw_bridge.cli.build", str(EXAMPLE_SPEC), "--dry-run"]
+            [
+                sys.executable,
+                "-m",
+                "ai_sw_bridge.cli.build",
+                str(EXAMPLE_SPEC),
+                "--dry-run",
+            ]
         )
         assert proc.returncode == 0, f"stderr: {proc.stderr}"
         payload = json.loads(proc.stdout)
@@ -64,10 +76,23 @@ class TestQuickstartSmoke:
     def test_dry_run_output_is_valid_json(self):
         """Dry-run output parses as valid JSON with the expected schema keys."""
         proc = _run(
-            [sys.executable, "-m", "ai_sw_bridge.cli.build", str(EXAMPLE_SPEC), "--dry-run"]
+            [
+                sys.executable,
+                "-m",
+                "ai_sw_bridge.cli.build",
+                str(EXAMPLE_SPEC),
+                "--dry-run",
+            ]
         )
         payload = json.loads(proc.stdout)
-        for key in ("ok", "dry_run", "spec_name", "schema_version", "feature_count", "features"):
+        for key in (
+            "ok",
+            "dry_run",
+            "spec_name",
+            "schema_version",
+            "feature_count",
+            "features",
+        ):
             assert key in payload, f"missing key: {key}"
 
     def test_example_spec_file_exists(self):
@@ -79,7 +104,13 @@ class TestQuickstartSmoke:
         bad_spec = tmp_path / "bad.json"
         bad_spec.write_text('{"schema_version": 1, "name": "X"}', encoding="utf-8")
         proc = _run(
-            [sys.executable, "-m", "ai_sw_bridge.cli.build", str(bad_spec), "--validate-only"]
+            [
+                sys.executable,
+                "-m",
+                "ai_sw_bridge.cli.build",
+                str(bad_spec),
+                "--validate-only",
+            ]
         )
         assert proc.returncode != 0
         payload = json.loads(proc.stdout)
@@ -94,7 +125,13 @@ class TestQuickstartSmoke:
     def test_lint_flag_works(self):
         """ai-sw-build <spec> --lint exits 0 on the clean example spec."""
         proc = _run(
-            [sys.executable, "-m", "ai_sw_bridge.cli.build", str(EXAMPLE_SPEC), "--lint"]
+            [
+                sys.executable,
+                "-m",
+                "ai_sw_bridge.cli.build",
+                str(EXAMPLE_SPEC),
+                "--lint",
+            ]
         )
         assert proc.returncode == 0, f"stderr: {proc.stderr}"
         payload = json.loads(proc.stdout)

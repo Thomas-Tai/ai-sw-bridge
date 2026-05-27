@@ -51,7 +51,9 @@ class TestDefaultState:
             assert flag.name == name
             assert isinstance(flag.description, str) and len(flag.description) > 0
             assert flag.lane in ("L1", "L2", "L3", "L4", "M", "core")
-            assert isinstance(flag.removal_date, str) and flag.removal_date.startswith("v")
+            assert isinstance(flag.removal_date, str) and flag.removal_date.startswith(
+                "v"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -84,10 +86,12 @@ class TestPrecedence:
     def test_toml_overrides_default(self, tmp_path):
         toml_file = tmp_path / ".ai-sw-bridge.toml"
         toml_file.write_text(
-            textwrap.dedent("""\
+            textwrap.dedent(
+                """\
                 [flags]
                 rag_apidoc = true
-            """),
+            """
+            ),
             encoding="utf-8",
         )
         result = resolve(toml_path=toml_file)
@@ -97,10 +101,12 @@ class TestPrecedence:
     def test_env_overrides_toml(self, monkeypatch, tmp_path):
         toml_file = tmp_path / ".ai-sw-bridge.toml"
         toml_file.write_text(
-            textwrap.dedent("""\
+            textwrap.dedent(
+                """\
                 [flags]
                 rag_apidoc = true
-            """),
+            """
+            ),
             encoding="utf-8",
         )
         monkeypatch.setenv(_env_var_name("rag_apidoc"), "0")
@@ -111,11 +117,13 @@ class TestPrecedence:
         """CLI > env > TOML > default for each flag in the chain."""
         toml_file = tmp_path / ".ai-sw-bridge.toml"
         toml_file.write_text(
-            textwrap.dedent("""\
+            textwrap.dedent(
+                """\
                 [flags]
                 brep_interrogation = true
                 checkpoint = true
-            """),
+            """
+            ),
             encoding="utf-8",
         )
         # env overrides TOML for checkpoint
@@ -154,7 +162,9 @@ class TestUnknownFlag:
 
     def test_parse_flag_args_rejects_contradictory(self):
         with pytest.raises(ValueError, match="both enabled and disabled"):
-            parse_flag_args(enable=["brep_interrogation"], disable=["brep_interrogation"])
+            parse_flag_args(
+                enable=["brep_interrogation"], disable=["brep_interrogation"]
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -171,7 +181,9 @@ class TestEnvVarParsing:
     def test_falsy_values(self, monkeypatch):
         for val in ("0", "false", "False", "FALSE", "no", "No", "NO"):
             monkeypatch.setenv(_env_var_name("brep_interrogation"), val)
-            assert _read_env("brep_interrogation") is False, f"expected False for {val!r}"
+            assert (
+                _read_env("brep_interrogation") is False
+            ), f"expected False for {val!r}"
 
     def test_unparseable_returns_none(self, monkeypatch):
         monkeypatch.setenv(_env_var_name("brep_interrogation"), "maybe")
@@ -185,7 +197,9 @@ class TestEnvVarParsing:
     def test_unparseable_falls_through_to_default(self, monkeypatch):
         monkeypatch.setenv(_env_var_name("brep_interrogation"), "maybe")
         result = resolve()
-        assert result["brep_interrogation"] is FLAG_REGISTRY["brep_interrogation"].default
+        assert (
+            result["brep_interrogation"] is FLAG_REGISTRY["brep_interrogation"].default
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -223,10 +237,14 @@ class TestParseFlagArgs:
         assert parse_flag_args(None, None) == {}
 
     def test_enable_single(self):
-        assert parse_flag_args(["brep_interrogation"], None) == {"brep_interrogation": True}
+        assert parse_flag_args(["brep_interrogation"], None) == {
+            "brep_interrogation": True
+        }
 
     def test_disable_single(self):
-        assert parse_flag_args(None, ["brep_interrogation"]) == {"brep_interrogation": False}
+        assert parse_flag_args(None, ["brep_interrogation"]) == {
+            "brep_interrogation": False
+        }
 
     def test_mixed(self):
         result = parse_flag_args(["brep_interrogation"], ["checkpoint"])

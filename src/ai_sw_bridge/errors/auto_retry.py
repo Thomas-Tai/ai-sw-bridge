@@ -27,7 +27,9 @@ from ..telemetry.store import TelemetryStore
 class IdenticalSpecError(Exception):
     """Raised when a spec identical to a prior attempt is submitted."""
 
-    def __init__(self, spec_hash: str, attempt_count: int, last_error: str | None) -> None:
+    def __init__(
+        self, spec_hash: str, attempt_count: int, last_error: str | None
+    ) -> None:
         self.spec_hash = spec_hash
         self.attempt_count = attempt_count
         self.last_error = last_error

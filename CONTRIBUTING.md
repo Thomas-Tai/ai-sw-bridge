@@ -93,9 +93,9 @@ required (see `docs/central_idea/harvest_plan.md` §5 for the full process):
 2. **This table** — one row per ported file
 3. **README.md** — one consolidated-credit line per upstream repo
 
-| Target file | Source repo | Source path | License | Upstream commit |
-|---|---|---|---|---|
-| `src/ai_sw_bridge/errors/circuit_breaker.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | `src/solidworks_mcp/adapters/circuit_breaker.py` | MIT | a10fb74933bb681a5d1569621b33bdcb213faae0 |
+| Target file | Upstream repo | License | Upstream commit | Ported | DRI | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| `src/ai_sw_bridge/errors/circuit_breaker.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | a10fb74933bb681a5d1569621b33bdcb213faae0 | 2026-05-24 | TBD | `src/solidworks_mcp/adapters/circuit_breaker.py` — sync wrapper extraction |
 
 ## License
 

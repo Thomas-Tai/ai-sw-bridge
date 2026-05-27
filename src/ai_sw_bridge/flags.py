@@ -190,7 +190,9 @@ def resolve(
     return resolved
 
 
-def parse_flag_args(enable: list[str] | None, disable: list[str] | None) -> dict[str, bool]:
+def parse_flag_args(
+    enable: list[str] | None, disable: list[str] | None
+) -> dict[str, bool]:
     """Convert ``--enable-flag`` / ``--disable-flag`` lists into a single overrides dict.
 
     Validates every flag name against ``FLAG_REGISTRY``. Raises ``ValueError``

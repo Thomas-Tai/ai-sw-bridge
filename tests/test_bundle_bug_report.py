@@ -18,11 +18,13 @@ def project_dir(tmp_path):
     spec_dir = tmp_path / "examples" / "test_part"
     spec_dir.mkdir(parents=True)
     (spec_dir / "spec.json").write_text(
-        json.dumps({
-            "schema_version": 1,
-            "name": "TestPart",
-            "features": [],
-        }),
+        json.dumps(
+            {
+                "schema_version": 1,
+                "name": "TestPart",
+                "features": [],
+            }
+        ),
         encoding="utf-8",
     )
     locals_file = spec_dir / "test_locals.txt"
@@ -58,7 +60,7 @@ class TestScrub:
         assert result == "<redacted_locals>"
 
     def test_non_locals_file_partially_redacted(self):
-        content = 'var S1B_HEIGHT and path C:\\secret\\file.txt'
+        content = "var S1B_HEIGHT and path C:\\secret\\file.txt"
         result = redact_file_contents(content, is_locals=False)
         assert "<redacted_local>" in result
         assert "secret" not in result
@@ -69,6 +71,7 @@ class TestConsentGate:
         monkeypatch.chdir(project_dir)
         with pytest.raises(SystemExit):
             import tools.bundle_bug_report as bbr
+
             bbr.main()
 
     def test_bundle_with_no_telemetry_flag(self, project_dir, monkeypatch):
@@ -84,6 +87,7 @@ class TestConsentGate:
     def test_bundle_with_consent(self, project_dir, consent_file, monkeypatch):
         monkeypatch.chdir(project_dir)
         import tools.bundle_bug_report as bbr
+
         monkeypatch.setattr(bbr, "_CONSENT_FILE", consent_file)
         zip_path = bundle(output_dir=project_dir)
         assert zip_path.exists()
@@ -93,6 +97,7 @@ class TestZipIntegrity:
     def test_zip_contains_readme(self, project_dir, consent_file, monkeypatch):
         monkeypatch.chdir(project_dir)
         import tools.bundle_bug_report as bbr
+
         monkeypatch.setattr(bbr, "_CONSENT_FILE", consent_file)
         zip_path = bundle(output_dir=project_dir)
         with zipfile.ZipFile(zip_path) as zf:
@@ -102,6 +107,7 @@ class TestZipIntegrity:
     def test_zip_contains_spec(self, project_dir, consent_file, monkeypatch):
         monkeypatch.chdir(project_dir)
         import tools.bundle_bug_report as bbr
+
         monkeypatch.setattr(bbr, "_CONSENT_FILE", consent_file)
         zip_path = bundle(output_dir=project_dir)
         with zipfile.ZipFile(zip_path) as zf:
@@ -114,6 +120,7 @@ class TestZipIntegrity:
     def test_zip_locals_redacted(self, project_dir, consent_file, monkeypatch):
         monkeypatch.chdir(project_dir)
         import tools.bundle_bug_report as bbr
+
         monkeypatch.setattr(bbr, "_CONSENT_FILE", consent_file)
         zip_path = bundle(output_dir=project_dir)
         with zipfile.ZipFile(zip_path) as zf:

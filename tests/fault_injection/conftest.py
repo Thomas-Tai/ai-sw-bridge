@@ -17,6 +17,7 @@ from typing import Any
 @dataclass
 class ComError:
     """Stand-in for pywintypes.com_error for fault injection without pywin32."""
+
     hresult: int
     strerror: str
     details: tuple[str, str, str] = ("", "", "")
@@ -28,6 +29,7 @@ class ComError:
 # HRESULT catalog per task spec and spec.md §8.3.
 class HRESULT:
     """Known COM error HRESULTs for fault injection."""
+
     RPC_S_SERVER_UNAVAILABLE = 0x800706BA
     RPC_E_DISCONNECTED = 0x80010108
     DISP_E_MEMBERNOTFOUND = 0x80020003

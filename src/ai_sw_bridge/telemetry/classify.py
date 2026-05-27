@@ -12,16 +12,20 @@ envelope waits for Task 1.2 (errors/ package creation).
 from __future__ import annotations
 
 # Known HRESULTs from spec.md §6.9 and audit §4.2.
-_TIER_B_HRESULTS: frozenset[str] = frozenset({
-    "0x800706BA",  # RPC_S_SERVER_UNAVAILABLE
-    "0x80010108",  # RPC_E_DISCONNECTED
-    "0x80020003",  # DISP_E_MEMBERNOTFOUND
-    "0x8002000B",  # DISP_E_BADINDEX
-})
+_TIER_B_HRESULTS: frozenset[str] = frozenset(
+    {
+        "0x800706BA",  # RPC_S_SERVER_UNAVAILABLE
+        "0x80010108",  # RPC_E_DISCONNECTED
+        "0x80020003",  # DISP_E_MEMBERNOTFOUND
+        "0x8002000B",  # DISP_E_BADINDEX
+    }
+)
 
-_TIER_C_HRESULTS: frozenset[str] = frozenset({
-    "0x800401F0",  # CO_E_NOTINITIALIZED (STA discipline violation)
-})
+_TIER_C_HRESULTS: frozenset[str] = frozenset(
+    {
+        "0x800401F0",  # CO_E_NOTINITIALIZED (STA discipline violation)
+    }
+)
 
 
 def classify_hresult(hresult: int | str) -> str:

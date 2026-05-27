@@ -30,8 +30,11 @@ pytestmark = pytest.mark.fault_injection
 class TestHRESULTTierClassification:
     """Verify each HRESULT maps to the correct Tier A/B/C classification."""
 
-    @pytest.mark.parametrize("hresult,expected_tier", list(EXPECTED_TIERS.items()),
-                             ids=[f"{h:#010x}" for h in EXPECTED_TIERS])
+    @pytest.mark.parametrize(
+        "hresult,expected_tier",
+        list(EXPECTED_TIERS.items()),
+        ids=[f"{h:#010x}" for h in EXPECTED_TIERS],
+    )
     def test_hresult_classifies_to_correct_tier(self, hresult: int, expected_tier: str):
         assert classify_hresult(hresult) == expected_tier, (
             f"HRESULT {hresult:#010x} classified as {classify_hresult(hresult)}, "
@@ -46,21 +49,24 @@ class TestFaultInjectorMechanics:
     """Verify FaultInjector fires correctly at configured injection points."""
 
     def test_no_fault_when_inactive(self, fault_injector: FaultInjector):
-        fault_injector.add_fault("FeatureExtrusion2", attempt=1,
-                                 hresult=HRESULT.RPC_S_SERVER_UNAVAILABLE)
+        fault_injector.add_fault(
+            "FeatureExtrusion2", attempt=1, hresult=HRESULT.RPC_S_SERVER_UNAVAILABLE
+        )
         assert fault_injector.check("FeatureExtrusion2") is None
 
     def test_fault_fires_at_configured_attempt(self, fault_injector: FaultInjector):
-        fault_injector.add_fault("FeatureExtrusion2", attempt=1,
-                                 hresult=HRESULT.RPC_S_SERVER_UNAVAILABLE)
+        fault_injector.add_fault(
+            "FeatureExtrusion2", attempt=1, hresult=HRESULT.RPC_S_SERVER_UNAVAILABLE
+        )
         with fault_injector.active():
             err = fault_injector.check("FeatureExtrusion2")
         assert err is not None
         assert err.hresult == HRESULT.RPC_S_SERVER_UNAVAILABLE
 
     def test_fault_only_fires_on_matching_attempt(self, fault_injector: FaultInjector):
-        fault_injector.add_fault("FeatureExtrusion2", attempt=2,
-                                 hresult=HRESULT.RPC_E_DISCONNECTED)
+        fault_injector.add_fault(
+            "FeatureExtrusion2", attempt=2, hresult=HRESULT.RPC_E_DISCONNECTED
+        )
         with fault_injector.active():
             assert fault_injector.check("FeatureExtrusion2") is None  # attempt 1
             err = fault_injector.check("FeatureExtrusion2")  # attempt 2
@@ -68,10 +74,12 @@ class TestFaultInjectorMechanics:
         assert err.hresult == HRESULT.RPC_E_DISCONNECTED
 
     def test_multiple_methods_independent(self, fault_injector: FaultInjector):
-        fault_injector.add_fault("FeatureExtrusion2", attempt=1,
-                                 hresult=HRESULT.RPC_S_SERVER_UNAVAILABLE)
-        fault_injector.add_fault("SimpleHole2", attempt=1,
-                                 hresult=HRESULT.DISP_E_BADINDEX)
+        fault_injector.add_fault(
+            "FeatureExtrusion2", attempt=1, hresult=HRESULT.RPC_S_SERVER_UNAVAILABLE
+        )
+        fault_injector.add_fault(
+            "SimpleHole2", attempt=1, hresult=HRESULT.DISP_E_BADINDEX
+        )
         with fault_injector.active():
             err1 = fault_injector.check("FeatureExtrusion2")
             err2 = fault_injector.check("SimpleHole2")
@@ -79,8 +87,9 @@ class TestFaultInjectorMechanics:
         assert err2 is not None and err2.hresult == HRESULT.DISP_E_BADINDEX
 
     def test_reset_clears_call_counts(self, fault_injector: FaultInjector):
-        fault_injector.add_fault("FeatureExtrusion2", attempt=1,
-                                 hresult=HRESULT.RPC_S_SERVER_UNAVAILABLE)
+        fault_injector.add_fault(
+            "FeatureExtrusion2", attempt=1, hresult=HRESULT.RPC_S_SERVER_UNAVAILABLE
+        )
         with fault_injector.active():
             fault_injector.check("FeatureExtrusion2")  # fires, consumed
         fault_injector.reset()
@@ -102,27 +111,29 @@ class TestHRESULTCatalog:
     def test_all_catalog_hresults_have_tiers(self):
         for hresult in EXPECTED_TIERS:
             tier = classify_hresult(hresult)
-            assert tier in ("A", "B", "C"), (
-                f"HRESULT {hresult:#010x} has unexpected tier {tier!r}"
-            )
+            assert tier in (
+                "A",
+                "B",
+                "C",
+            ), f"HRESULT {hresult:#010x} has unexpected tier {tier!r}"
 
     def test_all_catalog_hresults_have_descriptions(self):
         for hresult in EXPECTED_TIERS:
-            assert hresult in HRESULT_DESCRIPTIONS, (
-                f"HRESULT {hresult:#010x} missing from HRESULT_DESCRIPTIONS"
-            )
+            assert (
+                hresult in HRESULT_DESCRIPTIONS
+            ), f"HRESULT {hresult:#010x} missing from HRESULT_DESCRIPTIONS"
 
     def test_tier_b_count_matches(self):
         tier_b = [h for h, t in EXPECTED_TIERS.items() if t == "B"]
-        assert len(tier_b) == 4, (
-            f"expected 4 Tier B HRESULTs (marshaling), got {len(tier_b)}"
-        )
+        assert (
+            len(tier_b) == 4
+        ), f"expected 4 Tier B HRESULTs (marshaling), got {len(tier_b)}"
 
     def test_tier_c_count_matches(self):
         tier_c = [h for h, t in EXPECTED_TIERS.items() if t == "C"]
-        assert len(tier_c) == 1, (
-            f"expected 1 Tier C HRESULT (STA violation), got {len(tier_c)}"
-        )
+        assert (
+            len(tier_c) == 1
+        ), f"expected 1 Tier C HRESULT (STA violation), got {len(tier_c)}"
 
     def test_tier_c_is_sta_violation(self):
         assert EXPECTED_TIERS[HRESULT.CO_E_NOTINITIALIZED] == "C"

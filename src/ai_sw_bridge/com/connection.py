@@ -24,10 +24,12 @@ logger = logging.getLogger("ai_sw_bridge.com.connection")
 
 # HRESULTs that indicate a stale handle (SW process died or disconnected).
 # Per audit §6.5 and spec.md §6.9. List to be confirmed empirically.
-STALE_HANDLE_HRESULTS: frozenset[int] = frozenset({
-    0x800706BA,  # RPC_S_SERVER_UNAVAILABLE
-    0x80010108,  # RPC_E_DISCONNECTED
-})
+STALE_HANDLE_HRESULTS: frozenset[int] = frozenset(
+    {
+        0x800706BA,  # RPC_S_SERVER_UNAVAILABLE
+        0x80010108,  # RPC_E_DISCONNECTED
+    }
+)
 
 F = TypeVar("F", bound=Callable[..., Any])
 

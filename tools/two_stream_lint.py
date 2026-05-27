@@ -31,13 +31,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # CLI entry points that are allowed to print JSON to stdout.
-CLI_EMITTERS = frozenset({
-    "build.py",
-    "observe.py",
-    "mutate.py",
-    "codegen.py",
-    "probe.py",
-})
+CLI_EMITTERS = frozenset(
+    {
+        "build.py",
+        "observe.py",
+        "mutate.py",
+        "codegen.py",
+        "probe.py",
+    }
+)
 
 
 class _ViolationVisitor(ast.NodeVisitor):

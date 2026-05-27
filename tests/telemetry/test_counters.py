@@ -67,9 +67,9 @@ def test_all_7_mandatory_counters_registered():
         "feature_flag_state",
         "com_disconnects_total",
     }
-    assert expected.issubset(set(COUNTERS.keys())), (
-        f"missing counters: {expected - set(COUNTERS.keys())}"
-    )
+    assert expected.issubset(
+        set(COUNTERS.keys())
+    ), f"missing counters: {expected - set(COUNTERS.keys())}"
 
 
 def test_counter_label_keys_match_spec():

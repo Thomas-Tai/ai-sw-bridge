@@ -8,6 +8,7 @@ privacy_review.md and UIUX.md §14). Redaction via telemetry.scrub.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -19,9 +20,7 @@ _CONSENT_FILE = Path(".telemetry") / "consent.txt"
 _DB_PATH = Path.home() / ".ai-sw-bridge" / "telemetry.sqlite"
 
 
-def _redact_row(
-    row: dict, trade_secret_patterns: list[re.Pattern[str]]  # type: ignore[name-defined]
-) -> dict:
+def _redact_row(row: dict, trade_secret_patterns: list[re.Pattern[str]]) -> dict:
     """Redact sensitive strings in a metrics row."""
     labels = row.get("labels", {})
     redacted_labels = {}

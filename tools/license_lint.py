@@ -57,9 +57,7 @@ ALLOWED_REPOS: dict[str, str] = {
 # rejected regardless of whether it also appears in ALLOWED.
 REPO_LICENSE: dict[str, str] = {**ALLOWED_REPOS, **FORBIDDEN_REPOS}
 
-_PORT_MARKER_RE = re.compile(
-    r"^(?:Ported|Adapted)\s+from\s+([^\s,.:;]+)", re.MULTILINE
-)
+_PORT_MARKER_RE = re.compile(r"^(?:Ported|Adapted)\s+from\s+([^\s,.:;]+)", re.MULTILINE)
 _LICENSE_RE = re.compile(r"\b(MIT|BSD-\d-Clause|Apache-2\.0|GPL-\d[\d.]*\+?|ISC)\b")
 _COMMIT_RE = re.compile(r"\b[0-9a-f]{40}\b")
 
@@ -151,7 +149,7 @@ def _parse_readme_acknowledgments(readme: Path) -> set[str]:
     m = _ACKNOWLEDGMENTS_HEADING_RE.search(text)
     if m is None:
         return set()
-    ack_section = text[m.end():]
+    ack_section = text[m.end() :]
     found: set[str] = set()
     for repo_name in REPO_LICENSE:
         canonical = _normalize_repo(repo_name)
@@ -253,9 +251,7 @@ def main() -> int:
 
         # Surface (b): CONTRIBUTING.md row
         if rel not in contrib_rows:
-            all_errors.append(
-                f"{rel}: no CONTRIBUTING.md row for this ported file"
-            )
+            all_errors.append(f"{rel}: no CONTRIBUTING.md row for this ported file")
 
         # Surface (c): README.md Acknowledgments line
         canonical = _normalize_repo(upstream_repo)
@@ -271,8 +267,7 @@ def main() -> int:
 
     # Check for CONTRIBUTING.md rows that reference files not in src/
     ported_paths = {
-        str(fp.relative_to(root_dir)).replace("\\", "/")
-        for fp, _, _ in ported_files
+        str(fp.relative_to(root_dir)).replace("\\", "/") for fp, _, _ in ported_files
     }
     for row_path in contrib_rows:
         if row_path not in ported_paths:
