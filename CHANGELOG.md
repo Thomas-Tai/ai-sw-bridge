@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-05-27
+
+Closes seven gaps surfaced by the post-v0.12.1 audit against
+`docs/central_idea/`. Items #1–#3 were P0 (user-visible functional
+requirements with no invocation path); items #4–#7 were P1 (privacy
+gate, UX consistency, audit findings).
+
+### Added
+
+- **`ai-sw-history rollback <part> <id>`** subcommand (FR-v0.11-L4-02
+  part A). Optional `--locals-path` writes the snapshot back to a
+  locals file; without it, the rollback is audit-only. Exit codes:
+  0 success, 8 verification failure.
+- **`rollback_to(..., doc=, verify_tree_hash=)`** library extension
+  (FR-v0.11-L4-02 part B). When `doc` is provided, calls
+  `IModelDoc2.EditRollback` to rewind the SW feature tree, then
+  re-computes the tree hash and compares against the checkpoint's
+  `pre_tree_hash`. Mismatch raises `RollbackError`. The CLI still
+  uses the software-side-only mode (`doc=None`); the live-SW leg is
+  exposed for in-process callers.
+- **`ai-sw-build --auto-retry`** flag (FR-v0.11-L2-04). Wires the
+  existing `RetryGuard` into the build flow so an identical spec
+  resubmission within the same session exits 7 with
+  `identical_spec_resubmitted` payload. Off by default.
+- **Uniform `--quiet` flag across all 7 CLIs** (UIUX §2.2, §3.3).
+  New `cli/streams.py` centralizes the helper; each entry point
+  wires it consistently. stdout JSON is unaffected.
+- **4 sketch contour validity hints** (audit §6.4):
+  `sketch_self_intersect`, `sketch_open_contour_needed_closed`,
+  `sketch_construction_only`, `sketch_tangent_dim_conflict`. Catalog
+  grows 9 → 13 entries.
+- **`Manifest.active_configuration`** field (audit §6.2). Builder
+  reads `IModelDoc2.IGetActiveConfiguration` once at build start;
+  field is serialized only when non-None (additive, no schema bump).
+
+### Fixed
+
+- **`.checkpoints/` added to `.gitignore`** (privacy_review.md §4.1).
+  The L4 checkpoint store contains full *_locals.txt snapshots per
+  feature commit; the v0.11 GA requirement to exclude it from
+  version control was documented but not implemented in v0.12.
+
+### Test counts
+
+- 689 tests pass excluding `solidworks_only` (was 647 at v0.12);
+  +42 new tests across the seven items.
+- 2 `solidworks_only` tests pass standalone against a live SW
+  session.
+- flake8: 0 findings; black: 141 files clean; mypy: 0 errors in
+  65 source files.
+
 ## [0.12.1] - 2026-05-27
 
 ### Added
