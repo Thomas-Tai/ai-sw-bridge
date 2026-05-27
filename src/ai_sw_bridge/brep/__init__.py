@@ -1,4 +1,4 @@
-"""B-rep interrogation package (L1 lane, spec.md §2).
+"""B-rep package (L1 lane, spec.md §2).
 
 Exports the public API for the L1 B-rep lane:
 
@@ -10,6 +10,9 @@ Exports the public API for the L1 B-rep lane:
   by the manifest and resolver to match faces across builds.
 - ``Manifest`` — per-feature brep block accumulator with JSON
   serialization (spec.md §2.5).
+- ``resolve_face_role(...)`` — resolve a symbolic ``face_role`` against
+  a parent feature's brep block. Raises ``FaceResolutionError`` or
+  ``FaceAmbiguityError`` on failure.
 """
 
 from __future__ import annotations
@@ -17,10 +20,14 @@ from __future__ import annotations
 from .fingerprint import fingerprint
 from .interrogator import BrepFace, interrogate
 from .manifest import Manifest
+from .resolver import FaceAmbiguityError, FaceResolutionError, resolve_face_role
 
 __all__ = [
     "BrepFace",
+    "FaceAmbiguityError",
+    "FaceResolutionError",
     "Manifest",
     "fingerprint",
     "interrogate",
+    "resolve_face_role",
 ]

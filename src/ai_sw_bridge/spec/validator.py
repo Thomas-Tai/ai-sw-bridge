@@ -352,6 +352,38 @@ def _check_expect_blocks(spec: dict[str, Any]) -> None:
             ) from e
 
 
+def _check_face_role_shapes(spec: dict[str, Any]) -> None:
+    """Fourth validation layer (E2.5, spec.md §2.6): structural check on
+    ``face_role`` fields of face-bound features.
+
+    The manifest doesn't exist at spec-ingest time (the parent feature
+    hasn't been built yet), so the validator can only confirm shape:
+    when ``face_role`` is declared, it must be a non-empty string.
+    Actual role-to-fingerprint resolution runs at build-time via
+    ``brep.resolver.resolve_face_role``.
+    """
+    for i, feat in enumerate(spec.get("features", [])):
+        if "face_role" not in feat:
+            continue
+        role = feat["face_role"]
+        if not isinstance(role, str) or not role.strip():
+            raise ValidationError(
+                message=(
+                    f"face_role must be a non-empty string; got {role!r}"
+                ),
+                path=f"features/{i}/face_role",
+            )
+        if feat.get("type") not in FACE_BOUND_TYPES:
+            raise ValidationError(
+                message=(
+                    f"face_role is only supported on face-bound features "
+                    f"({sorted(FACE_BOUND_TYPES)}); feature '{feat.get('name')}' "
+                    f"is of type '{feat.get('type')}'"
+                ),
+                path=f"features/{i}/face_role",
+            )
+
+
 def validate(spec: dict[str, Any], spec_path: Path | None = None) -> None:
     """Run all checks. Raises ValidationError on first failure.
 
@@ -362,4 +394,5 @@ def validate(spec: dict[str, Any], spec_path: Path | None = None) -> None:
     _check_schema(spec)
     _check_expect_blocks(spec)
     _check_references(spec)
+    _check_face_role_shapes(spec)
     _check_locals(spec, spec_path=spec_path)
