@@ -2,17 +2,31 @@
 
 Public API::
 
-    from ai_sw_bridge.checkpoint import CheckpointStore, Checkpoint, CheckpointStatus
-
-``Snapshot`` and ``Rollback`` are added to the public surface by E3.2.
+    from ai_sw_bridge.checkpoint import (
+        CheckpointStore, Checkpoint, CheckpointStatus,
+        write_pre_feature, commit_post_feature,
+        rollback_to, RollbackError,
+        by_part, by_locals, since, feature_diff,
+    )
 """
 
 from __future__ import annotations
 
+from .history import by_locals, by_part, feature_diff, since
+from .rollback import RollbackError, rollback_to
+from .snapshot import commit_post_feature, write_pre_feature
 from .store import Checkpoint, CheckpointStatus, CheckpointStore
 
 __all__ = [
     "Checkpoint",
     "CheckpointStatus",
     "CheckpointStore",
+    "RollbackError",
+    "by_locals",
+    "by_part",
+    "commit_post_feature",
+    "feature_diff",
+    "rollback_to",
+    "since",
+    "write_pre_feature",
 ]
