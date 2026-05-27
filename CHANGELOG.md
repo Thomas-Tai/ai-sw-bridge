@@ -7,34 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.12.0] - TBD
+## [0.12.0] - 2026-05-27
 
-### Added — v0.12 capability lanes (in progress)
+### Added — v0.12 capability lanes GREEN
 
 Four additive lanes behind feature flags (all default OFF). Every v0.11
-spec builds byte-identical with all flags disabled.
+spec builds byte-identical with all flags disabled. 27 sub-tasks
+across E1–E6 merged into `v0.12-integration` and audited (647/647 tests
+pass; flake8/black/mypy clean on Py 3.10).
 
-- **L1 — B-rep interrogation** (`brep_interrogation`): per-feature
-  topological fingerprint manifest (`build_brep.json`) with face roles,
-  normals, centroids, and body-local indices. Enables symbolic `face_role`
-  targeting on downstream features. Gated by E2.1 marshal spike (PASS
-  with caveat on SW 32.1.0).
-- **L2 — Error hints** (Tier A/B/C catalog in `errors/hints.py`):
-  structured remediation hints attached to `BuildError` payloads; wired
-  into `RetryGuard` feedback loop.
-- **L3 — RAG API-doc retrieval** (`rag_apidoc`): vector-indexed SolidWorks
-  API docs surfaced during spec authoring.
-- **L4 — Checkpoint + rollback** (`checkpoint`): per-feature SQLite
-  snapshot store (`<part>.sqlite`) plus `ai-sw-history` CLI for query
-  and rollback.
+- **L1 — B-rep interrogation** (`brep_interrogation`, E2.1–E2.7):
+  per-feature topological fingerprint manifest (`build_brep.json`) with
+  face roles, normals, centroids, and body-local indices. Enables
+  symbolic `face_role` targeting on downstream features. Marshal spike
+  (E2.1) confirmed `IFace2.Normal/GetBox/GetArea` are zero-arg property
+  reads under late binding; `IEntity.GetSelectByIDString` is
+  unreachable through the dispatch proxy, so face identity uses a
+  session-scoped `temp_id` + persistent `fingerprint` instead.
+- **L2 — COM error envelope + hint catalog** (E1.1–E1.4):
+  `BuildError` structured envelope (spec §3.2), `com_error_boundary`
+  decorator wrapping every COM call site in `spec/builder.py`,
+  9-entry hint catalog with `(hresult, iface_method, feature_type)`
+  resolution, and hint-aware `RetryGuard` that surfaces the remedy to
+  the next AI iteration.
+- **L3 — RAG API-doc retrieval** (`rag_apidoc`, E5.1–E5.6): vector-
+  indexed SolidWorks API docs surfaced via `ai-sw-apidoc` CLI (5
+  subcommands: search / detail / members / examples / enum). Ships
+  with a committed 262-chunk `api_index.sqlite` (HashEmbedder, 256-dim)
+  built from `sldworksapiprogguide.chm`. `search` auto-detects the
+  index's embedder dim; install `sentence-transformers` to switch the
+  default `--backend auto` to SBERT when re-building against a larger
+  corpus.
+- **L4 — Checkpoint + rollback** (`checkpoint`, E3.1–E3.5):
+  per-feature SQLite snapshot store (`<part>.sqlite`) with WAL mode,
+  `ai-sw-history` CLI (list / show / diff subcommands), GC retention
+  policy (audit §2.9), and a live-SW rollback regression test that
+  validates round-trip on SW 32.1.0.
+
+### Changed
+
+- `ai-sw-build` now writes an optional `build_brep.json` sidecar when
+  `brep_interrogation` is ON, alongside the existing
+  `build_metrics.json` (additive — never replaces).
+- `bundle_bug_report` and `export_metrics` migrated from raw `sys.argv`
+  parsing to argparse (E4.1), with `--help` text that matches the
+  v0.11 CLI stability conventions.
+- `SolidworksMCP-python` upstream pin bumped to `82e505d88da0` (E4.2).
+
+### Added — release docs
+
+- `docs/ROADMAP.md` (E6.1) — six-quarter plan covering v0.12 → v1.0.
+- `docs/launch_readiness_checklist.md` (E6.2) — pre-release gate list
+  used by the final-audit reviewer.
+- `docs/migration_to_v0.12.md` (E6.3) — schema / CLI / sidecar diff
+  and additive-only backward-compatibility statement for v0.11
+  consumers.
 
 ### Migration
 
-Upgrading from v0.11 is additive-only. See
+Upgrading from v0.11 is additive-only. All new functionality sits
+behind default-OFF feature flags. See
 [`docs/migration_to_v0.12.md`](docs/migration_to_v0.12.md) for the full
-schema / CLI / sidecar diff and the backward-compatibility statement.
+schema / CLI / sidecar diff.
 
-Full lane-by-lane changelog entries land as E1–E5 merge.
+### Dependencies
+
+- New runtime deps: `numpy>=1.24`, `sqlite-vec>=0.1` (RAG L3).
+- New optional dev dep: `sentence-transformers>=2.2` (RAG L3 high-
+  quality embeddings; HashEmbedder fallback ships with the committed
+  index so RAG works without a transformer install).
 
 ## [0.11.0] - 2026-05-27
 
