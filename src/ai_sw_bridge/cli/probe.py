@@ -14,6 +14,7 @@ from typing import Any
 
 from ..sw_com import DOC_TYPE_NAMES, get_active_doc, get_sw_app, resolve
 from .stability import add_tier, cli_stability
+from .streams import add_quiet_flag, apply_quiet
 
 
 def probe() -> dict[str, Any]:
@@ -79,7 +80,9 @@ def main() -> int:
         ),
     )
     add_tier(parser, "experimental")
-    parser.parse_args()
+    add_quiet_flag(parser)
+    args = parser.parse_args()
+    apply_quiet(args)
     result = probe()
     print(json.dumps(result, indent=2, default=str))
     return 0 if result.get("ok") else 1

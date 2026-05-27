@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..errors.wrapper import com_error_boundary, emit_envelope_to_stderr
+from ..errors.build_error import BuildError
 from ..locals_io import parse as parse_locals
 from ..sw_com import get_sw_app
 from ..com.connection import with_reconnect
@@ -1487,6 +1489,35 @@ def _apply_deferred_dims(
 # -----------------------------------------------------------------------------
 
 
+def _write_brep_sidecar(
+    brep_manifest: Any,
+    *,
+    save_as: str | None,
+) -> str | None:
+    """Write build_brep.json alongside the saved part (or cwd).
+
+    Returns the sidecar path string on success, ``None`` on write
+    failure (the build still succeeds — the brep block rides on
+    BuildResult.to_dict() as a fallback).
+    """
+    import json as _json
+
+    if save_as is not None:
+        sidecar = Path(save_as).with_name("build_brep.json")
+    else:
+        sidecar = Path.cwd() / "build_brep.json"
+    try:
+        sidecar.parent.mkdir(parents=True, exist_ok=True)
+        sidecar.write_text(
+            _json.dumps(brep_manifest.to_dict(), indent=2),
+            encoding="utf-8",
+        )
+        return str(sidecar)
+    except OSError as e:
+        logger.warning("brep sidecar write failed at %s: %s", sidecar, e)
+        return None
+
+
 def _save_as_with_verification(doc: Any, out_path: Path) -> tuple[str, bool]:
     """Drive doc.SaveAs3 and verify three independent postconditions.
 
@@ -1587,6 +1618,11 @@ class BuildResult:
     # {"name": ..., "type": ..., "build_time_s": ...}. None until populated.
     feature_metrics: list[dict[str, Any]] | None = None
     trace_id: str | None = None
+    # Populated when flags.brep_interrogation is ON. The manifest dict
+    # (schema_version + features[]) mirrors the build_brep.json sidecar
+    # file. None when the flag is OFF — in which case the field is
+    # omitted from to_dict() output so the v0.11 wire format is preserved.
+    brep_manifest: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-serializable shape for CLI output. Single source of truth
@@ -1617,6 +1653,8 @@ class BuildResult:
             out["mode"] = self.mode
         if self.feature_metrics is not None:
             out["feature_metrics"] = self.feature_metrics
+        if self.brep_manifest is not None:
+            out["brep_manifest"] = self.brep_manifest
         return out
 
 
@@ -1627,6 +1665,8 @@ def build(
     save_as: str | None = None,
     verify_mass: bool = False,
     reconnect: bool = False,
+    checkpoint: bool = False,
+    checkpoint_root: "Path | None" = None,
 ) -> BuildResult:
     """Build the spec into a fresh blank part on the running SW session.
 
@@ -1695,6 +1735,17 @@ def build(
     of the partially-built part; the resulting model state is undefined.
     Without `reconnect`, stale-handle errors propagate as normal Tier-B
     failures. Per spec.md §6.9 ComExecutor death-recovery and audit §6.5.
+
+    If `checkpoint` is True: after every feature handler returns (and
+    after any deferred-dim / binding / mass-verification work), the
+    builder writes a ``committed`` checkpoint row capturing the spec's
+    locals snapshot, the feature name/type, and canonical tree hashes
+    over the already-built feature dicts. Uses
+    :class:`ai_sw_bridge.checkpoint.store.CheckpointStore` scoped to
+    the spec name. Gated by ``flags.checkpoint`` at the CLI layer;
+    this kwarg is the direct hook for in-process callers and tests.
+    `checkpoint_root` overrides the default ``./.checkpoints`` location
+    (tests pass ``tmp_path``).
     """
     if no_dim and deferred_dim:
         raise ValueError("no_dim and deferred_dim are mutually exclusive")
@@ -1718,12 +1769,78 @@ def build(
     # entries (popup batch for THIS sketch), applies the feature's
     # bindings, and rebuilds. This per-sketch cadence is required for
     # two reasons -- see the in-loop comment for the full rationale.
+    #
+    # L4 checkpoint: capture the locals name->value dict BEFORE rhs
+    # resolution rewrites spec['locals'] into the resolved spec. The
+    # snapshot needs the equation content, not the absolute path.
+    cp_locals_dict: dict[str, Any] | None = None
+    if checkpoint and isinstance(spec.get("locals"), str):
+        try:
+            cp_locals_dict = _load_locals_map(spec["locals"])
+        except Exception as e:
+            logger.warning("checkpoint locals capture failed: %s", e)
+            cp_locals_dict = None
     if no_dim:
         spec = _resolve_rhs_in_spec(spec)
+
+    # B-rep interrogation (E2.6) is gated by flags.brep_interrogation.
+    # The manifest is allocated only when the flag is ON so v0.11
+    # builds (flag OFF) pay no import or memory cost.
+    from ..flags import resolve as _resolve_flags
+
+    brep_enabled = bool(_resolve_flags().get("brep_interrogation", False))
+    brep_manifest = None
+    if brep_enabled:
+        from ..brep.manifest import Manifest as _BrepManifest
+
+        brep_manifest = _BrepManifest()
 
     sw = get_sw_app()
     doc = create_blank_part(sw)
     ctx = BuildContext(sw=sw, doc=doc, no_dim=no_dim, deferred_dim=deferred_dim)
+
+    # Record the active SW configuration on the brep manifest so any
+    # consumer re-running this spec against a different configuration
+    # knows the manifest is invalid (audit §6.2). Fail-soft: a missing
+    # configuration name leaves it None and the build continues.
+    if brep_manifest is not None:
+        try:
+            cfg = doc.IGetActiveConfiguration
+            if callable(cfg):
+                cfg = cfg()
+            if cfg is not None:
+                name = cfg.Name
+                if callable(name):
+                    name = name()
+                if name:
+                    brep_manifest.active_configuration = str(name)
+        except Exception as _cfg_exc:
+            logger.debug("could not read active configuration: %s", _cfg_exc)
+
+    # L4 checkpoint store (spec.md §5.2). Lazy-imported so flag-OFF builds
+    # don't pay the import cost. None when checkpoint=False.
+    cp_store: Any | None = None
+    if checkpoint:
+        try:
+            from ..checkpoint.snapshot import (
+                commit_post_feature as _cp_commit,
+                write_pre_feature as _cp_write,
+            )
+            from ..checkpoint.store import CheckpointStore as _CpStore
+        except Exception as e:
+            logger.warning("checkpoint init failed: %s", e)
+            cp_store = None
+        else:
+            try:
+                cp_store = _CpStore(
+                    part_name=spec_name,
+                    root=checkpoint_root,
+                )
+            except Exception as e:
+                logger.warning("checkpoint store init failed: %s", e)
+                cp_store = None
+    cp_row_id: int | None = None
+    cp_built: list[dict[str, Any]] = []
 
     # Suppress the "Modify Dimension" popup that AddDimension2 fires by
     # default. App-level only; doc-level call was found to RE-ENABLE the
@@ -1759,8 +1876,38 @@ def build(
                 current_feat_name = feat.get("name")
                 logger.debug("feature: %s (%s)", current_feat_name, feat["type"])
                 handler = HANDLERS[feat["type"]]
+                # L4 checkpoint: open a pending row BEFORE the handler runs
+                # so a mid-handler failure leaves a rollback target at the
+                # prior post_tree_hash. Row transitions to committed after
+                # all per-feature work (bindings / deferred dims / mass
+                # verification) completes, or to failed on exception.
+                cp_row_id = None
+                if cp_store is not None:
+                    try:
+                        cp_row_id = _cp_write(
+                            cp_store,
+                            spec=spec,
+                            feature=feat,
+                            feature_index=len(cp_built),
+                            already_built=cp_built,
+                            build_mode=mode,
+                            locals_snapshot=cp_locals_dict,
+                        )
+                    except Exception as e:
+                        logger.warning("checkpoint pre-write failed: %s", e)
+                        cp_row_id = None
                 _feat_t0 = time.time()
-                bf = with_reconnect(handler, ctx, feat, reconnect=reconnect)
+                try:
+                    with com_error_boundary(
+                        feature_name=current_feat_name or "unknown",
+                        json_path=f"features[{len(built)}]",
+                        iface_method=f"HANDLERS[{feat['type']}]",
+                        feature_type=feat["type"],
+                    ):
+                        bf = with_reconnect(handler, ctx, feat, reconnect=reconnect)
+                except BuildError as be:
+                    emit_envelope_to_stderr(be)
+                    raise RuntimeError(be.diagnosis) from be
                 feature_metrics.append(
                     {
                         "name": current_feat_name,
@@ -1776,6 +1923,27 @@ def build(
 
                 ctx.features_by_name[bf.name] = bf
                 built.append(bf.name)
+
+                # B-rep interrogation (E2.6): after the feature handler
+                # returns, walk its faces and accumulate into the
+                # manifest. Flag-gated; interrogate() itself returns
+                # None when the flag is OFF.
+                if brep_enabled and brep_manifest is not None:
+                    try:
+                        from ..brep import interrogate as _brep_interrogate
+
+                        result = _brep_interrogate(bf.sw_object, ctx)
+                        if result is not None:
+                            brep_manifest.add_feature(result, feature_type=bf.type)
+                    except Exception as e:
+                        # Fail-soft: interrogation must never break
+                        # the build. Log + continue; the brep block
+                        # for this feature will simply be absent.
+                        logger.warning(
+                            "brep interrogation failed for '%s': %s",
+                            bf.name,
+                            e,
+                        )
 
                 # Mass verification: read volume after this feature and
                 # compare delta against _expect if declared. Runs in ALL
@@ -1814,34 +1982,64 @@ def build(
 
                 if no_dim:
                     # rhs's were resolved upfront -- nothing to bind.
-                    continue
+                    pass
+                else:
+                    if deferred_dim:
+                        # Per-sketch deferred: replay just THIS handler's new
+                        # DeferredDim entries (popup batch for this sketch only),
+                        # then apply this feature's bindings + rebuild. This is
+                        # NECESSARY because:
+                        #   - End-of-build replay against geometry built at
+                        #     placeholder sizes fails on cuts like MMP's
+                        #     Cut_FlangeRecess (placeholder 10mm host < 20.5mm
+                        #     cut sketch -> FeatureCut4 returns None).
+                        #   - End-of-build replay against rhs-resolved-upfront
+                        #     geometry produces driven (reference) dims when the
+                        #     sketch is already fully-constrained by construction
+                        #     diagonals (CreateCenterRectangle), making Add2
+                        #     fail with "driven dim not selectable as dependent
+                        #     variable" -- empirically observed on MMP 2026-05-19.
+                        # Per-sketch replay keeps the dim driving (sketch was
+                        # under-constrained until D1/D2 added) AND resizes
+                        # geometry before downstream features.
+                        new_dims = ctx.deferred_dims[deferred_watermark:]
+                        if new_dims:
+                            _apply_deferred_dims(
+                                ctx,
+                                new_dims,
+                                label_prefix=f"Deferred dims for {bf.name}",
+                            )
+                            deferred_watermark = len(ctx.deferred_dims)
 
-                if deferred_dim:
-                    # Per-sketch deferred: replay just THIS handler's new
-                    # DeferredDim entries (popup batch for this sketch only),
-                    # then apply this feature's bindings + rebuild. This is
-                    # NECESSARY because:
-                    #   - End-of-build replay against geometry built at
-                    #     placeholder sizes fails on cuts like MMP's
-                    #     Cut_FlangeRecess (placeholder 10mm host < 20.5mm
-                    #     cut sketch -> FeatureCut4 returns None).
-                    #   - End-of-build replay against rhs-resolved-upfront
-                    #     geometry produces driven (reference) dims when the
-                    #     sketch is already fully-constrained by construction
-                    #     diagonals (CreateCenterRectangle), making Add2
-                    #     fail with "driven dim not selectable as dependent
-                    #     variable" -- empirically observed on MMP 2026-05-19.
-                    # Per-sketch replay keeps the dim driving (sketch was
-                    # under-constrained until D1/D2 added) AND resizes
-                    # geometry before downstream features.
-                    new_dims = ctx.deferred_dims[deferred_watermark:]
-                    if new_dims:
-                        _apply_deferred_dims(
-                            ctx,
-                            new_dims,
-                            label_prefix=f"Deferred dims for {bf.name}",
+                    # Apply this feature's parametric bindings BEFORE the next
+                    # feature. Without this, a downstream cut may operate on a
+                    # sketch still at placeholder size (the original MMP
+                    # Cut_FlangeRecess failure mode -- placeholder diameter 6mm
+                    # was smaller than the 12mm through-hole).
+                    feat_bindings = _collect_feature_bindings(feat)
+                    if feat_bindings:
+                        indices = _apply_bindings(doc, feat_bindings)
+                        for (d, r), i in zip(feat_bindings, indices):
+                            binding_results.append(Binding(dim=d, rhs=r, add2_index=i))
+                        # Force a rebuild so subsequent geometry sees the
+                        # updated dim values, not the placeholder.
+                        _ = doc.EditRebuild3
+
+                # L4 checkpoint: transition the pending row to committed now
+                # that handler + bindings + deferred dims + mass verification
+                # all succeeded. cp_built grows by one feature per iteration;
+                # the post_tree_hash covers the list INCLUDING this feature.
+                cp_built.append({"name": bf.name, "type": bf.type})
+                if cp_store is not None and cp_row_id is not None:
+                    try:
+                        _cp_commit(
+                            cp_store,
+                            cp_row_id,
+                            already_built=cp_built,
                         )
-                        deferred_watermark = len(ctx.deferred_dims)
+                    except Exception as e:
+                        logger.warning("checkpoint post-commit failed: %s", e)
+                    deferred_watermark = len(ctx.deferred_dims)
 
                 # Apply this feature's parametric bindings BEFORE the next
                 # feature. Without this, a downstream cut may operate on a
@@ -1850,13 +2048,31 @@ def build(
                 # was smaller than the 12mm through-hole).
                 feat_bindings = _collect_feature_bindings(feat)
                 if feat_bindings:
-                    indices = _apply_bindings(doc, feat_bindings)
+                    try:
+                        with com_error_boundary(
+                            feature_name=current_feat_name or "unknown",
+                            json_path=f"features[{len(built)-1}].bindings",
+                            iface_method="IEquationMgr.Add2",
+                            feature_type=feat["type"],
+                        ):
+                            indices = _apply_bindings(doc, feat_bindings)
+                    except BuildError as be:
+                        emit_envelope_to_stderr(be)
+                        raise RuntimeError(be.diagnosis) from be
                     for (d, r), i in zip(feat_bindings, indices):
                         binding_results.append(Binding(dim=d, rhs=r, add2_index=i))
                     # Force a rebuild so subsequent geometry sees the
                     # updated dim values, not the placeholder.
                     _ = doc.EditRebuild3
         except Exception as e:
+            # L4 checkpoint: mark the in-flight pending row failed so the
+            # history records which feature was being attempted. Swallow
+            # store errors -- the build error is the primary signal.
+            if cp_store is not None and cp_row_id is not None:
+                try:
+                    cp_store.mark_failed(cp_row_id)
+                except Exception:
+                    pass
             elapsed = time.time() - t0
             telemetry_counter("builds_total", mode=mode, outcome="fail")
             telemetry_histogram("build_duration_seconds", elapsed, mode=mode)
@@ -1878,6 +2094,9 @@ def build(
                 mode=mode,
                 feature_metrics=feature_metrics,
                 trace_id=trace_id(),
+                brep_manifest=(
+                    brep_manifest.to_dict() if brep_manifest is not None else None
+                ),
             )
 
         # Final rebuild for good measure
@@ -1896,14 +2115,21 @@ def build(
             out_path.parent.mkdir(parents=True, exist_ok=True)
             saved_path, save_as_verified = _save_as_with_verification(doc, out_path)
 
+        # B-rep sidecar (E2.6): write build_brep.json alongside the
+        # saved part (or in cwd if no save_as). Only when the flag is ON.
+        brep_sidecar_path: str | None = None
+        if brep_manifest is not None:
+            brep_sidecar_path = _write_brep_sidecar(brep_manifest, save_as=saved_path)
+
         elapsed = time.time() - t0
         telemetry_counter("builds_total", mode=mode, outcome="ok")
         telemetry_histogram("build_duration_seconds", elapsed, mode=mode)
         logger.info(
-            "build ok: name=%s features=%d elapsed=%.1fs",
+            "build ok: name=%s features=%d elapsed=%.1fs brep=%s",
             spec_name,
             len(built),
             elapsed,
+            brep_sidecar_path or "off",
         )
         return BuildResult(
             ok=True,
@@ -1916,7 +2142,17 @@ def build(
             mode=mode,
             feature_metrics=feature_metrics,
             trace_id=trace_id(),
+            brep_manifest=(
+                brep_manifest.to_dict() if brep_manifest is not None else None
+            ),
         )
     finally:
         # Always restore the user's preference, even on exception
         sw.SetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE, prev_input_dim)
+        # L4 checkpoint: release the SQLite handle. Swallow close errors
+        # so they don't mask the primary build result.
+        if cp_store is not None:
+            try:
+                cp_store.close()
+            except Exception:
+                pass

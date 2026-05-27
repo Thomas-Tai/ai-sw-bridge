@@ -33,6 +33,7 @@ from ..observe import (
     sw_screenshot,
 )
 from .stability import add_tier, cli_stability
+from .streams import add_quiet_flag, apply_quiet
 
 
 def _run_active_doc(_args: argparse.Namespace) -> dict[str, Any]:
@@ -183,7 +184,9 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = _build_parser()
     add_tier(parser, "stable")
+    add_quiet_flag(parser)
     args = parser.parse_args()
+    apply_quiet(args)
     result = args.func(args)
     print(json.dumps(result, indent=2, default=str))
     return 0 if result.get("ok") else 1

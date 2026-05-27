@@ -1,9 +1,17 @@
-"""Anti-loop retry guard (spec.md §3.6.1, audit §1.7).
+"""Anti-loop retry guard (spec.md §3.6.1, audit §1.7, E1.4 hint-feedback).
 
 Prevents an LLM from re-submitting an identical spec after a build failure
 without incorporating feedback.  The guard hashes the spec using canonical
 JSON (sort keys, no whitespace) + SHA-256 and refuses truly identical
 submissions while allowing any material change (even a single-field diff).
+
+E1.4 extension (spec.md §3.6.1 anti-loop closure): the guard also tracks
+the ``hint_key`` attached to the most recent failed build. If the LLM
+resubmits the same spec *and* the hint_key hasn't changed, the refusal
+message names the hint so the operator can see which feedback wasn't
+incorporated. A changed hint_key (with unchanged spec) is still refused
+— the LLM is expected to reflect hint feedback in a spec diff, not just
+cycle through hints.
 
 Two backing stores:
 
@@ -28,15 +36,22 @@ class IdenticalSpecError(Exception):
     """Raised when a spec identical to a prior attempt is submitted."""
 
     def __init__(
-        self, spec_hash: str, attempt_count: int, last_error: str | None
+        self,
+        spec_hash: str,
+        attempt_count: int,
+        last_error: str | None,
+        last_hint_key: str | None = None,
     ) -> None:
         self.spec_hash = spec_hash
         self.attempt_count = attempt_count
         self.last_error = last_error
+        self.last_hint_key = last_hint_key
         hint = (
             f"identical spec submitted (hash={spec_hash[:12]}…, "
             f"attempt #{attempt_count}); LLM hasn't incorporated feedback"
         )
+        if last_hint_key:
+            hint += f" (hint_key={last_hint_key})"
         if last_error:
             hint += f" — see error envelope from previous attempt: {last_error}"
         super().__init__(hint)
@@ -58,6 +73,7 @@ class _AttemptRecord:
     attempt_count: int
     last_attempt_ts: float
     last_error: str | None = None
+    last_hint_key: str | None = None
 
 
 class RetryGuard:
@@ -74,18 +90,31 @@ class RetryGuard:
         self._store = store
         self._memory: dict[str, _AttemptRecord] = {}
 
-    def check(self, spec_dict: dict[str, Any]) -> str:
+    def check(
+        self,
+        spec_dict: dict[str, Any],
+        hint_key: str | None = None,
+    ) -> str:
         """Check a spec against prior attempts.
 
         Returns the spec hash on success (new or materially-changed spec).
         Raises :class:`IdenticalSpecError` if the spec is identical to a
         prior attempt.
+
+        ``hint_key`` is the hint emitted by the most recent failed build.
+        It is carried through to the refusal message so the operator can
+        see which catalog hint the LLM failed to incorporate.
         """
         h = spec_hash(spec_dict)
         record = self._find_record(h)
 
         if record is not None:
-            raise IdenticalSpecError(h, record.attempt_count, record.last_error)
+            raise IdenticalSpecError(
+                h,
+                record.attempt_count,
+                record.last_error,
+                last_hint_key=record.last_hint_key,
+            )
 
         return h
 
@@ -93,11 +122,15 @@ class RetryGuard:
         self,
         spec_dict: dict[str, Any],
         error: str | None = None,
+        hint_key: str | None = None,
     ) -> str:
         """Record an attempt (successful or failed) for future checks.
 
         Call this *after* a build attempt completes so the guard can
         refuse an identical re-submission later.
+
+        ``hint_key`` is recorded alongside the spec hash so subsequent
+        check() calls can surface it in the refusal message.
         """
         h = spec_hash(spec_dict)
         now = time.time()
@@ -106,6 +139,7 @@ class RetryGuard:
             existing.attempt_count += 1
             existing.last_attempt_ts = now
             existing.last_error = error
+            existing.last_hint_key = hint_key
             self._persist(existing)
         else:
             rec = _AttemptRecord(
@@ -113,6 +147,7 @@ class RetryGuard:
                 attempt_count=1,
                 last_attempt_ts=now,
                 last_error=error,
+                last_hint_key=hint_key,
             )
             self._memory[h] = rec
             self._persist(rec)
@@ -133,6 +168,7 @@ class RetryGuard:
                     attempt_count=int(latest["value"]),
                     last_attempt_ts=0.0,
                     last_error=latest["labels"].get("last_error"),
+                    last_hint_key=latest["labels"].get("last_hint_key") or None,
                 )
         return None
 
@@ -145,5 +181,6 @@ class RetryGuard:
             labels={
                 "spec_hash": rec.spec_hash,
                 "last_error": rec.last_error or "",
+                "last_hint_key": rec.last_hint_key or "",
             },
         )

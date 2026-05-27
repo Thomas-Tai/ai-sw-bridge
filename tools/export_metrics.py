@@ -7,6 +7,7 @@ privacy_review.md and UIUX.md §14). Redaction via telemetry.scrub.
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sqlite3
@@ -67,7 +68,25 @@ def export(output_path: Path, db_path: Path | None = None) -> dict:
     }
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        prog="export_metrics",
+        description=(
+            "Export telemetry metrics to a sanitized JSON file. Opt-in only: "
+            "refuses to run unless .telemetry/consent.txt exists (per "
+            "privacy_review.md). All labels are redacted via telemetry.scrub "
+            "before export."
+        ),
+    )
+    parser.add_argument(
+        "output",
+        nargs="?",
+        type=Path,
+        default=Path("metrics_export.json"),
+        help="Output file path (default: metrics_export.json).",
+    )
+    args = parser.parse_args(argv)
+
     consent = _CONSENT_FILE
     if not consent.exists():
         print(
@@ -77,15 +96,11 @@ def main() -> None:
         )
         sys.exit(1)
 
-    output = Path("metrics_export.json")
-    if len(sys.argv) > 1:
-        output = Path(sys.argv[1])
-
-    data = export(output)
-    output.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    data = export(args.output)
+    args.output.write_text(json.dumps(data, indent=2), encoding="utf-8")
     n = data.get("row_count", 0)
     print(
-        f"exported {n} rows to {output}",
+        f"exported {n} rows to {args.output}",
         file=sys.stderr,
     )
 

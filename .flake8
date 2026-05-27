@@ -53,3 +53,10 @@ per-file-ignores =
     *test_license_lint.py:E402,E501
     *test_regression_check.py:E402
     *test_upstream_drift.py:E402,E501
+    # v0.12 new files: deliberate alignment tables (hints.py iface-feature map)
+    # and a few one-off long lines that don't reflow cleanly.
+    *hints.py:E501
+    *test_manifest.py:E501
+    *test_resolver.py:E501
+    *test_gc.py:E501
+    *test_wrapper.py:E501

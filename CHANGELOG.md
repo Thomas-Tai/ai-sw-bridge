@@ -7,6 +7,154 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-05-27
+
+Closes seven gaps surfaced by the post-v0.12.1 audit against
+`docs/central_idea/`. Items #1–#3 were P0 (user-visible functional
+requirements with no invocation path); items #4–#7 were P1 (privacy
+gate, UX consistency, audit findings).
+
+### Added
+
+- **`ai-sw-history rollback <part> <id>`** subcommand (FR-v0.11-L4-02
+  part A). Optional `--locals-path` writes the snapshot back to a
+  locals file; without it, the rollback is audit-only. Exit codes:
+  0 success, 8 verification failure.
+- **`rollback_to(..., doc=, verify_tree_hash=)`** library extension
+  (FR-v0.11-L4-02 part B). When `doc` is provided, calls
+  `IModelDoc2.EditRollback` to rewind the SW feature tree, then
+  re-computes the tree hash and compares against the checkpoint's
+  `pre_tree_hash`. Mismatch raises `RollbackError`. The CLI still
+  uses the software-side-only mode (`doc=None`); the live-SW leg is
+  exposed for in-process callers.
+- **`ai-sw-build --auto-retry`** flag (FR-v0.11-L2-04). Wires the
+  existing `RetryGuard` into the build flow so an identical spec
+  resubmission within the same session exits 7 with
+  `identical_spec_resubmitted` payload. Off by default.
+- **Uniform `--quiet` flag across all 7 CLIs** (UIUX §2.2, §3.3).
+  New `cli/streams.py` centralizes the helper; each entry point
+  wires it consistently. stdout JSON is unaffected.
+- **4 sketch contour validity hints** (audit §6.4):
+  `sketch_self_intersect`, `sketch_open_contour_needed_closed`,
+  `sketch_construction_only`, `sketch_tangent_dim_conflict`. Catalog
+  grows 9 → 13 entries.
+- **`Manifest.active_configuration`** field (audit §6.2). Builder
+  reads `IModelDoc2.IGetActiveConfiguration` once at build start;
+  field is serialized only when non-None (additive, no schema bump).
+
+### Fixed
+
+- **`.checkpoints/` added to `.gitignore`** (privacy_review.md §4.1).
+  The L4 checkpoint store contains full *_locals.txt snapshots per
+  feature commit; the v0.11 GA requirement to exclude it from
+  version control was documented but not implemented in v0.12.
+
+### Test counts
+
+- 689 tests pass excluding `solidworks_only` (was 647 at v0.12);
+  +42 new tests across the seven items.
+- 2 `solidworks_only` tests pass standalone against a live SW
+  session.
+- flake8: 0 findings; black: 141 files clean; mypy: 0 errors in
+  65 source files.
+
+## [0.12.1] - 2026-05-27
+
+### Added
+
+- **L1 P0-8 edge cases** (`brep/interrogator.py`): the three cases audit
+  §1.8 enumerated but v0.12 only partially covered.
+  - **Suppressed features** (`IFeature.IsSuppressed()`): interrogator
+    skips face walking and returns `{"faces": [], "status": "suppressed"}`
+    so resolvers see a well-formed manifest entry instead of stale data
+    from before suppression.
+  - **Hidden faces** (`IFace2.IsHidden`, fallback to `Visible`):
+    `BrepFace.is_hidden` flag added to the dataclass and manifest
+    serializer; surfaces in the resolver as a deprioritization signal.
+  - **Imported features** (`GetTypeName2() == "ImportFeature"`):
+    interrogator skips `IFeature.GetFaces` (which doesn't expose
+    topology through the dispatch proxy for imports) and falls back to
+    body-level walk via `IFeature.GetBody`. Records `status: "imported"`
+    when even the body walk returns no faces.
+- New gotcha entries in `docs/known_gotchas.md` for each of the three
+  edge cases with how-to-recognize / workaround sections.
+
+### Changed
+
+- `Manifest.add_feature` now propagates the optional `status` key from
+  the interrogator output into the brep block, alongside the existing
+  `error` propagation.
+
+## [0.12.0] - 2026-05-27
+
+### Added — v0.12 capability lanes GREEN
+
+Four additive lanes behind feature flags (all default OFF). Every v0.11
+spec builds byte-identical with all flags disabled. 27 sub-tasks
+across E1–E6 merged into `v0.12-integration` and audited (647/647 tests
+pass; flake8/black/mypy clean on Py 3.10).
+
+- **L1 — B-rep interrogation** (`brep_interrogation`, E2.1–E2.7):
+  per-feature topological fingerprint manifest (`build_brep.json`) with
+  face roles, normals, centroids, and body-local indices. Enables
+  symbolic `face_role` targeting on downstream features. Marshal spike
+  (E2.1) confirmed `IFace2.Normal/GetBox/GetArea` are zero-arg property
+  reads under late binding; `IEntity.GetSelectByIDString` is
+  unreachable through the dispatch proxy, so face identity uses a
+  session-scoped `temp_id` + persistent `fingerprint` instead.
+- **L2 — COM error envelope + hint catalog** (E1.1–E1.4):
+  `BuildError` structured envelope (spec §3.2), `com_error_boundary`
+  decorator wrapping every COM call site in `spec/builder.py`,
+  9-entry hint catalog with `(hresult, iface_method, feature_type)`
+  resolution, and hint-aware `RetryGuard` that surfaces the remedy to
+  the next AI iteration.
+- **L3 — RAG API-doc retrieval** (`rag_apidoc`, E5.1–E5.6): vector-
+  indexed SolidWorks API docs surfaced via `ai-sw-apidoc` CLI (5
+  subcommands: search / detail / members / examples / enum). Ships
+  with a committed 262-chunk `api_index.sqlite` (HashEmbedder, 256-dim)
+  built from `sldworksapiprogguide.chm`. `search` auto-detects the
+  index's embedder dim; install `sentence-transformers` to switch the
+  default `--backend auto` to SBERT when re-building against a larger
+  corpus.
+- **L4 — Checkpoint + rollback** (`checkpoint`, E3.1–E3.5):
+  per-feature SQLite snapshot store (`<part>.sqlite`) with WAL mode,
+  `ai-sw-history` CLI (list / show / diff subcommands), GC retention
+  policy (audit §2.9), and a live-SW rollback regression test that
+  validates round-trip on SW 32.1.0.
+
+### Changed
+
+- `ai-sw-build` now writes an optional `build_brep.json` sidecar when
+  `brep_interrogation` is ON, alongside the existing
+  `build_metrics.json` (additive — never replaces).
+- `bundle_bug_report` and `export_metrics` migrated from raw `sys.argv`
+  parsing to argparse (E4.1), with `--help` text that matches the
+  v0.11 CLI stability conventions.
+- `SolidworksMCP-python` upstream pin bumped to `82e505d88da0` (E4.2).
+
+### Added — release docs
+
+- `docs/ROADMAP.md` (E6.1) — six-quarter plan covering v0.12 → v1.0.
+- `docs/launch_readiness_checklist.md` (E6.2) — pre-release gate list
+  used by the final-audit reviewer.
+- `docs/migration_to_v0.12.md` (E6.3) — schema / CLI / sidecar diff
+  and additive-only backward-compatibility statement for v0.11
+  consumers.
+
+### Migration
+
+Upgrading from v0.11 is additive-only. All new functionality sits
+behind default-OFF feature flags. See
+[`docs/migration_to_v0.12.md`](docs/migration_to_v0.12.md) for the full
+schema / CLI / sidecar diff.
+
+### Dependencies
+
+- New runtime deps: `numpy>=1.24`, `sqlite-vec>=0.1` (RAG L3).
+- New optional dev dep: `sentence-transformers>=2.2` (RAG L3 high-
+  quality embeddings; HashEmbedder fallback ships with the committed
+  index so RAG works without a transformer install).
+
 ## [0.11.0] - 2026-05-27
 
 ### Added — v0.11 reliability, observability, and supply-chain bundle

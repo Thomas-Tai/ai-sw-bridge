@@ -45,6 +45,120 @@ SW only consumes BINARY `.swp` files produced by its own VBA editor. The format 
 
 If you figure out how to write back a valid binary `.swp` from a `.bas` file, the `run_macro` CLI is ready to invoke it. PRs welcome.
 
+### B-rep: multi-body features duplicate role hints across bodies
+
+A feature that produces two or more solid bodies (e.g. a multi-body
+boss extrude, or a pattern whose instances don't merge) yields one
+face set **per body**. Each body's `+z_outboard` face carries the
+same `role_hint`, so a downstream `face_role="+z_outboard"` lookup
+will hit :class:`FaceAmbiguityError` unless you disambiguate.
+
+**How to recognize**
+- `brep_interrogation` manifest shows `body_id` values `0` and `1`
+  (or higher) on faces of the same feature.
+- :class:`brep.resolver.FaceAmbiguityError` at build time, with
+  the candidate fingerprints listed in the error message.
+
+**Workaround**
+- Resolve by body: prefer `body_id=0` for the "main" body when you
+  know the feature's intent. The resolver will grow a
+  `body_id_hint` tiebreaker in a follow-up.
+- Or split the feature in the spec so each body has its own
+  feature name — the manifest then keys by feature, and the
+  ambiguity goes away.
+
+See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 1
+(multi-body part).
+
+### B-rep: surface bodies have no volume — `inboard`/`outboard` is meaningless
+
+A sheet / surface body (the result of a surface-extrude or an
+imported STL) is interrogated the same way as a solid, but the
+`role_hint` heuristic deliberately skips the
+`{+/-}{axis}_{inboard|outboard}` disambiguation: a surface has no
+inside, so "inboard" would be a fabrication.
+
+**How to recognize**
+- `brep.faces[*].is_surface == true` in the manifest.
+- `role_hint == "oblique"` even when the normal is axis-aligned
+  (the heuristic falls back to oblique because the inboard/outboard
+  comparison requires a signed volume).
+
+**Workaround**
+- Target surface faces by `fingerprint` (stable across rebuilds)
+  or by `normal` directly. `face_role` matching still works for the
+  axis-aligned case when the surface is on the part boundary.
+
+See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 2
+(surface body).
+
+### B-rep: suppressed features emit an empty brep block with `status: "suppressed"`
+
+If a feature is suppressed in the feature tree, `IFeature.IsSuppressed()`
+returns True and the interrogator skips face walking entirely. The
+manifest still contains the brep block for the feature, but its
+`faces` list is empty and the block carries `status: "suppressed"` so
+downstream resolvers can distinguish "intentionally absent" from "bug
+in interrogation."
+
+**How to recognize**
+- `brep_manifest.features["<name>"]["status"] == "suppressed"`
+- `brep_manifest.features["<name>"]["faces"] == []`
+- `FaceResolutionError` with `available_roles=[]` from any child
+  feature targeting the suppressed parent.
+
+**Workaround**
+- Unsuppress the feature in SW before running the build, OR
+- Use a different parent feature as the `of_feature` reference, OR
+- Move the suppressed feature later in the tree so child features
+  don't reference it as a `face_role` source.
+
+See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 4
+(suppressed feature).
+
+### B-rep: hidden faces are included but flagged `is_hidden: true`
+
+A face hidden via `Hide` in the feature manager still exists in the
+SW model — `IFeature.GetFaces()` returns it and `IFace2.GetBox` /
+`Normal` / `GetArea` all read normally. The interrogator includes
+the face in the manifest but sets `is_hidden: true` so the resolver
+can deprioritize it when scoring `face_role` candidates.
+
+Order of fallback on older SW builds: `IFace2.IsHidden` is preferred;
+if that read fails, the interrogator falls back to `IFace2.Visible`
+(the inverse).
+
+**How to recognize**
+- `manifest["features"][i]["faces"][j]["is_hidden"] == true`
+
+**Workaround (only if needed)**
+- Make the face visible in the SW feature manager before the build.
+- Hidden faces don't break interrogation — this gotcha is informational.
+
+### B-rep: ImportFeature falls back to body-level walk
+
+An `IFeature` returned by an imported body (STEP / IGES / Parasolid)
+has `GetTypeName2() == "ImportFeature"`. These features do NOT expose
+native face topology through the feature handle — `IFeature.GetFaces`
+returns nothing useful on the dispatch proxy. The interrogator
+detects the case and walks `IFeature.GetBody()` directly.
+
+If body-level walk also can't reach geometry (rare — happens when the
+import is corrupt or `GetBody` returns null), the manifest entry's
+`faces` is `[]` and `status == "imported"`.
+
+**How to recognize**
+- `manifest["features"][i]["status"] == "imported"` AND `faces == []`
+  → SW returned no body chain for the import.
+- The same feature works as a `face_role` parent if `faces` is
+  non-empty — body-level walk produced real topology.
+
+**Workaround**
+- Re-import the source file (STEP/IGES) with a different option set
+  (heal solids, knit surfaces) so SW exposes the body topology.
+- Or use the imported feature's downstream child features as
+  `face_role` parents instead.
+
 ## File I/O gotchas (Windows)
 
 ### `msvcrt.locking` unlocks at the CURRENT file position
