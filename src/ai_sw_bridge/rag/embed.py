@@ -169,7 +169,8 @@ def make_embedder(
         backend: ``"auto"`` (default) picks SentenceTransformer when
             importable, else HashEmbedder. ``"hash"`` forces the
             hash backend. ``"sentence-transformers"`` forces the
-            transformer backend (raises ImportError if missing).
+            transformer backend (raises ImportError on first
+            :meth:`embed` call if the package is missing).
         model_name: Passed through to SentenceTransformerEmbedder.
         dim: Passed through to HashEmbedder.
     """
@@ -179,9 +180,10 @@ def make_embedder(
         return SentenceTransformerEmbedder(model_name=model_name)
     if backend == "auto":
         try:
-            return SentenceTransformerEmbedder(model_name=model_name)
+            import sentence_transformers  # noqa: F401
         except ImportError:
             return HashEmbedder(dim=dim)
+        return SentenceTransformerEmbedder(model_name=model_name)
     raise ValueError(
         f"unknown backend {backend!r}; expected one of "
         "'auto', 'hash', 'sentence-transformers'"
