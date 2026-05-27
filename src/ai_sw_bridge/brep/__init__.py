@@ -13,6 +13,8 @@ Exports the public API for the L1 B-rep lane:
 - ``resolve_face_role(...)`` — resolve a symbolic ``face_role`` against
   a parent feature's brep block. Raises ``FaceResolutionError`` or
   ``FaceAmbiguityError`` on failure.
+- ``find_face_by_normal(parent, normal, tolerance)`` — direct
+  normal-vector lookup (requirements.md FR-v0.11-L1-02).
 """
 
 from __future__ import annotations
@@ -20,13 +22,19 @@ from __future__ import annotations
 from .fingerprint import fingerprint
 from .interrogator import BrepFace, interrogate
 from .manifest import Manifest
-from .resolver import FaceAmbiguityError, FaceResolutionError, resolve_face_role
+from .resolver import (
+    FaceAmbiguityError,
+    FaceResolutionError,
+    find_face_by_normal,
+    resolve_face_role,
+)
 
 __all__ = [
     "BrepFace",
     "FaceAmbiguityError",
     "FaceResolutionError",
     "Manifest",
+    "find_face_by_normal",
     "fingerprint",
     "interrogate",
     "resolve_face_role",

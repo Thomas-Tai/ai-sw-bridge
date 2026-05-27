@@ -230,7 +230,14 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    ps = sub.add_parser("search", help="KNN search over the index.")
+    ps = sub.add_parser(
+        "search",
+        aliases=["query"],
+        help=(
+            "KNN search over the index (alias: 'query' — preserves "
+            "the requirements.md FR-v0.11-L3-02 name)."
+        ),
+    )
     add_subcommand_tier(ps, "experimental")
     ps.add_argument("query", help="Free-form query string.")
     ps.add_argument("-k", type=int, default=5, help="Top-k (default: 5).")

@@ -114,8 +114,69 @@ def _available_roles(parent_brep_block: dict[str, Any]) -> list[str]:
     ]
 
 
+def find_face_by_normal(
+    parent_brep_block: dict[str, Any],
+    normal_vec: tuple[float, float, float],
+    *,
+    tolerance: float = 0.01,
+) -> dict[str, Any] | None:
+    """Find the face whose unit normal is closest to *normal_vec*.
+
+    Direct-normal lookup canonicalized in requirements.md
+    FR-v0.11-L1-02. Complements :func:`resolve_face_role` (symbolic
+    role lookup, FR-v0.11-L1-03) — same underlying brep block, two
+    different access patterns.
+
+    Args:
+        parent_brep_block: The brep block of the parent feature
+            (the dict from ``manifest.features[feature_name]``).
+        normal_vec: The query normal as a unit-length 3-tuple
+            ``(nx, ny, nz)``. Caller is responsible for
+            normalization; the comparison uses dot-product so a
+            non-unit input degrades to a magnitude-scaled similarity.
+        tolerance: Angular tolerance expressed as
+            ``1 - dot_product``. Default 0.01 ≈ 8° of angular slop;
+            tighten for parts with closely-aligned faces.
+
+    Returns:
+        The face dict whose normal has the highest dot product with
+        *normal_vec*, or ``None`` if no face satisfies the tolerance
+        (i.e. every candidate's ``1 - dot`` exceeds ``tolerance``).
+
+    Notes:
+        Face fingerprinting (E2.3) hashes ``normal + centroid +
+        area`` together; this lookup is normal-only and intentionally
+        ignores centroid/area. For geometry-disambiguated lookup
+        when multiple faces share a normal direction (e.g. the +Z
+        face of two parallel bodies in a multi-body part), filter
+        the result downstream by centroid or use a fingerprint
+        match instead.
+    """
+    best: dict[str, Any] | None = None
+    best_dot = -2.0  # below the [-1, 1] domain of dot for unit vectors
+    for face in parent_brep_block.get("faces", []):
+        face_normal = face.get("normal")
+        if not isinstance(face_normal, (list, tuple)) or len(face_normal) != 3:
+            continue
+        try:
+            dot = (
+                float(face_normal[0]) * normal_vec[0]
+                + float(face_normal[1]) * normal_vec[1]
+                + float(face_normal[2]) * normal_vec[2]
+            )
+        except (TypeError, ValueError):
+            continue
+        if dot > best_dot:
+            best_dot = dot
+            best = face
+    if best is None or (1.0 - best_dot) > tolerance:
+        return None
+    return best
+
+
 __all__ = [
     "FaceAmbiguityError",
     "FaceResolutionError",
+    "find_face_by_normal",
     "resolve_face_role",
 ]

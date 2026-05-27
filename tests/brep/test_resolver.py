@@ -7,6 +7,7 @@ import pytest
 from ai_sw_bridge.brep.resolver import (
     FaceAmbiguityError,
     FaceResolutionError,
+    find_face_by_normal,
     resolve_face_role,
 )
 
@@ -132,3 +133,111 @@ def test_faces_without_role_hint_are_ignored() -> None:
         parent_brep_block=parent,
     )
     assert match["fingerprint"] == "deadbeef" * 2
+
+
+# ---------------------------------------------------------------------------
+# find_face_by_normal (FR-v0.11-L1-02 direct normal lookup)
+# ---------------------------------------------------------------------------
+
+
+def _face_with_normal(normal: tuple[float, float, float], fingerprint: str) -> dict:
+    return {
+        "fingerprint": fingerprint,
+        "role_hint": "any",
+        "normal": list(normal),
+        "centroid": [0.0, 0.0, 0.0],
+        "bbox": [[0.0, 0.0, 0.0], [0.01, 0.01, 0.005]],
+        "area_mm2": 100.0,
+    }
+
+
+def test_find_face_by_normal_exact_match() -> None:
+    parent = {
+        "feature": "P",
+        "faces": [
+            _face_with_normal((1.0, 0.0, 0.0), "ax"),
+            _face_with_normal((0.0, 1.0, 0.0), "ay"),
+            _face_with_normal((0.0, 0.0, 1.0), "az"),
+        ],
+    }
+    hit = find_face_by_normal(parent, (0.0, 0.0, 1.0))
+    assert hit is not None
+    assert hit["fingerprint"] == "az"
+
+
+def test_find_face_by_normal_within_tolerance() -> None:
+    parent = {
+        "feature": "P",
+        "faces": [
+            _face_with_normal((0.0, 0.0, 1.0), "az"),
+        ],
+    }
+    # 5° off from +Z — within default 8° tolerance
+    import math
+
+    angle = math.radians(5)
+    nz = math.cos(angle)
+    nx = math.sin(angle)
+    hit = find_face_by_normal(parent, (nx, 0.0, nz))
+    assert hit is not None
+    assert hit["fingerprint"] == "az"
+
+
+def test_find_face_by_normal_outside_tolerance_returns_none() -> None:
+    parent = {
+        "feature": "P",
+        "faces": [_face_with_normal((0.0, 0.0, 1.0), "az")],
+    }
+    # 30° off from +Z — way outside the 8° default tolerance
+    import math
+
+    angle = math.radians(30)
+    nz = math.cos(angle)
+    nx = math.sin(angle)
+    assert find_face_by_normal(parent, (nx, 0.0, nz)) is None
+
+
+def test_find_face_by_normal_picks_closest_when_multiple_in_range() -> None:
+    parent = {
+        "feature": "P",
+        "faces": [
+            _face_with_normal((0.0, 0.0, 1.0), "az_exact"),
+            _face_with_normal((0.01, 0.0, 0.9999), "az_close"),
+        ],
+    }
+    hit = find_face_by_normal(parent, (0.0, 0.0, 1.0))
+    assert hit is not None
+    assert hit["fingerprint"] == "az_exact"
+
+
+def test_find_face_by_normal_custom_tolerance() -> None:
+    parent = {
+        "feature": "P",
+        "faces": [_face_with_normal((0.0, 0.0, 1.0), "az")],
+    }
+    # With tolerance=0.5 (huge), even a 60° offset matches.
+    import math
+
+    angle = math.radians(60)
+    nz = math.cos(angle)
+    nx = math.sin(angle)
+    hit = find_face_by_normal(parent, (nx, 0.0, nz), tolerance=0.5)
+    assert hit is not None
+
+
+def test_find_face_by_normal_skips_malformed_face() -> None:
+    parent = {
+        "feature": "P",
+        "faces": [
+            {"fingerprint": "bad", "normal": "not a list"},
+            _face_with_normal((0.0, 0.0, 1.0), "good"),
+        ],
+    }
+    hit = find_face_by_normal(parent, (0.0, 0.0, 1.0))
+    assert hit is not None
+    assert hit["fingerprint"] == "good"
+
+
+def test_find_face_by_normal_empty_brep_block_returns_none() -> None:
+    parent = {"feature": "P", "faces": []}
+    assert find_face_by_normal(parent, (0.0, 0.0, 1.0)) is None

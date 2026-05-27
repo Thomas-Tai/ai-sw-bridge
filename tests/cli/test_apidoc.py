@@ -120,6 +120,18 @@ def test_search_emits_json_hits(idx_path: Path) -> None:
         assert hit["chunk"]["retrieval_key"]
 
 
+def test_query_alias_for_search(idx_path: Path) -> None:
+    """FR-v0.11-L3-02 names the subcommand 'query'; 'search' is the
+    shipped name. 'query' is registered as an alias so the spec's name
+    works too."""
+    result = _run("query", "alpha", "-k", "2", index_path=idx_path)
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["ok"] is True
+    # 'query' alias dispatches to the same _cmd_search handler.
+    assert payload["query"] == "alpha"
+
+
 def test_search_k_default_returns_results(idx_path: Path) -> None:
     result = _run("search", "anything", index_path=idx_path)
     assert result.returncode == 0
