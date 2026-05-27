@@ -281,9 +281,7 @@ def test_rollback_writes_locals_when_path_given(tmp_path: Path, capsys) -> None:
     assert locals_path.exists()
 
 
-def test_rollback_unknown_checkpoint_id_returns_nonzero(
-    tmp_path: Path, capsys
-) -> None:
+def test_rollback_unknown_checkpoint_id_returns_nonzero(tmp_path: Path, capsys) -> None:
     _seed(tmp_path, "TestPart", 1)
     rc = main(["--root", str(tmp_path), "rollback", "TestPart", "9999"])
     assert rc == 8  # verification failure per UIUX §3.2

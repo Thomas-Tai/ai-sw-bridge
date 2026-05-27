@@ -94,6 +94,5 @@ def test_every_cli_supports_quiet_in_help(module_name: str) -> None:
 
     help_text = buf.getvalue()
     assert "--quiet" in help_text, (
-        f"{module_name}: --help output missing --quiet flag.\n"
-        f"Got:\n{help_text}"
+        f"{module_name}: --help output missing --quiet flag.\n" f"Got:\n{help_text}"
     )
