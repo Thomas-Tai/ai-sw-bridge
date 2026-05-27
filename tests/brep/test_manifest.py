@@ -183,6 +183,37 @@ def test_from_dict_rejects_missing_features_list() -> None:
 
 
 # ---------------------------------------------------------------------------
+# active_configuration (audit §6.2)
+# ---------------------------------------------------------------------------
+
+
+def test_manifest_active_configuration_defaults_none() -> None:
+    m = Manifest()
+    assert m.active_configuration is None
+    # Field is omitted from to_dict when None to keep the existing
+    # shape stable for v0.11 consumers that don't know about configs.
+    assert "active_configuration" not in m.to_dict()
+
+
+def test_manifest_active_configuration_serializes_when_set() -> None:
+    m = Manifest(active_configuration="HighSpeedVariant")
+    out = m.to_dict()
+    assert out["active_configuration"] == "HighSpeedVariant"
+
+
+def test_manifest_active_configuration_round_trip() -> None:
+    m = Manifest(active_configuration="Default")
+    restored = Manifest.from_dict(m.to_dict())
+    assert restored.active_configuration == "Default"
+
+
+def test_manifest_from_dict_back_compat_without_active_config() -> None:
+    """v0.11-era manifests without active_configuration still parse."""
+    restored = Manifest.from_dict({"schema_version": 1, "features": []})
+    assert restored.active_configuration is None
+
+
+# ---------------------------------------------------------------------------
 # Fingerprint stability
 # ---------------------------------------------------------------------------
 

@@ -53,9 +53,17 @@ class Manifest:
       ]
     }
     ```
+
+    ``active_configuration`` records the SW configuration name the
+    manifest was generated against (audit §6.2). Configurations carry
+    different geometry; downstream consumers that re-run a spec
+    against a different configuration must invalidate the manifest.
+    The field is ``None`` when the builder couldn't read it (e.g.,
+    on a part without explicit configurations).
     """
 
     features: dict[str, dict[str, Any]] = field(default_factory=dict)
+    active_configuration: str | None = None
 
     # ------------------------------------------------------------------
     # Append API
@@ -110,10 +118,13 @@ class Manifest:
 
     def to_dict(self) -> dict[str, Any]:
         """Return the full manifest as a JSON-serializable dict."""
-        return {
+        out: dict[str, Any] = {
             "schema_version": 1,
             "features": list(self.features.values()),
         }
+        if self.active_configuration is not None:
+            out["active_configuration"] = self.active_configuration
+        return out
 
     def to_json(self, *, indent: int | None = None) -> str:
         """Return the manifest as a JSON string."""
@@ -131,7 +142,7 @@ class Manifest:
         features = data.get("features")
         if not isinstance(features, list):
             raise TypeError("manifest 'features' must be a list")
-        manifest = cls()
+        manifest = cls(active_configuration=data.get("active_configuration"))
         for block in features:
             name = block.get("feature")
             if not name:

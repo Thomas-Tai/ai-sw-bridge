@@ -1799,6 +1799,24 @@ def build(
     doc = create_blank_part(sw)
     ctx = BuildContext(sw=sw, doc=doc, no_dim=no_dim, deferred_dim=deferred_dim)
 
+    # Record the active SW configuration on the brep manifest so any
+    # consumer re-running this spec against a different configuration
+    # knows the manifest is invalid (audit §6.2). Fail-soft: a missing
+    # configuration name leaves it None and the build continues.
+    if brep_manifest is not None:
+        try:
+            cfg = doc.IGetActiveConfiguration
+            if callable(cfg):
+                cfg = cfg()
+            if cfg is not None:
+                name = cfg.Name
+                if callable(name):
+                    name = name()
+                if name:
+                    brep_manifest.active_configuration = str(name)
+        except Exception as _cfg_exc:
+            logger.debug("could not read active configuration: %s", _cfg_exc)
+
     # L4 checkpoint store (spec.md §5.2). Lazy-imported so flag-OFF builds
     # don't pay the import cost. None when checkpoint=False.
     cp_store: Any | None = None
