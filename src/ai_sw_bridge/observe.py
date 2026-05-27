@@ -897,6 +897,80 @@ def _select_by_id(doc: Any, entity: str, append: bool = False) -> bool:
     return False
 
 
+def sw_get_custom_props() -> dict[str, Any]:
+    """Read every custom property from the active document.
+
+    Uses ``IModelDoc2.GetCustomInfoNames3`` to enumerate field names, then
+    ``IModelDoc2.GetCustomInfoValue2`` per field. The active configuration
+    name is read from ``IGetActiveConfiguration`` when reachable.
+
+    Parts, assemblies, and drawings all support custom properties. An empty
+    document (no custom props set) returns ``{"ok": True, "properties": {}}``
+    rather than an error.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "properties": {},
+        "active_configuration": None,
+        "count": 0,
+        "error": None,
+    }
+
+    try:
+        sw = get_sw_app()
+        doc = get_active_doc(sw)
+        if doc is None:
+            result["error"] = "no_active_doc"
+            return result
+
+        try:
+            cfg = resolve(doc, "IGetActiveConfiguration")
+            if cfg is not None:
+                name = resolve(cfg, "Name")
+                if callable(name):
+                    name = name()
+                if name:
+                    result["active_configuration"] = str(name)
+        except Exception:
+            pass
+
+        names: tuple[str, ...] | list[str] | None = None
+        try:
+            names = doc.GetCustomInfoNames3
+            if callable(names):
+                names = names()
+        except Exception as exc:
+            result["error"] = f"GetCustomInfoNames3 failed: {exc!r}"
+            return result
+
+        if names is None:
+            result["ok"] = True
+            return result
+
+        if isinstance(names, (tuple, list)):
+            field_names = [str(n) for n in names if n]
+        else:
+            field_names = []
+
+        props: dict[str, str] = {}
+        for field in field_names:
+            try:
+                val = doc.GetCustomInfoValue2("", field)
+                if val is not None:
+                    props[field] = str(val)
+            except Exception:
+                pass
+
+        result["properties"] = props
+        result["count"] = len(props)
+        result["ok"] = True
+        return result
+
+    except Exception as exc:
+        result["error"] = f"dispatch failed: {exc!r}"
+        return result
+
+
 def sw_measure(
     entity_a: str | None = None,
     entity_b: str | None = None,
