@@ -229,3 +229,65 @@ def test_subprocess_stdout_is_valid_json(tmp_path: Path) -> None:
     # stdout is parseable JSON; no stray print() leakage.
     payload = json.loads(proc.stdout)
     assert payload["subcommand"] == "part"
+
+
+# ---------------------------------------------------------------------------
+# `rollback` subcommand (v0.12.2 — FR-v0.11-L4-02 part A)
+# ---------------------------------------------------------------------------
+
+
+def test_rollback_subcommand_in_help(capsys: pytest.CaptureFixture) -> None:
+    with pytest.raises(SystemExit) as ei:
+        main(["--help"])
+    assert ei.value.code == 0
+    captured = capsys.readouterr()
+    assert "rollback" in captured.out
+
+
+def test_rollback_audit_only_succeeds(tmp_path: Path, capsys) -> None:
+    """rollback without --locals-path inserts the audit row but
+    doesn't touch any locals file."""
+    _seed(tmp_path, "TestPart", 3)
+    rc = main(["--root", str(tmp_path), "rollback", "TestPart", "1"])
+    assert rc == 0
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["subcommand"] == "rollback"
+    assert payload["ok"] is True
+    assert payload["rolled_back_to_id"] == 1
+    assert payload["locals_path"] is None
+
+
+def test_rollback_writes_locals_when_path_given(tmp_path: Path, capsys) -> None:
+    _seed(tmp_path, "TestPart", 2)
+    locals_path = tmp_path / "locals.txt"
+    rc = main(
+        [
+            "--root",
+            str(tmp_path),
+            "rollback",
+            "TestPart",
+            "1",
+            "--locals-path",
+            str(locals_path),
+        ]
+    )
+    assert rc == 0
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["ok"] is True
+    assert payload["locals_path"] == str(locals_path)
+    # The locals file was actually written.
+    assert locals_path.exists()
+
+
+def test_rollback_unknown_checkpoint_id_returns_nonzero(
+    tmp_path: Path, capsys
+) -> None:
+    _seed(tmp_path, "TestPart", 1)
+    rc = main(["--root", str(tmp_path), "rollback", "TestPart", "9999"])
+    assert rc == 8  # verification failure per UIUX §3.2
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["ok"] is False
+    assert "rollback failed" in captured.err

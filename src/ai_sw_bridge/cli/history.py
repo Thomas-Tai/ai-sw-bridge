@@ -36,6 +36,7 @@ from ..checkpoint import (
     feature_diff,
     since,
 )
+from ..checkpoint.rollback import RollbackError, rollback_to
 from .stability import add_subcommand_tier, add_tier, cli_stability
 from .streams import add_quiet_flag, apply_quiet
 
@@ -160,6 +161,56 @@ def _cmd_diff(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_rollback(args: argparse.Namespace) -> int:
+    """Roll back the linked locals file to a prior checkpoint
+    (FR-v0.11-L4-02 part A — CLI surface for the existing library
+    function). Software-side only — does NOT touch a running SW
+    session; the caller (or a downstream re-run of ai-sw-build) is
+    responsible for any feature-tree side. See rollback.py docstring.
+    """
+    store = _open_store(args.part_name, args.root)
+    locals_path: Path | None = (
+        Path(args.locals_path) if args.locals_path is not None else None
+    )
+    try:
+        target = rollback_to(
+            store,
+            args.checkpoint_id,
+            locals_path=locals_path,
+        )
+    except RollbackError as e:
+        store.close()
+        _emit_stderr(f"rollback failed: {e}")
+        _emit_json(
+            {
+                "subcommand": "rollback",
+                "ok": False,
+                "part_name": args.part_name,
+                "checkpoint_id": args.checkpoint_id,
+                "error": str(e),
+            }
+        )
+        return 8  # verification failure per UIUX §3.2
+    finally:
+        store.close()
+    _emit_json(
+        {
+            "subcommand": "rollback",
+            "ok": True,
+            "part_name": args.part_name,
+            "rolled_back_to_id": args.checkpoint_id,
+            "feature_name": target.feature_name,
+            "feature_index": target.feature_index,
+            "locals_path": str(locals_path) if locals_path is not None else None,
+            "notice": (
+                "Software-side rollback complete. Re-run ai-sw-build to "
+                "rebuild the SW feature tree from the restored locals."
+            ),
+        }
+    )
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # Argparse
 # ---------------------------------------------------------------------------
@@ -212,6 +263,38 @@ def _build_parser() -> argparse.ArgumentParser:
     p_diff.add_argument("id_b", type=int)
     p_diff.set_defaults(func=_cmd_diff)
     add_subcommand_tier(p_diff, "experimental")
+
+    p_rollback = sub.add_parser(
+        "rollback",
+        help="Roll back the locals file to a prior checkpoint (FR-v0.11-L4-02).",
+        description=(
+            "Software-side rollback: writes the checkpoint's "
+            "locals_snapshot back to the linked locals.txt and inserts "
+            "a 'rolled_back' audit row in the checkpoint store. Does "
+            "NOT touch a running SOLIDWORKS session — re-run "
+            "ai-sw-build to rebuild the feature tree from the "
+            "restored locals."
+        ),
+    )
+    p_rollback.add_argument("part_name")
+    p_rollback.add_argument(
+        "checkpoint_id",
+        type=int,
+        help="Row id of the checkpoint to roll back to.",
+    )
+    p_rollback.add_argument(
+        "--locals-path",
+        dest="locals_path",
+        default=None,
+        help=(
+            "Path to the locals.txt that receives the restored "
+            "snapshot. Optional — omit for audit-only rollback "
+            "(records the 'rolled_back' row but doesn't touch any "
+            "file)."
+        ),
+    )
+    p_rollback.set_defaults(func=_cmd_rollback)
+    add_subcommand_tier(p_rollback, "experimental")
 
     return parser
 
