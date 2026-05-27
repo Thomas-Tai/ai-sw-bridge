@@ -1,4 +1,4 @@
-"""B-rep interrogation package (L1 lane, spec.md §2).
+"""B-rep package (L1 lane, spec.md §2).
 
 Exports the public API for the L1 B-rep lane:
 
@@ -6,13 +6,17 @@ Exports the public API for the L1 B-rep lane:
   return a dict describing the feature's topology (faces + normals +
   centroids + role hints). Returns ``None`` when the
   ``brep_interrogation`` flag is OFF.
+- ``fingerprint(face_dict)`` — stable 16-hex-char identity derived
+  from normal + centroid + area.
 """
 
 from __future__ import annotations
 
+from .fingerprint import fingerprint
 from .interrogator import BrepFace, interrogate
 
 __all__ = [
     "BrepFace",
+    "fingerprint",
     "interrogate",
 ]
