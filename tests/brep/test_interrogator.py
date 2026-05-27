@@ -277,3 +277,162 @@ def test_brepface_to_dict_round_trip() -> None:
     assert d["bbox"] == [[-0.01, -0.01, 0.0], [0.01, 0.01, 0.005]]
     assert d["fingerprint"] == ""
     assert d["is_surface"] is False
+    assert d["is_hidden"] is False
+
+
+# ---------------------------------------------------------------------------
+# Tests — P0-8 edge cases (suppressed / hidden / imported)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SuppressibleFeature:
+    """Feature mock exposing IsSuppressed for the suppressed-feature path."""
+
+    Name: str = "Suppressed_Cut"
+    suppressed: bool = True
+    faces: tuple = ()
+
+    def IsSuppressed(self) -> bool:
+        return self.suppressed
+
+    def GetFaces(self):
+        return self.faces
+
+
+def test_interrogate_suppressed_feature_returns_status(enable_brep) -> None:
+    feature = SuppressibleFeature(
+        suppressed=True,
+        faces=(_box_face((0.0, 0.0, 0.0), (0.01, 0.01, 0.005), (0.0, 0.0, 1.0)),),
+    )
+    result = interrogate(feature)
+    assert result is not None
+    assert result["status"] == "suppressed"
+    # Suppressed features must not leak stale face data.
+    assert result["faces"] == []
+
+
+def test_interrogate_unsuppressed_feature_walks_normally(enable_brep) -> None:
+    feature = SuppressibleFeature(
+        suppressed=False,
+        faces=(_box_face((0.0, 0.0, 0.0), (0.01, 0.01, 0.005), (0.0, 0.0, 1.0)),),
+    )
+    result = interrogate(feature)
+    assert result is not None
+    assert "status" not in result
+    assert len(result["faces"]) == 1
+
+
+@dataclass
+class HideableFace(MockFace):
+    """Face mock with IsHidden + Visible attributes."""
+
+    hidden: bool = False
+    visible: bool = True
+
+    def IsHidden(self) -> bool:
+        return self.hidden
+
+    def Visible(self) -> bool:
+        return self.visible
+
+
+def test_interrogate_marks_hidden_face(enable_brep) -> None:
+    hidden = HideableFace(
+        box=(0.0, 0.0, 0.0, 0.01, 0.01, 0.005),
+        normal=(0.0, 0.0, 1.0),
+        hidden=True,
+    )
+    visible = HideableFace(
+        box=(0.0, 0.0, 0.005, 0.01, 0.01, 0.005),
+        normal=(0.0, 0.0, -1.0),
+        hidden=False,
+    )
+    feature = MockFeature(faces=(hidden, visible))
+    result = interrogate(feature)
+    assert result is not None
+    assert result["faces"][0]["is_hidden"] is True
+    assert result["faces"][1]["is_hidden"] is False
+
+
+def test_interrogate_falls_back_to_visible_when_ishidden_unavailable(
+    enable_brep,
+) -> None:
+    """Older SW builds expose Visible (the inverse) instead of IsHidden."""
+
+    @dataclass
+    class VisibleOnlyFace:
+        box: tuple = (0.0, 0.0, 0.0, 0.01, 0.01, 0.005)
+        normal: tuple = (0.0, 0.0, 1.0)
+        visible: bool = False  # inverse of hidden
+
+        def GetBox(self):
+            return self.box
+
+        def Normal(self):
+            return self.normal
+
+        def GetArea(self):
+            return 1e-4
+
+        def Visible(self):
+            return self.visible
+
+    feature = MockFeature(faces=(VisibleOnlyFace(),))
+    result = interrogate(feature)
+    assert result is not None
+    assert result["faces"][0]["is_hidden"] is True
+
+
+@dataclass
+class ImportFeature:
+    """Mock for IFeature with GetTypeName2 == 'ImportFeature'."""
+
+    Name: str = "Imported_STEP_Body"
+    body_faces: tuple = ()
+
+    def GetTypeName2(self) -> str:
+        return "ImportFeature"
+
+    def GetFaces(self):
+        # ImportFeature returns no native faces via the feature handle —
+        # this path should be skipped by the interrogator.
+        raise AssertionError("interrogator must NOT call GetFaces on ImportFeature")
+
+    def GetBody(self):
+        if not self.body_faces:
+            return None
+        return _MockBody(self.body_faces)
+
+
+@dataclass
+class _MockBody:
+    faces: tuple
+
+    def GetFaces(self):
+        return self.faces
+
+    def GetNext(self):
+        return None
+
+
+def test_interrogate_import_feature_falls_back_to_body_walk(enable_brep) -> None:
+    face = _box_face(
+        (0.0, 0.0, 0.0),
+        (0.01, 0.01, 0.005),
+        (0.0, 0.0, 1.0),
+    )
+    feature = ImportFeature(body_faces=(face,))
+    result = interrogate(feature)
+    assert result is not None
+    # Body walk produced one face — no status key needed.
+    assert len(result["faces"]) == 1
+    assert "status" not in result
+
+
+def test_interrogate_import_feature_with_no_body_records_status(enable_brep) -> None:
+    feature = ImportFeature(body_faces=())
+    result = interrogate(feature)
+    assert result is not None
+    assert result["faces"] == []
+    assert result["status"] == "imported"
