@@ -177,6 +177,47 @@ These failures surface as runtime exceptions during the build (`FeatureCut4 retu
 
 ---
 
+## 7. Checkpoint retention is bounded by three AND-combined tunables
+
+Every build with `flags.checkpoint = true` writes one SQLite row per
+feature into `.checkpoints/<part_name>.sqlite`. Without a retention
+policy the store grows unbounded; on long-running projects it can
+reach hundreds of megabytes.
+
+`ai_sw_bridge.checkpoint.gc.run` (E3.4) prunes rows according to
+three dimensions, all AND-combined — a row survives only if it
+satisfies every configured dimension:
+
+| Tunable                    | Default | Effect                                                        |
+| -------------------------- | ------- | ------------------------------------------------------------- |
+| `max_count_per_part`       | 100     | Keep the N most recent checkpoints per part.                  |
+| `max_age_days`             | 30      | Drop rows older than M days.                                  |
+| `max_db_size_mb`           | 50.0    | Drop oldest rows until the SQLite file is under the cap.      |
+
+Passing `None` disables a dimension. Example TOML:
+
+```toml
+[checkpoint]
+max_count_per_part = 25
+max_age_days = 14
+max_db_size_mb = 20.0
+```
+
+### How to recognize
+
+- `.checkpoints/` directory is growing past your comfort level.
+- `ai-sw-history part <name>` returns more rows than you care to read.
+
+### Workaround
+
+- Run `python -c "from ai_sw_bridge.checkpoint import gc_run; print(gc_run())"`
+  periodically, or wire it into a CI teardown step.
+- Tighten the tunables in `.ai-sw-bridge.toml` for long-lived parts.
+- Note: GC is pure SQLite — it never touches the running SOLIDWORKS
+  session, so it's safe to run mid-build on a different part.
+
+---
+
 ## Reporting new sharp edges
 
 If you hit something that's reproducible and not in this list, please open an issue with: the spec JSON, the full CLI output (including the traceback), the SW build (Help → About → revision string), and the `doc.GetPartBox(True)` output after the (partial) build.
