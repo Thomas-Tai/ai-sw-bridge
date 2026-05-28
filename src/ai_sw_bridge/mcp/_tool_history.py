@@ -166,7 +166,15 @@ def register(mcp: Any) -> None:
         part_name: str,
         root: str | None = None,
     ) -> dict[str, Any]:
-        """Show encryption status of a checkpoint DB."""
+        """Show encryption status of a checkpoint DB.
+
+        Mirrors ``ai-sw-checkpoint info`` (cli/checkpoint.py:60) so the
+        MCP wire payload and the CLI stdout payload have identical key
+        sets and value semantics. ``_meta`` is the single-row column-
+        per-field table defined in checkpoint/store.py:90.
+        """
+        import json as json_mod
+
         r = Path(root) if root else _DEFAULT_ROOT
         db_path = r / f"{part_name}.sqlite"
         if not db_path.exists():
@@ -179,28 +187,29 @@ def register(mcp: Any) -> None:
             meta_row = conn.execute(
                 "SELECT name FROM sqlite_master " "WHERE type='table' AND name='_meta'"
             ).fetchone()
+            empty_payload = {
+                "ok": True,
+                "part": part_name,
+                "encrypted": False,
+                "encryption_algo": None,
+                "key_fingerprint": None,
+                "encrypted_columns": [],
+            }
             if meta_row is None:
-                return {
-                    "ok": True,
-                    "part": part_name,
-                    "encrypted": False,
-                    "encryption_algo": None,
-                    "key_fingerprint": None,
-                    "encrypted_columns": [],
-                }
-            row = conn.execute("SELECT key, value FROM _meta ORDER BY key").fetchall()
-            meta = {k: v for k, v in row}
+                return empty_payload
+            row = conn.execute(
+                "SELECT encryption_algo, key_fingerprint, encrypted_cols "
+                "FROM _meta LIMIT 1"
+            ).fetchone()
+            if row is None:
+                return empty_payload
             return {
                 "ok": True,
                 "part": part_name,
                 "encrypted": True,
-                "encryption_algo": meta.get("encryption_algo"),
-                "key_fingerprint": meta.get("key_fingerprint"),
-                "encrypted_columns": (
-                    meta.get("encrypted_columns", "").split(",")
-                    if meta.get("encrypted_columns")
-                    else []
-                ),
+                "encryption_algo": row[0],
+                "key_fingerprint": row[1],
+                "encrypted_columns": json_mod.loads(row[2]),
             }
         finally:
             conn.close()
