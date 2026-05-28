@@ -6,14 +6,17 @@
     "properties": {},
     "active_configuration": null,
     "count": 0,
-    "error": "no_active_doc"
+    "error": "GetCustomInfoNames3 failed: AttributeError('<unknown>.GetCustomInfoNames3')"
   },
   "result_shape": {
     "ok": "$bool",
     "properties": {},
     "active_configuration": "$none",
     "count": "$int",
-    "error": "$str"
+    "error": [
+      "$str",
+      "$none"
+    ]
   },
   "error": null
 }

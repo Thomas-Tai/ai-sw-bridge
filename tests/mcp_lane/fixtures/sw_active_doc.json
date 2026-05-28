@@ -3,21 +3,39 @@
   "args": {},
   "result": {
     "ok": true,
-    "path": null,
-    "type": null,
-    "type_id": null,
-    "title": null,
-    "is_dirty": null,
-    "error": "no_active_doc"
+    "path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\captures\\v0_10_validation\\dr_metrics_test.SLDPRT",
+    "type": "Part",
+    "type_id": 1,
+    "title": "dr_metrics_test.SLDPRT",
+    "is_dirty": false,
+    "error": null
   },
   "result_shape": {
     "ok": "$bool",
-    "path": "$none",
-    "type": "$none",
-    "type_id": "$none",
-    "title": "$none",
-    "is_dirty": "$none",
-    "error": "$str"
+    "path": [
+      "$str",
+      "$none"
+    ],
+    "type": [
+      "$str",
+      "$none"
+    ],
+    "type_id": [
+      "$int",
+      "$none"
+    ],
+    "title": [
+      "$str",
+      "$none"
+    ],
+    "is_dirty": [
+      "$bool",
+      "$none"
+    ],
+    "error": [
+      "$str",
+      "$none"
+    ]
   },
   "error": null
 }

@@ -311,22 +311,3 @@ class TestWireFormat:
         # Test exercises a real malformed spec against MockAdapter so
         # validator.validate() raises ValidationError before any COM.
         pytest.skip("Requires fully wired tool to fire — covered in §11.5")
-
-
-# ---------------------------------------------------------------------------
-# §11.5 End-to-end (with mcp's in-memory test transport)
-# ---------------------------------------------------------------------------
-
-
-class TestEndToEnd:
-    def test_initialize_handshake(self) -> None:
-        """MCP initialize → response declares 'tools' capability."""
-        pytest.skip("Requires mcp test transport setup — covered in W5.4-impl")
-
-    def test_list_tools_matches_inventory(self) -> None:
-        """tools/list returns exactly the §6 inventory."""
-        pytest.skip("Requires mcp test transport setup — covered in W5.4-impl")
-
-    def test_call_sw_bbox_against_mock(self) -> None:
-        """tools/call sw_bbox against MockAdapter returns the mock's bbox dict."""
-        pytest.skip("Requires mcp test transport setup — covered in W5.4-impl")

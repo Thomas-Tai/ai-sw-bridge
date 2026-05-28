@@ -303,6 +303,18 @@ stdout is exactly what `sw_bbox` returns.
 FastMCP serializes to `content: [{ type: "text", text: <json> }]`
 per the MCP spec. Clients parse the text as JSON.
 
+**Known divergence — history / checkpoint-info error paths.** The CLI
+surfaces "DB not found", "invalid timestamp", and "checkpoint id not
+found" as `_emit_json({ok: False, …}, 2)` + `sys.exit(2)`. MCP has no
+process-exit channel (JSON-RPC error responses carry a numeric code,
+not a process rc), so the three history bodies and `sw_checkpoint_info`
+return the same `{ok: False, …}` dict as their normal return value.
+The agent sees a structured error payload it can recover from, not a
+JSON-RPC `-32603` internal-error envelope. Success paths match the CLI
+stdout byte-for-byte — no MCP-layer `ok: True` is added (the shared
+library in `checkpoint/__init__.py` doesn't emit one). Audit record:
+`docs/audit_s1_cli_mcp_parallelism.md` (W5.5 follow-up).
+
 ### 7.3 Tool error path
 
 When a tool's underlying function raises:

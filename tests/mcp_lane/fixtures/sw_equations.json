@@ -2,34 +2,61 @@
   "tool": "sw_equations",
   "args": {},
   "result": {
-    "ok": false,
-    "doc_path": null,
+    "ok": true,
+    "doc_path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\captures\\v0_10_validation\\dr_metrics_test.SLDPRT",
     "linked_file": null,
-    "link_active": null,
-    "auto_solve_order": null,
-    "auto_rebuild": null,
-    "manager_status_code": null,
-    "manager_status": null,
+    "link_active": false,
+    "auto_solve_order": true,
+    "auto_rebuild": true,
+    "manager_status_code": 0,
+    "manager_status": "ok",
     "equation_count": 0,
     "equations": [],
-    "error": "no_active_doc"
+    "error": null
   },
   "result_shape": {
     "ok": "$bool",
-    "doc_path": "$none",
-    "linked_file": "$none",
-    "link_active": "$none",
-    "auto_solve_order": "$none",
-    "auto_rebuild": "$none",
-    "manager_status_code": "$none",
-    "manager_status": "$none",
-    "equation_count": "$int",
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
+    "linked_file": [
+      "$str",
+      "$none"
+    ],
+    "link_active": [
+      "$bool",
+      "$none"
+    ],
+    "auto_solve_order": [
+      "$bool",
+      "$none"
+    ],
+    "auto_rebuild": [
+      "$bool",
+      "$none"
+    ],
+    "manager_status_code": [
+      "$int",
+      "$none"
+    ],
+    "manager_status": [
+      "$str",
+      "$none"
+    ],
+    "equation_count": [
+      "$int",
+      "$none"
+    ],
     "equations": {
       "__list__": true,
       "len": 0,
       "item": null
     },
-    "error": "$str"
+    "error": [
+      "$str",
+      "$none"
+    ]
   },
   "error": null
 }

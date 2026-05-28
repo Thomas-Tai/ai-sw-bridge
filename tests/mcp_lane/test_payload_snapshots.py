@@ -74,10 +74,29 @@ def _assert_shape_match(
       any value of the corresponding Python type — exact values are
       deliberately NOT compared, so embedding-score drift and count
       changes don't fail the suite.
+    * ``["$str", "$none"]`` (list of type tags) is a **union marker**:
+      the actual value may match any of the listed tags. Used for
+      fields whose type depends on live-SW state (``doc_path``,
+      ``error``, etc.). The probe emits concrete tags; union markers
+      are hand-edited into the fixture when a field's type is
+      state-dependent.
     * Dict shapes require identical key sets; values are compared
       recursively.
-    * List shapes require identical lengths and homogeneous item shape.
+    * List shapes require identical item-shape; length is tolerated.
     """
+    # Union marker: a list of type tags (e.g. ["$str", "$none"]).
+    if isinstance(expected, list):
+        for tag in expected:
+            try:
+                _assert_shape_match(actual, tag, path=path)
+                return
+            except AssertionError:
+                continue
+        raise AssertionError(
+            f"{path}: value of type {type(actual).__name__} did not match "
+            f"any union tag in {expected}"
+        )
+
     if expected in ("$bool", "$int", "$float", "$str", "$none"):
         type_map = {
             "$bool": bool,

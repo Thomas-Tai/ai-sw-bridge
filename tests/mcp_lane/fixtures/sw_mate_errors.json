@@ -3,18 +3,21 @@
   "args": {},
   "result": {
     "ok": false,
-    "doc_path": null,
+    "doc_path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\captures\\v0_10_validation\\dr_metrics_test.SLDPRT",
     "mate_count": 0,
     "mates": [],
     "summary": {
       "by_status": {},
       "broken_count": 0
     },
-    "error": "no_active_doc"
+    "error": "active doc is type 1 (Part); sw_get_mate_errors requires an assembly"
   },
   "result_shape": {
     "ok": "$bool",
-    "doc_path": "$none",
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
     "mate_count": "$int",
     "mates": {
       "__list__": true,
@@ -25,7 +28,10 @@
       "by_status": {},
       "broken_count": "$int"
     },
-    "error": "$str"
+    "error": [
+      "$str",
+      "$none"
+    ]
   },
   "error": null
 }

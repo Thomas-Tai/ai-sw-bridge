@@ -16,16 +16,31 @@
   },
   "result_shape": {
     "ok": "$bool",
-    "doc_path": "$none",
-    "volume_mm3": "$none",
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
+    "volume_mm3": [
+      "$float",
+      "$none"
+    ],
     "volume_m3": "$none",
-    "surface_area_mm2": "$none",
+    "surface_area_mm2": [
+      "$float",
+      "$none"
+    ],
     "surface_area_m2": "$none",
     "mass_kg": "$none",
     "density_kg_m3": "$none",
-    "center_of_mass_mm": "$none",
+    "center_of_mass_mm": [
+      "$list",
+      "$none"
+    ],
     "body_count": "$none",
-    "error": "$str"
+    "error": [
+      "$str",
+      "$none"
+    ]
   },
   "error": null
 }

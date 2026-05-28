@@ -79,7 +79,6 @@ def register(mcp: Any) -> None:
         if limit is not None:
             rows = rows[:limit]
         return {
-            "ok": True,
             "subcommand": "part",
             "part_name": part_name,
             "count": len(rows),
@@ -117,7 +116,6 @@ def register(mcp: Any) -> None:
         if limit is not None:
             rows = rows[:limit]
         return {
-            "ok": True,
             "subcommand": "since",
             "part_name": part_name,
             "since": since_ts,
@@ -155,7 +153,6 @@ def register(mcp: Any) -> None:
                 "missing": missing,
             }
         return {
-            "ok": True,
             "subcommand": "diff",
             "part_name": part_name,
             **feature_diff(a, b),

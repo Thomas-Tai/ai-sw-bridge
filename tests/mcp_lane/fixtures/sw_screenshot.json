@@ -16,12 +16,21 @@
   },
   "result_shape": {
     "ok": "$bool",
-    "path": "$none",
-    "doc_path": "$none",
+    "path": [
+      "$str",
+      "$none"
+    ],
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
     "width": "$int",
     "height": "$int",
     "fit_view_applied": "$bool",
-    "error": "$str"
+    "error": [
+      "$str",
+      "$none"
+    ]
   },
   "error": null
 }

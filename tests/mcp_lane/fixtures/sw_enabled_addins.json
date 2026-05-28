@@ -19,7 +19,10 @@
       "len": 0,
       "item": null
     },
-    "error": "$str"
+    "error": [
+      "$str",
+      "$none"
+    ]
   },
   "error": null
 }

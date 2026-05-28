@@ -14,7 +14,7 @@
     "area": null,
     "perimeter": null,
     "selection_summary": [],
-    "error": "no_active_doc"
+    "error": "no_selection - select entities in SW first, or pass entity_a/entity_b"
   },
   "result_shape": {
     "ok": "$bool",
@@ -33,7 +33,10 @@
       "len": 0,
       "item": null
     },
-    "error": "$str"
+    "error": [
+      "$str",
+      "$none"
+    ]
   },
   "error": null
 }
