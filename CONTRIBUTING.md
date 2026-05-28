@@ -104,6 +104,10 @@ required (see `docs/central_idea/harvest_plan.md` §5 for the full process):
 | --- | --- | --- | --- | --- | --- | --- |
 | `src/ai_sw_bridge/errors/circuit_breaker.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-24 | TBD | `src/solidworks_mcp/adapters/circuit_breaker.py` — sync wrapper extraction |
 | `src/ai_sw_bridge/com/executor.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-28 | TBD | `src/solidworks_mcp/adapters/com_executor.py` — replaced loguru with stdlib logging, added is_dead introspection, drain pending on shutdown |
+| `src/ai_sw_bridge/com/adapter.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-28 | TBD | `src/solidworks_mcp/adapters/base.py` — simplified to sync interface, removed pydantic dependency |
+| `src/ai_sw_bridge/com/adapters/mock.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-28 | TBD | `src/solidworks_mcp/adapters/mock_adapter.py` — simplified mock dispatch for testing |
+| `src/ai_sw_bridge/com/adapters/pywin32.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-28 | TBD | `src/solidworks_mcp/adapters/pywin32_adapter.py` — late-binding COM dispatch wrapper |
+| `src/ai_sw_bridge/com/factory.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-28 | TBD | `src/solidworks_mcp/adapters/factory.py` — simplified factory with platform-based auto-selection |
 
 ## License
 
