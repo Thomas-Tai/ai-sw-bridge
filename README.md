@@ -45,6 +45,8 @@ flowchart LR
 
 The spec language covers **12 part-modelling primitives** today (sketches, extrudes, cuts, fillets, chamfers, patterns, mirror, revolve, holes). [See the full primitive list →](docs/spec_reference.md)
 
+As of **v0.13**, the same tool surface is also reachable via the MCP server (`ai-sw-mcp`) — bring your own Claude Desktop, Cursor, or Continue.dev. [Jump to the MCP section ↓](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)
+
 ## 5-minute quickstart
 
 ### Prerequisites
@@ -103,17 +105,89 @@ For the longer story (field survey of existing tools, why fluent APIs lose, why 
 
 ## What ships in the box
 
-Five CLI commands on your PATH after `pip install -e .`:
+Nine CLI commands + one MCP server on your PATH after `pip install -e ".[mcp]"`:
 
 | Command | What it does | Read-only? |
 |---|---|---|
 | `ai-sw-probe` | COM connectivity check | ✅ |
-| `ai-sw-observe` | Inspect features, equations, mates, screenshots — JSON output | ✅ |
+| `ai-sw-observe` | Inspect doc / features / equations / mates / bbox / volume / custom-props / screenshots / mates / add-ins — JSON output | ✅ |
 | `ai-sw-mutate` | Propose → dry-run → commit changes to `*_locals.txt` variables | ⚠️ approval-gated |
 | `ai-sw-codegen` | Parameterize a recorded `.swp` macro against a locals file | — |
-| `ai-sw-build` | **Build a part from a JSON spec via direct-COM** ← the v0.2 path | — |
+| `ai-sw-build` | **Build a part from a JSON spec via direct-COM.** Three modes (`--no-dim`, `--deferred-dim`, parametric default); flags for `--checkpoint`, `--checkpoint-encrypt`, `--auto-retry`, `--save-format`, `--disable-addins`, `--strict-addins`. | — |
+| `ai-sw-apidoc` | RAG over the SOLIDWORKS API CHM corpus — `search` / `detail` / `members` / `examples` / `enum` subcommands | ✅ |
+| `ai-sw-history` | Query L4 checkpoint history — `part` / `since` / `diff` / `rollback` subcommands | ⚠️ rollback writes |
+| `ai-sw-checkpoint` | Manage L4 encryption — `info` (no key needed) / `genkey` / `rekey` / `migrate` | — |
+| `ai-sw-mcp` | **MCP server (stdio transport)** for Claude Desktop, Cursor, Continue.dev, and other MCP-capable clients. Exposes 21 tools mapping 1:1 to the CLI surface. Install with `pip install ai-sw-bridge[mcp]`. | mixed |
 
 Three build modes for `ai-sw-build` (use `--no-dim` for AI workflows; the others trade speed for live equation links). [Why `--no-dim` exists →](docs/why_no_addim2.md)
+
+## MCP server — drive the bridge from Claude Desktop / Cursor / etc.
+
+The MCP server (new in v0.13) exposes 21 tools to MCP-capable AI clients
+over stdio. Same tool surface as the CLI; just a different transport.
+
+```mermaid
+flowchart LR
+    A["You (chat)"] --> B["Claude Desktop / Cursor"]
+    B -->|stdio JSON-RPC| C["ai-sw-mcp"]
+    C -->|STA-threaded ComExecutor| D["SOLIDWORKS COM"]
+    D --> E["SOLIDWORKS"]
+    style A fill:#e1f5ff,stroke:#0288d1,color:#000
+    style C fill:#fff3e0,stroke:#f57c00,color:#000
+    style E fill:#e8f5e9,stroke:#388e3c,color:#000
+```
+
+### Quick install
+
+```powershell
+pip install -e ".[mcp]"   # adds the `mcp` SDK dependency
+where ai-sw-mcp           # confirms the entry point is on PATH
+```
+
+### Register with Claude Desktop
+
+Edit `%APPDATA%\Claude\claude_desktop_config.json` (path varies for the
+Windows Store / MSIX build — see [`docs/mcp_server_design.md`](docs/mcp_server_design.md)):
+
+```json
+{
+  "mcpServers": {
+    "ai-sw-bridge": {
+      "command": "C:\\path\\to\\ai-sw-mcp.exe"
+    }
+  }
+}
+```
+
+Restart Claude Desktop fully. The MCP server appears under
+**Settings → Connectors / Local MCP servers** with 21 tools listed.
+Type "What's the bounding box of the active part?" in chat; the model
+selects `sw_bbox`, the result renders in the chat.
+
+### Tool inventory (21 tools)
+
+**Observation (10)** — read-only, mirror `ai-sw-observe`:
+`sw_active_doc`, `sw_feature_errors`, `sw_equations`, `sw_bbox`,
+`sw_volume`, `sw_screenshot`, `sw_measure`, `sw_mate_errors`,
+`sw_custom_props`, `sw_enabled_addins`
+
+**Build (1)** — write, validator-gated:
+`sw_build` (full `ai-sw-build` surface incl. checkpoint + encryption)
+
+**API doc (5)** — read-only, SQLite-backed, mirror `ai-sw-apidoc`:
+`sw_apidoc_search`, `sw_apidoc_detail`, `sw_apidoc_members`,
+`sw_apidoc_examples`, `sw_apidoc_enum`
+
+**History + checkpoint info (4)** — read-only, mirror `ai-sw-history` + `ai-sw-checkpoint info`:
+`sw_history_part`, `sw_history_since`, `sw_history_diff`,
+`sw_checkpoint_info`
+
+**Lifecycle (1)** — STA reconnect after SW process death:
+`sw_reconnect`
+
+**Deliberately NOT exposed via MCP** (CLI-only per [`docs/mcp_server_design.md`](docs/mcp_server_design.md) §6.5): `sw_mutate_apply` (human-approval per call required), `sw_checkpoint_genkey` / `sw_checkpoint_rekey` / `sw_checkpoint_migrate` (key-management operations), `sw_codegen`, `sw_probe`.
+
+[Full MCP server design + protocol detail →](docs/mcp_server_design.md)
 
 ## Limitations you should know before adopting
 
@@ -133,6 +207,7 @@ A short list. The [full known-limitations doc](docs/known_limitations.md) is req
 - **v0.10 — reliability + DX bundle GREEN.** `--lint`, `--verify-mass`, `_expect`, structured logging, `build_metrics.json`, pre-commit framework, doc-coverage gate, golden-volume regression check, SW version floor.
 - **v0.11 — reliability / observability / supply-chain GREEN** (2026-05-27). 15-lane Phase 1: feature flags, circuit breaker, SLI baselines (p50/p95/p99), local telemetry SQLite, license-lint, upstream-drift, AGENTS.md drift, quickstart smoke, CLI stability tiers, bug-report bundler, two-stream contract, COM reconnect, fault-injection harness, release-engineering CI, anti-loop retry guard. Validated against SW 32.1.0; 342/342 tests pass; CI green on Win-2025 × Py 3.10/3.12/3.14.
 - **v0.12 — four capability lanes GREEN** (2026-05-27). 27-task Phase 2 across E1–E6: **L1 B-rep interrogation** (per-feature topological fingerprint manifest), **L2 COM error envelope + 9-entry hint catalog with hint-aware RetryGuard**, **L3 RAG API-doc retrieval** (committed 262-chunk index + `ai-sw-apidoc` CLI with 5 subcommands), **L4 SQLite per-feature checkpoints + `ai-sw-history` CLI**. All lanes behind default-OFF flags — every v0.11 spec builds byte-identical. 647/647 tests pass. [See CHANGELOG →](CHANGELOG.md) · [migration notes →](docs/migration_to_v0.12.md) · [ROADMAP →](docs/ROADMAP.md)
+- **v0.13 — Lane M (MCP server) + checkpoint encryption + STA-thread COM safety GREEN** (2026-05-28). New `ai-sw-mcp` stdio server exposes 21 tools to Claude Desktop / Cursor / Continue.dev (Wave 5 audit verified end-to-end with real-data rendering). At-rest Fernet encryption for L4 checkpoints (`--checkpoint-encrypt env:NAME|file:|keyring:|prompt`). STA-threaded `ComExecutor` + pywin32 adapter factory ported from `SolidworksMCP-python` so out-of-process callers (MCP subprocess, IDE plugins) cleanly attach to the user's foreground SW via `GetActiveObject`. Add-in interference detection (`ai-sw-build --disable-addins --strict-addins`). 947 tests pass + 13 e2e_sw tests against a live SW workstation. Wave 5 audit caught + fixed 5 ship blockers pre-tag. [See CHANGELOG →](CHANGELOG.md) · [MCP design →](docs/mcp_server_design.md) · [deferred items →](docs/DEFERRED.md)
 
 ## Layout
 
@@ -143,18 +218,36 @@ ai-sw-bridge/
 │   │   ├── builder.py        #     build loop + non-sketch handlers + registry
 │   │   ├── sketches/         #     SketchHandler ABC + 5 concrete handlers
 │   │   └── ...
-│   └── cli/                  #   five CLI entry points
-├── examples/                 # 12 worked specs (start here when authoring)
+│   ├── brep/                 # L1 — B-rep interrogation (per-feature manifest)
+│   ├── errors/               # L2 — build_error / wrapper / hints / circuit_breaker / auto_retry
+│   ├── rag/                  # L3 — API RAG (sqlite-vec index + embedder)
+│   ├── checkpoint/           # L4 — SQLite checkpoints (store / snapshot / rollback / crypto)
+│   ├── com/                  #     ComExecutor + adapter factory (STA-thread COM safety)
+│   ├── mcp/                  # Lane M — MCP server (FastMCP + @com_tool decorator)
+│   ├── telemetry/            # local SQLite metrics + trace IDs (no PII / no auto-upload)
+│   ├── flags/                # feature-flag registry + precedence resolver
+│   └── cli/                  # nine CLI entry points
+├── examples/                 # worked specs (start here when authoring)
 ├── docs/
 │   ├── AGENTS.md             #   agent briefing — what the AI reads first
 │   ├── spec_reference.md     #   per-primitive schema reference
 │   ├── api_reference.md      #   CHM-verified SW API surface
 │   ├── known_limitations.md  #   sharp edges + workarounds
 │   ├── known_gotchas.md      #   things we learned the hard way
-│   └── ai_driven_architecture_review.md  # field survey + v0.2 design
-├── tools/                    # CHM extractor, drift/license lint, bundle, perf baselines
+│   ├── DEFERRED.md           # ← v0.14+ backlog + indefinitely-deferred items
+│   ├── ROADMAP.md
+│   ├── mcp_server_design.md  # ← MCP server protocol + tool inventory + design rationale
+│   ├── checkpoint_encryption_design.md  # ← L4 at-rest encryption (Fernet, 4 key sources)
+│   └── ai_driven_architecture_review.md  # field survey + design rationale
+├── tools/                    # CHM extractor, drift/license lint, bundle, perf baselines, probe_mcp_tools, checkpoint_redact, spec_redact, example_roundtrip
 ├── spikes/                   # Phase 0 / v0.3 / v0.5 / v0.6 API probes
-└── tests/                    # 342 tests, all green on Python 3.10 / 3.12 / 3.14
+├── tests/                    # 947 tests, all green on Python 3.10 / 3.12 / 3.14
+│   ├── e2e_sw/               # end-to-end suite against live SW (solidworks_only marker)
+│   ├── fault_injection/      # COM HRESULT injection (separate CI job)
+│   ├── mcp_lane/             # MCP server contract + wire-level + snapshot fixtures
+│   └── onboarding/           # quickstart smoke (no-SW-required)
+├── CODESTYLE.md              # cross-cutting code discipline (two-stream, fail-soft, STA, etc.)
+└── CONTRIBUTING.md           # developer workflow + per-file port attribution
 ```
 
 ## License
