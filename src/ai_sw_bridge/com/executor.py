@@ -250,17 +250,45 @@ class ComExecutor:
         """``True`` when the SW process died during operation (W5.6).
 
         Distinct from :attr:`is_dead` (CoInitialize failure at startup).
-        This flag flips when a worker call raises ``pywintypes.com_error``
-        with an HRESULT in ``_DEAD_HRESULTS`` (``0x800401FD`` or
-        ``0x80010108``), indicating the SW process is no longer reachable.
+        Flips when:
 
-        When dead, the worker has exited and all pending futures were
-        completed with ``ConnectionError``. Call :meth:`reconnect` to
-        restart the worker on a fresh STA thread.
+        * a worker call raises ``pywintypes.com_error`` with an HRESULT
+          in ``_DEAD_HRESULTS`` (``0x800401FD`` or ``0x80010108``); OR
+        * an external observer (typically the ``@com_tool`` wrapper)
+          calls :meth:`mark_sw_dead` after detecting a swallowed
+          dead-dispatch ``AttributeError`` in a tool's return payload.
+
+        The second path covers a real failure mode that ``_worker``'s
+        HRESULT trap alone cannot catch: ``observe.*`` and ``mutate.*``
+        wrap the dispatch ``AttributeError`` into
+        ``result['error'] = f'dispatch failed: {exc!r}'`` and return a
+        well-formed payload, so the exception never propagates to
+        ``_worker``'s catch block. Caught by Wave 5 Phase 2.5 audit
+        (see ``CHANGELOG.md`` v0.13.0).
+
+        When dead, the worker has exited (HRESULT path) or is still
+        running but every COM call will fail (AttributeError path) and
+        all subsequent ``@com_tool`` invocations short-circuit with a
+        ``sw_reconnect`` hint. Call :meth:`reconnect` to restart the
+        worker on a fresh STA thread.
 
         See ``docs/com_failure_modes.md`` row M-01.
         """
         return self._sw_app_is_dead
+
+    def mark_sw_dead(self) -> None:
+        """Mark the executor as having lost the SW process.
+
+        Safe to call from any thread (the underlying attribute is a
+        plain bool; the GIL provides atomicity for writes). Intended
+        for the ``@com_tool`` wrapper to flip the flag when it
+        detects a dead-dispatch ``AttributeError`` in a tool return
+        payload — see :attr:`is_sw_dead` for the rationale.
+
+        Idempotent. After this call, subsequent ``@com_tool`` invocations
+        short-circuit and the next :meth:`reconnect` resets state.
+        """
+        self._sw_app_is_dead = True
 
     # ---- Context manager -------------------------------------------------
 

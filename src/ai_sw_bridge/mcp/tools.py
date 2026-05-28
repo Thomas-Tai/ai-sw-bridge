@@ -18,12 +18,40 @@ from __future__ import annotations
 
 import functools
 import logging
+import re
 from typing import Any, Callable, TypeVar
 
 logger = logging.getLogger(__name__)
 
 
 T = TypeVar("T")
+
+
+# Wave 5 Phase 2.5 finding: pywin32 surfaces SW process death as
+# ``AttributeError('SldWorks.Application.<member>')`` from dynamic
+# dispatch attribute lookup, NOT as the ``pywintypes.com_error`` with
+# HRESULT 0x800401FD / 0x80010108 that ``ComExecutor`` originally
+# trapped. observe.* and mutate.* catch the AttributeError and turn
+# it into ``result['error'] = f'dispatch failed: {exc!r}'`` so the
+# exception never reaches ``ComExecutor._worker``'s catch.
+#
+# This regex detects that wrapped form so ``@com_tool`` can flip
+# ``is_sw_dead`` post-hoc. The ``SldWorks.`` prefix on the failing
+# member discriminates from genuine late-binding misses (which carry
+# ``<unknown>.<name>`` — see e.g. ``Extension.GetCustomInfoNames3``
+# on parts that don't expose it).
+_DEAD_DISPATCH_RE = re.compile(r"AttributeError\(['\"]SldWorks\.")
+
+
+def _looks_like_dead_dispatch(payload: Any) -> bool:
+    """True iff *payload* is an observe.*/mutate.* result whose ``error``
+    field matches the dead-dispatch pattern from a killed SW process."""
+    if not isinstance(payload, dict):
+        return False
+    err = payload.get("error")
+    if not isinstance(err, str):
+        return False
+    return bool(_DEAD_DISPATCH_RE.search(err))
 
 
 def com_tool(fn: Callable[..., T]) -> Callable[..., T]:
@@ -72,7 +100,21 @@ def com_tool(fn: Callable[..., T]) -> Callable[..., T]:
                 "tool to re-acquire SldWorks.Application on a fresh "
                 "STA thread, or restart the MCP server."
             )
-        return rt.executor.run(lambda: fn(*args, **kwargs))
+        result = rt.executor.run(lambda: fn(*args, **kwargs))
+        # Post-hoc death detection: observe.*/mutate.* swallow the
+        # dead-dispatch AttributeError into result['error'], so the
+        # exception never reaches ComExecutor's HRESULT trap. Inspect
+        # the payload and flip the flag here so the next @com_tool
+        # call short-circuits cleanly instead of repeating the
+        # dispatch error. Wave 5 Phase 2.5 finding.
+        if _looks_like_dead_dispatch(result):
+            logger.warning(
+                "@com_tool: dead-dispatch pattern in %s result; "
+                "marking executor sw_dead",
+                getattr(fn, "__name__", "<tool>"),
+            )
+            rt.executor.mark_sw_dead()
+        return result
 
     # Tag the wrapper so the contract test can find it.
     wrapper._is_com_tool = True  # type: ignore[attr-defined]

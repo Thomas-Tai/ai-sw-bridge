@@ -104,6 +104,4 @@ def test_e2e_custom_props_returns_dict(live_tools, minimal_cylinder_spec_path) -
     assert result.get("count") == len(result["properties"])
     # If ok=False, the error field must explain why — never silent.
     if result["ok"] is False:
-        assert result.get("error"), (
-            f"ok=False but no error message: {result}"
-        )
+        assert result.get("error"), f"ok=False but no error message: {result}"
