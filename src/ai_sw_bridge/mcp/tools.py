@@ -16,7 +16,12 @@ Design: ``docs/mcp_server_design.md`` §4, §10.
 
 from __future__ import annotations
 
+import functools
+import logging
 from typing import Any, Callable, TypeVar
+
+logger = logging.getLogger(__name__)
+
 
 T = TypeVar("T")
 
@@ -43,7 +48,35 @@ def com_tool(fn: Callable[..., T]) -> Callable[..., T]:
         because the runtime is set at server creation, after
         decorators run at import time.
     """
-    raise NotImplementedError("W5.4-impl pending")
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        # Late import so decorators can run at module import time,
+        # before ``create_server`` has wired the runtime reference.
+        from . import runtime as _rt_module
+
+        rt = _rt_module._current_runtime
+        if rt is None:
+            raise RuntimeError(
+                "MCP ServerRuntime is not wired yet — "
+                "call create_server(runtime) before invoking tools"
+            )
+        # Fail fast with a reconnect hint when the SW process died
+        # (W5.6). The executor's run() would surface the next queued
+        # call as ConnectionError, but tools should not have to wait
+        # for that; the is_sw_dead flag is the authoritative signal.
+        if rt.executor.is_sw_dead:
+            raise RuntimeError(
+                "SOLIDWORKS process is no longer reachable "
+                "(ComExecutor.is_sw_dead=True). Call the sw_reconnect "
+                "tool to re-acquire SldWorks.Application on a fresh "
+                "STA thread, or restart the MCP server."
+            )
+        return rt.executor.run(lambda: fn(*args, **kwargs))
+
+    # Tag the wrapper so the contract test can find it.
+    wrapper._is_com_tool = True  # type: ignore[attr-defined]
+    return wrapper
 
 
 def is_com_tool(fn: Callable[..., Any]) -> bool:

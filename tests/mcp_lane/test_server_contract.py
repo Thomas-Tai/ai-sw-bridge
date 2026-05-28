@@ -1,8 +1,5 @@
 """Test contract for ai_sw_bridge.mcp.server (W5.4).
 
-Pending W5.4-impl. Every test is marked at module level until that
-task lands. The impl removes the skip per-test as bodies complete.
-
 Cross-reference: ``docs/mcp_server_design.md`` §11 — each test maps
 1:1 to a row there. The contract is the load-bearing artifact for
 the design: it pins behavior so the impl can't drift.
@@ -11,9 +8,6 @@ the design: it pins behavior so the impl can't drift.
 from __future__ import annotations
 
 import pytest
-
-# Skip the whole module until W5.4-impl is in flight.
-pytestmark = pytest.mark.skip(reason="W5.4-impl pending")
 
 
 # ---------------------------------------------------------------------------

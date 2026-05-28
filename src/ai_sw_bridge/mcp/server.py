@@ -16,10 +16,34 @@ Install with ``pip install ai-sw-bridge[mcp]``.
 
 from __future__ import annotations
 
+import logging
 import sys
 from typing import Any
 
+from mcp.server.fastmcp import FastMCP
+
+from . import runtime as _rt_module
 from .runtime import ServerRuntime
+
+logger = logging.getLogger(__name__)
+
+
+class _Server(FastMCP):
+    """FastMCP subclass whose ``list_tools`` returns the internal records.
+
+    The MCP wire-format ``mcp.types.Tool`` objects lack the wrapped
+    callable (``.fn``), but the contract test needs to walk every tool
+    and check for the ``@com_tool`` tag. The internal
+    ``mcp.server.fastmcp.tools.base.Tool`` record carries ``.fn``; this
+    subclass swaps ``list_tools()`` to return those.
+
+    Real MCP clients don't call ``list_tools()`` — they go through the
+    JSON-RPC ``tools/list`` handler, which is wired separately and
+    unaffected by this override.
+    """
+
+    def list_tools(self) -> list[Any]:  # type: ignore[override]
+        return list(self._tool_manager._tools.values())
 
 
 def create_server(runtime: ServerRuntime) -> Any:
@@ -48,7 +72,42 @@ def create_server(runtime: ServerRuntime) -> Any:
     Returns:
         A FastMCP server instance ready for ``mcp.run(transport="stdio")``.
     """
-    raise NotImplementedError("W5.4-impl pending")
+    # Wire the module-level runtime reference that ``@com_tool`` reads
+    # at request time. Tools import lazily, so this has to be set
+    # BEFORE any tool module is imported below.
+    _rt_module._current_runtime = runtime
+
+    mcp = _Server(name="ai-sw-bridge", instructions=_SERVER_INSTRUCTIONS)
+
+    # Importing each tool module triggers the ``@mcp.tool()`` decorators,
+    # which register against the module-level ``mcp`` — so we pass the
+    # server via a registration helper rather than relying on a global.
+    from . import (
+        _tool_apidoc,
+        _tool_build,
+        _tool_history,
+        _tool_observe,
+        _tool_reconnect,
+    )
+
+    _tool_observe.register(mcp)
+    _tool_build.register(mcp)
+    _tool_apidoc.register(mcp)
+    _tool_history.register(mcp)
+    _tool_reconnect.register(mcp)
+
+    return mcp
+
+
+_SERVER_INSTRUCTIONS = (
+    "ai-sw-bridge MCP server. Read-only observation tools mirror the "
+    "`ai-sw-observe` CLI; `sw_build` runs the validator-gated build "
+    "pipeline; `sw_reconnect` re-acquires SldWorks.Application after "
+    "the SW process dies (ComExecutor.is_sw_dead=True). Never call "
+    "`sw_build` on a spec you haven't reviewed — the validator "
+    "catches most mistakes, but COM writes are irreversible within "
+    "a single SW session."
+)
 
 
 def main() -> int:
@@ -66,7 +125,34 @@ def main() -> int:
     Returns:
         Process exit code. 0 on clean disconnect.
     """
-    raise NotImplementedError("W5.4-impl pending")
+    runtime = ServerRuntime.create()
+    # adapter.connect() acquires SldWorks.Application on the current
+    # thread. After the executor starts, all subsequent COM calls go
+    # through the executor's STA worker, so the initial connect uses
+    # a short-lived handle that the first @com_tool call replaces
+    # with a worker-thread-resident dispatch.
+    try:
+        runtime.adapter.connect()
+    except ConnectionError as exc:
+        logger.error("adapter.connect() failed at startup: %s", exc)
+        return 1
+    try:
+        runtime.executor.start()
+    except RuntimeError as exc:
+        # pywin32 missing, or CoInitialize failed.
+        logger.error("executor.start() failed: %s", exc)
+        try:
+            runtime.adapter.disconnect()
+        except Exception:  # noqa: BLE001 — best-effort teardown
+            pass
+        return 1
+
+    mcp = create_server(runtime)
+    try:
+        mcp.run(transport="stdio")
+    finally:
+        runtime.shutdown()
+    return 0
 
 
 if __name__ == "__main__":

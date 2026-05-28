@@ -156,15 +156,20 @@ src/ai_sw_bridge/mcp/
     _tool_observe.py   # one tool function per ai-sw-observe subcommand
     _tool_build.py     # ai_sw_build tool
     _tool_apidoc.py    # ai_sw_apidoc:* tools (search, detail, members, examples, enum)
-    _tool_history.py   # ai_sw_history:* tools (query)
-    _tool_checkpoint.py  # ai_sw_checkpoint:info (read-only, no genkey/rekey/migrate)
+    _tool_history.py   # ai_sw_history:* tools (query) + sw_checkpoint_info
+    _tool_reconnect.py # sw_reconnect (post-SW-death re-acquire)
 
-tests/mcp/
+tests/mcp_lane/
     __init__.py
-    test_server_contract.py  # contract tests (skipped until impl)
-    test_runtime.py          # runtime smoke tests (no SW required)
-    test_tool_registration.py  # @com_tool catches missing wrapping
+    test_server_contract.py  # contract tests (§11 rows, one file)
 ```
+
+The test directory is named ``mcp_lane`` (not ``mcp``) because a
+``tests/mcp/__init__.py`` would register ``mcp`` in pytest's
+``sys.modules`` before the real ``mcp`` PyPI package, shadowing it
+and breaking ``from mcp.server.fastmcp import FastMCP`` at test
+collection time. Renaming the directory avoids the collision without
+requiring ``conftest.py`` hacks.
 
 `pyproject.toml` adds:
 
@@ -428,7 +433,7 @@ def com_tool(fn: Callable[..., T]) -> Callable[..., T]:
 
 ## 11. Test contract
 
-Tests live in `tests/mcp/`. Initial state has all tests marked
+Tests live in `tests/mcp_lane/`. Initial state has all tests marked
 `@pytest.mark.skip(reason="W5.4-impl pending")` until the impl task
 lands.
 

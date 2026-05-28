@@ -12,11 +12,23 @@ executor and starts a fresh one without re-creating the runtime.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
 from ..com.adapter import SolidWorksAdapter
 from ..com.executor import ComExecutor
+from ..com.factory import AdapterFactory
+
+logger = logging.getLogger(__name__)
+
+
+# Module-level runtime reference. Set by ``server.create_server()`` and
+# read lazily by ``@com_tool`` (which runs at request time, not import
+# time). Using a module-level slot keeps the decorator free of global
+# state while still allowing tools to locate the executor without every
+# caller threading it through.
+_current_runtime: "ServerRuntime | None" = None
 
 
 @dataclass
@@ -49,7 +61,9 @@ class ServerRuntime:
             adapter_type: ``"pywin32"``, ``"mock"``, or ``None`` for
                 platform auto-selection.
         """
-        raise NotImplementedError("W5.4-impl pending")
+        adapter = AdapterFactory.create_adapter(adapter_type)
+        executor = ComExecutor(name="SolidWorks-MCP-COM")
+        return cls(executor=executor, adapter=adapter, config={})
 
     def reconnect(self) -> None:
         """Tear down the dead executor + adapter, start fresh.
@@ -60,11 +74,41 @@ class ServerRuntime:
         Post-condition: ``self.executor.is_alive`` is True and a fresh
         STA apartment is held. The adapter is reconnected.
         """
-        raise NotImplementedError("W5.4-impl pending")
+        logger.info("ServerRuntime: reconnecting after SW death")
+        # Adapter first — it may hold a stale IDispatch. A fresh connect
+        # re-Dispatches SldWorks.Application on whatever SW is running now.
+        try:
+            self.adapter.disconnect()
+        except Exception as exc:  # noqa: BLE001 — best-effort teardown
+            logger.debug("adapter.disconnect during reconnect raised: %r", exc)
+        try:
+            self.adapter.connect()
+        except Exception as exc:
+            # Fresh adapter failed to connect — propagate so the MCP
+            # client gets a typed error rather than a silent hang.
+            raise ConnectionError(
+                f"reconnect failed: adapter.connect() raised: {exc}"
+            ) from exc
+
+        # Executor: ComExecutor.reconnect() resets the dead flag, replaces
+        # the queue, and starts a fresh STA worker.
+        self.executor.reconnect()
+        logger.info("ServerRuntime: reconnect complete; executor.is_alive=True")
 
     def shutdown(self) -> None:
         """Final cleanup. Called from ``main()``'s finally block.
 
         Idempotent. Safe to call when the executor is already stopped.
         """
-        raise NotImplementedError("W5.4-impl pending")
+        logger.info("ServerRuntime: shutting down")
+        # Stop the executor first — the worker may still be running COM
+        # calls through the adapter; cutting the worker before the
+        # adapter means no further COM traffic after this point.
+        try:
+            self.executor.stop()
+        except Exception as exc:  # noqa: BLE001 — shutdown is best-effort
+            logger.debug("executor.stop during shutdown raised: %r", exc)
+        try:
+            self.adapter.disconnect()
+        except Exception as exc:  # noqa: BLE001 — shutdown is best-effort
+            logger.debug("adapter.disconnect during shutdown raised: %r", exc)
