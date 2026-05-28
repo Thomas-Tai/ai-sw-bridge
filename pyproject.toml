@@ -44,6 +44,7 @@ dev = [
     "mypy>=1.13",
     "pre-commit>=3",
     "sentence-transformers>=2.2",
+    "import-linter>=2",
 ]
 
 [tool.pytest.ini_options]
@@ -83,3 +84,36 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 ai_sw_bridge = ["py.typed"]
+
+# W4.4 — import-linter lane-boundary contracts.
+# Layer model (bottom → top):
+#   telemetry, errors (foundations — no upward imports)
+#   brep, rag, checkpoint (lanes — may use telemetry/errors only)
+#   spec, com, core modules (may use lanes + foundations)
+#   cli (top — may import anything)
+#
+# import-linter layers: first entry is the LOWEST layer.
+# Higher layers may import from lower; lower may NOT import from higher.
+[tool.importlinter]
+root_packages = ["ai_sw_bridge"]
+
+[[tool.importlinter.contracts]]
+name = "Lane boundary layers"
+type = "layers"
+layers = [
+    "ai_sw_bridge.cli",
+    "ai_sw_bridge.spec",
+    "ai_sw_bridge.parameterize",
+    "ai_sw_bridge.observe",
+    "ai_sw_bridge.mutate",
+    "ai_sw_bridge.com",
+    "ai_sw_bridge.checkpoint",
+    "ai_sw_bridge.rag",
+    "ai_sw_bridge.brep",
+    "ai_sw_bridge.sw_com",
+    "ai_sw_bridge.sw_types",
+    "ai_sw_bridge.flags",
+    "ai_sw_bridge.locals_io",
+    "ai_sw_bridge.errors",
+    "ai_sw_bridge.telemetry",
+]
