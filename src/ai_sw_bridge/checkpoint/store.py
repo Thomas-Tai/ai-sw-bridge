@@ -175,6 +175,12 @@ class CheckpointStore:
         self._db_path = self._root / f"{part_name}.sqlite"
         self._conn: sqlite3.Connection | None = None
         self._key_source = key_source
+        # Set by _connect() when the on-disk DB is encrypted but no
+        # key_source was supplied. Read-only diagnostics (e.g.
+        # ``ai-sw-checkpoint info``) are allowed; writes are refused
+        # so a no-key process cannot inject plaintext rows into an
+        # otherwise-encrypted DB.
+        self._read_only_encrypted = False
         self._counter_emit: Any | None = None
         try:
             from ..telemetry import counter as _telemetry_counter
@@ -184,9 +190,11 @@ class CheckpointStore:
             self._counter_emit = None
 
         # Trigger connection to validate fingerprint if key_source provided
-        # and DB already exists
-        if key_source is not None and self._db_path.exists():
-            self._connect()  # This will validate fingerprint
+        # and DB already exists. Also fires when the DB exists but no
+        # key_source was supplied, so _read_only_encrypted is set
+        # before any write attempt.
+        if self._db_path.exists():
+            self._connect()
 
     @property
     def part_name(self) -> str:
@@ -213,10 +221,15 @@ class CheckpointStore:
         )
 
         if meta_row is not None:
-            # DB is encrypted - key_source is required
+            # DB is encrypted.
             if self._key_source is None:
-                # Opening encrypted DB without key - allow read but will fail on write
-                pass
+                # No key supplied: allow open in read-only mode so
+                # diagnostics like ``ai-sw-checkpoint info`` work
+                # without the key. Writes are guarded by
+                # _check_writable() below — a no-key process MUST NOT
+                # be able to inject plaintext rows into an otherwise-
+                # encrypted DB.
+                self._read_only_encrypted = True
             else:
                 stored_fp = meta_row[0]
                 supplied_fp = self._key_source.fingerprint()
@@ -229,6 +242,21 @@ class CheckpointStore:
 
         self._conn = conn
         return conn
+
+    def _check_writable(self) -> None:
+        """Raise KeySourceError if the DB is encrypted and no key was supplied.
+
+        Protects the encrypted DB's invariant: every row in an encrypted
+        store has the ``fernet_v1:`` prefix. A no-key writer would land
+        plaintext rows alongside encrypted ones, silently defeating the
+        ``--checkpoint-encrypt`` guarantee.
+        """
+        if self._read_only_encrypted:
+            raise KeySourceError(
+                f"checkpoint DB {self._db_path} is encrypted; "
+                "key_source is required for writes (open the store with "
+                "key_source= to insert/commit/rollback)"
+            )
 
     def _table_exists(self, conn: sqlite3.Connection, table_name: str) -> bool:
         """Check if a table exists in the database."""
@@ -314,6 +342,7 @@ class CheckpointStore:
         Returns the new row id.  Callers pass this id to :meth:`commit` or
         :meth:`mark_failed` after the feature attempt.
         """
+        self._check_writable()
         conn = self._connect()
         self._ensure_meta(conn)
         ts = timestamp or datetime.now(timezone.utc).isoformat()
@@ -355,6 +384,7 @@ class CheckpointStore:
         stray commit call on a row that was already marked ``failed`` or
         ``rolled_back`` by a concurrent code path.
         """
+        self._check_writable()
         conn = self._connect()
         wrapped_log = self._wrap(com_call_log)
         cur = conn.execute(
@@ -380,6 +410,7 @@ class CheckpointStore:
 
     def mark_failed(self, row_id: int) -> None:
         """Transition a pending row to ``status='failed'``."""
+        self._check_writable()
         conn = self._connect()
         cur = conn.execute(
             "UPDATE checkpoints SET status = ? WHERE id = ? AND part_name = ? "
@@ -414,6 +445,7 @@ class CheckpointStore:
         timestamp: str | None = None,
     ) -> int:
         """Insert a ``status='rolled_back'`` audit row (spec.md §5.5 step 9)."""
+        self._check_writable()
         conn = self._connect()
         self._ensure_meta(conn)
         ts = timestamp or datetime.now(timezone.utc).isoformat()

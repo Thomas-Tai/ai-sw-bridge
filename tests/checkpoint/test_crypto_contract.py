@@ -322,6 +322,79 @@ class TestEncryptedStore:
         ).fetchone()
         assert meta is None
 
+    def test_no_key_write_into_encrypted_db_refused(
+        self, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Regression: a process without the key MUST NOT inject plaintext
+        rows into an encrypted DB. Found during Wave 3 audit — Track A's
+        permissive ``key_source=None`` open path allowed writes that
+        landed as plaintext, silently breaking the encryption invariant.
+
+        Read access is still allowed (e.g. ``ai-sw-checkpoint info``);
+        writes raise KeySourceError before touching the DB.
+        """
+        from ai_sw_bridge.checkpoint.store import CheckpointStore
+
+        key = generate_key().decode()
+        monkeypatch.setenv("AI_SW_TEST_KEY", key)
+        src = KeySource.parse("env:AI_SW_TEST_KEY")
+
+        # Seed an encrypted DB
+        store = CheckpointStore("part_g", root=tmp_path, key_source=src)
+        store.insert_pending(
+            feature_index=0,
+            feature_name="x",
+            feature_type="sketch",
+            locals_snapshot='{"OK": 1.0}',
+            spec_hash="0" * 64,
+            pre_tree_hash="1" * 64,
+            build_mode="deferred-dim",
+        )
+        store.close()
+
+        # Reopen WITHOUT a key. Read is fine; write must raise.
+        no_key_store = CheckpointStore("part_g", root=tmp_path)
+
+        # Read returns ciphertext (no plaintext leak in either direction)
+        rows = no_key_store.query()
+        assert len(rows) == 1
+        assert rows[0].locals_snapshot.startswith("fernet_v1:")
+
+        # Every write entry point refuses the operation
+        with pytest.raises(KeySourceError, match="key_source is required"):
+            no_key_store.insert_pending(
+                feature_index=1,
+                feature_name="y",
+                feature_type="sketch",
+                locals_snapshot='{"INJECTED": 99.9}',
+                spec_hash="0" * 64,
+                pre_tree_hash="3" * 64,
+                build_mode="deferred-dim",
+            )
+        with pytest.raises(KeySourceError, match="key_source is required"):
+            no_key_store.commit(rows[0].id, post_tree_hash="9" * 64, com_call_log="x")
+        with pytest.raises(KeySourceError, match="key_source is required"):
+            no_key_store.mark_failed(rows[0].id)
+        with pytest.raises(KeySourceError, match="key_source is required"):
+            no_key_store.record_rollback(
+                rolled_back_to_id=rows[0].id,
+                feature_name="r",
+                feature_type="rollback",
+                locals_snapshot="{}",
+                spec_hash="0" * 64,
+                pre_tree_hash="1" * 64,
+                post_tree_hash="2" * 64,
+                build_mode="deferred-dim",
+            )
+
+        # And the DB on disk still has exactly the one seeded row
+        import sqlite3
+
+        raw = sqlite3.connect(str(tmp_path / "part_g.sqlite"))
+        count = raw.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0]
+        raw.close()
+        assert count == 1
+
     def test_meta_row_created_once(
         self, tmp_path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
