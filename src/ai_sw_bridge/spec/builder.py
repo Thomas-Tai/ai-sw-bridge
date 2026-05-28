@@ -71,7 +71,6 @@ from .sketches import (
     RectangleOnPlaneHandler,
 )
 
-
 # swUserPreferenceToggle.swInputDimValOnCreate -- the toggle ID is NOT
 # documented in the CHM enum (descriptions just say "see System Options").
 # Empirically, ID=8 reads back False on this build but does NOT suppress
@@ -80,6 +79,18 @@ from .sketches import (
 SW_PREF_INPUT_DIM_VAL_ON_CREATE = 8
 
 logger = logging.getLogger("ai_sw_bridge.builder")
+
+# W2.4 — SaveAs3 version mapping (swSaveAsVersion_e).
+# SaveAs3's third argument selects the file-format year. 0 means "same
+# version as the running SW session." Non-zero values target older format
+# versions for back-compat with older seats.
+SAVE_FORMAT_VERSIONS: dict[str, int] = {
+    "current": 0,
+    "2024": 33,
+    "2023": 32,
+    "2022": 31,
+    "2021": 30,
+}
 
 # swFeatureNameID_e.swFmFillet -- numeric value not exposed in the
 # decompiled CHM enum table (text-only). Found empirically in Spike P
@@ -1518,7 +1529,9 @@ def _write_brep_sidecar(
         return None
 
 
-def _save_as_with_verification(doc: Any, out_path: Path) -> tuple[str, bool]:
+def _save_as_with_verification(
+    doc: Any, out_path: Path, save_version: int = 0
+) -> tuple[str, bool]:
     """Drive doc.SaveAs3 and verify three independent postconditions.
 
     Why this is not a one-liner: SaveAs3 has shipped silent-failure modes
@@ -1548,7 +1561,7 @@ def _save_as_with_verification(doc: Any, out_path: Path) -> tuple[str, bool]:
     a future "soft-verify" mode that returns False instead of raising;
     today it is always True when the function returns.
     """
-    err = doc.SaveAs3(str(out_path), 0, 0)
+    err = doc.SaveAs3(str(out_path), 0, save_version)
     err_code = int(err) if err is not None else 0
     if err_code != 0:
         raise RuntimeError(
@@ -1607,6 +1620,7 @@ class BuildResult:
     error_feature: str | None = None
     save_as: str | None = None
     save_as_verified: bool | None = None
+    save_format: str | None = None  # W2.4: "current", "2021".."2024"
     traceback: str | None = None
     # Populated when verify_mass=True. None otherwise. Each entry records
     # the actual volume delta for one feature; entries with expected_mm3
@@ -1637,6 +1651,8 @@ class BuildResult:
             "save_as": self.save_as,
             "save_as_verified": self.save_as_verified,
         }
+        if self.save_format is not None:
+            out["save_format"] = self.save_format
         if self.trace_id is not None:
             out["trace_id"] = self.trace_id
         if self.error is not None:
@@ -1663,6 +1679,7 @@ def build(
     no_dim: bool = False,
     deferred_dim: bool = False,
     save_as: str | None = None,
+    save_format: str = "current",
     verify_mass: bool = False,
     reconnect: bool = False,
     checkpoint: bool = False,
@@ -2120,7 +2137,10 @@ def build(
                 out_path = out_path.with_suffix(".sldprt")
             out_path = out_path.resolve()
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            saved_path, save_as_verified = _save_as_with_verification(doc, out_path)
+            save_version = SAVE_FORMAT_VERSIONS.get(save_format, 0)
+            saved_path, save_as_verified = _save_as_with_verification(
+                doc, out_path, save_version=save_version
+            )
 
         # B-rep sidecar (E2.6): write build_brep.json alongside the
         # saved part (or in cwd if no save_as). Only when the flag is ON.
@@ -2144,6 +2164,7 @@ def build(
             bindings_added=binding_results,
             save_as=saved_path,
             save_as_verified=save_as_verified,
+            save_format=save_format if save_as is not None else None,
             mass_verification=mass_results if verify_mass else None,
             build_time_s=elapsed,
             mode=mode,

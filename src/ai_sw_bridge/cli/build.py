@@ -58,6 +58,8 @@ def _write_build_metrics(result: Any, spec: dict[str, Any], sldprt_path: str) ->
         "bindings_added": len(result.bindings_added),
         "mass_verification": result.mass_verification or [],
     }
+    if getattr(result, "save_format", None) is not None:
+        metrics["save_format"] = result.save_format
     metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     return str(metrics_path)
 
@@ -228,6 +230,18 @@ def main() -> int:
             "appended if absent. NOTE: in non-no_dim mode the build still "
             "blocks on AddDimension2 popups -- tick those before SaveAs3 "
             "fires. Combine with --no-dim to save without any popups."
+        ),
+    )
+    parser.add_argument(
+        "--save-format",
+        dest="save_format",
+        choices=["current", "2024", "2023", "2022", "2021"],
+        default="current",
+        help=(
+            "Target file-format year for SaveAs3 (W2.4). 'current' (default) "
+            "saves in the running SW session's native version. Year values "
+            "(2021..2024) target older format versions for back-compat with "
+            "older SW seats. Ignored when --save-as is not set."
         ),
     )
     parser.add_argument(
@@ -457,6 +471,7 @@ def main() -> int:
         no_dim=args.no_dim,
         deferred_dim=args.deferred_dim,
         save_as=args.save_as,
+        save_format=args.save_format,
         verify_mass=args.verify_mass,
         reconnect=args.reconnect,
         checkpoint=args.checkpoint,
@@ -468,6 +483,7 @@ def main() -> int:
     payload["deferred_dim"] = args.deferred_dim
     payload["reconnect"] = args.reconnect
     payload["checkpoint"] = args.checkpoint
+    payload["save_format"] = args.save_format
     # Observability triad (P3.1): drop a build_metrics.json sidecar next to
     # the saved part so a later run can diff per-feature timings.
     if result.save_as:
