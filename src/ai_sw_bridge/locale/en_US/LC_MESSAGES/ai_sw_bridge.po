@@ -1,0 +1,15 @@
+# English (US) message catalog for ai-sw-bridge.
+# This file is intentionally empty — the en_US locale is the source
+# language and strings pass through unchanged. Contributors adding
+# non-English locales should copy this file as a template.
+#
+# Compile with:
+#   msgfmt -o ai_sw_bridge.mo ai_sw_bridge.po
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: ai-sw-bridge 0.13\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"

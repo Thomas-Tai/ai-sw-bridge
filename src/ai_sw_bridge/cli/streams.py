@@ -139,3 +139,34 @@ def progress_cr() -> str:
         return "\r" if sys.stderr.isatty() else "\n"
     except Exception:
         return "\n"
+
+
+def add_locale_flag(parser: argparse.ArgumentParser) -> None:
+    """Wire ``--locale <code>`` into the given argparse parser (W4.5).
+
+    The flag is uniform across every ai-sw-* CLI. Defaults to
+    ``en_US`` (pass-through — no translation).
+    """
+    parser.add_argument(
+        "--locale",
+        default="en_US",
+        help=(
+            "Locale code for i18n (W4.5, UIUX §13). Default: en_US "
+            "(no translation). Set to a locale code with a compiled "
+            ".mo catalog under src/ai_sw_bridge/locale/ to activate "
+            "translations."
+        ),
+    )
+
+
+def apply_locale(args: argparse.Namespace) -> None:
+    """Apply ``--locale`` if set on *args* (W4.5).
+
+    Calls :func:`ai_sw_bridge.locale.set_locale` with the code from
+    ``args.locale``. Safe to call even when the locale package has
+    no compiled catalogs — falls back to pass-through.
+    """
+    code = getattr(args, "locale", "en_US")
+    from ..locale import set_locale
+
+    set_locale(code)
