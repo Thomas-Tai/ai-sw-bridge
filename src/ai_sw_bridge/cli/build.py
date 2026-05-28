@@ -26,7 +26,7 @@ from ..spec import validate, ValidationError
 from ..spec.builder import _resolve_rhs_in_spec, build
 from ..spec.lint import lint as spec_lint
 from .stability import add_tier, cli_stability
-from .streams import add_quiet_flag, apply_quiet
+from .streams import PlainFormatter, add_quiet_flag, apply_quiet
 
 
 def _emit(payload: dict, code: int) -> int:
@@ -322,11 +322,14 @@ def main() -> int:
     apply_quiet(args)
 
     # Observability triad (P3.1): leveled logging. --verbose is shorthand
-    # for --log-level debug.
+    # for --log-level debug. PlainFormatter strips ANSI when NO_COLOR is
+    # set or stderr is not a TTY (W2.3).
     level_name = "debug" if args.verbose else args.log_level
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(PlainFormatter(fmt="%(name)s %(levelname)s %(message)s"))
     logging.basicConfig(
         level=getattr(logging, level_name.upper()),
-        format="%(name)s %(levelname)s %(message)s",
+        handlers=[_handler],
     )
 
     # Feature-flag resolution (spec.md §8.7): CLI > env > toml > defaults.
