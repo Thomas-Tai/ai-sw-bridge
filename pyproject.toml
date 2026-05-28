@@ -36,6 +36,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+crypto = ["cryptography>=41.0"]
 dev = [
     "pytest>=7",
     "pytest-cov",
@@ -71,13 +72,14 @@ Issues = "https://github.com/Thomas-Tai/ai-sw-bridge/issues"
 Repository = "https://github.com/Thomas-Tai/ai-sw-bridge.git"
 
 [project.scripts]
-ai-sw-probe    = "ai_sw_bridge.cli.probe:main"
-ai-sw-observe  = "ai_sw_bridge.cli.observe:main"
-ai-sw-mutate   = "ai_sw_bridge.cli.mutate:main"
-ai-sw-codegen  = "ai_sw_bridge.cli.codegen:main"
-ai-sw-build    = "ai_sw_bridge.cli.build:main"
-ai-sw-history  = "ai_sw_bridge.cli.history:main"
-ai-sw-apidoc   = "ai_sw_bridge.cli.apidoc:main"
+ai-sw-probe      = "ai_sw_bridge.cli.probe:main"
+ai-sw-observe    = "ai_sw_bridge.cli.observe:main"
+ai-sw-mutate     = "ai_sw_bridge.cli.mutate:main"
+ai-sw-codegen    = "ai_sw_bridge.cli.codegen:main"
+ai-sw-build      = "ai_sw_bridge.cli.build:main"
+ai-sw-history    = "ai_sw_bridge.cli.history:main"
+ai-sw-apidoc     = "ai_sw_bridge.cli.apidoc:main"
+ai-sw-checkpoint = "ai_sw_bridge.cli.checkpoint:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

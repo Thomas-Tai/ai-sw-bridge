@@ -21,6 +21,7 @@ ENV/
 .vscode/
 .idea/
 .qoder/
+.claude/
 *.swp
 
 # OS

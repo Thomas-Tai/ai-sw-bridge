@@ -25,8 +25,14 @@ Decision summary (see design doc for the full rationale):
 
 from __future__ import annotations
 
+import base64
+import getpass
+import hashlib
+import os
 from abc import ABC, abstractmethod
 from typing import Any
+
+from cryptography.fernet import Fernet
 
 __all__ = [
     "EnvKeySource",
@@ -38,6 +44,7 @@ __all__ = [
     "decrypt_cell",
     "encrypt_cell",
     "generate_key",
+    "rekey_db",
 ]
 
 
@@ -86,7 +93,41 @@ class KeySource(ABC):
                 or a required component is missing (env var unset,
                 file not found, keyring lib not installed, etc.).
         """
-        raise NotImplementedError("W3.1-impl pending")
+        if not source:
+            raise KeySourceError("empty source string")
+
+        if source == "prompt":
+            salt: bytes | None = None
+            if meta and "kdf_salt" in meta:
+                salt = base64.b64decode(meta["kdf_salt"])
+            return PromptKeySource(salt=salt)
+
+        if ":" not in source:
+            raise KeySourceError(f"unknown key source prefix: {source!r}")
+
+        prefix, _, value = source.partition(":")
+
+        if prefix == "env":
+            if not value:
+                raise KeySourceError("env source requires a variable name")
+            return EnvKeySource(value)
+
+        if prefix == "file":
+            if not value:
+                raise KeySourceError("file source requires a path")
+            return FileKeySource(value)
+
+        if prefix == "keyring":
+            if not value:
+                raise KeySourceError("keyring source requires a service name")
+            # Guard against missing keyring library at parse time
+            try:
+                import keyring  # noqa: F401
+            except ImportError as exc:
+                raise KeySourceError(f"keyring library not installed: {exc}") from exc
+            return KeyringKeySource(value)
+
+        raise KeySourceError(f"unknown key source prefix: {prefix!r}")
 
     @abstractmethod
     def get_key(self) -> bytes:
@@ -118,10 +159,13 @@ class EnvKeySource(KeySource):
         self._var_name = var_name
 
     def get_key(self) -> bytes:
-        raise NotImplementedError("W3.1-impl pending")
+        value = os.environ.get(self._var_name)
+        if value is None:
+            raise KeySourceError(f"env var {self._var_name!r} not set")
+        return value.encode("utf-8")
 
     def fingerprint(self) -> str:
-        raise NotImplementedError("W3.1-impl pending")
+        return hashlib.sha256(self.get_key()).hexdigest()[:_FINGERPRINT_PREFIX_LEN]
 
 
 class FileKeySource(KeySource):
@@ -138,10 +182,17 @@ class FileKeySource(KeySource):
         self._path = path
 
     def get_key(self) -> bytes:
-        raise NotImplementedError("W3.1-impl pending")
+        from pathlib import Path
+
+        p = Path(self._path)
+        if not p.exists():
+            raise KeySourceError(f"key file not found: {self._path}")
+        with open(p, "rb") as f:
+            first_line = f.readline()
+        return first_line.rstrip(b"\r\n")
 
     def fingerprint(self) -> str:
-        raise NotImplementedError("W3.1-impl pending")
+        return hashlib.sha256(self.get_key()).hexdigest()[:_FINGERPRINT_PREFIX_LEN]
 
 
 class KeyringKeySource(KeySource):
@@ -157,10 +208,20 @@ class KeyringKeySource(KeySource):
         self._service = service
 
     def get_key(self) -> bytes:
-        raise NotImplementedError("W3.1-impl pending")
+        try:
+            import keyring
+        except ImportError as exc:
+            raise KeySourceError(f"keyring library not installed: {exc}") from exc
+        value = keyring.get_password(self._service, "ai-sw-bridge")
+        if value is None:
+            raise KeySourceError(
+                f"keyring returned no value for service={self._service!r}, "
+                "user='ai-sw-bridge'"
+            )
+        return value.encode("utf-8")
 
     def fingerprint(self) -> str:
-        raise NotImplementedError("W3.1-impl pending")
+        return hashlib.sha256(self.get_key()).hexdigest()[:_FINGERPRINT_PREFIX_LEN]
 
 
 class PromptKeySource(KeySource):
@@ -181,10 +242,36 @@ class PromptKeySource(KeySource):
         self._cached_key: bytes | None = None
 
     def get_key(self) -> bytes:
-        raise NotImplementedError("W3.1-impl pending")
+        if self._cached_key is not None:
+            return self._cached_key
+
+        # Generate salt if not provided (first-time encryption)
+        if self._salt is None:
+            self._salt = os.urandom(_KDF_SALT_BYTES)
+
+        # Prompt for passphrase
+        passphrase = getpass.getpass("Checkpoint encryption passphrase: ")
+
+        # Derive key via PBKDF2-HMAC-SHA256
+        derived = hashlib.pbkdf2_hmac(
+            "sha256",
+            passphrase.encode("utf-8"),
+            self._salt,
+            _KDF_ITERATIONS,
+            dklen=32,
+        )
+
+        # Base64-encode to get a Fernet-compatible key
+        self._cached_key = base64.urlsafe_b64encode(derived)
+        return self._cached_key
 
     def fingerprint(self) -> str:
-        raise NotImplementedError("W3.1-impl pending")
+        return hashlib.sha256(self.get_key()).hexdigest()[:_FINGERPRINT_PREFIX_LEN]
+
+    @property
+    def salt(self) -> bytes | None:
+        """Return the salt used for KDF (needed for _meta persistence)."""
+        return self._salt
 
 
 # ---------------------------------------------------------------------------
@@ -204,7 +291,8 @@ def encrypt_cell(plaintext: str, key: bytes) -> str:
     ``CheckpointStore`` wraps ``locals_snapshot`` and ``com_call_log``
     only).
     """
-    raise NotImplementedError("W3.1-impl pending")
+    token = Fernet(key).encrypt(plaintext.encode("utf-8"))
+    return _CELL_PREFIX_V1 + token.decode("ascii")
 
 
 def decrypt_cell(blob: str, key: bytes) -> str:
@@ -220,7 +308,18 @@ def decrypt_cell(blob: str, key: bytes) -> str:
     Wrong key surfaces as ``cryptography.fernet.InvalidToken``;
     callers wrap that in a higher-level error if desired.
     """
-    raise NotImplementedError("W3.1-impl pending")
+    if blob.startswith(_CELL_PREFIX_V1):
+        token = blob[len(_CELL_PREFIX_V1) :]
+        plaintext = Fernet(key).decrypt(token.encode("ascii"))
+        return plaintext.decode("utf-8")
+
+    # Check for unknown prefix patterns (anything like "xxx:...")
+    if ":" in blob and blob.split(":", 1)[0].startswith("fernet_"):
+        prefix = blob.split(":", 1)[0]
+        raise ValueError(f"unknown encryption prefix: {prefix}:")
+
+    # No recognized prefix — plain cell, return as-is
+    return blob
 
 
 def generate_key() -> bytes:
@@ -229,4 +328,85 @@ def generate_key() -> bytes:
     32 bytes of OS randomness, URL-safe base64 encoded to 44 chars.
     Exposed for the ``ai-sw-checkpoint genkey`` CLI.
     """
-    raise NotImplementedError("W3.1-impl pending")
+    return Fernet.generate_key()
+
+
+def rekey_db(db_path: str, from_key: KeySource, to_key: KeySource) -> int:
+    """Atomically re-encrypt all checkpoint cells with a new key.
+
+    Args:
+        db_path: Path to the SQLite checkpoint database.
+        from_key: Current encryption key source (must match stored fingerprint).
+        to_key: New encryption key source.
+
+    Returns:
+        Number of rows rekeyed.
+
+    Raises:
+        KeySourceError: If the from_key fingerprint doesn't match the stored one.
+        sqlite3.Error: If a database error occurs (transaction is rolled back).
+    """
+    import sqlite3
+
+    conn = sqlite3.connect(db_path)
+    try:
+        # Verify old key fingerprint matches stored
+        meta_row = conn.execute("SELECT key_fingerprint FROM _meta LIMIT 1").fetchone()
+
+        if meta_row is None:
+            raise KeySourceError("DB is not encrypted; use migrate instead")
+
+        stored_fp = meta_row[0]
+        from_fp = from_key.fingerprint()
+        if stored_fp != from_fp:
+            raise KeySourceError(
+                f"fingerprint mismatch: stored={stored_fp}, supplied={from_fp}"
+            )
+
+        # Begin transaction for atomic rekey
+        conn.execute("BEGIN TRANSACTION")
+
+        try:
+            # Get all rows
+            rows = conn.execute(
+                "SELECT id, locals_snapshot, com_call_log FROM checkpoints"
+            ).fetchall()
+
+            from_key_bytes = from_key.get_key()
+            to_key_bytes = to_key.get_key()
+
+            for row_id, locals_snap, com_log in rows:
+                # Decrypt with old key, encrypt with new key
+                new_locals = encrypt_cell(
+                    decrypt_cell(locals_snap, from_key_bytes), to_key_bytes
+                )
+                new_log = encrypt_cell(
+                    decrypt_cell(com_log, from_key_bytes), to_key_bytes
+                )
+                conn.execute(
+                    "UPDATE checkpoints SET locals_snapshot=?, "
+                    "com_call_log=? WHERE id=?",
+                    (new_locals, new_log, row_id),
+                )
+
+            # Update _meta with new fingerprint
+            kdf_algo: str | None = None
+            kdf_salt: str | None = None
+            if isinstance(to_key, PromptKeySource):
+                to_key.get_key()  # Trigger derivation
+                kdf_algo = "pbkdf2-sha256-600000"
+                if to_key.salt is not None:
+                    kdf_salt = base64.b64encode(to_key.salt).decode("ascii")
+
+            conn.execute(
+                "UPDATE _meta SET key_fingerprint=?, kdf_algo=?, kdf_salt=?",
+                (to_key.fingerprint(), kdf_algo, kdf_salt),
+            )
+
+            conn.commit()
+            return len(rows)
+        except Exception:
+            conn.rollback()
+            raise
+    finally:
+        conn.close()

@@ -1684,6 +1684,7 @@ def build(
     reconnect: bool = False,
     checkpoint: bool = False,
     checkpoint_root: "Path | None" = None,
+    checkpoint_key_source: Any = None,
 ) -> BuildResult:
     """Build the spec into a fresh blank part on the running SW session.
 
@@ -1859,6 +1860,7 @@ def build(
                 cp_store = _CpStore(
                     part_name=spec_name,
                     root=checkpoint_root,
+                    key_source=checkpoint_key_source,
                 )
             except Exception as e:
                 logger.warning("checkpoint store init failed: %s", e)

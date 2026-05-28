@@ -291,6 +291,18 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--checkpoint-encrypt",
+        dest="checkpoint_encrypt",
+        default=None,
+        metavar="SOURCE",
+        help=(
+            "[experimental] Enable at-rest encryption for checkpoint "
+            "locals_snapshot and com_call_log columns. SOURCE is one of: "
+            "env:NAME, file:/path, keyring:SERVICE, or prompt. "
+            "Implies --checkpoint."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         dest="log_level",
         choices=["debug", "info", "warning", "error"],
@@ -371,6 +383,17 @@ def main() -> int:
             },
             2,
         )
+
+    # --checkpoint-encrypt implies --checkpoint
+    checkpoint_key_source = None
+    if args.checkpoint_encrypt:
+        args.checkpoint = True
+        from ..checkpoint.crypto import KeySource, KeySourceError
+
+        try:
+            checkpoint_key_source = KeySource.parse(args.checkpoint_encrypt)
+        except KeySourceError as exc:
+            return _emit({"ok": False, "error": str(exc)}, 2)
 
     p = Path(args.spec_path)
     if not p.exists():
@@ -483,6 +506,7 @@ def main() -> int:
         verify_mass=args.verify_mass,
         reconnect=args.reconnect,
         checkpoint=args.checkpoint,
+        checkpoint_key_source=checkpoint_key_source,
     )
     # BuildResult.to_dict() owns the wire format; CLI only adds CLI-level
     # context (here: which mode the caller picked).
@@ -491,6 +515,7 @@ def main() -> int:
     payload["deferred_dim"] = args.deferred_dim
     payload["reconnect"] = args.reconnect
     payload["checkpoint"] = args.checkpoint
+    payload["checkpoint_encrypt"] = args.checkpoint_encrypt is not None
     payload["save_format"] = args.save_format
     # Observability triad (P3.1): drop a build_metrics.json sidecar next to
     # the saved part so a later run can diff per-feature timings.
