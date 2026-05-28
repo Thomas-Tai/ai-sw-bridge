@@ -7,6 +7,203 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-05-28
+
+The v0.13 closure release lands the **MCP server** (Lane M), the
+**checkpoint encryption** layer (W3.1), **STA-threaded COM safety**
+(W5.1 ComExecutor + W5.2 adapter pattern), and rounds out the v0.13
+plan items across W1–W7. Adds an alternate stdio entry point
+(`ai-sw-mcp`) so Claude Desktop / Cursor / other GUI MCP clients can
+drive the same tool surface the CLIs already expose.
+
+### Added
+
+- **MCP server lane** (`ai_sw_bridge.mcp`, optional install
+  `pip install ai-sw-bridge[mcp]`). New `ai-sw-mcp` stdio entry point
+  registers 21 tools mirroring the existing CLI subcommands:
+  10 observe (`sw_active_doc`, `sw_feature_errors`, `sw_equations`,
+  `sw_bbox`, `sw_volume`, `sw_screenshot`, `sw_measure`,
+  `sw_mate_errors`, `sw_custom_props`, `sw_enabled_addins`),
+  `sw_build`, 5 apidoc (`sw_apidoc_search`/`detail`/`members`/
+  `examples`/`enum`), 4 history/checkpoint
+  (`sw_history_part`/`since`/`diff`, `sw_checkpoint_info`), and
+  `sw_reconnect`. Design: `docs/mcp_server_design.md`. Excluded by
+  design (CLI-only): mutate, codegen, probe, checkpoint
+  genkey/rekey/migrate.
+- **Clean-room implementation** — no code lifted from upstream
+  `SolidworksMCP-python` MCP server (the upstream owns its own
+  validator + checkpoint + safety surface; we own ours).
+- **`@com_tool` decorator** (`ai_sw_bridge.mcp.tools`) — every
+  COM-touching MCP tool runs on the W5.1 `ComExecutor` STA worker.
+  Contract test enforces the decoration; forgetting it is a
+  registration-time failure.
+- **W3.1 — Checkpoint encryption** (`ai_sw_bridge.checkpoint.crypto`).
+  App-layer Fernet (pure-Python, no SQLCipher install). Four key
+  sources: `env:NAME`, `file:/path`, `keyring:SERVICE`, `prompt`
+  (PBKDF2-HMAC-SHA256 600k iterations). Cell wrap format:
+  `fernet_v1:<base64-token>` so future algorithms can dispatch by
+  prefix. `_meta` table stores algo + key fingerprint + encrypted
+  column list (plaintext metadata so `info` works without a key).
+- **`ai-sw-build --checkpoint-encrypt <key-source>`** — passes the
+  key source through to the L4 checkpoint store. Encrypted columns:
+  `locals_snapshot`, `com_call_log`. **Bridge does NOT escrow keys;
+  losing the key loses checkpoint history**.
+- **`ai-sw-checkpoint` subcommands** — `genkey`, `info`, `rekey`,
+  `migrate` for key lifecycle. `info` reads `_meta` without a key
+  (plaintext by design).
+- **W5.1 — `ComExecutor`** (`ai_sw_bridge.com.executor`) — single-
+  threaded STA worker holding the COM apartment. Submit/run pattern
+  with `Future`-propagated results and exceptions. Ported from
+  `SolidworksMCP-python` 82e505d8 (MIT). Adaptations: stdlib logging,
+  `is_dead` introspection, drain pending on shutdown.
+- **W5.2 — Adapter factory** (`ai_sw_bridge.com.adapter`,
+  `adapters/{pywin32,mock}.py`, `factory.py`) — `SolidWorksAdapter`
+  abstract base; `AdapterFactory.create_adapter()` auto-selects
+  pywin32 on Windows or mock elsewhere. Ported from
+  `SolidworksMCP-python` 82e505d8.
+- **W5.3 — `sw_type_info.flag_methods`** — per-interface COM method
+  flagging for marshaling discipline. Ported from upstream.
+- **W5.6 — `ComExecutor` death-recovery scaffolding** — `is_sw_dead`
+  property, `reconnect()` method, recognises COM death HRESULTs
+  (`0x800401FD` RPC_E_DISCONNECTED, `0x80010108` RPC_E_SERVER_DIED).
+- **W7.1 — Add-in interference detection.** New
+  `ai-sw-observe addins` subcommand + `--disable-addins` and
+  `--strict-addins` flags on `ai-sw-build`. Enumerate-and-warn (NOT
+  runtime unload — that's not a SW-supported API). 9 known-
+  problematic add-ins curated: Toolbox, PDM Std/Pro, 3DEXPERIENCE,
+  Routing, Electrical, Simulation, Inspection, Composer.
+  Strict mode aborts a build with `rc=4` and
+  `error: "strict_addins_blocked"`.
+- **W2.1 — `ai-sw-observe custom_props`** subcommand. Reads every
+  custom property from the active doc; structured JSON output.
+- **W2.2 — Lazy B-rep interrogation mode.** Defers face/edge walking
+  until a manifest entry actually needs topology, cutting startup
+  cost for catalog/inventory use cases.
+- **W2.3 — Terminal-aware color degradation.** Respects `NO_COLOR`
+  env var and `isatty()` so piped output is plain text.
+- **W2.4 — `ai-sw-build --save-format <version>`** — SaveAs3 to a
+  specific SW year (`current`, `2024`, `2023`, `2022`, `2021`).
+- **W3.2 — `tools/checkpoint_redact.py`** — produce a redactable
+  `.sqlite.redacted.<ts>` from an encrypted (or plain) DB.
+  `locals_snapshot` becomes `"<redacted_local>"`; com_call_log scrubbed
+  via `_TRADE_SECRET_PATTERNS` regex.
+- **W3.3 — `tools/spec_redact.py`** — parallel redactor for spec
+  files.
+- **W4.1 — `CODESTYLE.md`** — 11-section load-bearing style document
+  (out-of-process marshaling, two-stream contract, fail-soft pattern,
+  zero ACE surface, lane boundaries, etc.). Replaces the per-decision
+  ADR pattern.
+- **W4.2 — `CONTRIBUTING.md` contributor pass.** Adds "Designing new
+  code" topic pointers to CODESTYLE.md sections; per-file port
+  attribution table (7 ported files).
+- **W4.3 — `tools/example_roundtrip.py`** doc-as-test. Re-runs every
+  example spec through the validator + builder dry-run; CI catches
+  schema drift in shipped examples.
+- **W4.4 — `import-linter` lane-boundary contract.** Layer ordering
+  enforced in CI: cli → mcp → spec/parameterize/observe/mutate →
+  com/sw_com → checkpoint/rag/brep → errors/telemetry. Lower layers
+  may not import higher.
+- **W4.5 — Locale scaffolding (`locale/`).** i18n directory layout
+  ready for translation contributions.
+- **W5.5 — MCP payload pass-through snapshot tests.** 21 fixture
+  files in `tests/mcp_lane/fixtures/`. Shape walker supports union
+  markers (`["$str", "$none"]`) so state-dependent fields tolerate
+  both empty- and live-SW runs without fixture regeneration.
+- **Wire-level §11.5 end-to-end tests** (`test_wire_e2e.py`) — drives
+  the real JSON-RPC layer (`initialize`/`tools/list`/`tools/call`)
+  via in-memory anyio streams.
+
+### Changed
+
+- **CLI/MCP surface parallelism.** History tool success-path payloads
+  no longer carry a redundant `ok: True` field. CLI never emitted it;
+  MCP wrappers now match. Error paths still carry `ok: False` (MCP
+  has no exit-code channel; documented as a deliberate divergence in
+  design doc §7.2).
+- **`pyproject.toml` layer ordering** — `mcp` slots between `cli`
+  and `observe/spec`; cli stays topmost so it may import mcp (in
+  practice neither imports the other today).
+
+### Fixed
+
+- **W3.1 privacy hotfix:** writes to an encrypted DB opened without a
+  key source landed as PLAINTEXT in the encrypted store. Added
+  `CheckpointStore._check_writable()` guard that raises
+  `KeySourceError` from `insert_pending`/`commit`/`mark_failed`/
+  `record_rollback` when the store was opened in encrypted-info-only
+  mode. Regression test in `test_crypto_contract.py`.
+- **MCP wire protocol:** `_Server.list_tools` was overridden as a sync
+  method returning internal Tool records (so the contract test could
+  walk `.fn`), but `FastMCP.list_tools` is `async def`. Every JSON-RPC
+  `tools/list` and `tools/call` over the wire returned an error.
+  Replaced the override with a new sync accessor `_Server.iter_tools()`
+  for tests; the inherited async `list_tools` stays intact for the
+  wire layer.
+- **`sw_checkpoint_info` schema mismatch:** the MCP tool queried
+  `SELECT key, value FROM _meta`, but the W3.1 `_meta` table is
+  column-per-field (`encrypted_at`, `encryption_algo`,
+  `encrypted_cols`, `kdf_algo`, `kdf_salt`, `key_fingerprint`).
+  Every encrypted DB would have raised `OperationalError`. Fixed to
+  mirror `cli/checkpoint.py:60` exactly. Regression test in
+  `test_checkpoint_info.py`.
+- **`ServerRuntime.reconnect` did not clear the sw_com dispatch
+  cache.** `sw_reconnect` returned `ok: True` but the next observe
+  call still surfaced the dead-handle `AttributeError`. Root cause:
+  `sw_com._CACHED_SW_APP` is a module-level global that survives
+  reconnect, and observe.* / mutate.* bypass the W5.2 adapter,
+  calling `sw_com.get_sw_app()` directly. Fix calls
+  `sw_com.release_sw_app()` first thing in
+  `ServerRuntime.reconnect()`. Regression test in
+  `test_reconnect_cache_clear.py`.
+
+### Known limitations (deferred to v0.14)
+
+- **`executor.is_sw_dead` does not auto-flip on dead-handle errors.**
+  W5.6 catalogued death HRESULTs (`0x800401FD`/`0x80010108`), but
+  pywin32 surfaces SW death as `AttributeError`, not the cataloged
+  COM errors. `observe.*` catches the `AttributeError` into a string
+  `error` field, so it never reaches the executor's exception
+  handler. Manual `sw_reconnect` still works (user reads the error,
+  invokes the tool); only the auto-detection promised by W5.6
+  doesn't fire today.
+- **`observe.*` bypasses the W5.2 `MockAdapter`.** Calls
+  `sw_com.get_sw_app()` directly instead of `runtime.adapter`. The
+  W5.5 snapshot fixtures use union markers
+  (`["$str", "$none"]`) to tolerate both no-SW and live-SW shapes,
+  but a future task should route observe.* through the adapter for
+  cleaner test isolation.
+- **CI snapshot tests are SW-state-dependent on dev machines with
+  pywin32 + live SW.** They lock in a tolerant union of both the
+  empty and happy-path shapes; either runs fine.
+
+### Test counts
+
+- 944 tests pass excluding `solidworks_only` (was 689 at v0.12.2);
+  **+255 new tests** across W1–W7.
+- 1 test skipped (`§11.4 validation_error_maps_to_invalid_params`,
+  separate follow-up).
+- black: 262 files clean. flake8: 0 findings. mypy: 0 errors in
+  85 source files. license-lint: 7 ported files validated.
+  import-linter: 1 contract kept / 0 broken.
+
+### Wave 5 integration audit (2026-05-28)
+
+Pre-merge full audit caught and fixed three ship blockers:
+- MCP wire protocol (sync `list_tools` override broke JSON-RPC)
+- `sw_checkpoint_info` schema mismatch
+- `ServerRuntime.reconnect` cache leak
+
+Plus phase-2 live-SW verification:
+- 18 observation/build/apidoc/history tools exercised against a real
+  SW session — all return well-formed payloads
+- Death-recovery flow validated end-to-end (kill SW → call →
+  reconnect → call → recover)
+- Encryption composition (sw_build --checkpoint-encrypt → MCP
+  sw_checkpoint_info + sw_history_part) verified; no plaintext leak
+
+Full Wave 5 audit details in commit messages of `4a5f849`, `d91676e`,
+`5069866`, and `f9dde03`.
+
 ## [0.12.2] - 2026-05-27
 
 Closes seven gaps surfaced by the post-v0.12.1 audit against
