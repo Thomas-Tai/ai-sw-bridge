@@ -74,6 +74,11 @@ T = TypeVar("T")
 
 _SHUTDOWN = object()
 
+# HRESULTs indicating the SW process died (stale IDispatch handle).
+# 0x800401FD = CO_E_OBJNOTCONNECTED, 0x80010108 = RPC_E_DISCONNECTED.
+# See docs/com_failure_modes.md row M-01.
+_DEAD_HRESULTS: frozenset[int] = frozenset({0x800401FD, 0x80010108})
+
 
 class ComExecutor:
     """Single-threaded STA executor for SOLIDWORKS COM calls.
@@ -107,6 +112,7 @@ class ComExecutor:
         self._ready = threading.Event()
         self._stopped = threading.Event()
         self._co_init_ok = False
+        self._sw_app_is_dead = False
 
     # ---- Public API ------------------------------------------------------
 
@@ -239,6 +245,23 @@ class ComExecutor:
             return False
         return not self._co_init_ok
 
+    @property
+    def is_sw_dead(self) -> bool:
+        """``True`` when the SW process died during operation (W5.6).
+
+        Distinct from :attr:`is_dead` (CoInitialize failure at startup).
+        This flag flips when a worker call raises ``pywintypes.com_error``
+        with an HRESULT in ``_DEAD_HRESULTS`` (``0x800401FD`` or
+        ``0x80010108``), indicating the SW process is no longer reachable.
+
+        When dead, the worker has exited and all pending futures were
+        completed with ``ConnectionError``. Call :meth:`reconnect` to
+        restart the worker on a fresh STA thread.
+
+        See ``docs/com_failure_modes.md`` row M-01.
+        """
+        return self._sw_app_is_dead
+
     # ---- Context manager -------------------------------------------------
 
     def __enter__(self) -> "ComExecutor":
@@ -247,6 +270,37 @@ class ComExecutor:
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         self.stop()
+
+    # ---- Death recovery (W5.6) -------------------------------------------
+
+    def reconnect(self, timeout: float = 10.0) -> None:
+        """Reset state and start a fresh worker after SW process death.
+
+        Waits for the old worker (if still draining) to exit, clears
+        the ``_sw_app_is_dead`` flag, replaces the queue, and calls
+        :meth:`start` to launch a new STA worker thread.
+
+        After ``reconnect()`` returns, the executor is usable again —
+        ``submit()`` and ``run()`` work as normal.
+
+        .. warning::
+
+           Re-acquiring the IDispatch chain mid-build means the new SW
+           process has no knowledge of partially-built state. The caller
+           must verify the model after reconnect.
+
+        Args:
+            timeout: Seconds to wait for the new worker to become ready.
+
+        Raises:
+            RuntimeError: If the new worker fails to initialize.
+        """
+        if self._thread is not None and self._thread.is_alive():
+            self.stop()
+
+        self._sw_app_is_dead = False
+        self._queue = queue.Queue()
+        self.start(timeout)
 
     # ---- Worker ----------------------------------------------------------
 
@@ -289,13 +343,31 @@ class ComExecutor:
                 try:
                     result = fn()
                 except BaseException as exc:  # noqa: BLE001 — propagate everything
+                    # W5.6: detect SW process death via stale-handle HRESULTs.
+                    # The worker exits after draining pending callers with
+                    # ConnectionError so no future deadlocks.
+                    hresult = getattr(exc, "hresult", None)
+                    if hresult in _DEAD_HRESULTS:
+                        self._sw_app_is_dead = True
+                        fut.set_exception(exc)
+                        logger.error(
+                            "ComExecutor %r: SW process died (HRESULT=0x%08X); "
+                            "draining pending callers",
+                            self._name,
+                            hresult,
+                        )
+                        self._drain_pending(
+                            reason="SW process died (HRESULT=0x{:08X})".format(hresult)
+                        )
+                        return
                     fut.set_exception(exc)
                 else:
                     fut.set_result(result)
         finally:
             # Drain any remaining items so blocked callers unblock with a
             # clear signal rather than hanging forever.
-            self._drain_pending(reason="executor shutting down")
+            if not self._sw_app_is_dead:
+                self._drain_pending(reason="executor shutting down")
             try:
                 pythoncom.CoUninitialize()
             except Exception:

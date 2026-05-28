@@ -28,6 +28,7 @@ STALE_HANDLE_HRESULTS: frozenset[int] = frozenset(
     {
         0x800706BA,  # RPC_S_SERVER_UNAVAILABLE
         0x80010108,  # RPC_E_DISCONNECTED
+        0x800401FD,  # CO_E_OBJNOTCONNECTED
     }
 )
 

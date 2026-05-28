@@ -301,6 +301,128 @@ class TestShutdown:
 
 
 # ---------------------------------------------------------------------------
+# Death recovery (W5.6) — SW process dies mid-session
+# ---------------------------------------------------------------------------
+
+
+class _FakeComError(Exception):
+    """Stand-in for pywintypes.com_error with an hresult attribute."""
+
+    def __init__(self, hresult: int, msg: str = "simulated COM error") -> None:
+        super().__init__(msg)
+        self.hresult = hresult
+
+
+class TestDeathRecovery:
+    def test_dead_hresult_sets_is_sw_dead(self, fake_pythoncom: MagicMock) -> None:
+        ex = ComExecutor()
+        ex.start()
+        try:
+            with pytest.raises(_FakeComError):
+                ex.run(lambda: (_ for _ in ()).throw(_FakeComError(0x800401FD)))
+            for _ in range(50):
+                if ex.is_sw_dead:
+                    break
+                time.sleep(0.01)
+            assert ex.is_sw_dead
+        finally:
+            ex.stop()
+
+    def test_dead_hresult_drains_pending_with_connection_error(
+        self, fake_pythoncom: MagicMock
+    ) -> None:
+        ex = ComExecutor()
+        ex.start()
+        try:
+            block = threading.Event()
+            release = threading.Event()
+
+            ex.submit(lambda: (block.set(), release.wait(timeout=10)))
+            block.wait(timeout=2)
+
+            dying_fut = ex.submit(
+                lambda: (_ for _ in ()).throw(_FakeComError(0x800401FD))
+            )
+            pending_fut = ex.submit(lambda: 42)
+
+            release.set()
+
+            with pytest.raises(_FakeComError):
+                dying_fut.result(timeout=5)
+            with pytest.raises(CancelledError):
+                pending_fut.result(timeout=5)
+
+            for _ in range(50):
+                if ex.is_sw_dead:
+                    break
+                time.sleep(0.01)
+            assert ex.is_sw_dead
+        finally:
+            ex.stop()
+
+    def test_is_sw_dead_false_initially(self, fake_pythoncom: MagicMock) -> None:
+        ex = ComExecutor()
+        assert not ex.is_sw_dead
+
+    def test_is_sw_dead_false_after_clean_stop(self, fake_pythoncom: MagicMock) -> None:
+        ex = ComExecutor()
+        ex.start()
+        ex.stop()
+        assert not ex.is_sw_dead
+
+    def test_reconnect_clears_dead_flag_and_works(
+        self, fake_pythoncom: MagicMock
+    ) -> None:
+        ex = ComExecutor()
+        ex.start()
+        try:
+            with pytest.raises(_FakeComError):
+                ex.run(lambda: (_ for _ in ()).throw(_FakeComError(0x800401FD)))
+            for _ in range(50):
+                if not ex.is_alive:
+                    break
+                time.sleep(0.01)
+            assert ex.is_sw_dead
+
+            ex.reconnect()
+            assert not ex.is_sw_dead
+            assert ex.is_alive
+            assert ex.run(lambda: 42) == 42
+        finally:
+            ex.stop()
+
+    def test_non_dead_hresult_does_not_set_dead(
+        self, fake_pythoncom: MagicMock
+    ) -> None:
+        ex = ComExecutor()
+        ex.start()
+        try:
+            with pytest.raises(_FakeComError):
+                ex.run(lambda: (_ for _ in ()).throw(_FakeComError(0x80004001)))
+            assert not ex.is_sw_dead
+            assert ex.is_alive
+            assert ex.run(lambda: 99) == 99
+        finally:
+            ex.stop()
+
+    def test_rpc_disconnected_hresult_also_triggers_death(
+        self, fake_pythoncom: MagicMock
+    ) -> None:
+        ex = ComExecutor()
+        ex.start()
+        try:
+            with pytest.raises(_FakeComError):
+                ex.run(lambda: (_ for _ in ()).throw(_FakeComError(0x80010108)))
+            for _ in range(50):
+                if ex.is_sw_dead:
+                    break
+                time.sleep(0.01)
+            assert ex.is_sw_dead
+        finally:
+            ex.stop()
+
+
+# ---------------------------------------------------------------------------
 # Concurrency stress
 # ---------------------------------------------------------------------------
 
