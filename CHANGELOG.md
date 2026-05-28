@@ -169,6 +169,21 @@ drive the same tool surface the CLIs already expose.
   (legitimate late-binding misses on Extension etc.). Regression in
   `test_dead_dispatch_auto_flip.py` (3 tests); end-to-end check
   added to `test_e2e_death_recovery.py`.
+- **MCP server spawned a ghost SW instance instead of attaching to
+  the user's foreground session.** `sw_com.get_sw_app()` used
+  `win32com.client.Dispatch("SldWorks.Application")`, which COM
+  resolved by auto-launching a fresh SLDWORKS.exe when invoked from
+  a subprocess (MCP server launched by Claude Desktop, IDE plugins,
+  any out-of-process AI client). The ghost SW had no open
+  documents, so every observation tool returned `no_active_doc`
+  against the wrong SW process. Fixed by trying
+  `win32com.client.GetActiveObject("SldWorks.Application")` first
+  (queries the COM Running Object Table for an already-registered
+  SW instance), falling back to `Dispatch` only if no running
+  instance is visible. Verified live: Claude Desktop driving
+  `ai-sw-mcp.exe` now attaches to the user's foreground SW and
+  returns real geometry data (e.g. `sw_bbox` → 25×25×80mm against
+  the open part).
 
 ### Known limitations (deferred to v0.14)
 - **`observe.*` bypasses the W5.2 `MockAdapter`.** Calls
@@ -193,12 +208,15 @@ drive the same tool surface the CLIs already expose.
 
 ### Wave 5 integration audit (2026-05-28)
 
-Pre-merge full audit caught and fixed four ship blockers:
+Pre-merge full audit caught and fixed five ship blockers:
 - MCP wire protocol (sync `list_tools` override broke JSON-RPC)
 - `sw_checkpoint_info` schema mismatch
 - `ServerRuntime.reconnect` cache leak
 - `executor.is_sw_dead` did not auto-flip on swallowed
   `AttributeError` death pattern
+- `sw_com.get_sw_app()` spawned a ghost SW instance from MCP
+  subprocess context instead of attaching to the user's foreground
+  SW (now tries `GetActiveObject` before `Dispatch`)
 
 Plus phase-2 live-SW verification:
 - 18 observation/build/apidoc/history tools exercised against a real
@@ -210,8 +228,14 @@ Plus phase-2 live-SW verification:
 - **Claude Desktop end-to-end smoke verified.** MCP server
   registers, tool discovery returns 21 tools, model-driven tool
   selection works, tool results render correctly in the chat
-  surface. Tested against Claude Desktop Cowork build (Windows
-  Store package `Claude_pzs8sxrjxfjjc`).
+  surface. Verified happy-path against the user's live foreground
+  SW: prompt "Call sw_bbox and give me the bounding box of the
+  active part" → Claude Desktop selected the right tool → MCP
+  attached to the foreground SW via `GetActiveObject` → returned
+  real geometry (25×25×80mm for `dr_metrics_test.SLDPRT`) → model
+  rendered the values + interpreted the part shape. Tested against
+  Claude Desktop Cowork build (Windows Store package
+  `Claude_pzs8sxrjxfjjc`).
 
 Full Wave 5 audit details in commit messages of `4a5f849`, `d91676e`,
 `5069866`, `f9dde03`, and `6e1778a`.
