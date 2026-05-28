@@ -103,6 +103,13 @@ class TestToolRegistration:
     )
 
     def _registered_tool_names(self) -> set[str]:
+        # ai_sw_bridge.mcp.server imports the optional `mcp` SDK at module
+        # load. The `test` CI job installs `[dev]` (not `[mcp]`); skip
+        # these tool-registration tests there. runtime + tools (used by
+        # TestRuntime and TestComToolWrapping) don't need the SDK so they
+        # still run on a `[dev]`-only install.
+        pytest.importorskip("mcp", reason="requires `ai-sw-bridge[mcp]` extra")
+
         from ai_sw_bridge.mcp.runtime import ServerRuntime
         from ai_sw_bridge.mcp.server import create_server
 
@@ -126,6 +133,9 @@ class TestToolRegistration:
 
     def test_all_com_tools_have_decorator(self) -> None:
         """Every tool that touches the adapter MUST be @com_tool-wrapped."""
+        # See note on _registered_tool_names: server.py needs the `mcp` SDK.
+        pytest.importorskip("mcp", reason="requires `ai-sw-bridge[mcp]` extra")
+
         from ai_sw_bridge.mcp.tools import is_com_tool
 
         # Tools that exercise SOLIDWORKS COM (per the design's §6.1, §6.2).
@@ -285,6 +295,9 @@ class TestWireFormat:
         Catches accidental returns of tuples, sets, datetime objects,
         or anything else that breaks the MCP serialization layer.
         """
+        # See note on _registered_tool_names: server.py needs the `mcp` SDK.
+        pytest.importorskip("mcp", reason="requires `ai-sw-bridge[mcp]` extra")
+
         import inspect
 
         from ai_sw_bridge.mcp.runtime import ServerRuntime

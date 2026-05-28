@@ -109,6 +109,14 @@ class TestFileKeySource:
 
 class TestKeyringKeySource:
     def test_reads_keyring(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # `keyring` is a runtime-optional backend (one of four KeySource
+        # implementations). monkeypatch.setattr("keyring.get_password", ...)
+        # below needs the module importable to resolve the dotted path,
+        # so skip when the optional dep isn't present. The sibling test
+        # `test_keyring_lib_missing_raises_key_source_error` covers the
+        # opposite case (lib genuinely absent at runtime).
+        pytest.importorskip("keyring", reason="optional KeyringKeySource backend")
+
         key = generate_key().decode()
         captured = {}
 
