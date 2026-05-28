@@ -66,3 +66,8 @@ tools/snapshots-e2e/
 
 
 docs/central_idea/
+
+# Upstream reference repo clones — see docs/reference_repos.md
+# (re-fetchable via tools/clone_references.sh; never commit the clones
+# themselves, they bloat the repo and are public elsewhere).
+references/

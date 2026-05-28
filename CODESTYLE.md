@@ -243,6 +243,96 @@ when failure means "we don't know if it succeeded."
 
 ---
 
+## 4.5. Logging conventions
+
+Logging in this codebase has two distinct audiences and the
+discipline differs sharply between them. Get this wrong and you
+either spam stdout (breaking the two-stream contract in §3) or lose
+the debugging trail entirely.
+
+### 4.5.1. Use stdlib `logging`, never `print` (except CLI stderr)
+
+Every module gets one `logger = logging.getLogger(__name__)` at
+module top and uses `logger.{debug,info,warning,error}` for runtime
+trace. The single exception is CLI entry points (`cli/*.py`) which
+emit human-readable progress directly to stderr via
+`print(..., file=sys.stderr)`. That stderr-print path is also
+restricted: structured logs go through `logger`, ad-hoc progress
+("Building MinimalCylinder...") through print.
+
+**Why not `loguru` / `structlog` / custom log libs?** The ported
+modules from upstream (W5.1 ComExecutor, W5.2 adapter, W5.3
+sw_type_info) used `loguru`. Adaptation policy is to **replace
+loguru with stdlib logging** in every port (per `CONTRIBUTING.md`
+attribution rows). Reasons: zero new dependency, single observability
+surface for downstream integrators, plays nicely with caller-provided
+`logging.basicConfig`.
+
+### 4.5.2. Log levels — the discipline
+
+| Level | When to use | Examples in this codebase |
+|---|---|---|
+| `DEBUG` | Per-call breadcrumbs only useful when actively debugging. Off by default. | `sw_com.get_sw_app`: "attached to running SldWorks via GetActiveObject"; `runtime.reconnect`: "release_sw_app during reconnect raised: %r" |
+| `INFO` | Lifecycle events visible to operators in normal operation. | `ServerRuntime: reconnecting after SW death`; `ComExecutor 'name' ready`; `build start: name=X mode=Y` |
+| `WARNING` | Recoverable degradation; expected failure modes that have a defined fallback. | `could not read SW RevisionNumber; skipping version check`; `COM handle re-acquired mid-build; review checkpoint to verify state.` |
+| `ERROR` | Unrecoverable failure that the caller MUST handle. Always paired with a structured error envelope (see §2.4 fail-loud paths). | `CoInitialize failed in ComExecutor worker %r: %r`; `adapter.connect() failed at startup: %s` |
+| `CRITICAL` | Reserved. We do not currently use it; if you reach for it, you're probably looking for `ERROR` plus a process exit. |
+
+### 4.5.3. Log message format
+
+**Lazy %-formatting only.** Use `logger.info("foo %s bar %r", x, y)`
+not `logger.info(f"foo {x} bar {y!r}")`. The lazy form skips the
+string interpolation cost when the level is filtered out; the
+f-string form pays it unconditionally. flake8 catches the f-string
+case via `logging-format-style`.
+
+**No emoji, no ANSI color in log records.** ANSI color codes belong
+on stderr (the human-facing log channel — see §3 two-stream
+contract), never inside `logger.*` calls. The structured logging
+surface is consumed by downstream log aggregators that don't render
+ANSI.
+
+**Never log PII or trade secrets.** Locals values, customer
+filenames, full file paths — all SENSITIVE per `docs/privacy_review.md`.
+Either skip the field or log a stable token like
+`"<redacted:locals>"`. The redactor in `tools/bundle_bug_report.py`
+applies the trade-secret patterns from `.ai-sw-bridge.toml` to log
+output as well as artifacts.
+
+### 4.5.4. Logging vs telemetry — pick the right channel
+
+The two channels solve different problems:
+
+| Channel | What it answers | Where it lives | Format |
+|---|---|---|---|
+| **`logger.*` (stdlib logging)** | "What happened on this run, in what order, with what state?" — narrative debug trail | stderr (caller's logging config) | Free-form text |
+| **`telemetry.counter()` / `telemetry.histogram()`** | "How often does X happen across many runs? What's the p95 of Y?" — aggregate counts + distributions | `.telemetry/metrics.db` (local SQLite, opt-in export only) | Structured numeric |
+
+**Rule of thumb:** if the answer needs *this specific run*, log it.
+If the answer needs *aggregate trends*, count it. Most operations
+need both — `spec/builder.py` emits `logger.info("build ok: ...")`
+*and* increments `builds_total{outcome=ok}`.
+
+### 4.5.5. The fail-soft logging pattern
+
+The bare `except Exception: pass` shape is wrong for logging. The
+correct fail-soft pattern (per §4) when telemetry/sidecar code might
+fail:
+
+```python
+try:
+    risky_telemetry_thing()
+except Exception as exc:  # noqa: BLE001 — fail-soft for sidecar
+    logger.debug("telemetry sidecar raised, ignored: %r", exc)
+```
+
+`debug` rather than `warning` because the failure is genuinely
+expected to be a no-op for the user — the operation succeeded;
+we just couldn't record it. A `warning` would falsely alarm
+operators.
+
+---
+
 ## 5. Zero arbitrary-code-execution surface
 
 The bridge consumes JSON specs from user files. Spec data is
