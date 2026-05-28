@@ -108,6 +108,7 @@ required (see `docs/central_idea/harvest_plan.md` §5 for the full process):
 | `src/ai_sw_bridge/com/adapters/mock.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-28 | TBD | `src/solidworks_mcp/adapters/mock_adapter.py` — simplified mock dispatch for testing |
 | `src/ai_sw_bridge/com/adapters/pywin32.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-28 | TBD | `src/solidworks_mcp/adapters/pywin32_adapter.py` — late-binding COM dispatch wrapper |
 | `src/ai_sw_bridge/com/factory.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-28 | TBD | `src/solidworks_mcp/adapters/factory.py` — simplified factory with platform-based auto-selection |
+| `src/ai_sw_bridge/com/sw_type_info.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-28 | TBD | `src/solidworks_mcp/adapters/sw_type_info.py` — replaced loguru with stdlib logging; per-interface COM method flagging |
 
 ## License
 
