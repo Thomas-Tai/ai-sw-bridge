@@ -175,6 +175,16 @@ drive the same tool surface the CLIs already expose.
 - **CI snapshot tests are SW-state-dependent on dev machines with
   pywin32 + live SW.** They lock in a tolerant union of both the
   empty and happy-path shapes; either runs fine.
+- **GUI MCP client integration smoke test deferred.** Claude Desktop /
+  Cursor end-to-end smoke (user types a natural-language prompt → model
+  picks the right MCP tool → result renders correctly in the chat
+  surface) was scoped into the v0.13 Wave 5 audit (Phase 3) but
+  deferred to v0.14. The JSON-RPC layer is exercised by
+  `tests/mcp_lane/test_wire_e2e.py` (the real MCP SDK in-memory
+  transport), and individual tools are exercised by Phase 2.5/2.6/4
+  against a live SW session, so the server-side surface is verified.
+  What remains untested is client-specific rendering of large JSON
+  payloads, screenshot PNG paths, and model-driven tool selection.
 
 ### Test counts
 
