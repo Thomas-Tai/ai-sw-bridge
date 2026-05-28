@@ -14,7 +14,7 @@ CHANGELOG, and migration doc.
 it in the release-review meeting. A checkbox moves from `[ ]` to `[x]` only
 when the named evidence is produced and linked; do not pre-check.
 
-**Origin.** Derived from [`docs/central_idea/audit_review.md`](central_idea/audit_review.md)
+**Origin.** Derived from *(retired v0.13.0; see decisions.md 2026-05-28 entry)*
 section 5.4 ("No explicit launch readiness checklist"), which pointed to
 Google's Launch Readiness Review as the model. The fifteen items below are
 the concrete signal set for this project — each maps back to a P0 / P1
@@ -27,7 +27,7 @@ audit gap.
 ### Observability and performance
 
 - [ ] **1. SLI/SLO dashboards green.**
-  Every mandatory SLI defined in [`requirements.md`](central_idea/requirements.md)
+  Every mandatory SLI defined in *(retired v0.13.0; see decisions.md 2026-05-28 entry)*
   section 3.5 has a live dashboard; the last 7 days of data are inside
   the error budget.
   - Closes audit section 1.1 (P0: "define SLOs and error budgets explicitly").
@@ -45,7 +45,7 @@ audit gap.
 
 - [ ] **3. Upstream drift gate clean.**
   `python tools/check_upstream_drift.py` exits 0; every pinned upstream
-  in [`harvest_plan.md`](central_idea/harvest_plan.md) section 5.2 is
+  in `CONTRIBUTING.md` §"Port attribution" section 5.2 is
   within the drift threshold (audit section 1.4,
   [`supply_chain_security.md`](supply_chain_security.md)).
   - Evidence: CI job `drift-gate` green on the release commit.
@@ -66,7 +66,7 @@ audit gap.
 ### Privacy and trust
 
 - [ ] **6. Privacy review re-affirmed.**
-  [`docs/central_idea/privacy_review.md`](central_idea/privacy_review.md)
+  *(retired v0.13.0; see decisions.md 2026-05-28 entry)*
   reflects the current data-flow reality — no new egress paths, no new
   PII captures introduced since the last review. Telemetry consent UX
   still matches audit section 2.4.
@@ -90,7 +90,8 @@ audit gap.
   `docs/migration_to_vX.Y.md` exists; covers schema-layer changes,
   CLI-layer changes, new manifest sidecars, and a backward-compat
   statement. Cross-linked from the CHANGELOG entry.
-  - Evidence: link in CHANGELOG and in `docs/central_idea/README.md`.
+  - Evidence: link in CHANGELOG and in the relevant per-subsystem
+    design doc under `docs/`.
 
 - [ ] **10. README current.**
   Top-level `README.md` reflects the shipped primitive count, the
@@ -152,13 +153,12 @@ every checkbox above is `[x]`.
 ## Related documents
 
 - The audit gap this checklist closes:
-  [`docs/central_idea/audit_review.md`](central_idea/audit_review.md)
+  *(retired v0.13.0; see decisions.md 2026-05-28 entry)*
   section 5.4.
 - The release engineering process that consumes this gate:
   [`docs/release_engineering.md`](release_engineering.md).
 - The roadmap this checklist guards: [`docs/ROADMAP.md`](ROADMAP.md).
-- Where this doc sits in the strategic stack:
-  [`docs/central_idea/README.md`](central_idea/README.md), section
-  "The document set", row "launch readiness checklist."
-- The privacy, supply-chain, and SLO documents referenced above live
-  under `docs/` and `docs/central_idea/`.
+- The supply-chain and SLO documents referenced above live under
+  `docs/` ([`supply_chain_security.md`](supply_chain_security.md),
+  [`release_engineering.md`](release_engineering.md),
+  [`decisions.md`](decisions.md)).

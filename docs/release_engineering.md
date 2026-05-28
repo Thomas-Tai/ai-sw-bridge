@@ -1,9 +1,9 @@
 # Release Engineering
 
-How releases work for `ai-sw-bridge`. Operational document — referenced from [`requirements.md`](central_idea/requirements.md), the [`ROADMAP.md`](ROADMAP.md), and [`launch_readiness_checklist.md`](launch_readiness_checklist.md).
+How releases work for `ai-sw-bridge`. Operational document — referenced from *(retired v0.13.0; see decisions.md 2026-05-28 entry)*, the [`ROADMAP.md`](ROADMAP.md), and [`launch_readiness_checklist.md`](launch_readiness_checklist.md).
 
 **Last updated:** 2026-05-23
-**Authority:** project lead. Operational handoff documented per-release in [`central_idea/decisions.md`](central_idea/decisions.md).
+**Authority:** project lead. Operational handoff documented per-release in [`decisions.md`](decisions.md).
 
 ---
 
@@ -51,7 +51,7 @@ The bridge is pre-1.0 (v0.X today). SemVer's pre-1.0 latitude means MINOR releas
 
 - v0.11 preserves the v0.10 CLI surface verbatim. `ai-sw-build spec.json` (no new flags) behaves identically.
 - New flags are opt-in. Default behavior with no new flags is v0.10 behavior.
-- Exit codes are stable per [`UIUX.md`](central_idea/UIUX.md) §3.2.
+- Exit codes are stable per `CODESTYLE.md` §3.2.
 
 ### 2.3 Output compatibility
 
@@ -150,8 +150,8 @@ The release engineer runs these in order. Total expected time: ~3 hours for a MI
 ### 6.5 Post-release
 
 1. Post a brief summary to relevant channels (project Discord/Slack/mailing list if/when they exist).
-2. Update [`docs/central_idea/README.md`](central_idea/README.md) status table.
-3. Update [`docs/central_idea/decisions.md`](central_idea/decisions.md) with any release-driven decisions (e.g., features promoted from Experimental to Stable).
+2. Update *(retired v0.13.0; see decisions.md 2026-05-28 entry)* status table.
+3. Update [`docs/decisions.md`](decisions.md) with any release-driven decisions (e.g., features promoted from Experimental to Stable).
 4. Open a tracking issue for the next release's planning.
 5. If any incidents surfaced during release: write a postmortem note in `docs/postmortems/<date>.md`.
 
@@ -235,7 +235,7 @@ A SW service pack release breaks the bridge. Process:
 
 Beyond the scope of v0.X. Process recorded for completeness:
 
-1. Decision logged in [`central_idea/decisions.md`](central_idea/decisions.md) with full rationale.
+1. Decision logged in [`decisions.md`](decisions.md) with full rationale.
 2. Multi-release deprecation cycle for any Stable-tier surface that changes.
 3. Migration guide doubles in length and detail.
 4. Pre-release cycle minimum: 3 alphas + 2 betas + 2 release candidates.

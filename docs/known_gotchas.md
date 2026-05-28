@@ -67,7 +67,7 @@ will hit :class:`FaceAmbiguityError` unless you disambiguate.
   feature name — the manifest then keys by feature, and the
   ambiguity goes away.
 
-See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 1
+See *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §2.10 row 1
 (multi-body part).
 
 ### B-rep: surface bodies have no volume — `inboard`/`outboard` is meaningless
@@ -89,7 +89,7 @@ inside, so "inboard" would be a fabrication.
   or by `normal` directly. `face_role` matching still works for the
   axis-aligned case when the surface is on the part boundary.
 
-See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 2
+See *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §2.10 row 2
 (surface body).
 
 ### B-rep: suppressed features emit an empty brep block with `status: "suppressed"`
@@ -113,7 +113,7 @@ in interrogation."
 - Move the suppressed feature later in the tree so child features
   don't reference it as a `face_role` source.
 
-See [`central_idea/spec.md`](central_idea/spec.md) §2.10 row 4
+See *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §2.10 row 4
 (suppressed feature).
 
 ### B-rep: hidden faces are included but flagged `is_hidden: true`

@@ -373,7 +373,7 @@ indefinitely-deferred items) and `CHANGELOG.md` for shipped state.
 
 **Consequences:**
 
-- The seven `central_idea/decisions.md` entries (this file's
+- The seven `decisions.md` entries (this file's
   entries above through 2026-05-28 CODESTYLE) were reconstructed
   from the session record during the cleanup — they live in git
   now and can't be lost.

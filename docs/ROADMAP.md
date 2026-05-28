@@ -1,7 +1,8 @@
 # Roadmap
 
-Public commitment to where `ai-sw-bridge` is going. For sprint-level detail
-and DRIs, see [`central_idea/execution_plan_90d.md`](central_idea/execution_plan_90d.md).
+Public commitment to where `ai-sw-bridge` is going. For shipped-state
+history see [`CHANGELOG.md`](../CHANGELOG.md); for v0.14+ backlog and
+deferred items see [`DEFERRED.md`](DEFERRED.md).
 
 ---
 

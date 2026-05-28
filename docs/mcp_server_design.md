@@ -2,8 +2,8 @@
 
 **Status:** Design approved, implementation pending (W5.4-impl).
 **Authors:** v0.13 closure track.
-**Cross-refs:** [`docs/central_idea/spec.md`](central_idea/spec.md) §6
-(Lane M deferred design), [`docs/central_idea/decisions.md`](central_idea/decisions.md)
+**Cross-refs:** *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §6
+(Lane M deferred design), [`docs/decisions.md`](decisions.md)
 2026-05-23 "Lane M adoption-driven", [`docs/addins_research.md`](addins_research.md),
 [`docs/com_failure_modes.md`](com_failure_modes.md) row M-XX.
 

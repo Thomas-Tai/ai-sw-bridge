@@ -2,7 +2,7 @@
 
 **Status:** Design approved, implementation pending (W3.1-impl).
 **Authors:** v0.13 closure track.
-**Cross-refs:** [`central_idea/privacy_review.md`](central_idea/privacy_review.md) §4.2, [`central_idea/spec.md`](central_idea/spec.md) §5.
+**Cross-refs:** *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §4.2, *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §5.
 
 This document is the binding design for the `--checkpoint-encrypt` flag.
 It commits to the encryption library, the key-source contract, the
@@ -18,7 +18,7 @@ The L4 checkpoint store at `./.checkpoints/<part>.sqlite` contains
 `locals_snapshot` and `com_call_log` strings drawn directly from the
 user's `*_locals.txt` files. For users whose locals encode trade-secret
 dimensions, the SQLite file is itself a trade-secret artifact
-([`privacy_review.md`](central_idea/privacy_review.md) §3.1, threat
+(*(retired v0.13.0; see decisions.md 2026-05-28 entry)* §3.1, threat
 model §5.1 "L4 checkpoint store exposure").
 
 The existing mitigations — `.gitignore` defaults, no telemetry uplink,

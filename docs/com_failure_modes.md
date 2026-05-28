@@ -66,9 +66,9 @@ same pattern: stop trusting "the call returned, therefore it worked."
 ### Lane M — MCP transport (placeholder, populates when Lane M opens)
 
 Reserved for FastMCP-specific (or chosen-framework-specific)
-failure modes per [`docs/central_idea/spec.md`](central_idea/spec.md)
+failure modes per *(retired v0.13.0; see decisions.md 2026-05-28 entry)*
 §6.8 risk register. Lane M is deferred per
-[`decisions.md`](central_idea/decisions.md) 2026-05-23 entry #2
+[`decisions.md`](decisions.md) 2026-05-23 entry #2
 ("adoption-driven"); rows below get populated only after the lane
 opens.
 
