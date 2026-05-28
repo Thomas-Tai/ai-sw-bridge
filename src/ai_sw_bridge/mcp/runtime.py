@@ -71,11 +71,26 @@ class ServerRuntime:
         Called by the ``sw_reconnect`` MCP tool when
         ``executor.is_sw_dead`` is True (W5.6 wires that flag).
 
-        Post-condition: ``self.executor.is_alive`` is True and a fresh
+        Post-condition: ``self.executor.is_alive`` is True, the
+        ``sw_com`` module-level dispatch cache is cleared, and a fresh
         STA apartment is held. The adapter is reconnected.
         """
         logger.info("ServerRuntime: reconnecting after SW death")
-        # Adapter first — it may hold a stale IDispatch. A fresh connect
+
+        # Drop the module-level sw_com._CACHED_SW_APP. observe.* and
+        # mutate.* call sw_com.get_sw_app() directly (the W5.2 adapter
+        # is not in their call path), so without this the next tool
+        # call reuses the stale dispatch handle and surfaces the same
+        # AttributeError that signalled death in the first place.
+        # Found by Wave 5 Phase 2.5 audit (2026-05-28).
+        try:
+            from ..sw_com import release_sw_app
+
+            release_sw_app()
+        except Exception as exc:  # noqa: BLE001 — best-effort
+            logger.debug("release_sw_app during reconnect raised: %r", exc)
+
+        # Adapter: it may hold a stale IDispatch. A fresh connect
         # re-Dispatches SldWorks.Application on whatever SW is running now.
         try:
             self.adapter.disconnect()
