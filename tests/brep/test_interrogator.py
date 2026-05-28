@@ -536,9 +536,7 @@ def test_lazy_many_features_only_referenced_walked(enable_brep) -> None:
         def GetArea(self):
             return self.area_m2
 
-    face = CountingFace(
-        (0.0, 0.0, 0.0, 0.01, 0.01, 0.005), (0.0, 0.0, 1.0)
-    )
+    face = CountingFace((0.0, 0.0, 0.0, 0.01, 0.01, 0.005), (0.0, 0.0, 1.0))
     referenced_names = {"feat_3", "feat_47", "feat_99"}
     refs = {(n, "+z_outboard") for n in referenced_names}
 
@@ -550,9 +548,7 @@ def test_lazy_many_features_only_referenced_walked(enable_brep) -> None:
         r = interrogate(feature, ctx)
         results.append(r)
 
-    referenced_results = [
-        r for r in results if r.get("status") != "no_downstream_refs"
-    ]
+    referenced_results = [r for r in results if r.get("status") != "no_downstream_refs"]
     assert len(referenced_results) == 3
     unreferenced_results = [
         r for r in results if r.get("status") == "no_downstream_refs"

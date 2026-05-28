@@ -136,9 +136,7 @@ def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
             t0 = time.perf_counter()
             elapsed = time.perf_counter() - t0
             try:
-                telemetry_histogram(
-                    "brep_interrogation_seconds", elapsed, mode="lazy"
-                )
+                telemetry_histogram("brep_interrogation_seconds", elapsed, mode="lazy")
             except Exception:
                 pass
             return {
@@ -155,9 +153,7 @@ def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
         return {"feature": feat_name, "faces": [], "error": str(e)}
     elapsed = time.perf_counter() - t0
     try:
-        telemetry_histogram(
-            "brep_interrogation_seconds", elapsed, mode=mode_label
-        )
+        telemetry_histogram("brep_interrogation_seconds", elapsed, mode=mode_label)
     except Exception:
         pass
 
