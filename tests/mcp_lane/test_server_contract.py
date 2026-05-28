@@ -108,9 +108,10 @@ class TestToolRegistration:
 
         runtime = ServerRuntime.create(adapter_type="mock")
         mcp = create_server(runtime)
-        # FastMCP exposes registered tools via _tool_manager._tools or
-        # list_tools() — the impl picks the right accessor.
-        return {t.name for t in mcp.list_tools()}
+        # _Server.iter_tools() yields the internal Tool records (with
+        # .fn). The inherited async list_tools() is reserved for the
+        # JSON-RPC wire protocol.
+        return {t.name for t in mcp.iter_tools()}
 
     def test_tool_inventory_matches_design(self) -> None:
         names = self._registered_tool_names()
@@ -152,8 +153,8 @@ class TestToolRegistration:
         mcp = create_server(runtime)
 
         # FastMCP stores the wrapped callable on the tool record;
-        # the impl exposes a way to fetch it for the contract test.
-        for tool in mcp.list_tools():
+        # iter_tools() is _Server's sync accessor for the contract test.
+        for tool in mcp.iter_tools():
             if tool.name not in com_tool_names:
                 continue
             assert is_com_tool(tool.fn), (
@@ -292,7 +293,7 @@ class TestWireFormat:
         runtime = ServerRuntime.create(adapter_type="mock")
         mcp = create_server(runtime)
 
-        for tool in mcp.list_tools():
+        for tool in mcp.iter_tools():
             sig = inspect.signature(tool.fn)
             # Walk default values + annotations; if a tool returns a
             # well-typed dict, json.dumps round-trips. We can't actually

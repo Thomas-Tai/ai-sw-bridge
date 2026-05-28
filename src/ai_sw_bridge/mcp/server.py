@@ -29,21 +29,28 @@ logger = logging.getLogger(__name__)
 
 
 class _Server(FastMCP):
-    """FastMCP subclass whose ``list_tools`` returns the internal records.
+    """FastMCP subclass that exposes ``iter_tools`` for test introspection.
 
-    The MCP wire-format ``mcp.types.Tool`` objects lack the wrapped
-    callable (``.fn``), but the contract test needs to walk every tool
-    and check for the ``@com_tool`` tag. The internal
-    ``mcp.server.fastmcp.tools.base.Tool`` record carries ``.fn``; this
-    subclass swaps ``list_tools()`` to return those.
+    The MCP wire-format ``mcp.types.Tool`` objects (returned by
+    ``FastMCP.list_tools`` over JSON-RPC) lack the wrapped callable
+    (``.fn``), but the contract test needs to walk every tool and check
+    for the ``@com_tool`` tag. The internal
+    ``mcp.server.fastmcp.tools.base.Tool`` record carries ``.fn``.
 
-    Real MCP clients don't call ``list_tools()`` — they go through the
-    JSON-RPC ``tools/list`` handler, which is wired separately and
-    unaffected by this override.
+    Earlier W5.4-impl overrode ``list_tools`` to return those records,
+    but ``FastMCP.list_tools`` is ``async`` — overriding it sync broke
+    the JSON-RPC ``tools/list`` and ``tools/call`` handlers, which
+    ``await`` the call (caught by Wave 5 audit: see commit message).
+
+    This subclass therefore exposes a **separate** sync ``iter_tools``
+    accessor that tests and tooling can use to walk ``.fn``; the
+    inherited async ``list_tools`` is left untouched so the wire
+    protocol works.
     """
 
-    def list_tools(self) -> list[Any]:  # type: ignore[override]
-        return list(self._tool_manager._tools.values())
+    def iter_tools(self) -> list[Any]:
+        """Sync accessor for internal Tool records (with ``.fn``)."""
+        return list(self._tool_manager.list_tools())
 
 
 def create_server(runtime: ServerRuntime) -> Any:

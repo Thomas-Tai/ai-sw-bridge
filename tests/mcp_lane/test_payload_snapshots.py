@@ -171,7 +171,7 @@ class TestPayloadSnapshots:
     @pytest.mark.parametrize("tool_name", _fixture_names())
     def test_tool_payload_matches_snapshot(self, mcp_server, tool_name: str) -> None:
         fixture = _load_fixture(tool_name)
-        tools = {t.name: t for t in mcp_server.list_tools()}
+        tools = {t.name: t for t in mcp_server.iter_tools()}
         assert tool_name in tools, f"{tool_name!r} not registered on server"
         tool = tools[tool_name]
 
@@ -203,7 +203,7 @@ class TestPayloadSnapshots:
 
     def test_every_registered_tool_has_fixture(self, mcp_server) -> None:
         """No tool may ship without a corresponding snapshot fixture."""
-        registered = {t.name for t in mcp_server.list_tools()}
+        registered = {t.name for t in mcp_server.iter_tools()}
         captured = set(_fixture_names())
         missing = registered - captured
         assert not missing, (
@@ -213,7 +213,7 @@ class TestPayloadSnapshots:
 
     def test_no_stale_fixtures(self, mcp_server) -> None:
         """No fixture may outlive the tool it snapshots."""
-        registered = {t.name for t in mcp_server.list_tools()}
+        registered = {t.name for t in mcp_server.iter_tools()}
         captured = set(_fixture_names())
         stale = captured - registered
         assert not stale, f"snapshot fixtures for unregistered tools: {sorted(stale)}"

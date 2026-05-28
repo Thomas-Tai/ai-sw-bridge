@@ -107,7 +107,7 @@ def main() -> int:
         "sw_reconnect": {},
     }
 
-    tools = {t.name: t for t in mcp.list_tools()}
+    tools = {t.name: t for t in mcp.iter_tools()}
     missing = set(args_by_tool) - set(tools)
     if missing:
         raise SystemExit(f"tools not registered: {sorted(missing)}")
