@@ -2,7 +2,7 @@ name: License lint
 
 on:
   push:
-    branches: [master]
+    branches: [master, "feat/**"]
     paths:
       - "src/**"
       - "CONTRIBUTING.md"

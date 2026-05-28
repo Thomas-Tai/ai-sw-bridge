@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master, "v*-integration"]
+    branches: [master, "v*-integration", "feat/**"]
   pull_request:
     branches: [master]
 
