@@ -71,3 +71,6 @@ docs/central_idea/
 # (re-fetchable via tools/clone_references.sh; never commit the clones
 # themselves, they bloat the repo and are public elsewhere).
 references/
+
+# PR body drafts (one-shot artifacts; not part of the repo)
+.github/pr_body_*.md
