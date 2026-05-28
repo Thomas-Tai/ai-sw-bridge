@@ -80,6 +80,20 @@ runbook; promoted to real entries once observed):
 | M-XX | (placeholder) `AttributeError` at attribute lookup on a COM call from an MCP-handler thread | pywin32 late-binding surfaces cross-thread invocation as `AttributeError`, not `pywintypes.com_error` — boundaries that catch only the latter miss it | The error trace shows attribute access in the MCP transport thread, not the STA worker | Route every COM-touching call through `ComExecutor.submit(...)` (FR-v0.11-M-02); cross-thread `AttributeError` becomes a typed `MCPThreadingError` at the boundary | TBD (Lane M E1 port) |
 | M-XX | (placeholder) `0x800401FD` / `0x80010108` after user closes SW mid-MCP-session | SW process death; cached `IDispatch` handle goes stale | `ComExecutor` `_sw_app_is_dead` flag flips on `_DEAD_HRESULTS` (spec.md §6.9) | `--reconnect` flag fires `pythoncom.CoInitialize` on a fresh STA thread + re-Dispatch + `RevisionNumber` floor check | TBD |
 
+### Add-in interference (W7.1)
+
+Placeholder rows for add-in-related failure modes. Populated when
+`spikes/v0_13/spike_addin_enumeration.py` returns results from a live
+SW session. See [`docs/addins_research.md`](addins_research.md) for
+the full research note.
+
+| # | Symptom | Real cause | Diagnostic | Mitigation | First seen |
+|---|---|---|---|---|---|
+| A-01 | (placeholder) Build succeeds but output dimensions differ from spec targets between runs | SOLIDWORKS Toolbox add-in auto-resizes inserted hardware or rewrites mate references | `ai-sw-observe addins` lists "SOLIDWORKS Toolbox" in `known_problematic` | `--disable-addins` flag warns at build start; `--strict-addins` blocks build (rc=4) until user disables via Tools → Add-Ins | TBD (spike pending) |
+| A-02 | (placeholder) `SaveAs3` returns 0 but file is unchanged; S-01 verifier reports misleading cause | SOLIDWORKS PDM add-in intercepts save events; vault-bound files require check-out | `ai-sw-observe addins` lists "SOLIDWORKS PDM Standard" or "SOLIDWORKS PDM Professional" in `known_problematic` | `--disable-addins` / `--strict-addins` pre-flight check; user must check out file or disable PDM add-in | TBD (spike pending) |
+| A-03 | (placeholder) Custom properties contain unexpected values after build | 3DEXPERIENCE PLM Connector captures save events and modifies custom properties | `ai-sw-observe addins` lists "3DEXPERIENCE PLM Connector" in `known_problematic`; `ai-sw-observe custom_props` shows unexpected entries | `--disable-addins` / `--strict-addins` pre-flight check | TBD (spike pending) |
+| A-04 | (placeholder) `GetEnabledAddIns` returns None or raises; enumeration fails entirely | SW build does not expose the API when no add-ins are loaded, or the method is absent on older versions | `sw_get_enabled_addins()` returns `ok=True, addins=[], error="api_not_present"` | Fail-soft: build proceeds with a stderr warning. No add-in interference possible when the API is absent. | TBD (spike pending) |
+
 ## How to add a row
 
 When you spend > 30 minutes triaging a "the API said success and nothing
@@ -93,6 +107,7 @@ happened" failure:
    - `X-*` selection / accumulator
    - `E-*` equation manager
    - `U-*` popup / UX
+   - `A-*` add-in interference (W7.1; see `docs/addins_research.md`)
    - `M-*` Lane M / MCP transport (populates when Lane M opens)
    - new prefix if none fit (document the convention here)
 3. Cross-link: the **Mitigation** column MUST point to the file/function

@@ -1105,3 +1105,91 @@ def sw_measure(
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
+
+
+# ---------------------------------------------------------------------------
+# W7.1 — Add-in enumeration (docs/addins_research.md §5, §7)
+# ---------------------------------------------------------------------------
+
+KNOWN_PROBLEMATIC_ADDINS: frozenset[str] = frozenset(
+    {
+        "SOLIDWORKS Toolbox",
+        "SOLIDWORKS Routing",
+        "SOLIDWORKS Electrical",
+        "SOLIDWORKS Simulation",
+        "SOLIDWORKS Inspection",
+        "SOLIDWORKS Composer",
+        "SOLIDWORKS PDM Standard",
+        "SOLIDWORKS PDM Professional",
+        "3DEXPERIENCE PLM Connector",
+        # Names match what GetEnabledAddIns returns; VERIFY by running
+        # spikes/v0_13/spike_addin_enumeration.py with each enabled.
+    }
+)
+
+# Lowercase lookup set for case-insensitive matching (§9 open question).
+_KNOWN_LOWER: frozenset[str] = frozenset(n.lower() for n in KNOWN_PROBLEMATIC_ADDINS)
+
+
+def sw_get_enabled_addins() -> dict[str, Any]:
+    """Enumerate currently-loaded SOLIDWORKS add-ins (W7.1).
+
+    Returns a dict with keys:
+        ok               -- bool; True when the query ran without COM error.
+        addins           -- list[str]; every name reported by
+                            ISldWorks::GetEnabledAddIns.
+        known_problematic -- list[str]; the subset of *addins* that
+                            intersects KNOWN_PROBLEMATIC_ADDINS
+                            (case-insensitive).
+        error            -- str | None; populated on COM failure.
+
+    Fail-soft: if GetEnabledAddIns is absent on this SW build, returns
+    ok=True with addins=[] and a note in *error*.  The build does not
+    fail on the absence of the API -- many SW builds may expose the
+    API only when at least one add-in is enabled.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "addins": [],
+        "known_problematic": [],
+        "error": None,
+    }
+
+    try:
+        sw = get_sw_app()
+    except Exception as exc:
+        result["error"] = f"dispatch failed: {exc!r}"
+        return result
+
+    # GetEnabledAddIns may be absent on some SW builds; treat as
+    # non-fatal (§7 fail-soft contract).
+    getter = getattr(sw, "GetEnabledAddIns", None)
+    if getter is None:
+        result["ok"] = True
+        result["error"] = "api_not_present"
+        return result
+
+    try:
+        raw = getter()
+    except Exception as exc:
+        result["error"] = f"GetEnabledAddIns failed: {exc!r}"
+        return result
+
+    # GetEnabledAddIns returns a Variant that pywin32 surfaces as a
+    # tuple, list, or None (when zero add-ins are loaded).
+    if raw is None:
+        addins: list[str] = []
+    elif isinstance(raw, (tuple, list)):
+        addins = [str(name) for name in raw if name]
+    else:
+        # Unexpected shape -- surface as a warning, not a hard error.
+        addins = []
+        result["error"] = f"unexpected_return_type: {type(raw).__name__}"
+
+    # Case-insensitive intersection with the curated list (§9).
+    known_problematic = [name for name in addins if name.lower() in _KNOWN_LOWER]
+
+    result["addins"] = addins
+    result["known_problematic"] = known_problematic
+    result["ok"] = True
+    return result

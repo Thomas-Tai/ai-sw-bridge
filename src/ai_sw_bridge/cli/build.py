@@ -303,6 +303,30 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--disable-addins",
+        dest="disable_addins",
+        action="store_true",
+        default=False,
+        help=(
+            "Pre-build add-in check (W7.1). Enumerates loaded add-ins "
+            "via ISldWorks::GetEnabledAddIns. Emits a stderr warning if "
+            "any known-problematic add-in is active. Does NOT unload "
+            "add-ins -- see docs/addins_research.md §4 for why. The user "
+            "must disable interfering add-ins manually (Tools > Add-Ins) "
+            "for the build duration."
+        ),
+    )
+    parser.add_argument(
+        "--strict-addins",
+        dest="strict_addins",
+        action="store_true",
+        default=False,
+        help=(
+            "Hardens --disable-addins: exit rc=4 BEFORE the build starts "
+            "when any known-problematic add-in is loaded. Use in CI."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         dest="log_level",
         choices=["debug", "info", "warning", "error"],
@@ -496,6 +520,47 @@ def main() -> int:
         # failure so CI can tell apart "spec is malformed" from "spec refs
         # missing vars in locals".
         return _emit(payload, 0 if payload["ok"] else 5)
+
+    # W7.1 — pre-build add-in check (docs/addins_research.md §7).
+    # Runs BEFORE the first COM write so --strict-addins can abort
+    # without side effects.
+    if args.disable_addins or args.strict_addins:
+        from ..observe import sw_get_enabled_addins
+
+        addin_result = sw_get_enabled_addins()
+        if not addin_result["ok"]:
+            print(
+                f"WARNING: add-in enumeration failed: {addin_result['error']}",
+                file=sys.stderr,
+            )
+        elif addin_result["known_problematic"]:
+            msg = (
+                f"Known-problematic add-ins loaded: "
+                f"{addin_result['known_problematic']!r}. "
+                f"See docs/addins_research.md §5 for behavior. "
+                f"To disable: Tools → Add-Ins → uncheck → restart SW."
+            )
+            print(msg, file=sys.stderr)
+            if args.strict_addins:
+                return _emit(
+                    {
+                        "ok": False,
+                        "error": "strict_addins_blocked",
+                        "known_problematic": addin_result["known_problematic"],
+                        "hint": (
+                            "Disable the listed add-ins via "
+                            "Tools → Add-Ins, then retry."
+                        ),
+                    },
+                    4,
+                )
+        elif addin_result["addins"]:
+            # Non-problematic add-ins loaded — informational only.
+            print(
+                f"Add-ins loaded (none known-problematic): "
+                f"{addin_result['addins']!r}",
+                file=sys.stderr,
+            )
 
     result = build(
         spec,
