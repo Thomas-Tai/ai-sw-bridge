@@ -21,8 +21,15 @@ pip install -e ".[dev]"
 
 ## Code style
 
-- **Formatter:** `black` (line-length 88, default settings).
+Load-bearing patterns live in [`CODESTYLE.md`](CODESTYLE.md) — read
+it before contributing code. The short version:
+
+- **Formatter:** `black==25.12.0` (pinned). Run `black --check .` (whole tree).
 - **Linter:** `flake8`. **Type checker:** `mypy` (config in `mypy.ini`).
+- **Lane boundaries:** `import-linter` (config in `pyproject.toml`).
+- **pywin32 late binding only** — never `gencache.EnsureDispatch`.
+- **Two-stream contract** — stdout JSON, stderr text. Never both.
+- **No co-author trailers in commits.**
 
 ### Pre-commit hooks
 
