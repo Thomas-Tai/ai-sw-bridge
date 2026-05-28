@@ -103,6 +103,7 @@ required (see `docs/central_idea/harvest_plan.md` §5 for the full process):
 | Target file | Upstream repo | License | Upstream commit | Ported | DRI | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | `src/ai_sw_bridge/errors/circuit_breaker.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-24 | TBD | `src/solidworks_mcp/adapters/circuit_breaker.py` — sync wrapper extraction |
+| `src/ai_sw_bridge/com/executor.py` | [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) | MIT | 82e505d88da07fd81acd66b3cd85f6da65323ee4 | 2026-05-28 | TBD | `src/solidworks_mcp/adapters/com_executor.py` — replaced loguru with stdlib logging, added is_dead introspection, drain pending on shutdown |
 
 ## License
 
