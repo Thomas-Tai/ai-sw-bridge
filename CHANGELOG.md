@@ -155,17 +155,22 @@ drive the same tool surface the CLIs already expose.
   `sw_com.release_sw_app()` first thing in
   `ServerRuntime.reconnect()`. Regression test in
   `test_reconnect_cache_clear.py`.
+- **`executor.is_sw_dead` did not auto-flip on dead-handle errors.**
+  W5.6 catalogued death HRESULTs (`0x800401FD`/`0x80010108`), but
+  pywin32 actually surfaces SW death as
+  `AttributeError('SldWorks.Application.<member>')` from dynamic
+  dispatch. `observe.*` swallowed it into `result['error']`, so the
+  exception never reached `ComExecutor._worker`'s HRESULT trap.
+  Fixed by post-hoc detection in the `@com_tool` wrapper: after each
+  tool call, inspect the returned payload for the dead-dispatch
+  regex; if it matches, call new `ComExecutor.mark_sw_dead()` so the
+  next call short-circuits with the `sw_reconnect` hint. False
+  positives guarded against `<unknown>.<member>` patterns
+  (legitimate late-binding misses on Extension etc.). Regression in
+  `test_dead_dispatch_auto_flip.py` (3 tests); end-to-end check
+  added to `test_e2e_death_recovery.py`.
 
 ### Known limitations (deferred to v0.14)
-
-- **`executor.is_sw_dead` does not auto-flip on dead-handle errors.**
-  W5.6 catalogued death HRESULTs (`0x800401FD`/`0x80010108`), but
-  pywin32 surfaces SW death as `AttributeError`, not the cataloged
-  COM errors. `observe.*` catches the `AttributeError` into a string
-  `error` field, so it never reaches the executor's exception
-  handler. Manual `sw_reconnect` still works (user reads the error,
-  invokes the tool); only the auto-detection promised by W5.6
-  doesn't fire today.
 - **`observe.*` bypasses the W5.2 `MockAdapter`.** Calls
   `sw_com.get_sw_app()` directly instead of `runtime.adapter`. The
   W5.5 snapshot fixtures use union markers
