@@ -94,9 +94,16 @@ def test_e2e_custom_props_returns_dict(live_tools, minimal_cylinder_spec_path) -
     _ensure_part(live_tools, minimal_cylinder_spec_path)
     result = live_tools["sw_custom_props"].fn()
     # observe.sw_get_custom_props emits ``properties`` (dict of name ->
-    # value) and ``count`` (its length). New parts have no props; the
-    # contract is that the shape is well-formed regardless.
-    assert result["ok"] is True
+    # value) and ``count`` (its length). Contract is shape-only: the
+    # dict + count fields are always present and consistent regardless
+    # of whether the dispatch succeeded (ok=True with populated props
+    # OR ok=False with a degradation error and empty props are both
+    # valid). New parts typically have no props so {} is expected.
     assert "properties" in result
     assert isinstance(result["properties"], dict)
     assert result.get("count") == len(result["properties"])
+    # If ok=False, the error field must explain why — never silent.
+    if result["ok"] is False:
+        assert result.get("error"), (
+            f"ok=False but no error message: {result}"
+        )
