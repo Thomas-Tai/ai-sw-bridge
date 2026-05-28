@@ -30,8 +30,15 @@ from __future__ import annotations
 
 import json
 
-import anyio
 import pytest
+
+# Skip cleanly when the optional `mcp` SDK is absent (onboarding CI job
+# installs without the `[mcp]` extra). anyio is a transitive dep of mcp
+# so a single importorskip("mcp") gates both. Without this, the imports
+# below would crash pytest *collection* before marker filtering.
+pytest.importorskip("mcp", reason="requires `ai-sw-bridge[mcp]` extra")
+
+import anyio
 from mcp import ClientSession
 from mcp.shared.memory import create_client_server_memory_streams
 

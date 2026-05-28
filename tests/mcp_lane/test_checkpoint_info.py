@@ -16,6 +16,14 @@ from __future__ import annotations
 
 import pytest
 
+# The MCP server modules pull in the optional `mcp` SDK at import time
+# (`from mcp.server.fastmcp import FastMCP` in src/ai_sw_bridge/mcp/server.py).
+# CI's `onboarding` job installs the package without the `[mcp]` extra to
+# mirror a fresh-contributor install, so module-level imports below would
+# crash pytest *collection* before the marker filter deselects them.
+# importorskip turns the missing dep into a clean module-level skip.
+pytest.importorskip("mcp", reason="requires `ai-sw-bridge[mcp]` extra")
+
 from ai_sw_bridge.checkpoint.crypto import KeySource, generate_key
 from ai_sw_bridge.checkpoint.store import CheckpointStore
 from ai_sw_bridge.mcp.runtime import ServerRuntime

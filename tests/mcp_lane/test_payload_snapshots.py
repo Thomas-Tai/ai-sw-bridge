@@ -30,6 +30,12 @@ from typing import Any
 
 import pytest
 
+# Skip cleanly when the optional `mcp` SDK is not installed — the onboarding
+# CI job installs without the `[mcp]` extra, and without this guard the
+# `ai_sw_bridge.mcp.server` import below would crash pytest *collection*
+# before the marker filter could deselect this module.
+pytest.importorskip("mcp", reason="requires `ai-sw-bridge[mcp]` extra")
+
 from ai_sw_bridge.mcp.runtime import ServerRuntime
 from ai_sw_bridge.mcp.server import create_server
 
