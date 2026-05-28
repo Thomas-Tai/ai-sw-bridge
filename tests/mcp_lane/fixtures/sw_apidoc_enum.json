@@ -1,0 +1,19 @@
+{
+  "tool": "sw_apidoc_enum",
+  "args": {
+    "enum_name": "swDocumentSaveTypes_e"
+  },
+  "result": {
+    "ok": false,
+    "reason": "enum_corpus_missing",
+    "enum_name": "swDocumentSaveTypes_e",
+    "hint": "Batch-extract sldworksapi.chm and rebuild the index (`python tools/chm_extract.py batch <spec> <out>` then `python tools/build_api_index.py`) to enable enum lookup."
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "reason": "$str",
+    "enum_name": "$str",
+    "hint": "$str"
+  },
+  "error": null
+}

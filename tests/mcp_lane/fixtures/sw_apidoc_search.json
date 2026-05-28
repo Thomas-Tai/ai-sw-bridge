@@ -1,0 +1,83 @@
+{
+  "tool": "sw_apidoc_search",
+  "args": {
+    "query": "bounding box",
+    "k": 2
+  },
+  "result": {
+    "ok": true,
+    "query": "bounding box",
+    "hits": [
+      {
+        "score": 0.461705,
+        "chunk": {
+          "retrieval_key": "sldworksapiprogguide:Overview:Bounding Box and Note Text:0",
+          "corpus": "sldworksapiprogguide",
+          "chunk_type": "topic",
+          "interface": "Overview",
+          "name": "Bounding Box and Note Text",
+          "signature": null,
+          "description": "To calculate the approximate size of the text's bounding box, use:\n\nIAnnotation::GetPosition\n\nINote::GetUpperRight\n\nINote::GetHeight\n\nINote::GetLineCount",
+          "example_code": null,
+          "chm_anchor": "spikes\\phase0\\_chm_decompiled_apiprogguide\\Overview\\Bounding_Box_and_Note_Text.htm",
+          "keywords": [
+            "Note (see also INote Interface)",
+            "text",
+            "Text",
+            "notes",
+            "Bounding box",
+            "note text"
+          ]
+        }
+      },
+      {
+        "score": 0.42767,
+        "chunk": {
+          "retrieval_key": "sldworksapiprogguide:Overview:Gtol Frame XML Schema:1",
+          "corpus": "sldworksapiprogguide",
+          "chunk_type": "topic",
+          "interface": "Overview",
+          "name": "Gtol Frame XML Schema",
+          "signature": null,
+          "description": "<OutsideDisposition> Optional. Values: numerical\n\n<ToleranceZoneOffset>\n\n<OutsideFirstZoneOffset> / <InsideFirstZoneOffset>\n\n<FirstOffset> Optional. Values: numerical\n\n<OutsideSecondZoneOffset> / <InsideSecondZoneOffset> Optional. Specify one of these two nodes. Values: true/false\n\n<SecondOffset> Optional. Values: numerical\n\n<DynamicProfile> Optional. Values: true/false\n\n<Combination> Optional. Values: CZ/SZ\n\n<Constraint> Optional. Specify up to three of these nodes. Values: OffsetToleranceZone|UnspecifiedAngularToleranceZoneOffset|OrientationOnly\n\n<FeatureInfo>\n\n<Filters>\n\n<FilterDetail> Unlimited number of these nodes\n\n<FilterSymbol> Values: G/S/SW/CW/RG/RS/OB/OH/OD/CB/CH/CD/AB/AH/AD/F/H\n\n<ShortWavePassFilter> Optional. Values: true/false\n\n<CutOff> Optional. Values: numerical\n\n<LongWavePassFilter> Optional. Values: true/false\n\n<FilterIndicationSeparator> Optional. Values: space/X or empty\n\n<ShortWavePassFilter2> Optional. Values: true/false\n\n<CutOff2> Optional. Values: numerical\n\n<LongWavePassFilter2> Optional. Values: true/false\n\n<AssociatedFeatureInfo> Optional. Values: Minimax / LeastSquares / MinimumCircumscribed / Tangent / MaximumInscribed\n\n<ProjectedToleranceZone> Optional. Values: true/false\n\n<Projection> Optional. Values: numerical\n\n<ProjectionRange> Optional. Values: numerical\n\n<DerivedFeatureForFeatureOfSize> Optional. Values: true/false\n\n<AssociatedCharacteristic> Optional. Values: C/CE/CI/G/GE/GI/X/N or empty\n\n<ParametricCharacteristic> Optional. Values: P/V/T/Q or empty\n\n<MaterialCondition> Optional.\n\n<MaximumMaterialCondition> Optional. Values: true/false\n\n<LeastMaterialCondition> Optional. Values: true/false\n\n<ReciprocityRequirement> Optional. Values: true/false\n\n<RegardlessToFeatureSize> Optional. Values: true/false Valid only if <MaximumMaterialCondition> or <LeastMaterialCondition> is specified\n\n<StateSymbol> Optional. Values: true/false\n\n<StatisticalSymbol> Optional. Values: true/false\n\n<DatumCompartment> Optional. Specify up to three of these nodes\n\n<TranslationConstraintAlongXAxis> Optional. Values: true/false\n\n<TranslationConstraintAlongYAxis> Optional. Values: true/false\n\n<TranslationConstraintAlongZAxis> Optional. Values: true/false\n\n<RotationalConstraintAlongXAxis> Optional. Values: true/false\n\n<RotationalConstraintAlongYAxis> Optional. Values: true/false\n\n<RotationalConstraintAlongZAxis> Optional. Values: true/false\n\n<ContactFeature> Optional. Values: true/false",
+          "example_code": null,
+          "chm_anchor": "spikes\\phase0\\_chm_decompiled_apiprogguide\\Overview\\Gtol_Frame_XML_Schema.htm",
+          "keywords": [
+            "SOLIDWORKS Connected",
+            "3DEXPERIENCE"
+          ]
+        }
+      }
+    ],
+    "count": 2
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "query": "$str",
+    "hits": {
+      "__list__": true,
+      "len": "*",
+      "item": {
+        "score": "$float",
+        "chunk": {
+          "retrieval_key": "$str",
+          "corpus": "$str",
+          "chunk_type": "$str",
+          "interface": "$str",
+          "name": "$str",
+          "signature": "$none",
+          "description": "$str",
+          "example_code": "$none",
+          "chm_anchor": "$str",
+          "keywords": {
+            "__list__": true,
+            "len": "*",
+            "item": "$str"
+          }
+        }
+      }
+    },
+    "count": "$int"
+  },
+  "error": null
+}

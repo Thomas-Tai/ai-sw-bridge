@@ -1,0 +1,17 @@
+{
+  "tool": "sw_apidoc_detail",
+  "args": {
+    "retrieval_key": "does-not-exist"
+  },
+  "result": {
+    "ok": false,
+    "reason": "not_found",
+    "key": "does-not-exist"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "reason": "$str",
+    "key": "$str"
+  },
+  "error": null
+}

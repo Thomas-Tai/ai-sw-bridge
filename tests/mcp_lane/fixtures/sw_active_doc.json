@@ -1,0 +1,23 @@
+{
+  "tool": "sw_active_doc",
+  "args": {},
+  "result": {
+    "ok": true,
+    "path": null,
+    "type": null,
+    "type_id": null,
+    "title": null,
+    "is_dirty": null,
+    "error": "no_active_doc"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "path": "$none",
+    "type": "$none",
+    "type_id": "$none",
+    "title": "$none",
+    "is_dirty": "$none",
+    "error": "$str"
+  },
+  "error": null
+}

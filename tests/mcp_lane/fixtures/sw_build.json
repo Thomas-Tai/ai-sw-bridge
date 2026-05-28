@@ -1,0 +1,15 @@
+{
+  "tool": "sw_build",
+  "args": {
+    "spec_path": "/nonexistent/spec.json"
+  },
+  "result": {
+    "ok": false,
+    "error": "spec file not found: \\nonexistent\\spec.json"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "error": "$str"
+  },
+  "error": null
+}

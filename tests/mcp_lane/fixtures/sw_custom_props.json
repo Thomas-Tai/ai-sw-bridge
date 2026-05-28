@@ -1,0 +1,19 @@
+{
+  "tool": "sw_custom_props",
+  "args": {},
+  "result": {
+    "ok": false,
+    "properties": {},
+    "active_configuration": null,
+    "count": 0,
+    "error": "no_active_doc"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "properties": {},
+    "active_configuration": "$none",
+    "count": "$int",
+    "error": "$str"
+  },
+  "error": null
+}

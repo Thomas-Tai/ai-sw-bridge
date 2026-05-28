@@ -1,0 +1,21 @@
+{
+  "tool": "sw_history_diff",
+  "args": {
+    "part_name": "NonexistentPart",
+    "id_a": 1,
+    "id_b": 2
+  },
+  "result": {
+    "ok": false,
+    "reason": "no_checkpoints",
+    "part_name": "NonexistentPart",
+    "root": ".checkpoints"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "reason": "$str",
+    "part_name": "$str",
+    "root": "$str"
+  },
+  "error": null
+}

@@ -1,0 +1,35 @@
+{
+  "tool": "sw_equations",
+  "args": {},
+  "result": {
+    "ok": false,
+    "doc_path": null,
+    "linked_file": null,
+    "link_active": null,
+    "auto_solve_order": null,
+    "auto_rebuild": null,
+    "manager_status_code": null,
+    "manager_status": null,
+    "equation_count": 0,
+    "equations": [],
+    "error": "no_active_doc"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": "$none",
+    "linked_file": "$none",
+    "link_active": "$none",
+    "auto_solve_order": "$none",
+    "auto_rebuild": "$none",
+    "manager_status_code": "$none",
+    "manager_status": "$none",
+    "equation_count": "$int",
+    "equations": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "error": "$str"
+  },
+  "error": null
+}

@@ -1,0 +1,27 @@
+{
+  "tool": "sw_screenshot",
+  "args": {
+    "width": 320,
+    "height": 240,
+    "fit_view": false
+  },
+  "result": {
+    "ok": false,
+    "path": null,
+    "doc_path": null,
+    "width": 320,
+    "height": 240,
+    "fit_view_applied": false,
+    "error": "dispatch failed: AttributeError('SldWorks.Application.ActiveDoc')"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "path": "$none",
+    "doc_path": "$none",
+    "width": "$int",
+    "height": "$int",
+    "fit_view_applied": "$bool",
+    "error": "$str"
+  },
+  "error": null
+}

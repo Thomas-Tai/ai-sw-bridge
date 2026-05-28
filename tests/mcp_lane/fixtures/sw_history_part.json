@@ -1,0 +1,19 @@
+{
+  "tool": "sw_history_part",
+  "args": {
+    "part_name": "NonexistentPart"
+  },
+  "result": {
+    "ok": false,
+    "reason": "no_checkpoints",
+    "part_name": "NonexistentPart",
+    "root": ".checkpoints"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "reason": "$str",
+    "part_name": "$str",
+    "root": "$str"
+  },
+  "error": null
+}

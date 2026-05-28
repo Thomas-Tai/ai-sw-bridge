@@ -1,0 +1,23 @@
+{
+  "tool": "sw_feature_errors",
+  "args": {},
+  "result": {
+    "ok": false,
+    "doc_path": null,
+    "total_features": 0,
+    "issues": [],
+    "error": "no_active_doc"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": "$none",
+    "total_features": "$int",
+    "issues": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "error": "$str"
+  },
+  "error": null
+}

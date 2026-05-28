@@ -1,0 +1,31 @@
+{
+  "tool": "sw_mate_errors",
+  "args": {},
+  "result": {
+    "ok": false,
+    "doc_path": null,
+    "mate_count": 0,
+    "mates": [],
+    "summary": {
+      "by_status": {},
+      "broken_count": 0
+    },
+    "error": "no_active_doc"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": "$none",
+    "mate_count": "$int",
+    "mates": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "summary": {
+      "by_status": {},
+      "broken_count": "$int"
+    },
+    "error": "$str"
+  },
+  "error": null
+}
