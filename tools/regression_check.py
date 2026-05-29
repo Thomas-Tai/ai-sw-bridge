@@ -30,6 +30,7 @@ Exit codes: 0=pass, 1=regression detected, 2=capture/build error.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import platform
 import statistics
@@ -53,6 +54,57 @@ SLO_02_P99_MAX_S = 25.0
 # Baseline regression thresholds (spec.md §8.3).
 BASELINE_P95_REGRESSION_PCT = 0.15
 BASELINE_P99_REGRESSION_PCT = 0.25
+
+
+def hash_brep_manifest(manifest_dict: dict) -> str:
+    """Stable SHA-256 hash over all face fingerprints in a brep manifest.
+
+    Reads the pre-computed 'fingerprint' field from every face of every
+    feature, sorts the collected fingerprints (order-independent across
+    features and faces within a feature), then SHA-256-hashes the sorted
+    list serialised as canonical JSON.
+
+    Returns a 64-char lowercase hex digest. An empty or fingerprint-free
+    manifest hashes to the SHA-256 of '[]'.
+
+    The input shape matches ``Manifest.to_dict()`` and ``build_brep.json``:
+    ``{"schema_version": 1, "features": [{"feature": "...", "faces": [...]}]}``.
+    Faces without a 'fingerprint' key are silently skipped (error features).
+    """
+    fps: list[str] = []
+    for feature in manifest_dict.get("features", []):
+        for face in feature.get("faces", []):
+            fp = face.get("fingerprint")
+            if fp is not None:
+                fps.append(fp)
+    fps.sort()
+    blob = json.dumps(fps, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()
+
+
+def check_geometry_drift(spec_dir: Path, manifest_dict: dict) -> bool:
+    """Compare computed brep hash against the stored golden_brep_hash.json.
+
+    Returns True when no golden exists (opt-in skip) or the hash matches.
+    Returns False and prints a diagnostic to stderr when the hash drifts.
+
+    The golden file lives at ``spec_dir/golden_brep_hash.json`` and is
+    written by the ``--capture`` mode on a live SOLIDWORKS seat.
+    """
+    golden_path = spec_dir / "golden_brep_hash.json"
+    if not golden_path.exists():
+        return True
+    golden = json.loads(golden_path.read_text(encoding="utf-8"))
+    stored = golden.get("brep_hash", "")
+    computed = hash_brep_manifest(manifest_dict)
+    if computed == stored:
+        return True
+    print(
+        f"FAIL geometry drift in {spec_dir.name}: "
+        f"computed={computed!r} expected={stored!r}",
+        file=sys.stderr,
+    )
+    return False
 
 
 def _find_specs() -> list[Path]:
