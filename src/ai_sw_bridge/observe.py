@@ -145,6 +145,108 @@ def _walk_feature_tree(first_feature: Any, max_depth: int = 8) -> list[Any]:
     return collected
 
 
+def collect_feature_health(doc: Any) -> dict[str, Any]:
+    """Walk *doc*'s feature tree and report every feature whose state is
+    non-OK (legacy ``GetErrorCode`` != 0).
+
+    Pure doc-walker: takes the document directly, with no app / active-doc
+    acquisition, so two callers can share it (X2, FR-X-02):
+      - ``sw_get_feature_errors`` (below) on the active doc;
+      - ``spec.builder.build`` on ``ctx.doc`` right after its final rebuild,
+        to gate ``BuildResult.ok`` on post-rebuild health.
+
+    Fail-soft: a FeatureManager / FirstFeature failure is reported via the
+    ``error`` key rather than raised, and each per-feature read is wrapped, so
+    a hostile tree degrades to an empty issue list instead of crashing the
+    caller's build.
+
+    Returns ``{"total_features": int, "issues": list[dict], "error": str|None}``
+    where each issue is ``{name, type_name, depth, state_code, state,
+    description, suppressed}`` and only non-OK features are listed.
+    """
+    out: dict[str, Any] = {"total_features": 0, "issues": [], "error": None}
+
+    try:
+        feat_mgr = resolve(doc, "FeatureManager")
+    except Exception as exc:
+        out["error"] = f"FeatureManager failed: {exc!r}"
+        return out
+
+    if feat_mgr is None:
+        out["error"] = "FeatureManager returned None"
+        return out
+
+    try:
+        first = resolve(feat_mgr, "FirstFeature")
+    except Exception as exc:
+        try:
+            first = resolve(doc, "FirstFeature")
+        except Exception:
+            out["error"] = (
+                f"FirstFeature failed on FeatureManager and doc: {exc!r}"
+            )
+            return out
+
+    if first is None:
+        return out  # empty tree: no issues, no error
+
+    features = _walk_feature_tree(first)
+    out["total_features"] = len(features)
+
+    for depth, feat in features:
+        try:
+            name = str(resolve(feat, "Name"))
+        except Exception:
+            name = "<unnamed>"
+
+        try:
+            type_name = str(resolve(feat, "GetTypeName2"))
+        except Exception:
+            try:
+                type_name = str(resolve(feat, "GetTypeName"))
+            except Exception:
+                type_name = None
+
+        # GetErrorCode2 takes args pywin32 can't marshal; use legacy
+        # GetErrorCode which late-binds as auto-invoked property.
+        state_code = None
+        try:
+            state_code = int(resolve(feat, "GetErrorCode"))
+        except Exception:
+            state_code = None
+
+        if state_code is None or state_code == 0:
+            continue
+
+        description = None
+        try:
+            description = str(resolve(feat, "ErrorMessage"))
+        except Exception:
+            description = None
+
+        suppressed = None
+        try:
+            suppressed = bool(resolve(feat, "IsSuppressed"))
+        except Exception:
+            pass
+
+        out["issues"].append(
+            {
+                "name": name,
+                "type_name": type_name,
+                "depth": depth,
+                "state_code": state_code,
+                "state": FEATURE_STATE_NAMES.get(
+                    state_code, f"unknown({state_code})"
+                ),
+                "description": description,
+                "suppressed": suppressed,
+            }
+        )
+
+    return out
+
+
 def sw_get_feature_errors() -> dict[str, Any]:
     """Walk the active document's feature tree and report any feature whose
     state is non-OK. Also returns the total feature count for sanity."""
@@ -168,84 +270,12 @@ def sw_get_feature_errors() -> dict[str, Any]:
         except Exception:
             pass
 
-        try:
-            feat_mgr = resolve(doc, "FeatureManager")
-        except Exception as exc:
-            result["error"] = f"FeatureManager failed: {exc!r}"
+        health = collect_feature_health(doc)
+        result["total_features"] = health["total_features"]
+        result["issues"] = health["issues"]
+        if health["error"] is not None:
+            result["error"] = health["error"]
             return result
-
-        if feat_mgr is None:
-            result["error"] = "FeatureManager returned None"
-            return result
-
-        try:
-            first = resolve(feat_mgr, "FirstFeature")
-        except Exception as exc:
-            try:
-                first = resolve(doc, "FirstFeature")
-            except Exception:
-                result["error"] = (
-                    f"FirstFeature failed on FeatureManager and doc: {exc!r}"
-                )
-                return result
-
-        if first is None:
-            result["ok"] = True
-            return result
-
-        features = _walk_feature_tree(first)
-        result["total_features"] = len(features)
-
-        for depth, feat in features:
-            try:
-                name = str(resolve(feat, "Name"))
-            except Exception:
-                name = "<unnamed>"
-
-            try:
-                type_name = str(resolve(feat, "GetTypeName2"))
-            except Exception:
-                try:
-                    type_name = str(resolve(feat, "GetTypeName"))
-                except Exception:
-                    type_name = None
-
-            # GetErrorCode2 takes args pywin32 can't marshal; use legacy
-            # GetErrorCode which late-binds as auto-invoked property.
-            state_code = None
-            try:
-                state_code = int(resolve(feat, "GetErrorCode"))
-            except Exception:
-                state_code = None
-
-            if state_code is None or state_code == 0:
-                continue
-
-            description = None
-            try:
-                description = str(resolve(feat, "ErrorMessage"))
-            except Exception:
-                description = None
-
-            suppressed = None
-            try:
-                suppressed = bool(resolve(feat, "IsSuppressed"))
-            except Exception:
-                pass
-
-            result["issues"].append(
-                {
-                    "name": name,
-                    "type_name": type_name,
-                    "depth": depth,
-                    "state_code": state_code,
-                    "state": FEATURE_STATE_NAMES.get(
-                        state_code, f"unknown({state_code})"
-                    ),
-                    "description": description,
-                    "suppressed": suppressed,
-                }
-            )
 
         result["ok"] = True
         return result
