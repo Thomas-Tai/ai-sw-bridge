@@ -1,0 +1,27 @@
+{
+  "overall": "FAIL",
+  "reason": "InsertSheetMetalBaseFlange2 returned no feature in any arity form; sheet metal is unreachable via late binding or the sketch was invalid",
+  "build": {
+    "skipped": false,
+    "built": true
+  },
+  "flange_probe": {
+    "winning_arity": null,
+    "attempts": [
+      {
+        "arity": "11-arg",
+        "status": "COM_ERROR",
+        "hresult": "-0x7ffdfffb",
+        "description": "Type mismatch.",
+        "elapsed_ms": 52.358600001753075
+      },
+      {
+        "arity": "10-arg",
+        "status": "COM_ERROR",
+        "hresult": "-0x7ffdfffb",
+        "description": "Type mismatch.",
+        "elapsed_ms": 20.67150000220863
+      }
+    ]
+  }
+}
