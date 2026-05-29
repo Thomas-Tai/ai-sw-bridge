@@ -1678,6 +1678,11 @@ class BuildResult:
     bindings_added: list[Binding]
     error: str | None = None
     error_feature: str | None = None
+    # X2 success-gate (FR-X-02): which stage produced `error`. "post_rebuild"
+    # when the part built without the feature loop raising but carries SW
+    # rebuild errors. None when ok, or when `error` is a feature-loop
+    # exception (those leave error_tier unset for v0.x wire-compat).
+    error_tier: str | None = None
     save_as: str | None = None
     save_as_verified: bool | None = None
     save_format: str | None = None  # W2.4: "current", "2021".."2024"
@@ -1692,6 +1697,12 @@ class BuildResult:
     # {"name": ..., "type": ..., "build_time_s": ...}. None until populated.
     feature_metrics: list[dict[str, Any]] | None = None
     trace_id: str | None = None
+    # X2 success-gate (FR-X-02): per-feature post-rebuild error state. Each
+    # entry {name, code, message}; only non-OK (code 1=warning / 2=error)
+    # features are listed. None/empty -> omitted from to_dict() so a clean
+    # build keeps the v0.x wire format. A code-2 entry forces ok=False with
+    # error_tier="post_rebuild"; code-1 fails only under --strict.
+    feature_health: list[dict[str, Any]] | None = None
     # Populated when flags.brep_interrogation is ON. The manifest dict
     # (schema_version + features[]) mirrors the build_brep.json sidecar
     # file. None when the flag is OFF — in which case the field is
@@ -1719,6 +1730,8 @@ class BuildResult:
             out["error"] = self.error
         if self.error_feature is not None:
             out["error_feature"] = self.error_feature
+        if self.error_tier is not None:
+            out["error_tier"] = self.error_tier
         if self.traceback is not None:
             out["traceback"] = self.traceback
         if self.mass_verification is not None:
@@ -1729,6 +1742,8 @@ class BuildResult:
             out["mode"] = self.mode
         if self.feature_metrics is not None:
             out["feature_metrics"] = self.feature_metrics
+        if self.feature_health:
+            out["feature_health"] = self.feature_health
         if self.brep_manifest is not None:
             out["brep_manifest"] = self.brep_manifest
         return out
@@ -1978,6 +1993,29 @@ def run_feature_step(
         raise
 
 
+def _health_gate(
+    feature_health: list[dict[str, Any]], *, strict: bool
+) -> tuple[bool, str | None]:
+    """Apply the X2 success-gate policy to a post-rebuild feature-health list.
+
+    Policy (FR-X-02): a code-2 (error) feature always fails the build; a
+    code-1 (warning) fails only under ``strict``. Pure -- no COM, no I/O --
+    so the gate decision is directly unit-testable without a seat.
+
+    Returns ``(ok, error)``: ``(True, None)`` when nothing trips the gate, or
+    ``(False, "<message naming the offenders>")`` otherwise.
+    """
+    offenders = [
+        h
+        for h in feature_health
+        if h["code"] == 2 or (strict and h["code"] == 1)
+    ]
+    if not offenders:
+        return True, None
+    named = ", ".join(f"{h['name']} (code {h['code']})" for h in offenders)
+    return False, f"post-rebuild feature errors: {named}"
+
+
 def build(
     spec: dict[str, Any],
     no_dim: bool = False,
@@ -1989,6 +2027,7 @@ def build(
     checkpoint: bool = False,
     checkpoint_root: "Path | None" = None,
     checkpoint_key_source: Any = None,
+    strict: bool = False,
 ) -> BuildResult:
     """Build the spec into a fresh blank part on the running SW session.
 
@@ -2274,6 +2313,32 @@ def build(
         # Final rebuild for good measure
         _ = doc.EditRebuild3
 
+        # X2 build success-gate (FR-X-02): "built" != "manufacturable". The
+        # feature loop not raising only means each COM call returned; the part
+        # can still carry rebuild errors / over-defined sketches that SW marks
+        # post-rebuild. Sweep per-feature GetErrorCode and gate ok on it.
+        # Fail-soft: a sweep failure must never sink an otherwise-good build,
+        # so a degraded sweep yields an empty health list (gate passes).
+        feature_health: list[dict[str, Any]] = []
+        try:
+            from ..observe import collect_feature_health
+
+            sweep = collect_feature_health(doc)
+            for issue in sweep["issues"]:
+                feature_health.append(
+                    {
+                        "name": issue["name"],
+                        "code": issue["state_code"],
+                        "message": issue["description"],
+                    }
+                )
+            if sweep["error"]:
+                logger.debug("feature-health sweep degraded: %s", sweep["error"])
+        except Exception as e:
+            logger.warning("feature-health sweep failed: %s", e)
+            feature_health = []
+        health_ok, health_error = _health_gate(feature_health, strict=strict)
+
         saved_path: str | None = None
         save_as_verified: bool | None = None
         if save_as is not None:
@@ -2297,19 +2362,30 @@ def build(
             brep_sidecar_path = _write_brep_sidecar(brep_manifest, save_as=saved_path)
 
         elapsed = time.time() - t0
-        telemetry_counter("builds_total", mode=mode, outcome="ok")
+        outcome = "ok" if health_ok else "fail"
+        telemetry_counter("builds_total", mode=mode, outcome=outcome)
         telemetry_histogram("build_duration_seconds", elapsed, mode=mode)
-        logger.info(
-            "build ok: name=%s features=%d elapsed=%.1fs brep=%s",
-            spec_name,
-            len(built),
-            elapsed,
-            brep_sidecar_path or "off",
-        )
+        if health_ok:
+            logger.info(
+                "build ok: name=%s features=%d elapsed=%.1fs brep=%s",
+                spec_name,
+                len(built),
+                elapsed,
+                brep_sidecar_path or "off",
+            )
+        else:
+            logger.info(
+                "build fail (post-rebuild): name=%s %s elapsed=%.1fs",
+                spec_name,
+                health_error,
+                elapsed,
+            )
         return BuildResult(
-            ok=True,
+            ok=health_ok,
             features_built=built,
             bindings_added=binding_results,
+            error=health_error,
+            error_tier="post_rebuild" if not health_ok else None,
             save_as=saved_path,
             save_as_verified=save_as_verified,
             save_format=save_format if save_as is not None else None,
@@ -2318,6 +2394,7 @@ def build(
             mode=mode,
             feature_metrics=feature_metrics,
             trace_id=trace_id(),
+            feature_health=feature_health or None,
             brep_manifest=(
                 brep_manifest.to_dict() if brep_manifest is not None else None
             ),
