@@ -19,6 +19,7 @@ Phase 0 findings baked in:
 
 from __future__ import annotations
 
+import ast
 import copy
 import logging
 import re
@@ -167,20 +168,78 @@ def _load_locals_map(locals_path: str | Path) -> dict[str, float]:
     return resolved
 
 
+# Allowed AST node operators for the locals arithmetic evaluator. After
+# quoted variable refs are substituted with their numeric values, the
+# expression is pure arithmetic: numeric literals, + - * /, unary +/-, and
+# parentheses. This is the surface LENGTH_SCHEMA's rhs documents.
+#
+# Why a custom evaluator and not eval(): ROADMAP principle 3 is "zero
+# arbitrary code execution -- no eval, no exec." The prior implementation
+# called eval() with empty builtins, which is sandboxed and low-risk but
+# still eval -- an auditor cannot let "we say no eval" sit next to eval(.
+# This evaluator enforces exactly the documented grammar and rejects names,
+# calls, attribute access, power, modulo, comparisons, etc.
+_ARITH_BINOPS = (ast.Add, ast.Sub, ast.Mult, ast.Div)
+_ARITH_UNARYOPS = (ast.UAdd, ast.USub)
+
+
+def _safe_arith_eval(expr: str) -> float:
+    """Evaluate a pure-arithmetic expression without ``eval``.
+
+    Supports numeric literals, ``+ - * /``, unary ``+``/``-``, and
+    parentheses -- the exact surface the locals rhs grammar allows once
+    quoted variable references have been substituted to numbers. Raises
+    ``ValueError`` on any construct outside that grammar.
+    """
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError as exc:
+        raise ValueError(f"invalid arithmetic expression {expr!r}: {exc}") from exc
+
+    def _ev(node: ast.AST) -> float:
+        if isinstance(node, ast.Expression):
+            return _ev(node.body)
+        if isinstance(node, ast.BinOp) and isinstance(node.op, _ARITH_BINOPS):
+            left, right = _ev(node.left), _ev(node.right)
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            if isinstance(node.op, ast.Mult):
+                return left * right
+            return left / right  # ast.Div
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, _ARITH_UNARYOPS):
+            operand = _ev(node.operand)
+            return +operand if isinstance(node.op, ast.UAdd) else -operand
+        if (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, (int, float))
+            and not isinstance(node.value, bool)
+        ):
+            return float(node.value)
+        raise ValueError(
+            f"disallowed element in arithmetic expression {expr!r}: "
+            f"{type(node).__name__}; only numeric literals, + - * /, "
+            f"unary +/-, and parentheses are permitted"
+        )
+
+    return float(_ev(tree))
+
+
 def _eval_rhs(rhs: str, lookup: Any) -> float:
     """Evaluate an rhs expression like '"PART_DIAMETER"' or '"FOO" + 0.5'.
 
     Quoted variable refs are substituted with their numeric value via the
     `lookup` callable (which takes a name and returns a float, recursing as
-    needed). The remainder is evaluated as a Python expression with no
-    builtins -- only +, -, *, /, parens, and numeric literals are usable.
+    needed). The remainder is evaluated by `_safe_arith_eval` -- NOT eval --
+    so only +, -, *, /, unary +/-, parens, and numeric literals are usable.
     """
 
     def _sub(m: "re.Match[str]") -> str:
         return repr(lookup(m.group(1)))
 
-    py_expr = re.sub(r'"([^"]+)"', _sub, rhs)
-    return float(eval(py_expr, {"__builtins__": {}}, {}))
+    arith_expr = re.sub(r'"([^"]+)"', _sub, rhs)
+    return _safe_arith_eval(arith_expr)
 
 
 def _resolve_rhs_in_spec(spec: dict[str, Any]) -> dict[str, Any]:
