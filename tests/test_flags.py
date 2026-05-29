@@ -37,12 +37,13 @@ class TestDefaultState:
         for name, flag in FLAG_REGISTRY.items():
             assert flag.default is False, f"{name} should default to False"
 
-    def test_registry_contains_four_flags(self):
-        assert len(FLAG_REGISTRY) == 4
+    def test_registry_contains_expected_flags(self):
+        assert len(FLAG_REGISTRY) == 5
         assert "brep_interrogation" in FLAG_REGISTRY
         assert "rag_apidoc" in FLAG_REGISTRY
         assert "checkpoint" in FLAG_REGISTRY
         assert "mcp_wrapper" in FLAG_REGISTRY
+        assert "schema_v2" in FLAG_REGISTRY  # X5 (FR-1/FR-2)
 
     def test_each_flag_has_required_fields(self):
         for name, flag in FLAG_REGISTRY.items():
