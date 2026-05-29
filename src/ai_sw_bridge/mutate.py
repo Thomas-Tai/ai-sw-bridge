@@ -22,6 +22,7 @@ import json
 import os
 import time
 import uuid
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -44,11 +45,27 @@ def _proposals_dir() -> Path:
     return (Path.cwd() / "proposals").resolve()
 
 
-ST_PROPOSED = "proposed"
-ST_DRY_RUN_OK = "dry_run_ok"
-ST_DRY_RUN_BROKE = "dry_run_broke"
-ST_COMMITTED = "committed"
-ST_UNDONE = "undone"
+class ProposalState(str, Enum):
+    """Lifecycle states of a proposal record on disk (v0.14+).
+
+    Subclasses ``str`` so existing on-disk JSON values (plain strings)
+    compare equal to enum members.
+    """
+
+    PROPOSED = "proposed"
+    DRY_RUN_OK = "dry_run_ok"
+    DRY_RUN_BROKE = "dry_run_broke"
+    COMMITTED = "committed"
+    UNDONE = "undone"
+
+
+# Module-level constants kept for backward compatibility — every state
+# string used by callers, fixtures, and the on-disk JSON records.
+ST_PROPOSED = ProposalState.PROPOSED.value
+ST_DRY_RUN_OK = ProposalState.DRY_RUN_OK.value
+ST_DRY_RUN_BROKE = ProposalState.DRY_RUN_BROKE.value
+ST_COMMITTED = ProposalState.COMMITTED.value
+ST_UNDONE = ProposalState.UNDONE.value
 
 
 def _proposal_path(proposal_id: str) -> Path:
@@ -414,58 +431,6 @@ def sw_commit(proposal_id: str) -> dict[str, Any]:
         return result
 
 
-def sw_run_macro(
-    macro_path: str, module: str = "Module1", sub: str = "main"
-) -> dict[str, Any]:
-    """Execute a SW VBA macro via RunMacro / RunMacro2.
-
-    NOTE: as of 0.1.0 this only works for BINARY .swp files produced by
-    SW's own VBA editor. Plain-text .swp/.bas files generated externally
-    are silently rejected (RunMacro returns False). The recommended Path C
-    workflow is to paste the generated .bas into VBE manually and press F5.
-    This tool is kept for future use if/when we figure out binary .swp
-    write-back.
-    """
-    result: dict[str, Any] = {
-        "ok": False,
-        "macro_path": macro_path,
-        "ran": False,
-        "error_code": None,
-        "error": None,
-    }
-
-    p = Path(macro_path)
-    if not p.exists():
-        result["error"] = f"macro file does not exist: {macro_path}"
-        return result
-
-    try:
-        sw = get_sw_app()
-        attempts = [
-            ("RunMacro", (str(p), module, sub)),
-            ("RunMacro2", (str(p), module, sub, 1)),
-            ("RunMacro2", (str(p), module, sub, 0)),
-        ]
-        last_err = None
-        for method, args in attempts:
-            try:
-                fn = getattr(sw, method)
-                ran = bool(fn(*args))
-                result["ran"] = ran
-                result["ok"] = ran
-                result["error"] = None if ran else f"{method} returned False"
-                result["method_used"] = f"{method}{args}"
-                return result
-            except Exception as exc:
-                last_err = f"{method}{args} raised: {exc!r}"
-                continue
-        result["error"] = last_err or "all macro-run attempts failed"
-        return result
-    except Exception as exc:
-        result["error"] = f"dispatch failed: {exc!r}"
-        return result
-
-
 def sw_undo_last_commit() -> dict[str, Any]:
     """Revert the most recently committed proposal by restoring its
     snapshot, force-rebuilding, and saving."""
@@ -530,3 +495,46 @@ def sw_undo_last_commit() -> dict[str, Any]:
     except Exception as exc:
         result["error"] = f"unexpected: {exc!r}"
         return result
+
+
+# ---------------------------------------------------------------------------
+# v0.14 — class-based facade over the legacy ``sw_*`` free functions.
+#
+# The free functions above are the canonical implementations and remain
+# the documented backward-compatible API. ``ProposalStore`` is the
+# recommended entry point for new code. A deeper migration (move
+# logic into methods, extract the file-locking + state-transition
+# ceremony into one place) is logged as ``D-v0.14-06`` in
+# ``docs/DEFERRED.md`` and targets v0.15.
+# ---------------------------------------------------------------------------
+
+
+class ProposalStore:
+    """File-backed proposal lifecycle store. New in v0.14.
+
+    Methods return the same JSON-shaped dicts as the legacy
+    ``sw_*`` free functions in this module — the class is a thin
+    facade so callers can prefer instance-method syntax and so a
+    future refactor can swap the on-disk format without touching
+    call sites. Instances are stateless; nothing is cached between
+    calls.
+
+    Proposals persist under :func:`_proposals_dir` (``./proposals``
+    by default; override with ``AI_SW_BRIDGE_PROPOSALS``).
+    """
+
+    def propose(self, var: str, new_value: str) -> dict[str, Any]:
+        """Stage a change to *var* — no SW state is modified yet."""
+        return sw_propose_local_change(var=var, new_value=new_value)
+
+    def dry_run(self, proposal_id: str) -> dict[str, Any]:
+        """Apply a proposal, force-rebuild, capture state, roll back."""
+        return sw_dry_run(proposal_id=proposal_id)
+
+    def commit(self, proposal_id: str) -> dict[str, Any]:
+        """Re-apply a dry-run-ok proposal and save the SW document."""
+        return sw_commit(proposal_id=proposal_id)
+
+    def undo_last(self) -> dict[str, Any]:
+        """Revert the most recently committed proposal."""
+        return sw_undo_last_commit()

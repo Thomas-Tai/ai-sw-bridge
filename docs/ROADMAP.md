@@ -6,6 +6,32 @@ deferred items see [`DEFERRED.md`](DEFERRED.md).
 
 ---
 
+## v0.14 — Shipped (2026-05-29)
+
+Commercial-hardening release. Full-codebase audit, four shipped
+correctness bugs fixed, one broken-by-design legacy function
+removed, doc parity across README / USAGE / AGENTS, and class-based
+facades (`SolidWorksObserver`, `ProposalStore`) over the observe
+and mutate modules.
+
+- **Correctness:** parametric / `--deferred-dim` builds no longer
+  apply each equation binding twice; `ai_sw_bridge.__version__`
+  now reads from installed metadata; MCP contract test asserts the
+  four real mutate names (not the fictional `sw_mutate_apply`).
+- **Doc parity:** primitive count (16, not 12), example count (15,
+  not 12), full `ai-sw-build` flag inventory, env-var matrix.
+- **Class API:** `SolidWorksObserver` and `ProposalStore` ship as
+  the recommended entry points; the legacy `sw_*` free functions
+  remain as backward-compatible shims through v0.14 and are slated
+  for removal in v0.15 (D-v0.14-06 in DEFERRED.md).
+- **Removed (BREAKING):** `ai-sw-mutate run_macro` subcommand +
+  `mutate.sw_run_macro` Python function. Migration:
+  [`docs/migration_to_v0.14.md`](migration_to_v0.14.md).
+
+Full details: [`CHANGELOG.md`](../CHANGELOG.md) v0.14.0.
+
+---
+
 ## v0.11 — Shipped (2026-05-27)
 
 Reliability, observability, and supply-chain hardening. Fifteen parallel

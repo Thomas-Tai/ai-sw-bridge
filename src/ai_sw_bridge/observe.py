@@ -1193,3 +1193,80 @@ def sw_get_enabled_addins() -> dict[str, Any]:
     result["known_problematic"] = known_problematic
     result["ok"] = True
     return result
+
+
+# ---------------------------------------------------------------------------
+# v0.14 — class-based facade over the legacy ``sw_get_*`` free functions.
+#
+# The free functions above are the canonical implementations and remain
+# the documented backward-compatible API. The class is the recommended
+# entry point for new code and for tests that want a single instance to
+# group calls. A deeper migration (move logic into methods, extract a
+# template method to remove the get_sw_app/get_active_doc ceremony) is
+# logged as ``D-v0.14-06`` in ``docs/DEFERRED.md`` and targets v0.15.
+# ---------------------------------------------------------------------------
+
+
+class SolidWorksObserver:
+    """Class-based observation API. New in v0.14.
+
+    Methods return the same JSON-shaped dicts as the legacy
+    ``sw_get_*`` free functions in this module — the class is a thin
+    facade so callers can prefer instance-method syntax. Instances are
+    stateless; nothing is cached between calls.
+    """
+
+    def active_doc(self) -> dict[str, Any]:
+        """Return metadata about the currently active SOLIDWORKS document."""
+        return sw_get_active_doc()
+
+    def feature_errors(self) -> dict[str, Any]:
+        """Walk the active document's feature tree and report non-OK features."""
+        return sw_get_feature_errors()
+
+    def equations(self) -> dict[str, Any]:
+        """Dump every equation in the active document with value + status."""
+        return sw_get_equations()
+
+    def bbox(self) -> dict[str, Any]:
+        """Return the active part's axis-aligned bounding box (parts only)."""
+        return sw_get_bbox()
+
+    def volume(self) -> dict[str, Any]:
+        """Return volume, surface area, mass, and CoM of the active part."""
+        return sw_get_volume()
+
+    def screenshot(
+        self,
+        width: int = 640,
+        height: int = 360,
+        fit_view: bool = False,
+        filename: str | None = None,
+    ) -> dict[str, Any]:
+        """Capture the active SW viewport to a PNG on disk."""
+        return sw_screenshot(
+            width=width,
+            height=height,
+            fit_view=fit_view,
+            filename=filename,
+        )
+
+    def mate_errors(self) -> dict[str, Any]:
+        """Walk an assembly's mate set and report status per mate."""
+        return sw_get_mate_errors()
+
+    def custom_props(self) -> dict[str, Any]:
+        """Read every custom property from the active document."""
+        return sw_get_custom_props()
+
+    def measure(
+        self,
+        entity_a: str | None = None,
+        entity_b: str | None = None,
+    ) -> dict[str, Any]:
+        """Measure entities in the active document."""
+        return sw_measure(entity_a=entity_a, entity_b=entity_b)
+
+    def enabled_addins(self) -> dict[str, Any]:
+        """Enumerate currently-loaded SOLIDWORKS add-ins (W7.1)."""
+        return sw_get_enabled_addins()

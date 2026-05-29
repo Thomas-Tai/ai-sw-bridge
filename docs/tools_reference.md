@@ -94,12 +94,6 @@ ai-sw-mutate undo_last_commit
 ```
 Finds the most recently committed proposal, restores its `snapshot_text`, rebuilds, saves. Returns `proposal_id`, `var`, `restored_to`, `doc_saved`.
 
-### `run_macro`
-```powershell
-ai-sw-mutate run_macro --macro_path=C:\\path\\to\\macro.swp
-```
-Calls `SldWorks.RunMacro` / `RunMacro2`. **Only works for binary `.swp` files produced by SW's own VBA editor.** Plain-text macros (e.g. the `.bas` output of `ai-sw-codegen`) are silently rejected. Kept for future use if/when binary write-back is figured out.
-
 ## `ai-sw-codegen`
 
 ### `parameterize`
