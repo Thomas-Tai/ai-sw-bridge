@@ -53,7 +53,13 @@ from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
     SW_THIN_WALL_ONE_DIRECTION,
     assert_args,
 )
-from ._build_context import BuildContext, BuiltFeature, DeferredDim, FeatureType
+from ._build_context import (
+    BuildContext,
+    BuiltFeature,
+    DeferredDim,
+    FeatureDescriptor,
+    FeatureType,
+)
 from ._face_geometry import (
     PLANE_FULL_NAME,
     _face_frame,
@@ -1247,9 +1253,11 @@ def _circles_on_face_rhs_walker(feat: dict[str, Any]) -> list[tuple[str, str, st
     return out
 
 
-# THE registry. To add a new feature type, append one entry here, add a
-# handler function, and add its schema in `schema.py`.
-FEATURE_REGISTRY: dict[str, FeatureType] = {
+# THE registry of feature descriptors (X3, FR-X-03): the single source of
+# truth per primitive. To add a new feature type, append one descriptor here
+# and a handler function; its JSON-Schema fragment is assembled from the
+# descriptor's `fields` (no separate hand-written dict in `schema.py`).
+DESCRIPTORS: dict[str, FeatureDescriptor] = {
     "sketch_rectangle_on_plane": FeatureType(
         name="sketch_rectangle_on_plane",
         handler=None,  # filled in below after handler defs are in scope
@@ -1389,14 +1397,21 @@ def _wire_handlers() -> None:
         "circular_pattern": _build_circular_pattern,
         "mirror_feature": _build_mirror_feature,
     }
-    for name, ft in FEATURE_REGISTRY.items():
-        # FeatureType is frozen; rebuild with handler in place.
-        FEATURE_REGISTRY[name] = FeatureType(
-            name=ft.name,
-            handler=handlers[name],
-            dim_fields=ft.dim_fields,
-            rhs_walker=ft.rhs_walker,
-        )
+    from .descriptors import FEATURE_FIELDS, FEATURE_META
+
+    for name, ft in DESCRIPTORS.items():
+        # FeatureDescriptor is mutable; populate it in place (X3). Beyond the
+        # handler, attach the declarative `fields` + coverage metadata from the
+        # neutral descriptors module so each FeatureDescriptor is the complete
+        # single source of truth (schema shape + docs + handler) at runtime.
+        ft.handler = handlers[name]
+        ft.fields = FEATURE_FIELDS.get(name, [])
+        meta = FEATURE_META.get(name, {})
+        ft.doc = meta.get("doc")
+        ft.example_ref = meta.get("example_ref")
+        ft.risk_tier = meta.get("risk_tier")
+        ft.sw_min = meta.get("sw_min")
+        ft.spike_id = meta.get("spike_id")
 
 
 _wire_handlers()
@@ -1405,7 +1420,7 @@ _wire_handlers()
 def _collect_feature_bindings(feat: dict[str, Any]) -> list[tuple[str, str]]:
     """[(dim_name, rhs)] for one feature. Used for interleaved per-feature
     binding so downstream geometry sees target sizes, not placeholders."""
-    ft = FEATURE_REGISTRY.get(feat["type"])
+    ft = DESCRIPTORS.get(feat["type"])
     if ft is None:
         return []
     return ft.collect_rhs_bindings(feat)
@@ -1420,9 +1435,12 @@ def _collect_bindings(spec: dict[str, Any]) -> list[tuple[str, str]]:
     return out
 
 
-# Back-compat alias: legacy code/tests may import HANDLERS or DIM_FIELD_MAP.
-HANDLERS = {name: ft.handler for name, ft in FEATURE_REGISTRY.items()}
-DIM_FIELD_MAP = {name: ft.dim_fields for name, ft in FEATURE_REGISTRY.items()}
+# Back-compat aliases. FEATURE_REGISTRY was renamed to DESCRIPTORS in X3; the
+# old name stays as an alias so the rename is non-breaking for any importer.
+# Legacy code/tests may also import HANDLERS or DIM_FIELD_MAP.
+FEATURE_REGISTRY = DESCRIPTORS
+HANDLERS = {name: ft.handler for name, ft in DESCRIPTORS.items()}
+DIM_FIELD_MAP = {name: ft.dim_fields for name, ft in DESCRIPTORS.items()}
 
 
 def _apply_bindings(doc: Any, bindings: list[tuple[str, str]]) -> list[int]:

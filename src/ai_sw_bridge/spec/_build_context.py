@@ -104,9 +104,37 @@ class BuildContext:
     referenced_face_roles: set[tuple[str, str]] | None = None
 
 
+@dataclass(frozen=True)
+class FieldSpec:
+    """One spec field of a feature primitive (X3, FR-X-03).
+
+    Carries the field's JSON-Schema property dict plus whether it is required.
+    The single source from which ``schema.py`` *assembles* a primitive's
+    fragment, replacing the hand-written per-primitive dict literals (so a new
+    primitive is one descriptor edit, not five hand-synced files).
+
+    ``schema`` is the exact JSON-Schema for this one property (e.g.
+    ``LENGTH_SCHEMA`` for a parametric length, or ``{"type": "number",
+    "maximum": 360}`` for an angle). The assembler wraps these in the common
+    object envelope (``type``/``additionalProperties``/``required`` and the
+    shared ``type`` const + ``name`` pattern).
+    """
+
+    name: str
+    schema: dict[str, Any]
+    required: bool = False
+
+
 @dataclass
-class FeatureType:
-    """Per-feature-type metadata. One entry per supported feature."""
+class FeatureDescriptor:
+    """Per-feature-type metadata. One entry per supported feature.
+
+    X3 (FR-X-03) grows the legacy ``FeatureType`` (name/handler/dim_fields/
+    rhs_walker) into the single source of truth for a primitive: it also
+    carries the declarative ``fields`` (for schema assembly) and the
+    doc/coverage metadata. The added attributes are all optional so existing
+    construction keeps working and primitives migrate incrementally.
+    """
 
     name: str
     handler: Any  # Callable[[BuildContext, dict], BuiltFeature]
@@ -116,6 +144,20 @@ class FeatureType:
     # Override for non-default rhs walking (e.g. arrays of dims).
     # Default None means "use the dim_fields-based walker."
     rhs_walker: Any | None = None  # Callable[[dict], list[(field_path, suffix, rhs)]]
+    # --- X3 (FR-X-03) declarative + coverage metadata (all optional) ---
+    # Declarative field list; schema.py assembles the JSON-Schema fragment
+    # from these instead of a hand-written dict. Empty until migrated.
+    fields: list[FieldSpec] = field(default_factory=list)
+    # Risk tier per the spike-first law ("safe" | "spike" | "seat") and the
+    # spike that GREEN-gated this primitive's COM signature, if any.
+    risk_tier: str | None = None
+    spike_id: str | None = None
+    # Minimum proven SW version (e.g. "2024 SP1"). None = unversioned.
+    sw_min: str | None = None
+    # One-line human description + the canonical examples/<dir> that exercises
+    # this primitive. Read by the doc-coverage test so docs can't drift.
+    doc: str | None = None
+    example_ref: str | None = None
 
     def collect_rhs_bindings(self, feat: dict[str, Any]) -> list[tuple[str, str]]:
         """Return [(dim_name, rhs)] for every parametric ({rhs}) length in
@@ -130,3 +172,9 @@ class FeatureType:
             (f"{suffix}@{feat['name']}", rhs)
             for _field_path, suffix, rhs in walker(feat)
         ]
+
+
+# Back-compat alias: builder.py and tests import ``FeatureType``. The class was
+# renamed to ``FeatureDescriptor`` in X3; the old name stays as an alias so the
+# rename is non-breaking.
+FeatureType = FeatureDescriptor
