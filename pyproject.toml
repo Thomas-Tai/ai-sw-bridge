@@ -117,6 +117,7 @@ layers = [
     "ai_sw_bridge.spec",
     "ai_sw_bridge.parameterize",
     "ai_sw_bridge.observe",
+    "ai_sw_bridge.export",
     "ai_sw_bridge.mutate",
     "ai_sw_bridge.com",
     "ai_sw_bridge.checkpoint",
