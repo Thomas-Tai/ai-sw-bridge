@@ -1,0 +1,1113 @@
+[
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "plane",
+      "width",
+      "height"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_rectangle_on_plane"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ]
+      },
+      "width": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "height": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "center": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          }
+        },
+        "description": "Sketch-local center (mm). Default (0, 0, 0). The optional z offsets the sketch geometry along the part-frame Z axis and is required when sketching on Top Plane (XZ) at part-Z != 0, e.g. an O-ring groove at the mid-length of a +Z-extruded shaft. For Front (XY) and Right (YZ) planes leave z=0; only Top Plane's normal aligns with part-Z."
+      },
+      "centerline": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "start",
+          "end"
+        ],
+        "properties": {
+          "start": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "z": {
+                "type": "number"
+              }
+            },
+            "description": "Centerline start point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0). Used when the parent sketch's center.z is non-zero (e.g. Top Plane sketch positioned at part-Z != 0)."
+          },
+          "end": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "z": {
+                "type": "number"
+              }
+            },
+            "description": "Centerline end point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0)."
+          }
+        },
+        "description": "Construction line embedded in the sketch. Consumed by `revolve_boss` as the axis of revolution (SW auto-detects). No driving dim; coordinates are literal mm."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "of_feature",
+      "face",
+      "width",
+      "height"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_rectangle_on_face"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "of_feature": {
+        "type": "string",
+        "description": "Name of an earlier extrusion feature."
+      },
+      "face": {
+        "enum": [
+          "+x",
+          "-x",
+          "+y",
+          "-y",
+          "+z",
+          "-z"
+        ],
+        "description": "Outward normal direction of the face in the feature's local frame."
+      },
+      "width": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "height": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "center": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "u": {
+            "type": "number"
+          },
+          "v": {
+            "type": "number"
+          }
+        },
+        "description": "In-face center offset (mm) from the FACE SKETCH ORIGIN, which empirically is the projection of the part origin onto the face (NOT the face's geometric center). For a feature whose base sketch was a center-rectangle on origin these happen to coincide; for one shifted off origin (e.g. TensionBracket cap with Y span [0,15]) they don't, and child sketches need a u/v offset to land on the bracket centroid instead of the part origin. Default (0, 0)."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "plane",
+      "diameter"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_circle_on_plane"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ]
+      },
+      "diameter": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "center": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          }
+        },
+        "description": "Sketch-local center (mm). Default (0, 0, 0). See SKETCH_RECTANGLE_ON_PLANE for when the optional z is needed (Top Plane sketches positioned at part-Z != 0)."
+      },
+      "centerline": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "start",
+          "end"
+        ],
+        "properties": {
+          "start": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "z": {
+                "type": "number"
+              }
+            },
+            "description": "Centerline start point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0). Used when the parent sketch's center.z is non-zero (e.g. Top Plane sketch positioned at part-Z != 0)."
+          },
+          "end": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "z": {
+                "type": "number"
+              }
+            },
+            "description": "Centerline end point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0)."
+          }
+        },
+        "description": "Construction line embedded in the sketch. Consumed by `revolve_boss` as the axis of revolution (SW auto-detects). No driving dim; coordinates are literal mm."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "of_feature",
+      "face",
+      "diameter"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_circle_on_face"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "of_feature": {
+        "type": "string",
+        "description": "Name of an earlier extrusion feature."
+      },
+      "face": {
+        "enum": [
+          "+x",
+          "-x",
+          "+y",
+          "-y",
+          "+z",
+          "-z"
+        ],
+        "description": "Outward normal direction of the face in the feature's local frame."
+      },
+      "diameter": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "center": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "u": {
+            "type": "number"
+          },
+          "v": {
+            "type": "number"
+          }
+        },
+        "description": "In-face center offset (mm) from the face SKETCH ORIGIN, which is the projection of the part origin onto the face (NOT the face's geometric center -- see SKETCH_RECTANGLE_ON_FACE). Default (0, 0)."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "of_feature",
+      "face",
+      "circles"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_circles_on_face"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "of_feature": {
+        "type": "string"
+      },
+      "face": {
+        "enum": [
+          "+x",
+          "-x",
+          "+y",
+          "-y",
+          "+z",
+          "-z"
+        ]
+      },
+      "circles": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "u",
+            "v",
+            "diameter"
+          ],
+          "properties": {
+            "u": {
+              "type": "number",
+              "description": "Center u-offset (mm) from the face SKETCH ORIGIN (= part-origin projection onto the face, NOT face centroid -- see SKETCH_RECTANGLE_ON_FACE for the gotcha)."
+            },
+            "v": {
+              "type": "number"
+            },
+            "diameter": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "description": "Literal length in millimetres."
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "rhs"
+                  ],
+                  "properties": {
+                    "rhs": {
+                      "type": "string",
+                      "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "sketch",
+      "depth"
+    ],
+    "properties": {
+      "type": {
+        "const": "boss_extrude_blind"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "sketch": {
+        "type": "string",
+        "description": "Name of an earlier sketch feature to extrude."
+      },
+      "depth": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false,
+        "description": "Extrude in -normal instead of +normal direction."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "sketch"
+    ],
+    "properties": {
+      "type": {
+        "const": "cut_extrude_through_all"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "sketch": {
+        "type": "string",
+        "description": "Name of an earlier sketch to cut along."
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false,
+        "description": "Cut in -normal instead of +normal direction."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "sketch",
+      "depth"
+    ],
+    "properties": {
+      "type": {
+        "const": "cut_extrude_blind"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "sketch": {
+        "type": "string"
+      },
+      "depth": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "sketch"
+    ],
+    "properties": {
+      "type": {
+        "const": "revolve_boss"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "sketch": {
+        "type": "string",
+        "description": "Name of an earlier plane-based sketch that contains both a closed profile and an embedded centerline. SW auto-picks the centerline as the axis of revolution."
+      },
+      "angle": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 360,
+        "default": 360.0,
+        "description": "Sweep angle in DEGREES (builder converts to radians). Default 360 = full revolution."
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false,
+        "description": "Reverse the revolve direction."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "sketch"
+    ],
+    "properties": {
+      "type": {
+        "const": "revolve_cut"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "sketch": {
+        "type": "string",
+        "description": "Name of an earlier plane-based sketch that contains both a closed profile and an embedded centerline. SW auto-picks the centerline as the axis of revolution. The profile, when revolved, must intersect existing body material -- otherwise SW silently produces no geometry."
+      },
+      "angle": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 360,
+        "default": 360.0,
+        "description": "Sweep angle in DEGREES (builder converts to radians). Default 360 = full revolution."
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false,
+        "description": "Reverse the revolve direction."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "of_feature",
+      "face",
+      "diameter"
+    ],
+    "properties": {
+      "type": {
+        "const": "simple_hole"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "of_feature": {
+        "type": "string",
+        "description": "Name of an earlier extrusion feature."
+      },
+      "face": {
+        "enum": [
+          "+x",
+          "-x",
+          "+y",
+          "-y",
+          "+z",
+          "-z"
+        ],
+        "description": "Outward normal of the face the hole drills into."
+      },
+      "center": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "u": {
+            "type": "number"
+          },
+          "v": {
+            "type": "number"
+          }
+        },
+        "description": "In-face center (mm) of the hole from the face SKETCH ORIGIN (= part-origin projection onto the face plane, NOT the face centroid -- see SKETCH_CIRCLE_ON_FACE for the gotcha). Default (0, 0)."
+      },
+      "diameter": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "end_condition": {
+        "enum": [
+          "blind",
+          "through_all"
+        ],
+        "default": "blind",
+        "description": "Hole depth termination. 'blind' uses `depth`; 'through_all' drills all the way through and ignores `depth`."
+      },
+      "depth": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "radius",
+      "edges"
+    ],
+    "properties": {
+      "type": {
+        "const": "fillet_constant_radius"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "radius": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "edges": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
+          },
+          "description": "A point on the target edge in part coordinates (mm). The builder converts to meters and calls SelectByID with type='EDGE'. Each edge entry adds one to the selection set before CreateFeature runs."
+        }
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "mode",
+      "edges"
+    ],
+    "properties": {
+      "type": {
+        "const": "chamfer_edge"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "mode": {
+        "enum": [
+          "equal_distance",
+          "distance_angle"
+        ],
+        "description": "Chamfer geometry mode. 'equal_distance' takes a single distance and applies it to both sides. 'distance_angle' takes a distance plus an angle in degrees, measured from one face of the chamfered edge."
+      },
+      "distance": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ],
+        "description": "Chamfer distance from edge (mm). Required for both modes."
+      },
+      "angle": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ],
+        "description": "Chamfer angle in DEGREES. Required for mode 'distance_angle', forbidden for mode 'equal_distance'. Despite reusing LENGTH_SCHEMA for parametric support, this is an angle in degrees -- the spec author is responsible for not passing a length-typed locals var here."
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false,
+        "description": "Reverse the chamfer asymmetry direction. Only meaningful for 'distance_angle' (the equal-distance case is symmetric)."
+      },
+      "edges": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
+          },
+          "description": "A point on the target edge in part coordinates (mm). Builder converts to meters and calls SelectByID('EDGE')."
+        }
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "seed",
+      "direction",
+      "count",
+      "spacing"
+    ],
+    "properties": {
+      "type": {
+        "const": "linear_pattern"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "seed": {
+        "type": "string",
+        "description": "Name of an earlier feature to pattern. The seed itself counts as instance 1; `count` includes it."
+      },
+      "direction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y",
+          "z"
+        ],
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          }
+        },
+        "description": "A point on a model edge whose direction defines the pattern axis. The builder selects the edge with SelectByID and uses its tangent at that point."
+      },
+      "count": {
+        "type": "integer",
+        "minimum": 2,
+        "description": "Total number of instances along Direction 1 (includes the seed). Must be >= 2 -- a count of 1 would be a no-op."
+      },
+      "spacing": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ],
+        "description": "Distance between consecutive instances (mm)."
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false,
+        "description": "Reverse pattern direction relative to the selected edge's tangent."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "seed",
+      "axis",
+      "count"
+    ],
+    "properties": {
+      "type": {
+        "const": "circular_pattern"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "seed": {
+        "type": "string",
+        "description": "Name of an earlier feature to pattern. The seed itself counts as instance 1; `count` includes it."
+      },
+      "axis": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y",
+          "z"
+        ],
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          }
+        },
+        "description": "A point on the rotation-axis reference -- either a circular EDGE (e.g. the rim of a cylindrical face) or a cylindrical FACE. The builder tries EDGE first, then FACE on fallback. SW infers the axis of revolution from the selected entity."
+      },
+      "count": {
+        "type": "integer",
+        "minimum": 2,
+        "description": "Total number of instances around the axis (includes the seed). Must be >= 2 -- a count of 1 would be a no-op."
+      },
+      "total_angle": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 360,
+        "default": 360.0,
+        "description": "Total sweep angle in DEGREES (builder converts to radians). Default 360 = full circle, equally spaced. For a half-fan of 4 instances over 180 degrees, set total_angle=180."
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false,
+        "description": "Reverse the rotation direction."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "seed",
+      "plane"
+    ],
+    "properties": {
+      "type": {
+        "const": "mirror_feature"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "seed": {
+        "type": "string",
+        "description": "Name of an earlier feature to mirror."
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ],
+        "description": "Default reference plane to mirror about. Front = XY (mirrors Z), Top = XZ (mirrors Y), Right = YZ (mirrors X)."
+      }
+    }
+  }
+]
