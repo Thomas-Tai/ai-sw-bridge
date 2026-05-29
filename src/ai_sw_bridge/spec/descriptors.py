@@ -642,6 +642,128 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
 }
 
 
+# Per-primitive coverage metadata (X3, FR-X-03). Read by the doc-coverage test
+# (tests/test_descriptor_doc_coverage.py) so docs/examples can't silently drift
+# from the shipped primitives. `doc` is a one-line human summary; `example_ref`
+# names the canonical examples/<dir> that exercises the primitive. `sw_min` is
+# the proven SW version (all handlers are GREEN on 2024 SP1); `spike_id` cites
+# the spike that GREEN-gated the COM signature where one is on record.
+FEATURE_META: dict[str, dict[str, Any]] = {
+    "sketch_rectangle_on_plane": {
+        "doc": "Rectangular profile sketch on a default reference plane (Front/Top/Right).",
+        "example_ref": "chamfered_box",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "sketch_rectangle_on_face": {
+        "doc": "Rectangular profile sketch on an existing feature's orthogonal face.",
+        "example_ref": "tension_bracket",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "sketch_circle_on_plane": {
+        "doc": "Circular profile sketch on a default reference plane.",
+        "example_ref": "drive_roller",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "sketch_circle_on_face": {
+        "doc": "Circular profile sketch on an existing feature's face.",
+        "example_ref": "drive_roller",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "sketch_circles_on_face": {
+        "doc": "Multiple circles in one sketch on a face (e.g. a hole pattern).",
+        "example_ref": "motor_mount_plate",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "boss_extrude_blind": {
+        "doc": "Blind boss extrusion of a sketch to a given depth.",
+        "example_ref": "chamfered_box",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "cut_extrude_through_all": {
+        "doc": "Through-all cut extrusion along a sketch.",
+        "example_ref": "drive_roller",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "cut_extrude_blind": {
+        "doc": "Blind cut extrusion of a sketch to a given depth.",
+        "example_ref": "drive_roller",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "revolve_boss": {
+        "doc": "Solid revolve of a profile about its embedded centerline.",
+        "example_ref": "grooved_shaft",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": "Spike ZP/ZQ",
+    },
+    "revolve_cut": {
+        "doc": "Subtractive revolve of a profile about its embedded centerline.",
+        "example_ref": "drive_roller",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": "Spike ZP/ZQ",
+    },
+    "simple_hole": {
+        "doc": "Single straight-bore hole drilled into a face (blind or through-all).",
+        "example_ref": "drilled_plate",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "fillet_constant_radius": {
+        "doc": "Constant-radius fillet on selected edges.",
+        "example_ref": "filleted_box",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": "Spike P",
+    },
+    "chamfer_edge": {
+        "doc": "Edge chamfer (equal-distance or distance-angle).",
+        "example_ref": "chamfered_box",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": "Spike Q",
+    },
+    "linear_pattern": {
+        "doc": "Linear pattern of a seed feature along a model-edge direction.",
+        "example_ref": "patterned_plate",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "circular_pattern": {
+        "doc": "Circular pattern of a seed feature about an axis reference.",
+        "example_ref": "patterned_disc",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": "Spike T",
+    },
+    "mirror_feature": {
+        "doc": "Mirror of a seed feature about a default reference plane.",
+        "example_ref": "mirrored_holes",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+}
+
+
 # The oneOf order in the top-level SCHEMA (preserved from the hand-written
 # list so the assembled schema is identical, not just equivalent).
 FEATURE_ORDER: list[str] = [

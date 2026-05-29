@@ -1397,12 +1397,21 @@ def _wire_handlers() -> None:
         "circular_pattern": _build_circular_pattern,
         "mirror_feature": _build_mirror_feature,
     }
+    from .descriptors import FEATURE_FIELDS, FEATURE_META
+
     for name, ft in DESCRIPTORS.items():
-        # FeatureDescriptor is mutable; assign the handler in place. (X3
-        # folds the old hand-synced handler map into the descriptors; in-place
-        # assignment also preserves the new declarative `fields`/metadata that
-        # a rebuild-from-scratch would have dropped.)
+        # FeatureDescriptor is mutable; populate it in place (X3). Beyond the
+        # handler, attach the declarative `fields` + coverage metadata from the
+        # neutral descriptors module so each FeatureDescriptor is the complete
+        # single source of truth (schema shape + docs + handler) at runtime.
         ft.handler = handlers[name]
+        ft.fields = FEATURE_FIELDS.get(name, [])
+        meta = FEATURE_META.get(name, {})
+        ft.doc = meta.get("doc")
+        ft.example_ref = meta.get("example_ref")
+        ft.risk_tier = meta.get("risk_tier")
+        ft.sw_min = meta.get("sw_min")
+        ft.spike_id = meta.get("spike_id")
 
 
 _wire_handlers()
