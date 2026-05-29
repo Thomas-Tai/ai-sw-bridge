@@ -1,0 +1,72 @@
+{
+  "overall": "PARTIAL",
+  "sw_revision": "32.1.0",
+  "rebuild_between": true,
+  "saved_first": false,
+  "interpretation": "read works, write-back OUT-param unreachable -> ROUTE-C signal (run --mode vba to confirm marshaler is the culprit)",
+  "build": {
+    "skipped": false,
+    "built": true,
+    "feature_name": "Boss-Extrude1"
+  },
+  "GetSelectByIDString_on_GetFaces_path": {
+    "status": "UNREACHABLE",
+    "exception_type": "AttributeError",
+    "message": "GetFaces.GetSelectByIDString"
+  },
+  "probes": [
+    {
+      "kind": "FACE",
+      "index": 0,
+      "read": {
+        "status": "OK",
+        "elapsed_ms": 30.188700002327096,
+        "python_type": "memoryview",
+        "coercible_to_bytes": false,
+        "byte_len": null
+      },
+      "rebuild_between": {
+        "status": "OK",
+        "elapsed_ms": 60.83610000132467
+      },
+      "resolve": {
+        "working_form": null,
+        "attempts": [
+          {
+            "form": "call(pid)",
+            "status": "COM_ERROR",
+            "hresult": -2147352561,
+            "description": "Parameter not optional.",
+            "elapsed_ms": 28.771899997082073
+          },
+          {
+            "form": "call(pid, 0)",
+            "status": "COM_ERROR",
+            "hresult": -2147352571,
+            "description": "Type mismatch.",
+            "elapsed_ms": 13.061800000286894
+          },
+          {
+            "form": "call(pid, Missing)",
+            "status": "PY_EXCEPTION",
+            "exception_type": "TypeError",
+            "message": "Objects of type 'PyOleMissing' can not be converted to a COM VARIANT",
+            "elapsed_ms": 0.022799998987466097
+          }
+        ]
+      },
+      "verdict": "PARTIAL",
+      "reason": "GetObjectByPersistReference3 returned no object in any form"
+    },
+    {
+      "kind": "EDGE",
+      "index": 0,
+      "read": {
+        "status": "NONE_RETURNED",
+        "elapsed_ms": 6.555500000104075
+      },
+      "verdict": "FAIL",
+      "reason": "GetPersistReference3 NONE_RETURNED"
+    }
+  ]
+}

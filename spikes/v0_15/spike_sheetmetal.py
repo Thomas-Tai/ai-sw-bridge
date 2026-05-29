@@ -668,7 +668,7 @@ Sub ProbeSheetMetal()
     End If
 
     ok = Part.ShowConfiguration2(flatName)
-    MsgBox "ShowConfiguration2(""" & flatName & """) = " & ok
+    MsgBox "ShowConfiguration2(" & Chr(34) & flatName & Chr(34) & ") = " & ok
 
     ' --- DXF export ---
     dxfPath = Environ("TEMP") & Chr(92) & "spike_sm.dxf"

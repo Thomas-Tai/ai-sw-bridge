@@ -1,0 +1,142 @@
+{
+  "overall": "PARTIAL",
+  "sw_revision": "32.1.0",
+  "interpretation": "Material metadata assigns (or method is reachable) BUT either: (a) mass-props density does not update after assignment \u2014 carry material as a custom property only (the documented RED fallback), or (b) no candidate (db, name) pair accepted \u2014 retry on a seat with the correct material-library strings. Run --mode vba to isolate whether the wall is the marshaler or the install's library.",
+  "build": {
+    "skipped": false,
+    "built": true,
+    "feature_name": "Boss-Extrude1"
+  },
+  "mass_props_pre": {
+    "elapsed_ms": 50.82820000097854,
+    "status": "COM_ERROR",
+    "hresult": "-0x7ffdfffb",
+    "description": "Type mismatch."
+  },
+  "candidates_probe": {
+    "method_reachable": true,
+    "first_working_pair": {
+      "db": "SolidWorks Materials",
+      "name": "AISI 1020 Steel (SS)"
+    },
+    "roundtrip_clean": false,
+    "results": [
+      {
+        "config": "",
+        "db": "SolidWorks Materials",
+        "name": "AISI 1020 Steel (SS)",
+        "set_elapsed_ms": 117.43860000206041,
+        "set_status": "OK",
+        "set_return_type": "NoneType",
+        "set_return_value": "None",
+        "get_elapsed_ms": 53.31659999865224,
+        "get_status": "COM_ERROR",
+        "get_hresult": "-0x7ffdfff1",
+        "get_description": "Parameter not optional."
+      },
+      {
+        "config": "",
+        "db": "SolidWorks Materials",
+        "name": "AISI 1020 Steel",
+        "set_elapsed_ms": 24.888599997211713,
+        "set_status": "OK",
+        "set_return_type": "NoneType",
+        "set_return_value": "None",
+        "get_elapsed_ms": 22.73860000059358,
+        "get_status": "COM_ERROR",
+        "get_hresult": "-0x7ffdfff1",
+        "get_description": "Parameter not optional."
+      },
+      {
+        "config": "",
+        "db": "SolidWorks Materials",
+        "name": "Steel",
+        "set_elapsed_ms": 24.217899997893255,
+        "set_status": "OK",
+        "set_return_type": "NoneType",
+        "set_return_value": "None",
+        "get_elapsed_ms": 11.435600001277635,
+        "get_status": "COM_ERROR",
+        "get_hresult": "-0x7ffdfff1",
+        "get_description": "Parameter not optional."
+      },
+      {
+        "config": "",
+        "db": "SolidWorks Materials",
+        "name": "Aluminum Alloy 1060",
+        "set_elapsed_ms": 23.80279999852064,
+        "set_status": "OK",
+        "set_return_type": "NoneType",
+        "set_return_value": "None",
+        "get_elapsed_ms": 21.32970000093337,
+        "get_status": "COM_ERROR",
+        "get_hresult": "-0x7ffdfff1",
+        "get_description": "Parameter not optional."
+      },
+      {
+        "config": "",
+        "db": "SolidWorks Materials",
+        "name": "Copper",
+        "set_elapsed_ms": 69.45640000049025,
+        "set_status": "OK",
+        "set_return_type": "NoneType",
+        "set_return_value": "None",
+        "get_elapsed_ms": 1.1868000001413748,
+        "get_status": "COM_ERROR",
+        "get_hresult": "-0x7ffdfff1",
+        "get_description": "Parameter not optional."
+      },
+      {
+        "config": "",
+        "db": "SolidWorks Materials",
+        "name": "Nylon 6/10",
+        "set_elapsed_ms": 76.24399999986053,
+        "set_status": "OK",
+        "set_return_type": "NoneType",
+        "set_return_value": "None",
+        "get_elapsed_ms": 11.723899999196874,
+        "get_status": "COM_ERROR",
+        "get_hresult": "-0x7ffdfff1",
+        "get_description": "Parameter not optional."
+      },
+      {
+        "config": "",
+        "db": "solidworks materials",
+        "name": "AISI 1020 Steel (SS)",
+        "set_elapsed_ms": 15.500000001338776,
+        "set_status": "OK",
+        "set_return_type": "NoneType",
+        "set_return_value": "None",
+        "get_elapsed_ms": 20.458599999983562,
+        "get_status": "COM_ERROR",
+        "get_hresult": "-0x7ffdfff1",
+        "get_description": "Parameter not optional."
+      },
+      {
+        "config": "",
+        "db": "SolidWorks DIN Materials",
+        "name": "1.0402",
+        "set_elapsed_ms": 30.53600000203005,
+        "set_status": "OK",
+        "set_return_type": "NoneType",
+        "set_return_value": "None",
+        "get_elapsed_ms": 22.02430000033928,
+        "get_status": "COM_ERROR",
+        "get_hresult": "-0x7ffdfff1",
+        "get_description": "Parameter not optional."
+      }
+    ]
+  },
+  "mass_props_post": {
+    "elapsed_ms": 37.423199999466306,
+    "status": "COM_ERROR",
+    "hresult": "-0x7ffdfffb",
+    "description": "Type mismatch."
+  },
+  "density_delta": {
+    "pre_density_kg_m3": null,
+    "post_density_kg_m3": null,
+    "density_changed": null,
+    "reason": "mass-props density unreadable in pre or post measurement"
+  }
+}

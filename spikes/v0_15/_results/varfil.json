@@ -1,0 +1,16 @@
+{
+  "overall": "FAIL",
+  "reason": "CreateDefinition(swFmFillet) returned an object without VariableRadiusParameters / SetVariableRadiusParameters; SW API may not expose IVariableRadiusFilletFeatureData via late binding on this install/version",
+  "data_info": {
+    "python_type": "CDispatch",
+    "create_def_elapsed_ms": 76.62799999889103,
+    "is_varfil_data": false,
+    "type_set_error": "AttributeError: Property '<unknown>.FilletType' can not be set.",
+    "is_varfil_data_after_type_set": false
+  },
+  "build": {
+    "skipped": false,
+    "built": true,
+    "feature_name": "Boss-Extrude1"
+  }
+}
