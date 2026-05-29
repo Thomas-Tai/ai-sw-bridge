@@ -9,8 +9,6 @@ Subcommands:
       Re-apply (only allowed after dry_run_ok), save the doc.
   undo_last_commit
       Revert the most-recently committed proposal.
-  run_macro --macro-path <path.swp> [--module <name>] [--sub <name>]
-      Execute a SW VBA macro (binary .swp only).
 
 Each subcommand prints a single JSON object to stdout and exits 0 if the
 tool returned ok=True, else 1. Both --key=value and --key value syntax
@@ -24,39 +22,25 @@ import json
 import sys
 from typing import Any
 
-from ..mutate import (
-    sw_commit,
-    sw_dry_run,
-    sw_propose_local_change,
-    sw_run_macro,
-    sw_undo_last_commit,
-)
+from ..mutate import ProposalStore
 from .stability import add_tier, cli_stability
 from .streams import add_quiet_flag, apply_quiet
 
 
 def _run_propose(args: argparse.Namespace) -> dict[str, Any]:
-    return sw_propose_local_change(var=args.var, new_value=args.new_value)
+    return ProposalStore().propose(var=args.var, new_value=args.new_value)
 
 
 def _run_dry_run(args: argparse.Namespace) -> dict[str, Any]:
-    return sw_dry_run(proposal_id=args.proposal_id)
+    return ProposalStore().dry_run(proposal_id=args.proposal_id)
 
 
 def _run_commit(args: argparse.Namespace) -> dict[str, Any]:
-    return sw_commit(proposal_id=args.proposal_id)
+    return ProposalStore().commit(proposal_id=args.proposal_id)
 
 
 def _run_undo_last_commit(_args: argparse.Namespace) -> dict[str, Any]:
-    return sw_undo_last_commit()
-
-
-def _run_macro(args: argparse.Namespace) -> dict[str, Any]:
-    return sw_run_macro(
-        macro_path=args.macro_path,
-        module=args.module,
-        sub=args.sub,
-    )
+    return ProposalStore().undo_last()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -112,28 +96,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Revert the most-recently committed proposal.",
     )
     p.set_defaults(func=_run_undo_last_commit)
-
-    p = subs.add_parser(
-        "run_macro",
-        help="Execute a SW VBA macro (binary .swp only).",
-    )
-    p.add_argument(
-        "--macro-path",
-        dest="macro_path",
-        required=True,
-        help="Path to the .swp macro file.",
-    )
-    p.add_argument(
-        "--module",
-        default="Module1",
-        help="Module name inside the macro (default Module1).",
-    )
-    p.add_argument(
-        "--sub",
-        default="main",
-        help="Sub name to invoke (default main).",
-    )
-    p.set_defaults(func=_run_macro)
 
     return parser
 

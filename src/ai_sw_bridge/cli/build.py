@@ -525,9 +525,9 @@ def main() -> int:
     # Runs BEFORE the first COM write so --strict-addins can abort
     # without side effects.
     if args.disable_addins or args.strict_addins:
-        from ..observe import sw_get_enabled_addins
+        from ..observe import SolidWorksObserver
 
-        addin_result = sw_get_enabled_addins()
+        addin_result = SolidWorksObserver().enabled_addins()
         if not addin_result["ok"]:
             print(
                 f"WARNING: add-in enumeration failed: {addin_result['error']}",

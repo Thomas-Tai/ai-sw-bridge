@@ -7,6 +7,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-05-29
+
+The v0.14 commercial-hardening release. Fixes four shipped
+correctness bugs surfaced by a full-codebase audit, removes one
+broken-by-design legacy function, brings doc parity across README /
+USAGE / AGENTS / tool-reference, and introduces class-based facades
+(`SolidWorksObserver`, `ProposalStore`) over the observe and mutate
+modules. **Specs that build in v0.13 build identically in v0.14**;
+the only breaking change is the removal of `sw_run_macro` /
+`ai-sw-mutate run_macro` (workaround unchanged: paste `.bas` into
+VBE manually).
+
+Audit + execution plan: [`docs/v0.14_commercial_hardening_plan.md`](docs/v0.14_commercial_hardening_plan.md).
+Migration guide: [`docs/migration_to_v0.14.md`](docs/migration_to_v0.14.md).
+
+### Fixed
+
+- **Parametric / `--deferred-dim` builds applied each equation
+  binding twice.** `spec/builder.py` called `_collect_feature_bindings`
+  + `_apply_bindings` in two adjacent blocks — once inside the
+  `else:` of `if no_dim:`, once unconditionally outside it. The
+  result: every `IEquationMgr.Add2` call fired twice and
+  `BuildResult.bindings_added` carried duplicates. The Motor Mount
+  Plate parametric build emitted 14 equation entries; the correct
+  count is 7. v0.14 deletes the first (non-error-wrapped) block and
+  keeps the canonical one with `com_error_boundary`. No spec change
+  required; re-run any parametric/deferred-dim build to observe the
+  fix.
+- **`ai_sw_bridge.__version__` reported `0.1.0` forever.** The
+  package-level constant was hardcoded; v0.14 reads from
+  `importlib.metadata.version("ai-sw-bridge")` with a
+  `"0.0.0+unknown"` fallback for source checkouts without
+  `pip install -e .`.
+- **Dead `deferred_watermark` assignment** inside the L4 checkpoint
+  commit block (`spec/builder.py`). Cosmetic — the real watermark
+  update happens in the deferred-dim replay path.
+- **`test_excluded_tools_not_registered` was vacuously passing** —
+  the test asserted that `sw_mutate_apply` is not in the MCP tool
+  registry, but `sw_mutate_apply` never existed (the real mutate
+  function names are `sw_propose_local_change`, `sw_dry_run`,
+  `sw_commit`, `sw_undo_last_commit`). v0.14 replaces the fictional
+  name with the four real ones, restoring meaningful coverage.
+
+### Added
+
+- **`SolidWorksObserver` class** (`ai_sw_bridge.observe`) — facade
+  with 10 methods (`active_doc`, `feature_errors`, `equations`,
+  `bbox`, `volume`, `screenshot`, `measure`, `mate_errors`,
+  `custom_props`, `enabled_addins`) over the existing `sw_get_*`
+  free functions. Recommended entry point for new code; the legacy
+  free functions remain as backward-compatible shims and will be
+  removed in v0.15 (`docs/DEFERRED.md` D-v0.14-06).
+- **`ProposalStore` class + `ProposalState` enum**
+  (`ai_sw_bridge.mutate`) — facade with 4 methods (`propose`,
+  `dry_run`, `commit`, `undo_last`) and a typed state enum that
+  mirrors the existing `ST_*` string constants. Recommended entry
+  point for new mutate-lifecycle work.
+- **Environment Variables section** in `README.md` — covers
+  `AI_SW_BRIDGE_CAPTURES`, `AI_SW_BRIDGE_PROPOSALS`,
+  `AI_SW_BRIDGE_FLAG_<NAME>`, `NO_COLOR`. Plus a note on the
+  user-supplied `--checkpoint-encrypt env:NAME` variable.
+
+### Changed
+
+- **`ai-sw-build` row in `README.md`** now lists every flag
+  (`--validate-only`, `--dry-run`, `--lint`, `--no-dim`,
+  `--deferred-dim`, `--save-as`, `--save-format`, `--verify-mass`,
+  `--reconnect`, `--checkpoint`, `--checkpoint-encrypt`,
+  `--disable-addins`, `--strict-addins`, `--log-level`, `--verbose`,
+  `--quiet`, `--locale`, `--enable-flag`, `--disable-flag`,
+  `--auto-retry`) grouped by purpose. Manual upkeep until v0.15
+  ships a CI doc-coverage gate (D-v0.14-05).
+- **`ai-sw-mutate` row in `README.md`** lists the 4 surviving
+  subcommands (`propose` / `dry_run` / `commit` /
+  `undo_last_commit`) and the `AI_SW_BRIDGE_PROPOSALS` env var.
+- **`ai-sw-apidoc` row in `README.md`** notes that fresh clones
+  may need `python tools/build_api_index.py` to materialize the
+  committed index.
+- **Primitive count corrections.** README/AGENTS no longer say
+  "12 primitives" / "12 working specs" — the real numbers (16
+  primitives in the schema, 15 working specs in `examples/`) are
+  used everywhere.
+- **`sw_mutate_apply` references removed** from `README.md`,
+  `docs/mcp_server_design.md`, `docs/lane_designs.md`,
+  `docs/audit_s1_cli_mcp_parallelism.md`, and
+  `src/ai_sw_bridge/mcp/server.py`. The MCP design doc also
+  corrects the test names (`test_tool_inventory_matches_design`,
+  `test_excluded_tools_not_registered`) that had drifted from
+  reality.
+
+### Removed (BREAKING)
+
+- **`ai-sw-mutate run_macro` subcommand** and the underlying
+  `ai_sw_bridge.mutate.sw_run_macro` Python function. The function
+  was a 0.1.0-era stub that only worked on binary `.swp` files
+  produced by SOLIDWORKS's own VBE editor; externally-generated
+  `.swp` / `.bas` files were silently rejected. The supported
+  workflow has always been to paste the generated `.bas` into VBE
+  manually and press F5 — that remains unchanged. Code that
+  imported `ai_sw_bridge.mutate.sw_run_macro` must remove the
+  import; no in-process replacement exists. If/when binary-`.swp`
+  write-back is figured out, `SldWorks.RunMacro` / `RunMacro2`
+  can be called directly.
+
 ## [0.13.0] - 2026-05-28
 
 The v0.13 closure release lands the **MCP server** (Lane M), the

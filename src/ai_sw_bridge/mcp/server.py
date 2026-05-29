@@ -70,8 +70,11 @@ def create_server(runtime: ServerRuntime) -> Any:
 
     Total: 21 tools.
 
-    Tools NOT registered in v0.13 (per §6.5): sw_mutate_apply,
-    sw_codegen, sw_probe, sw_checkpoint_genkey/rekey/migrate.
+    Tools NOT registered (per §6.5): the four mutate operations
+    (sw_propose_local_change, sw_dry_run, sw_commit,
+    sw_undo_last_commit) stay CLI-only because each one requires a
+    human approval in the loop. sw_codegen, sw_probe, and
+    sw_checkpoint_genkey/rekey/migrate are also CLI-only.
 
     Args:
         runtime: A constructed (but not yet started) ServerRuntime.

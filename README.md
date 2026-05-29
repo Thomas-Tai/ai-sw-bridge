@@ -43,7 +43,7 @@ flowchart LR
     style G fill:#e8f5e9,stroke:#388e3c,color:#000
 ```
 
-The spec language covers **12 part-modelling primitives** today (sketches, extrudes, cuts, fillets, chamfers, patterns, mirror, revolve, holes). [See the full primitive list →](docs/spec_reference.md)
+The spec language covers **16 part-modelling primitives** today (5 sketch + 5 extrude/revolve + 3 modify + 3 pattern). [See the full primitive list →](docs/spec_reference.md)
 
 As of **v0.13**, the same tool surface is also reachable via the MCP server (`ai-sw-mcp`) — bring your own Claude Desktop, Cursor, or Continue.dev. [Jump to the MCP section ↓](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)
 
@@ -88,7 +88,7 @@ Open Claude / ChatGPT / Codex and paste:
 
 The agent will read [`docs/AGENTS.md`](docs/AGENTS.md), pick the closest [`examples/`](examples/) match, draft a spec, and **stop** for your review. You approve, run the command yourself, and watch the part build. That's the whole loop.
 
-**Stuck?** Try [`examples/README.md`](examples/README.md) (12 working specs, grouped by primitive) or [`docs/known_limitations.md`](docs/known_limitations.md) (sharp edges new users hit).
+**Stuck?** Try [`examples/README.md`](examples/README.md) (15 working specs, grouped by primitive) or [`docs/known_limitations.md`](docs/known_limitations.md) (sharp edges new users hit).
 
 ## Why an AI engineer should care
 
@@ -111,15 +111,26 @@ Nine CLI commands + one MCP server on your PATH after `pip install -e ".[mcp]"`:
 |---|---|---|
 | `ai-sw-probe` | COM connectivity check | ✅ |
 | `ai-sw-observe` | Inspect doc / features / equations / mates / bbox / volume / custom-props / screenshots / mates / add-ins — JSON output | ✅ |
-| `ai-sw-mutate` | Propose → dry-run → commit changes to `*_locals.txt` variables | ⚠️ approval-gated |
+| `ai-sw-mutate` | Propose → dry-run → commit (or undo) `*_locals.txt` variable changes. Subcommands: `propose` / `dry_run` / `commit` / `undo`. Proposals persist to `./proposals/` (override via `AI_SW_BRIDGE_PROPOSALS`). | ⚠️ approval-gated |
 | `ai-sw-codegen` | Parameterize a recorded `.swp` macro against a locals file | — |
-| `ai-sw-build` | **Build a part from a JSON spec via direct-COM.** Three modes (`--no-dim`, `--deferred-dim`, parametric default); flags for `--checkpoint`, `--checkpoint-encrypt`, `--auto-retry`, `--save-format`, `--disable-addins`, `--strict-addins`. | — |
-| `ai-sw-apidoc` | RAG over the SOLIDWORKS API CHM corpus — `search` / `detail` / `members` / `examples` / `enum` subcommands | ✅ |
+| `ai-sw-build` | **Build a part from a JSON spec via direct-COM.** Three modes (`--no-dim`, `--deferred-dim`, parametric default). Validation: `--validate-only`, `--dry-run`, `--lint`. Reliability: `--checkpoint[-encrypt]`, `--auto-retry`, `--reconnect`, `--verify-mass`. Output: `--save-as`, `--save-format`. Environment: `--disable-addins`/`--strict-addins`, `--enable-flag`/`--disable-flag`, `--log-level`/`--verbose`/`--quiet`, `--locale`. Run `ai-sw-build --help` for the canonical list. | — |
+| `ai-sw-apidoc` | RAG over the SOLIDWORKS API CHM corpus — `search` / `detail` / `members` / `examples` / `enum` subcommands. First run after a fresh clone: `python tools/build_api_index.py` to materialize the committed index. | ✅ |
 | `ai-sw-history` | Query L4 checkpoint history — `part` / `since` / `diff` / `rollback` subcommands | ⚠️ rollback writes |
 | `ai-sw-checkpoint` | Manage L4 encryption — `info` (no key needed) / `genkey` / `rekey` / `migrate` | — |
 | `ai-sw-mcp` | **MCP server (stdio transport)** for Claude Desktop, Cursor, Continue.dev, and other MCP-capable clients. Exposes 21 tools mapping 1:1 to the CLI surface. Install with `pip install ai-sw-bridge[mcp]`. | mixed |
 
 Three build modes for `ai-sw-build` (use `--no-dim` for AI workflows; the others trade speed for live equation links). [Why `--no-dim` exists →](docs/why_no_addim2.md)
+
+### Environment variables
+
+| Variable | Default | What it controls |
+|---|---|---|
+| `AI_SW_BRIDGE_CAPTURES` | `./captures` | Where `sw_screenshot` writes PNGs |
+| `AI_SW_BRIDGE_PROPOSALS` | `./proposals` | Where `ai-sw-mutate` proposal JSON files persist |
+| `AI_SW_BRIDGE_FLAG_<NAME>` | unset | Override a feature flag (e.g. `AI_SW_BRIDGE_FLAG_BREP_INTERROGATION=1`). CLI `--enable-flag`/`--disable-flag` wins over the env var. |
+| `NO_COLOR` | unset | Strips ANSI from stderr output (honored by `PlainFormatter`) |
+
+`--checkpoint-encrypt env:NAME` reads the Fernet key from `$NAME` at build time; the variable name is your choice.
 
 ## MCP server — drive the bridge from Claude Desktop / Cursor / etc.
 
@@ -185,7 +196,7 @@ selects `sw_bbox`, the result renders in the chat.
 **Lifecycle (1)** — STA reconnect after SW process death:
 `sw_reconnect`
 
-**Deliberately NOT exposed via MCP** (CLI-only per [`docs/mcp_server_design.md`](docs/mcp_server_design.md) §6.5): `sw_mutate_apply` (human-approval per call required), `sw_checkpoint_genkey` / `sw_checkpoint_rekey` / `sw_checkpoint_migrate` (key-management operations), `sw_codegen`, `sw_probe`.
+**Deliberately NOT exposed via MCP** (CLI-only per [`docs/mcp_server_design.md`](docs/mcp_server_design.md) §6.5): the four mutate operations — `sw_propose_local_change`, `sw_dry_run`, `sw_commit`, `sw_undo_last_commit` — require human approval per call. `sw_checkpoint_genkey` / `sw_checkpoint_rekey` / `sw_checkpoint_migrate` are key-management operations. `sw_codegen` and `sw_probe` are not request/response shaped.
 
 [Full MCP server design + protocol detail →](docs/mcp_server_design.md)
 

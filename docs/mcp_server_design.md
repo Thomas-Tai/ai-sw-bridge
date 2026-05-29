@@ -462,13 +462,14 @@ lands.
   tool that calls `runtime.adapter.*` must have `_is_com_tool = True`
   on its wrapper. Forgetting the decorator is a registration-time
   fail.
-- `test_tool_inventory_matches_design_doc` — count tools, names match
+- `test_tool_inventory_matches_design` — count tools, names match
   §6 inventory exactly.
-- `test_mutate_tools_not_registered` — `sw_mutate_apply` MUST NOT be
-  in the tool registry (CLI-only per §6.5).
-- `test_credential_tools_not_registered` — `sw_checkpoint_genkey`,
-  `sw_checkpoint_rekey`, `sw_checkpoint_migrate` MUST NOT be
-  registered.
+- `test_excluded_tools_not_registered` — none of the four mutate
+  operations (`sw_propose_local_change`, `sw_dry_run`, `sw_commit`,
+  `sw_undo_last_commit`), the key-management ops
+  (`sw_checkpoint_genkey`, `sw_checkpoint_rekey`,
+  `sw_checkpoint_migrate`), nor `sw_codegen` / `sw_probe` are in
+  the MCP tool registry — they remain CLI-only per §6.5.
 
 ### 11.3 @com_tool wrapping
 

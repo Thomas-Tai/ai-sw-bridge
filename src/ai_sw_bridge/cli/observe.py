@@ -24,48 +24,37 @@ import json
 import sys
 from typing import Any
 
-from ..observe import (
-    sw_get_active_doc,
-    sw_get_bbox,
-    sw_get_custom_props,
-    sw_get_enabled_addins,
-    sw_get_equations,
-    sw_get_feature_errors,
-    sw_get_mate_errors,
-    sw_get_volume,
-    sw_measure,
-    sw_screenshot,
-)
+from ..observe import SolidWorksObserver
 from .stability import add_subcommand_tier, add_tier, cli_stability
 from .streams import add_quiet_flag, apply_quiet
 
 
 def _run_active_doc(_args: argparse.Namespace) -> dict[str, Any]:
-    return sw_get_active_doc()
+    return SolidWorksObserver().active_doc()
 
 
 def _run_feature_errors(_args: argparse.Namespace) -> dict[str, Any]:
-    return sw_get_feature_errors()
+    return SolidWorksObserver().feature_errors()
 
 
 def _run_equations(_args: argparse.Namespace) -> dict[str, Any]:
-    return sw_get_equations()
+    return SolidWorksObserver().equations()
 
 
 def _run_mate_errors(_args: argparse.Namespace) -> dict[str, Any]:
-    return sw_get_mate_errors()
+    return SolidWorksObserver().mate_errors()
 
 
 def _run_bbox(_args: argparse.Namespace) -> dict[str, Any]:
-    return sw_get_bbox()
+    return SolidWorksObserver().bbox()
 
 
 def _run_volume(_args: argparse.Namespace) -> dict[str, Any]:
-    return sw_get_volume()
+    return SolidWorksObserver().volume()
 
 
 def _run_screenshot(args: argparse.Namespace) -> dict[str, Any]:
-    return sw_screenshot(
+    return SolidWorksObserver().screenshot(
         width=args.width,
         height=args.height,
         fit_view=args.fit_view,
@@ -74,15 +63,15 @@ def _run_screenshot(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_measure(args: argparse.Namespace) -> dict[str, Any]:
-    return sw_measure(entity_a=args.entity_a, entity_b=args.entity_b)
+    return SolidWorksObserver().measure(entity_a=args.entity_a, entity_b=args.entity_b)
 
 
 def _run_custom_props(_args: argparse.Namespace) -> dict[str, Any]:
-    return sw_get_custom_props()
+    return SolidWorksObserver().custom_props()
 
 
 def _run_addins(_args: argparse.Namespace) -> dict[str, Any]:
-    return sw_get_enabled_addins()
+    return SolidWorksObserver().enabled_addins()
 
 
 def _build_parser() -> argparse.ArgumentParser:

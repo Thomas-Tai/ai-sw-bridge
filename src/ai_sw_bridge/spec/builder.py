@@ -2037,20 +2037,6 @@ def build(
                             )
                             deferred_watermark = len(ctx.deferred_dims)
 
-                    # Apply this feature's parametric bindings BEFORE the next
-                    # feature. Without this, a downstream cut may operate on a
-                    # sketch still at placeholder size (the original MMP
-                    # Cut_FlangeRecess failure mode -- placeholder diameter 6mm
-                    # was smaller than the 12mm through-hole).
-                    feat_bindings = _collect_feature_bindings(feat)
-                    if feat_bindings:
-                        indices = _apply_bindings(doc, feat_bindings)
-                        for (d, r), i in zip(feat_bindings, indices):
-                            binding_results.append(Binding(dim=d, rhs=r, add2_index=i))
-                        # Force a rebuild so subsequent geometry sees the
-                        # updated dim values, not the placeholder.
-                        _ = doc.EditRebuild3
-
                 # L4 checkpoint: transition the pending row to committed now
                 # that handler + bindings + deferred dims + mass verification
                 # all succeeded. cp_built grows by one feature per iteration;
@@ -2065,7 +2051,6 @@ def build(
                         )
                     except Exception as e:
                         logger.warning("checkpoint post-commit failed: %s", e)
-                    deferred_watermark = len(ctx.deferred_dims)
 
                 # Apply this feature's parametric bindings BEFORE the next
                 # feature. Without this, a downstream cut may operate on a

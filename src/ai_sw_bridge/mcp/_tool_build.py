@@ -108,9 +108,9 @@ def register(mcp: Any) -> None:
         # W7.1 — pre-build add-in check. Runs before the first COM
         # write so strict_addins can abort without side effects.
         if disable_addins or strict_addins:
-            from ..observe import sw_get_enabled_addins
+            from ..observe import SolidWorksObserver
 
-            addin_result = sw_get_enabled_addins()
+            addin_result = SolidWorksObserver().enabled_addins()
             if addin_result.get("known_problematic"):
                 if strict_addins:
                     return {
