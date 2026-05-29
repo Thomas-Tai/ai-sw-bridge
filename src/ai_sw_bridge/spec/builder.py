@@ -71,6 +71,12 @@ from ._sketch_primitives import (
     PLACEHOLDER_MM,
     _literal_or_default,
 )
+from ._version_resolver import (
+    DEFAULT_KEY,
+    SW_2025_MAJOR,
+    resolve_op,
+    versioned,
+)
 from .sketches import (
     CircleOnFaceHandler,
     CircleOnPlaneHandler,
@@ -378,17 +384,25 @@ def _call_feature_extrusion(
     return feature
 
 
-def _call_feature_cut(
-    ctx: BuildContext,
-    *,
-    end_cond: int,
-    depth_m: float,
-    flip: bool,
-) -> Any:
-    """FeatureManager.FeatureCut4 - the cut variant of FeatureExtrusion2.
+# -----------------------------------------------------------------------------
+# FeatureCut4 -- version-dispatched arg-builders (FR-X-04)
+# -----------------------------------------------------------------------------
+#
+# FeatureCut4 is the reference call wrapped through the version resolver. The
+# 2024 (default) variant produces the EXACT 27-arg tuple the call site has
+# always used -- behaviour-preserving on the only proven build. The 2025
+# variant is a 🔴 SEAT stub: the reference codebase branches on RevisionNumber
+# == 33 (SW 2025) because FeatureCut4's arity changed there, but we have no
+# 2025 seat to verify the new signature, so it is registered (so the dispatch
+# wiring is real and testable) but NEVER exercised on 2024.
 
-    SW 2017+ signature (27 args; verified via decompiled sldworksapi.chm
-    and Spike E7 on SW 2024 SP1):
+
+@versioned("FeatureCut4", DEFAULT_KEY)
+def _cut4_args_2024(*, end_cond: int, depth_m: float, flip: bool) -> tuple:
+    """SW 2024 SP1 FeatureCut4 arg tuple (27 args; default/proven variant).
+
+    SW 2017+ signature (verified via decompiled sldworksapi.chm and Spike E7
+    on SW 2024 SP1):
       Sd, Flip, Dir, T1, T2, D1, D2,
       Dchk1, Dchk2, Ddir1, Ddir2,
       Dang1, Dang2,
@@ -399,8 +413,7 @@ def _call_feature_cut(
       AutoSelectComponents, PropagateFeatureToParts,
       T0, StartOffset, FlipStartOffset, OptimizeGeometry
     """
-    fm = ctx.doc.FeatureManager
-    args = (
+    return (
         True,  # 1  Sd (single-ended)
         flip,  # 2  Flip
         False,  # 3  Dir
@@ -429,7 +442,46 @@ def _call_feature_cut(
         False,  # 26 FlipStartOffset
         False,  # 27 OptimizeGeometry (sheet metal only)
     )
+
+
+@versioned("FeatureCut4", SW_2025_MAJOR)
+def _cut4_args_2025(*, end_cond: int, depth_m: float, flip: bool) -> tuple:
+    """🔴 SEAT (SW 2025 / RevisionNumber major 33) -- UNVERIFIED.
+
+    The reference codebase branches on RevisionNumber == 33 because
+    FeatureCut4's arity changed in SW 2025. This stub exists so the
+    version-dispatch wiring is real and unit-testable, but the actual 2025
+    signature has NOT been confirmed against a 2025 seat. It is currently a
+    1:1 copy of the 2024 tuple as a placeholder. DO NOT treat as working.
+
+    🔴 SEAT follow-up: obtain a SW 2025 seat, confirm the FeatureCut4 arg
+    count/order (and update sw_types.METHOD_SIGNATURES if it differs), then
+    replace this body with the verified 2025 tuple and re-GREEN against a
+    real cut on 2025.
+    """
+    return _cut4_args_2024(end_cond=end_cond, depth_m=depth_m, flip=flip)
+
+
+def _call_feature_cut(
+    ctx: BuildContext,
+    *,
+    end_cond: int,
+    depth_m: float,
+    flip: bool,
+) -> Any:
+    """FeatureManager.FeatureCut4 - the cut variant of FeatureExtrusion2.
+
+    Routed through the version-dispatch resolver (FR-X-04): the running SW
+    major revision (read once, late-bound, from ``ctx.sw.RevisionNumber``)
+    selects the arg-builder via newest->older cascade. On SW 2024 (the only
+    proven build) this resolves to ``_cut4_args_2024`` and the produced 27-arg
+    tuple is identical to the pre-resolver call -- behaviour-preserving. The
+    2025 variant is a 🔴 SEAT stub that is never reached on 2024.
+    """
+    arg_builder = resolve_op("FeatureCut4", sw=ctx.sw)
+    args = arg_builder(end_cond=end_cond, depth_m=depth_m, flip=flip)
     assert_args("IFeatureManager.FeatureCut4", args)
+    fm = ctx.doc.FeatureManager
     feature = fm.FeatureCut4(*args)
     if feature is None:
         raise RuntimeError("FeatureCut4 returned None")
