@@ -1734,6 +1734,250 @@ class BuildResult:
         return out
 
 
+@dataclass
+class StepOptions:
+    """Immutable per-build settings threaded into :func:`run_feature_step`.
+
+    Bundles the ``build()`` flags and lazily-initialized collaborators so the
+    per-feature step has a stable, testable signature instead of a long
+    positional argument list. Constructed once per build, before the loop.
+    """
+
+    spec: dict[str, Any]
+    mode: str
+    no_dim: bool
+    deferred_dim: bool
+    verify_mass: bool
+    reconnect: bool
+    brep_enabled: bool
+    brep_manifest: Any | None
+    cp_store: Any | None
+    cp_locals_dict: dict[str, Any] | None
+
+
+@dataclass
+class StepResult:
+    """Per-feature outputs of one :func:`run_feature_step` call.
+
+    ``build()`` folds these into its run-level accumulators. The cross-feature
+    running values (``prev_volume_mm3``, ``deferred_watermark``) are returned
+    with their post-feature values so the next step can be threaded from them.
+    """
+
+    bf: BuiltFeature
+    feature_metric: dict[str, Any]
+    bindings: list[Binding]
+    mass_entry: dict[str, Any] | None
+    prev_volume_mm3: float
+    deferred_watermark: int
+
+
+def run_feature_step(
+    ctx: BuildContext,
+    feat: dict[str, Any],
+    *,
+    opts: StepOptions,
+    feature_index: int,
+    prev_volume_mm3: float,
+    deferred_watermark: int,
+    built: list[str],
+    cp_built: list[dict[str, Any]],
+) -> StepResult:
+    """Build one feature end-to-end (FR-X-06).
+
+    handler -> brep-interrogate -> verify_mass -> deferred-dim replay ->
+    L4 checkpoint -> parametric bindings. Extracted verbatim from ``build()``'s
+    feature loop so each per-feature error path (handler raises, mass-delta
+    miss, stale-handle reconnect) is directly unit-testable against the mock
+    adapter. Behavior is identical to the inline loop: same call order, same
+    fail-fast on a mass ``_expect`` miss, same per-sketch deferred-dim cadence,
+    same checkpoint pending/committed/failed transitions.
+
+    Mutates ``ctx`` (``features_by_name``, ``deferred_dims``), ``built`` (the
+    name appended the instant the handler succeeds), and ``cp_built`` (appended
+    on commit) in place, exactly as the inline loop did. Raises on
+    handler / binding / mass-verify failure after marking the in-flight
+    checkpoint row failed; ``build()`` turns that into a failed ``BuildResult``.
+    """
+    current_feat_name = feat.get("name")
+    logger.debug("feature: %s (%s)", current_feat_name, feat["type"])
+    handler = HANDLERS[feat["type"]]
+
+    # L4 checkpoint: open a pending row BEFORE the handler runs so a
+    # mid-handler failure leaves a rollback target at the prior
+    # post_tree_hash. Transitions to committed after all per-feature work
+    # succeeds, or to failed on exception (the except clause below).
+    cp_row_id: int | None = None
+    if opts.cp_store is not None:
+        try:
+            from ..checkpoint.snapshot import write_pre_feature as _cp_write
+
+            cp_row_id = _cp_write(
+                opts.cp_store,
+                spec=opts.spec,
+                feature=feat,
+                feature_index=len(cp_built),
+                already_built=cp_built,
+                build_mode=opts.mode,
+                locals_snapshot=opts.cp_locals_dict,
+            )
+        except Exception as e:
+            logger.warning("checkpoint pre-write failed: %s", e)
+            cp_row_id = None
+
+    try:
+        _feat_t0 = time.time()
+        try:
+            with com_error_boundary(
+                feature_name=current_feat_name or "unknown",
+                json_path=f"features[{feature_index}]",
+                iface_method=f"HANDLERS[{feat['type']}]",
+                feature_type=feat["type"],
+            ):
+                bf = with_reconnect(handler, ctx, feat, reconnect=opts.reconnect)
+        except BuildError as be:
+            emit_envelope_to_stderr(be)
+            raise RuntimeError(be.diagnosis) from be
+        feature_metric = {
+            "name": current_feat_name,
+            "type": feat["type"],
+            "build_time_s": round(time.time() - _feat_t0, 3),
+        }
+
+        # Stash plane info for plane-based sketches so child extrudes
+        # can inherit the parent plane's outward normal as their axis.
+        if bf.type in ("sketch_rectangle_on_plane", "sketch_circle_on_plane"):
+            bf.parent_plane_normal = PLANE_NORMALS[feat["plane"]]
+
+        ctx.features_by_name[bf.name] = bf
+        # Record the name the instant the handler succeeds -- BEFORE brep /
+        # mass-verify / bindings -- so a failure in any of those still leaves
+        # this feature in build()'s ``features_built`` list (the failed
+        # BuildResult reports it). Matches the pre-extraction loop exactly.
+        built.append(bf.name)
+
+        # B-rep interrogation (E2.6): walk the feature's faces and
+        # accumulate into the manifest. Flag-gated; fail-soft.
+        if opts.brep_enabled and opts.brep_manifest is not None:
+            try:
+                from ..brep import interrogate as _brep_interrogate
+
+                result = _brep_interrogate(bf.sw_object, ctx)
+                if result is not None:
+                    opts.brep_manifest.add_feature(result, feature_type=bf.type)
+            except Exception as e:
+                logger.warning(
+                    "brep interrogation failed for '%s': %s", bf.name, e
+                )
+
+        # Mass verification: read volume after this feature and compare
+        # delta against _expect if declared. Runs in ALL modes (the volume
+        # delta is mode-independent). A failed _expect fails the build.
+        mass_entry: dict[str, Any] | None = None
+        if opts.verify_mass:
+            _ = ctx.doc.EditRebuild3  # ensure geometry is up to date
+            # CreateMassProperty is a zero-arg COM method: pywin32
+            # late-binding auto-invokes it on attribute access. Adding ()
+            # would call the *returned* IMassProperty and raise.
+            mp = ctx.doc.Extension.CreateMassProperty
+            vol_mm3 = mp.Volume * 1e9  # SW returns m³
+            delta_mm3 = vol_mm3 - prev_volume_mm3
+            expect = feat.get("_expect")
+            entry: dict[str, Any] = {
+                "feature": bf.name,
+                "actual_mm3": round(delta_mm3, 2),
+            }
+            if expect and "mass_delta_mm3" in expect:
+                expected = expect["mass_delta_mm3"]
+                tol = expect.get("tolerance_mm3", 1.0)
+                passed = abs(delta_mm3 - expected) <= tol
+                entry["expected_mm3"] = expected
+                entry["tolerance_mm3"] = tol
+                entry["pass"] = passed
+                if not passed:
+                    raise RuntimeError(
+                        f"mass verification failed for '{bf.name}': "
+                        f"actual delta {delta_mm3:.2f} mm³ vs "
+                        f"expected {expected} mm³ "
+                        f"(tolerance ±{tol} mm³)"
+                    )
+            mass_entry = entry
+            prev_volume_mm3 = vol_mm3
+
+        if not opts.no_dim and opts.deferred_dim:
+            # Per-sketch deferred: replay just THIS handler's new DeferredDim
+            # entries (popup batch for this sketch only), then apply this
+            # feature's bindings + rebuild. NECESSARY because end-of-build
+            # replay either fails on cuts against placeholder-size hosts or
+            # produces driven (reference) dims that Add2 rejects. Per-sketch
+            # replay keeps the dim driving AND resizes geometry before
+            # downstream features.
+            new_dims = ctx.deferred_dims[deferred_watermark:]
+            if new_dims:
+                _apply_deferred_dims(
+                    ctx,
+                    new_dims,
+                    label_prefix=f"Deferred dims for {bf.name}",
+                )
+                deferred_watermark = len(ctx.deferred_dims)
+
+        # L4 checkpoint: transition the pending row to committed now that
+        # handler + deferred dims + mass verification succeeded. cp_built
+        # grows by one; the post_tree_hash covers the list INCLUDING this
+        # feature.
+        cp_built.append({"name": bf.name, "type": bf.type})
+        if opts.cp_store is not None and cp_row_id is not None:
+            try:
+                from ..checkpoint.snapshot import commit_post_feature as _cp_commit
+
+                _cp_commit(opts.cp_store, cp_row_id, already_built=cp_built)
+            except Exception as e:
+                logger.warning("checkpoint post-commit failed: %s", e)
+
+        # Apply this feature's parametric bindings BEFORE the next feature.
+        # Without this, a downstream cut may operate on a sketch still at
+        # placeholder size (the original MMP Cut_FlangeRecess failure mode).
+        bindings: list[Binding] = []
+        feat_bindings = _collect_feature_bindings(feat)
+        if feat_bindings:
+            try:
+                with com_error_boundary(
+                    feature_name=current_feat_name or "unknown",
+                    json_path=f"features[{feature_index}].bindings",
+                    iface_method="IEquationMgr.Add2",
+                    feature_type=feat["type"],
+                ):
+                    indices = _apply_bindings(ctx.doc, feat_bindings)
+            except BuildError as be:
+                emit_envelope_to_stderr(be)
+                raise RuntimeError(be.diagnosis) from be
+            for (d, r), i in zip(feat_bindings, indices):
+                bindings.append(Binding(dim=d, rhs=r, add2_index=i))
+            # Force a rebuild so subsequent geometry sees the updated dim
+            # values, not the placeholder.
+            _ = ctx.doc.EditRebuild3
+
+        return StepResult(
+            bf=bf,
+            feature_metric=feature_metric,
+            bindings=bindings,
+            mass_entry=mass_entry,
+            prev_volume_mm3=prev_volume_mm3,
+            deferred_watermark=deferred_watermark,
+        )
+    except Exception:
+        # L4 checkpoint: mark the in-flight pending row failed so the history
+        # records which feature was being attempted. Swallow store errors --
+        # the build error is the primary signal. (Colocated with the row
+        # creation; build()'s loop turns the re-raise into a failed result.)
+        if opts.cp_store is not None and cp_row_id is not None:
+            try:
+                opts.cp_store.mark_failed(cp_row_id)
+            except Exception:
+                pass
+        raise
+
+
 def build(
     spec: dict[str, Any],
     no_dim: bool = False,
@@ -1914,10 +2158,6 @@ def build(
     cp_store: Any | None = None
     if checkpoint:
         try:
-            from ..checkpoint.snapshot import (
-                commit_post_feature as _cp_commit,
-                write_pre_feature as _cp_write,
-            )
             from ..checkpoint.store import CheckpointStore as _CpStore
         except Exception as e:
             logger.warning("checkpoint init failed: %s", e)
@@ -1932,8 +2172,22 @@ def build(
             except Exception as e:
                 logger.warning("checkpoint store init failed: %s", e)
                 cp_store = None
-    cp_row_id: int | None = None
     cp_built: list[dict[str, Any]] = []
+
+    # Bundle the immutable per-build settings once; run_feature_step (FR-X-06)
+    # reads them for every feature so the per-feature body is unit-testable.
+    step_opts = StepOptions(
+        spec=spec,
+        mode=mode,
+        no_dim=no_dim,
+        deferred_dim=deferred_dim,
+        verify_mass=verify_mass,
+        reconnect=reconnect,
+        brep_enabled=brep_enabled,
+        brep_manifest=brep_manifest,
+        cp_store=cp_store,
+        cp_locals_dict=cp_locals_dict,
+    )
 
     # Suppress the "Modify Dimension" popup that AddDimension2 fires by
     # default. App-level only; doc-level call was found to RE-ENABLE the
@@ -1966,191 +2220,31 @@ def build(
         deferred_watermark = 0
         try:
             for feat in spec["features"]:
+                # current_feat_name is tracked at this scope so a mid-loop
+                # exception's failed BuildResult can name the offending feature.
                 current_feat_name = feat.get("name")
-                logger.debug("feature: %s (%s)", current_feat_name, feat["type"])
-                handler = HANDLERS[feat["type"]]
-                # L4 checkpoint: open a pending row BEFORE the handler runs
-                # so a mid-handler failure leaves a rollback target at the
-                # prior post_tree_hash. Row transitions to committed after
-                # all per-feature work (bindings / deferred dims / mass
-                # verification) completes, or to failed on exception.
-                cp_row_id = None
-                if cp_store is not None:
-                    try:
-                        cp_row_id = _cp_write(
-                            cp_store,
-                            spec=spec,
-                            feature=feat,
-                            feature_index=len(cp_built),
-                            already_built=cp_built,
-                            build_mode=mode,
-                            locals_snapshot=cp_locals_dict,
-                        )
-                    except Exception as e:
-                        logger.warning("checkpoint pre-write failed: %s", e)
-                        cp_row_id = None
-                _feat_t0 = time.time()
-                try:
-                    with com_error_boundary(
-                        feature_name=current_feat_name or "unknown",
-                        json_path=f"features[{len(built)}]",
-                        iface_method=f"HANDLERS[{feat['type']}]",
-                        feature_type=feat["type"],
-                    ):
-                        bf = with_reconnect(handler, ctx, feat, reconnect=reconnect)
-                except BuildError as be:
-                    emit_envelope_to_stderr(be)
-                    raise RuntimeError(be.diagnosis) from be
-                feature_metrics.append(
-                    {
-                        "name": current_feat_name,
-                        "type": feat["type"],
-                        "build_time_s": round(time.time() - _feat_t0, 3),
-                    }
+                step = run_feature_step(
+                    ctx,
+                    feat,
+                    opts=step_opts,
+                    feature_index=len(built),
+                    prev_volume_mm3=prev_volume_mm3,
+                    deferred_watermark=deferred_watermark,
+                    built=built,
+                    cp_built=cp_built,
                 )
-
-                # Stash plane info for plane-based sketches so child extrudes
-                # can inherit the parent plane's outward normal as their axis.
-                if bf.type in ("sketch_rectangle_on_plane", "sketch_circle_on_plane"):
-                    bf.parent_plane_normal = PLANE_NORMALS[feat["plane"]]
-
-                ctx.features_by_name[bf.name] = bf
-                built.append(bf.name)
-
-                # B-rep interrogation (E2.6): after the feature handler
-                # returns, walk its faces and accumulate into the
-                # manifest. Flag-gated; interrogate() itself returns
-                # None when the flag is OFF.
-                if brep_enabled and brep_manifest is not None:
-                    try:
-                        from ..brep import interrogate as _brep_interrogate
-
-                        result = _brep_interrogate(bf.sw_object, ctx)
-                        if result is not None:
-                            brep_manifest.add_feature(result, feature_type=bf.type)
-                    except Exception as e:
-                        # Fail-soft: interrogation must never break
-                        # the build. Log + continue; the brep block
-                        # for this feature will simply be absent.
-                        logger.warning(
-                            "brep interrogation failed for '%s': %s",
-                            bf.name,
-                            e,
-                        )
-
-                # Mass verification: read volume after this feature and
-                # compare delta against _expect if declared. Runs in ALL
-                # modes (no_dim, deferred_dim, default) because the volume
-                # delta is mode-independent.
-                if verify_mass:
-                    _ = doc.EditRebuild3  # ensure geometry is up to date
-                    # CreateMassProperty is a zero-arg COM method: pywin32
-                    # late-binding auto-invokes it on attribute access. Adding
-                    # () would call the *returned* IMassProperty and raise
-                    # DISP_E_MEMBERNOTFOUND. Same idiom as observe.sw_get_volume.
-                    mp = doc.Extension.CreateMassProperty
-                    vol_mm3 = mp.Volume * 1e9  # SW returns m³
-                    delta_mm3 = vol_mm3 - prev_volume_mm3
-                    expect = feat.get("_expect")
-                    entry: dict[str, Any] = {
-                        "feature": bf.name,
-                        "actual_mm3": round(delta_mm3, 2),
-                    }
-                    if expect and "mass_delta_mm3" in expect:
-                        expected = expect["mass_delta_mm3"]
-                        tol = expect.get("tolerance_mm3", 1.0)
-                        passed = abs(delta_mm3 - expected) <= tol
-                        entry["expected_mm3"] = expected
-                        entry["tolerance_mm3"] = tol
-                        entry["pass"] = passed
-                        if not passed:
-                            raise RuntimeError(
-                                f"mass verification failed for '{bf.name}': "
-                                f"actual delta {delta_mm3:.2f} mm³ vs "
-                                f"expected {expected} mm³ "
-                                f"(tolerance ±{tol} mm³)"
-                            )
-                    mass_results.append(entry)
-                    prev_volume_mm3 = vol_mm3
-
-                if no_dim:
-                    # rhs's were resolved upfront -- nothing to bind.
-                    pass
-                else:
-                    if deferred_dim:
-                        # Per-sketch deferred: replay just THIS handler's new
-                        # DeferredDim entries (popup batch for this sketch only),
-                        # then apply this feature's bindings + rebuild. This is
-                        # NECESSARY because:
-                        #   - End-of-build replay against geometry built at
-                        #     placeholder sizes fails on cuts like MMP's
-                        #     Cut_FlangeRecess (placeholder 10mm host < 20.5mm
-                        #     cut sketch -> FeatureCut4 returns None).
-                        #   - End-of-build replay against rhs-resolved-upfront
-                        #     geometry produces driven (reference) dims when the
-                        #     sketch is already fully-constrained by construction
-                        #     diagonals (CreateCenterRectangle), making Add2
-                        #     fail with "driven dim not selectable as dependent
-                        #     variable" -- empirically observed on MMP 2026-05-19.
-                        # Per-sketch replay keeps the dim driving (sketch was
-                        # under-constrained until D1/D2 added) AND resizes
-                        # geometry before downstream features.
-                        new_dims = ctx.deferred_dims[deferred_watermark:]
-                        if new_dims:
-                            _apply_deferred_dims(
-                                ctx,
-                                new_dims,
-                                label_prefix=f"Deferred dims for {bf.name}",
-                            )
-                            deferred_watermark = len(ctx.deferred_dims)
-
-                # L4 checkpoint: transition the pending row to committed now
-                # that handler + bindings + deferred dims + mass verification
-                # all succeeded. cp_built grows by one feature per iteration;
-                # the post_tree_hash covers the list INCLUDING this feature.
-                cp_built.append({"name": bf.name, "type": bf.type})
-                if cp_store is not None and cp_row_id is not None:
-                    try:
-                        _cp_commit(
-                            cp_store,
-                            cp_row_id,
-                            already_built=cp_built,
-                        )
-                    except Exception as e:
-                        logger.warning("checkpoint post-commit failed: %s", e)
-
-                # Apply this feature's parametric bindings BEFORE the next
-                # feature. Without this, a downstream cut may operate on a
-                # sketch still at placeholder size (the original MMP
-                # Cut_FlangeRecess failure mode -- placeholder diameter 6mm
-                # was smaller than the 12mm through-hole).
-                feat_bindings = _collect_feature_bindings(feat)
-                if feat_bindings:
-                    try:
-                        with com_error_boundary(
-                            feature_name=current_feat_name or "unknown",
-                            json_path=f"features[{len(built)-1}].bindings",
-                            iface_method="IEquationMgr.Add2",
-                            feature_type=feat["type"],
-                        ):
-                            indices = _apply_bindings(doc, feat_bindings)
-                    except BuildError as be:
-                        emit_envelope_to_stderr(be)
-                        raise RuntimeError(be.diagnosis) from be
-                    for (d, r), i in zip(feat_bindings, indices):
-                        binding_results.append(Binding(dim=d, rhs=r, add2_index=i))
-                    # Force a rebuild so subsequent geometry sees the
-                    # updated dim values, not the placeholder.
-                    _ = doc.EditRebuild3
+                # run_feature_step appends to ``built`` itself (right after the
+                # handler), so the name is present even on a later failure.
+                feature_metrics.append(step.feature_metric)
+                if step.mass_entry is not None:
+                    mass_results.append(step.mass_entry)
+                binding_results.extend(step.bindings)
+                # Thread the running values forward to the next feature.
+                prev_volume_mm3 = step.prev_volume_mm3
+                deferred_watermark = step.deferred_watermark
         except Exception as e:
-            # L4 checkpoint: mark the in-flight pending row failed so the
-            # history records which feature was being attempted. Swallow
-            # store errors -- the build error is the primary signal.
-            if cp_store is not None and cp_row_id is not None:
-                try:
-                    cp_store.mark_failed(cp_row_id)
-                except Exception:
-                    pass
+            # run_feature_step has already marked its in-flight checkpoint row
+            # failed before re-raising; here we just record the build outcome.
             elapsed = time.time() - t0
             telemetry_counter("builds_total", mode=mode, outcome="fail")
             telemetry_histogram("build_duration_seconds", elapsed, mode=mode)
