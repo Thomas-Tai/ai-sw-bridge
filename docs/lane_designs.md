@@ -276,8 +276,10 @@ CLIs; different transport.
 - **`GetActiveObject` before `Dispatch`** in `sw_com.get_sw_app()`.
   Attaches to the user's foreground SW instead of spawning a ghost
   via auto-launch (v0.13.0 fix, commit `c8627f3`).
-- **Write tools are restricted.** Only `sw_build` is exposed;
-  `sw_mutate_apply` and key-management ops stay CLI-only.
+- **Write tools are restricted.** Only `sw_build` is exposed; the
+  four mutate operations (`sw_propose_local_change`, `sw_dry_run`,
+  `sw_commit`, `sw_undo_last_commit`) and the key-management ops
+  stay CLI-only.
 
 **Code:** `src/ai_sw_bridge/mcp/` — `server.py`, `runtime.py`,
 `tools.py`, plus per-tool registration files (`_tool_observe.py`,

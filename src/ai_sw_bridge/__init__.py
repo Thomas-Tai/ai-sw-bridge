@@ -9,7 +9,15 @@ via PEP 562 __getattr__ so the package can be imported on non-Windows
 systems for the pure-Python utilities (locals_io, parameterize, spec).
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
+
+try:
+    __version__ = _pkg_version("ai-sw-bridge")
+except PackageNotFoundError:
+    # Source checkout without ``pip install -e .`` or frozen build
+    # without dist-info — fall back so ``ai_sw_bridge.__version__``
+    # is always a readable string for diagnostics.
+    __version__ = "0.0.0+unknown"
 
 _LAZY_MODULES = frozenset(
     {"locals_io", "mutate", "observe", "parameterize", "sw_com", "spec"}

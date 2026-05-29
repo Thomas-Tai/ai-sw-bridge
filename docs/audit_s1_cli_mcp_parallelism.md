@@ -62,9 +62,10 @@ of which the agent can recover from. No fix; design doc note added.
 
 ## Out of scope for S1
 
-- Tools excluded from MCP surface per §6.5 (sw_mutate_apply,
-  sw_codegen, sw_probe, sw_checkpoint_genkey/rekey/migrate): no MCP
-  body exists to compare.
+- Tools excluded from MCP surface per §6.5 (the four mutate
+  operations: sw_propose_local_change, sw_dry_run, sw_commit,
+  sw_undo_last_commit; plus sw_codegen, sw_probe,
+  sw_checkpoint_genkey/rekey/migrate): no MCP body exists to compare.
 - Argument-level schema differences (MCP has no `--dry-run`, `--lint`,
   `--verify-mass`, `--reconnect`, `--auto-retry` on sw_build): these
   are deliberate omissions from the v0.13 MCP surface, documented in

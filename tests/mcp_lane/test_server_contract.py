@@ -91,7 +91,12 @@ class TestToolRegistration:
     EXCLUDED_TOOLS = frozenset(
         {
             # Mutate stays CLI-only — requires human approval per call.
-            "sw_mutate_apply",
+            # If any of these ever get wrapped with @server.tool, the MCP
+            # client gains write access without the per-call HITL gate.
+            "sw_propose_local_change",
+            "sw_dry_run",
+            "sw_commit",
+            "sw_undo_last_commit",
             # Credential operations stay CLI-only.
             "sw_checkpoint_genkey",
             "sw_checkpoint_rekey",

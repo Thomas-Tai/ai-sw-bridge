@@ -43,7 +43,7 @@ If your `commit` operation changed a variable that the *active part* doesn't con
 
 SW only consumes BINARY `.swp` files produced by its own VBA editor. The format is an OLE Compound Document (D0CF11E0 magic) with an embedded VBA project. We can READ this (via `oletools.olevba`) but we cannot reliably WRITE it. The Path C workflow accepts a 5-second manual paste in lieu of full automation.
 
-If you figure out how to write back a valid binary `.swp` from a `.bas` file, the `run_macro` CLI is ready to invoke it. PRs welcome.
+If you figure out how to write back a valid binary `.swp` from a `.bas` file, `SldWorks.RunMacro` / `RunMacro2` will execute it. PRs welcome.
 
 ### B-rep: multi-body features duplicate role hints across bodies
 
