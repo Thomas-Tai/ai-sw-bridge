@@ -218,6 +218,24 @@ max_db_size_mb = 20.0
 
 ---
 
+## 8. In-context references, assembly mates, and sub-assemblies are out of scope
+
+The bridge authors **single parts**. Assembly-level workflows are deliberately not supported at this stage:
+
+- **In-context references** — a feature in one component that references another component's geometry (e.g. an extrude up-to a mating part's face). These are fragile across edits and a classic source of circular / under-defined references even in hand-built assemblies; driving them blind and out-of-process multiplies that risk.
+- **Mates** — `AddMate5` / `CreateMate` pass entity arrays across the assembly COM boundary, which is exactly the IDispatch-variant-array marshalling class that fails under late binding without a verified workaround.
+- **Sub-assembly orchestration** and **large-assembly performance** — not targeted.
+
+### How to recognize
+
+You opened an assembly (`.SLDASM`) and expected the bridge to insert components or add mates. `ai-sw-build` only creates/edits parts; assembly docs are read-only to the observe surface (`sw_get_mate_errors` reports *existing* mate state but cannot author mates).
+
+### Workaround
+
+Author the individual parts with the bridge, then assemble + mate them by hand in SOLIDWORKS. Assembly + mate primitives are tracked as v0.13+ backlog in [ROADMAP.md](ROADMAP.md) and [DEFERRED.md](DEFERRED.md). A deeper blocker: mates reference specific faces/edges, and the bridge has no durable topological reference for those yet (cf. §4 — edge selection is by literal coordinate), so robust mate authoring depends on solving that first.
+
+---
+
 ## Reporting new sharp edges
 
 If you hit something that's reproducible and not in this list, please open an issue with: the spec JSON, the full CLI output (including the traceback), the SW build (Help → About → revision string), and the `doc.GetPartBox(True)` output after the (partial) build.
