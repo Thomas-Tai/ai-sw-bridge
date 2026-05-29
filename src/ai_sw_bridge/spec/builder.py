@@ -33,6 +33,7 @@ from ..errors.wrapper import com_error_boundary, emit_envelope_to_stderr
 from ..errors.build_error import BuildError
 from ..locals_io import parse as parse_locals
 from ..sw_com import get_sw_app
+from ..units import SpecUnit, convert_spec_units
 from ..com.connection import with_reconnect
 from ..telemetry import counter as telemetry_counter
 from ..telemetry import histogram as telemetry_histogram
@@ -1859,6 +1860,13 @@ def build(
             cp_locals_dict = None
     if no_dim:
         spec = _resolve_rhs_in_spec(spec)
+        # Unit chokepoint (spec.md §6 / FR-1-02): if the spec declares a
+        # non-default length unit, normalize every length field to mm once,
+        # here, after rhs resolution has produced numeric values. mm-authored
+        # specs (the default, and the only unit v1 accepts) pass through
+        # without a copy. Document-display pref-set is a separate SEAT-gated
+        # concern in the v2 orchestrator — not this call.
+        spec = convert_spec_units(spec, spec.get("units", SpecUnit.MM))
 
     # B-rep interrogation (E2.6) is gated by flags.brep_interrogation.
     # The manifest is allocated only when the flag is ON so v0.11
