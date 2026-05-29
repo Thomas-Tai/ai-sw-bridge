@@ -78,6 +78,13 @@ FLAG_REGISTRY: dict[str, FeatureFlag] = {
         lane="M",
         removal_date="v0.14",
     ),
+    "schema_v2": FeatureFlag(
+        name="schema_v2",
+        default=False,
+        description="X5 schema v2 surface — accept (validated-but-inert) top-level material/units and optional drawing/export blocks plus per-feature tolerance.",
+        lane="core",
+        removal_date="v0.16",
+    ),
 }
 
 

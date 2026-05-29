@@ -27,6 +27,7 @@ from .schema import (
     PATTERN_TYPES,
     ALL_TYPES,
     EXPECT_SCHEMA,
+    schema_for_version,
 )
 
 # Sketch types that reference a parent feature via `of_feature` (sketched
@@ -80,11 +81,42 @@ def _strip_comments(node: Any) -> Any:
     return node
 
 
-def _check_schema(spec: dict[str, Any]) -> None:
-    """Raise ValidationError on the first jsonschema violation."""
-    cleaned = _strip_comments(spec)
+def _v2_enabled() -> bool:
+    """Whether the `schema_v2` feature flag is ON.
+
+    Resolved here (not cached) so env/TOML/CLI overrides apply per-call. The
+    flags module is the single source of truth for the four-level precedence
+    chain; we only read the one flag we own. Resolution is best-effort: if the
+    flags module is somehow unavailable, v2 stays OFF (fail-closed, so a v2
+    spec is rejected rather than silently accepted).
+    """
     try:
-        jsonschema.validate(instance=cleaned, schema=SCHEMA)
+        from ..flags import resolve as resolve_flags
+
+        return bool(resolve_flags().get("schema_v2", False))
+    except Exception:  # pragma: no cover - defensive; flags is in-tree
+        return False
+
+
+def _check_schema(spec: dict[str, Any]) -> None:
+    """Raise ValidationError on the first jsonschema violation.
+
+    Version-routed (X5, FR-1/FR-2): the schema validated against is chosen by
+    the spec's declared `schema_version` and the `schema_v2` flag. v1 specs use
+    the unchanged v1 ``SCHEMA``; v2 specs use the superset ``SCHEMA_V2`` only
+    when the flag is ON, otherwise the v1 schema's `const: 1` rejects them.
+    """
+    cleaned = _strip_comments(spec)
+    # `schema_version` may be absent/non-int (a malformed spec); fall back to
+    # the v1 schema, which carries the required-key + `const` checks that emit
+    # the right error.
+    raw_version = cleaned.get("schema_version") if isinstance(cleaned, dict) else None
+    version = raw_version if isinstance(raw_version, int) else SCHEMA["properties"][
+        "schema_version"
+    ]["const"]
+    schema = schema_for_version(version, v2_enabled=_v2_enabled())
+    try:
+        jsonschema.validate(instance=cleaned, schema=schema)
     except jsonschema.ValidationError as e:
         path = "/".join(str(p) for p in e.absolute_path)
         raise ValidationError(message=e.message, path=path or "$") from e
