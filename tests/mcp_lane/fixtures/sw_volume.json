@@ -1,0 +1,46 @@
+{
+  "tool": "sw_volume",
+  "args": {},
+  "result": {
+    "ok": false,
+    "doc_path": null,
+    "volume_mm3": null,
+    "volume_m3": null,
+    "surface_area_mm2": null,
+    "surface_area_m2": null,
+    "mass_kg": null,
+    "density_kg_m3": null,
+    "center_of_mass_mm": null,
+    "body_count": null,
+    "error": "dispatch failed: AttributeError('SldWorks.Application.ActiveDoc')"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
+    "volume_mm3": [
+      "$float",
+      "$none"
+    ],
+    "volume_m3": "$none",
+    "surface_area_mm2": [
+      "$float",
+      "$none"
+    ],
+    "surface_area_m2": "$none",
+    "mass_kg": "$none",
+    "density_kg_m3": "$none",
+    "center_of_mass_mm": [
+      "$list",
+      "$none"
+    ],
+    "body_count": "$none",
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}

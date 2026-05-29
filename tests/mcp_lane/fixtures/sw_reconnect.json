@@ -1,0 +1,15 @@
+{
+  "tool": "sw_reconnect",
+  "args": {},
+  "result": {
+    "ok": true,
+    "executor_alive": true,
+    "hint": "Fresh STA worker is up. Call sw_active_doc or sw_bbox to confirm the new SW session responds."
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "executor_alive": "$bool",
+    "hint": "$str"
+  },
+  "error": null
+}

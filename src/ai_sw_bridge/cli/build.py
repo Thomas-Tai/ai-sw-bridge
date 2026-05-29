@@ -26,7 +26,13 @@ from ..spec import validate, ValidationError
 from ..spec.builder import _resolve_rhs_in_spec, build
 from ..spec.lint import lint as spec_lint
 from .stability import add_tier, cli_stability
-from .streams import add_quiet_flag, apply_quiet
+from .streams import (
+    PlainFormatter,
+    add_locale_flag,
+    add_quiet_flag,
+    apply_locale,
+    apply_quiet,
+)
 
 
 def _emit(payload: dict, code: int) -> int:
@@ -58,6 +64,8 @@ def _write_build_metrics(result: Any, spec: dict[str, Any], sldprt_path: str) ->
         "bindings_added": len(result.bindings_added),
         "mass_verification": result.mass_verification or [],
     }
+    if getattr(result, "save_format", None) is not None:
+        metrics["save_format"] = result.save_format
     metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     return str(metrics_path)
 
@@ -231,6 +239,18 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--save-format",
+        dest="save_format",
+        choices=["current", "2024", "2023", "2022", "2021"],
+        default="current",
+        help=(
+            "Target file-format year for SaveAs3 (W2.4). 'current' (default) "
+            "saves in the running SW session's native version. Year values "
+            "(2021..2024) target older format versions for back-compat with "
+            "older SW seats. Ignored when --save-as is not set."
+        ),
+    )
+    parser.add_argument(
         "--verify-mass",
         dest="verify_mass",
         action="store_true",
@@ -268,6 +288,42 @@ def main() -> int:
             "`ai-sw-history` to query and `rollback_to` to revert the "
             "locals file after a bad feature. Does NOT touch the running "
             "SW session on rollback (software-side only)."
+        ),
+    )
+    parser.add_argument(
+        "--checkpoint-encrypt",
+        dest="checkpoint_encrypt",
+        default=None,
+        metavar="SOURCE",
+        help=(
+            "[experimental] Enable at-rest encryption for checkpoint "
+            "locals_snapshot and com_call_log columns. SOURCE is one of: "
+            "env:NAME, file:/path, keyring:SERVICE, or prompt. "
+            "Implies --checkpoint."
+        ),
+    )
+    parser.add_argument(
+        "--disable-addins",
+        dest="disable_addins",
+        action="store_true",
+        default=False,
+        help=(
+            "Pre-build add-in check (W7.1). Enumerates loaded add-ins "
+            "via ISldWorks::GetEnabledAddIns. Emits a stderr warning if "
+            "any known-problematic add-in is active. Does NOT unload "
+            "add-ins -- see docs/addins_research.md §4 for why. The user "
+            "must disable interfering add-ins manually (Tools > Add-Ins) "
+            "for the build duration."
+        ),
+    )
+    parser.add_argument(
+        "--strict-addins",
+        dest="strict_addins",
+        action="store_true",
+        default=False,
+        help=(
+            "Hardens --disable-addins: exit rc=4 BEFORE the build starts "
+            "when any known-problematic add-in is loaded. Use in CI."
         ),
     )
     parser.add_argument(
@@ -318,15 +374,20 @@ def main() -> int:
         ),
     )
     add_quiet_flag(parser)
+    add_locale_flag(parser)
     args = parser.parse_args()
     apply_quiet(args)
+    apply_locale(args)
 
     # Observability triad (P3.1): leveled logging. --verbose is shorthand
-    # for --log-level debug.
+    # for --log-level debug. PlainFormatter strips ANSI when NO_COLOR is
+    # set or stderr is not a TTY (W2.3).
     level_name = "debug" if args.verbose else args.log_level
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(PlainFormatter(fmt="%(name)s %(levelname)s %(message)s"))
     logging.basicConfig(
         level=getattr(logging, level_name.upper()),
-        format="%(name)s %(levelname)s %(message)s",
+        handlers=[_handler],
     )
 
     # Feature-flag resolution (spec.md §8.7): CLI > env > toml > defaults.
@@ -346,6 +407,17 @@ def main() -> int:
             },
             2,
         )
+
+    # --checkpoint-encrypt implies --checkpoint
+    checkpoint_key_source = None
+    if args.checkpoint_encrypt:
+        args.checkpoint = True
+        from ..checkpoint.crypto import KeySource, KeySourceError
+
+        try:
+            checkpoint_key_source = KeySource.parse(args.checkpoint_encrypt)
+        except KeySourceError as exc:
+            return _emit({"ok": False, "error": str(exc)}, 2)
 
     p = Path(args.spec_path)
     if not p.exists():
@@ -449,14 +521,57 @@ def main() -> int:
         # missing vars in locals".
         return _emit(payload, 0 if payload["ok"] else 5)
 
+    # W7.1 — pre-build add-in check (docs/addins_research.md §7).
+    # Runs BEFORE the first COM write so --strict-addins can abort
+    # without side effects.
+    if args.disable_addins or args.strict_addins:
+        from ..observe import sw_get_enabled_addins
+
+        addin_result = sw_get_enabled_addins()
+        if not addin_result["ok"]:
+            print(
+                f"WARNING: add-in enumeration failed: {addin_result['error']}",
+                file=sys.stderr,
+            )
+        elif addin_result["known_problematic"]:
+            msg = (
+                f"Known-problematic add-ins loaded: "
+                f"{addin_result['known_problematic']!r}. "
+                f"See docs/addins_research.md §5 for behavior. "
+                f"To disable: Tools → Add-Ins → uncheck → restart SW."
+            )
+            print(msg, file=sys.stderr)
+            if args.strict_addins:
+                return _emit(
+                    {
+                        "ok": False,
+                        "error": "strict_addins_blocked",
+                        "known_problematic": addin_result["known_problematic"],
+                        "hint": (
+                            "Disable the listed add-ins via "
+                            "Tools → Add-Ins, then retry."
+                        ),
+                    },
+                    4,
+                )
+        elif addin_result["addins"]:
+            # Non-problematic add-ins loaded — informational only.
+            print(
+                f"Add-ins loaded (none known-problematic): "
+                f"{addin_result['addins']!r}",
+                file=sys.stderr,
+            )
+
     result = build(
         spec,
         no_dim=args.no_dim,
         deferred_dim=args.deferred_dim,
         save_as=args.save_as,
+        save_format=args.save_format,
         verify_mass=args.verify_mass,
         reconnect=args.reconnect,
         checkpoint=args.checkpoint,
+        checkpoint_key_source=checkpoint_key_source,
     )
     # BuildResult.to_dict() owns the wire format; CLI only adds CLI-level
     # context (here: which mode the caller picked).
@@ -465,6 +580,8 @@ def main() -> int:
     payload["deferred_dim"] = args.deferred_dim
     payload["reconnect"] = args.reconnect
     payload["checkpoint"] = args.checkpoint
+    payload["checkpoint_encrypt"] = args.checkpoint_encrypt is not None
+    payload["save_format"] = args.save_format
     # Observability triad (P3.1): drop a build_metrics.json sidecar next to
     # the saved part so a later run can diff per-feature timings.
     if result.save_as:

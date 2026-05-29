@@ -1,0 +1,96 @@
+{
+  "tool": "sw_bbox",
+  "args": {},
+  "result": {
+    "ok": true,
+    "doc_path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\captures\\v0_10_validation\\dr_metrics_test.SLDPRT",
+    "x_min_mm": -12.5,
+    "x_max_mm": 12.5,
+    "x_span_mm": 25.0,
+    "y_min_mm": -12.5,
+    "y_max_mm": 12.5,
+    "y_span_mm": 25.0,
+    "z_min_mm": 0.0,
+    "z_max_mm": 80.0,
+    "z_span_mm": 80.0,
+    "x_min_m": -0.0125,
+    "x_max_m": 0.0125,
+    "y_min_m": -0.0125,
+    "y_max_m": 0.0125,
+    "z_min_m": 0.0,
+    "z_max_m": 0.08,
+    "error": null
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
+    "x_min_mm": [
+      "$float",
+      "$none"
+    ],
+    "x_max_mm": [
+      "$float",
+      "$none"
+    ],
+    "x_span_mm": [
+      "$float",
+      "$none"
+    ],
+    "y_min_mm": [
+      "$float",
+      "$none"
+    ],
+    "y_max_mm": [
+      "$float",
+      "$none"
+    ],
+    "y_span_mm": [
+      "$float",
+      "$none"
+    ],
+    "z_min_mm": [
+      "$float",
+      "$none"
+    ],
+    "z_max_mm": [
+      "$float",
+      "$none"
+    ],
+    "z_span_mm": [
+      "$float",
+      "$none"
+    ],
+    "x_min_m": [
+      "$float",
+      "$none"
+    ],
+    "x_max_m": [
+      "$float",
+      "$none"
+    ],
+    "y_min_m": [
+      "$float",
+      "$none"
+    ],
+    "y_max_m": [
+      "$float",
+      "$none"
+    ],
+    "z_min_m": [
+      "$float",
+      "$none"
+    ],
+    "z_max_m": [
+      "$float",
+      "$none"
+    ],
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}

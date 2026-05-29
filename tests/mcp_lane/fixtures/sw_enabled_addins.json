@@ -1,0 +1,28 @@
+{
+  "tool": "sw_enabled_addins",
+  "args": {},
+  "result": {
+    "ok": true,
+    "addins": [],
+    "known_problematic": [],
+    "error": "api_not_present"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "addins": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "known_problematic": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}

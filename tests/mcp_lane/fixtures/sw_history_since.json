@@ -1,0 +1,20 @@
+{
+  "tool": "sw_history_since",
+  "args": {
+    "part_name": "NonexistentPart",
+    "since_ts": "2024-01-01T00:00:00"
+  },
+  "result": {
+    "ok": false,
+    "reason": "no_checkpoints",
+    "part_name": "NonexistentPart",
+    "root": ".checkpoints"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "reason": "$str",
+    "part_name": "$str",
+    "root": "$str"
+  },
+  "error": null
+}

@@ -21,6 +21,7 @@ ENV/
 .vscode/
 .idea/
 .qoder/
+.claude/
 *.swp
 
 # OS
@@ -65,3 +66,12 @@ tools/snapshots-e2e/
 
 
 docs/central_idea/
+
+# Upstream reference repo clones — see docs/reference_repos.md
+# (re-fetchable via tools/clone_references.sh; never commit the clones
+# themselves, they bloat the repo and are public elsewhere).
+references/
+
+# PR body + release-note drafts (one-shot artifacts; not part of the repo)
+.github/pr_body_*.md
+.github/release_notes_*.md

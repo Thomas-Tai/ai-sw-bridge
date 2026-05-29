@@ -1,0 +1,22 @@
+{
+  "tool": "sw_custom_props",
+  "args": {},
+  "result": {
+    "ok": false,
+    "properties": {},
+    "active_configuration": null,
+    "count": 0,
+    "error": "GetCustomInfoNames3 failed: AttributeError('<unknown>.GetCustomInfoNames3')"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "properties": {},
+    "active_configuration": "$none",
+    "count": "$int",
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}

@@ -1,0 +1,32 @@
+{
+  "tool": "sw_feature_errors",
+  "args": {},
+  "result": {
+    "ok": true,
+    "doc_path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\captures\\v0_10_validation\\dr_metrics_test.SLDPRT",
+    "total_features": 38,
+    "issues": [],
+    "error": null
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
+    "total_features": [
+      "$int",
+      "$none"
+    ],
+    "issues": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}

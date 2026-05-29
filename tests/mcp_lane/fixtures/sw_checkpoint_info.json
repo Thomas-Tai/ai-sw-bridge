@@ -1,0 +1,18 @@
+{
+  "tool": "sw_checkpoint_info",
+  "args": {
+    "part_name": "NonexistentPart"
+  },
+  "result": {
+    "ok": false,
+    "error": "checkpoint DB not found: .checkpoints\\NonexistentPart.sqlite"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}

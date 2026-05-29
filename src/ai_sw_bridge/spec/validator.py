@@ -382,6 +382,22 @@ def _check_face_role_shapes(spec: dict[str, Any]) -> None:
             )
 
 
+def compute_referenced_face_roles(spec: dict[str, Any]) -> set[tuple[str, str]]:
+    """Compute which (parent_feature_name, face_role) pairs are referenced
+    by downstream features. Used by the builder to enable lazy B-rep
+    interrogation (spec.md §2.11): features not in this set can skip
+    face walking entirely."""
+    refs: set[tuple[str, str]] = set()
+    for feat in spec.get("features", []):
+        if feat.get("type") not in FACE_BOUND_TYPES:
+            continue
+        parent = feat.get("of_feature")
+        role = feat.get("face_role")
+        if parent and role:
+            refs.add((parent, role))
+    return refs
+
+
 def validate(spec: dict[str, Any], spec_path: Path | None = None) -> None:
     """Run all checks. Raises ValidationError on first failure.
 

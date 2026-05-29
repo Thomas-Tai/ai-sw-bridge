@@ -57,24 +57,47 @@ _COINIT_DONE: bool = False
 
 
 def get_sw_app() -> Any:
-    """Dispatch (or attach to) the running SldWorks.Application.
+    """Attach to the running SldWorks.Application, or launch one.
 
-    Caches the Dispatch result and the CoInitialize call. Repeated calls
-    in the same process reuse the same Application handle -- important
-    for long-running services (MCP wrappers, future servers) that
-    otherwise leak STA apartments and re-dispatch SW per request.
+    Tries ``GetActiveObject`` first to attach to a SOLIDWORKS instance
+    already in the COM Running Object Table (ROT). If that fails (no
+    running instance registered, or the calling process can't see it),
+    falls back to ``Dispatch`` which either re-uses an existing
+    instance or auto-launches a fresh one per the SW COM registration.
 
-    Raises pywintypes.com_error if SOLIDWORKS is not running. The caller
-    can catch and surface a friendlier message ("please open SOLIDWORKS").
-    Call release_sw_app() to drop the cache (e.g. when SW has been
-    restarted and the old Dispatch handle is dead).
+    The GetActiveObject-first ordering matters for out-of-process
+    callers (MCP server subprocess, IDE plugins) that would otherwise
+    spawn a *separate* headless SW instance and miss the user's
+    foreground document. Caught by v0.13 Wave 5 Phase 3 audit when a
+    Claude-Desktop-launched ``ai-sw-mcp.exe`` created its own ghost
+    SW process instead of attaching to the foreground one.
+
+    Caches the result + the ``CoInitialize`` call. Repeated calls in
+    the same process reuse the same handle -- important for long-
+    running services (MCP wrappers, future servers) that otherwise
+    leak STA apartments and re-dispatch SW per request.
+
+    Raises ``pywintypes.com_error`` only if both ``GetActiveObject``
+    AND ``Dispatch`` fail (typically: SW not installed or registry
+    misconfigured). Call ``release_sw_app()`` to drop the cache
+    (e.g. when SW has been restarted and the old handle is dead).
     """
     global _CACHED_SW_APP, _COINIT_DONE
     if not _COINIT_DONE:
         pythoncom.CoInitialize()
         _COINIT_DONE = True
     if _CACHED_SW_APP is None:
-        _CACHED_SW_APP = win32com.client.Dispatch("SldWorks.Application")
+        # ROT-attach first: prefer an already-running SW instance so
+        # out-of-process callers (MCP subprocess, IDE plugins) see
+        # the user's foreground session and its open documents.
+        try:
+            _CACHED_SW_APP = win32com.client.GetActiveObject("SldWorks.Application")
+            logger.debug("attached to running SldWorks via GetActiveObject")
+        except (
+            Exception
+        ) as exc:  # noqa: BLE001 -- broad: pywintypes.com_error + OSError
+            logger.debug("GetActiveObject failed (%r); falling back to Dispatch", exc)
+            _CACHED_SW_APP = win32com.client.Dispatch("SldWorks.Application")
         _check_sw_version(_CACHED_SW_APP)
     return _CACHED_SW_APP
 

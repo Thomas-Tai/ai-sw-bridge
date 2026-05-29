@@ -1,9 +1,16 @@
 # Refactor Proposal: Sketch-Handler Class Hierarchy
 
-**Status:** DRAFT — not yet approved or applied.
-**Author:** code audit, 2026-05-20
-**Target branch:** `refactor/class-hierarchy` (already created at v0.6.1).
-**Rollback:** `git reset --hard pre-class-refactor-2026-05-20` (annotated tag at master HEAD before any refactor work).
+**Status:** ✅ APPLIED — shipped in v0.7+. Live code at
+[`src/ai_sw_bridge/spec/sketches/`](../src/ai_sw_bridge/spec/sketches/)
+with `base.py` (SketchHandler ABC) + per-feature handlers
+(rectangle_on_plane.py, rectangle_on_face.py, circle_on_plane.py,
+circle_on_face.py, circles_on_face.py).
+
+This document is retained as the design rationale — answers "why a
+class hierarchy and not functions?" without re-litigating from
+scratch. Read before proposing further sketch-handler refactors.
+
+**Author:** code audit, 2026-05-20.
 
 ---
 

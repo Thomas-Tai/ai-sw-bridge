@@ -1,7 +1,7 @@
 # Supply-chain audit ledger
 
 A flat ledger of reviewed upstream CVEs and license/repo events for
-every harvested dependency tracked in [`harvest_plan.md`](central_idea/harvest_plan.md).
+every harvested dependency tracked in `CONTRIBUTING.md` §"Port attribution".
 
 **Authority:** project lead reviews and signs off each entry.
 **Cadence:** quarterly review even when no events; per-event review
@@ -54,7 +54,7 @@ When `tools/check_upstream_drift.py` flags an upstream:
       new failure mode · CVE-relevant fixes
 - [ ] Decision tree:
   - **Behavior-neutral upstream cleanup** → bump the pin in
-    [`harvest_plan.md`](central_idea/harvest_plan.md) §5; no code
+    `CONTRIBUTING.md` §"Port attribution" §5; no code
     change
   - **API surface delta that doesn't affect our usage** → bump pin,
     note in §3 below
@@ -79,11 +79,11 @@ What this doc does NOT cover:
 - **Transitive dependency CVEs** (numpy, sqlite-vec, jsonschema,
   pywin32) — those are tracked via pip-audit or equivalent in CI;
   this doc covers only **source-harvested ports** from
-  [`harvest_plan.md`](central_idea/harvest_plan.md) §2 (currently:
+  `CONTRIBUTING.md` §"Port attribution" §2 (currently:
   SolidworksMCP-python).
 - **Vulnerabilities in our own bridge code** — those are tracked
   via private security advisories at the GitHub repo per
-  [`privacy_review.md`](central_idea/privacy_review.md) §7.
+  *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §7.
 
 ## 5. Subscription setup (one-time)
 
@@ -101,11 +101,11 @@ this doc.
 
 ## See also
 
-- [`harvest_plan.md`](central_idea/harvest_plan.md) §1 license
+- `CONTRIBUTING.md` §"Port attribution" §1 license
   compatibility matrix, §5 per-recipe pinned commits
 - [`supply_chain_security.md`](supply_chain_security.md) — the
   control surface this ledger feeds
-- [`privacy_review.md`](central_idea/privacy_review.md) §7
+- *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §7
   disclosure process
 - [`tools/check_upstream_drift.py`](../tools/check_upstream_drift.py)
   — the drift monitor

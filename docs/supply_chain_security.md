@@ -3,7 +3,7 @@
 Controls on upstream port hygiene, CVE response, and license audit. Operational document for maintainers and security reviewers.
 
 **Last updated:** 2026-05-23
-**Companion:** [`requirements.md`](central_idea/requirements.md) §4.10 (summary) + [`harvest_plan.md`](central_idea/harvest_plan.md) §1, §7, §8, §9 (license matrix + upstream relationships + community contributions + license audit automation).
+**Companion:** *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §4.10 (summary) + `CONTRIBUTING.md` §"Port attribution" §1, §7, §8, §9 (license matrix + upstream relationships + community contributions + license audit automation).
 
 ---
 
@@ -49,7 +49,7 @@ The same metadata appears in `CONTRIBUTING.md`:
 | src/ai_sw_bridge/errors/circuit_breaker.py | SolidworksMCP-python | MIT | <commit-sha> | 2026-XX-XX | TBD | <notes> |
 ```
 
-CI gate (per [`harvest_plan.md`](central_idea/harvest_plan.md) §9): `tools/license_lint.py` (planned, v0.11) verifies that every file with a port docstring has a matching CONTRIBUTING row, and vice versa.
+CI gate (per `CONTRIBUTING.md` §"Port attribution" §9): `tools/license_lint.py` (planned, v0.11) verifies that every file with a port docstring has a matching CONTRIBUTING row, and vice versa.
 
 ---
 
@@ -68,7 +68,7 @@ For each upstream, "drift" is `count of commits between (our pin) and (upstream 
 
 ### 3.2 Re-port decision matrix
 
-(Mirrors [`harvest_plan.md`](central_idea/harvest_plan.md) §7.2 — repeated here for the security context.)
+(Mirrors `CONTRIBUTING.md` §"Port attribution" §7.2 — repeated here for the security context.)
 
 | Upstream change | Action |
 |---|---|
@@ -76,8 +76,8 @@ For each upstream, "drift" is `count of commits between (our pin) and (upstream 
 | Behavioral bug fix in our ported lines | Re-port within next MINOR cycle. |
 | Refactor that doesn't change behavior | No action; opportunistic re-port. |
 | New upstream feature we don't use | No action. |
-| License change to copyleft | Initiate port rollback per [`harvest_plan.md`](central_idea/harvest_plan.md) §5.7. |
-| Upstream archived / unmaintained | Decision recorded in [`central_idea/decisions.md`](central_idea/decisions.md); options: continue with pinned version forever; fork; or rewrite. |
+| License change to copyleft | Initiate port rollback per `CONTRIBUTING.md` §"Port attribution" §5.7. |
+| Upstream archived / unmaintained | Decision recorded in [`decisions.md`](decisions.md); options: continue with pinned version forever; fork; or rewrite. |
 
 ### 3.3 Tooling (shipped, v0.11)
 
@@ -215,7 +215,7 @@ Adding a new runtime dependency requires:
 1. Justification in the PR description (why this dep, what we considered).
 2. License audit (must be MIT or compatible).
 3. Maintenance signal check (recent commits, responsive issues).
-4. Decision recorded in [`central_idea/decisions.md`](central_idea/decisions.md).
+4. Decision recorded in [`decisions.md`](decisions.md).
 
 The default is "don't add a dependency." Stdlib-first; selective adoption only when the stdlib path is genuinely worse.
 
@@ -250,7 +250,7 @@ The default is "don't add a dependency." Stdlib-first; selective adoption only w
 2. Audit our current ports against the malicious commit window — did anything we ported land during the compromised period?
 3. If yes: revert + re-port from a verified clean commit.
 4. Notify the upstream maintainer and other downstream consumers (responsible disclosure).
-5. Decision recorded in [`central_idea/decisions.md`](central_idea/decisions.md).
+5. Decision recorded in [`decisions.md`](decisions.md).
 
 ---
 
@@ -262,7 +262,7 @@ This file maintains a brief audit history:
 |---|---|---|
 | 2026-05-23 | Initial supply-chain security review created | Process documented; tooling deferred to v0.11 / v0.12. |
 
-Future audits append rows here. Material changes documented in [`central_idea/decisions.md`](central_idea/decisions.md).
+Future audits append rows here. Material changes documented in [`decisions.md`](decisions.md).
 
 ---
 
@@ -270,7 +270,7 @@ Future audits append rows here. Material changes documented in [`central_idea/de
 
 This document does NOT cover:
 
-- **User data privacy.** See [`central_idea/privacy_review.md`](central_idea/privacy_review.md).
+- **User data privacy.** See *(retired v0.13.0; see decisions.md 2026-05-28 entry)*.
 - **Cryptographic operations.** The bridge does not implement crypto; it consumes hashing (SHA-256 for fingerprints) via stdlib. Any cryptographic vulnerabilities are inherited from Python's `hashlib` and out of bridge scope.
 - **Authentication / authorization.** The bridge runs as the user; there is no multi-user authentication model.
 - **Code signing of releases.** Documented separately in [`release_engineering.md`](release_engineering.md) §6.3.

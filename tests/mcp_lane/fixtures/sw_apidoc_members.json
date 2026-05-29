@@ -1,0 +1,25 @@
+{
+  "tool": "sw_apidoc_members",
+  "args": {},
+  "result": {
+    "ok": true,
+    "interfaces": [
+      "GettingStarted",
+      "Macro_Features",
+      "Miscellaneous",
+      "Overview",
+      "_chm_decompiled_apiprogguide"
+    ],
+    "count": 5
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "interfaces": {
+      "__list__": true,
+      "len": "*",
+      "item": "$str"
+    },
+    "count": "$int"
+  },
+  "error": null
+}

@@ -9,6 +9,8 @@ Subcommands:
   screenshot          -> sw_screenshot(width, height, fit_view, filename)
   measure             -> sw_measure(entity_a, entity_b)
   mate_errors         -> sw_get_mate_errors()  [assembly only]
+  custom_props        -> sw_get_custom_props()  [experimental]
+  addins              -> sw_get_enabled_addins()  [experimental, W7.1]
 
 Each subcommand prints a single JSON object to stdout and exits 0 if the
 underlying tool returned ok=True, else 1. Both --key=value and --key value
@@ -25,6 +27,8 @@ from typing import Any
 from ..observe import (
     sw_get_active_doc,
     sw_get_bbox,
+    sw_get_custom_props,
+    sw_get_enabled_addins,
     sw_get_equations,
     sw_get_feature_errors,
     sw_get_mate_errors,
@@ -32,7 +36,7 @@ from ..observe import (
     sw_measure,
     sw_screenshot,
 )
-from .stability import add_tier, cli_stability
+from .stability import add_subcommand_tier, add_tier, cli_stability
 from .streams import add_quiet_flag, apply_quiet
 
 
@@ -71,6 +75,14 @@ def _run_screenshot(args: argparse.Namespace) -> dict[str, Any]:
 
 def _run_measure(args: argparse.Namespace) -> dict[str, Any]:
     return sw_measure(entity_a=args.entity_a, entity_b=args.entity_b)
+
+
+def _run_custom_props(_args: argparse.Namespace) -> dict[str, Any]:
+    return sw_get_custom_props()
+
+
+def _run_addins(_args: argparse.Namespace) -> dict[str, Any]:
+    return sw_get_enabled_addins()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -176,6 +188,32 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Walk an assembly's mate set and report per-mate status (assembly only).",
     )
     p.set_defaults(func=_run_mate_errors)
+
+    p = subs.add_parser(
+        "custom_props",
+        help="Read every custom property from the active document.",
+        description=(
+            "Read custom properties via IModelDoc2.GetCustomInfoNames3 and "
+            "GetCustomInfoValue2. Works on parts, assemblies, and drawings. "
+            "Returns an empty properties dict when no custom props are set."
+        ),
+    )
+    add_subcommand_tier(p, "experimental")
+    p.set_defaults(func=_run_custom_props)
+
+    p = subs.add_parser(
+        "addins",
+        help="List currently-loaded SOLIDWORKS add-ins (W7.1).",
+        description=(
+            "W7.1 — enumerate add-ins via ISldWorks::GetEnabledAddIns. "
+            "Reports every loaded add-in name and flags those in the "
+            "curated KNOWN_PROBLEMATIC_ADDINS list "
+            "(docs/addins_research.md §5). Two-stream contract: stdout "
+            "JSON, stderr diagnostics."
+        ),
+    )
+    add_subcommand_tier(p, "experimental")
+    p.set_defaults(func=_run_addins)
 
     return parser
 

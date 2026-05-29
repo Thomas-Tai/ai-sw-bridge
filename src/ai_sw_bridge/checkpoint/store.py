@@ -45,7 +45,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from .crypto import KeySource, KeySourceError, decrypt_cell, encrypt_cell
+
+if TYPE_CHECKING:
+    pass
 
 _DEFAULT_ROOT = Path(".checkpoints")
 
@@ -80,6 +85,19 @@ CREATE INDEX IF NOT EXISTS idx_part_timestamp
 CREATE INDEX IF NOT EXISTS idx_status
     ON checkpoints(status);
 """
+
+_META_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS _meta (
+    encrypted_at     TEXT NOT NULL,
+    encryption_algo  TEXT NOT NULL,
+    encrypted_cols   TEXT NOT NULL,
+    kdf_algo         TEXT,
+    kdf_salt         TEXT,
+    key_fingerprint  TEXT NOT NULL
+);
+"""
+
+_ENCRYPTED_COLUMNS = ["locals_snapshot", "com_call_log"]
 
 
 @dataclass(frozen=True)
@@ -138,12 +156,17 @@ class CheckpointStore:
             ``<root>/<part_name>.sqlite``.
         root: Parent directory for checkpoint databases.  Defaults to
             ``./.checkpoints``.  Tests pass ``tmp_path`` here.
+        key_source: Optional encryption key source. When provided,
+            enables at-rest encryption for ``locals_snapshot`` and
+            ``com_call_log`` columns.
     """
 
     def __init__(
         self,
         part_name: str,
         root: Path | None = None,
+        *,
+        key_source: KeySource | None = None,
     ) -> None:
         if not part_name:
             raise ValueError("part_name must be a non-empty string")
@@ -151,6 +174,13 @@ class CheckpointStore:
         self._root = Path(root) if root is not None else _DEFAULT_ROOT
         self._db_path = self._root / f"{part_name}.sqlite"
         self._conn: sqlite3.Connection | None = None
+        self._key_source = key_source
+        # Set by _connect() when the on-disk DB is encrypted but no
+        # key_source was supplied. Read-only diagnostics (e.g.
+        # ``ai-sw-checkpoint info``) are allowed; writes are refused
+        # so a no-key process cannot inject plaintext rows into an
+        # otherwise-encrypted DB.
+        self._read_only_encrypted = False
         self._counter_emit: Any | None = None
         try:
             from ..telemetry import counter as _telemetry_counter
@@ -158,6 +188,13 @@ class CheckpointStore:
             self._counter_emit = _telemetry_counter
         except Exception:
             self._counter_emit = None
+
+        # Trigger connection to validate fingerprint if key_source provided
+        # and DB already exists. Also fires when the DB exists but no
+        # key_source was supplied, so _read_only_encrypted is set
+        # before any write attempt.
+        if self._db_path.exists():
+            self._connect()
 
     @property
     def part_name(self) -> str:
@@ -175,8 +212,110 @@ class CheckpointStore:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(_SCHEMA_SQL)
         conn.commit()
+
+        # Check if _meta table exists and validate fingerprint if key_source provided
+        meta_row = (
+            conn.execute("SELECT key_fingerprint FROM _meta LIMIT 1").fetchone()
+            if self._table_exists(conn, "_meta")
+            else None
+        )
+
+        if meta_row is not None:
+            # DB is encrypted.
+            if self._key_source is None:
+                # No key supplied: allow open in read-only mode so
+                # diagnostics like ``ai-sw-checkpoint info`` work
+                # without the key. Writes are guarded by
+                # _check_writable() below — a no-key process MUST NOT
+                # be able to inject plaintext rows into an otherwise-
+                # encrypted DB.
+                self._read_only_encrypted = True
+            else:
+                stored_fp = meta_row[0]
+                supplied_fp = self._key_source.fingerprint()
+                if stored_fp != supplied_fp:
+                    conn.close()
+                    raise KeySourceError(
+                        f"fingerprint mismatch: stored={stored_fp}, "
+                        f"supplied={supplied_fp}"
+                    )
+
         self._conn = conn
         return conn
+
+    def _check_writable(self) -> None:
+        """Raise KeySourceError if the DB is encrypted and no key was supplied.
+
+        Protects the encrypted DB's invariant: every row in an encrypted
+        store has the ``fernet_v1:`` prefix. A no-key writer would land
+        plaintext rows alongside encrypted ones, silently defeating the
+        ``--checkpoint-encrypt`` guarantee.
+        """
+        if self._read_only_encrypted:
+            raise KeySourceError(
+                f"checkpoint DB {self._db_path} is encrypted; "
+                "key_source is required for writes (open the store with "
+                "key_source= to insert/commit/rollback)"
+            )
+
+    def _table_exists(self, conn: sqlite3.Connection, table_name: str) -> bool:
+        """Check if a table exists in the database."""
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (table_name,),
+        ).fetchone()
+        return row is not None
+
+    def _ensure_meta(self, conn: sqlite3.Connection) -> None:
+        """Create _meta table and insert row if not exists (for encrypted stores)."""
+        if self._key_source is None:
+            return
+
+        if not self._table_exists(conn, "_meta"):
+            conn.executescript(_META_SCHEMA_SQL)
+
+            # Get KDF info if using PromptKeySource
+            from .crypto import PromptKeySource
+
+            kdf_algo: str | None = None
+            kdf_salt: str | None = None
+            if isinstance(self._key_source, PromptKeySource):
+                # Trigger key derivation to get the salt
+                self._key_source.get_key()
+                kdf_algo = "pbkdf2-sha256-600000"
+                if self._key_source.salt is not None:
+                    import base64
+
+                    kdf_salt = base64.b64encode(self._key_source.salt).decode("ascii")
+
+            import json
+
+            conn.execute(
+                "INSERT INTO _meta "
+                "(encrypted_at, encryption_algo, encrypted_cols, kdf_algo, "
+                "kdf_salt, key_fingerprint) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    datetime.now(timezone.utc).isoformat(),
+                    "fernet-v1",
+                    json.dumps(_ENCRYPTED_COLUMNS),
+                    kdf_algo,
+                    kdf_salt,
+                    self._key_source.fingerprint(),
+                ),
+            )
+            conn.commit()
+
+    def _wrap(self, value: str) -> str:
+        """Encrypt a value if encryption is enabled."""
+        if self._key_source is None:
+            return value
+        return encrypt_cell(value, self._key_source.get_key())
+
+    def _unwrap(self, value: str) -> str:
+        """Decrypt a value if encryption is enabled."""
+        if self._key_source is None:
+            return value
+        return decrypt_cell(value, self._key_source.get_key())
 
     def _emit(self, outcome: str) -> None:
         if self._counter_emit is None:
@@ -203,8 +342,11 @@ class CheckpointStore:
         Returns the new row id.  Callers pass this id to :meth:`commit` or
         :meth:`mark_failed` after the feature attempt.
         """
+        self._check_writable()
         conn = self._connect()
+        self._ensure_meta(conn)
         ts = timestamp or datetime.now(timezone.utc).isoformat()
+        wrapped_locals = self._wrap(locals_snapshot)
         cur = conn.execute(
             "INSERT INTO checkpoints "
             "(part_name, feature_index, feature_name, feature_type, timestamp, "
@@ -217,7 +359,7 @@ class CheckpointStore:
                 feature_name,
                 feature_type,
                 ts,
-                locals_snapshot,
+                wrapped_locals,
                 spec_hash,
                 pre_tree_hash,
                 build_mode,
@@ -242,7 +384,9 @@ class CheckpointStore:
         stray commit call on a row that was already marked ``failed`` or
         ``rolled_back`` by a concurrent code path.
         """
+        self._check_writable()
         conn = self._connect()
+        wrapped_log = self._wrap(com_call_log)
         cur = conn.execute(
             "UPDATE checkpoints "
             "SET status = ?, post_tree_hash = ?, com_call_log = ? "
@@ -250,7 +394,7 @@ class CheckpointStore:
             (
                 CheckpointStatus.COMMITTED.value,
                 post_tree_hash,
-                com_call_log,
+                wrapped_log,
                 row_id,
                 self._part_name,
                 CheckpointStatus.PENDING.value,
@@ -266,6 +410,7 @@ class CheckpointStore:
 
     def mark_failed(self, row_id: int) -> None:
         """Transition a pending row to ``status='failed'``."""
+        self._check_writable()
         conn = self._connect()
         cur = conn.execute(
             "UPDATE checkpoints SET status = ? WHERE id = ? AND part_name = ? "
@@ -300,8 +445,12 @@ class CheckpointStore:
         timestamp: str | None = None,
     ) -> int:
         """Insert a ``status='rolled_back'`` audit row (spec.md §5.5 step 9)."""
+        self._check_writable()
         conn = self._connect()
+        self._ensure_meta(conn)
         ts = timestamp or datetime.now(timezone.utc).isoformat()
+        wrapped_locals = self._wrap(locals_snapshot)
+        wrapped_log = self._wrap(f"rollback_to={rolled_back_to_id}")
         cur = conn.execute(
             "INSERT INTO checkpoints "
             "(part_name, feature_index, feature_name, feature_type, timestamp, "
@@ -314,11 +463,11 @@ class CheckpointStore:
                 feature_name,
                 feature_type,
                 ts,
-                locals_snapshot,
+                wrapped_locals,
                 spec_hash,
                 pre_tree_hash,
                 post_tree_hash,
-                f"rollback_to={rolled_back_to_id}",
+                wrapped_log,
                 build_mode,
                 CheckpointStatus.ROLLED_BACK.value,
             ),
@@ -338,7 +487,23 @@ class CheckpointStore:
         ).fetchone()
         if row is None:
             return None
-        return _row_from_tuple(row)
+        cp = _row_from_tuple(row)
+        # Decrypt sensitive fields
+        return Checkpoint(
+            id=cp.id,
+            part_name=cp.part_name,
+            feature_index=cp.feature_index,
+            feature_name=cp.feature_name,
+            feature_type=cp.feature_type,
+            timestamp=cp.timestamp,
+            locals_snapshot=self._unwrap(cp.locals_snapshot),
+            spec_hash=cp.spec_hash,
+            pre_tree_hash=cp.pre_tree_hash,
+            post_tree_hash=cp.post_tree_hash,
+            com_call_log=self._unwrap(cp.com_call_log),
+            build_mode=cp.build_mode,
+            status=cp.status,
+        )
 
     def query(
         self,
@@ -367,7 +532,28 @@ class CheckpointStore:
             sql += " LIMIT ?"
             params.append(int(limit))
         rows = conn.execute(sql, params).fetchall()
-        return [_row_from_tuple(r) for r in rows]
+        results = []
+        for row in rows:
+            cp = _row_from_tuple(row)
+            # Decrypt sensitive fields
+            results.append(
+                Checkpoint(
+                    id=cp.id,
+                    part_name=cp.part_name,
+                    feature_index=cp.feature_index,
+                    feature_name=cp.feature_name,
+                    feature_type=cp.feature_type,
+                    timestamp=cp.timestamp,
+                    locals_snapshot=self._unwrap(cp.locals_snapshot),
+                    spec_hash=cp.spec_hash,
+                    pre_tree_hash=cp.pre_tree_hash,
+                    post_tree_hash=cp.post_tree_hash,
+                    com_call_log=self._unwrap(cp.com_call_log),
+                    build_mode=cp.build_mode,
+                    status=cp.status,
+                )
+            )
+        return results
 
     def close(self) -> None:
         if self._conn is not None:

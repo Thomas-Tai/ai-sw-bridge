@@ -1,0 +1,65 @@
+{
+  "tool": "sw_apidoc_examples",
+  "args": {
+    "limit": 2
+  },
+  "result": {
+    "ok": true,
+    "examples": [
+      {
+        "retrieval_key": "sldworksapiprogguide:GettingStarted:Option Explicit Statement:0",
+        "corpus": "sldworksapiprogguide",
+        "chunk_type": "topic",
+        "interface": "GettingStarted",
+        "name": "Option Explicit Statement",
+        "signature": null,
+        "description": "Including the Option Explicit statement at the beginning of a Visual Basic for Applications (VBA) program forces you to declare variables before they are used and assists in detecting errors in your code. Example",
+        "example_code": "'------------------------------------------------------------------------------ ' In the following example, the Option Explicit statement forces you to declare ' swApp and retVal. Additionally, early binding is used when declaring swApp. '------------------------------------------------------------------------------\n\nOption Explicit\n\nDim swApp As SldWorks.SldWorks\n\nDim retVal As Long\n\n}}--> }}-->\n\nSub main()\n\nSet swApp = Application.SldWorks\n\nretVal = swApp.CopyDocument(&quot;d:\\samples\\hotrod.sldprt&quot;, &quot;c:\\temp\\hotrod.sldprt&quot;, &quot;&quot;, &quot;&quot;, swMoveCopyOptionsOverwriteExistingDocs)\n\nDebug.Print retVal\n\nEnd Sub",
+        "chm_anchor": "spikes\\phase0\\_chm_decompiled_apiprogguide\\GettingStarted\\Option_Explicit_Statement.htm",
+        "keywords": [
+          "Option Explicit"
+        ]
+      },
+      {
+        "retrieval_key": "sldworksapiprogguide:GettingStarted:Other Microsoft VBA-enabled Applications:0",
+        "corpus": "sldworksapiprogguide",
+        "chunk_type": "topic",
+        "interface": "GettingStarted",
+        "name": "Other Microsoft VBA-enabled Applications",
+        "signature": null,
+        "description": "Because Microsoft VBA is embedded in the SOLIDWORKS software, the SOLIDWORKS software is VBA-enabled and can inter-operate with other VBA-enabled applications, such as Microsoft Excel, Microsoft Access, and Microsoft Visio.\n\nFor example, you can create a VBA application in the SOLIDWORKS software that attaches to a running instance of Microsoft Excel. You can then access the active sheet and retrieve data to use with the SOLIDWORKS software.\n\nThe following code shows how to attach to the active Microsoft Excel object, get the value in cell A1 in the active sheet, and use that value to set the density in a SOLIDWORKS part.\n\nAlternatively you can also attach to a running instance of the SOLIDWORKS software from a VBA application created in Microsoft Excel.\n\nIn general, if your application is primarily a SOLIDWORKS API application, then develop the application in the SOLIDWORKS software.",
+        "example_code": "' Attach to active Excel object\n\nSet xl = GetObject(, &quot;Excel.Application&quot;)\n\n' Get active sheet in Excel\n\nSet xlsh = xl.ActiveSheet }}--> }}-->\n\n' Get value in Excel cell A1\n\ndensity = xlsh.Cells(1,1) }}--> }}-->\n\n' Set density in SOLIDWORKS part\n\nPart.SetUserPreferenceDoubleValue swMaterialPropertyDensity, density }}--> }}-->\n\n-->",
+        "chm_anchor": "spikes\\phase0\\_chm_decompiled_apiprogguide\\GettingStarted\\Other_Microsoft_VBA-enabled_Applications.htm",
+        "keywords": [
+          "Microsoft VBA-enabled applications"
+        ]
+      }
+    ],
+    "count": 2
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "examples": {
+      "__list__": true,
+      "len": "*",
+      "item": {
+        "retrieval_key": "$str",
+        "corpus": "$str",
+        "chunk_type": "$str",
+        "interface": "$str",
+        "name": "$str",
+        "signature": "$none",
+        "description": "$str",
+        "example_code": "$str",
+        "chm_anchor": "$str",
+        "keywords": {
+          "__list__": true,
+          "len": "*",
+          "item": "$str"
+        }
+      }
+    },
+    "count": "$int"
+  },
+  "error": null
+}

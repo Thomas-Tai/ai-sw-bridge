@@ -897,6 +897,80 @@ def _select_by_id(doc: Any, entity: str, append: bool = False) -> bool:
     return False
 
 
+def sw_get_custom_props() -> dict[str, Any]:
+    """Read every custom property from the active document.
+
+    Uses ``IModelDoc2.GetCustomInfoNames3`` to enumerate field names, then
+    ``IModelDoc2.GetCustomInfoValue2`` per field. The active configuration
+    name is read from ``IGetActiveConfiguration`` when reachable.
+
+    Parts, assemblies, and drawings all support custom properties. An empty
+    document (no custom props set) returns ``{"ok": True, "properties": {}}``
+    rather than an error.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "properties": {},
+        "active_configuration": None,
+        "count": 0,
+        "error": None,
+    }
+
+    try:
+        sw = get_sw_app()
+        doc = get_active_doc(sw)
+        if doc is None:
+            result["error"] = "no_active_doc"
+            return result
+
+        try:
+            cfg = resolve(doc, "IGetActiveConfiguration")
+            if cfg is not None:
+                name = resolve(cfg, "Name")
+                if callable(name):
+                    name = name()
+                if name:
+                    result["active_configuration"] = str(name)
+        except Exception:
+            pass
+
+        names: tuple[str, ...] | list[str] | None = None
+        try:
+            names = doc.GetCustomInfoNames3
+            if callable(names):
+                names = names()
+        except Exception as exc:
+            result["error"] = f"GetCustomInfoNames3 failed: {exc!r}"
+            return result
+
+        if names is None:
+            result["ok"] = True
+            return result
+
+        if isinstance(names, (tuple, list)):
+            field_names = [str(n) for n in names if n]
+        else:
+            field_names = []
+
+        props: dict[str, str] = {}
+        for field in field_names:
+            try:
+                val = doc.GetCustomInfoValue2("", field)
+                if val is not None:
+                    props[field] = str(val)
+            except Exception:
+                pass
+
+        result["properties"] = props
+        result["count"] = len(props)
+        result["ok"] = True
+        return result
+
+    except Exception as exc:
+        result["error"] = f"dispatch failed: {exc!r}"
+        return result
+
+
 def sw_measure(
     entity_a: str | None = None,
     entity_b: str | None = None,
@@ -1031,3 +1105,91 @@ def sw_measure(
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
+
+
+# ---------------------------------------------------------------------------
+# W7.1 — Add-in enumeration (docs/addins_research.md §5, §7)
+# ---------------------------------------------------------------------------
+
+KNOWN_PROBLEMATIC_ADDINS: frozenset[str] = frozenset(
+    {
+        "SOLIDWORKS Toolbox",
+        "SOLIDWORKS Routing",
+        "SOLIDWORKS Electrical",
+        "SOLIDWORKS Simulation",
+        "SOLIDWORKS Inspection",
+        "SOLIDWORKS Composer",
+        "SOLIDWORKS PDM Standard",
+        "SOLIDWORKS PDM Professional",
+        "3DEXPERIENCE PLM Connector",
+        # Names match what GetEnabledAddIns returns; VERIFY by running
+        # spikes/v0_13/spike_addin_enumeration.py with each enabled.
+    }
+)
+
+# Lowercase lookup set for case-insensitive matching (§9 open question).
+_KNOWN_LOWER: frozenset[str] = frozenset(n.lower() for n in KNOWN_PROBLEMATIC_ADDINS)
+
+
+def sw_get_enabled_addins() -> dict[str, Any]:
+    """Enumerate currently-loaded SOLIDWORKS add-ins (W7.1).
+
+    Returns a dict with keys:
+        ok               -- bool; True when the query ran without COM error.
+        addins           -- list[str]; every name reported by
+                            ISldWorks::GetEnabledAddIns.
+        known_problematic -- list[str]; the subset of *addins* that
+                            intersects KNOWN_PROBLEMATIC_ADDINS
+                            (case-insensitive).
+        error            -- str | None; populated on COM failure.
+
+    Fail-soft: if GetEnabledAddIns is absent on this SW build, returns
+    ok=True with addins=[] and a note in *error*.  The build does not
+    fail on the absence of the API -- many SW builds may expose the
+    API only when at least one add-in is enabled.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "addins": [],
+        "known_problematic": [],
+        "error": None,
+    }
+
+    try:
+        sw = get_sw_app()
+    except Exception as exc:
+        result["error"] = f"dispatch failed: {exc!r}"
+        return result
+
+    # GetEnabledAddIns may be absent on some SW builds; treat as
+    # non-fatal (§7 fail-soft contract).
+    getter = getattr(sw, "GetEnabledAddIns", None)
+    if getter is None:
+        result["ok"] = True
+        result["error"] = "api_not_present"
+        return result
+
+    try:
+        raw = getter()
+    except Exception as exc:
+        result["error"] = f"GetEnabledAddIns failed: {exc!r}"
+        return result
+
+    # GetEnabledAddIns returns a Variant that pywin32 surfaces as a
+    # tuple, list, or None (when zero add-ins are loaded).
+    if raw is None:
+        addins: list[str] = []
+    elif isinstance(raw, (tuple, list)):
+        addins = [str(name) for name in raw if name]
+    else:
+        # Unexpected shape -- surface as a warning, not a hard error.
+        addins = []
+        result["error"] = f"unexpected_return_type: {type(raw).__name__}"
+
+    # Case-insensitive intersection with the curated list (§9).
+    known_problematic = [name for name in addins if name.lower() in _KNOWN_LOWER]
+
+    result["addins"] = addins
+    result["known_problematic"] = known_problematic
+    result["ok"] = True
+    return result

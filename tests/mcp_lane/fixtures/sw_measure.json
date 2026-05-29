@@ -1,0 +1,42 @@
+{
+  "tool": "sw_measure",
+  "args": {},
+  "result": {
+    "ok": false,
+    "mode": "selection",
+    "selected_count": 0,
+    "distance": null,
+    "deltax": null,
+    "deltay": null,
+    "deltaz": null,
+    "angle_rad": null,
+    "arc_length": null,
+    "area": null,
+    "perimeter": null,
+    "selection_summary": [],
+    "error": "no_selection - select entities in SW first, or pass entity_a/entity_b"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "mode": "$str",
+    "selected_count": "$int",
+    "distance": "$none",
+    "deltax": "$none",
+    "deltay": "$none",
+    "deltaz": "$none",
+    "angle_rad": "$none",
+    "arc_length": "$none",
+    "area": "$none",
+    "perimeter": "$none",
+    "selection_summary": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}

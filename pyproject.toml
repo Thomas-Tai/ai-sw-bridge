@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-sw-bridge"
-version = "0.10.0"
+version = "0.13.0"
 description = "A semi-automated bridge that lets an AI assistant (Claude, ChatGPT, Codex, etc.) drive SOLIDWORKS through the COM API for design-guide tuning and parametric part creation."
 readme = "README.md"
 license = { text = "MIT" }
@@ -36,14 +36,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+crypto = ["cryptography>=41.0"]
+mcp = ["mcp>=1.0.0"]
 dev = [
     "pytest>=7",
     "pytest-cov",
+    "pytest-asyncio>=1.0",
     "black==25.12.0",
     "flake8>=7",
     "mypy>=1.13",
     "pre-commit>=3",
     "sentence-transformers>=2.2",
+    "import-linter>=2",
 ]
 
 [tool.pytest.ini_options]
@@ -70,16 +74,58 @@ Issues = "https://github.com/Thomas-Tai/ai-sw-bridge/issues"
 Repository = "https://github.com/Thomas-Tai/ai-sw-bridge.git"
 
 [project.scripts]
-ai-sw-probe    = "ai_sw_bridge.cli.probe:main"
-ai-sw-observe  = "ai_sw_bridge.cli.observe:main"
-ai-sw-mutate   = "ai_sw_bridge.cli.mutate:main"
-ai-sw-codegen  = "ai_sw_bridge.cli.codegen:main"
-ai-sw-build    = "ai_sw_bridge.cli.build:main"
-ai-sw-history  = "ai_sw_bridge.cli.history:main"
-ai-sw-apidoc   = "ai_sw_bridge.cli.apidoc:main"
+ai-sw-probe      = "ai_sw_bridge.cli.probe:main"
+ai-sw-observe    = "ai_sw_bridge.cli.observe:main"
+ai-sw-mutate     = "ai_sw_bridge.cli.mutate:main"
+ai-sw-codegen    = "ai_sw_bridge.cli.codegen:main"
+ai-sw-build      = "ai_sw_bridge.cli.build:main"
+ai-sw-history    = "ai_sw_bridge.cli.history:main"
+ai-sw-apidoc     = "ai_sw_bridge.cli.apidoc:main"
+ai-sw-checkpoint = "ai_sw_bridge.cli.checkpoint:main"
+ai-sw-mcp        = "ai_sw_bridge.mcp.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
 ai_sw_bridge = ["py.typed"]
+
+# W4.4 — import-linter lane-boundary contracts.
+# Layer model (bottom → top):
+#   telemetry, errors (foundations — no upward imports)
+#   brep, rag, checkpoint (lanes — may use telemetry/errors only)
+#   com, sw_com (COM interop — may use the lanes above)
+#   mutate, observe, parameterize, spec (consumers of COM + lanes)
+#   mcp (alternate entry point — imports observe/spec/checkpoint/rag)
+#   cli (topmost entry point — may import anything below, including mcp)
+#
+# cli and mcp are both entry points; the contract permits cli → mcp but
+# not mcp → cli. In practice neither imports the other today — the MCP
+# server delegates to the same lanes as the CLI, not to the CLI itself.
+#
+# import-linter layers: first entry is the HIGHEST layer.
+# Higher layers may import from lower; lower may NOT import from higher.
+[tool.importlinter]
+root_packages = ["ai_sw_bridge"]
+
+[[tool.importlinter.contracts]]
+name = "Lane boundary layers"
+type = "layers"
+layers = [
+    "ai_sw_bridge.cli",
+    "ai_sw_bridge.mcp",
+    "ai_sw_bridge.spec",
+    "ai_sw_bridge.parameterize",
+    "ai_sw_bridge.observe",
+    "ai_sw_bridge.mutate",
+    "ai_sw_bridge.com",
+    "ai_sw_bridge.checkpoint",
+    "ai_sw_bridge.rag",
+    "ai_sw_bridge.brep",
+    "ai_sw_bridge.sw_com",
+    "ai_sw_bridge.sw_types",
+    "ai_sw_bridge.flags",
+    "ai_sw_bridge.locals_io",
+    "ai_sw_bridge.errors",
+    "ai_sw_bridge.telemetry",
+]
