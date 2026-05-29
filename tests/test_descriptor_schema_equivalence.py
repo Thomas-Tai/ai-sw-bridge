@@ -1,70 +1,64 @@
-"""X3 migration guard (FR-X-03): the descriptor-assembled schema fragments
-must be byte-identical to the hand-written fragments in schema.py.
+"""X3 regression gate (FR-X-03): the descriptor-assembled feature fragments
+must stay byte-identical to the frozen golden snapshot.
 
-This proves the refactor doesn't silently change validation for any of the 16
-existing primitives. It runs while BOTH representations exist; once schema.py
-is rewired to build SCHEMA from the assembler (and the literals deleted), the
-frozen-snapshot test in tests/ takes over as the ongoing regression gate.
+History: the migration was proven by asserting assemble_feature_schema(name)
+== the hand-written schema.py constant for all 16 primitives (commit X3.2a).
+Those literals are now gone -- SCHEMA is built from descriptors.assemble_all().
+The golden snapshot (tests/fixtures/feature_schema_golden.json), captured from
+that proven-equivalent output, is the ongoing guard: an accidental descriptor
+edit that changes any primitive's schema fails here.
+
+To intentionally change a primitive's schema, regenerate the golden:
+    python -c "import json; from ai_sw_bridge.spec import descriptors as d; \
+        json.dump(d.assemble_all(), open('tests/fixtures/feature_schema_golden.json','w'), \
+        indent=2, ensure_ascii=False)"
+and review the diff.
 """
 
 from __future__ import annotations
 
-import pytest
+import json
+from pathlib import Path
 
 from ai_sw_bridge.spec import descriptors, schema
 
-# name -> the hand-written fragment constant currently in schema.py.
-HANDWRITTEN = {
-    "sketch_rectangle_on_plane": schema.SKETCH_RECTANGLE_ON_PLANE,
-    "sketch_rectangle_on_face": schema.SKETCH_RECTANGLE_ON_FACE,
-    "sketch_circle_on_plane": schema.SKETCH_CIRCLE_ON_PLANE,
-    "sketch_circle_on_face": schema.SKETCH_CIRCLE_ON_FACE,
-    "sketch_circles_on_face": schema.SKETCH_CIRCLES_ON_FACE,
-    "boss_extrude_blind": schema.BOSS_EXTRUDE_BLIND,
-    "cut_extrude_through_all": schema.CUT_EXTRUDE_THROUGH_ALL,
-    "cut_extrude_blind": schema.CUT_EXTRUDE_BLIND,
-    "revolve_boss": schema.REVOLVE_BOSS,
-    "revolve_cut": schema.REVOLVE_CUT,
-    "simple_hole": schema.SIMPLE_HOLE,
-    "fillet_constant_radius": schema.FILLET_CONSTANT_RADIUS,
-    "chamfer_edge": schema.CHAMFER_EDGE,
-    "linear_pattern": schema.LINEAR_PATTERN,
-    "circular_pattern": schema.CIRCULAR_PATTERN,
-    "mirror_feature": schema.MIRROR_FEATURE,
-}
-
-
-@pytest.mark.parametrize("name", sorted(HANDWRITTEN))
-def test_assembled_fragment_matches_handwritten(name):
-    assembled = descriptors.assemble_feature_schema(name)
-    assert assembled == HANDWRITTEN[name], (
-        f"assembled schema for {name!r} differs from the hand-written fragment"
+GOLDEN = json.loads(
+    (Path(__file__).parent / "fixtures" / "feature_schema_golden.json").read_text(
+        encoding="utf-8"
     )
+)
 
 
-def test_assembled_required_order_matches():
-    # `required` is a list -> order-sensitive. Guard it explicitly so a
-    # reordered FieldSpec list can't pass on dict-equality alone.
-    for name, frag in HANDWRITTEN.items():
-        assert descriptors.assemble_feature_schema(name)["required"] == frag["required"]
+def test_assembled_matches_golden():
+    # Order-sensitive list equality: catches both shape drift and reordering.
+    assert descriptors.assemble_all() == GOLDEN
 
 
-def test_assemble_all_matches_schema_oneof():
-    # The ordered list the top-level SCHEMA will be built from must equal the
-    # current hand-written oneOf, element for element.
-    assembled = descriptors.assemble_all()
-    current = schema.SCHEMA["properties"]["features"]["items"]["oneOf"]
-    assert assembled == current
+def test_schema_oneof_is_built_from_assembler():
+    # The live top-level SCHEMA must use the assembled fragments.
+    one_of = schema.SCHEMA["properties"]["features"]["items"]["oneOf"]
+    assert one_of == descriptors.assemble_all()
+    assert one_of == GOLDEN
 
 
-def test_shared_subschemas_match():
-    # The sub-schemas moved into descriptors.py must equal schema.py's copies
-    # (until schema.py re-exports them from descriptors in the next step).
-    assert descriptors.LENGTH_SCHEMA == schema.LENGTH_SCHEMA
-    assert descriptors.CENTERLINE_SCHEMA == schema.CENTERLINE_SCHEMA
-    assert descriptors.EXPECT_SCHEMA == schema.EXPECT_SCHEMA
+def test_required_order_preserved_per_fragment():
+    by_name = {f["properties"]["type"]["const"]: f for f in GOLDEN}
+    for name in descriptors.FEATURE_ORDER:
+        assert (
+            descriptors.assemble_feature_schema(name)["required"]
+            == by_name[name]["required"]
+        )
+
+
+def test_subschemas_reexported_from_descriptors():
+    # schema.py re-exports the sub-schemas from descriptors (same objects).
+    assert schema.LENGTH_SCHEMA is descriptors.LENGTH_SCHEMA
+    assert schema.CENTERLINE_SCHEMA is descriptors.CENTERLINE_SCHEMA
+    assert schema.EXPECT_SCHEMA is descriptors.EXPECT_SCHEMA
+    assert schema.NAME_PATTERN is descriptors.NAME_PATTERN
 
 
 def test_feature_order_covers_all_16():
     assert len(descriptors.FEATURE_ORDER) == 16
     assert set(descriptors.FEATURE_ORDER) == set(descriptors.FEATURE_FIELDS)
+    assert len(GOLDEN) == 16
