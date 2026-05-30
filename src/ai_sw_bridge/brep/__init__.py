@@ -20,7 +20,7 @@ Exports the public API for the L1 B-rep lane:
 from __future__ import annotations
 
 from .fingerprint import fingerprint
-from .interrogator import BrepFace, interrogate
+from .interrogator import BrepEdge, BrepFace, interrogate
 from .manifest import Manifest
 from .resolver import (
     FaceAmbiguityError,
@@ -30,6 +30,7 @@ from .resolver import (
 )
 
 __all__ = [
+    "BrepEdge",
     "BrepFace",
     "FaceAmbiguityError",
     "FaceResolutionError",

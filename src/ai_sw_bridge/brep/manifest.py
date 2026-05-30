@@ -99,6 +99,12 @@ class Manifest:
             "feature": name,
             "faces": faces_out,
         }
+        # Phase-0 edge capture (present only when persist_capture was on at
+        # interrogation time). Carried verbatim — edges already arrive serialized
+        # from BrepEdge.to_dict; this just forwards them under the feature block.
+        edges_in = interrogation_result.get("edges")
+        if edges_in:
+            block["edges"] = [self._serialize_edge(e) for e in edges_in]
         if feature_type is not None:
             block["type"] = feature_type
         if "error" in interrogation_result:
@@ -197,6 +203,26 @@ class Manifest:
             out["persist_id"] = persist_id
         # temp_id is intentionally omitted from the serialized form
         # per spec §2.5 — it's session-scoped only.
+        return out
+
+    @staticmethod
+    def _serialize_edge(edge: dict[str, Any]) -> dict[str, Any]:
+        """Pass one edge dict through to the manifest (endpoints + token).
+
+        Edges arrive already serialized from ``BrepEdge.to_dict``; this keeps
+        only the manifest-relevant keys and forwards ``persist_id`` when present.
+        """
+        out: dict[str, Any] = {
+            "edge_idx": edge.get("edge_idx"),
+            "body_id": edge.get("body_id"),
+            "start": edge.get("start"),
+            "end": edge.get("end"),
+            "length": edge.get("length"),
+            "midpoint": edge.get("midpoint"),
+        }
+        persist_id = edge.get("persist_id")
+        if persist_id:
+            out["persist_id"] = persist_id
         return out
 
 

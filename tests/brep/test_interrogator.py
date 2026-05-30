@@ -280,6 +280,93 @@ def test_capture_on_but_no_doc_skips_read(
     assert calls == []
 
 
+# ---------------------------------------------------------------------------
+# Tests — Phase-0 edge capture (persist_capture flag, body-scoped edge walk)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class MockEdge:
+    """IEdge stand-in: GetCurveParams2 head is start xyz + end xyz."""
+
+    cp: tuple
+
+    def GetCurveParams2(self):
+        return self.cp
+
+
+@dataclass
+class MockBody:
+    edges: tuple
+
+    def GetEdges(self):
+        return self.edges
+
+
+@dataclass
+class MockDoc:
+    bodies: tuple
+
+    def GetBodies2(self, body_type, visible_only):
+        return self.bodies
+
+
+def _doc_with_one_edge(cp=(0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0, 0, 0, 0, 0)) -> MockDoc:
+    return MockDoc(bodies=(MockBody(edges=(MockEdge(cp=cp),)),))
+
+
+def test_edge_capture_on_populates_edges_block(
+    enable_brep, enable_capture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "ai_sw_bridge.brep.interrogator.read_persist_reference",
+        lambda doc, entity: bytes([1, 2, 3, 4]),
+    )
+    result = interrogate(_one_face_feature(), _Ctx(doc=_doc_with_one_edge()))
+    assert result is not None
+    edges = result.get("edges")
+    assert edges is not None and len(edges) == 1
+    e = edges[0]
+    assert e["start"] == [0.0, 0.0, 0.0]
+    assert e["end"] == [0.0, 0.0, 0.01]
+    assert e["length"] == pytest.approx(0.01)
+    assert e["midpoint"] == pytest.approx([0.0, 0.0, 0.005])
+    assert e["persist_id"] == "AQIDBA"  # base64url(bytes 1,2,3,4), no pad
+
+
+def test_edge_capture_off_has_no_edges_block(enable_brep) -> None:
+    """persist_capture OFF -> no edge walk at all, no edges key."""
+    result = interrogate(_one_face_feature(), _Ctx(doc=_doc_with_one_edge()))
+    assert result is not None
+    assert "edges" not in result
+
+
+def test_edge_capture_omits_persist_id_when_unreadable(
+    enable_brep, enable_capture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "ai_sw_bridge.brep.interrogator.read_persist_reference",
+        lambda doc, entity: None,
+    )
+    result = interrogate(_one_face_feature(), _Ctx(doc=_doc_with_one_edge()))
+    assert result is not None
+    # Edge still captured (geometry), but no token -> persist_id omitted.
+    assert "persist_id" not in result["edges"][0]
+
+
+def test_edge_with_bad_curveparams_is_skipped(
+    enable_brep, enable_capture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "ai_sw_bridge.brep.interrogator.read_persist_reference",
+        lambda doc, entity: b"x",
+    )
+    doc = MockDoc(bodies=(MockBody(edges=(MockEdge(cp=(1.0, 2.0)),)),))  # too short
+    result = interrogate(_one_face_feature(), _Ctx(doc=doc))
+    assert result is not None
+    assert "edges" not in result  # the only edge was skipped -> no block
+
+
 def test_role_hint_oblique_for_tilted_normal() -> None:
     # 45-degree normal isn't axis-aligned.
     import math

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import math
 import time
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -81,6 +82,43 @@ class BrepFace:
             "fingerprint": self.fingerprint,
             "is_surface": self.is_surface,
             "is_hidden": self.is_hidden,
+        }
+        if self.persist_id:
+            out["persist_id"] = self.persist_id
+        return out
+
+
+@dataclass(frozen=True)
+class BrepEdge:
+    """One edge's durable-selection payload (Phase-0 edge capture).
+
+    Captured only when the ``persist_capture`` flag is on — edges exist in the
+    manifest solely to anchor durable references (e.g. a fillet on a specific
+    edge), so unlike faces they are not part of the always-on interrogation.
+
+    Geometry comes from ``IEdge.GetCurveParams2`` (the late-bind-friendly source;
+    ``GetStartVertex``/``GetEndVertex`` throw ``com_error`` on SW 2024 SP1 — see
+    ``spike_edge_persist``). ``length`` / ``midpoint`` are chord-based (exact for
+    straight edges; a heuristic for curved ones — acceptable because tier-1
+    resolution is the persist token, with the edge fingerprint deferred).
+    """
+
+    edge_idx: int
+    body_id: int
+    start: tuple[float, float, float]
+    end: tuple[float, float, float]
+    length: float
+    midpoint: tuple[float, float, float]
+    persist_id: str = ""  # base64url (no pad) durable token; "" when uncaptured
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
+            "edge_idx": self.edge_idx,
+            "body_id": self.body_id,
+            "start": list(self.start),
+            "end": list(self.end),
+            "length": self.length,
+            "midpoint": list(self.midpoint),
         }
         if self.persist_id:
             out["persist_id"] = self.persist_id
@@ -187,6 +225,19 @@ def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
         "feature": feat_name,
         "faces": [f.to_dict() for f in faces],
     }
+
+    # Phase-0 edge capture: only when persist_capture is on and the live doc is
+    # reachable (edges exist in the manifest purely to anchor durable refs). The
+    # walk is body-scoped via the doc; fail-soft — any failure leaves no edges
+    # block, keeping the no-capture manifest byte-identical.
+    if capture and doc is not None:
+        try:
+            edges = _walk_edges(doc, capture=capture)
+            if edges:
+                payload["edges"] = [e.to_dict() for e in edges]
+        except Exception as e:  # noqa: BLE001
+            logger.warning("brep edge capture failed: %s", e)
+
     if is_import and not faces:
         payload["status"] = "imported"
     return payload
@@ -376,6 +427,94 @@ def _probe_face(
     )
 
 
+# ---------------------------------------------------------------------------
+# Edge capture (Phase-0 durable selection) — body-scoped, persist_capture only.
+# ---------------------------------------------------------------------------
+
+
+def _get_solid_bodies(doc: Any) -> list[Any]:
+    """Return the doc's visible solid bodies (``swSolidBody=0``)."""
+    try:
+        result = doc.GetBodies2(0, True)
+    except Exception:
+        return []
+    if isinstance(result, (tuple, list)):
+        return [b for b in result if b is not None]
+    return [result] if result is not None else []
+
+
+def _read_curve_params(edge: Any) -> Optional[tuple[float, ...]]:
+    """``IEdge.GetCurveParams2`` -> tuple; head[0:3]=start xyz, head[3:6]=end xyz.
+
+    The late-bind-friendly geometry source (``GetStartVertex``/``GetEndVertex``
+    throw ``com_error`` on SW 2024 SP1 — see ``spike_edge_persist``).
+    """
+    try:
+        result = edge.GetCurveParams2
+        if callable(result):
+            result = result()
+    except Exception:
+        return None
+    if not isinstance(result, (tuple, list)) or len(result) < 6:
+        return None
+    try:
+        return tuple(float(v) for v in result)
+    except (TypeError, ValueError):
+        return None
+
+
+def _probe_edge(
+    edge: Any, *, body_id: int, edge_idx: int, doc: Any, capture: bool
+) -> Optional[BrepEdge]:
+    """Read one IEdge's endpoints + durable token. Fail-soft (None on no geom)."""
+    cp = _read_curve_params(edge)
+    if cp is None:
+        return None
+    start = (cp[0], cp[1], cp[2])
+    end = (cp[3], cp[4], cp[5])
+    midpoint = (
+        (start[0] + end[0]) / 2.0,
+        (start[1] + end[1]) / 2.0,
+        (start[2] + end[2]) / 2.0,
+    )
+    length = math.dist(start, end)
+
+    persist_id = ""
+    if capture and doc is not None:
+        pid = read_persist_reference(doc, edge)
+        if pid:
+            persist_id = base64.urlsafe_b64encode(pid).decode("ascii").rstrip("=")
+
+    return BrepEdge(
+        edge_idx=edge_idx,
+        body_id=body_id,
+        start=start,
+        end=end,
+        length=length,
+        midpoint=midpoint,
+        persist_id=persist_id,
+    )
+
+
+def _walk_edges(doc: Any, *, capture: bool) -> list[BrepEdge]:
+    """Walk every solid body's edges, capturing token + endpoint geometry."""
+    edges: list[BrepEdge] = []
+    for body_id, body in enumerate(_get_solid_bodies(doc)):
+        try:
+            raw = body.GetEdges
+            if callable(raw):
+                raw = raw()
+        except Exception:
+            continue
+        if not isinstance(raw, (tuple, list)):
+            continue
+        for idx, edge in enumerate(raw):
+            be = _probe_edge(edge, body_id=body_id, edge_idx=idx, doc=doc, capture=capture)
+            if be is not None:
+                edges.append(be)
+    return edges
+
+
 def _read_box(face: Any) -> Optional[tuple[float, float, float, float, float, float]]:
     try:
         result = face.GetBox
@@ -547,6 +686,7 @@ def _role_hint(
 
 
 __all__ = [
+    "BrepEdge",
     "BrepFace",
     "interrogate",
     "read_face_geometry",
