@@ -1,0 +1,80 @@
+{
+  "binding": "hybrid early (typed_qi)",
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "sw_revision": "32.1.0",
+  "build": {
+    "built": true,
+    "feature_name": "Boss-Extrude1"
+  },
+  "select": {
+    "get_bodies": {
+      "status": "OK",
+      "type": "tuple",
+      "elapsed_ms": 33.811199999036035
+    },
+    "get_edges": {
+      "status": "OK",
+      "type": "tuple",
+      "elapsed_ms": 146.54370000062045
+    },
+    "n_edges": 12,
+    "chosen_indices": [
+      0,
+      6
+    ],
+    "chosen_midpoints": [
+      null,
+      null
+    ],
+    "n_selected_ok": 2,
+    "selection_count": 2
+  },
+  "create_feature": {
+    "status": "OK",
+    "type": "CDispatch",
+    "elapsed_ms": 130.26920000265818,
+    "materialized": true,
+    "feature_name": "Fillet1"
+  },
+  "edge_count": 2,
+  "fillet_items_count": 2,
+  "set_per_item": [
+    {
+      "index": 0,
+      "radius_m": 0.002,
+      "set_radius": {
+        "status": "OK",
+        "type": "NoneType",
+        "elapsed_ms": 6.7893000014009885
+      }
+    },
+    {
+      "index": 1,
+      "radius_m": 0.004,
+      "set_radius": {
+        "status": "OK",
+        "type": "NoneType",
+        "elapsed_ms": 6.847600001492538
+      }
+    }
+  ],
+  "modify_definition": {
+    "status": "OK",
+    "type": "bool",
+    "elapsed_ms": 104.88700000132667,
+    "ret": true
+  },
+  "radii_readback": [
+    {
+      "index": 0,
+      "radius": 0.002
+    },
+    {
+      "index": 1,
+      "radius": 0.004
+    }
+  ],
+  "cleanup": "closed own doc (no save)",
+  "overall": "PASS-PER-EDGE",
+  "interpretation": "2 fillet items, distinct radii [0.002, 0.004] m stuck \u2192 build variable_radius_fillet: append-select edges, create multi-radius, SetRadius per item, early-bound ModifyDefinition."
+}
