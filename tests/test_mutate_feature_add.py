@@ -77,6 +77,69 @@ class _FakeBaseFlangeData:
         self.bend_radius = v
 
 
+class _FakeVarFilletData:
+    """Multi-radius fillet data: tracks Initialize/IsMultipleRadius and the
+    per-item SetRadius calls. ``n_items`` is what FilletItemsCount reports."""
+
+    def __init__(self, n_items: int) -> None:
+        self.n_items = n_items
+        self.init_calls: list[int] = []
+        self.default_radius: float | None = None
+        self.is_multiple: bool | None = None
+        self.set_radii: list[tuple] = []
+        self.access_calls: list[tuple] = []
+
+    def Initialize(self, t: int) -> None:
+        self.init_calls.append(t)
+
+    @property
+    def DefaultRadius(self) -> float:
+        return self.default_radius or 0.0
+
+    @DefaultRadius.setter
+    def DefaultRadius(self, v: float) -> None:
+        self.default_radius = v
+
+    @property
+    def IsMultipleRadius(self) -> bool:
+        return bool(self.is_multiple)
+
+    @IsMultipleRadius.setter
+    def IsMultipleRadius(self, v: bool) -> None:
+        self.is_multiple = v
+
+    def AccessSelections(self, doc: Any, comp: Any) -> bool:
+        self.access_calls.append((doc, comp))
+        return True
+
+    @property
+    def FilletItemsCount(self) -> int:
+        return self.n_items
+
+    def GetFilletItemAtIndex(self, i: int) -> tuple:
+        return ("item", i)
+
+    def SetRadius(self, item: Any, radius: float) -> None:
+        self.set_radii.append((item, radius))
+
+
+class _FakeVarFilletFeature:
+    """Created multi-radius fillet feature: GetDefinition returns the data,
+    ModifyDefinition records the call."""
+
+    def __init__(self, defn: Any) -> None:
+        self._defn = defn
+        self.modify_calls: list[tuple] = []
+        self.Name = "Fillet1"
+
+    def GetDefinition(self) -> Any:
+        return self._defn
+
+    def ModifyDefinition(self, defn: Any, doc: Any, comp: Any) -> bool:
+        self.modify_calls.append((defn, doc, comp))
+        return True
+
+
 class _FakeFeatureManager:
     def __init__(self, data: Any, feature: Any) -> None:
         self._data = data
@@ -162,6 +225,14 @@ _VALID_BASEFLANGE_FEATURE = {
     "bend_radius_mm": 1.0,
 }
 _VALID_SKETCH_TARGET = {"sketch": "Sketch1"}
+
+_VALID_VARFIL_FEATURE = {"type": "variable_radius_fillet"}
+_VALID_VARFIL_TARGET = {
+    "edges": [
+        {"ref": dict(_VALID_TARGET), "radius_mm": 2.0},
+        {"ref": dict(_VALID_TARGET), "radius_mm": 4.0},
+    ]
+}
 
 
 def _patch_all(
@@ -534,6 +605,154 @@ class TestCommitBaseFlange:
         assert r["doc_saved"] is True
         assert len(fakes["doc"].save_calls) == 1
         assert len(fakes["fm"].create_feat_calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# Variable-radius fillet feature type — distinct radius per durable edge
+# ---------------------------------------------------------------------------
+
+
+class TestProposeVariableFillet:
+    def test_writes_record_no_sw(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        fakes = _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+
+        r = sw_propose_feature_add(
+            str(doc), _VALID_VARFIL_FEATURE, _VALID_VARFIL_TARGET
+        )
+        assert r["ok"] is True
+        rec = json.loads(
+            (tmp_path / "proposals" / f"{r['proposal_id']}.json").read_text()
+        )
+        assert rec["target"]["edges"][0]["radius_mm"] == 2.0
+        assert fakes["fm"].create_def_calls == []
+
+    def test_rejects_empty_edges(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+
+        r = sw_propose_feature_add(str(doc), _VALID_VARFIL_FEATURE, {"edges": []})
+        assert r["ok"] is False
+        assert "edges" in r["error"]
+
+    def test_rejects_edge_without_ref(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+
+        r = sw_propose_feature_add(
+            str(doc), _VALID_VARFIL_FEATURE, {"edges": [{"radius_mm": 2.0}]}
+        )
+        assert r["ok"] is False
+        assert "ref" in r["error"]
+
+    def test_rejects_bad_radius(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+
+        r = sw_propose_feature_add(
+            str(doc),
+            _VALID_VARFIL_FEATURE,
+            {"edges": [{"ref": dict(_VALID_TARGET), "radius_mm": 0}]},
+        )
+        assert r["ok"] is False
+        assert "radius_mm" in r["error"]
+
+
+class TestDryRunVariableFillet:
+    def _wire(self, monkeypatch, tmp_path, doc_path, n_items):
+        data = _FakeVarFilletData(n_items)
+        feat = _FakeVarFilletFeature(data)
+        fakes = _patch_all(
+            monkeypatch, tmp_path, doc_path, _FakeEntity(), feat, data=data
+        )
+        return data, feat, fakes
+
+    def test_ok_sets_distinct_radii_appends_no_save(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        data, feat, fakes = self._wire(monkeypatch, tmp_path, str(doc), 2)
+
+        # Record the append flags select_entity is called with.
+        sel_appends: list[bool] = []
+        monkeypatch.setattr(
+            mutate, "select_entity",
+            lambda e, **kw: (sel_appends.append(kw.get("append", False)), True)[1],
+        )
+
+        pid = sw_propose_feature_add(
+            str(doc), _VALID_VARFIL_FEATURE, _VALID_VARFIL_TARGET
+        )["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+
+        assert r["ok"] is True
+        assert r["state"] == ST_DRY_RUN_OK
+        assert fakes["fm"].create_def_calls == [1]  # swFmFillet
+        assert data.init_calls == [0]               # const-radius
+        assert data.is_multiple is True
+        # First edge append=False, second append=True (accumulate).
+        assert sel_appends == [False, True]
+        # Distinct radii bound per item, mm → metres.
+        assert [r for _, r in data.set_radii] == pytest.approx([0.002, 0.004])
+        assert len(feat.modify_calls) == 1
+        assert fakes["doc"].save_calls == []
+
+    def test_item_count_mismatch_broke(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        # 2 edges requested but the fillet collapses to 1 item.
+        data, feat, fakes = self._wire(monkeypatch, tmp_path, str(doc), 1)
+        pid = sw_propose_feature_add(
+            str(doc), _VALID_VARFIL_FEATURE, _VALID_VARFIL_TARGET
+        )["proposal_id"]
+
+        r = sw_dry_run_feature_add(pid)
+
+        assert r["ok"] is False
+        assert r["state"] == ST_DRY_RUN_BROKE
+        assert "item count" in r["error"]
+        assert feat.modify_calls == []
+        assert fakes["doc"].save_calls == []
+
+
+class TestCommitVariableFillet:
+    def test_saves_exactly_once(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        data = _FakeVarFilletData(2)
+        feat = _FakeVarFilletFeature(data)
+        fakes = _patch_all(
+            monkeypatch, tmp_path, str(doc), _FakeEntity(), feat, data=data
+        )
+        pid = sw_propose_feature_add(
+            str(doc), _VALID_VARFIL_FEATURE, _VALID_VARFIL_TARGET
+        )["proposal_id"]
+        sw_dry_run_feature_add(pid)
+
+        fakes["doc"].save_calls.clear()
+        r = sw_commit_feature_add(pid)
+
+        assert r["ok"] is True
+        assert r["state"] == ST_COMMITTED
+        assert r["doc_saved"] is True
+        assert len(fakes["doc"].save_calls) == 1
 
 
 # ---------------------------------------------------------------------------
