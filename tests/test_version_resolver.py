@@ -159,6 +159,48 @@ def test_featurecut4_2024_args_unchanged():
     assert args[1] is False  # Flip
 
 
+def test_featurecut4_2024_single_dir_default_behaviour_preserving():
+    """Omitting the 2nd direction (D3) must keep the exact single-direction
+    tuple the call site has always produced: Sd=True, T2=0, D2=0.0."""
+    from ai_sw_bridge.spec import builder
+
+    args = builder._cut4_args_2024(end_cond=1, depth_m=0.0, flip=True)
+    assert args[0] is True  # Sd single-ended
+    assert args[3] == 1     # T1 = end_cond
+    assert args[4] == 0     # T2 (unused)
+    assert args[6] == 0.0   # D2 (unused)
+
+
+def test_featurecut4_2024_two_direction_arg_shape():
+    """Two-direction cut (D3): Sd flips False and T2/D2 carry the 2nd
+    direction's end-condition/depth."""
+    from ai_sw_bridge.spec import builder
+
+    args = builder._cut4_args_2024(
+        end_cond=0, depth_m=0.01, flip=False, end_cond2=0, depth2_m=0.004
+    )
+    assert len(args) == 27
+    assert args[0] is False  # Sd: NOT single-ended
+    assert args[3] == 0      # T1
+    assert args[4] == 0      # T2 (second direction blind)
+    assert args[5] == 0.01   # D1
+    assert args[6] == 0.004  # D2
+
+
+def test_featurecut4_2025_forwards_two_direction_kwargs():
+    """The 2025 stub forwards the new kwargs to the 2024 body (so the
+    dispatch stays real and the arg shape is consistent across versions)."""
+    from ai_sw_bridge.spec import builder
+
+    a25 = builder._cut4_args_2025(
+        end_cond=0, depth_m=0.01, flip=False, end_cond2=0, depth2_m=0.004
+    )
+    a24 = builder._cut4_args_2024(
+        end_cond=0, depth_m=0.01, flip=False, end_cond2=0, depth2_m=0.004
+    )
+    assert a25 == a24
+
+
 def test_featurecut4_resolved_via_fake_sw_revision():
     from ai_sw_bridge.spec import builder
 

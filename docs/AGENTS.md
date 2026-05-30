@@ -26,7 +26,7 @@ The 16 feature types available:
 | Category | Types |
 |---|---|
 | Sketch | `sketch_rectangle_on_plane`, `sketch_rectangle_on_face`, `sketch_circle_on_plane`, `sketch_circle_on_face`, `sketch_circles_on_face` |
-| Extrude | `boss_extrude_blind`, `cut_extrude_through_all`, `cut_extrude_blind`, `revolve_boss`, `revolve_cut` |
+| Extrude | `boss_extrude_blind`, `cut_extrude_through_all`, `cut_extrude_blind`, `cut_extrude_midplane`, `cut_extrude_two_direction`, `revolve_boss`, `revolve_cut` |
 | Modify | `fillet_constant_radius`, `chamfer_edge`, `simple_hole` |
 | Pattern | `linear_pattern`, `circular_pattern`, `mirror_feature` |
 

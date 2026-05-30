@@ -269,6 +269,8 @@ EXTRUDE_TYPES = frozenset(
         "boss_extrude_blind",
         "cut_extrude_through_all",
         "cut_extrude_blind",
+        "cut_extrude_midplane",
+        "cut_extrude_two_direction",
         "revolve_boss",
         "revolve_cut",
     }
