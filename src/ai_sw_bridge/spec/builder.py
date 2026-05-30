@@ -2383,6 +2383,16 @@ def build(
         # Final rebuild for good measure
         _ = doc.EditRebuild3
 
+        # P1.2 material: write the spec's material string as a custom
+        # property on the part doc (BOM / title-block path). The SW
+        # material-library assignment (SetMaterialPropertyName2) is
+        # SEAT-gated and deferred — see ai_sw_bridge.material docstring.
+        from ..material import apply_material as _apply_material
+
+        mat_result = _apply_material(doc, spec)
+        if mat_result is False:
+            logger.warning("material custom-property write failed (non-fatal)")
+
         # X2 build success-gate (FR-X-02): "built" != "manufacturable". The
         # feature loop not raising only means each COM call returned; the part
         # can still carry rebuild errors / over-defined sketches that SW marks
