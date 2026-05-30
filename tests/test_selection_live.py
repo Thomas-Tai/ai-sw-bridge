@@ -423,11 +423,12 @@ def test_package_reexports() -> None:
     assert selection.capture_persist_id is live.capture_persist_id
     assert selection.resolve_ref is live.resolve_ref
     assert selection.resolve_manifest_face is live.resolve_manifest_face
+    assert selection.resolve_by_edge_fingerprint is live.resolve_by_edge_fingerprint
     assert selection.PersistResolution is live.PersistResolution
 
 
 # ---------------------------------------------------------------------------
-# resolve_edge_ref — tier-1 persist only (no edge fingerprint in v1)
+# resolve_edge_ref — tier-1 persist + tier-2 edge fingerprint fallback
 # ---------------------------------------------------------------------------
 
 
@@ -440,6 +441,17 @@ def _edge_ref(persist_id=b"\x01\x02"):
     )
 
 
+def _patch_edges(monkeypatch, edge_to_geom: dict) -> None:
+    """Make _iter_live_edges yield the keys and _read_edge_geometry map them."""
+    edges = list(edge_to_geom)
+    monkeypatch.setattr(live, "_iter_live_edges", lambda doc: edges)
+    monkeypatch.setattr(live, "_read_edge_geometry", lambda e: edge_to_geom[e])
+
+
+def _unexpected_edge_walk(doc):
+    raise AssertionError("live-edge walk should not run on the persist path")
+
+
 class TestResolveEdgeRef:
     def test_persist_hit(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ent = _FakeEntity()
@@ -448,18 +460,183 @@ class TestResolveEdgeRef:
         assert res.method == "persist_id"
         assert res.entity is ent
 
+    def test_persist_hit_short_circuits_edge_walk(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Persist success must not run the live-edge walk (tier-1 only)."""
+        ent = _FakeEntity()
+        _patch_ext(monkeypatch, _FakeExt(resolve=(ent, 0)))
+        monkeypatch.setattr(live, "_iter_live_edges", _unexpected_edge_walk)
+        res = live.resolve_edge_ref(_DOC, _edge_ref())
+        assert res.method == "persist_id"
+        assert res.entity is ent
+
     def test_persist_deleted_is_unresolved(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Patch the edge walk empty so tier-2 has no candidates — preserves
+        # the "persist failure → unresolved" assertion now that tier-2 exists.
         _patch_ext(monkeypatch, _FakeExt(resolve=(object(), 1)))  # status Deleted
+        _patch_edges(monkeypatch, {})
         res = live.resolve_edge_ref(_DOC, _edge_ref())
         assert res.method == "unresolved"
         assert res.entity is None
         assert res.persist is not None and not res.persist.ok
 
-    def test_no_persist_id_is_unresolved(self) -> None:
+    def test_no_persist_id_is_unresolved(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Patch the edge walk empty so tier-2 has no candidates.
+        _patch_edges(monkeypatch, {})
         res = live.resolve_edge_ref(_DOC, _edge_ref(persist_id=None))
         assert res.method == "unresolved"
         assert res.entity is None
         assert "no persist_id" in (res.note or "")
+
+
+# ---------------------------------------------------------------------------
+# _iter_live_edges — mirrors TestIterLiveFaces
+# ---------------------------------------------------------------------------
+
+
+class TestIterLiveEdges:
+    def test_flattens_bodies(self) -> None:
+        e1, e2, e3 = object(), object(), object()
+        body_a = types.SimpleNamespace(GetEdges=(e1, e2))
+        body_b = types.SimpleNamespace(GetEdges=(e3,))
+        doc = types.SimpleNamespace(GetBodies2=(body_a, body_b))
+        assert live._iter_live_edges(doc) == [e1, e2, e3]
+
+    def test_no_bodies(self) -> None:
+        doc = types.SimpleNamespace(GetBodies2=())
+        assert live._iter_live_edges(doc) == []
+
+    def test_body_without_edges_skipped(self) -> None:
+        e1 = object()
+        good = types.SimpleNamespace(GetEdges=(e1,))
+        doc = types.SimpleNamespace(GetBodies2=(object(), good))
+        assert live._iter_live_edges(doc) == [e1]
+
+    def test_getbodies_raises(self) -> None:
+        class _Doc:
+            @property
+            def GetBodies2(self):  # noqa: N802
+                raise RuntimeError("no bodies")
+        assert live._iter_live_edges(_Doc()) == []
+
+
+# ---------------------------------------------------------------------------
+# resolve_by_edge_fingerprint (tier 2) — wiring tests (predicate covered by
+# TestEdgeMatchPredicate)
+# ---------------------------------------------------------------------------
+
+# Reference edge geometry: a 10 mm edge along +Z.
+_EDGE_GEOM = {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.01], "length": 0.01}
+
+
+def _edge_geom(start, end):
+    midpoint = [(s + e) / 2.0 for s, e in zip(start, end)]
+    length = math.sqrt(sum((a - b) ** 2 for a, b in zip(start, end)))
+    return {"start": list(start), "end": list(end), "length": length, "midpoint": midpoint}
+
+
+class TestResolveByEdgeFingerprint:
+    def test_endpoint_match_hits(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        hit = object()
+        far = object()
+        _patch_edges(monkeypatch, {
+            far: _edge_geom((0.05, 0.0, 0.0), (0.05, 0.0, 0.01)),  # 50 mm away
+            hit: _edge_geom((0.0, 0.0, 0.0), (0.0, 0.0, 0.01)),     # exact match
+        })
+        res = live.resolve_by_edge_fingerprint(_DOC, _edge_ref())
+        assert res.method == "edge_fingerprint"
+        assert res.entity is hit
+
+    def test_no_match_unresolved(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        far = object()
+        _patch_edges(monkeypatch, {
+            far: _edge_geom((0.05, 0.0, 0.0), (0.05, 0.0, 0.01)),
+        })
+        res = live.resolve_by_edge_fingerprint(_DOC, _edge_ref())
+        assert res.method == "unresolved"
+        assert res.entity is None
+
+    def test_ref_without_endpoints(self) -> None:
+        ref = types.SimpleNamespace(start=(), end=(), length=0.0)
+        res = live.resolve_by_edge_fingerprint(_DOC, ref)
+        assert res.method == "unresolved"
+        assert "no endpoint geometry" in (res.note or "")
+
+    def test_best_candidate_wins(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Two matching candidates: the closer one (smaller key) wins."""
+        near = object()
+        far = object()
+        _patch_edges(monkeypatch, {
+            # Both match within tol; near is 0.1 mm off, far is 0.8 mm off.
+            near: {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0001, 0.01]},
+            far: {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0008, 0.01]},
+        })
+        res = live.resolve_by_edge_fingerprint(_DOC, _edge_ref())
+        assert res.method == "edge_fingerprint"
+        assert res.entity is near
+
+    def test_unreadable_edges_skipped(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        bad, good = object(), object()
+        geoms = {
+            bad: None,  # _read_edge_geometry returns None → skipped
+            good: _edge_geom((0.0, 0.0, 0.0), (0.0, 0.0, 0.01)),
+        }
+        monkeypatch.setattr(live, "_iter_live_edges", lambda doc: [bad, good])
+        monkeypatch.setattr(live, "_read_edge_geometry", lambda e: geoms[e])
+        res = live.resolve_by_edge_fingerprint(_DOC, _edge_ref())
+        assert res.method == "edge_fingerprint"
+        assert res.entity is good
+
+    def test_reversed_endpoints_match(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Edge with start/end swapped still matches (unordered endpoint gate)."""
+        hit = object()
+        _patch_edges(monkeypatch, {
+            hit: _edge_geom((0.0, 0.0, 0.01), (0.0, 0.0, 0.0)),  # reversed
+        })
+        res = live.resolve_by_edge_fingerprint(_DOC, _edge_ref())
+        assert res.method == "edge_fingerprint"
+        assert res.entity is hit
+
+
+# ---------------------------------------------------------------------------
+# resolve_edge_ref tier-2 integration — mirrors TestResolveRefTier2
+# ---------------------------------------------------------------------------
+
+
+class TestResolveEdgeRefTier2:
+    def test_persist_miss_then_fingerprint(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_ext(monkeypatch, _FakeExt(resolve=(object(), 1)))  # Deleted
+        hit = object()
+        _patch_edges(monkeypatch, {
+            hit: _edge_geom((0.0, 0.0, 0.0), (0.0, 0.0, 0.01)),
+        })
+        res = live.resolve_edge_ref(_DOC, _edge_ref(persist_id=b"tok"))
+        assert res.method == "edge_fingerprint"
+        assert res.entity is hit
+        assert res.persist is not None and res.persist.status_name == "Deleted"
+
+    def test_no_persist_id_uses_fingerprint(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        hit = object()
+        _patch_edges(monkeypatch, {
+            hit: _edge_geom((0.0, 0.0, 0.0), (0.0, 0.0, 0.01)),
+        })
+        res = live.resolve_edge_ref(_DOC, _edge_ref(persist_id=None))
+        assert res.method == "edge_fingerprint"
+        assert res.entity is hit
+        assert res.persist is None
+
+    def test_allow_fingerprint_false_skips_tier2(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_ext(monkeypatch, _FakeExt(resolve=(object(), 1)))  # Deleted
+        monkeypatch.setattr(live, "_iter_live_edges", _unexpected_edge_walk)
+        res = live.resolve_edge_ref(
+            _DOC, _edge_ref(persist_id=b"tok"), allow_fingerprint=False
+        )
+        assert res.method == "unresolved"
+        assert res.entity is None
+        assert "not attempted" in (res.note or "")
 
 
 # ---------------------------------------------------------------------------
