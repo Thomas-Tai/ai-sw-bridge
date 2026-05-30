@@ -55,16 +55,38 @@ class _FakeFilletData:
         self.default_radius = v
 
 
+class _FakeBaseFlangeData:
+    def __init__(self) -> None:
+        self.thickness: float | None = None
+        self.bend_radius: float | None = None
+
+    @property
+    def Thickness(self) -> float:
+        return self.thickness or 0.0
+
+    @Thickness.setter
+    def Thickness(self, v: float) -> None:
+        self.thickness = v
+
+    @property
+    def BendRadius(self) -> float:
+        return self.bend_radius or 0.0
+
+    @BendRadius.setter
+    def BendRadius(self, v: float) -> None:
+        self.bend_radius = v
+
+
 class _FakeFeatureManager:
-    def __init__(self, fillet_data: _FakeFilletData, feature: Any) -> None:
-        self._fillet_data = fillet_data
+    def __init__(self, data: Any, feature: Any) -> None:
+        self._data = data
         self._feature = feature
         self.create_def_calls: list[int] = []
         self.create_feat_calls: list[Any] = []
 
     def CreateDefinition(self, t: int) -> Any:
         self.create_def_calls.append(t)
-        return self._fillet_data
+        return self._data
 
     def CreateFeature(self, fd: Any) -> Any:
         self.create_feat_calls.append(fd)
@@ -76,10 +98,20 @@ class _FakeDoc:
         self._path = path
         self.FeatureManager = fm
         self.save_calls: list[tuple] = []
+        self.select_calls: list[tuple] = []
+        self.clear_selection_calls: list[bool] = []
+        self.select_returns = True
         self._title = Path(path).name
 
     def ForceRebuild3(self, _: bool) -> bool:
         return True
+
+    def ClearSelection2(self, top_only: bool) -> None:
+        self.clear_selection_calls.append(top_only)
+
+    def SelectByID(self, name: str, sel_type: str, x: float, y: float, z: float) -> bool:
+        self.select_calls.append((name, sel_type, x, y, z))
+        return self.select_returns
 
     def Save(self) -> int:
         self.save_calls.append(())
@@ -124,6 +156,13 @@ _VALID_TARGET = {
 
 _VALID_FEATURE = {"type": "fillet_constant_radius", "radius_mm": 2.0}
 
+_VALID_BASEFLANGE_FEATURE = {
+    "type": "base_flange",
+    "thickness_mm": 2.0,
+    "bend_radius_mm": 1.0,
+}
+_VALID_SKETCH_TARGET = {"sketch": "Sketch1"}
+
 
 def _patch_all(
     monkeypatch: pytest.MonkeyPatch,
@@ -131,11 +170,16 @@ def _patch_all(
     doc_path: str,
     entity: Any,
     feature: Any,
+    data: Any = None,
 ):
-    """Wire up all fakes and return a dict of handles for assertions."""
+    """Wire up all fakes and return a dict of handles for assertions.
+
+    ``data`` is the object ``CreateDefinition`` returns (and on which the
+    pipeline sets properties); defaults to a fillet-data fake.
+    """
     monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
 
-    fd = _FakeFilletData()
+    fd = data if data is not None else _FakeFilletData()
     fm = _FakeFeatureManager(fd, feature)
     doc = _FakeDoc(doc_path, fm)
     sw = _FakeSldWorks(doc)
@@ -323,6 +367,162 @@ class TestCommitFeatureAdd:
         )
 
         # Reset counters after dry_run.
+        fakes["doc"].save_calls.clear()
+        fakes["sw"].close_calls.clear()
+        fakes["fm"].create_feat_calls.clear()
+
+        r = sw_commit_feature_add(pid)
+
+        assert r["ok"] is True
+        assert r["state"] == ST_COMMITTED
+        assert r["doc_saved"] is True
+        assert len(fakes["doc"].save_calls) == 1
+        assert len(fakes["fm"].create_feat_calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# Base-flange feature type (F2) — CreateDefinition(34) → typed_qi pipeline
+# ---------------------------------------------------------------------------
+
+
+class TestProposeBaseFlange:
+    def test_writes_record_no_sw(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        fakes = _patch_all(
+            monkeypatch, tmp_path, str(doc), None, object(),
+            data=_FakeBaseFlangeData(),
+        )
+
+        r = sw_propose_feature_add(
+            str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
+        )
+
+        assert r["ok"] is True
+        rec = json.loads(
+            (tmp_path / "proposals" / f"{r['proposal_id']}.json").read_text()
+        )
+        assert rec["kind"] == "feature_add"
+        assert rec["feature"] == _VALID_BASEFLANGE_FEATURE
+        assert rec["target"] == _VALID_SKETCH_TARGET
+        # No SW touched at propose time.
+        assert fakes["fm"].create_def_calls == []
+
+    def test_rejects_bad_thickness(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), None, object())
+
+        r = sw_propose_feature_add(
+            str(doc),
+            {"type": "base_flange", "thickness_mm": 0, "bend_radius_mm": 1.0},
+            _VALID_SKETCH_TARGET,
+        )
+        assert r["ok"] is False
+        assert "thickness_mm" in r["error"]
+
+    def test_rejects_bad_bend_radius(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), None, object())
+
+        r = sw_propose_feature_add(
+            str(doc),
+            {"type": "base_flange", "thickness_mm": 2.0, "bend_radius_mm": -1},
+            _VALID_SKETCH_TARGET,
+        )
+        assert r["ok"] is False
+        assert "bend_radius_mm" in r["error"]
+
+    def test_rejects_target_without_sketch(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), None, object())
+
+        r = sw_propose_feature_add(
+            str(doc), _VALID_BASEFLANGE_FEATURE, {"persist_id": "AQID"}
+        )
+        assert r["ok"] is False
+        assert "sketch" in r["error"]
+
+
+class TestDryRunBaseFlange:
+    def test_ok_sets_props_selects_sketch_no_save(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        bf = _FakeBaseFlangeData()
+        fakes = _patch_all(
+            monkeypatch, tmp_path, str(doc), None, object(), data=bf
+        )
+        pid = sw_propose_feature_add(
+            str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
+        )["proposal_id"]
+
+        r = sw_dry_run_feature_add(pid)
+
+        assert r["ok"] is True
+        assert r["state"] == ST_DRY_RUN_OK
+        # CreateDefinition(34) — the base-flange id.
+        assert fakes["fm"].create_def_calls == [34]
+        # Props converted mm → metres.
+        assert bf.thickness == pytest.approx(0.002)
+        assert bf.bend_radius == pytest.approx(0.001)
+        # Profile sketch selected by name as a SKETCH.
+        assert fakes["doc"].select_calls == [("Sketch1", "SKETCH", 0, 0, 0)]
+        assert len(fakes["fm"].create_feat_calls) == 1
+        # Dry-run never saves.
+        assert fakes["doc"].save_calls == []
+        assert len(fakes["sw"].close_calls) == 1
+
+    def test_sketch_unselectable_broke(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        bf = _FakeBaseFlangeData()
+        fakes = _patch_all(
+            monkeypatch, tmp_path, str(doc), None, object(), data=bf
+        )
+        fakes["doc"].select_returns = False  # sketch cannot be selected
+        pid = sw_propose_feature_add(
+            str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
+        )["proposal_id"]
+
+        r = sw_dry_run_feature_add(pid)
+
+        assert r["ok"] is False
+        assert r["state"] == ST_DRY_RUN_BROKE
+        assert "Sketch1" in r["error"]
+        # CreateFeature must not run when the profile can't be selected.
+        assert fakes["fm"].create_feat_calls == []
+        assert fakes["doc"].save_calls == []
+
+
+class TestCommitBaseFlange:
+    def test_saves_exactly_once(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        bf = _FakeBaseFlangeData()
+        fakes = _patch_all(
+            monkeypatch, tmp_path, str(doc), None, object(), data=bf
+        )
+        pid = sw_propose_feature_add(
+            str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
+        )["proposal_id"]
+        sw_dry_run_feature_add(pid)
+
         fakes["doc"].save_calls.clear()
         fakes["sw"].close_calls.clear()
         fakes["fm"].create_feat_calls.clear()

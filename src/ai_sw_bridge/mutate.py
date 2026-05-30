@@ -94,6 +94,14 @@ _SW_DOC_PART = 1
 _SW_OPEN_SILENT = 1
 _SW_FM_FILLET = 1
 _SW_CONST_RADIUS_FILLET = 0
+# swFmBaseFlange — the CreateDefinition id for a sheet-metal base flange,
+# confirmed by the typed_qi id-scan and seat-validated by spike_baseflange_qi
+# (rev 32.1.0, commit 5be23bd): CreateDefinition(34) yields an
+# IBaseFlangeFeatureData that materializes via the typed_qi pipeline.
+_SW_FM_BASEFLANGE = 34
+
+# Feature types the feature_add PAE lifecycle knows how to build.
+_SUPPORTED_FEATURE_TYPES = ("fillet_constant_radius", "base_flange")
 
 
 def _open_doc_typed(doc_path: str) -> Any:
@@ -150,6 +158,65 @@ def _create_fillet(doc: Any, target: dict, radius_mm: float) -> tuple[bool, str 
         return False, "CreateFeature did not materialize"
     except Exception as exc:
         return False, f"fillet pipeline failed: {exc!r}"
+
+
+def _create_base_flange(
+    doc: Any, target: dict, thickness_mm: float, bend_radius_mm: float
+) -> tuple[bool, str | None]:
+    """Run the seat-validated base-flange pipeline on a profile sketch.
+
+    Mirrors the ``spike_baseflange_qi`` PASS path (rev 32.1.0): a sheet-metal
+    base flange IS a CreateDefinition-shaped feature, so it goes through the
+    same ``CreateDefinition → typed_qi → set props → CreateFeature`` pipeline
+    that materialized Fillet — NOT the legacy ``InsertSheetMetalBaseFlange2``
+    *method*, which rejected its argument shape in v0.15.
+
+    The ``target`` names the closed profile sketch to extrude into the flange
+    (``{"sketch": "<sketch name>"}``); the sketch must already exist in the doc.
+    Returns (ok, error).
+    """
+    sketch_name = target.get("sketch") if isinstance(target, dict) else None
+    if not sketch_name:
+        return False, "target must contain a non-empty 'sketch' name"
+    doc.ForceRebuild3(False)
+    try:
+        fm = doc.FeatureManager
+        data = fm.CreateDefinition(_SW_FM_BASEFLANGE)
+        mod = wrapper_module()
+        fd = typed_qi(data, "IBaseFlangeFeatureData", module=mod)
+        fd.Thickness = thickness_mm / 1000.0
+        fd.BendRadius = bend_radius_mm / 1000.0
+        try:
+            doc.ClearSelection2(True)
+        except Exception:
+            pass
+        if not doc.SelectByID(sketch_name, "SKETCH", 0, 0, 0):
+            return False, f"could not select profile sketch {sketch_name!r}"
+        feat = fm.CreateFeature(fd)
+        if _materialized(feat):
+            return True, None
+        return False, "CreateFeature did not materialize"
+    except Exception as exc:
+        return False, f"base-flange pipeline failed: {exc!r}"
+
+
+def _apply_feature(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Dispatch a feature-add proposal to its per-type build pipeline.
+
+    Shared by dry-run and commit so the two paths can never diverge. Returns
+    (ok, error); an unknown type returns ``(False, <reason>)`` rather than
+    raising (propose-time validation already rejects unsupported types).
+    """
+    ftype = feature.get("type") if isinstance(feature, dict) else None
+    if ftype == "fillet_constant_radius":
+        return _create_fillet(doc, target, feature["radius_mm"])
+    if ftype == "base_flange":
+        return _create_base_flange(
+            doc, target, feature["thickness_mm"], feature["bend_radius_mm"]
+        )
+    return False, f"unsupported feature type {ftype!r}"
 
 
 def _get_linked_locals(doc: Any) -> Path | None:
@@ -582,20 +649,37 @@ def sw_propose_feature_add(
     }
     try:
         feat_type = feature.get("type") if isinstance(feature, dict) else None
-        if feat_type != "fillet_constant_radius":
+        if feat_type not in _SUPPORTED_FEATURE_TYPES:
             result["error"] = (
                 f"unsupported feature type {feat_type!r}; "
-                "only 'fillet_constant_radius' is supported in v1"
+                f"supported: {', '.join(_SUPPORTED_FEATURE_TYPES)}"
             )
             return result
 
-        radius_mm = feature.get("radius_mm")
-        if not isinstance(radius_mm, (int, float)) or radius_mm <= 0:
-            result["error"] = f"radius_mm must be a positive number, got {radius_mm!r}"
-            return result
+        # Per-type parameter validation.
+        if feat_type == "fillet_constant_radius":
+            radius_mm = feature.get("radius_mm")
+            if not isinstance(radius_mm, (int, float)) or radius_mm <= 0:
+                result["error"] = (
+                    f"radius_mm must be a positive number, got {radius_mm!r}"
+                )
+                return result
+        elif feat_type == "base_flange":
+            for pname in ("thickness_mm", "bend_radius_mm"):
+                pval = feature.get(pname)
+                if not isinstance(pval, (int, float)) or pval <= 0:
+                    result["error"] = (
+                        f"{pname} must be a positive number, got {pval!r}"
+                    )
+                    return result
 
         if not isinstance(target, dict) or not target:
-            result["error"] = "target must be a non-empty DurableEdgeRef dict"
+            result["error"] = "target must be a non-empty dict"
+            return result
+
+        # A base flange is built on a named profile sketch, not an edge ref.
+        if feat_type == "base_flange" and not target.get("sketch"):
+            result["error"] = "base_flange target must contain a 'sketch' name"
             return result
 
         if not doc_path or not Path(doc_path).exists():
@@ -674,8 +758,7 @@ def sw_dry_run_feature_add(proposal_id: str) -> dict[str, Any]:
             result["error"] = f"failed to open doc: {doc_path}"
             return result
 
-        radius_mm = rec["feature"]["radius_mm"]
-        feat_ok, feat_err = _create_fillet(doc, rec["target"], radius_mm)
+        feat_ok, feat_err = _apply_feature(doc, rec["feature"], rec["target"])
 
         try:
             rebuild_ok = bool(doc.ForceRebuild3(False))
@@ -767,8 +850,7 @@ def sw_commit_feature_add(proposal_id: str) -> dict[str, Any]:
             result["error"] = f"failed to open doc: {doc_path}"
             return result
 
-        radius_mm = rec["feature"]["radius_mm"]
-        feat_ok, feat_err = _create_fillet(doc, rec["target"], radius_mm)
+        feat_ok, feat_err = _apply_feature(doc, rec["feature"], rec["target"])
         if not feat_ok:
             result["error"] = f"feature creation failed during commit: {feat_err}"
             return result
