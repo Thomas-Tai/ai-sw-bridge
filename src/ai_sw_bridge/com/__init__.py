@@ -17,6 +17,7 @@ from .earlybind import (
     is_early_bound,
     typed,
     typed_extension,
+    typed_qi,
 )
 from .executor import ComExecutor
 from .sw_type_info import (
@@ -44,6 +45,7 @@ __all__ = [
     "reconnect_sw_app",
     "typed",
     "typed_extension",
+    "typed_qi",
     "with_reconnect",
     "wrapper_module",
 ]

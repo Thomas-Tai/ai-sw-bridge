@@ -10,6 +10,7 @@ contract is exercised in isolation from COM.
 
 from __future__ import annotations
 
+import sys
 import types
 
 import pytest
@@ -95,6 +96,134 @@ class TestTyped:
 
 
 # ---------------------------------------------------------------------------
+# typed_qi() — QI-validated wrap (pywin32-free via an injected fake pythoncom)
+# ---------------------------------------------------------------------------
+
+
+_IID_IDISPATCH = object()  # sentinel standing in for pythoncom.IID_IDispatch
+E_NOINTERFACE_SIGNED = -2147467262  # 0x80004002 as a signed 32-bit int
+
+
+class _FakeComError(Exception):
+    """Stand-in for pythoncom.com_error: args[0] is the (signed) hresult."""
+
+
+def _fake_pythoncom() -> types.ModuleType:
+    mod = types.ModuleType("pythoncom")
+    mod.IID_IDispatch = _IID_IDISPATCH  # type: ignore[attr-defined]
+    mod.com_error = _FakeComError  # type: ignore[attr-defined]
+    return mod
+
+
+class _QIRaw:
+    """A raw _oleobj_ whose QueryInterface is driven by a supplied behaviour."""
+
+    def __init__(self, behaviour) -> None:
+        self._behaviour = behaviour
+        self.calls: list[tuple] = []
+
+    def QueryInterface(self, iid, iface_hint):  # noqa: N802 — COM signature
+        self.calls.append((iid, iface_hint))
+        return self._behaviour(iid, iface_hint)
+
+
+class _QIDispatch:
+    def __init__(self, behaviour) -> None:
+        self._oleobj_ = _QIRaw(behaviour)
+
+
+def _qi_module() -> types.ModuleType:
+    """gen_py-like module whose interface classes carry a CLSID + capture wraps."""
+    mod = types.ModuleType("win32com.gen_py.fake_sw_qi")
+
+    class _IShell(_FakeTyped):
+        CLSID = "{SHELL-IID}"
+
+    class _IDraft(_FakeTyped):
+        CLSID = "{DRAFT-IID}"
+
+    class _INoIID(_FakeTyped):
+        pass  # deliberately no CLSID
+
+    mod.IShellFeatureData = _IShell  # type: ignore[attr-defined]
+    mod.IDraftFeatureData2 = _IDraft  # type: ignore[attr-defined]
+    mod.INoIID = _INoIID  # type: ignore[attr-defined]
+    return mod
+
+
+class TestTypedQi:
+    def test_qi_success_wraps_validated_dispatch(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setitem(sys.modules, "pythoncom", _fake_pythoncom())
+        validated = _FakeRaw()  # the pointer QI hands back
+        obj = _QIDispatch(lambda iid, hint: validated)
+        wrapped = eb.typed_qi(obj, "IShellFeatureData", module=_qi_module())
+        assert isinstance(wrapped, _FakeTyped)
+        assert wrapped.raw is validated
+        # IID came from the class CLSID and the IDispatch hint was passed.
+        assert obj._oleobj_.calls == [("{SHELL-IID}", _IID_IDISPATCH)]
+
+    def test_qi_e_nointerface_raises_earlybind(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setitem(sys.modules, "pythoncom", _fake_pythoncom())
+
+        def _reject(iid, hint):
+            raise _FakeComError(E_NOINTERFACE_SIGNED, "No such interface")
+
+        obj = _QIDispatch(_reject)
+        with pytest.raises(EarlyBindError, match="E_NOINTERFACE"):
+            eb.typed_qi(obj, "IDraftFeatureData2", module=_qi_module())
+
+    def test_qi_other_hresult_raises_without_nointerface(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setitem(sys.modules, "pythoncom", _fake_pythoncom())
+
+        def _fail(iid, hint):
+            raise _FakeComError(-2147024891, "Access denied")  # 0x80070005
+
+        obj = _QIDispatch(_fail)
+        with pytest.raises(EarlyBindError) as ei:
+            eb.typed_qi(obj, "IShellFeatureData", module=_qi_module())
+        assert "E_NOINTERFACE" not in str(ei.value)
+        assert "0x80070005" in str(ei.value)
+
+    def test_interface_without_clsid_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setitem(sys.modules, "pythoncom", _fake_pythoncom())
+        obj = _QIDispatch(lambda iid, hint: _FakeRaw())
+        with pytest.raises(EarlyBindError, match="no CLSID"):
+            eb.typed_qi(obj, "INoIID", module=_qi_module())
+
+    def test_none_obj_raises(self) -> None:
+        with pytest.raises(EarlyBindError, match="None"):
+            eb.typed_qi(None, "IShellFeatureData", module=_qi_module())
+
+    def test_unknown_interface_raises(self) -> None:
+        obj = _QIDispatch(lambda iid, hint: _FakeRaw())
+        with pytest.raises(EarlyBindError, match="not found"):
+            eb.typed_qi(obj, "INotReal", module=_qi_module())
+
+    def test_object_without_oleobj_raises(self) -> None:
+        class _Bare:
+            pass
+
+        with pytest.raises(EarlyBindError, match="_oleobj_"):
+            eb.typed_qi(_Bare(), "IShellFeatureData", module=_qi_module())
+
+    def test_unavailable_module_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(eb, "wrapper_module", lambda: None)
+        obj = _QIDispatch(lambda iid, hint: _FakeRaw())
+        with pytest.raises(EarlyBindError, match="unavailable"):
+            eb.typed_qi(obj, "IShellFeatureData")
+
+
+# ---------------------------------------------------------------------------
 # typed_extension()
 # ---------------------------------------------------------------------------
 
@@ -143,5 +272,6 @@ class TestPackageExports:
 
         assert com.typed is eb.typed
         assert com.typed_extension is eb.typed_extension
+        assert com.typed_qi is eb.typed_qi
         assert com.is_early_bound is eb.is_early_bound
         assert com.EarlyBindError is EarlyBindError
