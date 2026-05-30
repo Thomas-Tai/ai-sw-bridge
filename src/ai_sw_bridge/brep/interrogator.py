@@ -271,6 +271,29 @@ def _try_get_faces(body: Any) -> list[Any]:
     return []
 
 
+def read_face_geometry(face: Any) -> Optional[dict[str, Any]]:
+    """Read the fingerprint-relevant geometry from one live ``IFace2`` proxy.
+
+    Returns ``{"normal", "centroid", "area_mm2", "bbox"}`` (the exact subset
+    ``brep.fingerprint.fingerprint`` consumes, computed identically to
+    :func:`_probe_face`), or ``None`` when the load-bearing reads (box, normal)
+    are unreachable. The selection fingerprint-fallback resolver
+    (``selection.live.resolve_by_fingerprint``) uses this so a re-matched face
+    hashes byte-identically to the one captured at build time.
+    """
+    box = _read_box(face)
+    normal = _read_normal(face)
+    if box is None or normal is None:
+        return None
+    area_mm2 = _read_area(face)
+    return {
+        "normal": normal,
+        "centroid": _centroid_from_box(box),
+        "area_mm2": area_mm2 if area_mm2 is not None else 0.0,
+        "bbox": (box[:3], box[3:]),
+    }
+
+
 def _probe_face(face: Any, *, body_id: int, face_idx: int) -> Optional[BrepFace]:
     """Extract the six load-bearing attributes from one IFace2 proxy."""
     box = _read_box(face)
@@ -472,4 +495,5 @@ def _role_hint(
 __all__ = [
     "BrepFace",
     "interrogate",
+    "read_face_geometry",
 ]
