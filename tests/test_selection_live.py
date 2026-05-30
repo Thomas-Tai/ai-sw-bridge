@@ -14,6 +14,7 @@ import types
 import pytest
 
 from ai_sw_bridge.selection import live
+from ai_sw_bridge.selection import BrepFingerprint, DurableRef
 from ai_sw_bridge.com.earlybind import EarlyBindError
 
 
@@ -218,6 +219,139 @@ class TestSelectEntity:
 
         monkeypatch.setattr(live.earlybind, "typed", lambda obj, iface, **k: obj)
         assert live.select_entity(_Boom()) is False
+
+
+# ---------------------------------------------------------------------------
+# resolve_by_fingerprint (tier 2) + _iter_live_faces
+# ---------------------------------------------------------------------------
+
+# A reference geometry and its real fingerprint (computed via brep.fingerprint).
+_GEOM = {"normal": [0.0, 0.0, 1.0], "centroid": [0.0, 0.0, 0.005], "area_mm2": 2500.0}
+_FP = BrepFingerprint.from_face_dict(_GEOM)
+
+
+def _ref(persist_id=None):
+    return DurableRef(persist_id=persist_id, fingerprint=_FP, role_hint="+z_outboard")
+
+
+def _geom(normal, centroid, area):
+    return {"normal": list(normal), "centroid": list(centroid), "area_mm2": area,
+            "bbox": ([0, 0, 0], [0, 0, 0])}
+
+
+def _patch_faces(monkeypatch, face_to_geom: dict) -> None:
+    """Make _iter_live_faces yield the keys and read_face_geometry map them."""
+    faces = list(face_to_geom)
+    monkeypatch.setattr(live, "_iter_live_faces", lambda doc: faces)
+    monkeypatch.setattr(live, "read_face_geometry", lambda f: face_to_geom[f])
+
+
+class TestResolveByFingerprint:
+    def test_exact_hash_match(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        far = object()
+        hit = object()
+        _patch_faces(monkeypatch, {
+            far: _geom((1, 0, 0), (0.01, 0, 0), 100.0),
+            hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
+        })
+        r = live.resolve_by_fingerprint(_DOC, _ref())
+        assert r.method == "fingerprint"
+        assert r.entity is hit
+
+    def test_geometry_proximity_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Same normal, centroid 0.5 mm off, different area -> hash differs but
+        # within the lossy tolerances.
+        near = object()
+        _patch_faces(monkeypatch, {
+            near: _geom((0.0, 0.0, 1.0), (0.0, 0.0, 0.0055), 2501.0),
+        })
+        r = live.resolve_by_fingerprint(_DOC, _ref())
+        assert r.method == "fingerprint_geom"
+        assert r.entity is near
+
+    def test_no_match_unresolved(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        far = object()
+        _patch_faces(monkeypatch, {far: _geom((1, 0, 0), (0.05, 0, 0), 9.0)})
+        r = live.resolve_by_fingerprint(_DOC, _ref())
+        assert r.method == "unresolved"
+        assert r.entity is None
+
+    def test_ref_without_fingerprint(self) -> None:
+        r = live.resolve_by_fingerprint(_DOC, types.SimpleNamespace(fingerprint=None))
+        assert r.method == "unresolved"
+        assert "no fingerprint" in r.note
+
+    def test_unreadable_faces_skipped(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        bad, good = object(), object()
+        geoms = {bad: None, good: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"])}
+        monkeypatch.setattr(live, "_iter_live_faces", lambda doc: [bad, good])
+        monkeypatch.setattr(live, "read_face_geometry", lambda f: geoms[f])
+        r = live.resolve_by_fingerprint(_DOC, _ref())
+        assert r.method == "fingerprint"
+        assert r.entity is good
+
+
+class TestIterLiveFaces:
+    def test_flattens_bodies(self) -> None:
+        f1, f2, f3 = object(), object(), object()
+        body_a = types.SimpleNamespace(GetFaces=(f1, f2))
+        body_b = types.SimpleNamespace(GetFaces=(f3,))
+        doc = types.SimpleNamespace(GetBodies2=(body_a, body_b))
+        assert live._iter_live_faces(doc) == [f1, f2, f3]
+
+    def test_no_bodies(self) -> None:
+        doc = types.SimpleNamespace(GetBodies2=())
+        assert live._iter_live_faces(doc) == []
+
+    def test_body_without_faces_skipped(self) -> None:
+        f1 = object()
+        good = types.SimpleNamespace(GetFaces=(f1,))
+        doc = types.SimpleNamespace(GetBodies2=(object(), good))  # object() has no GetFaces
+        assert live._iter_live_faces(doc) == [f1]
+
+    def test_getbodies_raises(self) -> None:
+        class _Doc:
+            @property
+            def GetBodies2(self):  # noqa: N802
+                raise RuntimeError("no bodies")
+        assert live._iter_live_faces(_Doc()) == []
+
+
+# ---------------------------------------------------------------------------
+# resolve_ref tier-2 integration
+# ---------------------------------------------------------------------------
+
+
+class TestResolveRefTier2:
+    def test_persist_fail_then_fingerprint(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_ext(monkeypatch, _FakeExt(resolve=(object(), 1)))  # Deleted
+        hit = object()
+        _patch_faces(monkeypatch, {
+            hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
+        })
+        r = live.resolve_ref(_DOC, _ref(persist_id=b"tok"))
+        assert r.method == "fingerprint"
+        assert r.entity is hit
+        assert r.persist is not None and r.persist.status_name == "Deleted"
+
+    def test_no_persist_id_uses_fingerprint(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        hit = object()
+        _patch_faces(monkeypatch, {
+            hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
+        })
+        r = live.resolve_ref(_DOC, _ref(persist_id=None))
+        assert r.method == "fingerprint"
+        assert r.entity is hit
+        assert r.persist is None
+
+    def test_allow_fingerprint_false_skips_tier2(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_ext(monkeypatch, _FakeExt(resolve=(object(), 1)))  # Deleted
+        r = live.resolve_ref(_DOC, _ref(persist_id=b"tok"), allow_fingerprint=False)
+        assert r.method == "fingerprint_fallback"
+        assert r.entity is None
+        assert "not attempted" in r.note
 
 
 # ---------------------------------------------------------------------------

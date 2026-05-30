@@ -22,9 +22,9 @@ early-bound typed-wrap only where the marshaler needs it — see
 
 Resolution honors the deterministic fallback hierarchy from ``DurableRef``:
 
-1. ``persist_id`` via ``GetObjectByPersistReference3`` (proven).
-2. ``fingerprint`` re-match against the live body (a later slice — this module
-   reports the need for it as a structured outcome rather than performing it).
+1. ``persist_id`` via ``GetObjectByPersistReference3`` (proven, reliable).
+2. ``fingerprint`` re-match against the live body — exact-hash first, then a
+   lossy normal/centroid proximity match (:func:`resolve_by_fingerprint`).
 3. client-side hand-off (out of bridge core).
 
 Every COM interaction is failure-tolerant: a capture that cannot read a token
@@ -36,10 +36,21 @@ the build loop.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
+from ..brep.fingerprint import fingerprint as _compute_fingerprint
+from ..brep.interrogator import read_face_geometry
 from ..com import earlybind
+
+# Tier-2 (fingerprint) lossy-match tolerances. Looser than the fingerprint
+# quantization (the exact-hash path handles tight matches); these bound the
+# geometry-proximity fallback used when a rebuild perturbed a face past the
+# quantization step. ``1 - normal_dot`` <= NORMAL_TOL and centroid distance
+# <= CENTROID_TOL_M must both hold for a candidate to qualify.
+_FP_NORMAL_TOL = 0.02      # ~11 deg of normal slop
+_FP_CENTROID_TOL_M = 1e-3  # 1 mm centroid drift
 
 # swPersistReferencedObjectStatus_e — the [out] code from
 # GetObjectByPersistReference3. Only ``Ok`` yields a usable entity.
@@ -166,37 +177,153 @@ def resolve_persist_id(doc: Any, persist_id: bytes | None) -> PersistResolution:
     return PersistResolution(obj if resolved else None, code, resolved)
 
 
-def resolve_ref(doc: Any, ref: Any) -> RefResolution:
-    """Resolve a :class:`DurableRef` to a live entity via the hierarchy.
+def _iter_live_faces(doc: Any) -> list[Any]:
+    """Return all solid-body faces of *doc* (best-effort, never raises).
 
-    Tier 1 (``persist_id``) is performed here. Tier 2 (fingerprint re-match
-    against the live body) is **not** performed by this slice — when the token
-    is absent or fails to resolve, the result carries
-    ``method="fingerprint_fallback"`` so the caller can run the brep re-match.
+    ``GetBodies2(swSolidBody=0, bVisibleOnly=True)`` then ``GetFaces`` per
+    body. Both come back as SAFEARRAYs (tuples) under late binding; under
+    early binding they may be methods — handled either way.
+    """
+    def _call(obj: Any, name: str, *args: Any) -> Any:
+        attr = getattr(obj, name)
+        return attr(*args) if callable(attr) else attr
+
+    try:
+        bodies = _call(doc, "GetBodies2", 0, True)
+    except Exception:  # noqa: BLE001
+        return []
+    if not bodies:
+        return []
+    if not isinstance(bodies, (tuple, list)):
+        bodies = [bodies]
+    faces: list[Any] = []
+    for body in bodies:
+        if body is None:
+            continue
+        try:
+            raw = _call(body, "GetFaces")
+        except Exception:  # noqa: BLE001
+            continue
+        if raw is None:
+            continue
+        faces.extend(list(raw) if isinstance(raw, (tuple, list)) else [raw])
+    return faces
+
+
+def _geom_distance(fp: Any, geom: dict[str, Any]) -> tuple[float, float] | None:
+    """Return ``(1 - normal_dot, centroid_distance_m)`` between a captured
+    fingerprint *fp* and a live face *geom*, or ``None`` if either is malformed.
+    """
+    try:
+        n0 = fp.normal
+        c0 = fp.centroid
+        n1 = geom["normal"]
+        c1 = geom["centroid"]
+        dot = abs(sum(a * b for a, b in zip(n0, n1)))
+        dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(c0, c1)))
+    except Exception:  # noqa: BLE001
+        return None
+    return (1.0 - dot, dist)
+
+
+def resolve_by_fingerprint(doc: Any, ref: Any) -> RefResolution:
+    """Tier-2 resolution: re-match ``ref.fingerprint`` against live geometry.
+
+    Walks the live solid-body faces and computes each face's fingerprint the
+    same way the manifest does (via ``brep.interrogator.read_face_geometry`` +
+    ``brep.fingerprint.fingerprint``), so an unperturbed face matches by exact
+    hash. When no exact hash matches (a rebuild moved the face past the
+    quantization step), falls back to the closest face within the lossy
+    normal/centroid tolerances. Returns ``method``:
+
+    * ``"fingerprint"`` — exact hash match (reliable).
+    * ``"fingerprint_geom"`` — lossy geometry-proximity match (best-effort).
+    * ``"unresolved"`` — no acceptable candidate.
+    """
+    fp = getattr(ref, "fingerprint", None)
+    if fp is None:
+        return RefResolution(None, "unresolved", note="ref has no fingerprint")
+    target_hash = getattr(fp, "hash_hex", None)
+
+    best_face: Any = None
+    best_key: tuple[float, float] | None = None
+    for face in _iter_live_faces(doc):
+        geom = read_face_geometry(face)
+        if geom is None:
+            continue
+        try:
+            h = _compute_fingerprint(
+                {
+                    "normal": list(geom["normal"]),
+                    "centroid": list(geom["centroid"]),
+                    "area_mm2": geom["area_mm2"],
+                }
+            )
+        except Exception:  # noqa: BLE001
+            h = None
+        if target_hash is not None and h == target_hash:
+            return RefResolution(face, "fingerprint", note="exact fingerprint match")
+        dd = _geom_distance(fp, geom)
+        if dd is None:
+            continue
+        n_err, dist = dd
+        if n_err <= _FP_NORMAL_TOL and dist <= _FP_CENTROID_TOL_M:
+            if best_key is None or dd < best_key:
+                best_key = dd
+                best_face = face
+
+    if best_face is not None:
+        return RefResolution(
+            best_face,
+            "fingerprint_geom",
+            note=(
+                f"lossy geometry match (no exact hash; 1-dot={best_key[0]:.4g}, "
+                f"centroid_dist={best_key[1]:.4g} m)"
+            ),
+        )
+    return RefResolution(None, "unresolved", note="no fingerprint match among live faces")
+
+
+def resolve_ref(doc: Any, ref: Any, *, allow_fingerprint: bool = True) -> RefResolution:
+    """Resolve a :class:`DurableRef` to a live entity via the full hierarchy.
+
+    Tier 1 ``persist_id`` (proven, reliable) → tier 2 ``fingerprint`` re-match
+    against the live body (lossy; :func:`resolve_by_fingerprint`). The
+    ``persist`` field always carries the tier-1 outcome (or ``None`` if there
+    was no token) so callers can see why the fallback was taken.
 
     Args:
-        doc: the live document to resolve against (assumed rebuilt).
-        ref: a ``DurableRef`` (uses its ``persist_id`` attribute).
+        doc: the live document to resolve against (assumed rebuilt — a
+            freshly opened doc must be ``ForceRebuild3``'d first, else the
+            token resolves to ``Deleted``).
+        ref: a ``DurableRef`` (uses ``persist_id`` then ``fingerprint``).
+        allow_fingerprint: when ``False``, skip tier 2 (persist-only) — used
+            where the cost of a full live-face walk isn't wanted.
     """
+    pr: PersistResolution | None = None
     persist_id = getattr(ref, "persist_id", None)
     if persist_id is not None:
         pr = resolve_persist_id(doc, persist_id)
         if pr.ok:
             return RefResolution(pr.entity, "persist_id", persist=pr)
+        persist_note = f"persist failed (status={pr.status_name}, error={pr.error})"
+    else:
+        persist_note = "no persist_id on ref"
+
+    if allow_fingerprint and getattr(ref, "fingerprint", None) is not None:
+        fr = resolve_by_fingerprint(doc, ref)
         return RefResolution(
-            None,
-            "fingerprint_fallback",
+            fr.entity,
+            fr.method if fr.entity is not None else "unresolved",
             persist=pr,
-            note=(
-                f"persist resolve failed (status={pr.status_name}, "
-                f"error={pr.error}); fingerprint re-match required"
-            ),
+            note=f"{persist_note}; {fr.note}",
         )
+
     return RefResolution(
         None,
         "fingerprint_fallback",
-        persist=None,
-        note="no persist_id on ref; fingerprint re-match required",
+        persist=pr,
+        note=f"{persist_note}; fingerprint re-match not attempted",
     )
 
 
@@ -229,6 +356,7 @@ __all__ = [
     "PersistResolution",
     "RefResolution",
     "capture_persist_id",
+    "resolve_by_fingerprint",
     "resolve_persist_id",
     "resolve_ref",
     "select_entity",
