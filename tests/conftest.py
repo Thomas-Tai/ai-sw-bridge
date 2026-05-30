@@ -18,10 +18,16 @@ _SW_PROBE: bool | None = None
 
 
 def solidworks_available() -> bool:
-    """Return True iff a live SOLIDWORKS session can be acquired.
+    """Return True iff a live SOLIDWORKS session can be acquired *and* responds.
 
     Used by the ``solidworks_only`` auto-skip hook below. Cached after the
     first call so the probe cost is paid once per pytest session.
+
+    Probes both ``Dispatch`` and a property read (``RevisionNumber``) because
+    ``Dispatch`` can succeed (COM class registered) even when the SW service
+    is unhealthy — subsequent calls then hit ``0x800706BA``
+    (RPC_E_SERVER_UNAVAILABLE) as a process-fatal Windows structured
+    exception rather than a catchable Python error.
     """
     global _SW_PROBE
     if _SW_PROBE is not None:
@@ -30,22 +36,47 @@ def solidworks_available() -> bool:
         import win32com.client
 
         sw = win32com.client.Dispatch("SldWorks.Application")
-        _SW_PROBE = sw is not None
+        if sw is None:
+            _SW_PROBE = False
+            return False
+        _ = sw.RevisionNumber
+        _SW_PROBE = True
     except Exception:
         _SW_PROBE = False
     return _SW_PROBE
 
 
 def pytest_collection_modifyitems(config, items):
-    """Auto-skip @pytest.mark.solidworks_only tests when no live SW session."""
+    """Auto-skip @pytest.mark.solidworks_only tests when no live SW session.
+
+    Also auto-skip @pytest.mark.destructive_sw unless the user explicitly
+    selected them (``-m destructive_sw`` or ``-k death_recovery``).  The
+    destructive test kills the SW process mid-run; the resulting SEH
+    exception in the COM worker thread crashes the entire pytest process —
+    it cannot be caught by ``_DEAD_HRESULTS`` or Python ``try/except``.
+    """
     if not any(item.get_closest_marker("solidworks_only") for item in items):
-        return
-    if solidworks_available():
-        return
-    skip_sw = pytest.mark.skip(reason="live SOLIDWORKS session not available")
-    for item in items:
-        if item.get_closest_marker("solidworks_only"):
-            item.add_marker(skip_sw)
+        pass
+    elif solidworks_available():
+        pass
+    else:
+        skip_sw = pytest.mark.skip(reason="live SOLIDWORKS session not available")
+        for item in items:
+            if item.get_closest_marker("solidworks_only"):
+                item.add_marker(skip_sw)
+
+    explicit = (
+        "destructive_sw" in (config.getoption("-m", "") or "")
+        or "death_recovery" in (config.getoption("-k", "") or "")
+    )
+    if not explicit:
+        skip_destructive = pytest.mark.skip(
+            reason="destructive SW test — run in isolation: "
+            "pytest -m destructive_sw tests/e2e_sw/test_e2e_death_recovery.py -v"
+        )
+        for item in items:
+            if item.get_closest_marker("destructive_sw"):
+                item.add_marker(skip_destructive)
 
 
 def _load_spec(rel_path: str) -> dict:

@@ -75,9 +75,10 @@ T = TypeVar("T")
 _SHUTDOWN = object()
 
 # HRESULTs indicating the SW process died (stale IDispatch handle).
-# 0x800401FD = CO_E_OBJNOTCONNECTED, 0x80010108 = RPC_E_DISCONNECTED.
+# 0x800401FD = CO_E_OBJNOTCONNECTED, 0x80010108 = RPC_E_DISCONNECTED,
+# 0x800706BA = RPC_E_SERVER_UNAVAILABLE (SW service not responding).
 # See docs/com_failure_modes.md row M-01.
-_DEAD_HRESULTS: frozenset[int] = frozenset({0x800401FD, 0x80010108})
+_DEAD_HRESULTS: frozenset[int] = frozenset({0x800401FD, 0x80010108, 0x800706BA})
 
 
 class ComExecutor:

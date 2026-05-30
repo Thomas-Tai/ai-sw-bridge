@@ -69,6 +69,8 @@ class TestScrub:
 
 
 class TestConsentGate:
+    pytestmark = pytest.mark.solidworks_only
+
     def test_refuses_without_consent(self, project_dir, monkeypatch):
         monkeypatch.chdir(project_dir)
         with pytest.raises(SystemExit):
@@ -96,6 +98,8 @@ class TestConsentGate:
 
 
 class TestZipIntegrity:
+    pytestmark = pytest.mark.solidworks_only
+
     def test_zip_contains_readme(self, project_dir, consent_file, monkeypatch):
         monkeypatch.chdir(project_dir)
         import tools.bundle_bug_report as bbr
@@ -133,6 +137,8 @@ class TestZipIntegrity:
 
 
 class TestHelpFlag:
+    pytestmark = pytest.mark.solidworks_only
+
     def test_help_prints_usage_and_exits_zero(self, tmp_path):
         result = subprocess.run(
             [sys.executable, "tools/bundle_bug_report.py", "--help"],
