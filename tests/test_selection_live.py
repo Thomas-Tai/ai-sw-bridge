@@ -355,6 +355,63 @@ class TestResolveRefTier2:
 
 
 # ---------------------------------------------------------------------------
+# resolve_manifest_face — the data-layer -> live-layer seam (OI-3)
+# ---------------------------------------------------------------------------
+
+
+def _manifest_face(*, persist_b64=None, normal=None, centroid=None, area=None):
+    """A serialized manifest face dict (brep.manifest._serialize_face shape)."""
+    face = {
+        "normal": list(normal if normal is not None else _GEOM["normal"]),
+        "centroid": list(centroid if centroid is not None else _GEOM["centroid"]),
+        "area_mm2": area if area is not None else _GEOM["area_mm2"],
+        "role_hint": "+z_outboard",
+    }
+    if persist_b64 is not None:
+        face["persist_id"] = persist_b64
+    return face
+
+
+class TestResolveManifestFace:
+    def test_persist_tier_preferred(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # base64url(b"tok") == "dG9r" (no padding); the face carries a token, so
+        # tier 1 resolves and the live-face walk is never consulted.
+        ent = _FakeEntity()
+        _patch_ext(monkeypatch, _FakeExt(resolve=(ent, 0)))
+        monkeypatch.setattr(live, "_iter_live_faces", _unexpected_face_walk)
+        r = live.resolve_manifest_face(_DOC, _manifest_face(persist_b64="dG9r"))
+        assert r.method == "persist_id"
+        assert r.entity is ent
+
+    def test_no_token_falls_back_to_fingerprint(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        hit = object()
+        _patch_faces(monkeypatch, {
+            hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
+        })
+        r = live.resolve_manifest_face(_DOC, _manifest_face())  # no persist_id
+        assert r.method == "fingerprint"
+        assert r.entity is hit
+        assert r.persist is None
+
+    def test_persist_only_skips_face_walk(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_ext(monkeypatch, _FakeExt(resolve=(object(), 1)))  # Deleted
+        monkeypatch.setattr(live, "_iter_live_faces", _unexpected_face_walk)
+        r = live.resolve_manifest_face(
+            _DOC, _manifest_face(persist_b64="dG9r"), allow_fingerprint=False
+        )
+        assert r.method == "fingerprint_fallback"
+        assert r.entity is None
+
+
+def _unexpected_face_walk(doc):
+    raise AssertionError("live-face walk should not run on the persist path")
+
+
+# ---------------------------------------------------------------------------
 # Package re-exports
 # ---------------------------------------------------------------------------
 
@@ -364,6 +421,7 @@ def test_package_reexports() -> None:
 
     assert selection.capture_persist_id is live.capture_persist_id
     assert selection.resolve_ref is live.resolve_ref
+    assert selection.resolve_manifest_face is live.resolve_manifest_face
     assert selection.PersistResolution is live.PersistResolution
 
 

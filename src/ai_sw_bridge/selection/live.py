@@ -43,6 +43,7 @@ from typing import Any
 from ..brep.fingerprint import fingerprint as _compute_fingerprint
 from ..brep.interrogator import read_face_geometry
 from ..com import earlybind
+from ._ref import DurableRef
 
 # Tier-2 (fingerprint) lossy-match tolerances. Looser than the fingerprint
 # quantization (the exact-hash path handles tight matches); these bound the
@@ -313,6 +314,40 @@ def resolve_ref(doc: Any, ref: Any, *, allow_fingerprint: bool = True) -> RefRes
     )
 
 
+def resolve_manifest_face(
+    doc: Any, face: dict[str, Any], *, allow_fingerprint: bool = True
+) -> RefResolution:
+    """Resolve a serialized manifest *face* dict to a live entity.
+
+    This is the canonical seam between the two resolve layers (OI-3):
+
+    * ``brep.resolver`` does the *data-level* lookup — given a manifest brep
+      block and a symbolic query, ``resolve_face_role`` / ``find_face_by_normal``
+      pick **which face dict** a role or normal refers to. They are
+      intentionally persist-agnostic.
+    * this module owns the *live* resolution and the single persist→fingerprint
+      tier hierarchy. The persist token captured into the manifest face (under
+      ``persist_capture``) lives here, not in ``brep.resolver``.
+
+    Calling this on the face dict returned by ``brep.resolver`` (rather than
+    hand-wiring ``DurableRef.from_manifest_face`` + :func:`resolve_ref`) keeps
+    the persist-preferring path the path of least resistance — a face that
+    carries a token resolves via tier 1, and only degrades to the lossy
+    fingerprint re-match when the token is absent or stale.
+
+    Args:
+        doc: the live document (assumed rebuilt — see :func:`resolve_ref`).
+        face: one serialized brep-manifest face (the dict shape produced by
+            ``brep.manifest.Manifest._serialize_face`` and selected by
+            ``brep.resolver``).
+        allow_fingerprint: forwarded to :func:`resolve_ref` (``False`` =
+            persist-only).
+    """
+    return resolve_ref(
+        doc, DurableRef.from_manifest_face(face), allow_fingerprint=allow_fingerprint
+    )
+
+
 def resolve_edge_ref(doc: Any, ref: Any) -> RefResolution:
     """Resolve a :class:`DurableEdgeRef` to a live edge (tier-1 persist only).
 
@@ -371,6 +406,7 @@ __all__ = [
     "capture_persist_id",
     "resolve_by_fingerprint",
     "resolve_edge_ref",
+    "resolve_manifest_face",
     "resolve_persist_id",
     "resolve_ref",
     "select_entity",
