@@ -125,6 +125,38 @@ def typed_extension(doc: Any, *, module: Any | None = None) -> Any:
     return typed(doc.Extension, "IModelDocExtension", module=module)
 
 
+def read_persist_reference(doc: Any, entity: Any) -> bytes | None:
+    """Read the durable persist token for *entity* via a typed Extension.
+
+    The canonical OUT-param read this module exists for:
+    ``IModelDocExtension.GetPersistReference3(entity)`` through an early-bound
+    typed Extension (late binding cannot marshal the result reliably). Returns
+    the raw token bytes, or ``None`` if the token can't be read for any reason
+    (no Extension, API unavailable, marshaler failure, or a token shape that
+    won't coerce to bytes). Never raises — ``None`` is the first-class
+    "persist unavailable" state callers degrade on.
+
+    This is the single low-level read shared by the build-time capture path
+    (``brep.interrogator``) and the resolve-time bridge
+    (``selection.live.capture_persist_id``), so both produce identical tokens.
+    """
+    if doc is None or entity is None:
+        return None
+    try:
+        ext = typed_extension(doc)
+        pid = ext.GetPersistReference3(entity)
+    except EarlyBindError:
+        return None
+    except Exception:  # noqa: BLE001 — any COM failure degrades to None
+        return None
+    if pid is None:
+        return None
+    try:
+        return bytes(pid)
+    except Exception:  # noqa: BLE001 — token shape not coercible
+        return None
+
+
 def is_early_bound(obj: Any) -> bool:
     """True if ``obj`` is a gen_py (early-bound) typed wrapper.
 
@@ -138,6 +170,7 @@ def is_early_bound(obj: Any) -> bool:
 __all__ = [
     "EarlyBindError",
     "is_early_bound",
+    "read_persist_reference",
     "typed",
     "typed_extension",
 ]

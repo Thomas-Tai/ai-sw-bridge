@@ -23,11 +23,13 @@ OFF, ``interrogate`` returns ``None`` without touching COM.
 
 from __future__ import annotations
 
+import base64
 import logging
 import time
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from ..com.earlybind import read_persist_reference
 from ..flags import resolve as resolve_flags
 from ..telemetry import histogram as telemetry_histogram
 
@@ -58,10 +60,16 @@ class BrepFace:
     fingerprint: str = ""
     is_surface: bool = False
     is_hidden: bool = False
+    persist_id: str = ""  # base64url (no pad) durable token; "" when uncaptured
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON-serializable form for the manifest brep block."""
-        return {
+        """JSON-serializable form for the manifest brep block.
+
+        ``persist_id`` is included only when a token was captured (the
+        ``persist_capture`` flag was on and the read succeeded); it is omitted
+        otherwise so the manifest stays byte-identical to the no-capture case.
+        """
+        out: dict[str, Any] = {
             "face_idx": self.face_idx,
             "body_id": self.body_id,
             "temp_id": self.temp_id,
@@ -74,6 +82,9 @@ class BrepFace:
             "is_surface": self.is_surface,
             "is_hidden": self.is_hidden,
         }
+        if self.persist_id:
+            out["persist_id"] = self.persist_id
+        return out
 
 
 def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
@@ -145,9 +156,18 @@ def interrogate(feature: Any, ctx: Any = None) -> Optional[dict[str, Any]]:
                 "status": "no_downstream_refs",
             }
 
+    # Phase-0 durable-selection capture: read per-face persist tokens when the
+    # persist_capture flag is on and the live doc is reachable via ctx. Gated
+    # separately from interrogation because it adds a COM read per face (hybrid
+    # early binding). Fail-soft per face — a token that won't read stays "".
+    capture = bool(flags.get("persist_capture", False))
+    doc = getattr(ctx, "doc", None) if ctx is not None else None
+
     t0 = time.perf_counter()
     try:
-        faces = _walk_faces(feature, force_body_walk=is_import)
+        faces = _walk_faces(
+            feature, force_body_walk=is_import, doc=doc, capture=capture
+        )
     except Exception as e:
         logger.warning("brep interrogation failed: %s", e)
         return {"feature": feat_name, "faces": [], "error": str(e)}
@@ -184,13 +204,23 @@ def _feature_name(feature: Any) -> str:
         return "unknown"
 
 
-def _walk_faces(feature: Any, *, force_body_walk: bool = False) -> list[BrepFace]:
+def _walk_faces(
+    feature: Any,
+    *,
+    force_body_walk: bool = False,
+    doc: Any = None,
+    capture: bool = False,
+) -> list[BrepFace]:
     """Walk bodies → faces. Falls back to feature.GetFaces when bodies
     aren't reachable on the dispatch proxy.
 
     ``force_body_walk`` skips ``IFeature.GetFaces`` entirely — used for
     ImportFeature where the feature handle doesn't carry native face
     topology and the only path is via ``IFeature.GetBody``.
+
+    ``doc``/``capture`` carry the Phase-0 durable-selection capture: when
+    ``capture`` is true and ``doc`` is the live model doc, each probed face
+    also gets its ``GetPersistReference3`` token read (fail-soft per face).
     """
     faces: list[BrepFace] = []
 
@@ -201,7 +231,9 @@ def _walk_faces(feature: Any, *, force_body_walk: bool = False) -> list[BrepFace
         direct = _try_feature_getfaces(feature)
         if direct:
             for idx, face in enumerate(direct):
-                bf = _probe_face(face, body_id=0, face_idx=idx)
+                bf = _probe_face(
+                    face, body_id=0, face_idx=idx, doc=doc, capture=capture
+                )
                 if bf is not None:
                     faces.append(bf)
             return faces
@@ -215,7 +247,9 @@ def _walk_faces(feature: Any, *, force_body_walk: bool = False) -> list[BrepFace
     while body is not None:
         raw = _try_get_faces(body)
         for idx, face in enumerate(raw):
-            bf = _probe_face(face, body_id=body_id, face_idx=idx)
+            bf = _probe_face(
+                face, body_id=body_id, face_idx=idx, doc=doc, capture=capture
+            )
             if bf is not None:
                 faces.append(bf)
         body = _next_body(body)
@@ -294,8 +328,21 @@ def read_face_geometry(face: Any) -> Optional[dict[str, Any]]:
     }
 
 
-def _probe_face(face: Any, *, body_id: int, face_idx: int) -> Optional[BrepFace]:
-    """Extract the six load-bearing attributes from one IFace2 proxy."""
+def _probe_face(
+    face: Any,
+    *,
+    body_id: int,
+    face_idx: int,
+    doc: Any = None,
+    capture: bool = False,
+) -> Optional[BrepFace]:
+    """Extract the six load-bearing attributes from one IFace2 proxy.
+
+    When ``capture`` is true and ``doc`` is the live model doc, also reads the
+    face's durable ``GetPersistReference3`` token and stores it base64url-encoded
+    on ``BrepFace.persist_id``. The read is fail-soft: any failure leaves
+    ``persist_id`` empty and the face is still returned with its geometry.
+    """
     box = _read_box(face)
     normal = _read_normal(face)
     area_mm2 = _read_area(face)
@@ -308,6 +355,12 @@ def _probe_face(face: Any, *, body_id: int, face_idx: int) -> Optional[BrepFace]
     is_surface = _read_is_surface(face)
     is_hidden = _read_is_hidden(face)
 
+    persist_id = ""
+    if capture and doc is not None:
+        pid = read_persist_reference(doc, face)
+        if pid:
+            persist_id = base64.urlsafe_b64encode(pid).decode("ascii").rstrip("=")
+
     return BrepFace(
         face_idx=face_idx,
         body_id=body_id,
@@ -319,6 +372,7 @@ def _probe_face(face: Any, *, body_id: int, face_idx: int) -> Optional[BrepFace]
         role_hint=role,
         is_surface=is_surface,
         is_hidden=is_hidden,
+        persist_id=persist_id,
     )
 
 

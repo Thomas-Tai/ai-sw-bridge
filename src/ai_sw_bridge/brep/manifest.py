@@ -188,6 +188,13 @@ class Manifest:
             "area_mm2": face.get("area_mm2"),
             "is_surface": face.get("is_surface", False),
         }
+        # Durable persist token (Phase-0 selection): carried only when the
+        # interrogator captured one (persist_capture flag on + read succeeded).
+        # Omitted otherwise so the manifest stays byte-identical to the
+        # no-capture case.
+        persist_id = face.get("persist_id")
+        if persist_id:
+            out["persist_id"] = persist_id
         # temp_id is intentionally omitted from the serialized form
         # per spec §2.5 — it's session-scoped only.
         return out

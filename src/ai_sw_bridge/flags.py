@@ -85,6 +85,13 @@ FLAG_REGISTRY: dict[str, FeatureFlag] = {
         lane="core",
         removal_date="v0.16",
     ),
+    "persist_capture": FeatureFlag(
+        name="persist_capture",
+        default=False,
+        description="Phase-0 durable selection — capture per-face GetPersistReference3 tokens into the brep manifest (hybrid early binding). Requires brep_interrogation.",
+        lane="core",
+        removal_date="v0.17",
+    ),
 }
 
 
