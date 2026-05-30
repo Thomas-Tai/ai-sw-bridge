@@ -63,7 +63,7 @@ design phase, NOT a "we forgot to do this" item.
 
 | Item | Reason |
 |---|---|
-| **L5 — C# in-process adapter via PythonNET** | Decisions.md ratified the indefinite deferral 2026-05-23. The VBA-emit-and-run alternative (`SolidworksMCP-python/vba_adapter.py`) likely collapses L5 entirely. Re-evaluate only if pywin32 stability degrades meaningfully against the (still-undefined) trigger telemetry above. |
+| **L5 — C# in-process adapter via PythonNET** | Decisions.md ratified the indefinite deferral 2026-05-23. The VBA-emit-and-run alternative (`SolidworksMCP-python/vba_adapter.py`) likely collapses L5 entirely. **Update 2026-05-30:** the last concrete *technical* driver for going in-process — OUT-param / Callout marshaling, specifically the durable-selection keystone `GetObjectByPersistReference3` — was cleared **out-of-process** by hybrid early binding (`spikes/v0_15/spike_earlybind_persist.py`, S-EARLYBIND = PASS; `com.earlybind`; decisions.md 2026-05-30). No feature lane now depends on L5. Re-evaluate only if pywin32 stability degrades meaningfully against the (still-undefined) trigger telemetry above. |
 | **`ARCHITECTURE_STYLE.md`** as a separate doc | Decisions.md 2026-05-28 chose `CODESTYLE.md` over per-decision ADRs *and* over a parallel ARCHITECTURE_STYLE doc. Picking both was rejected as ceremony. |
 
 ## Re-evaluation triggers

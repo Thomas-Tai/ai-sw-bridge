@@ -390,6 +390,100 @@ indefinitely-deferred items) and `CHANGELOG.md` for shipped state.
 
 ---
 
+## 2026-05-30
+
+### 2026-05-30 — Reframe invariant #4 as "out-of-process Python"; adopt hybrid binding; close Route-C
+
+**Context:** The durable-selection keystone (the "Persistent ID problem,"
+`api_coverage_roadmap.md` §4 — Phase 0, the precondition for edit-robust
+output) depends on `IModelDocExtension.GetObjectByPersistReference3`, whose
+`[out] long` error parameter is the late-binding failure class. The
+seat-run spikes (SW 2024 SP1, 2026-05-29) confirmed the wall empirically:
+S-PERSIST and S-DISPATCH came back **PARTIAL** — read works, the OUT-param /
+Callout write-back does not marshal under dynamic (late) binding. Read
+literally, that was the documented trigger for the in-process .NET
+conversation ("Route-C", L5).
+
+A decisive follow-up spike, `spikes/v0_15/spike_earlybind_persist.py`
+(**S-EARLYBIND = PASS**), tested whether the wall is the *API* or the
+*late-binding marshaler*. Under a Python **early-bound** typed
+`IModelDocExtension`, `GetObjectByPersistReference3(pid)` returns
+`(<entity>, 0)`: the OUT error code arrives as the 2nd tuple element, the
+object resolves, survives `ForceRebuild3`, and is selectable. The wall is
+the marshaler, not the API — and clearing it does **not** require leaving
+the out-of-process, `pip`-installable, JSON-only-agent design.
+
+**Decision:**
+
+1. **Reframe invariant #4.** The load-bearing guarantee is *"the bridge
+   drives SOLIDWORKS out-of-process from Python, and the agent never
+   touches COM directly"* — **not** "late binding specifically." Late
+   binding was a means (avoid stale per-version gen_py wrappers, keep
+   `pip install` free of a .NET SDK), never the end. Early-bound typed
+   wrapping is still out-of-process Python; it does not re-admit any agent
+   COM access and does not change the deployment story.
+
+2. **Adopt hybrid binding.** Late binding stays the default for the whole
+   surface. A narrow, sanctioned early-binding escape hatch
+   (`com.earlybind.typed(obj, iface)`) typed-wraps *only* the specific
+   objects whose `[out]` / Callout methods cannot marshal late-bound —
+   built directly from the raw `_oleobj_`, because every win32com
+   convenience path (`EnsureDispatch` / `Dispatch` / `CastTo`) trips on
+   SW objects refusing `IDispatch::GetTypeInfo`. The agent-safety model
+   (invariants #2 declarative-JSON-only and #3 zero-arbitrary-code) is
+   untouched.
+
+3. **Close Route-C (the C# in-process adapter / PythonNET, L5) as the
+   answer to the durable-selection keystone.** Its sole remaining
+   technical driver — OUT-param / Callout marshaling — is cleared
+   out-of-process. L5 stays indefinitely deferred (it was already), now
+   with no keystone dependency riding on it.
+
+**Alternatives considered:**
+
+- *Route-C — C# in-process adapter via PythonNET.* Rejected as the
+  keystone path: it would add a .NET SDK to the install story (violating
+  the deployment half of invariant #4) to solve a problem hybrid binding
+  solves in-process-free. The S-tier reference (SolidPilot) uses it, but
+  S-EARLYBIND shows we don't need to.
+- *Route-B — VBA emit-and-run.* Rejected: violates invariant #3
+  (`run_macro` was deliberately removed in v0.14, a documented BREAKING
+  change); reopening it is a security-model reversal.
+- *Flip the whole codebase to early binding.* Rejected: early-bound
+  typed objects expose the typelib's real property/method split, so
+  some calls the bridge reaches as auto-invoked attributes (e.g.
+  `RevisionNumber`) become methods that must be *called* — a wide, risky
+  diff for no benefit on the ~16 primitives that already marshal fine
+  late-bound. Hybrid is surgical; full early-binding is a rewrite.
+- *Accept fingerprint-only reselection (the §4.4 RED fallback).*
+  Rejected as the primary path: lossy across large edits. Kept as the
+  documented degradation when a persist token is unavailable.
+
+**Consequences:**
+
+- New module `src/ai_sw_bridge/com/earlybind.py` (`typed`,
+  `typed_extension`, `is_early_bound`, `EarlyBindError`) — capability
+  only; no production call site yet. Built on `com.sw_type_info` (added
+  `wrapper_module()`), which already owns makepy module loading.
+- `CODESTYLE.md §2.1/§2.2` updated: "late binding only" becomes "late
+  binding by default; early-binding typed-wrap is the sanctioned, narrow
+  exception for OUT-param / Callout objects via `com.earlybind`." The
+  `gencache.EnsureDispatch` ban stands (it fails on SW anyway); the
+  committed-`gen_py/` ban stands.
+- Unblocks the Phase-0 keystone lane out-of-process: open-existing-doc
+  build target + `mutate.py` feature-additions anchored to a durable
+  persist token. These are gated on their own spikes per the spike-first
+  law before shipping.
+- The four FAIL feature spikes (sheet metal / shell / draft / variable
+  fillet / hole-wizard) must be **re-spiked under early binding** before
+  being declared blocked — their late-bound FAIL may be the same
+  marshaler limitation, not an API one.
+
+**Owner:** W0 (orchestrator), with the seat operator.
+**Status:** Active.
+
+---
+
 ## Reversed / superseded decisions
 
 - 2026-05-23 "Demote Lane M to adoption-driven" — **superseded
