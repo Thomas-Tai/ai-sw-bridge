@@ -139,6 +139,18 @@ def _ensure_loaded() -> None:
         _load_wrapper()
 
 
+def wrapper_module() -> Any | None:
+    """Return the loaded gen_py (makepy) wrapper module, lazy-loading on first
+    use, or ``None`` if pywin32/the wrapper is unavailable.
+
+    The early-binding typed-wrap helpers (``com.earlybind``) need the module
+    object itself to construct typed interface proxies; this is the single
+    accessor for it so module loading stays owned by one place.
+    """
+    _ensure_loaded()
+    return _wrapper_module
+
+
 def interface_method_names(interface: str) -> frozenset[str]:
     """Return the set of method names declared by the given SW interface.
 
@@ -247,4 +259,5 @@ __all__ = [
     "flagged",
     "interface_method_names",
     "invalidate_flag_cache",
+    "wrapper_module",
 ]
