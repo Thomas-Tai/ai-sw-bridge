@@ -292,6 +292,52 @@ Removes material to a specified depth.
 | `depth` | yes | length | Cut depth (mm) |
 | `flip` | no | boolean | Cut in -normal direction. Default `false`. |
 
+### `cut_extrude_midplane`
+
+Removes material symmetrically about the sketch plane — `depth/2` is cut into each side.
+
+```json
+{
+  "type": "cut_extrude_midplane",
+  "name": "Cut_Slot",
+  "sketch": "SK_Slot",
+  "depth": 10.0,
+  "flip": false
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"cut_extrude_midplane"` | |
+| `name` | yes | string | Unique feature name |
+| `sketch` | yes | string | Name of an earlier sketch feature |
+| `depth` | yes | length | Total cut depth (mm); centred on the sketch plane |
+| `flip` | no | boolean | Mirror the asymmetric reference. Default `false`. |
+
+### `cut_extrude_two_direction`
+
+Removes material in **both** directions from the sketch plane: `depth` into the +normal side and `depth2` into the -normal side (both blind).
+
+```json
+{
+  "type": "cut_extrude_two_direction",
+  "name": "Cut_Through_Pocket",
+  "sketch": "SK_Pocket",
+  "depth": 6.0,
+  "depth2": 4.0,
+  "flip": false
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"cut_extrude_two_direction"` | |
+| `name` | yes | string | Unique feature name |
+| `sketch` | yes | string | Name of an earlier sketch feature |
+| `depth` | yes | length | Cut depth in the +normal direction (mm) |
+| `depth2` | yes | length | Cut depth in the -normal direction (mm) |
+| `flip` | no | boolean | Swap which direction is +normal. Default `false`. |
+
 ## Revolve primitives
 
 ### `revolve_boss`

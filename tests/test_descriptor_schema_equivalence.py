@@ -58,7 +58,8 @@ def test_subschemas_reexported_from_descriptors():
     assert schema.NAME_PATTERN is descriptors.NAME_PATTERN
 
 
-def test_feature_order_covers_all_16():
-    assert len(descriptors.FEATURE_ORDER) == 16
+def test_feature_order_covers_all_types():
+    # 16 original primitives + cut_extrude_midplane + cut_extrude_two_direction.
+    assert len(descriptors.FEATURE_ORDER) == 18
     assert set(descriptors.FEATURE_ORDER) == set(descriptors.FEATURE_FIELDS)
-    assert len(GOLDEN) == 16
+    assert len(GOLDEN) == 18

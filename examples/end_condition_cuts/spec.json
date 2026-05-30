@@ -1,0 +1,49 @@
+{
+    "schema_version": 1,
+    "name": "EndConditionCuts",
+    "_comment": "D3 example: a 40x30x20 mm block demonstrating the two cut end-condition primitives. MidCut is a cut_extrude_midplane (Ø8) centred on the +z face sketch plane; TwoDirCut is a cut_extrude_two_direction (Ø6) removing 6 mm into +normal and 4 mm into -normal. Seat-validated by spikes/v0_16/spike_cut_endcond.py.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Block",
+            "plane": "Front",
+            "width": 40.0,
+            "height": 30.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Block",
+            "sketch": "SK_Block",
+            "depth": 20.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_MidCut",
+            "of_feature": "EX_Block",
+            "face": "+z",
+            "center": {"u": 10.0, "v": 0.0},
+            "diameter": 8.0
+        },
+        {
+            "type": "cut_extrude_midplane",
+            "name": "MidCut",
+            "sketch": "SK_MidCut",
+            "depth": 10.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_TwoDir",
+            "of_feature": "EX_Block",
+            "face": "+z",
+            "center": {"u": -10.0, "v": 0.0},
+            "diameter": 6.0
+        },
+        {
+            "type": "cut_extrude_two_direction",
+            "name": "TwoDirCut",
+            "sketch": "SK_TwoDir",
+            "depth": 6.0,
+            "depth2": 4.0
+        }
+    ]
+}
