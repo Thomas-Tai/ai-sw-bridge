@@ -56,7 +56,7 @@ serializes its response, pywin32 deserializes on our side. This is
 not "running the SW API"; it is *interrogating a remote process via
 late-bound IDispatch.*
 
-### 2.1 Late binding only
+### 2.1 Late binding by default
 
 ```python
 # YES — late binding via win32com.client.Dispatch
@@ -73,11 +73,53 @@ the type library at first call. Those wrappers cache per SW major
 version; users upgrading SW silently get stale wrappers, producing
 non-reproducible AttributeError / com_error failures. Late binding
 defers attribute resolution to each call — slower per call, but the
-behavior matches the SW build actually running.
+behavior matches the SW build actually running. (`EnsureDispatch`
+also simply *fails* on SW: the application and its objects refuse
+`IDispatch::GetTypeInfo`, so the convenience path raises "can not
+automate the makepy process".)
 
 **Never call `gencache.EnsureDispatch`. Never commit a `gen_py/`
 directory.** The `.gitignore` excludes it; a contributor who finds
 the directory locally should delete it.
+
+**The invariant this serves is "out-of-process Python, no agent COM
+access" — not late binding per se** (see `docs/decisions.md`
+2026-05-30). Late binding is the *default* because it is reproducible
+across SW builds; it is not the only sanctioned binding. See §2.2 for
+the narrow early-binding exception.
+
+### 2.1.1 Sanctioned exception: hybrid early-binding typed-wrap
+
+A small, closed class of SW methods cannot marshal under late binding —
+those with `[out]` parameters or `[out] IDispatch` Callout args (§2.2).
+For *those objects only*, typed-wrap them through `com.earlybind`:
+
+```python
+from ai_sw_bridge.com.earlybind import typed_extension
+
+ext = typed_extension(doc)               # early-bound IModelDocExtension
+pid = ext.GetPersistReference3(face)
+entity, err = ext.GetObjectByPersistReference3(pid)   # [out] err marshals
+```
+
+Rules for the exception:
+
+- Late binding stays the default for the entire surface; reach for
+  `com.earlybind.typed()` **only** when a specific `[out]`/Callout
+  method forces it. This is hybrid binding, not a flip to early binding.
+- It does **not** use `EnsureDispatch` (still banned, still broken on
+  SW). It uses `gencache.EnsureModule` to load the makepy module
+  (owned by `com.sw_type_info`) and constructs the typed interface
+  directly from the raw `_oleobj_` — the only path that works because
+  SW refuses `GetTypeInfo`.
+- Early-bound typed objects expose the typelib's real property/method
+  split (e.g. `RevisionNumber` is a *method*, not an auto-invoked
+  attribute). Keep the wrap scoped to the failing call; do not let a
+  typed object leak into late-bound call sites.
+- The agent-safety invariants (#2 declarative-JSON-only, #3
+  zero-arbitrary-code) are unaffected — this is still out-of-process,
+  no agent COM access. Proven by `spikes/v0_15/spike_earlybind_persist.py`
+  (S-EARLYBIND = PASS).
 
 ### 2.2 OUT-typed parameters
 
@@ -100,6 +142,14 @@ doc.SelectByID2(name, type_, x, y, z, append, mark, callout, sel_opt)
 doc.SelectByID(name, type_, x, y, z)
 sel_mgr.SetSelectedObjectMark(mark)
 ```
+
+When there is **no** legacy non-OUT counterpart — the canonical case is
+`IModelDocExtension.GetObjectByPersistReference3` (durable selection;
+its `[out] long` error is the whole point of the call) — use the §2.1.1
+early-binding typed-wrap instead. The typed wrapper marshals the `[out]`
+value as a trailing tuple element. Prefer the legacy-fallback above when
+one exists (no new binding); reach for the typed-wrap only when the OUT
+value is the result you need and no late-bound form returns it.
 
 ### 2.3 Every COM call is fallible
 
