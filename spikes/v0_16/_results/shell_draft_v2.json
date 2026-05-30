@@ -1,0 +1,64 @@
+{
+  "sw_revision": "32.1.0",
+  "shell": {
+    "build": {
+      "built": true,
+      "feature_name": "Boss-Extrude1"
+    },
+    "n_faces": 6,
+    "selected_top": true,
+    "InsertFeatureShell": {
+      "status": "OK",
+      "type": "NoneType",
+      "elapsed_ms": 96.69779999967432,
+      "via": "dynamic doc"
+    },
+    "faces_before": 6,
+    "faces_after": 11,
+    "last_feature_type": null,
+    "overall": "PASS"
+  },
+  "draft": {
+    "build": {
+      "built": true,
+      "feature_name": "Boss-Extrude1"
+    },
+    "n_faces": 6,
+    "attempts": [
+      {
+        "status": "OK",
+        "type": "NoneType",
+        "elapsed_ms": 51.68070000217995,
+        "neutral_mark": 1,
+        "face_mark": 0,
+        "sel_neutral": true,
+        "sel_face": true,
+        "materialized": false
+      },
+      {
+        "status": "OK",
+        "type": "NoneType",
+        "elapsed_ms": 19.57080000283895,
+        "neutral_mark": 1,
+        "face_mark": 1,
+        "sel_neutral": true,
+        "sel_face": true,
+        "materialized": false
+      },
+      {
+        "status": "OK",
+        "type": "CDispatch",
+        "elapsed_ms": 184.2283000005409,
+        "neutral_mark": 1,
+        "face_mark": 2,
+        "sel_neutral": true,
+        "sel_face": true,
+        "materialized": true,
+        "feature_name": "Draft1",
+        "type_name": "Draft"
+      }
+    ],
+    "overall": "PASS"
+  },
+  "overall": "PASS"
+}

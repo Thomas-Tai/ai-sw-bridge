@@ -6,6 +6,7 @@ Mocks the COM seam so tests run without a SOLIDWORKS seat.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -1005,6 +1006,204 @@ class TestDryRunWizardHole:
         assert wizdata.init_args == (2, 1, 41, "M8", 0)
         assert wizdata.depth == pytest.approx(0.006)
         assert doc.save_calls == []                   # dry-run never saves
+
+
+# ---------------------------------------------------------------------------
+# Shell & Draft (Wall-2: IModelDoc2 / IFeatureManager Insert* methods)
+# ---------------------------------------------------------------------------
+
+
+class _FakeSelMgr:
+    def GetSelectedObject6(self, idx: int, mark: int) -> Any:
+        return object()  # a face entity stand-in
+
+
+class _FakeShellDoc:
+    def __init__(self, path: str, features_added: int) -> None:
+        self._path = path
+        self._fcount = 1
+        self._features_added = features_added
+        self.SelectionManager = _FakeSelMgr()
+        self.shell_calls: list[tuple] = []
+        self.save_calls: list[tuple] = []
+        self._title = Path(path).name
+
+    def ForceRebuild3(self, _: bool) -> bool:
+        return True
+
+    def ClearSelection2(self, top: bool) -> None:
+        pass
+
+    def SelectByID(self, n: str, t: str, x: float, y: float, z: float) -> bool:
+        return True
+
+    def GetFeatureCount(self) -> int:
+        return self._fcount
+
+    def InsertFeatureShell(self, thickness: float, outward: bool) -> None:
+        self.shell_calls.append((thickness, outward))
+        self._fcount += self._features_added
+
+    def Save(self) -> int:
+        self.save_calls.append(())
+        return 1
+
+    def GetTitle(self) -> str:
+        return self._title
+
+    def GetPathName(self) -> str:
+        return self._path
+
+
+class _FakeDraftFM:
+    def __init__(self, feature: Any) -> None:
+        self._feature = feature
+        self.draft_calls: list[tuple] = []
+
+    def InsertMultiFaceDraft(self, *args) -> Any:
+        self.draft_calls.append(args)
+        return self._feature
+
+
+class _FakeDraftDoc:
+    def __init__(self, path: str, fm: _FakeDraftFM) -> None:
+        self._path = path
+        self.FeatureManager = fm
+        self.SelectionManager = _FakeSelMgr()
+        self.save_calls: list[tuple] = []
+        self._title = Path(path).name
+
+    def ForceRebuild3(self, _: bool) -> bool:
+        return True
+
+    def ClearSelection2(self, top: bool) -> None:
+        pass
+
+    def SelectByID(self, n: str, t: str, x: float, y: float, z: float) -> bool:
+        return True
+
+    def Save(self) -> int:
+        self.save_calls.append(())
+        return 1
+
+    def GetTitle(self) -> str:
+        return self._title
+
+    def GetPathName(self) -> str:
+        return self._path
+
+
+class _FakeSwOpen:
+    def __init__(self, doc: Any) -> None:
+        self._doc = doc
+        self.close_calls: list[str] = []
+
+    def OpenDoc6(self, *a) -> tuple:
+        return (self._doc, 0, 0)
+
+    def CloseDoc(self, title: str) -> None:
+        self.close_calls.append(title)
+
+
+def _patch_wall2(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, doc: Any) -> Any:
+    monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
+    sw = _FakeSwOpen(doc)
+    monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
+    monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
+    monkeypatch.setattr(mutate, "get_active_doc", lambda s: None)
+    return sw
+
+
+_SHELL_FEATURE = {"type": "shell", "thickness_mm": 2.0, "outward": False}
+_SHELL_TARGET = {"faces": [[0, 0, 0.02]]}
+_DRAFT_FEATURE = {"type": "draft", "angle_deg": 5.0, "propagation": "none"}
+_DRAFT_TARGET = {"neutral_face": [0, 0, 0], "faces": [[0.02, 0, 0.01]]}
+
+
+class TestProposeShellDraft:
+    def test_shell_writes_record(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"; doc.touch()
+        _patch_wall2(monkeypatch, tmp_path, _FakeShellDoc(str(doc), 1))
+        r = sw_propose_feature_add(str(doc), _SHELL_FEATURE, _SHELL_TARGET)
+        assert r["ok"] is True
+
+    def test_shell_rejects_bad_thickness(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"; doc.touch()
+        _patch_wall2(monkeypatch, tmp_path, _FakeShellDoc(str(doc), 1))
+        r = sw_propose_feature_add(str(doc), {**_SHELL_FEATURE, "thickness_mm": 0}, _SHELL_TARGET)
+        assert r["ok"] is False and "thickness_mm" in r["error"]
+
+    def test_shell_rejects_empty_faces(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"; doc.touch()
+        _patch_wall2(monkeypatch, tmp_path, _FakeShellDoc(str(doc), 1))
+        r = sw_propose_feature_add(str(doc), _SHELL_FEATURE, {"faces": []})
+        assert r["ok"] is False and "faces" in r["error"]
+
+    def test_draft_rejects_bad_angle(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"; doc.touch()
+        _patch_wall2(monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object())))
+        r = sw_propose_feature_add(str(doc), {**_DRAFT_FEATURE, "angle_deg": -5}, _DRAFT_TARGET)
+        assert r["ok"] is False and "angle_deg" in r["error"]
+
+    def test_draft_rejects_bad_propagation(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"; doc.touch()
+        _patch_wall2(monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object())))
+        r = sw_propose_feature_add(str(doc), {**_DRAFT_FEATURE, "propagation": "sideways"}, _DRAFT_TARGET)
+        assert r["ok"] is False and "propagation" in r["error"]
+
+    def test_draft_rejects_missing_neutral(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"; doc.touch()
+        _patch_wall2(monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object())))
+        r = sw_propose_feature_add(str(doc), _DRAFT_FEATURE, {"faces": [[0.02, 0, 0.01]]})
+        assert r["ok"] is False and "neutral_face" in r["error"]
+
+
+class TestDryRunShell:
+    def test_ok_inserts_shell_no_save(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"; doc_file.touch()
+        shell_doc = _FakeShellDoc(str(doc_file), 1)  # +1 feature
+        _patch_wall2(monkeypatch, tmp_path, shell_doc)
+        monkeypatch.setattr(mutate, "select_entity", lambda e, **kw: True)
+        pid = sw_propose_feature_add(str(doc_file), _SHELL_FEATURE, _SHELL_TARGET)["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+        assert r["ok"] is True and r["state"] == ST_DRY_RUN_OK
+        assert shell_doc.shell_calls == [(pytest.approx(0.002), False)]
+        assert shell_doc.save_calls == []
+
+    def test_noop_shell_broke(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"; doc_file.touch()
+        shell_doc = _FakeShellDoc(str(doc_file), 0)  # no feature added
+        _patch_wall2(monkeypatch, tmp_path, shell_doc)
+        monkeypatch.setattr(mutate, "select_entity", lambda e, **kw: True)
+        pid = sw_propose_feature_add(str(doc_file), _SHELL_FEATURE, _SHELL_TARGET)["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+        assert r["ok"] is False and r["state"] == ST_DRY_RUN_BROKE
+        assert "did not add a feature" in r["error"]
+
+
+class TestDryRunDraft:
+    def test_ok_inserts_draft_with_marks_no_save(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"; doc_file.touch()
+        fm = _FakeDraftFM(object())  # materialized feature
+        draft_doc = _FakeDraftDoc(str(doc_file), fm)
+        _patch_wall2(monkeypatch, tmp_path, draft_doc)
+        marks: list[tuple] = []
+        monkeypatch.setattr(
+            mutate, "select_entity",
+            lambda e, **kw: (marks.append((kw.get("append", False), kw.get("mark", 0))), True)[1],
+        )
+        pid = sw_propose_feature_add(str(doc_file), _DRAFT_FEATURE, _DRAFT_TARGET)["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+        assert r["ok"] is True and r["state"] == ST_DRY_RUN_OK
+        # neutral plane mark=1 (append False), draft face mark=2 (append True).
+        assert marks == [(False, 1), (True, 2)]
+        # angle passed in radians, propagation 'none' -> 0.
+        args = fm.draft_calls[0]
+        assert args[0] == pytest.approx(math.radians(5.0))
+        assert args[3] == 0
+        assert draft_doc.save_calls == []
 
 
 # ---------------------------------------------------------------------------
