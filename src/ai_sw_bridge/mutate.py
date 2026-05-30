@@ -19,6 +19,7 @@ single source of truth stays in version control.
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 import uuid
@@ -121,12 +122,23 @@ _WZD_END_CONDITIONS = {
     "offset_from_surface": 5,
 }
 
+# swDraftFacePropagationType_e — draft face propagation.
+_DRAFT_PROPAGATION = {
+    "none": 0,
+    "tangent": 1,
+    "all_loops": 2,
+    "inner_loops": 3,
+    "outer_loops": 4,
+}
+
 # Feature types the feature_add PAE lifecycle knows how to build.
 _SUPPORTED_FEATURE_TYPES = (
     "fillet_constant_radius",
     "base_flange",
     "variable_radius_fillet",
     "wizard_hole",
+    "shell",
+    "draft",
 )
 
 
@@ -498,6 +510,107 @@ def _create_wizard_hole(
         return False, f"wizard-hole pipeline failed: {exc!r}"
 
 
+def _get_face_entity(doc: Any, coord: Any) -> Any:
+    """Resolve a face to an IEntity by coordinate pick (clears selection)."""
+    try:
+        doc.ClearSelection2(True)
+    except Exception:  # noqa: BLE001
+        pass
+    if not doc.SelectByID("", "FACE", coord[0], coord[1], coord[2]):
+        return None
+    try:
+        return doc.SelectionManager.GetSelectedObject6(1, -1)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _create_shell(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
+    """Hollow the body, removing the listed faces (Wall-2: IModelDoc2 method).
+
+    Seat-validated recipe (spike_shell_draft_v2 = PASS): select the faces to
+    remove as entities, then ``doc.InsertFeatureShell(thickness_m, outward)``.
+    InsertFeatureShell returns void, so success is confirmed via the feature
+    count (``IModelDoc2.GetFeatureCount`` — works on the typed reopened doc,
+    unlike ``GetBodies2`` which lives on ``IPartDoc``). ``target`` = ``{"faces":
+    [[x,y,z], ...]}`` (model-metre coords; v1 coordinate placement). Returns
+    (ok, error).
+    """
+    thickness_mm = feature["thickness_mm"]
+    outward = bool(feature.get("outward", False))
+    face_coords = target["faces"]
+    doc.ForceRebuild3(False)
+    try:
+        before = int(doc.GetFeatureCount())
+        ents = []
+        for k, c in enumerate(face_coords):
+            ent = _get_face_entity(doc, c)
+            if ent is None:
+                return False, f"could not resolve face[{k}] at {c}"
+            ents.append(ent)
+        try:
+            doc.ClearSelection2(True)
+        except Exception:  # noqa: BLE001
+            pass
+        for k, ent in enumerate(ents):
+            if not select_entity(ent, append=(k > 0), mark=0):
+                return False, f"could not select face[{k}]"
+        doc.InsertFeatureShell(thickness_mm / 1000.0, outward)
+        doc.ForceRebuild3(False)
+        after = int(doc.GetFeatureCount())
+        if after > before:
+            return True, None
+        return False, f"shell did not add a feature (count {before} -> {after})"
+    except Exception as exc:
+        return False, f"shell pipeline failed: {exc!r}"
+
+
+def _create_draft(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
+    """Apply a neutral-plane draft to faces (Wall-2: IFeatureManager method).
+
+    Seat-validated recipe (spike_shell_draft_v2 = PASS): select the neutral
+    plane with mark 1 and each draft face with mark 2, then
+    ``fm.InsertMultiFaceDraft(angleRad, flip, edgeDraft, propType, isStep,
+    isBody)``. ``target`` = ``{"neutral_face": [x,y,z], "faces": [[x,y,z],
+    ...]}``. Returns (ok, error).
+    """
+    angle_deg = feature["angle_deg"]
+    flip = bool(feature.get("flip", False))
+    edge_draft = bool(feature.get("edge_draft", False))
+    prop = _DRAFT_PROPAGATION[feature.get("propagation", "none")]
+    neutral_coord = target["neutral_face"]
+    face_coords = target["faces"]
+    doc.ForceRebuild3(False)
+    try:
+        neutral = _get_face_entity(doc, neutral_coord)
+        if neutral is None:
+            return False, f"could not resolve neutral face at {neutral_coord}"
+        draft_ents = []
+        for k, c in enumerate(face_coords):
+            ent = _get_face_entity(doc, c)
+            if ent is None:
+                return False, f"could not resolve draft face[{k}] at {c}"
+            draft_ents.append(ent)
+        try:
+            doc.ClearSelection2(True)
+        except Exception:  # noqa: BLE001
+            pass
+        # Neutral plane = mark 1, faces to draft = mark 2 (seat-proven).
+        if not select_entity(neutral, append=False, mark=1):
+            return False, "could not select neutral plane"
+        for k, ent in enumerate(draft_ents):
+            if not select_entity(ent, append=True, mark=2):
+                return False, f"could not select draft face[{k}]"
+        fm = doc.FeatureManager
+        feat = fm.InsertMultiFaceDraft(
+            math.radians(angle_deg), flip, edge_draft, prop, False, False
+        )
+        if _materialized(feat):
+            return True, None
+        return False, "InsertMultiFaceDraft did not materialize"
+    except Exception as exc:
+        return False, f"draft pipeline failed: {exc!r}"
+
+
 def _apply_feature(
     doc: Any, feature: dict, target: dict
 ) -> tuple[bool, str | None]:
@@ -518,6 +631,10 @@ def _apply_feature(
         return _create_variable_fillet(doc, target["edges"])
     if ftype == "wizard_hole":
         return _create_wizard_hole(doc, feature, target)
+    if ftype == "shell":
+        return _create_shell(doc, feature, target)
+    if ftype == "draft":
+        return _create_draft(doc, feature, target)
     return False, f"unsupported feature type {ftype!r}"
 
 
@@ -1001,6 +1118,24 @@ def sw_propose_feature_add(
             ):
                 result["error"] = f"depth_mm must be a positive number, got {depth_mm!r}"
                 return result
+        elif feat_type == "shell":
+            thickness_mm = feature.get("thickness_mm")
+            if not isinstance(thickness_mm, (int, float)) or thickness_mm <= 0:
+                result["error"] = (
+                    f"thickness_mm must be a positive number, got {thickness_mm!r}"
+                )
+                return result
+        elif feat_type == "draft":
+            angle_deg = feature.get("angle_deg")
+            if not isinstance(angle_deg, (int, float)) or angle_deg <= 0:
+                result["error"] = f"angle_deg must be a positive number, got {angle_deg!r}"
+                return result
+            prop = feature.get("propagation", "none")
+            if prop not in _DRAFT_PROPAGATION:
+                result["error"] = (
+                    f"propagation must be one of {sorted(_DRAFT_PROPAGATION)}, got {prop!r}"
+                )
+                return result
 
         if not isinstance(target, dict) or not target:
             result["error"] = "target must be a non-empty dict"
@@ -1040,6 +1175,30 @@ def sw_propose_feature_add(
                         f"wizard_hole target.{pname} must be a 3-element [x,y,z]"
                     )
                     return result
+
+        def _is_coord(v: Any) -> bool:
+            return isinstance(v, (list, tuple)) and len(v) == 3
+
+        # A shell removes a non-empty list of faces.
+        if feat_type == "shell":
+            faces = target.get("faces")
+            if not isinstance(faces, list) or not faces or not all(_is_coord(f) for f in faces):
+                result["error"] = (
+                    "shell target.faces must be a non-empty list of [x,y,z] coords"
+                )
+                return result
+
+        # A draft needs a neutral face + a non-empty list of faces to draft.
+        if feat_type == "draft":
+            if not _is_coord(target.get("neutral_face")):
+                result["error"] = "draft target.neutral_face must be a 3-element [x,y,z]"
+                return result
+            faces = target.get("faces")
+            if not isinstance(faces, list) or not faces or not all(_is_coord(f) for f in faces):
+                result["error"] = (
+                    "draft target.faces must be a non-empty list of [x,y,z] coords"
+                )
+                return result
 
         if not doc_path or not Path(doc_path).exists():
             result["error"] = f"doc_path does not exist: {doc_path}"
