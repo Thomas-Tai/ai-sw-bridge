@@ -197,7 +197,7 @@ def _is_e_nointerface(rec: dict[str, Any]) -> bool:
 # ---------------------------------------------------------------------------
 
 def _build_box(doc: Any) -> dict[str, Any]:
-    if not doc.SelectByID2("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0, None, 0):
+    if not doc.SelectByID("Front Plane", "PLANE", 0.0, 0.0, 0.0):
         return {"built": False, "error": "could not select Front Plane"}
     sk = doc.SketchManager
     sk.InsertSketch(True)
@@ -229,8 +229,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
 
 
 def _select_target_edge(doc: Any) -> dict[str, Any]:
+    try:
+        doc.ClearSelection2(True)
+    except Exception:  # noqa: BLE001
+        pass
     rec, _ = _capture(
-        lambda: doc.SelectByID2("", "EDGE", EDGE_X_M, EDGE_Y_M, EDGE_Z_M, False, 0, None, 0)
+        lambda: doc.SelectByID("", "EDGE", EDGE_X_M, EDGE_Y_M, EDGE_Z_M)
     )
     return rec
 

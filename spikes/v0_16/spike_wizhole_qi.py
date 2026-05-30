@@ -183,7 +183,7 @@ def _probe_members(obj: Any, names: tuple[str, ...]) -> dict[str, str]:
 
 
 def _build_box(doc: Any) -> dict[str, Any]:
-    if not doc.SelectByID2("Front Plane", "PLANE", 0, 0, 0, False, 0, None, 0):
+    if not doc.SelectByID("Front Plane", "PLANE", 0, 0, 0):
         return {"built": False, "error": "could not select Front Plane"}
     sk = doc.SketchManager
     sk.InsertSketch(True)
@@ -268,8 +268,12 @@ def run() -> dict[str, Any]:
             # Select the top face, then attempt CreateFeature. Wizard holes
             # really want sketch points; without them a no-op is expected and
             # is itself an informative PARTIAL.
+            try:
+                doc.ClearSelection2(True)
+            except Exception:  # noqa: BLE001
+                pass
             sel_rec, _ = _capture(
-                lambda: doc.SelectByID2("", "FACE", 0, 0, BOX_D_M, False, 0, None, 0)
+                lambda: doc.SelectByID("", "FACE", 0, 0, BOX_D_M)
             )
             result["select_top_face"] = sel_rec
 

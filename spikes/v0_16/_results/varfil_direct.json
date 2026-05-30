@@ -1,0 +1,54 @@
+{
+  "binding": "hybrid early (typed_qi)",
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "sw_revision": "32.1.0",
+  "build": {
+    "built": true,
+    "feature_name": "Boss-Extrude1"
+  },
+  "scan": {
+    "variable_iface_ids": {}
+  },
+  "typed_qi_simple": {
+    "status": "OK",
+    "type": "ISimpleFilletFeatureData2",
+    "elapsed_ms": 8.421299997280585
+  },
+  "initialize_var": {
+    "status": "OK",
+    "type": "bool",
+    "elapsed_ms": 4.613699999026721
+  },
+  "members": {
+    "DefaultRadius": "present",
+    "FilletType": "MISSING",
+    "Type": "present",
+    "SetVariableRadiusParameters": "MISSING",
+    "VariableRadiusParameters": "MISSING",
+    "SetVariableRadiusInstances": "MISSING",
+    "GetVariableRadiusInstances": "MISSING",
+    "SetVariableRadiusPoint": "MISSING",
+    "AddVariableRadiusPoint": "MISSING",
+    "RadiiCount": "MISSING",
+    "NumberOfRadii": "MISSING",
+    "AsymmetricFillet": "present"
+  },
+  "set_radii": {
+    "status": "SKIPPED",
+    "reason": "no variable setter present"
+  },
+  "edge_select": {
+    "status": "OK",
+    "type": "bool",
+    "elapsed_ms": 1.8534000009822194
+  },
+  "create_feature": {
+    "status": "OK",
+    "type": "NoneType",
+    "elapsed_ms": 42.08719999951427,
+    "materialized": false
+  },
+  "cleanup": "closed own doc (no save)",
+  "overall": "NO-MEMBERS",
+  "interpretation": "Initialize(var) runs but no variable-radius setter is present and no distinct CreateDefinition id supports the variable interface \u2192 try the legacy InsertFeatureFillet FeatureManager method."
+}

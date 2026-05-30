@@ -186,7 +186,7 @@ def _build_profile(doc: Any) -> dict[str, Any]:
     """Closed rectangle on the Front Plane (the base-flange profile)."""
     out: dict[str, Any] = {}
     try:
-        doc.SelectByID2("Front Plane", "PLANE", 0, 0, 0, False, 0, None, 0)
+        doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
         sk = doc.SketchManager
         sk.InsertSketch(True)
         seg = sk.CreateCornerRectangle(
@@ -295,8 +295,12 @@ def run() -> dict[str, Any]:
             result["set_props"] = set_recs
 
             # Select the profile sketch, then materialize.
+            try:
+                doc.ClearSelection2(True)
+            except Exception:  # noqa: BLE001
+                pass
             sel_rec, _ = _capture(
-                lambda: doc.SelectByID2(prof["sketch"], "SKETCH", 0, 0, 0, False, 0, None, 0)
+                lambda: doc.SelectByID(prof["sketch"], "SKETCH", 0, 0, 0)
             )
             result["select_profile"] = sel_rec
 
