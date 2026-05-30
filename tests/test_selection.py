@@ -21,7 +21,7 @@ import base64
 import pytest
 
 from ai_sw_bridge.brep.fingerprint import fingerprint as compute_hash
-from ai_sw_bridge.selection import BrepFingerprint, DurableRef
+from ai_sw_bridge.selection import BrepFingerprint, DurableEdgeRef, DurableRef
 
 
 # ---------------------------------------------------------------------------
@@ -331,3 +331,74 @@ class TestDurableRef:
     def test_from_manifest_face_rejects_non_dict(self):
         with pytest.raises(TypeError):
             DurableRef.from_manifest_face(["not", "a", "dict"])  # type: ignore[arg-type]
+
+
+# ===========================================================================
+# DurableEdgeRef
+# ===========================================================================
+
+
+class TestDurableEdgeRef:
+    def _manifest_edge(self, *, persist_id="AQIDBA"):
+        edge = {
+            "edge_idx": 0,
+            "body_id": 0,
+            "start": [0.0, 0.0, 0.0],
+            "end": [0.0, 0.0, 0.01],
+            "length": 0.01,
+            "midpoint": [0.0, 0.0, 0.005],
+        }
+        if persist_id is not None:
+            edge["persist_id"] = persist_id
+        return edge
+
+    def test_to_from_dict_round_trip_with_token(self):
+        raw = bytes(range(20))
+        ref = DurableEdgeRef(
+            persist_id=raw, start=(0.0, 0.0, 0.0), end=(0.0, 0.0, 0.01), length=0.01
+        )
+        wire = ref.to_dict()
+        assert "=" not in wire["persist_id"] and wire["persist_id"].isascii()
+        assert "+" not in wire["persist_id"] and "/" not in wire["persist_id"]
+        back = DurableEdgeRef.from_dict(wire)
+        assert back == ref
+
+    def test_to_dict_omits_persist_id_when_none(self):
+        ref = DurableEdgeRef(
+            persist_id=None, start=(0.0, 0.0, 0.0), end=(1.0, 0.0, 0.0), length=1.0
+        )
+        wire = ref.to_dict()
+        assert "persist_id" not in wire
+        assert DurableEdgeRef.from_dict(wire).persist_id is None
+
+    def test_from_manifest_edge_with_token(self):
+        ref = DurableEdgeRef.from_manifest_edge(self._manifest_edge())
+        assert ref.persist_id == bytes([1, 2, 3, 4])
+        assert ref.start == (0.0, 0.0, 0.0)
+        assert ref.end == (0.0, 0.0, 0.01)
+        assert ref.length == 0.01
+        assert ref.role_hint == "edge"
+
+    def test_from_manifest_edge_without_token(self):
+        ref = DurableEdgeRef.from_manifest_edge(self._manifest_edge(persist_id=None))
+        assert ref.persist_id is None
+
+    def test_rejects_bad_start(self):
+        with pytest.raises(ValueError, match="start"):
+            DurableEdgeRef.from_manifest_edge(
+                {"start": [0.0, 0.0], "end": [0.0, 0.0, 1.0], "length": 1.0}
+            )
+
+    def test_rejects_non_bytes_persist_id(self):
+        with pytest.raises(TypeError, match="bytes or None"):
+            DurableEdgeRef(
+                persist_id="nope",  # type: ignore[arg-type]
+                start=(0.0, 0.0, 0.0),
+                end=(0.0, 0.0, 1.0),
+                length=1.0,
+            )
+
+    def test_frozen_and_equality(self):
+        a = DurableEdgeRef(persist_id=b"\x01", start=(0.0, 0.0, 0.0), end=(0.0, 0.0, 1.0), length=1.0)
+        b = DurableEdgeRef(persist_id=b"\x01", start=(0.0, 0.0, 0.0), end=(0.0, 0.0, 1.0), length=1.0)
+        assert a == b and hash(a) == hash(b)

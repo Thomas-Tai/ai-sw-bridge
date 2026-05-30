@@ -14,7 +14,7 @@ import types
 import pytest
 
 from ai_sw_bridge.selection import live
-from ai_sw_bridge.selection import BrepFingerprint, DurableRef
+from ai_sw_bridge.selection import BrepFingerprint, DurableEdgeRef, DurableRef
 from ai_sw_bridge.com.earlybind import EarlyBindError
 
 
@@ -365,3 +365,39 @@ def test_package_reexports() -> None:
     assert selection.capture_persist_id is live.capture_persist_id
     assert selection.resolve_ref is live.resolve_ref
     assert selection.PersistResolution is live.PersistResolution
+
+
+# ---------------------------------------------------------------------------
+# resolve_edge_ref — tier-1 persist only (no edge fingerprint in v1)
+# ---------------------------------------------------------------------------
+
+
+def _edge_ref(persist_id=b"\x01\x02"):
+    return DurableEdgeRef(
+        persist_id=persist_id,
+        start=(0.0, 0.0, 0.0),
+        end=(0.0, 0.0, 0.01),
+        length=0.01,
+    )
+
+
+class TestResolveEdgeRef:
+    def test_persist_hit(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        ent = _FakeEntity()
+        _patch_ext(monkeypatch, _FakeExt(resolve=(ent, 0)))
+        res = live.resolve_edge_ref(_DOC, _edge_ref())
+        assert res.method == "persist_id"
+        assert res.entity is ent
+
+    def test_persist_deleted_is_unresolved(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_ext(monkeypatch, _FakeExt(resolve=(object(), 1)))  # status Deleted
+        res = live.resolve_edge_ref(_DOC, _edge_ref())
+        assert res.method == "unresolved"
+        assert res.entity is None
+        assert res.persist is not None and not res.persist.ok
+
+    def test_no_persist_id_is_unresolved(self) -> None:
+        res = live.resolve_edge_ref(_DOC, _edge_ref(persist_id=None))
+        assert res.method == "unresolved"
+        assert res.entity is None
+        assert "no persist_id" in (res.note or "")
