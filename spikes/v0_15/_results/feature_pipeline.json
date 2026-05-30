@@ -1,0 +1,27 @@
+{
+  "binding": "hybrid early (com.earlybind.typed_qi)",
+  "feature": "constant-radius fillet",
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "build": {
+    "built": true,
+    "feature_name": "Boss-Extrude1"
+  },
+  "pipeline": {
+    "swFmFillet": 1,
+    "createdefinition_type": "CDispatch",
+    "typed_qi": "OK",
+    "early_bound": true,
+    "set_Type_error": "AttributeError: '<win32com.gen_py.SldWorks 2024 Type Library.ISimpleFilletFeatureData2 instance at 0x2203267683664>'",
+    "set_DefaultRadius": "OK",
+    "set_PropagateToTangentFaces": "OK",
+    "edge_selection": {
+      "edge_count": 12,
+      "selected": true
+    },
+    "createfeature_type": "CDispatch",
+    "feature_type_name": "Fillet"
+  },
+  "overall": "PASS",
+  "reason": "feature materialized (type 'Fillet') via the QI feature-data pipeline",
+  "cleanup": "closed own doc (no save)"
+}
