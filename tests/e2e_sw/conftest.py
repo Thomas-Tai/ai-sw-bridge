@@ -13,6 +13,13 @@ provide:
 The fixtures intentionally do NOT open or save any specific SW
 document — tests own their document lifecycle. The runtime's executor
 + adapter are started in the fixture and torn down on yield exit.
+
+All tests also carry ``@pytest.mark.destructive_sw``: the live COM
+executor's worker thread can trigger a Windows structured exception
+(SEH, e.g. ``0x800401FD``) when the SW dispatch handle goes stale,
+which crashes the entire pytest process. Run in isolation::
+
+    pytest -m destructive_sw tests/e2e_sw/ -v
 """
 
 from __future__ import annotations
@@ -21,6 +28,13 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
+
+
+def pytest_collection_modifyitems(items):
+    """Mark every test in this directory as destructive_sw."""
+    for item in items:
+        if "e2e_sw" in str(item.fspath):
+            item.add_marker(pytest.mark.destructive_sw)
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent

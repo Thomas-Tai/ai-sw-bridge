@@ -21,7 +21,7 @@ import time
 
 import pytest
 
-pytestmark = pytest.mark.solidworks_only
+pytestmark = [pytest.mark.solidworks_only, pytest.mark.destructive_sw]
 
 
 def _sw_alive() -> bool:
