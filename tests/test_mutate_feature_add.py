@@ -361,3 +361,55 @@ class TestProposalStoreFeatureAdd:
         cr = store.commit_feature_add(pid)
         assert cr["ok"] is True
         assert len(fakes["doc"].save_calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# _save_doc — late-bound Save() return-value handling
+# ---------------------------------------------------------------------------
+
+
+class _SaveReturningDoc:
+    """Doc whose Save() returns a configurable value (still counts calls)."""
+
+    def __init__(self, ret: Any) -> None:
+        self._ret = ret
+        self.save_calls: list[tuple] = []
+
+    def Save(self) -> Any:
+        self.save_calls.append(())
+        return self._ret
+
+
+class TestSaveDoc:
+    def test_none_return_is_success(self) -> None:
+        # The actual bug: late-bound pywin32 swallows Save()'s S_OK bool as
+        # None, which must NOT be reported as a failed save.
+        doc = _SaveReturningDoc(None)
+        assert mutate._save_doc(doc) is True
+        assert len(doc.save_calls) == 1
+
+    def test_true_return_is_success(self) -> None:
+        assert mutate._save_doc(_SaveReturningDoc(True)) is True
+
+    def test_explicit_false_is_failure(self) -> None:
+        assert mutate._save_doc(_SaveReturningDoc(False)) is False
+
+    def test_commit_reports_saved_when_save_returns_none(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # End-to-end through commit: a None-returning Save must still set
+        # doc_saved True (the file is written; only the retval was dropped).
+        doc = tmp_path / "test.sldprt"
+        doc.touch()
+        fakes = _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+
+        r = sw_propose_feature_add(str(doc), _VALID_FEATURE, _VALID_TARGET)
+        pid = r["proposal_id"]
+        sw_dry_run_feature_add(pid)
+
+        # Swap in a Save() that returns None, as late binding does on S_OK.
+        monkeypatch.setattr(fakes["doc"], "Save", lambda: None)
+
+        cr = sw_commit_feature_add(pid)
+        assert cr["ok"] is True
+        assert cr["doc_saved"] is True

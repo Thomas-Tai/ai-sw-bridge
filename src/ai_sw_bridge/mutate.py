@@ -111,6 +111,19 @@ def _doc_title(doc: Any) -> Any:
     return t() if callable(t) else t
 
 
+def _save_doc(doc: Any) -> bool:
+    """Save *doc* and report whether it succeeded.
+
+    Late-bound pywin32 drops ``IModelDoc2.Save``'s ``VARIANT_BOOL`` S_OK
+    return value as ``None`` (the retval is swallowed), so a successful save
+    looks falsy and ``bool(doc.Save())`` wrongly reports ``False`` even though
+    the file is written. A genuine COM failure raises ``com_error`` (caught by
+    the callers), so under late binding the only truthy *failure* signal is an
+    explicit ``False``. Treat anything that is not ``False`` as success.
+    """
+    return doc.Save() is not False
+
+
 def _materialized(feat: Any) -> bool:
     """True if a CreateFeature return value represents a materialized feature."""
     return feat is not None and not isinstance(feat, int)
@@ -467,8 +480,7 @@ def sw_commit(proposal_id: str) -> dict[str, Any]:
             return result
 
         try:
-            saved = bool(doc.Save())
-            result["doc_saved"] = saved
+            result["doc_saved"] = _save_doc(doc)
         except Exception as exc:
             result["error"] = f"doc.Save raised: {exc!r}"
             return result
@@ -535,7 +547,7 @@ def sw_undo_last_commit() -> dict[str, Any]:
             return result
 
         try:
-            result["doc_saved"] = bool(doc.Save())
+            result["doc_saved"] = _save_doc(doc)
         except Exception as exc:
             result["error"] = f"doc.Save raised: {exc!r}"
             return result
@@ -762,8 +774,7 @@ def sw_commit_feature_add(proposal_id: str) -> dict[str, Any]:
             return result
 
         try:
-            saved = bool(doc.Save())
-            result["doc_saved"] = saved
+            result["doc_saved"] = _save_doc(doc)
         except Exception as exc:
             result["error"] = f"doc.Save raised: {exc!r}"
             return result
