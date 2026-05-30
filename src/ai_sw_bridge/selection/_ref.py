@@ -118,5 +118,60 @@ class DurableRef:
             role_hint=role_hint,
         )
 
+    @classmethod
+    def from_manifest_face(cls, face: dict[str, Any]) -> DurableRef:
+        """Build a ``DurableRef`` from one serialized brep-manifest face.
+
+        The manifest face shape (``brep.manifest.Manifest._serialize_face``)
+        differs from :meth:`to_dict`: the fingerprint is stored flat — a
+        ``fingerprint`` hash string plus top-level ``normal`` / ``centroid`` /
+        ``area_mm2`` — rather than nested under a ``fingerprint`` object. This
+        adapter bridges that shape so a captured manifest face round-trips
+        straight into the resolver without hand-assembling a fingerprint.
+
+        ``persist_id`` (base64url, no padding) is decoded to raw bytes when the
+        face carries one (``persist_capture`` was on at build time) and is
+        ``None`` otherwise — the first-class fingerprint-only state.
+        """
+        if not isinstance(face, dict):
+            raise TypeError("manifest face must be a dict")
+
+        normal = face.get("normal")
+        centroid = face.get("centroid")
+        area_mm2 = face.get("area_mm2")
+        if (
+            not isinstance(normal, (list, tuple))
+            or not isinstance(centroid, (list, tuple))
+            or area_mm2 is None
+        ):
+            raise ValueError(
+                "manifest face must include normal, centroid, area_mm2"
+            )
+        fingerprint = BrepFingerprint.from_face_dict(
+            {"normal": normal, "centroid": centroid, "area_mm2": area_mm2}
+        )
+
+        role_hint = face.get("role_hint")
+        if not isinstance(role_hint, str) or not role_hint:
+            role_hint = "unknown"
+
+        persist_b64 = face.get("persist_id")
+        persist_id: bytes | None
+        if persist_b64 is None:
+            persist_id = None
+        elif isinstance(persist_b64, str):
+            pad = "=" * (-len(persist_b64) % 4)
+            persist_id = base64.urlsafe_b64decode(persist_b64 + pad)
+        else:
+            raise TypeError(
+                f"persist_id must be a base64url string, got {type(persist_b64).__name__}"
+            )
+
+        return cls(
+            persist_id=persist_id,
+            fingerprint=fingerprint,
+            role_hint=role_hint,
+        )
+
 
 __all__ = ["DurableRef"]

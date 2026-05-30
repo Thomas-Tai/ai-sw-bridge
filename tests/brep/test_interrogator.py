@@ -197,6 +197,89 @@ def test_role_hint_axis_aligned(
     assert _role_hint(normal, centroid, box) == expected
 
 
+# ---------------------------------------------------------------------------
+# Tests — Phase-0 durable-selection persist capture (persist_capture flag)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _Ctx:
+    """Minimal BuildContext stand-in carrying just the live doc handle."""
+
+    doc: object = None
+
+
+@pytest.fixture
+def enable_capture(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AI_SW_BRIDGE_FLAG_PERSIST_CAPTURE", "1")
+
+
+def _one_face_feature() -> MockFeature:
+    return MockFeature(
+        faces=(_box_face((-0.01, -0.01, 0.0), (0.01, 0.01, 0.005), (0.0, 0.0, 1.0)),)
+    )
+
+
+def test_capture_off_by_default_omits_persist_id(enable_brep) -> None:
+    """With persist_capture OFF, the face dict carries no persist_id key."""
+    result = interrogate(_one_face_feature(), _Ctx(doc=object()))
+    assert result is not None
+    assert "persist_id" not in result["faces"][0]
+
+
+def test_capture_on_encodes_token_base64url_nopad(
+    enable_brep, enable_capture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """persist_capture ON + a readable token -> base64url (no padding) persist_id."""
+    # 4 raw bytes -> "//79/A" unpadded (b64 of these would normally pad with "==").
+    raw = bytes([255, 254, 253, 252])
+    monkeypatch.setattr(
+        "ai_sw_bridge.brep.interrogator.read_persist_reference",
+        lambda doc, entity: raw,
+    )
+    result = interrogate(_one_face_feature(), _Ctx(doc=object()))
+    assert result is not None
+    pid = result["faces"][0]["persist_id"]
+    assert pid == "__79_A"  # urlsafe, padding stripped
+    # Round-trips through the canonical DurableRef adapter.
+    import base64
+
+    restored = base64.urlsafe_b64decode(pid + "=" * (-len(pid) % 4))
+    assert restored == raw
+
+
+def test_capture_on_but_read_returns_none_omits_persist_id(
+    enable_brep, enable_capture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A token that won't read (None) leaves persist_id absent — fail-soft."""
+    monkeypatch.setattr(
+        "ai_sw_bridge.brep.interrogator.read_persist_reference",
+        lambda doc, entity: None,
+    )
+    result = interrogate(_one_face_feature(), _Ctx(doc=object()))
+    assert result is not None
+    assert "persist_id" not in result["faces"][0]
+
+
+def test_capture_on_but_no_doc_skips_read(
+    enable_brep, enable_capture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No live doc on ctx -> the per-face read is never attempted."""
+    calls: list[object] = []
+
+    def _spy(doc, entity):
+        calls.append(entity)
+        return b"x"
+
+    monkeypatch.setattr(
+        "ai_sw_bridge.brep.interrogator.read_persist_reference", _spy
+    )
+    result = interrogate(_one_face_feature(), _Ctx(doc=None))
+    assert result is not None
+    assert "persist_id" not in result["faces"][0]
+    assert calls == []
+
+
 def test_role_hint_oblique_for_tilted_normal() -> None:
     # 45-degree normal isn't axis-aligned.
     import math

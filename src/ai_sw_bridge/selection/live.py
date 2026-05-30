@@ -128,21 +128,7 @@ def capture_persist_id(doc: Any, entity: Any) -> bytes | None:
         doc: the live ``IModelDoc2`` the entity belongs to.
         entity: a face / edge / vertex COM object from that doc's body.
     """
-    if doc is None or entity is None:
-        return None
-    try:
-        ext = earlybind.typed_extension(doc)
-        pid = ext.GetPersistReference3(entity)
-    except earlybind.EarlyBindError:
-        return None
-    except Exception:  # noqa: BLE001 — any COM failure degrades to None
-        return None
-    if pid is None:
-        return None
-    try:
-        return bytes(pid)
-    except Exception:  # noqa: BLE001 — token shape not coercible -> unavailable
-        return None
+    return earlybind.read_persist_reference(doc, entity)
 
 
 def resolve_persist_id(doc: Any, persist_id: bytes | None) -> PersistResolution:

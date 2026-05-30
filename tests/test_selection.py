@@ -280,3 +280,54 @@ class TestDurableRef:
         # frozen dataclass is hashable → usable as a dict key / set member.
         assert hash(a) == hash(b)
         assert {a, b, c} == {a, c}
+
+    # ---- from_manifest_face (brep-manifest adapter) --------------------
+
+    @staticmethod
+    def _manifest_face(*, persist_id=None, role_hint="+z_outboard") -> dict:
+        """A face dict in the flat brep-manifest serialized shape."""
+        face = {
+            "normal": [0.0, 0.0, 1.0],
+            "centroid": [0.01, 0.02, 0.005],
+            "area_mm2": 2500.0,
+        }
+        out = {
+            "fingerprint": compute_hash(face),
+            "face_idx": 3,
+            "body_id": 0,
+            "role_hint": role_hint,
+            "normal": face["normal"],
+            "centroid": face["centroid"],
+            "bbox": [[0.0, 0.0, 0.0], [0.02, 0.04, 0.005]],
+            "area_mm2": face["area_mm2"],
+            "is_surface": False,
+        }
+        if persist_id is not None:
+            out["persist_id"] = persist_id
+        return out
+
+    def test_from_manifest_face_no_persist(self, fp):
+        """Flat manifest face without a token -> persist_id None, fp matches."""
+        ref = DurableRef.from_manifest_face(self._manifest_face())
+        assert ref.persist_id is None
+        assert ref.role_hint == "+z_outboard"
+        assert ref.fingerprint == fp
+
+    def test_from_manifest_face_with_persist(self, fp):
+        raw = bytes(range(16))
+        b64 = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+        ref = DurableRef.from_manifest_face(self._manifest_face(persist_id=b64))
+        assert ref.persist_id == raw
+        assert ref.fingerprint == fp
+
+    def test_from_manifest_face_empty_role_defaults(self):
+        ref = DurableRef.from_manifest_face(self._manifest_face(role_hint=""))
+        assert ref.role_hint == "unknown"
+
+    def test_from_manifest_face_rejects_missing_geometry(self):
+        with pytest.raises(ValueError, match="normal, centroid, area_mm2"):
+            DurableRef.from_manifest_face({"role_hint": "top"})
+
+    def test_from_manifest_face_rejects_non_dict(self):
+        with pytest.raises(TypeError):
+            DurableRef.from_manifest_face(["not", "a", "dict"])  # type: ignore[arg-type]
