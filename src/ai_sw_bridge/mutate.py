@@ -101,7 +101,11 @@ _SW_CONST_RADIUS_FILLET = 0
 _SW_FM_BASEFLANGE = 34
 
 # Feature types the feature_add PAE lifecycle knows how to build.
-_SUPPORTED_FEATURE_TYPES = ("fillet_constant_radius", "base_flange")
+_SUPPORTED_FEATURE_TYPES = (
+    "fillet_constant_radius",
+    "base_flange",
+    "variable_radius_fillet",
+)
 
 
 def _open_doc_typed(doc_path: str) -> Any:
@@ -200,6 +204,91 @@ def _create_base_flange(
         return False, f"base-flange pipeline failed: {exc!r}"
 
 
+def _get_definition(feat: Any, mod: Any) -> Any:
+    """Return a feature's definition object, falling back to early-bound
+    ``IFeature.GetDefinition`` when the late-bind call raises 'Member not
+    found' (the same wall ``GetDefinition`` hits elsewhere)."""
+    try:
+        d = feat.GetDefinition()
+        if d is not None:
+            return d
+    except Exception:  # noqa: BLE001
+        pass
+    return typed(feat, "IFeature", module=mod).GetDefinition()
+
+
+def _create_variable_fillet(
+    doc: Any, edges: list[dict]
+) -> tuple[bool, str | None]:
+    """Multi-edge fillet with a DISTINCT radius per durable edge.
+
+    Seat-validated recipe (``spike_varfil_v4`` = PASS-PER-EDGE): variable
+    radius is the *simple* fillet data with ``IsMultipleRadius=True`` — there is
+    no separate "variable" creation interface (the v0.15 morph premise was
+    false). Each ``edges`` item is ``{"ref": <DurableEdgeRef dict>,
+    "radius_mm": float}``; the order is significant because fillet item ``i``
+    binds to the ``i``-th *selected* edge (proven by the v4 readback).
+
+    Steps: resolve + **append-select each edge as an entity** (coordinate
+    SelectByID replaces and SelectByID2 hits the dynamic ``<unknown>`` wall —
+    only ``IEntity.Select2`` append accumulates) → CreateDefinition(fillet) →
+    typed_qi → Initialize(const) → IsMultipleRadius=True → CreateFeature → set
+    each fillet item's radius → **early-bound** ``ModifyDefinition`` (late-bind
+    raises 'Type mismatch' on the Component arg). Returns (ok, error).
+    """
+    mod = wrapper_module()
+    doc.ForceRebuild3(False)
+
+    radii_mm: list[float] = []
+    for k, item in enumerate(edges):
+        ref = DurableEdgeRef.from_dict(item["ref"])
+        res = resolve_edge_ref(doc, ref)
+        if res.entity is None:
+            return False, f"edge {k} unresolved (method={res.method})"
+        if not select_entity(res.entity, append=(k > 0)):
+            return False, f"edge {k} selection failed"
+        radii_mm.append(item["radius_mm"])
+
+    try:
+        fm = doc.FeatureManager
+        data = fm.CreateDefinition(_SW_FM_FILLET)
+        fd = typed_qi(data, "ISimpleFilletFeatureData2", module=mod)
+        fd.Initialize(_SW_CONST_RADIUS_FILLET)
+        fd.DefaultRadius = radii_mm[0] / 1000.0
+        fd.IsMultipleRadius = True
+        feat = fm.CreateFeature(data)
+        if not _materialized(feat):
+            return False, "CreateFeature did not materialize"
+
+        defn_raw = _get_definition(feat, mod)
+        if defn_raw is None:
+            return False, "GetDefinition returned None"
+        defn = typed_qi(defn_raw, "ISimpleFilletFeatureData2", module=mod)
+        try:
+            defn.AccessSelections(doc, None)
+        except Exception:  # noqa: BLE001
+            pass
+
+        count = int(defn.FilletItemsCount)
+        if count != len(radii_mm):
+            return False, (
+                f"fillet item count {count} != {len(radii_mm)} edges "
+                "(edges merged into one item — pick non-adjacent edges)"
+            )
+        for i in range(count):
+            fitem = defn.GetFilletItemAtIndex(i)
+            defn.SetRadius(fitem, radii_mm[i] / 1000.0)
+
+        # ModifyDefinition MUST be early-bound (late-bind raises Type mismatch
+        # marshalling the None Component arg).
+        ok = typed(feat, "IFeature", module=mod).ModifyDefinition(defn_raw, doc, None)
+        if ok is False:
+            return False, "ModifyDefinition returned False"
+        return True, None
+    except Exception as exc:
+        return False, f"variable-fillet pipeline failed: {exc!r}"
+
+
 def _apply_feature(
     doc: Any, feature: dict, target: dict
 ) -> tuple[bool, str | None]:
@@ -216,6 +305,8 @@ def _apply_feature(
         return _create_base_flange(
             doc, target, feature["thickness_mm"], feature["bend_radius_mm"]
         )
+    if ftype == "variable_radius_fillet":
+        return _create_variable_fillet(doc, target["edges"])
     return False, f"unsupported feature type {ftype!r}"
 
 
@@ -681,6 +772,26 @@ def sw_propose_feature_add(
         if feat_type == "base_flange" and not target.get("sketch"):
             result["error"] = "base_flange target must contain a 'sketch' name"
             return result
+
+        # A variable-radius fillet carries an ordered list of (edge, radius).
+        if feat_type == "variable_radius_fillet":
+            edge_specs = target.get("edges")
+            if not isinstance(edge_specs, list) or not edge_specs:
+                result["error"] = (
+                    "variable_radius_fillet target must contain a non-empty "
+                    "'edges' list"
+                )
+                return result
+            for k, es in enumerate(edge_specs):
+                if not isinstance(es, dict) or not isinstance(es.get("ref"), dict) or not es["ref"]:
+                    result["error"] = f"edges[{k}] must contain a non-empty 'ref' dict"
+                    return result
+                r = es.get("radius_mm")
+                if not isinstance(r, (int, float)) or r <= 0:
+                    result["error"] = (
+                        f"edges[{k}].radius_mm must be a positive number, got {r!r}"
+                    )
+                    return result
 
         if not doc_path or not Path(doc_path).exists():
             result["error"] = f"doc_path does not exist: {doc_path}"
