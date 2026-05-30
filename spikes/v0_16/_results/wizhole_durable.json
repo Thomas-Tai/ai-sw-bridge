@@ -1,0 +1,15 @@
+{
+  "sw_revision": "32.1.0",
+  "captured_ref": {
+    "has_persist": true,
+    "role": "+z_top"
+  },
+  "resolve": {
+    "method": "persist_id",
+    "resolved": true,
+    "note": null
+  },
+  "size_used": "\u00d86.0",
+  "materialized": true,
+  "overall": "PASS"
+}

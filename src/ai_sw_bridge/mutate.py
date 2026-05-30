@@ -38,7 +38,12 @@ from .sw_com import get_active_doc, get_sw_app, resolve
 
 from .com.earlybind import typed, typed_qi
 from .com.sw_type_info import wrapper_module
-from .selection import DurableEdgeRef, resolve_edge_ref, select_entity
+from .selection import (
+    DurableEdgeRef,
+    resolve_edge_ref,
+    resolve_manifest_face,
+    select_entity,
+)
 
 
 # Proposal store: one JSON file per proposal. Override via env var,
@@ -446,9 +451,22 @@ def _create_wizard_hole(
     Seat-validated recipe (spike_wizhole_v5 = PASS): resolve the DB args, place
     a sketch point at the requested location on the target face, then
     ``CreateDefinition(25) → typed_qi(IWizardHoleFeatureData2) → InitializeHole
-    → CreateFeature``. Placement is coordinate-based in v1 (``target`` =
-    ``{"face": [x,y,z], "point": [x,y,z]}`` in model metres); durable
-    face/point anchoring is a follow-up. Returns (ok, error).
+    → CreateFeature``.
+
+    Placement supports two ``target`` shapes (durable preferred):
+
+    * **Durable face-ref (C, seat-validated ``spike_wizhole_durable`` = PASS):**
+      ``{"face_ref": <manifest-face dict>, "point": [x,y,z]}`` — the face is
+      resolved through the persist→fingerprint hierarchy
+      (:func:`resolve_manifest_face`) and selected as a live entity, so the
+      placement survives rebuilds/topology shuffles. The sketch is built on the
+      *resolved* face (proven: ``select_entity`` of the resolved face is a valid
+      ``InsertSketch`` base, just like the v1 coordinate pick).
+    * **Legacy coordinate (v1):** ``{"face": [x,y,z], "point": [x,y,z]}`` — the
+      face is picked by raw model-metre coords via ``SelectByID``.
+
+    ``point`` is the on-face hole location in model metres in both cases.
+    Returns (ok, error).
     """
     generic = _WZD_GENERIC_HOLE_TYPES[feature["hole_type"]]
     end_cond = _WZD_END_CONDITIONS[feature.get("end_condition", "blind")]
@@ -460,16 +478,24 @@ def _create_wizard_hole(
 
     mod = wrapper_module()
     doc.ForceRebuild3(False)
-    fx, fy, fz = target["face"]
     px, py, pz = target["point"]
     try:
-        # Place a sketch point at the hole location on the target face.
+        # Select the placement face: durable face-ref first, else legacy coords.
         try:
             doc.ClearSelection2(True)
         except Exception:  # noqa: BLE001
             pass
-        if not doc.SelectByID("", "FACE", fx, fy, fz):
-            return False, f"could not select target face at {target['face']}"
+        face_ref = target.get("face_ref")
+        if face_ref is not None:
+            res = resolve_manifest_face(doc, face_ref)
+            if res.entity is None:
+                return False, f"placement face unresolved (method={res.method})"
+            if not select_entity(res.entity):
+                return False, "could not select resolved placement face"
+        else:
+            fx, fy, fz = target["face"]
+            if not doc.SelectByID("", "FACE", fx, fy, fz):
+                return False, f"could not select target face at {target['face']}"
         sk = doc.SketchManager
         sk.InsertSketch(True)
         pt = sk.CreatePoint(px, py, pz)
@@ -1166,15 +1192,30 @@ def sw_propose_feature_add(
                     )
                     return result
 
-        # A wizard hole is placed at a point on a face (model-metre coords).
+        # A wizard hole is placed at a point on a face. The face is given
+        # either durably (``face_ref``: a manifest-face dict, preferred) or by
+        # raw model-metre coords (``face``: [x,y,z], v1). ``point`` is the
+        # on-face hole location in model metres in both cases.
         if feat_type == "wizard_hole":
-            for pname in ("face", "point"):
-                pv = target.get(pname)
-                if not isinstance(pv, (list, tuple)) or len(pv) != 3:
+            point = target.get("point")
+            if not isinstance(point, (list, tuple)) or len(point) != 3:
+                result["error"] = "wizard_hole target.point must be a 3-element [x,y,z]"
+                return result
+            face_ref = target.get("face_ref")
+            face = target.get("face")
+            if face_ref is not None:
+                if not isinstance(face_ref, dict) or not face_ref:
                     result["error"] = (
-                        f"wizard_hole target.{pname} must be a 3-element [x,y,z]"
+                        "wizard_hole target.face_ref must be a non-empty "
+                        "manifest-face dict"
                     )
                     return result
+            elif not (isinstance(face, (list, tuple)) and len(face) == 3):
+                result["error"] = (
+                    "wizard_hole target needs a 'face_ref' (durable manifest-face "
+                    "dict) or a 'face' ([x,y,z] coords)"
+                )
+                return result
 
         def _is_coord(v: Any) -> bool:
             return isinstance(v, (list, tuple)) and len(v) == 3

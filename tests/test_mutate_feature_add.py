@@ -888,6 +888,42 @@ class TestProposeWizardHole:
         )
         assert r["ok"] is False and "point" in r["error"]
 
+    def test_accepts_durable_face_ref(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # C: a durable manifest-face dict is a valid placement target.
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        face_ref = {
+            "normal": [0, 0, 1], "centroid": [0, 0, 0.01], "area_mm2": 1600.0,
+            "role_hint": "+z_top", "persist_id": "QUJD",
+        }
+        r = sw_propose_feature_add(
+            str(doc), self._FEATURE, {"face_ref": face_ref, "point": [0.003, 0.002, 0.01]}
+        )
+        assert r["ok"] is True
+
+    def test_rejects_missing_face_and_ref(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        r = sw_propose_feature_add(str(doc), self._FEATURE, {"point": [0, 0, 0.01]})
+        assert r["ok"] is False and "face_ref" in r["error"]
+
+    def test_rejects_bad_face_ref(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        r = sw_propose_feature_add(
+            str(doc), self._FEATURE, {"face_ref": "nope", "point": [0, 0, 0.01]}
+        )
+        assert r["ok"] is False and "face_ref" in r["error"]
+
 
 class _FakeSketchPoint:
     def Select2(self, append: bool, mark: int) -> bool:
@@ -1006,6 +1042,102 @@ class TestDryRunWizardHole:
         assert wizdata.init_args == (2, 1, 41, "M8", 0)
         assert wizdata.depth == pytest.approx(0.006)
         assert doc.save_calls == []                   # dry-run never saves
+
+    def test_durable_face_ref_resolves_and_creates(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # C: the placement face arrives as a durable face_ref; the handler
+        # resolves it (resolve_manifest_face) and selects the live entity
+        # (select_entity) instead of a raw coordinate SelectByID.
+        import types
+
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
+
+        wizdata = _FakeWizHoleData()
+        fm = _FakeWizFM(wizdata, object())
+        doc = _FakeWizDoc(str(doc_file), fm)
+        sw = _FakeSwAppHoles(["M6", "M8", "M10"])
+        monkeypatch.setattr(
+            _FakeSwAppHoles, "OpenDoc6", lambda self, *a: (doc, 0, 0), raising=False
+        )
+        monkeypatch.setattr(
+            _FakeSwAppHoles, "CloseDoc", lambda self, title: None, raising=False
+        )
+        monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
+        monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
+        monkeypatch.setattr(mutate, "get_active_doc", lambda s: None)
+
+        # Durable-resolution seam: resolve to a face entity, select succeeds.
+        resolved: list[Any] = []
+        face_entity = object()
+        monkeypatch.setattr(
+            mutate, "resolve_manifest_face",
+            lambda d, ref, **kw: types.SimpleNamespace(entity=face_entity, method="persist_id"),
+        )
+        monkeypatch.setattr(
+            mutate, "select_entity",
+            lambda ent, **kw: resolved.append(ent) or True,
+        )
+
+        face_ref = {
+            "normal": [0, 0, 1], "centroid": [0, 0, 0.01], "area_mm2": 1600.0,
+            "role_hint": "+z_top", "persist_id": "QUJD",
+        }
+        target = {"face_ref": face_ref, "point": [0.003, 0.002, 0.01]}
+        pid = sw_propose_feature_add(str(doc_file), self._FEATURE, target)["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+
+        assert r["ok"] is True
+        assert r["state"] == ST_DRY_RUN_OK
+        assert resolved == [face_entity]              # the resolved face was selected
+        assert fm.create_def_calls == [25]
+        assert wizdata.init_args == (2, 1, 41, "M8", 0)
+        assert doc.save_calls == []
+
+    def test_durable_face_ref_unresolved_fails(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        import types
+
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
+
+        wizdata = _FakeWizHoleData()
+        fm = _FakeWizFM(wizdata, object())
+        doc = _FakeWizDoc(str(doc_file), fm)
+        sw = _FakeSwAppHoles(["M6", "M8", "M10"])
+        monkeypatch.setattr(
+            _FakeSwAppHoles, "OpenDoc6", lambda self, *a: (doc, 0, 0), raising=False
+        )
+        monkeypatch.setattr(
+            _FakeSwAppHoles, "CloseDoc", lambda self, title: None, raising=False
+        )
+        monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
+        monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
+        monkeypatch.setattr(mutate, "get_active_doc", lambda s: None)
+        # Face does not resolve — the hole must NOT be created.
+        monkeypatch.setattr(
+            mutate, "resolve_manifest_face",
+            lambda d, ref, **kw: types.SimpleNamespace(entity=None, method="unresolved"),
+        )
+        monkeypatch.setattr(mutate, "select_entity", lambda ent, **kw: True)
+
+        face_ref = {"normal": [0, 0, 1], "centroid": [0, 0, 0.01],
+                    "area_mm2": 1600.0, "role_hint": "+z_top"}
+        target = {"face_ref": face_ref, "point": [0.003, 0.002, 0.01]}
+        pid = sw_propose_feature_add(str(doc_file), self._FEATURE, target)["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+
+        assert r["ok"] is False
+        assert "unresolved" in (r.get("error") or "")
+        assert fm.create_def_calls == []              # never reached CreateDefinition
 
 
 # ---------------------------------------------------------------------------
