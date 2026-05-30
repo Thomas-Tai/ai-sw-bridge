@@ -14,6 +14,14 @@ the built manifest after the parent feature's brep block exists.
 
 Case-insensitive role matching: ``"top"`` matches a face whose
 ``role_hint`` is ``"TOP"``, ``"+Z_OUTBOARD"``, or any casing variant.
+
+Layering (OI-3): this resolver is *data-level* — it picks **which manifest
+face dict** a symbolic role or normal refers to, and is intentionally
+persist-agnostic. Resolving that face dict to a **live COM entity** (with the
+persist-id → fingerprint tier hierarchy) is the job of
+``selection.live.resolve_manifest_face`` / ``resolve_ref``. Do not add a
+persist-token tier here; the token captured into the manifest face is consumed
+at the live layer via ``DurableRef.from_manifest_face``.
 """
 
 from __future__ import annotations
