@@ -17,12 +17,14 @@ today's literal-coordinate selection).
 from __future__ import annotations
 
 from ._fingerprint import BrepFingerprint
+from ._edge_ref import DurableEdgeRef
 from ._ref import DurableRef
 from .live import (
     PersistResolution,
     RefResolution,
     capture_persist_id,
     resolve_by_fingerprint,
+    resolve_edge_ref,
     resolve_persist_id,
     resolve_ref,
     select_entity,
@@ -30,11 +32,13 @@ from .live import (
 
 __all__ = [
     "BrepFingerprint",
+    "DurableEdgeRef",
     "DurableRef",
     "PersistResolution",
     "RefResolution",
     "capture_persist_id",
     "resolve_by_fingerprint",
+    "resolve_edge_ref",
     "resolve_persist_id",
     "resolve_ref",
     "select_entity",

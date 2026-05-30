@@ -313,6 +313,33 @@ def resolve_ref(doc: Any, ref: Any, *, allow_fingerprint: bool = True) -> RefRes
     )
 
 
+def resolve_edge_ref(doc: Any, ref: Any) -> RefResolution:
+    """Resolve a :class:`DurableEdgeRef` to a live edge (tier-1 persist only).
+
+    Edges resolve by their ``GetPersistReference3`` token — proven robust through
+    rebuild and reopen (``spike_edge_persist``). There is no edge fingerprint
+    fallback in v1, so a missing/failed token yields ``"unresolved"`` (the caller
+    degrades to client hand-off rather than a lossy geometric re-match).
+
+    Args:
+        doc: the live document (assumed rebuilt — a freshly opened doc must be
+            ``ForceRebuild3``'d first, else the token resolves to ``Deleted``).
+        ref: a ``DurableEdgeRef`` (uses ``persist_id``).
+    """
+    persist_id = getattr(ref, "persist_id", None)
+    if persist_id is None:
+        return RefResolution(None, "unresolved", note="edge ref has no persist_id")
+    pr = resolve_persist_id(doc, persist_id)
+    if pr.ok and pr.entity is not None:
+        return RefResolution(pr.entity, "persist_id", persist=pr)
+    return RefResolution(
+        None,
+        "unresolved",
+        persist=pr,
+        note=f"edge persist failed (status={pr.status_name}, error={pr.error})",
+    )
+
+
 def select_entity(entity: Any, *, append: bool = False, mark: int = 0) -> bool:
     """Select a resolved entity via an early-bound typed ``IEntity.Select2``.
 
@@ -343,6 +370,7 @@ __all__ = [
     "RefResolution",
     "capture_persist_id",
     "resolve_by_fingerprint",
+    "resolve_edge_ref",
     "resolve_persist_id",
     "resolve_ref",
     "select_entity",
