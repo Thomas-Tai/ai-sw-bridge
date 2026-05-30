@@ -756,6 +756,258 @@ class TestCommitVariableFillet:
 
 
 # ---------------------------------------------------------------------------
+# Wizard hole — dynamic standards-DB arg resolution + creation
+# ---------------------------------------------------------------------------
+
+
+class _FakeHoleTable:
+    def __init__(self, sizes: list[str]) -> None:
+        self._sizes = sizes
+
+    def GetColumnNames(self) -> tuple:
+        return (True, ("SIZE", "DIAMETER"))
+
+    def GetRowCount(self) -> tuple:
+        return (True, len(self._sizes))  # retval bool + count
+
+    def GetCellData(self, col: str, row: int) -> tuple:
+        return (True, self._sizes[row])
+
+
+class _FakeHSD:
+    """IHoleStandardsData stand-in: returns (retval, *out-arrays) tuples."""
+
+    def __init__(self, sizes: list[str]) -> None:
+        self._sizes = sizes
+
+    def GetHoleStandards(self) -> tuple:
+        return (True, (1, 8, 4), ("ANSI Metric", "ISO", "DIN"))
+
+    def GetFastenerTypes(self, std_name: str) -> tuple:
+        return (True, (39, 41), ("Drill sizes", "Tap Drills"))
+
+    def GetFastenerTableTypes(self, std_name: str, fid: int) -> tuple:
+        return (True, (0, 2))
+
+    def GetFastenerTable(self, std_name: str, fid: int, tid: int) -> tuple:
+        return (True, _FakeHoleTable(self._sizes))
+
+
+class _FakeSwAppHoles:
+    def __init__(self, sizes: list[str]) -> None:
+        self._sizes = sizes
+
+    def GetHoleStandardsData(self, hole_type: int) -> Any:
+        return _FakeHSD(self._sizes)
+
+
+def _patch_holes(monkeypatch: pytest.MonkeyPatch, sizes: list[str]) -> None:
+    monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
+    monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(mutate, "get_sw_app", lambda: _FakeSwAppHoles(sizes))
+
+
+class TestResolveHoleArgs:
+    def test_resolves_indexes_and_validates_size(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_holes(monkeypatch, ["M6", "M8", "M10"])
+        ok, std, fast, err = mutate._resolve_hole_args(
+            2, "ANSI Metric", "Tap Drills", "M8"
+        )
+        assert ok is True
+        assert std == 1  # ANSI Metric index (swWzdHoleStandards_e)
+        assert fast == 41  # Tap Drills
+        assert err is None
+
+    def test_standard_match_is_case_insensitive(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_holes(monkeypatch, ["M6"])
+        ok, std, fast, err = mutate._resolve_hole_args(
+            2, "ansi metric", "drill sizes", "M6"
+        )
+        assert ok is True and std == 1 and fast == 39
+
+    def test_unknown_standard_lists_available(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_holes(monkeypatch, ["M6"])
+        ok, _, _, err = mutate._resolve_hole_args(2, "Klingon", "Tap Drills", "M6")
+        assert ok is False
+        assert "not found" in err and "ANSI Metric" in err
+
+    def test_unknown_fastener_lists_available(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_holes(monkeypatch, ["M6"])
+        ok, _, _, err = mutate._resolve_hole_args(2, "ISO", "Nonsense", "M6")
+        assert ok is False
+        assert "Tap Drills" in err
+
+    def test_invalid_size_rejected_with_valid_list(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_holes(monkeypatch, ["M6", "M8", "M10"])
+        ok, _, _, err = mutate._resolve_hole_args(2, "ISO", "Tap Drills", "M7.5")
+        assert ok is False
+        assert "M7.5" in err and "M6" in err and "M10" in err
+
+
+class TestProposeWizardHole:
+    _FEATURE = {
+        "type": "wizard_hole", "hole_type": "hole", "standard": "ANSI Metric",
+        "fastener_type": "Tap Drills", "size": "M8", "end_condition": "blind",
+        "depth_mm": 6.0,
+    }
+    _TARGET = {"face": [0, 0, 0.01], "point": [0.003, 0.002, 0.01]}
+
+    def test_writes_record(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        r = sw_propose_feature_add(str(doc), self._FEATURE, self._TARGET)
+        assert r["ok"] is True
+
+    def test_rejects_bad_hole_type(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        r = sw_propose_feature_add(
+            str(doc), {**self._FEATURE, "hole_type": "wormhole"}, self._TARGET
+        )
+        assert r["ok"] is False and "hole_type" in r["error"]
+
+    def test_rejects_bad_target_point(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        r = sw_propose_feature_add(
+            str(doc), self._FEATURE, {"face": [0, 0, 0.01], "point": [0, 0]}
+        )
+        assert r["ok"] is False and "point" in r["error"]
+
+
+class _FakeSketchPoint:
+    def Select2(self, append: bool, mark: int) -> bool:
+        return True
+
+
+class _FakeSketchManager:
+    def InsertSketch(self, rebuild: bool) -> None:
+        pass
+
+    def CreatePoint(self, x: float, y: float, z: float) -> Any:
+        return _FakeSketchPoint()
+
+
+class _FakeWizHoleData:
+    def __init__(self) -> None:
+        self.init_args: tuple | None = None
+        self.depth: float | None = None
+
+    def InitializeHole(self, *args) -> None:
+        self.init_args = args
+
+    @property
+    def Depth(self) -> float:
+        return self.depth or 0.0
+
+    @Depth.setter
+    def Depth(self, v: float) -> None:
+        self.depth = v
+
+
+class _FakeWizFM:
+    def __init__(self, data: Any, feature: Any) -> None:
+        self._data = data
+        self._feature = feature
+        self.create_def_calls: list[int] = []
+
+    def CreateDefinition(self, t: int) -> Any:
+        self.create_def_calls.append(t)
+        return self._data
+
+    def CreateFeature(self, fd: Any) -> Any:
+        return self._feature
+
+
+class _FakeWizDoc:
+    def __init__(self, path: str, fm: Any) -> None:
+        self._path = path
+        self.FeatureManager = fm
+        self.SketchManager = _FakeSketchManager()
+        self.save_calls: list[tuple] = []
+        self._title = Path(path).name
+
+    def ForceRebuild3(self, _: bool) -> bool:
+        return True
+
+    def ClearSelection2(self, top: bool) -> None:
+        pass
+
+    def SelectByID(self, name: str, sel_type: str, x: float, y: float, z: float) -> bool:
+        return True
+
+    def Save(self) -> int:
+        self.save_calls.append(())
+        return 1
+
+    def GetTitle(self) -> str:
+        return self._title
+
+    def GetPathName(self) -> str:
+        return self._path
+
+
+class TestDryRunWizardHole:
+    _FEATURE = {
+        "type": "wizard_hole", "hole_type": "hole", "standard": "ANSI Metric",
+        "fastener_type": "Tap Drills", "size": "M8", "end_condition": "blind",
+        "depth_mm": 6.0,
+    }
+    _TARGET = {"face": [0, 0, 0.01], "point": [0.003, 0.002, 0.01]}
+
+    def test_resolves_args_and_creates_no_save(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
+
+        wizdata = _FakeWizHoleData()
+        feature_obj = object()  # materialized (not None/int)
+        fm = _FakeWizFM(wizdata, feature_obj)
+        doc = _FakeWizDoc(str(doc_file), fm)
+        sw = _FakeSwAppHoles(["M6", "M8", "M10"])
+        # sw also needs OpenDoc6/CloseDoc for the PAE plumbing.
+        sw_doc = doc
+        monkeypatch.setattr(
+            _FakeSwAppHoles, "OpenDoc6",
+            lambda self, *a: (sw_doc, 0, 0), raising=False,
+        )
+        monkeypatch.setattr(
+            _FakeSwAppHoles, "CloseDoc", lambda self, title: None, raising=False
+        )
+        monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
+        monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
+        monkeypatch.setattr(mutate, "get_active_doc", lambda s: None)
+
+        pid = sw_propose_feature_add(str(doc_file), self._FEATURE, self._TARGET)["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+
+        assert r["ok"] is True
+        assert r["state"] == ST_DRY_RUN_OK
+        assert fm.create_def_calls == [25]            # swFmHoleWzd
+        # InitializeHole got the DB-resolved indexes + the exact size string.
+        assert wizdata.init_args == (2, 1, 41, "M8", 0)
+        assert wizdata.depth == pytest.approx(0.006)
+        assert doc.save_calls == []                   # dry-run never saves
+
+
+# ---------------------------------------------------------------------------
 # ProposalStore facade tests
 # ---------------------------------------------------------------------------
 
