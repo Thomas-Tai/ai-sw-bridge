@@ -43,6 +43,7 @@ from typing import Any
 from ..brep.fingerprint import fingerprint as _compute_fingerprint
 from ..brep.interrogator import read_face_geometry
 from ..com import earlybind
+from ._edge_match import edge_match_score
 from ._ref import DurableRef
 
 # Tier-2 (fingerprint) lossy-match tolerances. Looser than the fingerprint
@@ -197,6 +198,68 @@ def _iter_live_faces(doc: Any) -> list[Any]:
     return faces
 
 
+def _iter_live_edges(doc: Any) -> list[Any]:
+    """Return all solid-body edges of *doc* (best-effort, never raises).
+
+    ``GetBodies2(swSolidBody=0, bVisibleOnly=True)`` then ``GetEdges`` per
+    body. Mirrors :func:`_iter_live_faces` exactly.
+    """
+    def _call(obj: Any, name: str, *args: Any) -> Any:
+        attr = getattr(obj, name)
+        return attr(*args) if callable(attr) else attr
+
+    try:
+        bodies = _call(doc, "GetBodies2", 0, True)
+    except Exception:  # noqa: BLE001
+        return []
+    if not bodies:
+        return []
+    if not isinstance(bodies, (tuple, list)):
+        bodies = [bodies]
+    edges: list[Any] = []
+    for body in bodies:
+        if body is None:
+            continue
+        try:
+            raw = _call(body, "GetEdges")
+        except Exception:  # noqa: BLE001
+            continue
+        if raw is None:
+            continue
+        edges.extend(list(raw) if isinstance(raw, (tuple, list)) else [raw])
+    return edges
+
+
+def _read_edge_geometry(edge: Any) -> dict[str, Any] | None:
+    """Read a live COM edge's endpoint geometry into a candidate dict.
+
+    Uses the same ``IEdge.GetCurveParams2`` path as
+    ``brep.interrogator._probe_edge`` so the dicts line up with the manifest
+    shape (``start`` / ``end`` required; ``length`` / ``midpoint`` derived as
+    chord length / chord midpoint). Returns ``None`` when the edge has no
+    readable geometry.
+    """
+    from ..brep.interrogator import _read_curve_params
+
+    cp = _read_curve_params(edge)
+    if cp is None:
+        return None
+    start = (cp[0], cp[1], cp[2])
+    end = (cp[3], cp[4], cp[5])
+    midpoint = (
+        (start[0] + end[0]) / 2.0,
+        (start[1] + end[1]) / 2.0,
+        (start[2] + end[2]) / 2.0,
+    )
+    length = math.dist(start, end)
+    return {
+        "start": list(start),
+        "end": list(end),
+        "length": length,
+        "midpoint": list(midpoint),
+    }
+
+
 def _geom_distance(fp: Any, geom: dict[str, Any]) -> tuple[float, float] | None:
     """Return ``(1 - normal_dot, centroid_distance_m)`` between a captured
     fingerprint *fp* and a live face *geom*, or ``None`` if either is malformed.
@@ -269,6 +332,66 @@ def resolve_by_fingerprint(doc: Any, ref: Any) -> RefResolution:
             ),
         )
     return RefResolution(None, "unresolved", note="no fingerprint match among live faces")
+
+
+def resolve_by_edge_fingerprint(doc: Any, ref: Any) -> RefResolution:
+    """Tier-2 edge resolution: re-match ``ref`` endpoints against live edges.
+
+    Walks every solid-body edge of *doc*, reads each edge's endpoint geometry
+    via :func:`_read_edge_geometry` (same ``GetCurveParams2`` path as the
+    interrogator, so the dicts line up), and scores each candidate against the
+    ref using :func:`_edge_match.edge_match_score`. The candidate with the
+    lexicographically-smallest key wins (mirrors the face fallback's
+    ``(1-dot, centroid_dist)`` ordering in :func:`resolve_by_fingerprint`).
+
+    .. warning:: Capture gap (O2 route note)
+
+        The interrogator captures only **chord** length and **chord** midpoint
+        (both derived from the endpoints). Today this function discriminates
+        edges **only by their unordered endpoint pair**, and has a known
+        false-positive class: a straight edge and a curved edge sharing the
+        same two vertices are indistinguishable. That is a data limitation,
+        not a predicate bug — the predicate auto-discriminates the moment a
+        true curve midpoint / arc length is captured (a ~1-line interrogator
+        follow-up, zero S1 rework). Tier-1 persist remains the trustworthy
+        path; this is best-effort for the unique-endpoints case.
+
+    Returns ``method``:
+
+    * ``"edge_fingerprint"`` — a live edge matched the ref's endpoint geometry.
+    * ``"unresolved"`` — no acceptable candidate.
+    """
+    ref_dict: dict[str, Any] = {
+        "start": list(getattr(ref, "start", ())),
+        "end": list(getattr(ref, "end", ())),
+        "length": getattr(ref, "length", None),
+    }
+    if not ref_dict["start"] or not ref_dict["end"]:
+        return RefResolution(None, "unresolved", note="edge ref has no endpoint geometry")
+
+    best_edge: Any = None
+    best_key: tuple[float, float, float] | None = None
+    for edge in _iter_live_edges(doc):
+        cand = _read_edge_geometry(edge)
+        if cand is None:
+            continue
+        key = edge_match_score(ref_dict, cand)
+        if key is None:
+            continue
+        if best_key is None or key < best_key:
+            best_key = key
+            best_edge = edge
+
+    if best_edge is not None:
+        return RefResolution(
+            best_edge,
+            "edge_fingerprint",
+            note=(
+                f"edge endpoint match (err={best_key[0]:.4g} m, "
+                f"length_err={best_key[1]:.4g}, midpoint_err={best_key[2]:.4g})"
+            ),
+        )
+    return RefResolution(None, "unresolved", note="no edge fingerprint match among live edges")
 
 
 def resolve_ref(doc: Any, ref: Any, *, allow_fingerprint: bool = True) -> RefResolution:
@@ -348,30 +471,46 @@ def resolve_manifest_face(
     )
 
 
-def resolve_edge_ref(doc: Any, ref: Any) -> RefResolution:
-    """Resolve a :class:`DurableEdgeRef` to a live edge (tier-1 persist only).
+def resolve_edge_ref(doc: Any, ref: Any, *, allow_fingerprint: bool = True) -> RefResolution:
+    """Resolve a :class:`DurableEdgeRef` to a live edge via the full hierarchy.
 
-    Edges resolve by their ``GetPersistReference3`` token — proven robust through
-    rebuild and reopen (``spike_edge_persist``). There is no edge fingerprint
-    fallback in v1, so a missing/failed token yields ``"unresolved"`` (the caller
-    degrades to client hand-off rather than a lossy geometric re-match).
+    Tier 1 ``persist_id`` (proven, reliable) → tier 2 ``edge_fingerprint``
+    re-match against the live body's edges (lossy; endpoint-only under current
+    capture — see :func:`resolve_by_edge_fingerprint`). The ``persist`` field
+    always carries the tier-1 outcome (or ``None`` if there was no token) so
+    callers can see why the fallback was taken.
 
     Args:
         doc: the live document (assumed rebuilt — a freshly opened doc must be
             ``ForceRebuild3``'d first, else the token resolves to ``Deleted``).
-        ref: a ``DurableEdgeRef`` (uses ``persist_id``).
+        ref: a ``DurableEdgeRef`` (uses ``persist_id`` then endpoint geometry).
+        allow_fingerprint: when ``False``, skip tier 2 (persist-only) — used
+            where the cost of a full live-edge walk isn't wanted.
     """
+    pr: PersistResolution | None = None
     persist_id = getattr(ref, "persist_id", None)
-    if persist_id is None:
-        return RefResolution(None, "unresolved", note="edge ref has no persist_id")
-    pr = resolve_persist_id(doc, persist_id)
-    if pr.ok and pr.entity is not None:
-        return RefResolution(pr.entity, "persist_id", persist=pr)
+    if persist_id is not None:
+        pr = resolve_persist_id(doc, persist_id)
+        if pr.ok and pr.entity is not None:
+            return RefResolution(pr.entity, "persist_id", persist=pr)
+        persist_note = f"edge persist failed (status={pr.status_name}, error={pr.error})"
+    else:
+        persist_note = "no persist_id on edge ref"
+
+    if allow_fingerprint:
+        er = resolve_by_edge_fingerprint(doc, ref)
+        return RefResolution(
+            er.entity,
+            er.method if er.entity is not None else "unresolved",
+            persist=pr,
+            note=f"{persist_note}; {er.note}",
+        )
+
     return RefResolution(
         None,
         "unresolved",
         persist=pr,
-        note=f"edge persist failed (status={pr.status_name}, error={pr.error})",
+        note=f"{persist_note}; edge fingerprint re-match not attempted",
     )
 
 
@@ -404,6 +543,7 @@ __all__ = [
     "PersistResolution",
     "RefResolution",
     "capture_persist_id",
+    "resolve_by_edge_fingerprint",
     "resolve_by_fingerprint",
     "resolve_edge_ref",
     "resolve_manifest_face",
