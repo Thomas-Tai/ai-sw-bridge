@@ -82,6 +82,13 @@ def _resolved(obj: Any) -> bool:
     return obj is not None and not isinstance(obj, int)
 
 
+def _title(d: Any) -> Any:
+    """Read a doc title whether the proxy is late-bound (GetTitle auto-invokes
+    as a property) or early-bound (GetTitle is a method that must be called)."""
+    t = d.GetTitle
+    return t() if callable(t) else t
+
+
 def run(keep_file: bool) -> dict[str, Any]:
     result: dict[str, Any] = {"binding": "hybrid early (com.earlybind pattern)"}
     mod, info = ensure_sw_module()
@@ -140,7 +147,7 @@ def run(keep_file: bool) -> dict[str, Any]:
 
     title = None
     try:
-        title = doc.GetTitle
+        title = _title(doc)
     except Exception:  # noqa: BLE001
         title = tmp.name
     result["title"] = title
@@ -159,7 +166,10 @@ def run(keep_file: bool) -> dict[str, Any]:
     tsw = typed(mod, "ISldWorks", sw)
     t0 = time.perf_counter()
     try:
-        ret = tsw.OpenDoc6(str(tmp), SW_DOC_PART, SW_OPEN_SILENT, "")
+        # Errors/Warnings are [in,out] byref longs (VT_BYREF|VT_I4); the
+        # early-bound stub requires them passed as ints and returns the updated
+        # values appended to the tuple. Omitting them raises "Type mismatch".
+        ret = tsw.OpenDoc6(str(tmp), SW_DOC_PART, SW_OPEN_SILENT, "", 0, 0)
         reopen["returned_type"] = _tag(ret)
         if isinstance(ret, tuple):
             reopen["is_tuple_out_param"] = True
@@ -187,6 +197,17 @@ def run(keep_file: bool) -> dict[str, Any]:
             doc2 = None
     if doc2 is None:
         return {**result, "overall": "FAIL", "reason": "reopen produced no document"}
+
+    # Rebuild the freshly-opened doc so its B-rep is realized before we resolve
+    # the persist token against it (the token resolves to errCode=1 'Deleted'
+    # without this on a just-opened part).
+    rebuilt = True
+    try:
+        doc2.ForceRebuild3(False)
+    except Exception as e:  # noqa: BLE001
+        rebuilt = False
+        result["reopen_rebuild_error"] = f"{type(e).__name__}: {str(e)[:120]}"
+    result["reopen_rebuilt"] = rebuilt
 
     # 5. Resolve the token on the reopened doc.
     resolve: dict[str, Any] = {}
@@ -217,8 +238,7 @@ def run(keep_file: bool) -> dict[str, Any]:
     # 6. Cleanup (best-effort).
     if not keep_file:
         try:
-            t2 = doc2.GetTitle
-            sw.CloseDoc(t2)
+            sw.CloseDoc(_title(doc2))
         except Exception:  # noqa: BLE001
             pass
         try:
