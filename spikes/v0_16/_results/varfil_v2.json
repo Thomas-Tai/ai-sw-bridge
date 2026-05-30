@@ -1,0 +1,88 @@
+{
+  "binding": "hybrid early (com.earlybind.typed_qi)",
+  "module_source": "com.sw_type_info.wrapper_module",
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "sw_revision": "32.1.0",
+  "build": {
+    "built": true,
+    "feature_name": "Boss-Extrude1"
+  },
+  "create_definition_1": {
+    "status": "OK",
+    "type": "CDispatch",
+    "elapsed_ms": 35.09459999986575
+  },
+  "typed_qi": {
+    "status": "OK",
+    "type": "ISimpleFilletFeatureData2",
+    "elapsed_ms": 3.360200000315672
+  },
+  "initialize": {
+    "status": "OK",
+    "type": "bool",
+    "elapsed_ms": 3.982399997767061
+  },
+  "set_default_radius": {
+    "status": "OK",
+    "type": "NoneType",
+    "elapsed_ms": 5.3083000020706095
+  },
+  "set_is_multiple_radius": {
+    "status": "OK",
+    "type": "NoneType",
+    "elapsed_ms": 5.742099998315098
+  },
+  "select_edges": {
+    "picks": [
+      {
+        "status": "OK",
+        "type": "bool",
+        "elapsed_ms": 13.499799999408424,
+        "xyz": [
+          0.0,
+          0.01,
+          0.01
+        ],
+        "selected": true
+      },
+      {
+        "status": "OK",
+        "type": "bool",
+        "elapsed_ms": 8.043899997574044,
+        "xyz": [
+          0.01,
+          0.0,
+          0.01
+        ],
+        "selected": true
+      }
+    ],
+    "n_selected": 2
+  },
+  "per_item": {
+    "FilletItemsCount": {
+      "status": "OK",
+      "type": "int",
+      "elapsed_ms": 0.3892999993695412,
+      "value": 0
+    },
+    "note": "no fillet items to set (expected if items bind after CreateFeature)"
+  },
+  "is_multiple_radius_readback": {
+    "status": "OK",
+    "type": "bool",
+    "elapsed_ms": 5.78250000035041,
+    "value": true
+  },
+  "create_feature": {
+    "status": "OK",
+    "type": "CDispatch",
+    "elapsed_ms": 116.79519999961485,
+    "materialized": true,
+    "feature_name": "Fillet1",
+    "type_name": "Fillet"
+  },
+  "cleanup": "closed own doc (no save)",
+  "overall": "PASS-MULTIRADIUS",
+  "interpretation": "multi-radius fillet materializes via ISimpleFilletFeatureData2 with IsMultipleRadius=True \u2192 build the F2 variable(-across-edges) fillet handler on this object. (True variable-along-edge control points remain a separate question \u2014 that's IVariableFilletFeatureData2, a read/edit iface; creation likely needs InsertFeatureFillet.)"
+}
