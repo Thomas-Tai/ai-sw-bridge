@@ -113,6 +113,100 @@ def typed(obj: Any, iface: str, *, module: Any | None = None) -> Any:
     return cls(raw)
 
 
+def typed_qi(obj: Any, iface: str, *, module: Any | None = None) -> Any:
+    """QI-validated typed wrap — for objects whose interface must be *proven*.
+
+    Where :func:`typed` wraps by compiled dispid (sound only when the object is
+    already known to be ``iface`` — e.g. ``doc.Extension`` genuinely is
+    ``IModelDocExtension``), ``typed_qi`` first asks the C++ ``IUnknown`` whether
+    it implements ``iface`` via a real ``QueryInterface`` against the interface
+    IID. This is the proven, side-effect-free way to acquire *and identify*
+    objects whose runtime type is unknown — notably the ``IFeatureData`` objects
+    returned by ``IFeatureManager.CreateDefinition`` / ``IFeature.GetDefinition``,
+    where a dispid guess would silently invoke a colliding member instead of
+    failing (S-QI-FEATUREDATA = DISCRIMINATING, SW 2024 SP1).
+
+    QI never invokes a member, and it does not use ``GetTypeInfo`` (which SW
+    refuses), so a wrong ``iface`` fails cleanly with ``E_NOINTERFACE`` rather
+    than returning a misidentified object.
+
+    Two non-obvious mechanics this encapsulates:
+
+    * The IID is read from the makepy class's ``.CLSID`` — no hand-copied GUIDs.
+    * The QI passes ``IID_IDispatch`` as the wrapping hint. SW feature-data
+      interfaces are *dual* but have no compiled pywin32 gateway, so a bare
+      ``QueryInterface(iid)`` raises ``TypeError`` **on success** — easily
+      mistaken for failure. The hint wraps the (QI-validated) pointer as
+      ``IDispatch`` so makepy can then invoke it by dispid safely.
+
+    Args:
+        obj: A pywin32 dispatch wrapping the untyped SOLIDWORKS object.
+        iface: The typed interface name to acquire and validate against
+            (e.g. ``"IShellFeatureData"``).
+        module: The gen_py wrapper module. Defaults to the shared module.
+
+    Returns:
+        The early-bound typed wrapper, *after* QI has confirmed the object
+        implements ``iface``.
+
+    Raises:
+        EarlyBindError: if ``obj`` is ``None`` / lacks ``_oleobj_``, the wrapper
+            module or interface is unavailable, the interface class carries no
+            IID, or — the discriminating case — the object does **not** implement
+            ``iface`` (``E_NOINTERFACE``). Callers that probe a type use this
+            exception as the "not that interface" signal.
+    """
+    if obj is None:
+        raise EarlyBindError(f"cannot QI-wrap None as {iface!r}")
+
+    mod = module if module is not None else wrapper_module()
+    if mod is None:
+        raise EarlyBindError(
+            f"SOLIDWORKS gen_py wrapper unavailable; cannot QI-wrap {iface!r}."
+        )
+
+    cls = getattr(mod, iface, None)
+    if cls is None:
+        raise EarlyBindError(
+            f"interface {iface!r} not found in gen_py wrapper "
+            f"{getattr(mod, '__name__', mod)!r}"
+        )
+
+    iid = getattr(cls, "CLSID", None)
+    if iid is None:
+        raise EarlyBindError(
+            f"interface {iface!r} carries no CLSID/IID; cannot QueryInterface"
+        )
+
+    raw = getattr(obj, "_oleobj_", None)
+    if raw is None:
+        raise EarlyBindError(
+            f"object {type(obj).__name__!r} exposes no _oleobj_; it is not a "
+            "pywin32 dispatch and cannot be QI-wrapped"
+        )
+
+    import pythoncom  # lazy: keep the module importable without pywin32
+
+    try:
+        disp = raw.QueryInterface(iid, pythoncom.IID_IDispatch)
+    except pythoncom.com_error as e:
+        hr = getattr(e, "hresult", None)
+        if hr is None and getattr(e, "args", None):
+            hr = e.args[0]
+        hr_u = (hr & 0xFFFFFFFF) if isinstance(hr, int) else None
+        if hr_u == 0x80004002:  # E_NOINTERFACE — the object is not this type
+            raise EarlyBindError(
+                f"object does not implement {iface!r} (E_NOINTERFACE)"
+            ) from e
+        raise EarlyBindError(
+            f"QueryInterface for {iface!r} failed (hresult {hr_u:#010x})"
+            if hr_u is not None
+            else f"QueryInterface for {iface!r} failed"
+        ) from e
+
+    return cls(disp)
+
+
 def typed_extension(doc: Any, *, module: Any | None = None) -> Any:
     """Return a typed ``IModelDocExtension`` for ``doc`` — the persist-ref path.
 
@@ -173,4 +267,5 @@ __all__ = [
     "read_persist_reference",
     "typed",
     "typed_extension",
+    "typed_qi",
 ]
