@@ -61,6 +61,41 @@ Usage
 -----
     python spikes/v0_15/spike_earlybind_features.py --out report.json
     python spikes/v0_15/spike_earlybind_features.py --feature varfil
+
+POST-RUN FINDINGS (2026-05-30, SW 2024 SP1) -- THIS HARNESS NEEDS REWORK
+------------------------------------------------------------------------
+The first live run came back aggregate FAIL, but the run was
+*methodology-contaminated*, NOT an API wall. What it actually established:
+
+1. The typed feature-data interfaces DO exist in the makepy module -- I used
+   wrong names. Corrected names (verified by introspection):
+     - var fillet  -> ``IVariableFilletFeatureData2``  (NOT ...RadiusFillet...)
+     - wizard hole -> ``IWizardHoleFeatureData2``       (uses ``InitializeHole(...)``,
+                                                          there is NO ``HoleType`` prop)
+     - shell       -> ``IShellFeatureData``  (Thickness / FacesRemoved / AccessSelections)
+     - draft       -> ``IDraftFeatureData2``
+     - base flange -> ``IBaseFlangeFeatureData`` (BendRadius / KFactor / ReliefType / Initialize)
+2. The legacy direct-Insert API (Class B) is the WRONG path: the typed
+   ``IFeatureManager`` has no ``InsertFeatureShell`` / ``InsertDraft2`` members
+   at all (it does have ``InsertSheetMetalBaseFlange2``). The modern path is
+   ``CreateDefinition -> typed feature-data -> AccessSelections -> CreateFeature``.
+3. **The hard open problem (why this is INCONCLUSIVE, not PASS):** the direct
+   typed-wrap ``cls(obj._oleobj_)`` does NOT QueryInterface -- it invokes by
+   compiled dispid. Wrapping a ``CreateDefinition`` result as a *guessed*
+   feature-data interface therefore calls *whatever member sits at that dispid*
+   on the underlying object (collision), so "it worked" is meaningless. Proof:
+   six unrelated ``CreateDefinition(i)`` results all "accepted" a shell-unique
+   method. This direct-wrap was sound for the persist ``Extension`` (that object
+   genuinely IS ``IModelDocExtension``) but is NOT a sound way to acquire an
+   arbitrary feature-data object. SW refuses ``GetTypeInfo`` so ``CastTo`` also
+   fails. **A reliable acquisition/identification path is the open question**
+   that gates whether shell/draft/varfil/wizhole/baseflange fall to hybrid
+   binding -- it is genuine handler-implementation research, not a quick spike.
+
+Net: the persist/selection keystone is PROVEN out-of-process (S-EARLYBIND +
+S-EARLYBIND-REOPEN). The rich ``CreateDefinition + IFeatureData`` feature
+pipeline is UNRESOLVED -- the interface *types* are reachable, but sound
+acquisition is not yet demonstrated. Do not read the FAIL report as final.
 """
 
 from __future__ import annotations
@@ -410,8 +445,10 @@ def run(features: list[str]) -> dict[str, Any]:
                 "-> generalize the typed-wrap to that lane; re-classify in the roadmap.",
         "PARTIAL": "typed interface(s) became reachable early-bound but the feature did not "
                    "materialize -> the wall moved; narrow the probe (selection / arg form).",
-        "FAIL": "early binding changed nothing for these features -> the wall is the API, "
-                "not the marshaler; keep blocked, record in DEFERRED.md.",
+        "FAIL": "aggregate FAIL -- but DO NOT read as a clean API-wall verdict; verify it "
+                "is not a methodology artifact (wrong interface/member names, the "
+                "dispid-collision in the direct typed-wrap, or the legacy Insert API). The "
+                "typed feature-data interfaces DO exist -- see the POST-RUN FINDINGS docstring.",
     }[result["overall"]]
     return result
 
