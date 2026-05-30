@@ -35,6 +35,10 @@ from .locals_io import (
 )
 from .sw_com import get_active_doc, get_sw_app, resolve
 
+from .com.earlybind import typed, typed_qi
+from .com.sw_type_info import wrapper_module
+from .selection import DurableEdgeRef, resolve_edge_ref, select_entity
+
 
 # Proposal store: one JSON file per proposal. Override via env var,
 # else defaults to ./proposals relative to the current working directory.
@@ -82,6 +86,57 @@ def _load_proposal(proposal_id: str) -> dict[str, Any] | None:
 def _save_proposal(proposal_id: str, data: dict[str, Any]) -> None:
     _proposals_dir().mkdir(parents=True, exist_ok=True)
     _proposal_path(proposal_id).write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+# ---- feature_add support ----------------------------------------------------
+
+_SW_DOC_PART = 1
+_SW_OPEN_SILENT = 1
+_SW_FM_FILLET = 1
+_SW_CONST_RADIUS_FILLET = 0
+
+
+def _open_doc_typed(doc_path: str) -> Any:
+    """Open a SW doc silently via typed OpenDoc6 (byref ints for errors/warnings)."""
+    sw = get_sw_app()
+    mod = wrapper_module()
+    tsw = typed(sw, "ISldWorks", module=mod)
+    ret = tsw.OpenDoc6(doc_path, _SW_DOC_PART, _SW_OPEN_SILENT, "", 0, 0)
+    return ret[0] if isinstance(ret, tuple) else ret
+
+
+def _doc_title(doc: Any) -> Any:
+    """Get the document title (name) for CloseDoc."""
+    t = doc.GetTitle
+    return t() if callable(t) else t
+
+
+def _materialized(feat: Any) -> bool:
+    """True if a CreateFeature return value represents a materialized feature."""
+    return feat is not None and not isinstance(feat, int)
+
+
+def _create_fillet(doc: Any, target: dict, radius_mm: float) -> tuple[bool, str | None]:
+    """Run the proven fillet pipeline on a durable edge. Returns (ok, error)."""
+    edge_ref = DurableEdgeRef.from_dict(target)
+    doc.ForceRebuild3(False)
+    res = resolve_edge_ref(doc, edge_ref)
+    if res.entity is None:
+        return False, f"edge unresolved (method={res.method})"
+    try:
+        fm = doc.FeatureManager
+        data = fm.CreateDefinition(_SW_FM_FILLET)
+        mod = wrapper_module()
+        fd = typed_qi(data, "ISimpleFilletFeatureData2", module=mod)
+        fd.Initialize(_SW_CONST_RADIUS_FILLET)
+        fd.DefaultRadius = radius_mm / 1000.0
+        select_entity(res.entity)
+        feat = fm.CreateFeature(fd)
+        if _materialized(feat):
+            return True, None
+        return False, "CreateFeature did not materialize"
+    except Exception as exc:
+        return False, f"fillet pipeline failed: {exc!r}"
 
 
 def _get_linked_locals(doc: Any) -> Path | None:
@@ -497,6 +552,242 @@ def sw_undo_last_commit() -> dict[str, Any]:
         return result
 
 
+# ---- feature_add PAE functions ---------------------------------------------
+
+
+def sw_propose_feature_add(
+    doc_path: str, feature: dict, target: dict
+) -> dict[str, Any]:
+    """Stage a feature-add proposal. No SW state is modified."""
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": None,
+        "doc_path": doc_path,
+        "feature": feature,
+        "target": target,
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+    try:
+        feat_type = feature.get("type") if isinstance(feature, dict) else None
+        if feat_type != "fillet_constant_radius":
+            result["error"] = (
+                f"unsupported feature type {feat_type!r}; "
+                "only 'fillet_constant_radius' is supported in v1"
+            )
+            return result
+
+        radius_mm = feature.get("radius_mm")
+        if not isinstance(radius_mm, (int, float)) or radius_mm <= 0:
+            result["error"] = f"radius_mm must be a positive number, got {radius_mm!r}"
+            return result
+
+        if not isinstance(target, dict) or not target:
+            result["error"] = "target must be a non-empty DurableEdgeRef dict"
+            return result
+
+        if not doc_path or not Path(doc_path).exists():
+            result["error"] = f"doc_path does not exist: {doc_path}"
+            return result
+
+        proposal_id = uuid.uuid4().hex[:12]
+        record = {
+            "kind": "feature_add",
+            "proposal_id": proposal_id,
+            "created_at": time.time(),
+            "doc_path": doc_path,
+            "feature": feature,
+            "target": target,
+            "state": ST_PROPOSED,
+            "dry_run_result": None,
+            "committed_at": None,
+        }
+        _save_proposal(proposal_id, record)
+        result["proposal_id"] = proposal_id
+        result["ok"] = True
+        return result
+
+    except Exception as exc:
+        result["error"] = f"unexpected: {exc!r}"
+        return result
+
+
+def sw_dry_run_feature_add(proposal_id: str) -> dict[str, Any]:
+    """Open the doc, resolve the edge, add the fillet, rebuild, close without saving."""
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": proposal_id,
+        "state": ST_PROPOSED,
+        "dry_run_result": None,
+        "error": None,
+    }
+
+    rec = _load_proposal(proposal_id)
+    if rec is None:
+        result["error"] = f"proposal {proposal_id} not found"
+        return result
+
+    if rec.get("kind", "local_change") != "feature_add":
+        result["error"] = f"proposal {proposal_id} is not a feature_add proposal"
+        return result
+
+    if rec["state"] not in (ST_PROPOSED, ST_DRY_RUN_OK, ST_DRY_RUN_BROKE):
+        result["error"] = f"proposal is in state {rec['state']!r}, cannot dry-run"
+        return result
+
+    doc_path = rec["doc_path"]
+    doc = None
+    sw = None
+
+    try:
+        sw = get_sw_app()
+        active = get_active_doc(sw)
+        if active is not None:
+            try:
+                active_path = str(resolve(active, "GetPathName"))
+                if (
+                    active_path
+                    and Path(active_path).resolve() == Path(doc_path).resolve()
+                ):
+                    result["error"] = (
+                        f"target doc is the active document ({doc_path}); "
+                        "close it before dry-run"
+                    )
+                    return result
+            except Exception:
+                pass
+
+        doc = _open_doc_typed(doc_path)
+        if doc is None:
+            result["error"] = f"failed to open doc: {doc_path}"
+            return result
+
+        radius_mm = rec["feature"]["radius_mm"]
+        feat_ok, feat_err = _create_fillet(doc, rec["target"], radius_mm)
+
+        try:
+            rebuild_ok = bool(doc.ForceRebuild3(False))
+        except Exception:
+            rebuild_ok = False
+
+        dry_run_result = {
+            "ran_at": time.time(),
+            "feature_ok": feat_ok,
+            "rebuild_ok": rebuild_ok,
+            "error": feat_err,
+        }
+
+        if feat_ok:
+            state = ST_DRY_RUN_OK
+        else:
+            state = ST_DRY_RUN_BROKE
+            result["error"] = feat_err
+
+        result["state"] = state
+        result["dry_run_result"] = dry_run_result
+
+    finally:
+        if doc is not None and sw is not None:
+            try:
+                sw.CloseDoc(_doc_title(doc))
+            except Exception:
+                pass
+
+    rec["state"] = state
+    rec["dry_run_result"] = dry_run_result
+    _save_proposal(proposal_id, rec)
+
+    result["ok"] = state == ST_DRY_RUN_OK
+    result["state"] = state
+    return result
+
+
+def sw_commit_feature_add(proposal_id: str) -> dict[str, Any]:
+    """Re-run the feature-add pipeline and save the document."""
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": proposal_id,
+        "doc_saved": False,
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+
+    rec = _load_proposal(proposal_id)
+    if rec is None:
+        result["error"] = f"proposal {proposal_id} not found"
+        return result
+
+    if rec.get("kind", "local_change") != "feature_add":
+        result["error"] = f"proposal {proposal_id} is not a feature_add proposal"
+        return result
+
+    if rec["state"] != ST_DRY_RUN_OK:
+        result["error"] = (
+            f"refusing to commit proposal in state {rec['state']!r}; "
+            "must be 'dry_run_ok' (run sw_dry_run_feature_add first)"
+        )
+        return result
+
+    doc_path = rec["doc_path"]
+    doc = None
+    sw = None
+
+    try:
+        sw = get_sw_app()
+        active = get_active_doc(sw)
+        if active is not None:
+            try:
+                active_path = str(resolve(active, "GetPathName"))
+                if (
+                    active_path
+                    and Path(active_path).resolve() == Path(doc_path).resolve()
+                ):
+                    result["error"] = (
+                        f"target doc is the active document ({doc_path}); "
+                        "close it before commit"
+                    )
+                    return result
+            except Exception:
+                pass
+
+        doc = _open_doc_typed(doc_path)
+        if doc is None:
+            result["error"] = f"failed to open doc: {doc_path}"
+            return result
+
+        radius_mm = rec["feature"]["radius_mm"]
+        feat_ok, feat_err = _create_fillet(doc, rec["target"], radius_mm)
+        if not feat_ok:
+            result["error"] = f"feature creation failed during commit: {feat_err}"
+            return result
+
+        try:
+            saved = bool(doc.Save())
+            result["doc_saved"] = saved
+        except Exception as exc:
+            result["error"] = f"doc.Save raised: {exc!r}"
+            return result
+
+        rec["state"] = ST_COMMITTED
+        rec["committed_at"] = time.time()
+        _save_proposal(proposal_id, rec)
+
+        result["state"] = ST_COMMITTED
+        result["ok"] = True
+        return result
+
+    except Exception as exc:
+        result["error"] = f"unexpected: {exc!r}"
+        return result
+
+    finally:
+        if doc is not None and sw is not None:
+            try:
+                sw.CloseDoc(_doc_title(doc))
+            except Exception:
+                pass
+
+
 # ---------------------------------------------------------------------------
 # v0.14 — class-based facade over the legacy ``sw_*`` free functions.
 #
@@ -538,3 +829,19 @@ class ProposalStore:
     def undo_last(self) -> dict[str, Any]:
         """Revert the most recently committed proposal."""
         return sw_undo_last_commit()
+
+    def propose_feature_add(
+        self, doc_path: str, feature: dict, target: dict
+    ) -> dict[str, Any]:
+        """Stage a feature-add proposal — no SW state is modified yet."""
+        return sw_propose_feature_add(
+            doc_path=doc_path, feature=feature, target=target
+        )
+
+    def dry_run_feature_add(self, proposal_id: str) -> dict[str, Any]:
+        """Apply a feature-add proposal, rebuild, close without saving."""
+        return sw_dry_run_feature_add(proposal_id=proposal_id)
+
+    def commit_feature_add(self, proposal_id: str) -> dict[str, Any]:
+        """Re-run a dry-run-ok feature-add and save the SW document."""
+        return sw_commit_feature_add(proposal_id=proposal_id)
