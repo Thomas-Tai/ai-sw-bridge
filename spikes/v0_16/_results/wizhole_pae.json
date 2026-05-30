@@ -1,0 +1,23 @@
+{
+  "tmp": "C:\\Users\\sky\\AppData\\Local\\Temp\\claude\\aiswb_wiz_c2la1pcc",
+  "profile_part": "C:\\Users\\sky\\AppData\\Local\\Temp\\claude\\aiswb_wiz_c2la1pcc\\wiz_test.sldprt",
+  "dry_run_0": {
+    "ok": true,
+    "state": "dry_run_ok",
+    "result": {
+      "ran_at": 1780138053.8164792,
+      "feature_ok": true,
+      "rebuild_ok": true,
+      "error": null
+    },
+    "error": null,
+    "size_tried": "\u00d86.0"
+  },
+  "commit": {
+    "ok": true,
+    "doc_saved": true,
+    "error": null
+  },
+  "overall": "PASS",
+  "final_size": "\u00d86.0"
+}

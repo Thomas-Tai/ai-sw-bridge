@@ -99,12 +99,34 @@ _SW_CONST_RADIUS_FILLET = 0
 # (rev 32.1.0, commit 5be23bd): CreateDefinition(34) yields an
 # IBaseFlangeFeatureData that materializes via the typed_qi pipeline.
 _SW_FM_BASEFLANGE = 34
+_SW_FM_HOLE_WZD = 25
+
+# swWzdGeneralHoleTypes_e — the hole-wizard "generic type". LLM-facing names
+# map to the integer InitializeHole expects.
+_WZD_GENERIC_HOLE_TYPES = {
+    "counterbore": 0,
+    "countersink": 1,
+    "hole": 2,
+    "tap": 3,
+    "pipe_tap": 4,
+    "slot": 6,
+}
+# swEndConditions_e for the hole's end condition.
+_WZD_END_CONDITIONS = {
+    "blind": 0,
+    "through_all": 1,
+    "through_next": 2,
+    "up_to_vertex": 3,
+    "up_to_surface": 4,
+    "offset_from_surface": 5,
+}
 
 # Feature types the feature_add PAE lifecycle knows how to build.
 _SUPPORTED_FEATURE_TYPES = (
     "fillet_constant_radius",
     "base_flange",
     "variable_radius_fillet",
+    "wizard_hole",
 )
 
 
@@ -289,6 +311,193 @@ def _create_variable_fillet(
         return False, f"variable-fillet pipeline failed: {exc!r}"
 
 
+def _arrays_from_out(ret: Any) -> list[list]:
+    """Extract the array ([out] SAFEARRAY) elements from an early-bound call's
+    return tuple, in order — the bool/scalar retval is ignored."""
+    if not isinstance(ret, (tuple, list)):
+        return []
+    return [list(a) for a in ret if isinstance(a, (tuple, list))]
+
+
+def _hole_table_sizes(hsd: Any, std_name: str, fastener_index: int) -> list[str]:
+    """Valid size strings for a (standard, fastener) from the standards DB."""
+    sizes: list[str] = []
+    try:
+        tt = hsd.GetFastenerTableTypes(std_name, fastener_index)
+    except Exception:  # noqa: BLE001
+        return sizes
+    table_ids = [t for arr in _arrays_from_out(tt) for t in arr]
+    table_id = table_ids[0] if table_ids else 0
+    try:
+        ht = hsd.GetFastenerTable(std_name, fastener_index, table_id)
+    except Exception:  # noqa: BLE001
+        return sizes
+    table_raw = None
+    for a in (ht if isinstance(ht, (tuple, list)) else [ht]):
+        if a is not None and not isinstance(a, (bool, int, float, str, tuple, list)):
+            table_raw = a
+            break
+    if table_raw is None:
+        return sizes
+    mod = wrapper_module()
+    table = typed_qi(table_raw, "IHoleDataTable", module=mod)
+    try:
+        cnames = table.GetColumnNames()
+    except Exception:  # noqa: BLE001
+        return sizes
+    cols = [c for arr in _arrays_from_out(cnames) for c in arr]
+    size_col = next((c for c in cols if "size" in str(c).lower()), cols[0] if cols else None)
+    if size_col is None:
+        return sizes
+    try:
+        rc = table.GetRowCount()
+    except Exception:  # noqa: BLE001
+        return sizes
+    # The retval is a bool; the count is the first genuine (non-bool) int.
+    counts = [v for v in (rc if isinstance(rc, (tuple, list)) else [rc])
+              if isinstance(v, int) and not isinstance(v, bool)]
+    nrows = counts[0] if counts else 0
+    for r in range(nrows):
+        try:
+            cell = table.GetCellData(size_col, r)
+        except Exception:  # noqa: BLE001
+            continue
+        for v in (cell if isinstance(cell, (tuple, list)) else [cell]):
+            if isinstance(v, str) and v:
+                sizes.append(v)
+                break
+    return sizes
+
+
+def _resolve_hole_args(
+    generic_hole_type: int, standard: str, fastener_type: str, size: str
+) -> tuple[bool, int, int, str | None]:
+    """Resolve (std_index, fastener_index) and validate ``size`` against the
+    live standards DB. Returns (ok, std_index, fastener_index, error).
+
+    The Hole Wizard bridges COM to a local standards database; fastener indexes
+    are contextual and sizes are exact DB strings (often ``Ø``-prefixed), so we
+    query rather than guess (seat-proven by spike_wizhole_v5). The
+    ``IHoleStandardsData`` byref [out] arrays require early binding.
+    """
+    sw = get_sw_app()
+    mod = wrapper_module()
+    hsd_raw = sw.GetHoleStandardsData(generic_hole_type)
+    if hsd_raw is None:
+        return False, -1, -1, f"GetHoleStandardsData({generic_hole_type}) returned None"
+    hsd = typed_qi(hsd_raw, "IHoleStandardsData", module=mod)
+
+    std_arrays = _arrays_from_out(hsd.GetHoleStandards())
+    if len(std_arrays) < 2:
+        return False, -1, -1, "GetHoleStandards returned no standards"
+    std_indexes, std_names = std_arrays[0], std_arrays[1]
+    std_index = None
+    for idx, nm in zip(std_indexes, std_names):
+        if str(nm).strip().lower() == standard.strip().lower():
+            std_index = idx
+            std_name = str(nm)
+            break
+    if std_index is None:
+        return False, -1, -1, (
+            f"standard {standard!r} not found; available: {list(std_names)}"
+        )
+
+    f_arrays = _arrays_from_out(hsd.GetFastenerTypes(std_name))
+    if len(f_arrays) < 2:
+        return False, -1, -1, f"no fastener types for standard {std_name!r}"
+    f_indexes, f_names = f_arrays[0], f_arrays[1]
+    fastener_index = None
+    for idx, nm in zip(f_indexes, f_names):
+        if str(nm).strip().lower() == fastener_type.strip().lower():
+            fastener_index = idx
+            break
+    if fastener_index is None:
+        return False, -1, -1, (
+            f"fastener type {fastener_type!r} not found for {std_name!r}; "
+            f"available: {list(f_names)}"
+        )
+
+    valid_sizes = _hole_table_sizes(hsd, std_name, fastener_index)
+    if valid_sizes and size not in valid_sizes:
+        return False, -1, -1, (
+            f"size {size!r} invalid for {std_name!r}/{fastener_type!r}; "
+            f"valid sizes: {valid_sizes}"
+        )
+    return True, int(std_index), int(fastener_index), None
+
+
+def _create_wizard_hole(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a hole-wizard feature at a point on a face.
+
+    Seat-validated recipe (spike_wizhole_v5 = PASS): resolve the DB args, place
+    a sketch point at the requested location on the target face, then
+    ``CreateDefinition(25) → typed_qi(IWizardHoleFeatureData2) → InitializeHole
+    → CreateFeature``. Placement is coordinate-based in v1 (``target`` =
+    ``{"face": [x,y,z], "point": [x,y,z]}`` in model metres); durable
+    face/point anchoring is a follow-up. Returns (ok, error).
+    """
+    generic = _WZD_GENERIC_HOLE_TYPES[feature["hole_type"]]
+    end_cond = _WZD_END_CONDITIONS[feature.get("end_condition", "blind")]
+    ok, std_idx, fast_idx, err = _resolve_hole_args(
+        generic, feature["standard"], feature["fastener_type"], feature["size"]
+    )
+    if not ok:
+        return False, err
+
+    mod = wrapper_module()
+    doc.ForceRebuild3(False)
+    fx, fy, fz = target["face"]
+    px, py, pz = target["point"]
+    try:
+        # Place a sketch point at the hole location on the target face.
+        try:
+            doc.ClearSelection2(True)
+        except Exception:  # noqa: BLE001
+            pass
+        if not doc.SelectByID("", "FACE", fx, fy, fz):
+            return False, f"could not select target face at {target['face']}"
+        sk = doc.SketchManager
+        sk.InsertSketch(True)
+        pt = sk.CreatePoint(px, py, pz)
+        sk.InsertSketch(True)
+        if pt is None:
+            return False, "CreatePoint returned None"
+
+        def _select_point() -> bool:
+            try:
+                doc.ClearSelection2(True)
+            except Exception:  # noqa: BLE001
+                pass
+            m = getattr(pt, "Select2", None)
+            if m is not None:
+                try:
+                    if m(False, 0):
+                        return True
+                except Exception:  # noqa: BLE001
+                    pass
+            return bool(doc.SelectByID("", "SKETCHPOINT", px, py, pz))
+
+        if not _select_point():
+            return False, "could not select the placement point"
+
+        fm = doc.FeatureManager
+        data = fm.CreateDefinition(_SW_FM_HOLE_WZD)
+        fd = typed_qi(data, "IWizardHoleFeatureData2", module=mod)
+        fd.InitializeHole(generic, std_idx, fast_idx, feature["size"], end_cond)
+        depth_mm = feature.get("depth_mm")
+        if depth_mm is not None and hasattr(fd, "Depth"):
+            fd.Depth = depth_mm / 1000.0
+        _select_point()  # re-assert after InitializeHole
+        feat = fm.CreateFeature(data)
+        if _materialized(feat):
+            return True, None
+        return False, "CreateFeature did not materialize"
+    except Exception as exc:
+        return False, f"wizard-hole pipeline failed: {exc!r}"
+
+
 def _apply_feature(
     doc: Any, feature: dict, target: dict
 ) -> tuple[bool, str | None]:
@@ -307,6 +516,8 @@ def _apply_feature(
         )
     if ftype == "variable_radius_fillet":
         return _create_variable_fillet(doc, target["edges"])
+    if ftype == "wizard_hole":
+        return _create_wizard_hole(doc, feature, target)
     return False, f"unsupported feature type {ftype!r}"
 
 
@@ -763,6 +974,33 @@ def sw_propose_feature_add(
                         f"{pname} must be a positive number, got {pval!r}"
                     )
                     return result
+        elif feat_type == "wizard_hole":
+            # Shape-only checks here; the standard/fastener/size are validated
+            # against the live DB at dry-run (they need SW).
+            ht = feature.get("hole_type")
+            if ht not in _WZD_GENERIC_HOLE_TYPES:
+                result["error"] = (
+                    f"hole_type must be one of {sorted(_WZD_GENERIC_HOLE_TYPES)}, "
+                    f"got {ht!r}"
+                )
+                return result
+            ec = feature.get("end_condition", "blind")
+            if ec not in _WZD_END_CONDITIONS:
+                result["error"] = (
+                    f"end_condition must be one of {sorted(_WZD_END_CONDITIONS)}, "
+                    f"got {ec!r}"
+                )
+                return result
+            for pname in ("standard", "fastener_type", "size"):
+                if not isinstance(feature.get(pname), str) or not feature[pname]:
+                    result["error"] = f"{pname} must be a non-empty string"
+                    return result
+            depth_mm = feature.get("depth_mm")
+            if depth_mm is not None and (
+                not isinstance(depth_mm, (int, float)) or depth_mm <= 0
+            ):
+                result["error"] = f"depth_mm must be a positive number, got {depth_mm!r}"
+                return result
 
         if not isinstance(target, dict) or not target:
             result["error"] = "target must be a non-empty dict"
@@ -790,6 +1028,16 @@ def sw_propose_feature_add(
                 if not isinstance(r, (int, float)) or r <= 0:
                     result["error"] = (
                         f"edges[{k}].radius_mm must be a positive number, got {r!r}"
+                    )
+                    return result
+
+        # A wizard hole is placed at a point on a face (model-metre coords).
+        if feat_type == "wizard_hole":
+            for pname in ("face", "point"):
+                pv = target.get(pname)
+                if not isinstance(pv, (list, tuple)) or len(pv) != 3:
+                    result["error"] = (
+                        f"wizard_hole target.{pname} must be a 3-element [x,y,z]"
                     )
                     return result
 
