@@ -63,6 +63,37 @@ def test_add_feature_assigns_fingerprint() -> None:
     assert fp == fingerprint(raw_face)
 
 
+def test_add_feature_carries_edges_block() -> None:
+    """Phase-0 edge capture: an 'edges' list survives into the feature block."""
+    m = Manifest()
+    res = _interrogation()
+    res["edges"] = [
+        {
+            "edge_idx": 0,
+            "body_id": 0,
+            "start": [0.0, 0.0, 0.0],
+            "end": [0.0, 0.0, 0.01],
+            "length": 0.01,
+            "midpoint": [0.0, 0.0, 0.005],
+            "persist_id": "AQIDBA",
+        }
+    ]
+    m.add_feature(res)
+    block = m.lookup("Extrude_Plate")
+    assert "edges" in block and len(block["edges"]) == 1
+    edge = block["edges"][0]
+    assert edge["edge_idx"] == 0
+    assert edge["start"] == [0.0, 0.0, 0.0]
+    assert edge["persist_id"] == "AQIDBA"
+
+
+def test_add_feature_no_edges_block_when_absent() -> None:
+    """No 'edges' key when interrogation captured none (manifest stays lean)."""
+    m = Manifest()
+    m.add_feature(_interrogation())
+    assert "edges" not in m.lookup("Extrude_Plate")
+
+
 def test_add_feature_strips_temp_id() -> None:
     """temp_id is session-scoped; must not appear in the serialized form."""
     m = Manifest()
