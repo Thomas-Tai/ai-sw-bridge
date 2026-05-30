@@ -9,6 +9,7 @@ a live SW seat — mirroring the proven S-EARLYBIND round-trip shapes (the
 
 from __future__ import annotations
 
+import math
 import types
 
 import pytest
@@ -459,3 +460,148 @@ class TestResolveEdgeRef:
         assert res.method == "unresolved"
         assert res.entity is None
         assert "no persist_id" in (res.note or "")
+
+
+# ---------------------------------------------------------------------------
+# Edge-match predicate (O2) — pure, SW-free "are these the same edge?" contract
+# that worker S1 wires as tier-2 of resolve_edge_ref. See _edge_match.py for the
+# spec; these are the adversarial cases that pin its behavior and document the
+# chord-capture false-positive class.
+# ---------------------------------------------------------------------------
+
+from ai_sw_bridge.selection._edge_match import (  # noqa: E402
+    chord_direction_error,
+    edge_match_score,
+    edges_match,
+)
+
+
+def _edge(start, end, *, length=None, midpoint=None):
+    """Build an edge dict in the manifest / BrepEdge.to_dict shape."""
+    d: dict = {"start": list(start), "end": list(end)}
+    if length is not None:
+        d["length"] = length
+    if midpoint is not None:
+        d["midpoint"] = list(midpoint)
+    return d
+
+
+# A straight edge along +X, 20 mm long, with chord-derived length/midpoint
+# (exactly what interrogator._probe_edge captures today).
+def _straight():
+    return _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0), length=0.02, midpoint=(0.01, 0.0, 0.0))
+
+
+class TestEdgeMatchPredicate:
+    def test_identity_matches_with_zero_key(self) -> None:
+        key = edge_match_score(_straight(), _straight())
+        assert key == (0.0, 0.0, 0.0)
+        assert edges_match(_straight(), _straight())
+
+    def test_reversed_orientation_matches(self) -> None:
+        """Edges are undirected: the same edge with start/end swapped matches."""
+        fwd = _straight()
+        rev = _edge((0.02, 0.0, 0.0), (0.0, 0.0, 0.0), length=0.02, midpoint=(0.01, 0.0, 0.0))
+        assert edges_match(fwd, rev)
+        assert edge_match_score(fwd, rev) == (0.0, 0.0, 0.0)
+
+    def test_shared_one_endpoint_differs(self) -> None:
+        a = _straight()
+        b = _edge((0.0, 0.0, 0.0), (0.0, 0.02, 0.0))  # shares start, different end
+        assert edge_match_score(a, b) is None
+
+    def test_translated_edge_differs(self) -> None:
+        a = _straight()
+        b = _edge((0.0, 0.01, 0.0), (0.02, 0.01, 0.0))  # shifted 10 mm in +Y
+        assert edge_match_score(a, b) is None
+
+    def test_endpoint_within_tol_matches(self) -> None:
+        a = _straight()
+        b = _edge((0.0, 0.0, 0.0), (0.02, 0.0005, 0.0))  # end drifted 0.5 mm < 1 mm
+        # length/midpoint omitted so only the endpoint gate applies.
+        assert edges_match(a, b)
+
+    def test_endpoint_outside_tol_differs(self) -> None:
+        a = _straight()
+        b = _edge((0.0, 0.0, 0.0), (0.02, 0.002, 0.0))  # end drifted 2 mm > 1 mm
+        assert edge_match_score(a, b) is None
+
+    def test_straight_vs_arc_collide_under_chord_capture(self) -> None:
+        """KNOWN false-positive: a straight edge and a semicircular arc sharing
+        the same two vertices are indistinguishable when both carry only the
+        *chord*-derived length/midpoint the interrogator captures today. This
+        test documents the capture gap (not a bug in the predicate)."""
+        straight = _straight()
+        # Arc as captured today: chord length & chord midpoint — identical fields.
+        arc_chord = _edge(
+            (0.0, 0.0, 0.0), (0.02, 0.0, 0.0), length=0.02, midpoint=(0.01, 0.0, 0.0)
+        )
+        assert edges_match(straight, arc_chord)  # collision, by design of the data
+
+    def test_true_curve_mid_separates_straight_from_arc(self) -> None:
+        """The predicate is forward-correct: feed a *true* arc length and curve
+        midpoint (a ~1-line interrogator follow-up away) and it cleanly rejects
+        the straight/arc collision above — with ZERO predicate rework."""
+        straight = _straight()
+        # Semicircle, r = 10 mm, bulging +Y: arc length = pi*r, apex at (0.01, 0.01, 0).
+        arc_true = _edge(
+            (0.0, 0.0, 0.0),
+            (0.02, 0.0, 0.0),
+            length=math.pi * 0.01,
+            midpoint=(0.01, 0.01, 0.0),
+        )
+        assert edge_match_score(straight, arc_true) is None
+
+    def test_length_gate_is_load_bearing(self) -> None:
+        """With matching endpoints + midpoint, a length delta alone rejects —
+        proving length is an independent gate once a true arc length is captured."""
+        a = _straight()
+        b = _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0), length=0.025, midpoint=(0.01, 0.0, 0.0))
+        assert edge_match_score(a, b) is None
+
+    def test_partial_dicts_match_on_endpoints_only(self) -> None:
+        """Optional length/midpoint gates are skipped when either side omits
+        them, so endpoint-only dicts still resolve."""
+        a = _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0))
+        b = _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0))
+        assert edges_match(a, b)
+
+    def test_malformed_returns_none_never_raises(self) -> None:
+        assert edge_match_score({"start": [0, 0, 0]}, _straight()) is None  # missing end
+        assert edge_match_score({"start": "bad", "end": [0, 0, 0]}, _straight()) is None
+        assert edge_match_score(_straight(), {"start": [0, 0], "end": [0, 0, 0]}) is None
+
+    def test_score_orders_closer_candidate_first(self) -> None:
+        target = _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0))
+        near = _edge((0.0, 0.0, 0.0), (0.02, 0.0001, 0.0))   # 0.1 mm
+        far = _edge((0.0, 0.0, 0.0), (0.02, 0.0008, 0.0))    # 0.8 mm
+        k_near = edge_match_score(target, near)
+        k_far = edge_match_score(target, far)
+        assert k_near is not None and k_far is not None
+        assert k_near < k_far  # smaller key == better candidate (S1 keeps the min)
+
+
+class TestChordDirectionError:
+    def test_parallel_is_near_zero(self) -> None:
+        a = _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0))
+        b = _edge((0.0, 0.01, 0.0), (0.02, 0.01, 0.0))  # parallel, offset
+        err = chord_direction_error(a, b)
+        assert err is not None and err < 1e-9
+
+    def test_antiparallel_is_also_near_zero(self) -> None:
+        """Sign-agnostic: a reversed chord is the same direction for an edge."""
+        a = _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0))
+        b = _edge((0.02, 0.0, 0.0), (0.0, 0.0, 0.0))
+        err = chord_direction_error(a, b)
+        assert err is not None and err < 1e-9
+
+    def test_perpendicular_is_one(self) -> None:
+        a = _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0))
+        b = _edge((0.0, 0.0, 0.0), (0.0, 0.02, 0.0))
+        err = chord_direction_error(a, b)
+        assert err is not None and abs(err - 1.0) < 1e-9
+
+    def test_degenerate_chord_returns_none(self) -> None:
+        a = _edge((0.0, 0.0, 0.0), (0.0, 0.0, 0.0))  # zero-length chord
+        b = _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0))
+        assert chord_direction_error(a, b) is None
