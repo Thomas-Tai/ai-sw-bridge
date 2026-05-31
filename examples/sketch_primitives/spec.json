@@ -1,0 +1,75 @@
+{
+    "schema_version": 1,
+    "name": "SketchPrimitivesGallery",
+    "_comment": "P1.7s showcase: one feature entry per sketch primitive. Handlers are 🔴 SEAT stubs — the spec validates but does not build until the P1.7-seat/W0 session replaces the stubs with live ISketchManager.Create* calls.",
+    "features": [
+        {
+            "type": "sketch_line",
+            "name": "SK_Line_Diagonal",
+            "plane": "Front",
+            "start": {"x": 0.0, "y": 0.0},
+            "end":   {"x": 20.0, "y": 20.0}
+        },
+        {
+            "type": "sketch_arc",
+            "name": "SK_Arc_Quarter",
+            "plane": "Front",
+            "center": {"x": 30.0, "y": 0.0},
+            "start":  {"x": 40.0, "y": 0.0},
+            "end":    {"x": 30.0, "y": 10.0},
+            "direction": "ccw"
+        },
+        {
+            "type": "sketch_spline",
+            "name": "SK_Spline_Curve",
+            "plane": "Front",
+            "points": [
+                {"x":  0.0, "y": 30.0},
+                {"x":  5.0, "y": 35.0},
+                {"x": 10.0, "y": 32.0},
+                {"x": 15.0, "y": 38.0},
+                {"x": 20.0, "y": 30.0}
+            ],
+            "closed": false
+        },
+        {
+            "type": "sketch_slot",
+            "name": "SK_Slot_Horizontal",
+            "plane": "Front",
+            "center":    {"x": 30.0, "y": 30.0},
+            "width":     6.0,
+            "length":   20.0,
+            "slot_type": "arc",
+            "angle_deg":  0.0
+        },
+        {
+            "type": "sketch_polygon",
+            "name": "SK_Polygon_Hex",
+            "plane": "Front",
+            "center":    {"x": 50.0, "y": 30.0},
+            "sides":     6,
+            "radius":    8.0,
+            "inscribed": true,
+            "angle_deg":  0.0
+        },
+        {
+            "type": "sketch_ellipse",
+            "name": "SK_Ellipse_Oval",
+            "plane": "Front",
+            "center":       {"x": 70.0, "y": 30.0},
+            "major_radius": 10.0,
+            "minor_radius":  5.0,
+            "angle_deg":     0.0
+        },
+        {
+            "type": "sketch_text",
+            "name": "SK_Text_Label",
+            "plane": "Front",
+            "position": {"x": 0.0, "y": 50.0},
+            "content":  "ai-sw-bridge",
+            "height":    3.0,
+            "font":      "Arial",
+            "angle_deg":  0.0
+        }
+    ]
+}

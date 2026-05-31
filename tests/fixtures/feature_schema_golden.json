@@ -1109,5 +1109,610 @@
         "description": "Default reference plane to mirror about. Front = XY (mirrors Z), Top = XZ (mirrors Y), Right = YZ (mirrors X)."
       }
     }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "plane",
+      "start",
+      "end"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_line"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ],
+        "description": "Default reference plane to host the sketch."
+      },
+      "start": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
+          },
+          "y": {
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
+          }
+        }
+      },
+      "end": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
+          },
+          "y": {
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
+          }
+        }
+      },
+      "construction": {
+        "type": "boolean",
+        "default": false,
+        "description": "If true, mark the segment as a construction (centerline) entity."
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "plane",
+      "center",
+      "start",
+      "end"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_arc"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ],
+        "description": "Default reference plane to host the sketch."
+      },
+      "center": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
+          },
+          "y": {
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
+          }
+        }
+      },
+      "start": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
+          },
+          "y": {
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
+          }
+        }
+      },
+      "end": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
+          },
+          "y": {
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
+          }
+        }
+      },
+      "direction": {
+        "enum": [
+          "cw",
+          "ccw"
+        ],
+        "default": "ccw",
+        "description": "Arc direction from start to end about the center."
+      },
+      "construction": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "plane",
+      "points"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_spline"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ],
+        "description": "Default reference plane to host the sketch."
+      },
+      "points": {
+        "type": "array",
+        "minItems": 2,
+        "description": "Control points in sketch-local coordinates (mm). At least 2 required. 🔴 SEAT (P1.7-seat/W0): the live call packs these into a SAFEARRAY of doubles for ISketchManager.CreateSpline2 — the exact marshaling shape ([x0,y0,x1,y1,...] vs [x0,y0,z0,x1,y1,z1,...]) and the b3D flag autoselect rule must be confirmed on the seat.",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "X (mm) in sketch-local frame."
+            },
+            "y": {
+              "type": "number",
+              "description": "Y (mm) in sketch-local frame."
+            },
+            "z": {
+              "type": "number",
+              "default": 0.0,
+              "description": "Out-of-plane Z (mm). Non-zero triggers the 3D-sketch COM path."
+            }
+          }
+        }
+      },
+      "closed": {
+        "type": "boolean",
+        "default": false,
+        "description": "If true, close the spline by joining the last point to the first."
+      },
+      "construction": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "plane",
+      "center",
+      "width",
+      "length"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_slot"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ],
+        "description": "Default reference plane to host the sketch."
+      },
+      "center": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
+          },
+          "y": {
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
+          }
+        }
+      },
+      "width": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "length": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "slot_type": {
+        "enum": [
+          "square",
+          "arc"
+        ],
+        "description": "End shape of the slot. 'square' = rectangle with flat ends (CreateCornerRectSlot); 'arc' = rounded ends (CreateArcSlot)."
+      },
+      "angle_deg": {
+        "type": "number",
+        "default": 0.0,
+        "description": "Rotation of the slot's major axis from the sketch X axis (degrees)."
+      },
+      "construction": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "plane",
+      "center",
+      "sides",
+      "radius"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_polygon"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ],
+        "description": "Default reference plane to host the sketch."
+      },
+      "center": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
+          },
+          "y": {
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
+          }
+        }
+      },
+      "sides": {
+        "type": "integer",
+        "minimum": 3,
+        "maximum": 40,
+        "description": "Number of polygon sides (3..40)."
+      },
+      "radius": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "inscribed": {
+        "type": "boolean",
+        "default": true,
+        "description": "If true, `radius` is the inscribed (apothem) radius — polygon edges are tangent to the circle. If false, `radius` is the circumscribed radius — polygon vertices lie on the circle."
+      },
+      "angle_deg": {
+        "type": "number",
+        "default": 0.0,
+        "description": "Rotation of the polygon's first vertex from the sketch X axis (degrees)."
+      },
+      "construction": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "plane",
+      "center",
+      "major_radius",
+      "minor_radius"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_ellipse"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ],
+        "description": "Default reference plane to host the sketch."
+      },
+      "center": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
+          },
+          "y": {
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
+          }
+        }
+      },
+      "major_radius": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "minor_radius": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "angle_deg": {
+        "type": "number",
+        "default": 0.0,
+        "description": "Rotation of the major axis from the sketch X axis (degrees)."
+      },
+      "construction": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "plane",
+      "position",
+      "content",
+      "height"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_text"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ],
+        "description": "Default reference plane to host the sketch."
+      },
+      "position": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
+          },
+          "y": {
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
+          }
+        }
+      },
+      "content": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Text content. Plain ASCII; no rich formatting."
+      },
+      "height": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "font": {
+        "type": "string",
+        "description": "Font family name (e.g. 'Arial'). 🔴 SEAT (P1.7-seat/W0): the SW call is ISketchManager.CreateText with a FontFamily / Height / Bold / Italic bitfield — confirm the exact arg shape on the seat."
+      },
+      "angle_deg": {
+        "type": "number",
+        "default": 0.0,
+        "description": "Rotation of the text baseline from the sketch X axis (degrees)."
+      },
+      "construction": {
+        "type": "boolean",
+        "default": false
+      }
+    }
   }
 ]

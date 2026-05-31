@@ -1305,6 +1305,175 @@ def _circles_on_face_rhs_walker(feat: dict[str, Any]) -> list[tuple[str, str, st
     return out
 
 
+# ---------------------------------------------------------------------------
+# P1.7s — sketch primitive stub handlers.
+#
+# Each function below:
+#   1. Pulls its spec fields into local variables.
+#   2. Assembles the arg tuple for the matching ISketchManager.Create* call.
+#   3. Raises NotImplementedError flagged 🔴 SEAT for the P1.7-seat/W0 pass.
+#
+# The stubs are SW-free (no COM import, no dispatch); they exist so the
+# descriptor registry is fully wired and the schema + validation tests run
+# green. The live path (open sketch -> call Create* -> close sketch -> rename
+# feature) is owned by the P1.7-seat session, which will replace the body of
+# each stub with the proven call and a BuiltFeature return.
+#
+# Shared helper: convert millimetre spec fields to metres (SW COM unit).
+# ---------------------------------------------------------------------------
+
+
+def _mm_to_m(value: Any) -> float:
+    """Convert a LENGTH_SCHEMA field (mm literal or `{rhs}` dict) to metres.
+
+    For `{rhs}` bindings the live handler substitutes the resolved numeric
+    value; here we just return a placeholder so the arg tuple has the right
+    shape for the seat pass to verify.
+    """
+    if isinstance(value, dict):
+        return 0.0  # placeholder; live path resolves via EquationMgr
+    return float(value) / 1000.0
+
+
+def _build_sketch_line(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Sketch a single line segment on a reference plane.
+
+    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreateLine(x1, y1, z1, x2, y2, z2)
+    — 6-arg late-bound signature to confirm on the seat.
+    """
+    start = feat["start"]
+    end = feat["end"]
+    _args = (
+        _mm_to_m(start["x"]), _mm_to_m(start["y"]), 0.0,
+        _mm_to_m(end["x"]), _mm_to_m(end["y"]), 0.0,
+    )
+    raise NotImplementedError(
+        f"sketch_line handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
+    )
+
+
+def _build_sketch_arc(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Sketch a circular arc (center + start + end) on a reference plane.
+
+    🔴 SEAT (P1.7-seat/W0): ISketchManager.Create3PointArc(cx, cy, cz,
+    x1, y1, z1, x2, y2, z2) — 9-arg signature to confirm on the seat.
+    """
+    c, s, e = feat["center"], feat["start"], feat["end"]
+    _args = (
+        _mm_to_m(c["x"]), _mm_to_m(c["y"]), 0.0,
+        _mm_to_m(s["x"]), _mm_to_m(s["y"]), 0.0,
+        _mm_to_m(e["x"]), _mm_to_m(e["y"]), 0.0,
+    )
+    raise NotImplementedError(
+        f"sketch_arc handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
+    )
+
+
+def _build_sketch_spline(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Sketch a spline through a sequence of control points.
+
+    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreateSpline2(pPointsSafeArray, b3D)
+    — SAFEARRAY marshaling of the interleaved-double/triple point buffer is
+    the load-bearing unknown. The `closed` flag drives a follow-up
+    ISketchSegment.SetClosed() call once the spline exists.
+    """
+    points = feat["points"]
+    has_z = any(p.get("z") is not None and float(p.get("z", 0.0)) != 0.0 for p in points)
+    flat: list[float] = []
+    for p in points:
+        flat.extend([_mm_to_m(p["x"]), _mm_to_m(p["y"])])
+        if has_z:
+            flat.append(_mm_to_m(p.get("z", 0.0)))
+    _args = (flat, has_z)
+    raise NotImplementedError(
+        f"sketch_spline handler is a SEAT stub (P1.7-seat/W0); "
+        f"{len(points)} control points, b3D={has_z}, flat arg len={len(flat)}"
+    )
+
+
+def _build_sketch_slot(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Sketch a slot (square or arc-ended) on a reference plane.
+
+    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreateCornerRectSlot / CreateArcSlot
+    — arg order (centerX, centerY, endX, endY, width, ...) and the slot-type
+    dispatch (enum "square" vs "arc") must be confirmed on the seat.
+    """
+    c = feat["center"]
+    slot_type = feat.get("slot_type", "square")
+    _args = {
+        "center_mm": (_mm_to_m(c["x"]), _mm_to_m(c["y"])),
+        "width_m": _mm_to_m(feat["width"]),
+        "length_m": _mm_to_m(feat["length"]),
+        "slot_type": slot_type,
+        "angle_deg": float(feat.get("angle_deg", 0.0)),
+    }
+    raise NotImplementedError(
+        f"sketch_slot handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
+    )
+
+
+def _build_sketch_polygon(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Sketch a regular N-sided polygon on a reference plane.
+
+    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreatePolygon(centerX, centerY,
+    startPtX, startPtY, sides, bFlip) — 6-arg signature + the inscribed/
+    circumscribed dispatch (radius scaling by cos(pi/N)) to confirm on the seat.
+    """
+    c = feat["center"]
+    sides = int(feat["sides"])
+    radius_m = _mm_to_m(feat["radius"])
+    inscribed = bool(feat.get("inscribed", True))
+    _args = {
+        "center_mm": (_mm_to_m(c["x"]), _mm_to_m(c["y"])),
+        "sides": sides,
+        "radius_m": radius_m,
+        "inscribed": inscribed,
+        "angle_deg": float(feat.get("angle_deg", 0.0)),
+    }
+    raise NotImplementedError(
+        f"sketch_polygon handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
+    )
+
+
+def _build_sketch_ellipse(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Sketch an ellipse on a reference plane.
+
+    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreateEllipse(cx, cy, cz, majorX,
+    majorY, majorZ, minorX, minorY, minorZ) — 9-arg signature; the rotation
+    angle is expressed as a transformed major-axis endpoint. Confirm on the seat.
+    """
+    c = feat["center"]
+    _args = {
+        "center_mm": (_mm_to_m(c["x"]), _mm_to_m(c["y"])),
+        "major_m": _mm_to_m(feat["major_radius"]),
+        "minor_m": _mm_to_m(feat["minor_radius"]),
+        "angle_deg": float(feat.get("angle_deg", 0.0)),
+    }
+    raise NotImplementedError(
+        f"sketch_ellipse handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
+    )
+
+
+def _build_sketch_text(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Sketch a text annotation on a reference plane.
+
+    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreateText(text, x, y, z,
+    iFormatFlags) — the font family / height / bold / italic bitfield is packed
+    into iFormatFlags; confirm the exact bit layout on the seat.
+    """
+    pos = feat["position"]
+    _args = {
+        "content": feat["content"],
+        "position_mm": (_mm_to_m(pos["x"]), _mm_to_m(pos["y"])),
+        "height_m": _mm_to_m(feat["height"]),
+        "font": feat.get("font"),
+        "angle_deg": float(feat.get("angle_deg", 0.0)),
+    }
+    raise NotImplementedError(
+        f"sketch_text handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
+    )
+
+
 # THE registry of feature descriptors (X3, FR-X-03): the single source of
 # truth per primitive. To add a new feature type, append one descriptor here
 # and a handler function; its JSON-Schema fragment is assembled from the
@@ -1425,6 +1594,21 @@ DESCRIPTORS: dict[str, FeatureDescriptor] = {
         # Mirror has no driving dims of its own.
         dim_fields={},
     ),
+    # ---------------------------------------------------------------------------
+    # P1.7s — sketch primitives (stub handlers, flagged 🔴 SEAT for P1.7-seat/W0).
+    # `dim_fields` is empty: these are sketch primitives whose dimensions (length,
+    # radius, width, height) are plain numbers in the spec, not yet parametric
+    # `{rhs}` bindings that Equation Manager would consume. Once the seat pass
+    # GREEN-lights the COM signatures, the parametric pathway can be wired per
+    # field (same mechanism as sketch_rectangle_on_plane's width/height).
+    # ---------------------------------------------------------------------------
+    "sketch_line": FeatureType(name="sketch_line", handler=None, dim_fields={}),
+    "sketch_arc": FeatureType(name="sketch_arc", handler=None, dim_fields={}),
+    "sketch_spline": FeatureType(name="sketch_spline", handler=None, dim_fields={}),
+    "sketch_slot": FeatureType(name="sketch_slot", handler=None, dim_fields={}),
+    "sketch_polygon": FeatureType(name="sketch_polygon", handler=None, dim_fields={}),
+    "sketch_ellipse": FeatureType(name="sketch_ellipse", handler=None, dim_fields={}),
+    "sketch_text": FeatureType(name="sketch_text", handler=None, dim_fields={}),
 }
 
 
@@ -1448,6 +1632,16 @@ def _wire_handlers() -> None:
         "linear_pattern": _build_linear_pattern,
         "circular_pattern": _build_circular_pattern,
         "mirror_feature": _build_mirror_feature,
+        # P1.7s — sketch primitives. Stubs that assemble the ISketchManager.Create*
+        # arg tuple and raise NotImplementedError; the live COM call is flagged
+        # 🔴 SEAT for the P1.7-seat/W0 seat pass.
+        "sketch_line": _build_sketch_line,
+        "sketch_arc": _build_sketch_arc,
+        "sketch_spline": _build_sketch_spline,
+        "sketch_slot": _build_sketch_slot,
+        "sketch_polygon": _build_sketch_polygon,
+        "sketch_ellipse": _build_sketch_ellipse,
+        "sketch_text": _build_sketch_text,
     }
     from .descriptors import FEATURE_FIELDS, FEATURE_META
 

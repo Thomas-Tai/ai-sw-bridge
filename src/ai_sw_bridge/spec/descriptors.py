@@ -270,6 +270,64 @@ _EDGE_POINT_ITEM_CHAMFER = {
 }
 
 
+# ---------------------------------------------------------------------------
+# P1.7s — shared sub-schemas for the seven sketch primitives below.
+#
+# All sketch primitives operate in sketch-local coordinates (millimetres from
+# the sketch origin). ``_SKETCH_POINT_2D`` is the in-plane position (x, y);
+# ``_SKETCH_POINT_3D`` adds an optional out-of-plane z for the rare 3D-sketch
+# case. The ``z`` field is optional on the schema — when absent the handler
+# defaults to 0 and calls the 2D COM path. Spline's ``_SKETCH_SPLINE_POINTS``
+# is the variadic sequence version (minItems=2) used by the SAFEARRAY arg.
+# ---------------------------------------------------------------------------
+
+_SKETCH_POINT_2D: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["x", "y"],
+    "properties": {
+        "x": {"type": "number", "description": "X (mm) in sketch-local frame."},
+        "y": {"type": "number", "description": "Y (mm) in sketch-local frame."},
+    },
+}
+
+_SKETCH_POINT_3D: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["x", "y"],
+    "properties": {
+        "x": {"type": "number", "description": "X (mm) in sketch-local frame."},
+        "y": {"type": "number", "description": "Y (mm) in sketch-local frame."},
+        "z": {
+            "type": "number",
+            "default": 0.0,
+            "description": "Out-of-plane Z (mm). Non-zero triggers the 3D-sketch COM path.",
+        },
+    },
+}
+
+_SKETCH_SPLINE_POINTS: dict[str, Any] = {
+    "type": "array",
+    "minItems": 2,
+    "description": (
+        "Control points in sketch-local coordinates (mm). At least 2 required. "
+        "🔴 SEAT (P1.7-seat/W0): the live call packs these into a SAFEARRAY of "
+        "doubles for ISketchManager.CreateSpline2 — the exact marshaling shape "
+        "([x0,y0,x1,y1,...] vs [x0,y0,z0,x1,y1,z1,...]) and the b3D flag "
+        "autoselect rule must be confirmed on the seat."
+    ),
+    "items": _SKETCH_POINT_3D,
+}
+
+_SLOT_TYPE_ENUM: dict[str, Any] = {
+    "enum": ["square", "arc"],
+    "description": (
+        "End shape of the slot. 'square' = rectangle with flat ends "
+        "(CreateCornerRectSlot); 'arc' = rounded ends (CreateArcSlot)."
+    ),
+}
+
+
 FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     "sketch_rectangle_on_plane": [
         FieldSpec("plane", {"enum": ["Front", "Top", "Right"]}, True),
@@ -639,6 +697,238 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             True,
         ),
     ],
+    # ---------------------------------------------------------------------------
+    # P1.7s — sketch primitives (line / arc / spline / slot / polygon / ellipse /
+    # text). Each is a single sketch-feature entry; live COM calls are stubbed
+    # and flagged 🔴 SEAT for the P1.7-seat/W0 seat pass. Parametric `{rhs}`
+    # bindings are supported on every LENGTH_SCHEMA field via the standard
+    # Equation Manager pathway.
+    # ---------------------------------------------------------------------------
+    "sketch_line": [
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec("start", _SKETCH_POINT_2D, True),
+        FieldSpec("end", _SKETCH_POINT_2D, True),
+        FieldSpec(
+            "construction",
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "If true, mark the segment as a construction (centerline) entity.",
+            },
+            False,
+        ),
+    ],
+    "sketch_arc": [
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec("center", _SKETCH_POINT_2D, True),
+        FieldSpec("start", _SKETCH_POINT_2D, True),
+        FieldSpec("end", _SKETCH_POINT_2D, True),
+        FieldSpec(
+            "direction",
+            {
+                "enum": ["cw", "ccw"],
+                "default": "ccw",
+                "description": "Arc direction from start to end about the center.",
+            },
+            False,
+        ),
+        FieldSpec(
+            "construction",
+            {"type": "boolean", "default": False},
+            False,
+        ),
+    ],
+    "sketch_spline": [
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec("points", _SKETCH_SPLINE_POINTS, True),
+        FieldSpec(
+            "closed",
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "If true, close the spline by joining the last point to the first.",
+            },
+            False,
+        ),
+        FieldSpec(
+            "construction",
+            {"type": "boolean", "default": False},
+            False,
+        ),
+    ],
+    "sketch_slot": [
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec("center", _SKETCH_POINT_2D, True),
+        FieldSpec("width", LENGTH_SCHEMA, True),
+        FieldSpec("length", LENGTH_SCHEMA, True),
+        FieldSpec("slot_type", _SLOT_TYPE_ENUM, False),
+        FieldSpec(
+            "angle_deg",
+            {
+                "type": "number",
+                "default": 0.0,
+                "description": "Rotation of the slot's major axis from the sketch X axis (degrees).",
+            },
+            False,
+        ),
+        FieldSpec(
+            "construction",
+            {"type": "boolean", "default": False},
+            False,
+        ),
+    ],
+    "sketch_polygon": [
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec("center", _SKETCH_POINT_2D, True),
+        FieldSpec(
+            "sides",
+            {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 40,
+                "description": "Number of polygon sides (3..40).",
+            },
+            True,
+        ),
+        FieldSpec("radius", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "inscribed",
+            {
+                "type": "boolean",
+                "default": True,
+                "description": (
+                    "If true, `radius` is the inscribed (apothem) radius — polygon "
+                    "edges are tangent to the circle. If false, `radius` is the "
+                    "circumscribed radius — polygon vertices lie on the circle."
+                ),
+            },
+            False,
+        ),
+        FieldSpec(
+            "angle_deg",
+            {
+                "type": "number",
+                "default": 0.0,
+                "description": "Rotation of the polygon's first vertex from the sketch X axis (degrees).",
+            },
+            False,
+        ),
+        FieldSpec(
+            "construction",
+            {"type": "boolean", "default": False},
+            False,
+        ),
+    ],
+    "sketch_ellipse": [
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec("center", _SKETCH_POINT_2D, True),
+        FieldSpec("major_radius", LENGTH_SCHEMA, True),
+        FieldSpec("minor_radius", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "angle_deg",
+            {
+                "type": "number",
+                "default": 0.0,
+                "description": "Rotation of the major axis from the sketch X axis (degrees).",
+            },
+            False,
+        ),
+        FieldSpec(
+            "construction",
+            {"type": "boolean", "default": False},
+            False,
+        ),
+    ],
+    "sketch_text": [
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec("position", _SKETCH_POINT_2D, True),
+        FieldSpec(
+            "content",
+            {
+                "type": "string",
+                "minLength": 1,
+                "description": "Text content. Plain ASCII; no rich formatting.",
+            },
+            True,
+        ),
+        FieldSpec("height", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "font",
+            {
+                "type": "string",
+                "description": (
+                    "Font family name (e.g. 'Arial'). 🔴 SEAT (P1.7-seat/W0): "
+                    "the SW call is ISketchManager.CreateText with a "
+                    "FontFamily / Height / Bold / Italic bitfield — confirm the "
+                    "exact arg shape on the seat."
+                ),
+            },
+            False,
+        ),
+        FieldSpec(
+            "angle_deg",
+            {
+                "type": "number",
+                "default": 0.0,
+                "description": "Rotation of the text baseline from the sketch X axis (degrees).",
+            },
+            False,
+        ),
+        FieldSpec(
+            "construction",
+            {"type": "boolean", "default": False},
+            False,
+        ),
+    ],
 }
 
 
@@ -761,6 +1051,61 @@ FEATURE_META: dict[str, dict[str, Any]] = {
         "sw_min": "2024 SP1",
         "spike_id": None,
     },
+    # ---------------------------------------------------------------------------
+    # P1.7s — sketch primitives. Handlers are SW-free stubs that assemble the
+    # arg tuple and flag the live ISketchManager.Create* call 🔴 SEAT for the
+    # P1.7-seat/W0 pass. The single consolidated example `sketch_primitives`
+    # exercises all seven types in one spec.
+    # ---------------------------------------------------------------------------
+    "sketch_line": {
+        "doc": "Single line segment on a reference plane (start → end).",
+        "example_ref": "sketch_primitives",
+        "risk_tier": "seat_stub",
+        "sw_min": "2024 SP1",
+        "spike_id": "P1.7s (stub)",
+    },
+    "sketch_arc": {
+        "doc": "Circular arc on a reference plane (center + start + end).",
+        "example_ref": "sketch_primitives",
+        "risk_tier": "seat_stub",
+        "sw_min": "2024 SP1",
+        "spike_id": "P1.7s (stub)",
+    },
+    "sketch_spline": {
+        "doc": "Freeform spline through a sequence of control points.",
+        "example_ref": "sketch_primitives",
+        "risk_tier": "seat_stub",
+        "sw_min": "2024 SP1",
+        "spike_id": "P1.7s (stub, SAFEARRAY 🔴 SEAT)",
+    },
+    "sketch_slot": {
+        "doc": "Rectangular or arc-ended slot on a reference plane.",
+        "example_ref": "sketch_primitives",
+        "risk_tier": "seat_stub",
+        "sw_min": "2024 SP1",
+        "spike_id": "P1.7s (stub)",
+    },
+    "sketch_polygon": {
+        "doc": "Regular N-sided polygon on a reference plane.",
+        "example_ref": "sketch_primitives",
+        "risk_tier": "seat_stub",
+        "sw_min": "2024 SP1",
+        "spike_id": "P1.7s (stub)",
+    },
+    "sketch_ellipse": {
+        "doc": "Ellipse with major/minor radii on a reference plane.",
+        "example_ref": "sketch_primitives",
+        "risk_tier": "seat_stub",
+        "sw_min": "2024 SP1",
+        "spike_id": "P1.7s (stub)",
+    },
+    "sketch_text": {
+        "doc": "Plain-text annotation sketch on a reference plane.",
+        "example_ref": "sketch_primitives",
+        "risk_tier": "seat_stub",
+        "sw_min": "2024 SP1",
+        "spike_id": "P1.7s (stub, font bitfield 🔴 SEAT)",
+    },
 }
 
 
@@ -783,6 +1128,14 @@ FEATURE_ORDER: list[str] = [
     "linear_pattern",
     "circular_pattern",
     "mirror_feature",
+    # P1.7s — sketch primitives (stub handlers, flagged 🔴 SEAT for P1.7-seat/W0).
+    "sketch_line",
+    "sketch_arc",
+    "sketch_spline",
+    "sketch_slot",
+    "sketch_polygon",
+    "sketch_ellipse",
+    "sketch_text",
 ]
 
 
