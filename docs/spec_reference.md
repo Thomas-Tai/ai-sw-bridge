@@ -199,13 +199,16 @@ Circle positions are literal mm only — no `{rhs}` on `u` or `v`.
 ## Sketch primitives (P1.7s)
 
 Seven general-purpose sketch entities that host on one of the three default
-reference planes (Front / Top / Right). Live `ISketchManager.Create*` calls
-are **🔴 SEAT stubs** in this release — the spec schema validates and the
-descriptor registry is wired, but building a spec that contains any of these
-types will raise `NotImplementedError("... P1.7-seat/W0 ...")` until the
-P1.7-seat session GREEN-lights each COM signature. Every `LENGTH_SCHEMA`
-field accepts a plain millimetre number or a parametric `{rhs: "..."}` object
-for Equation Manager binding.
+reference planes (Front / Top / Right). All seven are **seat-validated on
+SW 2024 (rev 32.1.0, 2026-05-31)** — each builds literal-size geometry via its
+proven `ISketchManager.Create*` (or `IModelDoc2.InsertSketchText`) call. The
+`x`/`y` coordinates are interpreted **sketch-local** (the plane's own 2D frame),
+so no part-frame projection is applied. `LENGTH_SCHEMA` fields accept a plain
+millimetre number or a `{rhs: "..."}` object, but **parametric dimensioning is
+not yet wired** for these primitives (geometry is always built at literal size,
+as in `--no-dim`); the `construction` flag, spline `closed`, and text
+`height`/`font`/`angle_deg` are likewise **not yet applied** and are deferred to
+a follow-up pass.
 
 ### `sketch_line`
 
@@ -285,11 +288,12 @@ A freeform spline through a sequence of control points (min 2).
 | `closed` | no | boolean | Close the spline by joining the last point to the first. Default `false`. |
 | `construction` | no | boolean | Default `false`. |
 
-> **🔴 SEAT (P1.7-seat/W0):** The live call is `ISketchManager.CreateSpline2(pPointsSafeArray, b3D)`; the SAFEARRAY marshaling of the interleaved-double/triple point buffer must be confirmed on the seat.
+> **✅ Seat-proven (2026-05-31):** `ISketchManager.CreateSpline2(pointBuffer, b3D=False)` where `pointBuffer` is a `VT_ARRAY|VT_R8` VARIANT SAFEARRAY of flat `x,y,z` triples (z=0 on a plane). `closed=true` is not yet honoured (open spline only).
 
 ### `sketch_slot`
 
-A slot (rectangular or arc-ended) on a reference plane.
+A rounded-end (arc) slot on a reference plane. SOLIDWORKS slots are inherently
+rounded-ended — for a flat-ended rectangular slot use `sketch_rectangle_on_plane`.
 
 ```json
 {
@@ -312,7 +316,7 @@ A slot (rectangular or arc-ended) on a reference plane.
 | `center` | yes | object | `{x, y}` in sketch-local mm |
 | `width` | yes | length | Slot width (mm) |
 | `length` | yes | length | Slot length (mm) |
-| `slot_type` | no | enum | `"square"` (flat ends) or `"arc"` (rounded ends). Default `"square"`. |
+| `slot_type` | no | enum | Only `"arc"` (rounded ends) is supported. Default `"arc"`. Flat-ended slots → use `sketch_rectangle_on_plane`. |
 | `angle_deg` | no | number | Rotation of the slot's major axis from sketch X (degrees). Default `0`. |
 | `construction` | no | boolean | Default `false`. |
 
@@ -401,7 +405,7 @@ A plain-text annotation sketch.
 | `angle_deg` | no | number | Rotation of the baseline from sketch X (degrees). Default `0`. |
 | `construction` | no | boolean | Default `false`. |
 
-> **🔴 SEAT (P1.7-seat/W0):** The live call is `ISketchManager.CreateText(text, x, y, z, iFormatFlags)` where `iFormatFlags` packs font family / height / bold / italic — the exact bit layout must be confirmed on the seat.
+> **✅ Seat-proven (2026-05-31):** Text is a document-level op — `IModelDoc2.InsertSketchText(x, y, z, content, useDocFormat, fmtX, fmtY, fmtZ, fmtAngle)` (NOT on `ISketchManager`). `useDocFormat` is an int (`1` = use document text format), not a bool. `height`/`font`/`angle_deg` are **not yet applied** (document default format is used); honouring them via the returned `ISketchText` text-format object is deferred.
 
 ## Extrude primitives
 

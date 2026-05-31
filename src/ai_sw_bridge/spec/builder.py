@@ -1371,20 +1371,28 @@ def _circles_on_face_rhs_walker(feat: dict[str, Any]) -> list[tuple[str, str, st
 
 
 # ---------------------------------------------------------------------------
-# P1.7s — sketch primitive stub handlers.
+# P1.7s — sketch primitive handlers (function-style, no_dim literal geometry).
 #
-# Each function below:
-#   1. Pulls its spec fields into local variables.
-#   2. Assembles the arg tuple for the matching ISketchManager.Create* call.
-#   3. Raises NotImplementedError flagged 🔴 SEAT for the P1.7-seat/W0 pass.
+# Seat-validated 2026-05-31 on SW 2024 (rev 32.1.0) by
+# spikes/v0_16/spike_sketch_primitives.py (+ spike_slot_v2.py for the
+# CreateSketchSlot 14-scalar signature). Each handler runs the literal-size
+# life-cycle: select reference plane -> InsertSketch -> call the proven
+# ISketchManager.Create* (or IModelDoc2.InsertSketchText) -> close sketch ->
+# rename the new sketch feature -> return BuiltFeature. Coordinates are
+# interpreted SKETCH-LOCAL 2D (the spec gives 2D x/y on a named plane), so no
+# part-frame projection is applied (unlike circle_on_plane, whose `center` is
+# part-frame). Parametric ({rhs}) dimensioning is deferred to a later pass;
+# {rhs} fields resolve to literal numbers before any handler runs in no_dim.
 #
-# The stubs are SW-free (no COM import, no dispatch); they exist so the
-# descriptor registry is fully wired and the schema + validation tests run
-# green. The live path (open sketch -> call Create* -> close sketch -> rename
-# feature) is owned by the P1.7-seat session, which will replace the body of
-# each stub with the proven call and a BuiltFeature return.
-#
-# Shared helper: convert millimetre spec fields to metres (SW COM unit).
+# Proven live signatures (all confirmed materialising a segment on the seat):
+#   line     sm.CreateLine(x1,y1,z1, x2,y2,z2)
+#   arc      sm.CreateArc(cx,cy,cz, sx,sy,sz, ex,ey,ez, direction)  dir +1 ccw / -1 cw
+#   ellipse  sm.CreateEllipse(cx,cy,cz, majX,majY,majZ, minX,minY,minZ)
+#   polygon  sm.CreatePolygon(cx,cy,cz, px,py,pz, sides:int, inscribed:bool)
+#   spline   sm.CreateSpline2(VARIANT(VT_ARRAY|VT_R8)[flat x,y,z triples], False)
+#   slot     sm.CreateSketchSlot(ct:int, lt:int, width, x1,y1,z1, x2,y2,z2,
+#                                x3,y3,z3, addDim:bool, centerline:bool)
+#   text     doc.InsertSketchText(x,y,z, content, useDocFmt:int=1, 0,0,0,0)
 # ---------------------------------------------------------------------------
 
 
@@ -1400,143 +1408,191 @@ def _mm_to_m(value: Any) -> float:
     return float(value) / 1000.0
 
 
+def _r8_safearray(values: list[float]) -> Any:
+    """Wrap a flat list of doubles as a ``VT_ARRAY|VT_R8`` VARIANT SAFEARRAY.
+
+    The point buffer shape ``ISketchManager.CreateSpline2`` requires. The
+    pywin32 import is function-local so this module stays importable (and
+    unit-testable) without SOLIDWORKS / pywin32 present — tests monkeypatch
+    this seam. Seat-proven 2026-05-31 (spline materialised first try).
+    """
+    import pythoncom
+    from win32com.client import VARIANT
+
+    return VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, list(values))
+
+
+def _enter_plane_sketch(ctx: BuildContext, feat: dict[str, Any]) -> Any:
+    """Select the named reference plane and open a sketch; return SketchManager."""
+    full = PLANE_FULL_NAME[feat["plane"]]
+    if not ctx.doc.SelectByID(full, "PLANE", 0.0, 0.0, 0.0):
+        raise RuntimeError(f"could not select {full}")
+    sm = ctx.doc.SketchManager
+    sm.InsertSketch(True)
+    return sm
+
+
+def _close_plane_sketch_and_build(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
+    """Close the open sketch, rename the new sketch feature, return BuiltFeature."""
+    ctx.doc.SketchManager.InsertSketch(True)
+    sketch_feat = ctx.doc.FeatureByPositionReverse(0)
+    if sketch_feat is None:
+        raise RuntimeError(f"no sketch feature produced for '{feat['name']}'")
+    sketch_feat.Name = feat["name"]
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
+
+
 def _build_sketch_line(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Sketch a single line segment on a reference plane.
 
-    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreateLine(x1, y1, z1, x2, y2, z2)
-    — 6-arg late-bound signature to confirm on the seat.
+    Seat-proven: ``ISketchManager.CreateLine(x1, y1, z1, x2, y2, z2)``.
     """
-    start = feat["start"]
-    end = feat["end"]
-    _args = (
+    start, end = feat["start"], feat["end"]
+    sm = _enter_plane_sketch(ctx, feat)
+    sm.CreateLine(
         _mm_to_m(start["x"]), _mm_to_m(start["y"]), 0.0,
         _mm_to_m(end["x"]), _mm_to_m(end["y"]), 0.0,
     )
-    raise NotImplementedError(
-        f"sketch_line handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
-    )
+    return _close_plane_sketch_and_build(ctx, feat)
 
 
 def _build_sketch_arc(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Sketch a circular arc (center + start + end) on a reference plane.
 
-    🔴 SEAT (P1.7-seat/W0): ISketchManager.Create3PointArc(cx, cy, cz,
-    x1, y1, z1, x2, y2, z2) — 9-arg signature to confirm on the seat.
+    Seat-proven: ``ISketchManager.CreateArc(cx,cy,cz, sx,sy,sz, ex,ey,ez, dir)``
+    where ``dir`` is +1 (counter-clockwise) or -1 (clockwise).
     """
     c, s, e = feat["center"], feat["start"], feat["end"]
-    _args = (
+    direction = 1 if str(feat.get("direction", "ccw")).lower() == "ccw" else -1
+    sm = _enter_plane_sketch(ctx, feat)
+    sm.CreateArc(
         _mm_to_m(c["x"]), _mm_to_m(c["y"]), 0.0,
         _mm_to_m(s["x"]), _mm_to_m(s["y"]), 0.0,
         _mm_to_m(e["x"]), _mm_to_m(e["y"]), 0.0,
+        direction,
     )
-    raise NotImplementedError(
-        f"sketch_arc handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
-    )
+    return _close_plane_sketch_and_build(ctx, feat)
 
 
 def _build_sketch_spline(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Sketch a spline through a sequence of control points.
 
-    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreateSpline2(pPointsSafeArray, b3D)
-    — SAFEARRAY marshaling of the interleaved-double/triple point buffer is
-    the load-bearing unknown. The `closed` flag drives a follow-up
-    ISketchSegment.SetClosed() call once the spline exists.
+    Seat-proven: ``ISketchManager.CreateSpline2(pointBuffer, b3D=False)`` where
+    ``pointBuffer`` is a ``VT_ARRAY|VT_R8`` SAFEARRAY of flat ``x,y,z`` triples
+    (z=0 on a plane). The ``closed`` flag is not yet honoured (open spline only);
+    closing a spline is deferred to a later pass.
     """
     points = feat["points"]
-    has_z = any(p.get("z") is not None and float(p.get("z", 0.0)) != 0.0 for p in points)
     flat: list[float] = []
     for p in points:
-        flat.extend([_mm_to_m(p["x"]), _mm_to_m(p["y"])])
-        if has_z:
-            flat.append(_mm_to_m(p.get("z", 0.0)))
-    _args = (flat, has_z)
-    raise NotImplementedError(
-        f"sketch_spline handler is a SEAT stub (P1.7-seat/W0); "
-        f"{len(points)} control points, b3D={has_z}, flat arg len={len(flat)}"
-    )
+        flat.extend([_mm_to_m(p["x"]), _mm_to_m(p["y"]), _mm_to_m(p.get("z", 0.0))])
+    sm = _enter_plane_sketch(ctx, feat)
+    sm.CreateSpline2(_r8_safearray(flat), False)
+    return _close_plane_sketch_and_build(ctx, feat)
 
 
 def _build_sketch_slot(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
-    """Sketch a slot (square or arc-ended) on a reference plane.
+    """Sketch an arc-ended (round) slot on a reference plane.
 
-    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreateCornerRectSlot / CreateArcSlot
-    — arg order (centerX, centerY, endX, endY, width, ...) and the slot-type
-    dispatch (enum "square" vs "arc") must be confirmed on the seat.
+    Seat-proven: ``ISketchManager.CreateSketchSlot(creationType:int,
+    lengthType:int, width, x1,y1,z1, x2,y2,z2, x3,y3,z3, addDim:bool,
+    centerline:bool)`` — 14 scalars (NOT a point SAFEARRAY). ``creationType``/
+    ``lengthType`` MUST be int (VT_I4) or SW raises "Type mismatch".
+
+    The spec's ``center``/``length``/``width``/``angle_deg`` are converted to
+    the two centreline endpoints P1/P2 (``length`` apart, centred on ``center``,
+    rotated by ``angle_deg``) and the width-defining point P3.
     """
+    import math
+
     c = feat["center"]
-    slot_type = feat.get("slot_type", "square")
-    _args = {
-        "center_mm": (_mm_to_m(c["x"]), _mm_to_m(c["y"])),
-        "width_m": _mm_to_m(feat["width"]),
-        "length_m": _mm_to_m(feat["length"]),
-        "slot_type": slot_type,
-        "angle_deg": float(feat.get("angle_deg", 0.0)),
-    }
-    raise NotImplementedError(
-        f"sketch_slot handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
+    cx, cy = _mm_to_m(c["x"]), _mm_to_m(c["y"])
+    width = _mm_to_m(feat["width"])
+    length = _mm_to_m(feat["length"])
+    angle = math.radians(float(feat.get("angle_deg", 0.0)))
+    dx, dy = math.cos(angle), math.sin(angle)
+    px, py = -dy, dx  # in-plane perpendicular to the centreline
+    half = length / 2.0
+    x1, y1 = cx - half * dx, cy - half * dy
+    x2, y2 = cx + half * dx, cy + half * dy
+    x3, y3 = x2 + (width / 2.0) * px, y2 + (width / 2.0) * py
+    sm = _enter_plane_sketch(ctx, feat)
+    sm.CreateSketchSlot(
+        0, 0, width,
+        x1, y1, 0.0,
+        x2, y2, 0.0,
+        x3, y3, 0.0,
+        False, True,
     )
+    return _close_plane_sketch_and_build(ctx, feat)
 
 
 def _build_sketch_polygon(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Sketch a regular N-sided polygon on a reference plane.
 
-    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreatePolygon(centerX, centerY,
-    startPtX, startPtY, sides, bFlip) — 6-arg signature + the inscribed/
-    circumscribed dispatch (radius scaling by cos(pi/N)) to confirm on the seat.
+    Seat-proven: ``ISketchManager.CreatePolygon(cx,cy,cz, px,py,pz, sides:int,
+    inscribed:bool)`` returning an array of segments. ``(px,py)`` is a point on
+    the construction circle at ``radius`` and ``angle_deg`` from the centre;
+    ``inscribed`` True = radius to vertices, False = radius to edge midpoints.
     """
+    import math
+
     c = feat["center"]
+    cx, cy = _mm_to_m(c["x"]), _mm_to_m(c["y"])
     sides = int(feat["sides"])
-    radius_m = _mm_to_m(feat["radius"])
+    radius = _mm_to_m(feat["radius"])
     inscribed = bool(feat.get("inscribed", True))
-    _args = {
-        "center_mm": (_mm_to_m(c["x"]), _mm_to_m(c["y"])),
-        "sides": sides,
-        "radius_m": radius_m,
-        "inscribed": inscribed,
-        "angle_deg": float(feat.get("angle_deg", 0.0)),
-    }
-    raise NotImplementedError(
-        f"sketch_polygon handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
-    )
+    angle = math.radians(float(feat.get("angle_deg", 0.0)))
+    px, py = cx + radius * math.cos(angle), cy + radius * math.sin(angle)
+    sm = _enter_plane_sketch(ctx, feat)
+    sm.CreatePolygon(cx, cy, 0.0, px, py, 0.0, sides, inscribed)
+    return _close_plane_sketch_and_build(ctx, feat)
 
 
 def _build_sketch_ellipse(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Sketch an ellipse on a reference plane.
 
-    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreateEllipse(cx, cy, cz, majorX,
-    majorY, majorZ, minorX, minorY, minorZ) — 9-arg signature; the rotation
-    angle is expressed as a transformed major-axis endpoint. Confirm on the seat.
+    Seat-proven: ``ISketchManager.CreateEllipse(cx,cy,cz, majX,majY,majZ,
+    minX,minY,minZ)``. The major-axis endpoint is ``center + major_radius`` at
+    ``angle_deg``; the minor-axis endpoint is ``center + minor_radius`` along
+    the in-plane perpendicular.
     """
+    import math
+
     c = feat["center"]
-    _args = {
-        "center_mm": (_mm_to_m(c["x"]), _mm_to_m(c["y"])),
-        "major_m": _mm_to_m(feat["major_radius"]),
-        "minor_m": _mm_to_m(feat["minor_radius"]),
-        "angle_deg": float(feat.get("angle_deg", 0.0)),
-    }
-    raise NotImplementedError(
-        f"sketch_ellipse handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
-    )
+    cx, cy = _mm_to_m(c["x"]), _mm_to_m(c["y"])
+    major = _mm_to_m(feat["major_radius"])
+    minor = _mm_to_m(feat["minor_radius"])
+    angle = math.radians(float(feat.get("angle_deg", 0.0)))
+    majx, majy = cx + major * math.cos(angle), cy + major * math.sin(angle)
+    minx, miny = cx - minor * math.sin(angle), cy + minor * math.cos(angle)
+    sm = _enter_plane_sketch(ctx, feat)
+    sm.CreateEllipse(cx, cy, 0.0, majx, majy, 0.0, minx, miny, 0.0)
+    return _close_plane_sketch_and_build(ctx, feat)
 
 
 def _build_sketch_text(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Sketch a text annotation on a reference plane.
 
-    🔴 SEAT (P1.7-seat/W0): ISketchManager.CreateText(text, x, y, z,
-    iFormatFlags) — the font family / height / bold / italic bitfield is packed
-    into iFormatFlags; confirm the exact bit layout on the seat.
+    Seat-proven: text is a document-level op — ``IModelDoc2.InsertSketchText(
+    x, y, z, content, useDocFormat:int, fmtX, fmtY, fmtZ, fmtAngle)``.
+    ``useDocFormat`` is an int (1=use document text format), NOT a bool. The
+    spec's ``height``/``font``/``angle_deg`` are not yet applied (document
+    default format is used); honouring them via the returned ISketchText's
+    text-format object is deferred to a later pass.
     """
     pos = feat["position"]
-    _args = {
-        "content": feat["content"],
-        "position_mm": (_mm_to_m(pos["x"]), _mm_to_m(pos["y"])),
-        "height_m": _mm_to_m(feat["height"]),
-        "font": feat.get("font"),
-        "angle_deg": float(feat.get("angle_deg", 0.0)),
-    }
-    raise NotImplementedError(
-        f"sketch_text handler is a SEAT stub (P1.7-seat/W0); args assembled: {_args!r}"
+    # Open the sketch (for its side effect); text is inserted via the doc, not
+    # the sketch manager, so the returned SketchManager handle is unused here.
+    _enter_plane_sketch(ctx, feat)
+    ctx.doc.InsertSketchText(
+        _mm_to_m(pos["x"]), _mm_to_m(pos["y"]), 0.0,
+        str(feat["content"]),
+        1, 0.0, 0.0, 0.0, 0.0,
     )
+    return _close_plane_sketch_and_build(ctx, feat)
 
 
 # THE registry of feature descriptors (X3, FR-X-03): the single source of
