@@ -1,0 +1,174 @@
+{
+  "binding": "hybrid early (com.earlybind.typed_qi)",
+  "module_source": "com.sw_type_info.wrapper_module",
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "sw_revision": "32.1.0",
+  "profile": {
+    "built": true,
+    "sketch": "Sketch1"
+  },
+  "base_flange": {
+    "create_definition": {
+      "status": "OK",
+      "type": "CDispatch",
+      "elapsed_ms": 40.079599999444326
+    },
+    "typed_qi": {
+      "status": "OK",
+      "type": "IBaseFlangeFeatureData",
+      "elapsed_ms": 10.251099998640711
+    },
+    "set_Thickness": "OK",
+    "set_BendRadius": "OK",
+    "create_feature": {
+      "status": "OK",
+      "type": "CDispatch",
+      "elapsed_ms": 683.3213000008982,
+      "materialized": true,
+      "feature_name": "Base-Flange1",
+      "type_name": "SMBaseFlange"
+    },
+    "overall": "PASS"
+  },
+  "bendable_edges": 12,
+  "edge_flange": {
+    "acquire_typed_qi": {
+      "scan": {
+        "28": "def-ok/qi-EXCEPTION",
+        "29": "None",
+        "30": "None",
+        "31": "None",
+        "32": "None",
+        "33": "None",
+        "34": "def-ok/qi-EXCEPTION",
+        "35": "def-ok/qi-EXCEPTION",
+        "36": "None",
+        "37": "OK"
+      },
+      "id": 37
+    },
+    "acquired_id": 37,
+    "path": "CreateDefinition + typed_qi",
+    "members": {
+      "BendAngle": "present",
+      "BendRadius": "present",
+      "ReverseDirection": "MISSING",
+      "UseDefaultBendRadius": "present",
+      "FlangePosition": "MISSING",
+      "UsePositionSchedule": "MISSING",
+      "FlangeOffset": "MISSING",
+      "AutoMiter": "MISSING",
+      "Gap": "MISSING"
+    },
+    "set_props": {
+      "BendAngle": {
+        "status": "OK",
+        "type": "NoneType",
+        "elapsed_ms": 6.296100000326987
+      },
+      "BendRadius": {
+        "status": "OK",
+        "type": "NoneType",
+        "elapsed_ms": 8.270300000731368
+      }
+    },
+    "select_edge": true,
+    "AddEdges": {
+      "status": "OK",
+      "type": "int",
+      "elapsed_ms": 20.549199998640688
+    },
+    "edge_count": 0,
+    "create_feature": {
+      "status": "OK",
+      "type": "NoneType",
+      "elapsed_ms": 35.356899999896996,
+      "materialized": false
+    },
+    "overall": "PARTIAL",
+    "reason": "data acquired + props set, CreateFeature no-op",
+    "legacy_fallback": {
+      "materialized": false,
+      "attempts": [
+        {
+          "status": "EXCEPTION",
+          "exception_type": "com_error",
+          "message": "(-2147352571, 'Type mismatch.', None, 1)",
+          "hresult": "-0x7ffdfffb",
+          "elapsed_ms": 22.534499999892432,
+          "arity": "6-arg",
+          "materialized": false
+        },
+        {
+          "status": "EXCEPTION",
+          "exception_type": "com_error",
+          "message": "(-2147352571, 'Type mismatch.', None, 1)",
+          "hresult": "-0x7ffdfffb",
+          "elapsed_ms": 6.737400000929483,
+          "arity": "4-arg",
+          "materialized": false
+        },
+        {
+          "status": "EXCEPTION",
+          "exception_type": "com_error",
+          "message": "(-2147352571, 'Type mismatch.', None, 1)",
+          "hresult": "-0x7ffdfffb",
+          "elapsed_ms": 13.260100000479724,
+          "arity": "8-arg",
+          "materialized": false
+        }
+      ]
+    }
+  },
+  "miter_flange": {
+    "acquire_typed_qi": {
+      "scan": {
+        "28": "def-ok/qi-EXCEPTION",
+        "29": "None",
+        "30": "None",
+        "31": "None",
+        "32": "None",
+        "33": "None",
+        "34": "def-ok/qi-EXCEPTION",
+        "35": "def-ok/qi-EXCEPTION",
+        "36": "None",
+        "37": "def-ok/qi-EXCEPTION",
+        "38": "None",
+        "39": "None",
+        "40": "None",
+        "41": "None",
+        "42": "None",
+        "43": "None",
+        "44": "None",
+        "45": "None",
+        "46": "None",
+        "47": "None",
+        "48": "None",
+        "49": "None",
+        "50": "None",
+        "51": "None",
+        "52": "None",
+        "53": "None",
+        "54": "None"
+      }
+    },
+    "acquired_id": null,
+    "overall": "FAIL",
+    "reason": "no CreateDefinition id yielded IMiterFlangeFeatureData"
+  },
+  "flat_pattern": {
+    "config_names": [],
+    "config_count": 0,
+    "flat_pattern_name": null,
+    "flat_pattern_found": false,
+    "overall": "FAIL",
+    "reason": "No config starts with Flat Pattern"
+  },
+  "export_dwg": {
+    "overall": "SKIPPED",
+    "reason": "flat-pattern activation failed"
+  },
+  "cleanup": "closed own doc (no save)",
+  "overall": "PARTIAL",
+  "interpretation": "Mixed: edge_flange=PARTIAL, miter_flange=FAIL, flat_pattern=FAIL, export=SKIPPED. Run --mode vba."
+}
