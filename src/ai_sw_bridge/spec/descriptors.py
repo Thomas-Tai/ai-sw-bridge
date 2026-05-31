@@ -717,10 +717,18 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     ],
     # ---------------------------------------------------------------------------
     # P1.7s — sketch primitives (line / arc / spline / slot / polygon / ellipse /
-    # text). Each is a single sketch-feature entry; live COM calls are stubbed
-    # and flagged 🔴 SEAT for the P1.7-seat/W0 seat pass. Parametric `{rhs}`
-    # bindings are supported on every LENGTH_SCHEMA field via the standard
-    # Equation Manager pathway.
+    # text). Each is a single sketch-feature entry; all seven are live + seat-
+    # validated (SW 2024, rev 32.1.0). Full-fidelity flags are constrained to
+    # what the seat's API genuinely supports: `construction` ships on every
+    # segment primitive EXCEPT slot (CreateSketchSlot's return is a read-only
+    # slot object, not a settable segment); text carries `height`+`font` (via
+    # ISketchText.GetTextFormat/SetTextFormat). Fields with no out-of-process
+    # API on this seat are intentionally absent so a request fails cleanly at
+    # validation rather than being silently faked: spline `closed` (yields a C0
+    # cusp, not a periodic spline — no MakeClosed/CreateClosedSpline exists),
+    # text `angle_deg` (no angle on InsertSketchText/ITextFormat) and text/slot
+    # `construction`. Parametric `{rhs}` bindings are supported on every
+    # LENGTH_SCHEMA field via the standard Equation Manager pathway.
     # ---------------------------------------------------------------------------
     "sketch_line": [
         FieldSpec(
@@ -781,19 +789,20 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec("points", _SKETCH_SPLINE_POINTS, True),
         FieldSpec(
-            "closed",
+            "construction",
             {
                 "type": "boolean",
                 "default": False,
-                "description": "If true, close the spline by joining the last point to the first.",
+                "description": "If true, mark the spline as a construction entity.",
             },
             False,
         ),
-        FieldSpec(
-            "construction",
-            {"type": "boolean", "default": False},
-            False,
-        ),
+        # NOTE: no `closed` field. A point-based periodic (C2) closed spline has
+        # no out-of-process API on this seat — ISketchSpline.MakeClosed and
+        # ISketchManager.CreateClosedSpline do not exist (verified via
+        # GetIDsOfNames -> DISP_E_UNKNOWNNAME and a full typelib scan), and
+        # appending the first point yields a C0 cusp, not a periodic spline.
+        # Requesting `closed` therefore fails validation rather than faking it.
     ],
     "sketch_slot": [
         FieldSpec(
@@ -817,11 +826,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             False,
         ),
-        FieldSpec(
-            "construction",
-            {"type": "boolean", "default": False},
-            False,
-        ),
+        # NOTE: no `construction` field. CreateSketchSlot returns a read-only
+        # slot object (not a settable ISketchSegment): `ConstructionGeometry
+        # can not be set` on the seat. Unpacking the macro-feature's underlying
+        # segment array to mutate each is COM-index fragile, so construction is
+        # rejected for slots rather than faked.
     ],
     "sketch_polygon": [
         FieldSpec(
@@ -924,28 +933,18 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             {
                 "type": "string",
                 "description": (
-                    "Font family name (e.g. 'Arial'). 🔴 SEAT (P1.7-seat/W0): "
-                    "the SW call is ISketchManager.CreateText with a "
-                    "FontFamily / Height / Bold / Italic bitfield — confirm the "
-                    "exact arg shape on the seat."
+                    "Font family name (e.g. 'Arial'). Applied via the inserted "
+                    "ISketchText's text format (GetTextFormat -> TypeFaceName -> "
+                    "SetTextFormat); `height` sets CharHeight in the same call."
                 ),
             },
             False,
         ),
-        FieldSpec(
-            "angle_deg",
-            {
-                "type": "number",
-                "default": 0.0,
-                "description": "Rotation of the text baseline from the sketch X axis (degrees).",
-            },
-            False,
-        ),
-        FieldSpec(
-            "construction",
-            {"type": "boolean", "default": False},
-            False,
-        ),
+        # NOTE: no `angle_deg` or `construction` field for text. InsertSketchText
+        # exposes no angle parameter and ITextFormat carries no rotation, so text
+        # baseline rotation has no out-of-process API on this seat; and text is
+        # not a sketch segment, so ConstructionGeometry does not apply. Both are
+        # rejected at validation rather than silently ignored.
     ],
 }
 
