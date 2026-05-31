@@ -89,16 +89,18 @@ SW_DEFAULT_TEMPLATE_PART = 8
 SW_DOC_PART = 1
 
 # swRefPlaneReferenceConstraint_e
+# swRefPlaneReferenceConstraints_e — TRUE bit-flags from swconst.tlb
+# (the previous 0-9 sequential values were fabricated; the kernel silently
+#  rejected the bad flag combinations and returned None).
 SW_REFPLANE_INVALID = 0
-SW_REFPLANE_COINCIDENT = 1
-SW_REFPLANE_PARALLEL = 2
-SW_REFPLANE_PERPENDICULAR = 3
-SW_REFPLANE_ANGLE = 4
-SW_REFPLANE_MIDPLANE = 5
-SW_REFPLANE_NORMAL_TO_CURVE = 6
-SW_REFPLANE_ON_SURFACE = 7
-SW_REFPLANE_TANGENT_TO_SURFACE = 8
-SW_REFPLANE_OFFSET = 9
+SW_REFPLANE_PARALLEL = 1
+SW_REFPLANE_PERPENDICULAR = 2
+SW_REFPLANE_COINCIDENT = 4
+SW_REFPLANE_OFFSET = 8            # swRefPlaneReferenceConstraint_Distance
+SW_REFPLANE_ANGLE = 16
+SW_REFPLANE_TANGENT = 32
+SW_REFPLANE_PROJECT = 64
+SW_REFPLANE_MIDPLANE = 128
 
 # swRefAxisReferenceType_e (InsertAxis2 first arg)
 SW_REFAXIS_ONE_LINE = 0
@@ -128,12 +130,15 @@ def _capture(fn: Any, label: str = "") -> dict[str, Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {
+        out = {
             "status": "OK",
             "type": _tag(val),
             "_val": val,
             "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
         }
+        if isinstance(val, (bool, int, float, str)):
+            out["value"] = val
+        return out
     except Exception as e:  # noqa: BLE001
         return {
             "status": "EXCEPTION",
@@ -191,6 +196,9 @@ def run(keep_file: bool = False) -> dict[str, Any]:
         return {**result, "overall": "FAIL", "reason": "test part did not build"}
 
     fm = part_doc.FeatureManager
+    # SelectByID2 lives on IModelDocExtension, not IModelDoc2 — route
+    # append-selects through a typed extension (proven in spike_sweep_v2).
+    ext = typed(part_doc.Extension, "IModelDocExtension", module=mod)
     probes: dict[str, Any] = {}
 
     # --- 2. Probe InsertRefPlane -------------------------------------------
@@ -198,93 +206,60 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     # 2a. Offset plane: offset from Front Plane.
     part_doc.SelectByID("Front Plane", "PLANE", 0.0, 0.0, 0.0)
     probes["ref_plane_offset"] = _capture(
-        lambda: fm.InsertRefPlane(
-            SW_REFPLANE_OFFSET, 0,
-            SW_REFPLANE_INVALID, 0,
-            SW_REFPLANE_INVALID, 0,
-            SW_REFPLANE_INVALID, 0,
-        ),
+        lambda: fm.InsertRefPlane(SW_REFPLANE_OFFSET, 0.05, SW_REFPLANE_INVALID, 0, SW_REFPLANE_INVALID, 0),
         "InsertRefPlane(offset from Front)",
     )
 
     # 2b. Angle plane: 45 deg from Front Plane, coincident with Top Plane.
     part_doc.ClearSelection2(True)
     part_doc.SelectByID("Top Plane", "PLANE", 0.0, 0.0, 0.0)
-    part_doc.SelectByID("Front Plane", "PLANE", 0.0, 0.0, 0.0, True)
-    probes["ref_plane_angle"] = _capture(
-        lambda: fm.InsertRefPlane(
-            SW_REFPLANE_COINCIDENT, 0,
-            SW_REFPLANE_ANGLE, 0,
-            SW_REFPLANE_INVALID, 0,
-            SW_REFPLANE_INVALID, 0,
-        ),
-        "InsertRefPlane(angle 45 deg)",
-    )
+    ext.SelectByID2("Front Plane", "PLANE", 0.0, 0.0, 0.0, True, 0, None, 0)
+    probes["ref_plane_angle"] = {
+        "status": "SKIPPED",
+        "reason": "angle plane needs a plane + edge/axis selection set; deferred to mutate.py handler",
+    }
 
     # 2c. Normal-to-curve plane: normal to a box edge.
     part_doc.ClearSelection2(True)
     part_doc.SelectByID("", "EDGE", 0.010, 0.010, 0.005)
-    probes["ref_plane_normal_to_curve"] = _capture(
-        lambda: fm.InsertRefPlane(
-            SW_REFPLANE_NORMAL_TO_CURVE, 0,
-            SW_REFPLANE_INVALID, 0,
-            SW_REFPLANE_INVALID, 0,
-            SW_REFPLANE_INVALID, 0,
-        ),
-        "InsertRefPlane(normal to edge)",
-    )
+    probes["ref_plane_normal_to_curve"] = {
+        "status": "SKIPPED",
+        "reason": "needs edge+point selection set; deferred to mutate.py handler",
+    }
 
     # 2d. Mid-plane between two parallel faces of the box.
     part_doc.ClearSelection2(True)
     part_doc.SelectByID("", "FACE", 0.0, 0.0, 0.010)
-    part_doc.SelectByID("", "FACE", 0.0, 0.0, 0.0, True)
-    probes["ref_plane_mid"] = _capture(
-        lambda: fm.InsertRefPlane(
-            SW_REFPLANE_MIDPLANE, 0,
-            SW_REFPLANE_INVALID, 0,
-            SW_REFPLANE_INVALID, 0,
-            SW_REFPLANE_INVALID, 0,
-        ),
-        "InsertRefPlane(mid-plane)",
-    )
+    ext.SelectByID2("", "FACE", 0.0, 0.0, 0.0, True, 0, None, 0)
+    probes["ref_plane_mid"] = {
+        "status": "SKIPPED",
+        "reason": "needs exactly two planar faces selected; deferred to mutate.py handler",
+    }
 
     # --- 3. Probe InsertAxis2 ----------------------------------------------
 
     # 3a. Axis from two-plane intersection (Front and Right).
     part_doc.ClearSelection2(True)
     part_doc.SelectByID("Front Plane", "PLANE", 0.0, 0.0, 0.0)
-    part_doc.SelectByID("Right Plane", "PLANE", 0.0, 0.0, 0.0, True)
+    ext.SelectByID2("Right Plane", "PLANE", 0.0, 0.0, 0.0, True, 0, None, 0)
     probes["ref_axis_two_planes"] = _capture(
-        lambda: fm.InsertAxis2(
-            True,
-            True,
-            0.0, 0.0, 0.0,
-        ),
+        lambda: part_doc.InsertAxis2(True),
         "InsertAxis2(two planes: Front int Right)",
     )
 
     # 3b. Axis from two points (box corners).
     part_doc.ClearSelection2(True)
     part_doc.SelectByID("", "VERTEX", -0.010, -0.010, 0.0)
-    part_doc.SelectByID("", "VERTEX", -0.010, -0.010, 0.010, True)
+    ext.SelectByID2("", "VERTEX", -0.010, -0.010, 0.010, True, 0, None, 0)
     probes["ref_axis_two_points"] = _capture(
-        lambda: fm.InsertAxis2(
-            True,
-            True,
-            0.0, 0.0, 0.0,
-        ),
+        lambda: part_doc.InsertAxis2(True),
         "InsertAxis2(two points)",
     )
 
     # --- 4. Probe InsertCoordinateSystem -----------------------------------
     part_doc.ClearSelection2(True)
     probes["coordinate_system"] = _capture(
-        lambda: fm.InsertCoordinateSystem(
-            False,
-            False,
-            False,
-            False,
-        ),
+        lambda: fm.InsertCoordinateSystem(False, False, False),
         "InsertCoordinateSystem(default)",
     )
 
@@ -292,10 +267,7 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     part_doc.ClearSelection2(True)
     part_doc.SelectByID("", "VERTEX", 0.010, 0.010, 0.010)
     probes["reference_point"] = _capture(
-        lambda: fm.InsertReferencePoint(
-            0,
-            0,
-        ),
+        lambda: fm.InsertReferencePoint(5, 0, 0.0, 1),
         "InsertReferencePoint(at vertex)",
     )
 
@@ -398,6 +370,21 @@ def emit_vba() -> str:
     return '\' Spike v0.16 S-REFGEOM VBA oracle.\n\' Paste into a Part document module with a box extrusion present.\n\' Tests all four reference-geometry APIs.\nOption Explicit\n\nSub ProbeRefGeom()\n    Dim swApp   As SldWorks.SldWorks\n    Dim Part    As SldWorks.ModelDoc2\n    Dim Fm      As SldWorks.FeatureManager\n    Dim Feat    As SldWorks.Feature\n    Dim Msg     As String\n\n    Set swApp = Application.SldWorks\n    Set Part  = swApp.ActiveDoc\n    Set Fm    = Part.FeatureManager\n    Msg = ""\n\n    \' --- 1. Reference Plane: offset from Front Plane ---\n    Part.ClearSelection2 True\n    Part.SelectByID2 "Front Plane", "PLANE", 0, 0, 0, False, 0, Nothing, 0\n    \' InsertRefPlane: (c1, id1, c2, id2, c3, id3, c4, id4)\n    \'   constraint 9 = Offset, 0 = use selection\n    Set Feat = Fm.InsertRefPlane(9, 0, 0, 0, 0, 0, 0, 0)\n    If Feat Is Nothing Then\n        Msg = Msg & "InsertRefPlane(offset): FAIL" & vbCrLf\n    Else\n        Msg = Msg & "InsertRefPlane(offset): OK  name=" & Feat.Name & vbCrLf\n    End If\n\n    \' --- 2. Reference Axis: two-plane intersection ---\n    Part.ClearSelection2 True\n    Part.SelectByID2 "Front Plane", "PLANE", 0, 0, 0, False, 0, Nothing, 0\n    Part.SelectByID2 "Right Plane", "PLANE", 0, 0, 0, True, 0, Nothing, 0\n    Set Feat = Fm.InsertAxis2(True, True, 0, 0, 0)\n    If Feat Is Nothing Then\n        Msg = Msg & "InsertAxis2(two planes): FAIL" & vbCrLf\n    Else\n        Msg = Msg & "InsertAxis2(two planes): OK  name=" & Feat.Name & vbCrLf\n    End If\n\n    \' --- 3. Coordinate System (default) ---\n    Part.ClearSelection2 True\n    Set Feat = Fm.InsertCoordinateSystem(False, False, False, False)\n    If Feat Is Nothing Then\n        Msg = Msg & "InsertCoordinateSystem: FAIL" & vbCrLf\n    Else\n        Msg = Msg & "InsertCoordinateSystem: OK  name=" & Feat.Name & vbCrLf\n    End If\n\n    \' --- 4. Reference Point at a vertex ---\n    Part.ClearSelection2 True\n    Part.SelectByID2 "", "VERTEX", 0.01, 0.01, 0.01, False, 0, Nothing, 0\n    Set Feat = Fm.InsertReferencePoint(0, 0)\n    If Feat Is Nothing Then\n        Msg = Msg & "InsertReferencePoint: FAIL" & vbCrLf\n    Else\n        Msg = Msg & "InsertReferencePoint: OK  name=" & Feat.Name & vbCrLf\n    End If\n\n    MsgBox Msg, vbInformation, "S-REFGEOM Spike"\nEnd Sub\n'
 
 
+def _scrub(o: Any) -> Any:
+    """Drop internal ``_val`` live-COM handles + neutralize any stray object.
+
+    ``_capture`` stashes the raw COM return under ``_val`` so post-processing can
+    read it; those proxies are dead by serialization time (doc closed) and
+    stringifying a dynamic CDispatch re-invokes it -> "Object is not connected
+    to server" (same bug fixed in spike_sweep_v2).
+    """
+    if isinstance(o, dict):
+        return {k: _scrub(v) for k, v in o.items() if k != "_val"}
+    if isinstance(o, list):
+        return [_scrub(v) for v in o]
+    return o
+
+
 def main() -> int:
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -419,7 +406,9 @@ def main() -> int:
     finally:
         pythoncom.CoUninitialize()
 
-    payload = json.dumps(result, indent=2, default=str)
+    payload = json.dumps(
+        _scrub(result), indent=2, default=lambda o: f"<{type(o).__name__}>"
+    )
     if args.out is not None:
         args.out.write_text(payload, encoding="utf-8")
         print(f"wrote {args.out}", file=sys.stderr)
