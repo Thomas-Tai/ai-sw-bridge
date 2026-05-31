@@ -398,7 +398,14 @@ def _call_feature_extrusion(
 
 
 @versioned("FeatureCut4", DEFAULT_KEY)
-def _cut4_args_2024(*, end_cond: int, depth_m: float, flip: bool) -> tuple:
+def _cut4_args_2024(
+    *,
+    end_cond: int,
+    depth_m: float,
+    flip: bool,
+    end_cond2: int | None = None,
+    depth2_m: float = 0.0,
+) -> tuple:
     """SW 2024 SP1 FeatureCut4 arg tuple (27 args; default/proven variant).
 
     SW 2017+ signature (verified via decompiled sldworksapi.chm and Spike E7
@@ -412,15 +419,21 @@ def _cut4_args_2024(*, end_cond: int, depth_m: float, flip: bool) -> tuple:
       UseFeatScope, UseAutoSelect, AssemblyFeatureScope,
       AutoSelectComponents, PropagateFeatureToParts,
       T0, StartOffset, FlipStartOffset, OptimizeGeometry
+
+    ``end_cond2`` opts into a second (reverse) direction: when given, ``Sd``
+    (single-ended) flips False and ``T2``/``D2`` carry the second direction's
+    end-condition/depth. When ``None`` (the default) the tuple is byte-for-byte
+    the single-direction shape the call site has always produced.
     """
+    single_dir = end_cond2 is None
     return (
-        True,  # 1  Sd (single-ended)
+        single_dir,  # 1  Sd (single-ended unless a 2nd direction is requested)
         flip,  # 2  Flip
         False,  # 3  Dir
         end_cond,  # 4  T1
-        0,  # 5  T2
+        0 if single_dir else end_cond2,  # 5  T2
         depth_m,  # 6  D1
-        0.0,  # 7  D2
+        0.0 if single_dir else depth2_m,  # 7  D2
         False,  # 8  Dchk1
         False,  # 9  Dchk2
         False,  # 10 Ddir1
@@ -445,7 +458,14 @@ def _cut4_args_2024(*, end_cond: int, depth_m: float, flip: bool) -> tuple:
 
 
 @versioned("FeatureCut4", SW_2025_MAJOR)
-def _cut4_args_2025(*, end_cond: int, depth_m: float, flip: bool) -> tuple:
+def _cut4_args_2025(
+    *,
+    end_cond: int,
+    depth_m: float,
+    flip: bool,
+    end_cond2: int | None = None,
+    depth2_m: float = 0.0,
+) -> tuple:
     """🔴 SEAT (SW 2025 / RevisionNumber major 33) -- UNVERIFIED.
 
     The reference codebase branches on RevisionNumber == 33 because
@@ -459,7 +479,10 @@ def _cut4_args_2025(*, end_cond: int, depth_m: float, flip: bool) -> tuple:
     replace this body with the verified 2025 tuple and re-GREEN against a
     real cut on 2025.
     """
-    return _cut4_args_2024(end_cond=end_cond, depth_m=depth_m, flip=flip)
+    return _cut4_args_2024(
+        end_cond=end_cond, depth_m=depth_m, flip=flip,
+        end_cond2=end_cond2, depth2_m=depth2_m,
+    )
 
 
 def _call_feature_cut(
@@ -468,6 +491,8 @@ def _call_feature_cut(
     end_cond: int,
     depth_m: float,
     flip: bool,
+    end_cond2: int | None = None,
+    depth2_m: float = 0.0,
 ) -> Any:
     """FeatureManager.FeatureCut4 - the cut variant of FeatureExtrusion2.
 
@@ -477,9 +502,15 @@ def _call_feature_cut(
     proven build) this resolves to ``_cut4_args_2024`` and the produced 27-arg
     tuple is identical to the pre-resolver call -- behaviour-preserving. The
     2025 variant is a 🔴 SEAT stub that is never reached on 2024.
+
+    ``end_cond2``/``depth2_m`` add an optional second (reverse) cut direction
+    (two-direction cuts); omitted, the call is single-direction as before.
     """
     arg_builder = resolve_op("FeatureCut4", sw=ctx.sw)
-    args = arg_builder(end_cond=end_cond, depth_m=depth_m, flip=flip)
+    args = arg_builder(
+        end_cond=end_cond, depth_m=depth_m, flip=flip,
+        end_cond2=end_cond2, depth2_m=depth2_m,
+    )
     assert_args("IFeatureManager.FeatureCut4", args)
     fm = ctx.doc.FeatureManager
     feature = fm.FeatureCut4(*args)
@@ -584,6 +615,40 @@ def _build_cut_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFe
     depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["cut_depth"])
     flip = bool(feat.get("flip", False))
     f = _call_feature_cut(ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip)
+    f.Name = feat["name"]
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
+
+
+def _build_cut_extrude_midplane(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Mid-plane cut: removes ``depth`` of material centred on the sketch plane
+    (``depth/2`` each side). One arg-shape change vs blind -- T1 = mid-plane.
+    Like the other cuts it emits a bare BuiltFeature (no extrude_origin/axis
+    metadata; cuts don't feed the downstream face-geometry derivation)."""
+    sketch_name = feat["sketch"]
+    _select_sketch(ctx, sketch_name)
+    depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["cut_depth"])
+    flip = bool(feat.get("flip", False))
+    f = _call_feature_cut(ctx, end_cond=SW_END_COND_MID_PLANE, depth_m=depth_m, flip=flip)
+    f.Name = feat["name"]
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
+
+
+def _build_cut_extrude_two_direction(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
+    """Two-direction blind cut: ``depth`` into +normal AND ``depth2`` into
+    -normal from the sketch plane. Drives FeatureCut4 with ``Sd=False`` and
+    independent T1/D1, T2/D2 (both blind). Bare BuiltFeature like the other
+    cuts."""
+    sketch_name = feat["sketch"]
+    _select_sketch(ctx, sketch_name)
+    depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["cut_depth"])
+    depth2_m = _literal_or_default(feat["depth2"], PLACEHOLDER_MM["cut_depth"])
+    flip = bool(feat.get("flip", False))
+    f = _call_feature_cut(
+        ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip,
+        end_cond2=SW_END_COND_BLIND, depth2_m=depth2_m,
+    )
     f.Name = feat["name"]
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
@@ -1520,6 +1585,16 @@ DESCRIPTORS: dict[str, FeatureDescriptor] = {
         handler=None,
         dim_fields={"depth": "D1"},
     ),
+    "cut_extrude_midplane": FeatureType(
+        name="cut_extrude_midplane",
+        handler=None,
+        dim_fields={"depth": "D1"},
+    ),
+    "cut_extrude_two_direction": FeatureType(
+        name="cut_extrude_two_direction",
+        handler=None,
+        dim_fields={"depth": "D1", "depth2": "D2"},
+    ),
     "revolve_boss": FeatureType(
         name="revolve_boss",
         handler=None,
@@ -1624,6 +1699,8 @@ def _wire_handlers() -> None:
         "boss_extrude_blind": _build_boss_extrude_blind,
         "cut_extrude_through_all": _build_cut_extrude_through_all,
         "cut_extrude_blind": _build_cut_extrude_blind,
+        "cut_extrude_midplane": _build_cut_extrude_midplane,
+        "cut_extrude_two_direction": _build_cut_extrude_two_direction,
         "revolve_boss": _build_revolve_boss,
         "revolve_cut": _build_revolve_cut,
         "simple_hole": _build_simple_hole,

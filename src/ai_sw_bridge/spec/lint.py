@@ -75,7 +75,13 @@ def _check_unconsumed_sketches(spec: dict[str, Any]) -> list[LintFinding]:
 # clean orthogonal faces; revolves produce curved side faces and annular end
 # faces where the face-selection heuristic is unreliable.
 _ORTHO_FACE_PARENTS = frozenset(
-    {"boss_extrude_blind", "cut_extrude_through_all", "cut_extrude_blind"}
+    {
+        "boss_extrude_blind",
+        "cut_extrude_through_all",
+        "cut_extrude_blind",
+        "cut_extrude_midplane",
+        "cut_extrude_two_direction",
+    }
 )
 
 
