@@ -49,6 +49,61 @@ Usage
     python spikes/v0_16/spike_sheetmetal_v2.py --out report.json
     python spikes/v0_16/spike_sheetmetal_v2.py --mode vba
 """
+# ============================================================================
+# SEAT-RUN FINDINGS (2026-05-31, SW 2024 SP1)
+# ============================================================================
+#
+# BASE FLANGE: PASS
+#   - CreateDefinition(34) -> typed_qi(IBaseFlangeFeatureData) -> CreateFeature
+#   - Feature type: SMBaseFlange
+#   - AccessSelections pattern works
+#
+# EDGE DISCOVERY: 12 live edges
+#   - Late-bound body.GetEdges() returns dead COM proxies
+#   - Persist round-trip via typed Extension yields live, selectable entities
+#   - Select2(False, 0) works on live edges
+#   - IEntity interface has Select2/Select4 methods
+#   - IEdge interface has NO Select methods
+#
+# EDGE FLANGE: PARTIAL (marshaling wall)
+#   - CreateDefinition(37) -> typed_qi(IEdgeFlangeFeatureData): works
+#   - BendAngle and BendRadius properties: set successfully
+#   - VARIANT(VT_ARRAY | VT_DISPATCH) approach:
+#     * Edges property: accepts VARIANT but GetEdgeCount() returns 0
+#     * AddEdges method: accepts VARIANT but GetEdgeCount() returns 0
+#   - Conclusion: VARIANT is accepted but edges are not consumed
+#   - This is the same marshaling wall as v0.15 base flange
+#
+# MITER FLANGE: FAIL (API exists but unusable)
+#   - IMiterFlangeFeatureData interface: does NOT exist in SW 2024
+#   - InsertSheetMetalMiterFlange method: EXISTS (not InsertMiterFlange2)
+#   - All parameter combinations (4-11 params) fail with "Parameter not optional"
+#   - Conclusion: legacy insertion method has marshaling wall
+#
+# FLAT PATTERN: FAIL (no configuration)
+#   - GetConfigurationNames returns empty tuple (no Flat Pattern config)
+#   - Base flange creates SMBaseFlange feature but no sheet metal environment
+#   - Conclusion: sheet metal add-in not loaded or environment not initialized
+#
+# EXPORT: FAIL (marshaling wall)
+#   - IPartDoc.ExportToDWG2 method: EXISTS
+#   - All parameter combinations (2-7 params) fail with "Type mismatch"
+#   - Conclusion: legacy export method has marshaling wall
+#
+# OVERALL VERDICT: PARTIAL
+#   - Base flange creation: PROVEN
+#   - Edge discovery: PROVEN
+#   - Edge flange creation: BLOCKED (marshaling wall)
+#   - Miter flange creation: BLOCKED (marshaling wall)
+#   - Flat pattern: BLOCKED (no sheet metal environment)
+#   - Export: BLOCKED (marshaling wall)
+#
+# ROOT CAUSE: All legacy direct insertion/export methods have COM marshaling
+# walls when called out-of-process. The VARIANT approach works for parameter
+# passing but the COM objects are not consumed by the SolidWorks API.
+# ============================================================================
+
+
 
 from __future__ import annotations
 
