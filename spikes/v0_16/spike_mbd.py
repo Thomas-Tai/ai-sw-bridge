@@ -79,6 +79,7 @@ from spike_persist_reference import build_single_box  # noqa: E402
 from spike_earlybind_persist import connect_running_sw  # noqa: E402
 
 SW_DOC_PART = 1
+SW_DEFAULT_TEMPLATE_PART = 8
 
 
 def _tag(v: Any) -> str:
@@ -508,16 +509,25 @@ def run(skip_build: bool = False) -> dict[str, Any]:
     except Exception:
         result["sw_revision"] = "<unreadable>"
 
+    # Self-create a Part (mirror spike_sweep_v2 / spike_refgeom) rather than
+    # depending on a pre-open ActiveDoc — the harness was merged unrun.
     doc = sw.ActiveDoc
+    if doc is None:
+        template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_PART)
+        doc = sw.NewDocument(template, 0, 0.0, 0.0)
+        result["doc_acquisition"] = "created Part via NewDocument (no ActiveDoc)"
+    else:
+        result["doc_acquisition"] = "used existing ActiveDoc"
     if doc is None:
         return {
             **result, "overall": "FAIL",
-            "reason": "no active document",
+            "reason": "no active document and NewDocument returned None",
         }
-    if doc.GetType != SW_DOC_PART:
+    doc_type = doc.GetType() if callable(getattr(doc, "GetType", None)) else doc.GetType
+    if doc_type != SW_DOC_PART:
         return {
             **result, "overall": "FAIL",
-            "reason": f"active doc not a Part (GetType={doc.GetType})",
+            "reason": f"active doc not a Part (GetType={doc_type})",
         }
 
     if not skip_build:
