@@ -135,7 +135,7 @@ def _build_sweep_geometry(doc: Any) -> dict[str, Any]:
 
     # Profile: circle on Front Plane
     try:
-        doc.SelectByID2("Front Plane", "PLANE", 0, 0, 0, False, 0, None, 0)
+        doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
         doc.SketchManager.InsertSketch(True)
         doc.SketchManager.CreateCircleByRadius(0.0, 0.0, 0.0, 0.005)  # 5mm radius
         doc.SketchManager.InsertSketch(True)
@@ -146,7 +146,7 @@ def _build_sweep_geometry(doc: Any) -> dict[str, Any]:
 
     # Path: vertical line on Right Plane
     try:
-        doc.SelectByID2("Right Plane", "PLANE", 0, 0, 0, False, 0, None, 0)
+        doc.SelectByID("Right Plane", "PLANE", 0, 0, 0)
         doc.SketchManager.InsertSketch(True)
         doc.SketchManager.CreateLine(0.0, 0.0, 0.0, 0.0, 0.05, 0.0)  # 50mm line
         doc.SketchManager.InsertSketch(True)
@@ -292,10 +292,15 @@ def run(keep_file: bool = False) -> dict[str, Any]:
             path_name = geom.get("path_sketch", "Sketch2")
 
             sel_profile = _capture(
+                # TODO(D4/Opus): marked select (mark=1 for profile) — needs early-bound
+                # doc / typed Extension.SelectByID2; do NOT 5-arg (loses mark).
                 lambda: doc.SelectByID2(profile_name, "SKETCH", 0, 0, 0, False, 1, None, 0),
                 "select_profile",
             )
             sel_path = _capture(
+                # TODO(D4/Opus): marked+appending select (mark=4 for path, append=True)
+                # — needs early-bound doc / typed Extension.SelectByID2; do NOT 5-arg
+                # (loses mark and multi-selection append).
                 lambda: doc.SelectByID2(path_name, "SKETCH", 0, 0, 0, True, 4, None, 0),
                 "select_path",
             )
