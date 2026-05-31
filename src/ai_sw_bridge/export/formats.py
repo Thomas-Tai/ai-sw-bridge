@@ -79,6 +79,7 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         extension=".step",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="STEP AP-214 (AutoMotive) — the default STEP flavor",
+        seat_confirmed=True,
     ),
     "step203": ExportFormat(
         name="step203",
@@ -86,30 +87,35 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         save_method=SaveMethod.SAVEAS3_DIRECT,
         save_version=1,
         description="STEP AP-203 — older STEP, limited PMIs",
+        seat_confirmed=True,
     ),
     "iges": ExportFormat(
         name="iges",
         extension=".igs",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="IGES — legacy surface exchange",
+        seat_confirmed=True,
     ),
     "parasolid": ExportFormat(
         name="parasolid",
         extension=".x_t",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="Parasolid text format — Siemens NX / Solid Edge exchange",
+        seat_confirmed=True,
     ),
     "stl": ExportFormat(
         name="stl",
         extension=".stl",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="STL — tessellated mesh for 3D printing",
+        seat_confirmed=True,
     ),
     "3mf": ExportFormat(
         name="3mf",
         extension=".3mf",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="3MF — modern 3D print format with color/material",
+        seat_confirmed=True,
     ),
     "pdf": ExportFormat(
         name="pdf",
@@ -121,7 +127,7 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         name="dxf",
         extension=".dxf",
         save_method=SaveMethod.SAVEAS3_DIRECT,
-        description="DXF — general 2D/3D exchange",
+        description="DXF — general 2D/3D exchange (Drawing docs only; Part→DXF needs Drawing pipeline)",
     ),
     "dxf_flat": ExportFormat(
         name="dxf_flat",

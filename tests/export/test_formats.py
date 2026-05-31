@@ -63,12 +63,11 @@ class TestExportFormats:
     def test_step203_has_nonzero_version(self) -> None:
         assert EXPORT_FORMATS["step203"].save_version != 0
 
-    def test_no_format_confirmed_yet(self) -> None:
-        """All formats ship unconfirmed — seat confirmation is a SEAT task."""
-        for name, fmt in EXPORT_FORMATS.items():
-            assert not fmt.seat_confirmed, (
-                f"{name} is marked confirmed but no seat session has run"
-            )
+    def test_seat_confirmed_formats(self) -> None:
+        """P1.1-seat confirmed 6 SAVEAS3_DIRECT formats on SW 2024 SP1."""
+        expected = {"step214", "step203", "iges", "parasolid", "stl", "3mf"}
+        confirmed = {n for n, f in EXPORT_FORMATS.items() if f.seat_confirmed}
+        assert confirmed == expected
 
 
 class TestResolveFormat:
