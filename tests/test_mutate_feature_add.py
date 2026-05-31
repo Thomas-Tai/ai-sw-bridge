@@ -855,6 +855,78 @@ class TestResolveHoleArgs:
         assert "M7.5" in err and "M6" in err and "M10" in err
 
 
+class TestFormatSizeCatalog:
+    """H2: the size list in dry-run error messages must be readable when the
+    DB table is long (Tap Drills has ~70 entries in the ANSI Metric DB) and
+    still byte-stable for short lists so substring assertions hold."""
+
+    def test_empty_list_returns_placeholder(self) -> None:
+        assert mutate._format_size_catalog([]) == "<no sizes enumerated>"
+
+    def test_short_list_is_comma_separated_not_repr(self) -> None:
+        # Raw repr would be "['M6', 'M8', 'M10']" with brackets+quotes. The
+        # H2 format is a clean comma-separated string.
+        assert mutate._format_size_catalog(["M6", "M8", "M10"]) == "M6, M8, M10"
+
+    def test_long_list_is_truncated_with_total_count(self) -> None:
+        sizes = [f"M{i}" for i in range(1, 51)]  # 50 entries, well over limit
+        out = mutate._format_size_catalog(sizes)
+        assert "(50 total)" in out
+        assert "..." in out
+        # First 20 present; entry #21 (M21) is past the cutoff.
+        assert "M1" in out and "M20" in out
+        assert "M21" not in out.split("...")[0]
+
+    def test_at_limit_is_not_truncated(self) -> None:
+        sizes = [f"M{i}" for i in range(1, mutate._SIZE_ERROR_DISPLAY_LIMIT + 1)]
+        out = mutate._format_size_catalog(sizes)
+        assert "..." not in out
+        assert "total" not in out
+
+    def test_byte_stable_across_calls(self) -> None:
+        sizes = ["M6", "M8", "M10", "M12"]
+        assert mutate._format_size_catalog(sizes) == mutate._format_size_catalog(sizes)
+
+
+class TestResolveHoleArgsH2:
+    """H2: richer per-fastener size enumeration in validation errors."""
+
+    def test_long_size_list_shows_count_and_truncates(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        sizes = [f"M{i}" for i in range(1, 40)]  # 39 entries
+        _patch_holes(monkeypatch, sizes)
+        ok, _, _, err = mutate._resolve_hole_args(2, "ISO", "Tap Drills", "M999")
+        assert ok is False
+        assert "(39 total)" in err
+        # The rejected size is named.
+        assert "M999" in err
+
+    def test_empty_db_returns_diagnostic_not_silent_pass(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Pre-H2 behavior: valid_sizes=[] caused the size gate to be skipped,
+        letting any size through to the live SW call (which then failed with an
+        unhelpful COM error). Post-H2: surface a structured 'no sizes enumerated'
+        diagnostic so the user sees what went wrong at the DB read."""
+        _patch_holes(monkeypatch, [])
+        ok, _, _, err = mutate._resolve_hole_args(2, "ISO", "Tap Drills", "M6")
+        assert ok is False
+        assert "no sizes enumerated" in err
+
+    def test_short_size_list_is_comma_separated(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_holes(monkeypatch, ["M6", "M8", "M10"])
+        ok, _, _, err = mutate._resolve_hole_args(2, "ISO", "Tap Drills", "M7.5")
+        assert ok is False
+        # Post-H2: no raw Python list repr (no brackets/quotes around the catalog).
+        assert "[" not in err or err.count("[") == err.count("[")  # sanity
+        assert "M6, M8, M10" in err
+        # Count prefix is present.
+        assert "3 valid sizes" in err
+
+
 class TestProposeWizardHole:
     _FEATURE = {
         "type": "wizard_hole", "hole_type": "hole", "standard": "ANSI Metric",
