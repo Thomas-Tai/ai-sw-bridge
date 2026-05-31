@@ -42,7 +42,13 @@ class DurableEdgeRef:
     * ``persist_id`` — raw bytes from ``GetPersistReference3``; ``None`` when no
       token was captured (then the ref is not durably resolvable in v1).
     * ``start`` / ``end`` — edge endpoints (metres, part frame).
-    * ``length`` — chord length (exact for straight edges; heuristic otherwise).
+    * ``length`` — arc length when the interrogator's curve read succeeded,
+      chord length otherwise (see ``BrepEdge.curve_mid_source``).
+    * ``midpoint`` — curve midpoint (parametric midpoint) when captured;
+      ``None`` when the manifest edge predates the curve-mid upgrade. The
+      edge-fingerprint resolver forwards this into the match predicate's
+      midpoint gate so a captured true curve midpoint auto-discriminates
+      straight-from-curved edges (no predicate change required).
     * ``role_hint`` — free-form label (default ``"edge"``).
     """
 
@@ -51,6 +57,7 @@ class DurableEdgeRef:
     end: tuple[float, float, float]
     length: float
     role_hint: str = "edge"
+    midpoint: tuple[float, float, float] | None = None
 
     def __post_init__(self) -> None:
         if self.persist_id is not None and not isinstance(self.persist_id, bytes):
@@ -61,6 +68,8 @@ class DurableEdgeRef:
             raise ValueError("start and end must be 3-tuples")
         if not isinstance(self.role_hint, str) or not self.role_hint:
             raise ValueError("role_hint must be a non-empty string")
+        if self.midpoint is not None and len(self.midpoint) != 3:
+            raise ValueError("midpoint must be a 3-tuple or None")
 
     # ------------------------------------------------------------------
     # Serialization
@@ -68,7 +77,8 @@ class DurableEdgeRef:
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-serializable form. ``persist_id`` is base64url (no padding) when
-        present and omitted entirely when ``None`` — never serialized as null."""
+        present and omitted entirely when ``None`` — never serialized as null.
+        ``midpoint`` is likewise omitted when ``None`` (legacy refs)."""
         out: dict[str, Any] = {
             "start": list(self.start),
             "end": list(self.end),
@@ -79,11 +89,14 @@ class DurableEdgeRef:
             out["persist_id"] = (
                 base64.urlsafe_b64encode(self.persist_id).decode("ascii").rstrip("=")
             )
+        if self.midpoint is not None:
+            out["midpoint"] = list(self.midpoint)
         return out
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DurableEdgeRef:
-        """Inverse of :meth:`to_dict`. Missing ``persist_id`` -> ``None``."""
+        """Inverse of :meth:`to_dict`. Missing ``persist_id`` -> ``None``.
+        Missing ``midpoint`` -> ``None`` (legacy refs)."""
         if not isinstance(data, dict):
             raise TypeError("DurableEdgeRef data must be a dict")
         start = _vec3(data.get("start"), "start")
@@ -103,12 +116,21 @@ class DurableEdgeRef:
             raise TypeError(
                 f"persist_id must be a base64url string, got {type(persist_b64).__name__}"
             )
+
+        midpoint_raw = data.get("midpoint")
+        midpoint: tuple[float, float, float] | None
+        if midpoint_raw is None:
+            midpoint = None
+        else:
+            midpoint = _vec3(midpoint_raw, "midpoint")
+
         return cls(
             persist_id=persist_id,
             start=start,
             end=end,
             length=float(length),
             role_hint=role_hint,
+            midpoint=midpoint,
         )
 
     @classmethod
@@ -117,7 +139,8 @@ class DurableEdgeRef:
 
         The manifest edge shape carries ``start`` / ``end`` / ``length`` /
         ``midpoint`` plus an optional base64url ``persist_id`` (present when
-        ``persist_capture`` was on at build time).
+        ``persist_capture`` was on at build time). ``midpoint`` is optional so
+        older manifests without it still round-trip.
         """
         if not isinstance(edge, dict):
             raise TypeError("manifest edge must be a dict")
@@ -137,12 +160,21 @@ class DurableEdgeRef:
             raise TypeError(
                 f"persist_id must be a base64url string, got {type(persist_b64).__name__}"
             )
+
+        midpoint_raw = edge.get("midpoint")
+        midpoint: tuple[float, float, float] | None
+        if midpoint_raw is None:
+            midpoint = None
+        else:
+            midpoint = _vec3(midpoint_raw, "midpoint")
+
         return cls(
             persist_id=persist_id,
             start=start,
             end=end,
             length=float(length),
             role_hint=str(edge.get("role_hint") or "edge"),
+            midpoint=midpoint,
         )
 
 

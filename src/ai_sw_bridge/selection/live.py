@@ -231,32 +231,42 @@ def _iter_live_edges(doc: Any) -> list[Any]:
 
 
 def _read_edge_geometry(edge: Any) -> dict[str, Any] | None:
-    """Read a live COM edge's endpoint geometry into a candidate dict.
+    """Read a live COM edge's geometry into a candidate dict.
 
-    Uses the same ``IEdge.GetCurveParams2`` path as
-    ``brep.interrogator._probe_edge`` so the dicts line up with the manifest
-    shape (``start`` / ``end`` required; ``length`` / ``midpoint`` derived as
-    chord length / chord midpoint). Returns ``None`` when the edge has no
-    readable geometry.
+    Uses the same ``IEdge.GetCurveParams2`` + ``ICurve.Evaluate`` /
+    ``IEdge.GetLength`` path as ``brep.interrogator._probe_edge`` so the
+    candidate dict hashes byte-identically to the stored manifest edge under
+    the edge-match predicate (``start`` / ``end`` required; ``length`` /
+    ``midpoint`` prefer true arc length / curve midpoint, falling back to
+    chord length / chord midpoint when the curve vtable is unreachable).
+    ``curve_mid_source`` mirrors the interrogator's label so callers can tell
+    the two regimes apart. Returns ``None`` when the edge has no readable
+    endpoint geometry.
     """
-    from ..brep.interrogator import _read_curve_params
+    from ..brep.interrogator import _chord_mid, _read_curve_mid_and_arc, _read_curve_params
 
     cp = _read_curve_params(edge)
     if cp is None:
         return None
     start = (cp[0], cp[1], cp[2])
     end = (cp[3], cp[4], cp[5])
-    midpoint = (
-        (start[0] + end[0]) / 2.0,
-        (start[1] + end[1]) / 2.0,
-        (start[2] + end[2]) / 2.0,
-    )
+    midpoint = _chord_mid(start, end)
     length = math.dist(start, end)
+    source = "chord"
+
+    curve_data = _read_curve_mid_and_arc(edge, start, end)
+    if curve_data is not None:
+        curve_mid, arc_len, source_label = curve_data
+        midpoint = curve_mid
+        length = arc_len
+        source = source_label
+
     return {
         "start": list(start),
         "end": list(end),
         "length": length,
         "midpoint": list(midpoint),
+        "curve_mid_source": source,
     }
 
 
@@ -337,24 +347,24 @@ def resolve_by_fingerprint(doc: Any, ref: Any) -> RefResolution:
 def resolve_by_edge_fingerprint(doc: Any, ref: Any) -> RefResolution:
     """Tier-2 edge resolution: re-match ``ref`` endpoints against live edges.
 
-    Walks every solid-body edge of *doc*, reads each edge's endpoint geometry
-    via :func:`_read_edge_geometry` (same ``GetCurveParams2`` path as the
-    interrogator, so the dicts line up), and scores each candidate against the
-    ref using :func:`_edge_match.edge_match_score`. The candidate with the
+    Walks every solid-body edge of *doc*, reads each edge's geometry via
+    :func:`_read_edge_geometry` (same ``GetCurveParams2`` + ``ICurve.Evaluate`` /
+    ``IEdge.GetLength`` path as the interrogator, so the candidate dicts line
+    up), and scores each candidate against the ref using
+    :func:`_edge_match.edge_match_score`. The candidate with the
     lexicographically-smallest key wins (mirrors the face fallback's
     ``(1-dot, centroid_dist)`` ordering in :func:`resolve_by_fingerprint`).
 
-    .. warning:: Capture gap (O2 route note)
+    .. note:: Discriminating power tracks the interrogator
 
-        The interrogator captures only **chord** length and **chord** midpoint
-        (both derived from the endpoints). Today this function discriminates
-        edges **only by their unordered endpoint pair**, and has a known
-        false-positive class: a straight edge and a curved edge sharing the
-        same two vertices are indistinguishable. That is a data limitation,
-        not a predicate bug — the predicate auto-discriminates the moment a
-        true curve midpoint / arc length is captured (a ~1-line interrogator
-        follow-up, zero S1 rework). Tier-1 persist remains the trustworthy
-        path; this is best-effort for the unique-endpoints case.
+        The predicate gates on endpoints (unordered), length, *and* midpoint.
+        When the interrogator's curve reads succeed (``curve_mid_source ==
+        "curve"``), ``length`` is true arc length and ``midpoint`` is the true
+        parametric midpoint — the predicate then distinguishes straight edges
+        from curved arcs sharing the same endpoint pair. When the curve vtable
+        is unreachable, both fields fall back to chord values and the predicate
+        collapses to endpoint-pair comparison (the old capture gap). Tier-1
+        persist remains the trustworthy path; this is best-effort fallback.
 
     Returns ``method``:
 
@@ -365,6 +375,7 @@ def resolve_by_edge_fingerprint(doc: Any, ref: Any) -> RefResolution:
         "start": list(getattr(ref, "start", ())),
         "end": list(getattr(ref, "end", ())),
         "length": getattr(ref, "length", None),
+        "midpoint": list(getattr(ref, "midpoint", ())) if getattr(ref, "midpoint", None) else None,
     }
     if not ref_dict["start"] or not ref_dict["end"]:
         return RefResolution(None, "unresolved", note="edge ref has no endpoint geometry")
