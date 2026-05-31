@@ -444,6 +444,21 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         FieldSpec("depth", LENGTH_SCHEMA, True),
         FieldSpec("flip", {"type": "boolean", "default": False}, False),
     ],
+    "cut_extrude_midplane": [
+        FieldSpec("sketch", {"type": "string"}, True),
+        FieldSpec(
+            "depth",
+            LENGTH_SCHEMA,
+            True,
+        ),
+        FieldSpec("flip", {"type": "boolean", "default": False}, False),
+    ],
+    "cut_extrude_two_direction": [
+        FieldSpec("sketch", {"type": "string"}, True),
+        FieldSpec("depth", LENGTH_SCHEMA, True),
+        FieldSpec("depth2", LENGTH_SCHEMA, True),
+        FieldSpec("flip", {"type": "boolean", "default": False}, False),
+    ],
     "revolve_boss": [
         FieldSpec(
             "sketch",
@@ -995,6 +1010,22 @@ FEATURE_META: dict[str, dict[str, Any]] = {
         "sw_min": "2024 SP1",
         "spike_id": None,
     },
+    "cut_extrude_midplane": {
+        "doc": "Mid-plane cut extrusion: removes `depth` of material centred on "
+        "the sketch plane (depth/2 each side).",
+        "example_ref": "end_condition_cuts",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": "spike_cut_endcond",
+    },
+    "cut_extrude_two_direction": {
+        "doc": "Two-direction blind cut: `depth` into +normal and `depth2` into "
+        "-normal from the sketch plane.",
+        "example_ref": "end_condition_cuts",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": "spike_cut_endcond",
+    },
     "revolve_boss": {
         "doc": "Solid revolve of a profile about its embedded centerline.",
         "example_ref": "grooved_shaft",
@@ -1120,6 +1151,8 @@ FEATURE_ORDER: list[str] = [
     "boss_extrude_blind",
     "cut_extrude_through_all",
     "cut_extrude_blind",
+    "cut_extrude_midplane",
+    "cut_extrude_two_direction",
     "revolve_boss",
     "revolve_cut",
     "simple_hole",
