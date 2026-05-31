@@ -1443,14 +1443,10 @@
           }
         }
       },
-      "closed": {
-        "type": "boolean",
-        "default": false,
-        "description": "If true, close the spline by joining the last point to the first."
-      },
       "construction": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "If true, mark the spline as a construction entity."
       }
     }
   },
@@ -1552,10 +1548,6 @@
         "type": "number",
         "default": 0.0,
         "description": "Rotation of the slot's major axis from the sketch X axis (degrees)."
-      },
-      "construction": {
-        "type": "boolean",
-        "default": false
       }
     }
   },
@@ -1818,16 +1810,7 @@
       },
       "font": {
         "type": "string",
-        "description": "Font family name (e.g. 'Arial'). 🔴 SEAT (P1.7-seat/W0): the SW call is ISketchManager.CreateText with a FontFamily / Height / Bold / Italic bitfield — confirm the exact arg shape on the seat."
-      },
-      "angle_deg": {
-        "type": "number",
-        "default": 0.0,
-        "description": "Rotation of the text baseline from the sketch X axis (degrees)."
-      },
-      "construction": {
-        "type": "boolean",
-        "default": false
+        "description": "Font family name (e.g. 'Arial'). Applied via the inserted ISketchText's text format (GetTextFormat -> TypeFaceName -> SetTextFormat); `height` sets CharHeight in the same call."
       }
     }
   }

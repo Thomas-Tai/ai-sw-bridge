@@ -1,0 +1,23 @@
+{
+  "sw_revision": "32.1.0",
+  "R1_raw_latebound": {
+    "seg_type": "CDispatch",
+    "error": "AttributeError('<unknown>.MakeClosed')",
+    "overall": "FAIL"
+  },
+  "R2_castto": {
+    "error": "TypeError('This COM object can not automate the makepy process - please run makepy manually for this object')",
+    "overall": "FAIL"
+  },
+  "R3_earlybound": {
+    "error": "AttributeError(\"'<win32com.gen_py.SldWorks 2024 Type Library.ISketchSpline instance at 0x2153698479120>' object has no attribute 'MakeClosed'\")",
+    "overall": "FAIL"
+  },
+  "R4_getidsofnames": {
+    "has_oleobj": true,
+    "getidsofnames_error": "com_error(-2147352570, 'Unknown name.', None, None)",
+    "name_resolves": false
+  },
+  "any_makeclosed_works": false,
+  "overall": "FAIL"
+}

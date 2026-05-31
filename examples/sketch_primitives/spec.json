@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SketchPrimitivesGallery",
-    "_comment": "P1.7s showcase: one feature entry per sketch primitive. All seven build literal-size geometry via seat-proven ISketchManager.Create* / IModelDoc2.InsertSketchText calls (SW 2024 rev 32.1.0, 2026-05-31). Geometry is literal (no parametric dims); slots are always rounded-ended (slot_type 'arc').",
+    "_comment": "P1.7s showcase: one feature entry per sketch primitive. All seven build literal-size geometry via seat-proven ISketchManager.Create* / IModelDoc2.InsertSketchText calls (SW 2024 rev 32.1.0, 2026-05-31). Geometry is literal (no parametric dims); slots are always rounded-ended (slot_type 'arc'). Full-fidelity: line/arc/spline/polygon/ellipse accept 'construction'; text accepts 'height'+'font'. Unsupported on this seat and rejected at validation (not faked): spline 'closed', slot 'construction', text 'construction'/'angle_deg'.",
     "features": [
         {
             "type": "sketch_line",
@@ -30,7 +30,7 @@
                 {"x": 15.0, "y": 38.0},
                 {"x": 20.0, "y": 30.0}
             ],
-            "closed": false
+            "construction": false
         },
         {
             "type": "sketch_slot",
@@ -68,8 +68,7 @@
             "position": {"x": 0.0, "y": 50.0},
             "content":  "ai-sw-bridge",
             "height":    3.0,
-            "font":      "Arial",
-            "angle_deg":  0.0
+            "font":      "Arial"
         }
     ]
 }
