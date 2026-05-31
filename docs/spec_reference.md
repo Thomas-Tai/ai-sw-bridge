@@ -206,9 +206,13 @@ proven `ISketchManager.Create*` (or `IModelDoc2.InsertSketchText`) call. The
 so no part-frame projection is applied. `LENGTH_SCHEMA` fields accept a plain
 millimetre number or a `{rhs: "..."}` object, but **parametric dimensioning is
 not yet wired** for these primitives (geometry is always built at literal size,
-as in `--no-dim`); the `construction` flag, spline `closed`, and text
-`height`/`font`/`angle_deg` are likewise **not yet applied** and are deferred to
-a follow-up pass.
+as in `--no-dim`). The `construction` flag **is** applied on line/arc/spline/
+polygon/ellipse, and text `height`/`font` **are** applied. Three things have no
+out-of-process API on this seat and are therefore **rejected at validation**
+(never silently faked): spline `closed` (a point-based periodic C2 spline; only
+a C0 cusp is achievable, so it is refused), `construction` on **slot** (the
+`CreateSketchSlot` return is read-only) and on **text** (text is not a segment),
+and text `angle_deg` (no angle on `InsertSketchText`/`ITextFormat`).
 
 ### `sketch_line`
 
@@ -275,7 +279,7 @@ A freeform spline through a sequence of control points (min 2).
     {"x": 10.0, "y": 35.0},
     {"x": 20.0, "y": 30.0}
   ],
-  "closed": false
+  "construction": false
 }
 ```
 
@@ -285,10 +289,9 @@ A freeform spline through a sequence of control points (min 2).
 | `name` | yes | string | Unique feature name |
 | `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
 | `points` | yes | array | Min 2 points; each `{x, y, z?}` in sketch-local mm. If any point has non-zero `z`, the 3D-sketch COM path is selected. |
-| `closed` | no | boolean | Close the spline by joining the last point to the first. Default `false`. |
-| `construction` | no | boolean | Default `false`. |
+| `construction` | no | boolean | Mark the spline as a construction entity. Default `false`. |
 
-> **✅ Seat-proven (2026-05-31):** `ISketchManager.CreateSpline2(pointBuffer, b3D=False)` where `pointBuffer` is a `VT_ARRAY|VT_R8` VARIANT SAFEARRAY of flat `x,y,z` triples (z=0 on a plane). `closed=true` is not yet honoured (open spline only).
+> **✅ Seat-proven (2026-05-31):** `ISketchManager.CreateSpline2(pointBuffer, b3D=False)` where `pointBuffer` is a `VT_ARRAY|VT_R8` VARIANT SAFEARRAY of flat `x,y,z` triples (z=0 on a plane). **Open splines only.** There is no `closed` field: a point-based periodic (C2) closed spline has no out-of-process API on this seat — `ISketchSpline.MakeClosed` and `ISketchManager.CreateClosedSpline` do not exist (the live object answered `GetIDsOfNames("MakeClosed")` with `DISP_E_UNKNOWNNAME`, and a full typelib scan found neither), and appending the first point yields a C0 cusp, not a periodic spline. A `closed` request is rejected at validation rather than faked.
 
 ### `sketch_slot`
 
@@ -318,7 +321,8 @@ rounded-ended — for a flat-ended rectangular slot use `sketch_rectangle_on_pla
 | `length` | yes | length | Slot length (mm) |
 | `slot_type` | no | enum | Only `"arc"` (rounded ends) is supported. Default `"arc"`. Flat-ended slots → use `sketch_rectangle_on_plane`. |
 | `angle_deg` | no | number | Rotation of the slot's major axis from sketch X (degrees). Default `0`. |
-| `construction` | no | boolean | Default `false`. |
+
+> **No `construction` field.** `CreateSketchSlot` returns a read-only slot object whose `ConstructionGeometry` cannot be set via the API, so a `construction` request on a slot is rejected at validation rather than faked.
 
 ### `sketch_polygon`
 
@@ -388,8 +392,7 @@ A plain-text annotation sketch.
   "position": {"x": 0.0, "y": 50.0},
   "content":  "ai-sw-bridge",
   "height":    3.0,
-  "font":      "Arial",
-  "angle_deg":  0.0
+  "font":      "Arial"
 }
 ```
 
@@ -400,12 +403,10 @@ A plain-text annotation sketch.
 | `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
 | `position` | yes | object | `{x, y}` in sketch-local mm |
 | `content` | yes | string | Plain ASCII text content (non-empty). |
-| `height` | yes | length | Text cap height (mm) |
-| `font` | no | string | Font family name (e.g. `"Arial"`). |
-| `angle_deg` | no | number | Rotation of the baseline from sketch X (degrees). Default `0`. |
-| `construction` | no | boolean | Default `false`. |
+| `height` | yes | length | Text cap height (mm). Applied as `CharHeight`. |
+| `font` | no | string | Font family name (e.g. `"Arial"`). Applied as `TypeFaceName`. |
 
-> **✅ Seat-proven (2026-05-31):** Text is a document-level op — `IModelDoc2.InsertSketchText(x, y, z, content, useDocFormat, fmtX, fmtY, fmtZ, fmtAngle)` (NOT on `ISketchManager`). `useDocFormat` is an int (`1` = use document text format), not a bool. `height`/`font`/`angle_deg` are **not yet applied** (document default format is used); honouring them via the returned `ISketchText` text-format object is deferred.
+> **✅ Seat-proven (2026-05-31):** Text is a document-level op — `IModelDoc2.InsertSketchText(Ptx, Pty, Ptz, Text, Alignment, FlipDirection, HorizontalMirror, WidthFactor, SpaceBetweenChars)` (NOT on `ISketchManager`; the trailing args are ints and there is **no angle parameter**). `height` (CharHeight, metres) and `font` (TypeFaceName) are applied through the returned `ISketchText` via the early-bind hatch: `typed(raw, "ISketchText").GetTextFormat()` → mutate → `SetTextFormat(0, tf)` (late binding alone hits "Member not found" on `GetTextFormat`). There is **no `angle_deg` or `construction` field**: text baseline rotation has no out-of-process API on this seat (`InsertSketchText`/`ITextFormat` expose no angle), and text is not a sketch segment — both are rejected at validation rather than faked.
 
 ## Extrude primitives
 

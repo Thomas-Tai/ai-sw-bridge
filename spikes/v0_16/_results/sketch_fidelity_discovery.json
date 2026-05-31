@@ -1,0 +1,33 @@
+{
+  "sw_revision": "32.1.0",
+  "construction": {
+    "feature": "construction",
+    "line_before": false,
+    "line_after_set_true": true,
+    "line_ok": true,
+    "polygon_seg_count": 7,
+    "polygon_marked": 7,
+    "polygon_ok": true,
+    "overall": "PASS"
+  },
+  "spline_closed": {
+    "feature": "spline_closed",
+    "attempts": [],
+    "sketchmgr_closed_members_present": [
+      "CreateSpline3"
+    ],
+    "spline_seg_members_present": [],
+    "spline_seg_type": "CDispatch",
+    "geometric_close_materialized": true,
+    "overall": "INVESTIGATE"
+  },
+  "text_format": {
+    "feature": "text_format",
+    "text_type": "CDispatch",
+    "text_is_none": false,
+    "gettextformat_prop_error": "com_error(-2147352573, 'Member not found.', None, None)",
+    "gettextformat_call_error": "com_error(-2147352573, 'Member not found.', None, None)",
+    "tf_type": null,
+    "overall": "INVESTIGATE"
+  }
+}

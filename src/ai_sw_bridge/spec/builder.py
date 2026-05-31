@@ -1392,7 +1392,14 @@ def _circles_on_face_rhs_walker(feat: dict[str, Any]) -> list[tuple[str, str, st
 #   spline   sm.CreateSpline2(VARIANT(VT_ARRAY|VT_R8)[flat x,y,z triples], False)
 #   slot     sm.CreateSketchSlot(ct:int, lt:int, width, x1,y1,z1, x2,y2,z2,
 #                                x3,y3,z3, addDim:bool, centerline:bool)
-#   text     doc.InsertSketchText(x,y,z, content, useDocFmt:int=1, 0,0,0,0)
+#   text     doc.InsertSketchText(x,y,z, content, alignment:int, flip:int,
+#                                hmirror:int, widthFactor:int, spaceChars:int)
+#            then height/font via ISketchText.GetTextFormat -> SetTextFormat(0,tf)
+#
+# Full-fidelity flags (P1.7-fidelity): `construction` marks the created
+# segment(s) via ISketchSegment.ConstructionGeometry (line/arc/spline/polygon/
+# ellipse — seat-proven). Unsupported-on-seat requests are rejected loudly, not
+# faked: spline `closed`, slot `construction`, text `construction`/`angle_deg`.
 # ---------------------------------------------------------------------------
 
 
@@ -1444,6 +1451,68 @@ def _close_plane_sketch_and_build(
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
 
 
+def _segments(result: Any) -> list[Any]:
+    """Normalise an ``ISketchManager.Create*`` return into a list of segments.
+
+    Single-segment creators (line/arc/spline/ellipse) return one
+    ``ISketchSegment``; ``CreatePolygon`` returns a tuple of segments. A real
+    segment exposes the settable ``ConstructionGeometry`` property, so that
+    attribute discriminates a lone segment from a collection.
+    """
+    if result is None:
+        return []
+    if hasattr(result, "ConstructionGeometry"):
+        return [result]
+    try:
+        return list(result)
+    except TypeError:
+        return [result]
+
+
+def _apply_construction(result: Any, feat: dict[str, Any]) -> None:
+    """Mark the created segment(s) as construction geometry when requested.
+
+    Seat-proven on line/arc/spline/polygon/ellipse — every returned segment
+    accepts ``ConstructionGeometry = True``. Slot and text never reach here:
+    their handlers reject ``construction`` (``CreateSketchSlot``'s return is a
+    read-only slot object; text is not a segment).
+    """
+    if not feat.get("construction"):
+        return
+    for seg in _segments(result):
+        seg.ConstructionGeometry = True
+
+
+def _as_sketch_text(raw_text: Any) -> Any:
+    """typed-wrap an ``InsertSketchText`` return as ``ISketchText``.
+
+    The early-bind escape hatch: the raw return is a generic ``IDispatch`` that
+    late binding cannot format (``GetTextFormat`` → "Member not found"); the
+    typed wrap forces the real interface. The pywin32-dependent import is
+    function-local (and this is a module-level seam) so builder stays importable
+    and the text-format logic is unit-testable without SOLIDWORKS.
+    """
+    from ai_sw_bridge.com.earlybind import typed
+
+    return typed(raw_text, "ISketchText")
+
+
+def _apply_text_format(raw_text: Any, feat: dict[str, Any]) -> None:
+    """Apply ``height`` (CharHeight, metres) and ``font`` (TypeFaceName).
+
+    Seat-proven (SW 2024): ``ISketchText.GetTextFormat()`` → mutate the format
+    object → ``SetTextFormat(0, tf)``. ``height`` is required; ``font`` is
+    optional (document default kept when absent).
+    """
+    st = _as_sketch_text(raw_text)
+    tf = st.GetTextFormat()
+    tf.CharHeight = _mm_to_m(feat["height"])
+    font = feat.get("font")
+    if font:
+        tf.TypeFaceName = str(font)
+    st.SetTextFormat(0, tf)
+
+
 def _build_sketch_line(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Sketch a single line segment on a reference plane.
 
@@ -1451,10 +1520,11 @@ def _build_sketch_line(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """
     start, end = feat["start"], feat["end"]
     sm = _enter_plane_sketch(ctx, feat)
-    sm.CreateLine(
+    seg = sm.CreateLine(
         _mm_to_m(start["x"]), _mm_to_m(start["y"]), 0.0,
         _mm_to_m(end["x"]), _mm_to_m(end["y"]), 0.0,
     )
+    _apply_construction(seg, feat)
     return _close_plane_sketch_and_build(ctx, feat)
 
 
@@ -1467,12 +1537,13 @@ def _build_sketch_arc(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     c, s, e = feat["center"], feat["start"], feat["end"]
     direction = 1 if str(feat.get("direction", "ccw")).lower() == "ccw" else -1
     sm = _enter_plane_sketch(ctx, feat)
-    sm.CreateArc(
+    seg = sm.CreateArc(
         _mm_to_m(c["x"]), _mm_to_m(c["y"]), 0.0,
         _mm_to_m(s["x"]), _mm_to_m(s["y"]), 0.0,
         _mm_to_m(e["x"]), _mm_to_m(e["y"]), 0.0,
         direction,
     )
+    _apply_construction(seg, feat)
     return _close_plane_sketch_and_build(ctx, feat)
 
 
@@ -1481,15 +1552,25 @@ def _build_sketch_spline(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeatur
 
     Seat-proven: ``ISketchManager.CreateSpline2(pointBuffer, b3D=False)`` where
     ``pointBuffer`` is a ``VT_ARRAY|VT_R8`` SAFEARRAY of flat ``x,y,z`` triples
-    (z=0 on a plane). The ``closed`` flag is not yet honoured (open spline only);
-    closing a spline is deferred to a later pass.
+    (z=0 on a plane). Open splines only — a point-based periodic (C2) closed
+    spline has no out-of-process API on this seat (``MakeClosed`` /
+    ``CreateClosedSpline`` absent; appending the first point gives a C0 cusp),
+    so a ``closed`` request is rejected loudly rather than faked.
     """
+    if feat.get("closed"):
+        raise NotImplementedError(
+            "Periodic closed splines are not supported out-of-process on this "
+            "SOLIDWORKS version (no MakeClosed/CreateClosedSpline; appending the "
+            "first point yields a C0 cusp, not a periodic spline). Remove "
+            "'closed' and use a standard open spline."
+        )
     points = feat["points"]
     flat: list[float] = []
     for p in points:
         flat.extend([_mm_to_m(p["x"]), _mm_to_m(p["y"]), _mm_to_m(p.get("z", 0.0))])
     sm = _enter_plane_sketch(ctx, feat)
-    sm.CreateSpline2(_r8_safearray(flat), False)
+    seg = sm.CreateSpline2(_r8_safearray(flat), False)
+    _apply_construction(seg, feat)
     return _close_plane_sketch_and_build(ctx, feat)
 
 
@@ -1507,6 +1588,12 @@ def _build_sketch_slot(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """
     import math
 
+    if feat.get("construction") is True:
+        raise NotImplementedError(
+            "CreateSketchSlot returns a read-only slot object; construction "
+            "geometry cannot be set on it via the API. Remove 'construction' "
+            "from the slot spec."
+        )
     c = feat["center"]
     cx, cy = _mm_to_m(c["x"]), _mm_to_m(c["y"])
     width = _mm_to_m(feat["width"])
@@ -1547,7 +1634,8 @@ def _build_sketch_polygon(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeatu
     angle = math.radians(float(feat.get("angle_deg", 0.0)))
     px, py = cx + radius * math.cos(angle), cy + radius * math.sin(angle)
     sm = _enter_plane_sketch(ctx, feat)
-    sm.CreatePolygon(cx, cy, 0.0, px, py, 0.0, sides, inscribed)
+    result = sm.CreatePolygon(cx, cy, 0.0, px, py, 0.0, sides, inscribed)
+    _apply_construction(result, feat)
     return _close_plane_sketch_and_build(ctx, feat)
 
 
@@ -1569,7 +1657,8 @@ def _build_sketch_ellipse(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeatu
     majx, majy = cx + major * math.cos(angle), cy + major * math.sin(angle)
     minx, miny = cx - minor * math.sin(angle), cy + minor * math.cos(angle)
     sm = _enter_plane_sketch(ctx, feat)
-    sm.CreateEllipse(cx, cy, 0.0, majx, majy, 0.0, minx, miny, 0.0)
+    seg = sm.CreateEllipse(cx, cy, 0.0, majx, majy, 0.0, minx, miny, 0.0)
+    _apply_construction(seg, feat)
     return _close_plane_sketch_and_build(ctx, feat)
 
 
@@ -1577,21 +1666,37 @@ def _build_sketch_text(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Sketch a text annotation on a reference plane.
 
     Seat-proven: text is a document-level op — ``IModelDoc2.InsertSketchText(
-    x, y, z, content, useDocFormat:int, fmtX, fmtY, fmtZ, fmtAngle)``.
-    ``useDocFormat`` is an int (1=use document text format), NOT a bool. The
-    spec's ``height``/``font``/``angle_deg`` are not yet applied (document
-    default format is used); honouring them via the returned ISketchText's
-    text-format object is deferred to a later pass.
+    Ptx, Pty, Ptz, Text, Alignment, FlipDirection, HorizontalMirror,
+    WidthFactor, SpaceBetweenChars)`` (the trailing args are ints; there is NO
+    angle parameter). ``height`` (CharHeight) and ``font`` (TypeFaceName) are
+    applied through the returned ISketchText's text format (see
+    ``_apply_text_format``).
+
+    ``angle_deg`` and ``construction`` are rejected: text baseline rotation has
+    no out-of-process API on this seat (no angle on InsertSketchText/ITextFormat)
+    and text is not a sketch segment.
     """
+    if feat.get("construction") is True:
+        raise NotImplementedError(
+            "Text is not a sketch segment; construction geometry does not apply. "
+            "Remove 'construction' from the text spec."
+        )
+    if feat.get("angle_deg"):
+        raise NotImplementedError(
+            "Text baseline rotation has no out-of-process API on this SOLIDWORKS "
+            "version (InsertSketchText/ITextFormat expose no angle). Remove "
+            "'angle_deg' from the text spec."
+        )
     pos = feat["position"]
     # Open the sketch (for its side effect); text is inserted via the doc, not
     # the sketch manager, so the returned SketchManager handle is unused here.
     _enter_plane_sketch(ctx, feat)
-    ctx.doc.InsertSketchText(
+    raw_text = ctx.doc.InsertSketchText(
         _mm_to_m(pos["x"]), _mm_to_m(pos["y"]), 0.0,
         str(feat["content"]),
-        1, 0.0, 0.0, 0.0, 0.0,
+        0, 0, 0, 1, 1,
     )
+    _apply_text_format(raw_text, feat)
     return _close_plane_sketch_and_build(ctx, feat)
 
 
