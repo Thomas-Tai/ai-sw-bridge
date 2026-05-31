@@ -1,0 +1,62 @@
+{
+  "sw_revision": "32.1.0",
+  "part": "cylinder (r=10mm, d=20mm)",
+  "total_edges": 2,
+  "edges": [
+    {
+      "idx": 0,
+      "body": 0,
+      "class": "closed-curve",
+      "source": "curve",
+      "length": 0.062832,
+      "chord": 0.0,
+      "midpoint": [
+        -0.01,
+        0.0,
+        0.02
+      ]
+    },
+    {
+      "idx": 1,
+      "body": 0,
+      "class": "closed-curve",
+      "source": "curve",
+      "length": 0.062832,
+      "chord": 0.0,
+      "midpoint": [
+        -0.01,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "curve_source_on_curved_edges": 0,
+  "curve_source_on_straight_edges": 2,
+  "direct_probe": {
+    "GetCurveParams2": [
+      0.01,
+      0.0,
+      0.02,
+      0.01,
+      0.0,
+      0.02,
+      0.0,
+      6.283185,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "curve_mid_and_arc": {
+      "midpoint": [
+        -0.01,
+        0.0,
+        0.02
+      ],
+      "arc_length": 0.062832,
+      "source": "curve"
+    }
+  },
+  "overall": "PASS",
+  "verdict_detail": "curved edges return source='curve' (0 edges); straight edges also return source='curve' (2 edges) \u2014 correct: arc length = chord length for lines",
+  "cleanup": "doc closed"
+}

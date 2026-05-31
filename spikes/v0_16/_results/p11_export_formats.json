@@ -1,0 +1,82 @@
+{
+  "sw_revision": "32.1.0",
+  "part_saved": "C:\\Users\\sky\\AppData\\Local\\Temp\\aiswb_p11_6nj93n3n\\export_test.sldprt",
+  "formats": {
+    "step214": {
+      "status": "OK",
+      "file_exists": true,
+      "file_size": 15865,
+      "elapsed_ms": 432.2,
+      "format": "step214",
+      "extension": ".step",
+      "save_version": 0
+    },
+    "step203": {
+      "status": "OK",
+      "file_exists": true,
+      "file_size": 15883,
+      "elapsed_ms": 856.2,
+      "format": "step203",
+      "extension": ".step",
+      "save_version": 1
+    },
+    "iges": {
+      "status": "OK",
+      "file_exists": true,
+      "file_size": 22386,
+      "elapsed_ms": 123.4,
+      "format": "iges",
+      "extension": ".igs",
+      "save_version": 0
+    },
+    "parasolid": {
+      "status": "OK",
+      "file_exists": true,
+      "file_size": 7684,
+      "elapsed_ms": 13.5,
+      "format": "parasolid",
+      "extension": ".x_t",
+      "save_version": 0
+    },
+    "stl": {
+      "status": "OK",
+      "file_exists": true,
+      "file_size": 684,
+      "elapsed_ms": 136.9,
+      "format": "stl",
+      "extension": ".stl",
+      "save_version": 0
+    },
+    "3mf": {
+      "status": "OK",
+      "file_exists": true,
+      "file_size": 5450,
+      "elapsed_ms": 76.4,
+      "format": "3mf",
+      "extension": ".3mf",
+      "save_version": 0
+    },
+    "pdf": {
+      "skipped": true,
+      "reason": "save_method=export_pdf (not SAVEAS3_DIRECT)"
+    },
+    "dxf": {
+      "status": "returned 256",
+      "file_exists": false,
+      "file_size": 0,
+      "elapsed_ms": 8.8,
+      "format": "dxf",
+      "extension": ".dxf",
+      "save_version": 0
+    },
+    "dxf_flat": {
+      "skipped": true,
+      "reason": "save_method=flat_pattern_dxf (not SAVEAS3_DIRECT)"
+    }
+  },
+  "saveas3_ok": 6,
+  "saveas3_fail": 1,
+  "overall": "PARTIAL",
+  "verdict_detail": "6/7 SAVEAS3_DIRECT formats OK; failed: dxf. Investigate per-format.",
+  "cleanup": "doc closed, temp dir at C:\\Users\\sky\\AppData\\Local\\Temp\\aiswb_p11_6nj93n3n"
+}
