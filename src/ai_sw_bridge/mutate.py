@@ -106,6 +106,11 @@ _SW_CONST_RADIUS_FILLET = 0
 # IBaseFlangeFeatureData that materializes via the typed_qi pipeline.
 _SW_FM_BASEFLANGE = 34
 _SW_FM_HOLE_WZD = 25
+# swFmSweep — seat-validated by spike_sweep_v2 (rev 32.1.0): CreateDefinition(17)
+# yields an ISweepFeatureData that materializes a Sweep via typed_qi + a marked
+# profile/path selection (profile=mark 1, path=mark 4). The path sketch MUST
+# leave the profile plane or CreateFeature silently no-ops.
+_SW_FM_SWEEP = 17
 
 # swWzdGeneralHoleTypes_e — the hole-wizard "generic type". LLM-facing names
 # map to the integer InitializeHole expects.
@@ -144,6 +149,7 @@ _SUPPORTED_FEATURE_TYPES = (
     "wizard_hole",
     "shell",
     "draft",
+    "sweep",
 )
 
 
@@ -241,6 +247,53 @@ def _create_base_flange(
         return False, "CreateFeature did not materialize"
     except Exception as exc:
         return False, f"base-flange pipeline failed: {exc!r}"
+
+
+def _create_sweep(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Run the seat-validated sweep pipeline on a profile + path sketch.
+
+    Mirrors the ``spike_sweep_v2`` PASS path (rev 32.1.0): a sweep IS a
+    ``CreateDefinition``-shaped feature, so it goes through the proven
+    ``CreateDefinition(17) → typed_qi(ISweepFeatureData) → marked select →
+    CreateFeature`` pipeline (NOT the legacy ``InsertProtrusionSwept*``
+    methods, which rejected every arg arity on the seat).
+
+    ``target`` names two existing sketches: ``{"profile": "<name>",
+    "path": "<name>"}``. Profile selects with mark 1, path with mark 4 via
+    the typed ``IModelDocExtension.SelectByID2`` (SelectByID2 is NOT on the
+    ``IModelDoc2`` proxy). The path sketch must leave the profile plane or
+    CreateFeature silently no-ops. Returns (ok, error).
+    """
+    profile = target.get("profile") if isinstance(target, dict) else None
+    path = target.get("path") if isinstance(target, dict) else None
+    if not profile or not path:
+        return False, "target must contain non-empty 'profile' and 'path' sketch names"
+    doc.ForceRebuild3(False)
+    try:
+        fm = doc.FeatureManager
+        data = fm.CreateDefinition(_SW_FM_SWEEP)
+        mod = wrapper_module()
+        fd = typed_qi(data, "ISweepFeatureData", module=mod)
+        ext = typed(doc.Extension, "IModelDocExtension", module=mod)
+        try:
+            doc.ClearSelection2(True)
+        except Exception:
+            pass
+        if not ext.SelectByID2(profile, "SKETCH", 0, 0, 0, False, 1, None, 0):
+            return False, f"could not select profile sketch {profile!r}"
+        if not ext.SelectByID2(path, "SKETCH", 0, 0, 0, True, 4, None, 0):
+            return False, f"could not select path sketch {path!r}"
+        feat = fm.CreateFeature(fd)
+        if _materialized(feat):
+            return True, None
+        return False, (
+            "CreateFeature did not materialize "
+            "(the path sketch must leave the profile plane)"
+        )
+    except Exception as exc:
+        return False, f"sweep pipeline failed: {exc!r}"
 
 
 def _get_definition(feat: Any, mod: Any) -> Any:
@@ -690,6 +743,8 @@ def _apply_feature(
         return _create_shell(doc, feature, target)
     if ftype == "draft":
         return _create_draft(doc, feature, target)
+    if ftype == "sweep":
+        return _create_sweep(doc, feature, target)
     return False, f"unsupported feature type {ftype!r}"
 
 
@@ -1269,6 +1324,15 @@ def sw_propose_feature_add(
                     "draft target.faces must be a non-empty list of [x,y,z] coords"
                 )
                 return result
+
+        # A sweep is built on two named sketches: a profile and a path.
+        if feat_type == "sweep":
+            for pname in ("profile", "path"):
+                if not isinstance(target.get(pname), str) or not target.get(pname):
+                    result["error"] = (
+                        f"sweep target.{pname} must be a non-empty sketch name"
+                    )
+                    return result
 
         if not doc_path or not Path(doc_path).exists():
             result["error"] = f"doc_path does not exist: {doc_path}"
