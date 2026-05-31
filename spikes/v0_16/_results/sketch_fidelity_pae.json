@@ -1,0 +1,73 @@
+{
+  "sw_revision": "32.1.0",
+  "construction": [
+    {
+      "type": "sketch_line",
+      "name": "CF_Line",
+      "count_delta": 1,
+      "has_construction": true,
+      "overall": "PASS"
+    },
+    {
+      "type": "sketch_arc",
+      "name": "CF_Arc",
+      "count_delta": 1,
+      "has_construction": true,
+      "overall": "PASS"
+    },
+    {
+      "type": "sketch_spline",
+      "name": "CF_Spline",
+      "count_delta": 1,
+      "has_construction": true,
+      "overall": "PASS"
+    },
+    {
+      "type": "sketch_polygon",
+      "name": "CF_Polygon",
+      "count_delta": 1,
+      "has_construction": true,
+      "overall": "PASS"
+    },
+    {
+      "type": "sketch_ellipse",
+      "name": "CF_Ellipse",
+      "count_delta": 1,
+      "has_construction": true,
+      "overall": "PASS"
+    }
+  ],
+  "text_format": {
+    "name": "CF_Text",
+    "count_delta": 1,
+    "format": {
+      "char_height": 0.003,
+      "typeface": "Arial",
+      "text_count": 1
+    },
+    "overall": "PASS"
+  },
+  "rejections": [
+    {
+      "name": "RJ_SplineClosed",
+      "overall": "PASS",
+      "raised": "Periodic closed splines are not supported out-of-process on this SOLIDWORKS vers"
+    },
+    {
+      "name": "RJ_SlotCons",
+      "overall": "PASS",
+      "raised": "CreateSketchSlot returns a read-only slot object; construction geometry cannot b"
+    },
+    {
+      "name": "RJ_TextCons",
+      "overall": "PASS",
+      "raised": "Text is not a sketch segment; construction geometry does not apply. Remove 'cons"
+    },
+    {
+      "name": "RJ_TextAngle",
+      "overall": "PASS",
+      "raised": "Text baseline rotation has no out-of-process API on this SOLIDWORKS version (Ins"
+    }
+  ],
+  "overall": "PASS"
+}

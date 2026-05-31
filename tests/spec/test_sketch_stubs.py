@@ -25,8 +25,18 @@ from ai_sw_bridge.spec import builder
 
 
 class _FakeSketchFeature:
-    def __init__(self) -> None:
-        self.Name: str | None = None
+    """A created sketch segment/feature. Records ``ConstructionGeometry`` sets
+    into the shared log so construction wiring is observable in tests."""
+
+    def __init__(self, log: list[tuple[str, tuple]] | None = None) -> None:
+        object.__setattr__(self, "_log", log)
+        object.__setattr__(self, "Name", None)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        log = object.__getattribute__(self, "_log")
+        if name == "ConstructionGeometry" and log is not None:
+            log.append(("ConstructionGeometry", (value,)))
+        object.__setattr__(self, name, value)
 
 
 class _FakeSketchManager:
@@ -42,7 +52,7 @@ class _FakeSketchManager:
         # Any Create* call (CreateLine, CreateArc, ...) is recorded generically.
         def _recorder(*args: Any) -> Any:
             self._log.append((name, args))
-            return _FakeSketchFeature()
+            return _FakeSketchFeature(self._log)
 
         return _recorder
 
@@ -68,6 +78,29 @@ class _FakeDoc:
     def InsertSketchText(self, *args: Any) -> Any:
         self.log.append(("InsertSketchText", args))
         return _FakeSketchFeature()
+
+
+class _FakeTextFormat:
+    """A mutable ITextFormat stand-in (CharHeight in metres, TypeFaceName)."""
+
+    def __init__(self) -> None:
+        self.CharHeight: float | None = None
+        self.TypeFaceName: str | None = None
+
+
+class _FakeSketchText:
+    """ISketchText stand-in: GetTextFormat -> mutate -> SetTextFormat(which, tf).
+    Records the (which, CharHeight, TypeFaceName) seen by SetTextFormat."""
+
+    def __init__(self) -> None:
+        self._tf = _FakeTextFormat()
+        self.set_args: tuple[int, float | None, str | None] | None = None
+
+    def GetTextFormat(self) -> _FakeTextFormat:
+        return self._tf
+
+    def SetTextFormat(self, which: int, tf: _FakeTextFormat) -> None:
+        self.set_args = (which, tf.CharHeight, tf.TypeFaceName)
 
 
 class _Ctx:
@@ -189,19 +222,122 @@ class TestSketchPrimitiveHandlers:
                     [0.07, 0.03, 0.0, 0.08, 0.03, 0.0, 0.07, 0.035, 0.0])
         _assert_plane_lifecycle(ctx, "El1")
 
-    def test_text(self) -> None:
+    def test_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ctx = _Ctx()
+        st = _FakeSketchText()
+        monkeypatch.setattr(builder, "_as_sketch_text", lambda raw: st)
         builder._build_sketch_text(ctx, {
             "type": "sketch_text", "name": "Tx1", "plane": "Front",
             "position": {"x": 0.0, "y": 50.0}, "content": "hello",
             "height": 3.0, "font": "Arial",
         })
         args = _only(ctx, "InsertSketchText")
-        # x, y, z, content, useDocFmt(int), fmtX, fmtY, fmtZ, fmtAngle
+        # Ptx, Pty, Ptz, Text, Alignment(int), Flip, HMirror, WidthFactor, SpaceChars
         assert args[3] == "hello"
-        assert args[4] == 1 and isinstance(args[4], int)
+        assert args[4] == 0 and isinstance(args[4], int)
         _approx_seq((args[0], args[1], args[2]), [0.0, 0.05, 0.0])
+        # height 3 mm -> CharHeight 0.003 m and font -> TypeFaceName, via
+        # GetTextFormat -> SetTextFormat(0, tf).
+        assert st.set_args is not None
+        which, charheight, typeface = st.set_args
+        assert which == 0
+        assert charheight == pytest.approx(0.003)
+        assert typeface == "Arial"
         _assert_plane_lifecycle(ctx, "Tx1")
+
+    def test_text_no_font_keeps_doc_typeface(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        ctx = _Ctx()
+        st = _FakeSketchText()
+        monkeypatch.setattr(builder, "_as_sketch_text", lambda raw: st)
+        builder._build_sketch_text(ctx, {
+            "type": "sketch_text", "name": "Tx2", "plane": "Front",
+            "position": {"x": 0.0, "y": 0.0}, "content": "hi", "height": 5.0,
+        })
+        # height still applied; typeface untouched (no font in spec).
+        assert st.set_args[1] == pytest.approx(0.005)
+        assert st.set_args[2] is None
+
+
+class TestSketchConstructionFlag:
+    """`construction: true` marks the created segment(s); absent/false does not.
+    Slot and text reject `construction` (handled in TestSketchFidelityRejections)."""
+
+    def test_line_construction_marks_segment(self) -> None:
+        ctx = _Ctx()
+        builder._build_sketch_line(ctx, {
+            "type": "sketch_line", "name": "L1", "plane": "Front",
+            "start": {"x": 0.0, "y": 0.0}, "end": {"x": 20.0, "y": 20.0},
+            "construction": True,
+        })
+        assert ("ConstructionGeometry", (True,)) in ctx.doc.log
+
+    def test_line_default_not_construction(self) -> None:
+        ctx = _Ctx()
+        builder._build_sketch_line(ctx, {
+            "type": "sketch_line", "name": "L1", "plane": "Front",
+            "start": {"x": 0.0, "y": 0.0}, "end": {"x": 20.0, "y": 20.0},
+        })
+        assert all(name != "ConstructionGeometry" for name, _ in ctx.doc.log)
+
+    def test_polygon_construction_marks_segments(self) -> None:
+        ctx = _Ctx()
+        builder._build_sketch_polygon(ctx, {
+            "type": "sketch_polygon", "name": "Pg1", "plane": "Front",
+            "center": {"x": 50.0, "y": 30.0}, "sides": 6, "radius": 8.0,
+            "construction": True,
+        })
+        assert ("ConstructionGeometry", (True,)) in ctx.doc.log
+
+    def test_ellipse_construction_marks_segment(self) -> None:
+        ctx = _Ctx()
+        builder._build_sketch_ellipse(ctx, {
+            "type": "sketch_ellipse", "name": "El1", "plane": "Front",
+            "center": {"x": 70.0, "y": 30.0}, "major_radius": 10.0,
+            "minor_radius": 5.0, "construction": True,
+        })
+        assert ("ConstructionGeometry", (True,)) in ctx.doc.log
+
+
+class TestSketchFidelityRejections:
+    """Unsupported-on-seat flags fail loudly (handler tripwire), never silently
+    fake. Mirrors the schema's `additionalProperties: false` rejection for any
+    spec that bypasses validation."""
+
+    def test_spline_closed_rejected(self) -> None:
+        ctx = _Ctx()
+        with pytest.raises(NotImplementedError, match="closed"):
+            builder._build_sketch_spline(ctx, {
+                "type": "sketch_spline", "name": "Sp1", "plane": "Front",
+                "points": [{"x": 0.0, "y": 0.0}, {"x": 10.0, "y": 5.0}],
+                "closed": True,
+            })
+
+    def test_slot_construction_rejected(self) -> None:
+        ctx = _Ctx()
+        with pytest.raises(NotImplementedError, match="construction"):
+            builder._build_sketch_slot(ctx, {
+                "type": "sketch_slot", "name": "Sl1", "plane": "Front",
+                "center": {"x": 30.0, "y": 30.0}, "width": 6.0, "length": 20.0,
+                "construction": True,
+            })
+
+    def test_text_construction_rejected(self) -> None:
+        ctx = _Ctx()
+        with pytest.raises(NotImplementedError, match="construction"):
+            builder._build_sketch_text(ctx, {
+                "type": "sketch_text", "name": "Tx1", "plane": "Front",
+                "position": {"x": 0.0, "y": 0.0}, "content": "x", "height": 3.0,
+                "construction": True,
+            })
+
+    def test_text_angle_rejected(self) -> None:
+        ctx = _Ctx()
+        with pytest.raises(NotImplementedError, match="angle"):
+            builder._build_sketch_text(ctx, {
+                "type": "sketch_text", "name": "Tx1", "plane": "Front",
+                "position": {"x": 0.0, "y": 0.0}, "content": "x", "height": 3.0,
+                "angle_deg": 45.0,
+            })
 
 
 class TestMmToMHelper:

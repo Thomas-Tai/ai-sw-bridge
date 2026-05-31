@@ -1,0 +1,62 @@
+{
+  "sw_revision": "32.1.0",
+  "construction": {
+    "line": {
+      "primitive": "line",
+      "seg_count": 1,
+      "marked": 1,
+      "overall": "PASS"
+    },
+    "arc": {
+      "primitive": "arc",
+      "seg_count": 1,
+      "marked": 1,
+      "overall": "PASS"
+    },
+    "spline": {
+      "primitive": "spline",
+      "seg_count": 1,
+      "marked": 1,
+      "overall": "PASS"
+    },
+    "slot": {
+      "primitive": "slot",
+      "seg_count": 1,
+      "seg_errors": [
+        "AttributeError(\"Property '<unknown>.ConstructionGeometry' can not be set.\")"
+      ],
+      "marked": 0,
+      "overall": "FAIL"
+    },
+    "polygon": {
+      "primitive": "polygon",
+      "seg_count": 7,
+      "marked": 7,
+      "overall": "PASS"
+    },
+    "ellipse": {
+      "primitive": "ellipse",
+      "seg_count": 1,
+      "marked": 1,
+      "overall": "PASS"
+    }
+  },
+  "text_format": {
+    "primitive": "text",
+    "charheight_before": 0.0035,
+    "charheight_after": 0.003,
+    "typeface_after": "Arial",
+    "overall": "PASS"
+  },
+  "construction_pass": [
+    "line",
+    "arc",
+    "spline",
+    "polygon",
+    "ellipse"
+  ],
+  "construction_fail": [
+    "slot"
+  ],
+  "overall": "PARTIAL"
+}
