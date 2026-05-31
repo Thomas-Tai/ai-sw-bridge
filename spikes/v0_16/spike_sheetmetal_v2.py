@@ -76,6 +76,7 @@ from spike_earlybind_persist import connect_running_sw, ensure_sw_module  # noqa
 SW_DEFAULT_TEMPLATE_PART = 8
 SW_FM_BASEFLANGE = 34
 IFACE_BASEFLANGE = "IBaseFlangeFeatureData"
+SW_FM_EDGEFLANGE = 37
 _EDGEFLANGE_SCAN_RANGE = range(28, 55)
 IFACE_EDGEFLANGE = "IEdgeFlangeFeatureData"
 _MITERFLANGE_SCAN_RANGE = range(28, 55)
@@ -210,33 +211,44 @@ def _build_base_flange(doc: Any, fm: Any, mod: Any) -> dict[str, Any]:
     return out
 
 
-def _find_bendable_edges(doc: Any) -> list:
+def _find_bendable_edges(doc, mod=None):
+    """Get live (selectable) edges via persist round-trip.
+
+    Late-bound edges from body.GetEdges() are dead COM proxies.
+    The persist round-trip through a typed Extension yields live,
+    selectable edge entities.
+    """
+    from ai_sw_bridge.com.earlybind import typed_extension
     rec, bodies = _capture(lambda: doc.GetBodies2(SW_BODY_SOLID, True))
     body_list = _as_list(bodies)
     if not body_list:
         return []
     body = body_list[0]
-    rec, edges = _capture(lambda: body.GetEdges())
-    edge_list = _as_list(edges)
+    rec, edges_raw = _capture(lambda: body.GetEdges())
+    edge_list = _as_list(edges_raw)
+    if not edge_list:
+        return []
+    try:
+        ext = typed_extension(doc, module=mod)
+    except Exception:
+        return []
     result = []
     for e in edge_list:
         try:
-            curve = e.GetCurve()
-            if curve is None:
+            pid = ext.GetPersistReference3(e)
+            if pid is None:
                 continue
-            length_data = e.GetCurveLength2
-            length = length_data() if callable(length_data) else length_data
-            if isinstance(length, (tuple, list)):
-                length = length[0] if length else 0.0
-            if length > 0.005:
-                result.append(e)
-        except Exception:  # noqa: BLE001
+            obj_result = ext.GetObjectByPersistReference3(pid)
+            obj = obj_result[0] if isinstance(obj_result, tuple) else obj_result
+            if obj is not None and not isinstance(obj, int):
+                result.append(obj)
+        except Exception:
             continue
     return result
 
 
 _EDGEFLANGE_CANDIDATE_MEMBERS = (
-    "Angle", "Radius", "BendRadius", "ReverseDirection",
+    "BendAngle", "BendRadius", "ReverseDirection",
     "UseDefaultBendRadius", "FlangePosition", "UsePositionSchedule",
     "FlangeOffset", "AutoMiter", "Gap")
 
@@ -273,8 +285,7 @@ def _probe_edge_flange(doc: Any, fm: Any, mod: Any, edges: list) -> dict[str, An
         members = _probe_members(typed_obj, _EDGEFLANGE_CANDIDATE_MEMBERS)
         out["members"] = members
         set_recs: dict[str, Any] = {}
-        for name, val in (("Angle", EDGE_FLANGE_ANGLE_RAD),
-                          ("Radius", EDGE_FLANGE_RADIUS_M),
+        for name, val in (("BendAngle", EDGE_FLANGE_ANGLE_RAD),
                           ("BendRadius", EDGE_FLANGE_RADIUS_M)):
             if members.get(name) == "present":
                 rec, _ = _capture(lambda n=name, v=val: setattr(typed_obj, n, v))
@@ -285,8 +296,19 @@ def _probe_edge_flange(doc: Any, fm: Any, mod: Any, edges: list) -> dict[str, An
                 doc.ClearSelection2(True)
             except Exception:  # noqa: BLE001
                 pass
-            sel_ok = select_entity(edges[0], append=False, mark=0)
+            try:
+                sel_ok = edges[0].Select2(False, 0)
+            except Exception:  # noqa: BLE001
+                sel_ok = select_entity(edges[0], append=False, mark=0)
             out["select_edge"] = sel_ok
+        # Try AddEdges to pass edges into feature data
+        if edges:
+            add_rec, _ = _capture(lambda: typed_obj.AddEdges([edges[0]]))
+            out["AddEdges"] = add_rec
+            try:
+                out["edge_count"] = typed_obj.GetEdgeCount()
+            except Exception:  # noqa: BLE001
+                pass
         feat_rec, feat = _capture(lambda: fm.CreateFeature(data))
         feat_rec["materialized"] = _materialized(feat)
         if _materialized(feat):
@@ -500,7 +522,7 @@ def run(keep_files=False):
             doc.ForceRebuild3(False)
         except Exception:
             pass
-        edges = _find_bendable_edges(doc)
+        edges = _find_bendable_edges(doc, mod)
         result["bendable_edges"] = len(edges)
         if not edges:
             result["edge_flange"] = {"overall": "FAIL", "reason": "no bendable edges"}
@@ -511,7 +533,7 @@ def run(keep_files=False):
                 doc.ForceRebuild3(False)
             except Exception:
                 pass
-            edges2 = _find_bendable_edges(doc)
+            edges2 = _find_bendable_edges(doc, mod)
             if len(edges2) > 1:
                 result["miter_flange"] = _probe_miter_flange(doc, fm, mod, edges2[1:])
             else:
