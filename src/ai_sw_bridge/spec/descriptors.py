@@ -320,10 +320,13 @@ _SKETCH_SPLINE_POINTS: dict[str, Any] = {
 }
 
 _SLOT_TYPE_ENUM: dict[str, Any] = {
-    "enum": ["square", "arc"],
+    "enum": ["arc"],
+    "default": "arc",
     "description": (
-        "End shape of the slot. 'square' = rectangle with flat ends "
-        "(CreateCornerRectSlot); 'arc' = rounded ends (CreateArcSlot)."
+        "End shape of the slot. Only 'arc' (rounded ends) is supported — the "
+        "SOLIDWORKS CreateSketchSlot kernel call produces inherently rounded "
+        "slots (there is no flat-ended creation type). For a flat-ended "
+        "rectangular slot, use sketch_rectangle_on_plane instead."
     ),
 }
 
