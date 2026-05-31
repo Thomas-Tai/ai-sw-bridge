@@ -10,6 +10,7 @@ tuples. The mock emulates the E2.1 spike's load-bearing findings:
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import pytest
@@ -287,12 +288,47 @@ def test_capture_on_but_no_doc_skips_read(
 
 @dataclass
 class MockEdge:
-    """IEdge stand-in: GetCurveParams2 head is start xyz + end xyz."""
+    """IEdge stand-in: GetCurveParams2 head is start xyz + end xyz.
+
+    ``curve`` / ``length`` are optional: when ``None`` (the default) the
+    interrogator's curve-eval helper can't reach the ICurve vtable and the
+    stored midpoint / length fall back to chord values — which is the
+    behaviour every pre-existing test asserts. Supply a ``MockCurve`` and a
+    float arc length to exercise the true-curve path.
+    """
 
     cp: tuple
+    curve: object = None
+    length: object = None
 
     def GetCurveParams2(self):
         return self.cp
+
+    def GetCurve(self):
+        if self.curve is None:
+            raise AttributeError("GetCurve not configured")
+        return self.curve
+
+    def GetLength(self):
+        if self.length is None:
+            raise AttributeError("GetLength not configured")
+        return self.length
+
+
+@dataclass
+class MockCurve:
+    """ICurve stand-in: parametric range + Evaluate(t) -> xyz tuple."""
+
+    param_range: tuple[float, float]
+    points: dict[float, tuple[float, float, float]]
+
+    def GetParameterRange(self):
+        return self.param_range
+
+    def Evaluate(self, t):
+        if t not in self.points:
+            raise RuntimeError(f"MockCurve: no point at t={t}")
+        return self.points[t]
 
 
 @dataclass
@@ -331,6 +367,7 @@ def test_edge_capture_on_populates_edges_block(
     assert e["end"] == [0.0, 0.0, 0.01]
     assert e["length"] == pytest.approx(0.01)
     assert e["midpoint"] == pytest.approx([0.0, 0.0, 0.005])
+    assert e["curve_mid_source"] == "chord"  # MockEdge has no ICurve configured
     assert e["persist_id"] == "AQIDBA"  # base64url(bytes 1,2,3,4), no pad
 
 
@@ -367,10 +404,175 @@ def test_edge_with_bad_curveparams_is_skipped(
     assert "edges" not in result  # the only edge was skipped -> no block
 
 
+# ---------------------------------------------------------------------------
+# Tests — true curve-mid / arc-length capture (A-author, SW-free mock)
+#
+# Geometry: quarter-circle arc in the XY plane, r = 10 mm, center (0.01, 0, 0),
+# from (0,0,0) at t=0 through apex (0.01, 0.01, 0) at t=pi/2 to (0.02, 0, 0)
+# at t=pi. Chord length = 0.02 m, arc length = pi*r ≈ 0.03142 m. Chord midpoint
+# = (0.01, 0, 0); true curve midpoint (apex) = (0.01, 0.01, 0).
+#
+# The predicate in selection/_edge_match.py is consume-only (Opus rule) — these
+# tests verify the *interrogator* emits the true values; the downstream
+# discrimination is pinned in tests/test_selection_live.py::
+# TestEdgeMatchPredicate::test_true_curve_mid_separates_straight_from_arc.
+# ---------------------------------------------------------------------------
+
+
+_ARC_CP = (0.0, 0.0, 0.0, 0.02, 0.0, 0.0)  # start + end endpoints
+_ARC_TRUE_MID = (0.01, 0.01, 0.0)          # apex of quarter-circle
+_ARC_TRUE_LEN = math.pi * 0.01             # pi * r (r = 0.01 m)
+
+
+def _arc_edge() -> MockEdge:
+    curve = MockCurve(
+        param_range=(0.0, math.pi),
+        points={
+            0.0: (0.0, 0.0, 0.0),
+            math.pi / 2.0: _ARC_TRUE_MID,
+            math.pi: (0.02, 0.0, 0.0),
+        },
+    )
+    return MockEdge(cp=_ARC_CP, curve=curve, length=_ARC_TRUE_LEN)
+
+
+def _chord_mid() -> tuple[float, float, float]:
+    return (
+        (_ARC_CP[0] + _ARC_CP[3]) / 2.0,
+        (_ARC_CP[1] + _ARC_CP[4]) / 2.0,
+        (_ARC_CP[2] + _ARC_CP[5]) / 2.0,
+    )
+
+
+class TestCurveMidpointCapture:
+    """_probe_edge prefers true ICurve.Evaluate + IEdge.GetLength over chord."""
+
+    def test_true_curve_mid_and_arc_length_captured(
+        self, enable_brep, enable_capture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "ai_sw_bridge.brep.interrogator.read_persist_reference",
+            lambda doc, entity: None,
+        )
+        doc = MockDoc(bodies=(MockBody(edges=(_arc_edge(),)),))
+        result = interrogate(_one_face_feature(), _Ctx(doc=doc))
+        assert result is not None
+        e = result["edges"][0]
+        # True curve midpoint (apex), NOT chord midpoint (0.01, 0, 0).
+        assert e["midpoint"] == pytest.approx(list(_ARC_TRUE_MID))
+        # True arc length (pi*r), NOT chord length (0.02).
+        assert e["length"] == pytest.approx(_ARC_TRUE_LEN)
+        assert e["curve_mid_source"] == "curve"
+
+    def test_chord_fallback_when_curve_unreachable(
+        self, enable_brep, enable_capture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MockEdge with no curve/length configured -> chord fallback."""
+        monkeypatch.setattr(
+            "ai_sw_bridge.brep.interrogator.read_persist_reference",
+            lambda doc, entity: None,
+        )
+        doc = MockDoc(bodies=(MockBody(edges=(MockEdge(cp=_ARC_CP),)),))
+        result = interrogate(_one_face_feature(), _Ctx(doc=doc))
+        assert result is not None
+        e = result["edges"][0]
+        assert e["midpoint"] == pytest.approx(list(_chord_mid()))
+        assert e["length"] == pytest.approx(0.02)
+        assert e["curve_mid_source"] == "chord"
+
+    def test_partial_success_curve_arc_only(
+        self, enable_brep, enable_capture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """GetLength works but GetCurve fails -> length=arc, midpoint=chord, source='curve-arc'."""
+        monkeypatch.setattr(
+            "ai_sw_bridge.brep.interrogator.read_persist_reference",
+            lambda doc, entity: None,
+        )
+        edge = MockEdge(cp=_ARC_CP, curve=None, length=_ARC_TRUE_LEN)
+        doc = MockDoc(bodies=(MockBody(edges=(edge,)),))
+        result = interrogate(_one_face_feature(), _Ctx(doc=doc))
+        e = result["edges"][0]
+        assert e["length"] == pytest.approx(_ARC_TRUE_LEN)
+        assert e["midpoint"] == pytest.approx(list(_chord_mid()))
+        assert e["curve_mid_source"] == "curve-arc"
+
+    def test_partial_success_curve_mid_only(
+        self, enable_brep, enable_capture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """GetCurve works but GetLength fails -> midpoint=true, length=chord, source='curve-mid'."""
+        monkeypatch.setattr(
+            "ai_sw_bridge.brep.interrogator.read_persist_reference",
+            lambda doc, entity: None,
+        )
+        curve = MockCurve(
+            param_range=(0.0, math.pi),
+            points={math.pi / 2.0: _ARC_TRUE_MID},
+        )
+        edge = MockEdge(cp=_ARC_CP, curve=curve, length=None)
+        doc = MockDoc(bodies=(MockBody(edges=(edge,)),))
+        result = interrogate(_one_face_feature(), _Ctx(doc=doc))
+        e = result["edges"][0]
+        assert e["midpoint"] == pytest.approx(list(_ARC_TRUE_MID))
+        assert e["length"] == pytest.approx(0.02)  # chord fallback
+        assert e["curve_mid_source"] == "curve-mid"
+
+    def test_read_edge_geometry_mirrors_interrogator(self) -> None:
+        """live._read_edge_geometry uses the same curve path so tier-2 resolve
+        hashes byte-identical to the stored manifest edge."""
+        from ai_sw_bridge.selection.live import _read_edge_geometry
+
+        geom = _read_edge_geometry(_arc_edge())
+        assert geom is not None
+        assert geom["midpoint"] == pytest.approx(list(_ARC_TRUE_MID))
+        assert geom["length"] == pytest.approx(_ARC_TRUE_LEN)
+        assert geom["curve_mid_source"] == "curve"
+
+        # And chord fallback when no curve configured.
+        geom_chord = _read_edge_geometry(MockEdge(cp=_ARC_CP))
+        assert geom_chord is not None
+        assert geom_chord["midpoint"] == pytest.approx(list(_chord_mid()))
+        assert geom_chord["curve_mid_source"] == "chord"
+
+    def test_durable_edge_ref_carries_midpoint(self) -> None:
+        """DurableEdgeRef.from_manifest_edge now stores the manifest midpoint
+        so resolve_by_edge_fingerprint can forward it to the predicate."""
+        from ai_sw_bridge.selection import DurableEdgeRef
+
+        manifest_edge = {
+            "edge_idx": 0,
+            "body_id": 0,
+            "start": list(_ARC_CP[:3]),
+            "end": list(_ARC_CP[3:]),
+            "length": _ARC_TRUE_LEN,
+            "midpoint": list(_ARC_TRUE_MID),
+        }
+        ref = DurableEdgeRef.from_manifest_edge(manifest_edge)
+        assert ref.midpoint == pytest.approx(_ARC_TRUE_MID)
+        assert ref.length == pytest.approx(_ARC_TRUE_LEN)
+
+        # Round-trip preserves midpoint.
+        wire = ref.to_dict()
+        assert wire["midpoint"] == pytest.approx(list(_ARC_TRUE_MID))
+        back = DurableEdgeRef.from_dict(wire)
+        assert back.midpoint == pytest.approx(_ARC_TRUE_MID)
+
+    def test_durable_edge_ref_legacy_manifest_without_midpoint(self) -> None:
+        """Older manifests without 'midpoint' still load; ref.midpoint is None."""
+        from ai_sw_bridge.selection import DurableEdgeRef
+
+        legacy = {
+            "start": [0.0, 0.0, 0.0],
+            "end": [0.02, 0.0, 0.0],
+            "length": 0.02,
+        }
+        ref = DurableEdgeRef.from_manifest_edge(legacy)
+        assert ref.midpoint is None
+        wire = ref.to_dict()
+        assert "midpoint" not in wire
+
+
 def test_role_hint_oblique_for_tilted_normal() -> None:
     # 45-degree normal isn't axis-aligned.
-    import math
-
     n = (1 / math.sqrt(2), 0.0, 1 / math.sqrt(2))
     box = (0.0, 0.0, 0.0, 0.01, 0.01, 0.005)
     centroid = (0.005, 0.005, 0.0025)

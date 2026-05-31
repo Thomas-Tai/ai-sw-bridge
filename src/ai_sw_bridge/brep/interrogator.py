@@ -96,11 +96,16 @@ class BrepEdge:
     manifest solely to anchor durable references (e.g. a fillet on a specific
     edge), so unlike faces they are not part of the always-on interrogation.
 
-    Geometry comes from ``IEdge.GetCurveParams2`` (the late-bind-friendly source;
+    Endpoints come from ``IEdge.GetCurveParams2`` (the late-bind-friendly source;
     ``GetStartVertex``/``GetEndVertex`` throw ``com_error`` on SW 2024 SP1 — see
-    ``spike_edge_persist``). ``length`` / ``midpoint`` are chord-based (exact for
-    straight edges; a heuristic for curved ones — acceptable because tier-1
-    resolution is the persist token, with the edge fingerprint deferred).
+    ``spike_edge_persist``). ``length`` and ``midpoint`` prefer the *true* curve
+    arc length (``ICurve.GetLength``) and curve midpoint (``ICurve.Evaluate`` at
+    the parametric midpoint) when those COM reads succeed; they fall back to
+    chord length / chord midpoint when they don't (straight edges, degenerate
+    curves, unreachable vtable). ``curve_mid_source`` records which path fired
+    so downstream consumers — and the edge-match predicate's forward-correct
+    gates — can tell the two apart. See ``_edge_match.py`` for why the
+    predicate is written to consume these fields unchanged under either regime.
     """
 
     edge_idx: int
@@ -110,6 +115,7 @@ class BrepEdge:
     length: float
     midpoint: tuple[float, float, float]
     persist_id: str = ""  # base64url (no pad) durable token; "" when uncaptured
+    curve_mid_source: str = "chord"  # "curve" when true curve eval succeeded
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {
@@ -119,6 +125,7 @@ class BrepEdge:
             "end": list(self.end),
             "length": self.length,
             "midpoint": list(self.midpoint),
+            "curve_mid_source": self.curve_mid_source,
         }
         if self.persist_id:
             out["persist_id"] = self.persist_id
@@ -463,21 +470,132 @@ def _read_curve_params(edge: Any) -> Optional[tuple[float, ...]]:
         return None
 
 
+def _chord_mid(
+    start: tuple[float, float, float], end: tuple[float, float, float]
+) -> tuple[float, float, float]:
+    """Midpoint of the chord (straight line) between two 3-points."""
+    return (
+        (start[0] + end[0]) / 2.0,
+        (start[1] + end[1]) / 2.0,
+        (start[2] + end[2]) / 2.0,
+    )
+
+
+def _read_curve_mid_and_arc(
+    edge: Any,
+    start: tuple[float, float, float],
+    end: tuple[float, float, float],
+) -> Optional[tuple[tuple[float, float, float], float, str]]:
+    """Read the *true* curve midpoint (parametric midpoint) and arc length.
+
+    Path: ``IEdge.GetCurve()`` -> ``ICurve`` -> ``GetParameterRange()`` for the
+    parametric bounds, ``Evaluate((tmin+tmax)/2)`` for the curve midpoint, and
+    ``IEdge.GetLength()`` for arc length. All reads are fail-soft under late
+    binding — any unreachable vtable, bad return shape, or non-float element
+    aborts and returns ``None``, letting the caller fall back to chord geometry.
+
+    ``start`` / ``end`` are the endpoint 3-tuples already read from
+    ``GetCurveParams2``; they are the chord fallback when one of the two curve
+    reads succeeds and the other doesn't (partial success — rare under late
+    binding but possible on some SW builds).
+
+    Returns ``(curve_mid, arc_length, source_label)`` where ``source_label`` is
+    one of ``"curve"`` (both reads OK), ``"curve-mid"`` (only Evaluate OK),
+    ``"curve-arc"`` (only GetLength OK). Returns ``None`` when *both* reads
+    failed (caller should use pure chord fallback).
+    """
+
+    def _call0(obj: Any, name: str) -> Any:
+        try:
+            attr = getattr(obj, name)
+            return attr() if callable(attr) else attr
+        except Exception:
+            return None
+
+    def _call1(obj: Any, name: str, arg: Any) -> Any:
+        try:
+            return getattr(obj, name)(arg)
+        except Exception:
+            return None
+
+    # A-run: confirm IEdge.GetLength() signature on the seat (zero-arg, returns
+    # arc length in metres). Under late binding this reads as a property; the
+    # callable-or-attr shim above handles both dispatch shapes. Independent of
+    # the GetCurve chain — a curve-vtable failure must not suppress the length
+    # read, since GetLength lives on IEdge directly.
+    arc_length: Optional[float] = None
+    gl = _call0(edge, "GetLength")
+    if gl is not None:
+        try:
+            arc_length = float(gl)
+            if not math.isfinite(arc_length) or arc_length < 0.0:
+                arc_length = None
+        except (TypeError, ValueError):
+            arc_length = None
+
+    # A-run: confirm IEdge.GetCurve / ICurve.GetParameterRange / ICurve.Evaluate
+    # signatures on the seat. Under pywin32 late binding we expect zero-arg
+    # methods to auto-invoke on attribute access and Evaluate(t) to take a
+    # single float. Any of these raising / returning a malformed shape leaves
+    # curve_mid on None; the caller falls back to the chord midpoint for that
+    # slot while still using arc_length if the independent GetLength read
+    # succeeded (partial success — source label "curve-arc").
+    curve_mid: Optional[tuple[float, float, float]] = None
+    curve = _call0(edge, "GetCurve")
+    if curve is not None:
+        pr = _call0(curve, "GetParameterRange")
+        if isinstance(pr, (tuple, list)) and len(pr) >= 2:
+            try:
+                tmin, tmax = float(pr[0]), float(pr[1])
+            except (TypeError, ValueError):
+                tmin, tmax = 0.0, 0.0
+            if math.isfinite(tmin) and math.isfinite(tmax) and tmax > tmin:
+                tmid = (tmin + tmax) / 2.0
+                ev = _call1(curve, "Evaluate", tmid)
+                if isinstance(ev, (tuple, list)) and len(ev) >= 3:
+                    try:
+                        curve_mid = (float(ev[0]), float(ev[1]), float(ev[2]))
+                    except (TypeError, ValueError):
+                        curve_mid = None
+
+    if curve_mid is None and arc_length is None:
+        return None
+    final_mid = curve_mid if curve_mid is not None else _chord_mid(start, end)
+    final_len = arc_length if arc_length is not None else math.dist(start, end)
+    if curve_mid is not None and arc_length is not None:
+        source_label = "curve"
+    elif curve_mid is not None:
+        source_label = "curve-mid"
+    else:
+        source_label = "curve-arc"
+    return (final_mid, final_len, source_label)
+
+
 def _probe_edge(
     edge: Any, *, body_id: int, edge_idx: int, doc: Any, capture: bool
 ) -> Optional[BrepEdge]:
-    """Read one IEdge's endpoints + durable token. Fail-soft (None on no geom)."""
+    """Read one IEdge's endpoints + durable token. Fail-soft (None on no geom).
+
+    Geometry prefers the *true* curve arc length / midpoint (``ICurve.GetLength``
+    + ``ICurve.Evaluate`` at the parametric midpoint) when those reads succeed;
+    falls back to chord length / chord midpoint otherwise. ``curve_mid_source``
+    records which path produced the stored ``midpoint``/``length``.
+    """
     cp = _read_curve_params(edge)
     if cp is None:
         return None
     start = (cp[0], cp[1], cp[2])
     end = (cp[3], cp[4], cp[5])
-    midpoint = (
-        (start[0] + end[0]) / 2.0,
-        (start[1] + end[1]) / 2.0,
-        (start[2] + end[2]) / 2.0,
-    )
+    midpoint = _chord_mid(start, end)
     length = math.dist(start, end)
+    source = "chord"
+
+    curve_data = _read_curve_mid_and_arc(edge, start, end)
+    if curve_data is not None:
+        curve_mid, arc_len, source_label = curve_data
+        midpoint = curve_mid
+        length = arc_len
+        source = source_label
 
     persist_id = ""
     if capture and doc is not None:
@@ -493,6 +611,7 @@ def _probe_edge(
         length=length,
         midpoint=midpoint,
         persist_id=persist_id,
+        curve_mid_source=source,
     )
 
 
