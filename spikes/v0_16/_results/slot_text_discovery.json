@@ -1,0 +1,62 @@
+{
+  "sw_revision": "32.1.0",
+  "sketch_slot": {
+    "label": "sketch_slot",
+    "overall": "FAIL",
+    "attempts": [
+      {
+        "call": "CreateSketchSlot(ct=1, L,W, VT_R8[3D x2], True,0,0,1,False)",
+        "error": "com_error(-2147352571, 'Type mismatch.', None, 4)",
+        "materialized": false
+      },
+      {
+        "call": "CreateSketchSlot(ct=1, L,W, VT_R8[2D x2], True,0,0,1,False)",
+        "error": "com_error(-2147352571, 'Type mismatch.', None, 4)",
+        "materialized": false
+      },
+      {
+        "call": "CreateSketchSlot(ct=0, L,W, VT_R8[3D x2], True,0,0,1,False)",
+        "error": "com_error(-2147352571, 'Type mismatch.', None, 4)",
+        "materialized": false
+      },
+      {
+        "call": "CreateSketchSlot(ct=0, L,W, VT_R8[2D x2], True,0,0,1,False)",
+        "error": "com_error(-2147352571, 'Type mismatch.', None, 4)",
+        "materialized": false
+      },
+      {
+        "call": "CreateSketchSlot(ct=2, L,W, VT_R8[3D x2], True,0,0,1,False)",
+        "error": "com_error(-2147352571, 'Type mismatch.', None, 4)",
+        "materialized": false
+      },
+      {
+        "call": "CreateSketchSlot(ct=2, L,W, VT_R8[2D x2], True,0,0,1,False)",
+        "error": "com_error(-2147352571, 'Type mismatch.', None, 4)",
+        "materialized": false
+      },
+      {
+        "call": "CreateSketchSlot(1, L,W, VT_R8[3D x2], True, 0)",
+        "error": "com_error(-2147352571, 'Type mismatch.', None, 4)",
+        "materialized": false
+      }
+    ]
+  },
+  "sketch_text": {
+    "label": "sketch_text",
+    "overall": "PASS",
+    "attempts": [
+      {
+        "call": "doc.InsertSketchText(0,0,0,'Aa', 1,0,0.0, 0.0,0.0) [9]",
+        "result_type": "CDispatch",
+        "result_is_none": false,
+        "seg_delta": 1,
+        "materialized": true
+      }
+    ]
+  },
+  "summary": {
+    "sketch_slot": "FAIL",
+    "sketch_text": "PASS"
+  },
+  "overall": "PARTIAL"
+}

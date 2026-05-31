@@ -21,12 +21,12 @@ You never call the SOLIDWORKS COM API directly. You write JSON specs or invoke C
 5. **Build a part**: `ai-sw-build examples/filleted_box/spec.json --no-dim` (creates a fresh part in SW)
 6. **Observe the result**: `ai-sw-observe features` / `ai-sw-observe bbox` / `ai-sw-observe volume`
 
-The feature types available (16 shipped primitives + 2 cut end-condition variants + 7 sketch-primitive seat stubs):
+The feature types available (16 shipped primitives + 2 cut end-condition variants + 7 sketch primitives):
 
 | Category | Types |
 |---|---|
 | Sketch | `sketch_rectangle_on_plane`, `sketch_rectangle_on_face`, `sketch_circle_on_plane`, `sketch_circle_on_face`, `sketch_circles_on_face` |
-| Sketch primitives (🔴 SEAT stubs) | `sketch_line`, `sketch_arc`, `sketch_spline`, `sketch_slot`, `sketch_polygon`, `sketch_ellipse`, `sketch_text` |
+| Sketch primitives | `sketch_line`, `sketch_arc`, `sketch_spline`, `sketch_slot`, `sketch_polygon`, `sketch_ellipse`, `sketch_text` |
 | Extrude | `boss_extrude_blind`, `cut_extrude_through_all`, `cut_extrude_blind`, `cut_extrude_midplane`, `cut_extrude_two_direction`, `revolve_boss`, `revolve_cut` |
 | Modify | `fillet_constant_radius`, `chamfer_edge`, `simple_hole` |
 | Pattern | `linear_pattern`, `circular_pattern`, `mirror_feature` |
@@ -115,6 +115,8 @@ If the human's part has a `*_locals.txt` equation file (Equation Manager linked 
 - **`revolve_boss` and `revolve_cut` need the axis inside the profile sketch** as a `centerline` field. Don't try to declare the axis as a separate feature.
 - **Top Plane sketches with `centerline` need `center.z`.** On Top Plane, `center.y` is sketch-local (maps to part-Z with a sign flip). The `center.z` field positions the sketch at the correct part-Z. Without it, the centerline defaults to part Z=0. Run `--lint` to catch this.
 - **One centerline per sketch.** Multiple would be ambiguous.
+- **`sketch_slot` is always rounded-ended.** The SOLIDWORKS slot kernel produces inherently rounded (arc) ends — there is no flat-ended slot creation type. For a flat-ended rectangular slot, use `sketch_rectangle_on_plane`. `slot_type` only accepts `"arc"`.
+- **The 7 `sketch_*` primitives build literal-size geometry only** (like `--no-dim`): no parametric `{rhs}` dimensioning, and the `construction` flag, spline `closed`, and text `height`/`font`/`angle_deg` are not yet applied.
 - **The profile of a revolve must not cross its centerline.** SW rejects it with a cryptic error.
 - **Pattern/mirror seeds are referenced by name**, and the seed must already exist earlier in the `features` array. The validator catches forward references.
 - **Pre-existing complete API gotcha list:** [`docs/known_gotchas.md`](known_gotchas.md), [`docs/known_limitations.md`](known_limitations.md).
