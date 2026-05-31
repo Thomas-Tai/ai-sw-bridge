@@ -1411,6 +1411,99 @@ class TestDryRunDraft:
 
 
 # ---------------------------------------------------------------------------
+# Sweep feature_add (seat-validated by spike_sweep_v2: swFmSweep=17)
+# ---------------------------------------------------------------------------
+
+
+class _FakeSweepExt:
+    def __init__(self, ret: bool = True) -> None:
+        self.select_calls: list[tuple] = []
+        self._ret = ret
+
+    def SelectByID2(self, name, t, x, y, z, append, mark, callout, sd) -> bool:
+        self.select_calls.append((name, t, append, mark))
+        return self._ret
+
+
+class _FakeSweepDoc:
+    def __init__(self, path: str, fm: _FakeFeatureManager, ext_ret: bool = True) -> None:
+        self._path = path
+        self.FeatureManager = fm
+        self.Extension = _FakeSweepExt(ext_ret)
+        self.save_calls: list[tuple] = []
+        self.clear_selection_calls: list[bool] = []
+        self._title = Path(path).name
+
+    def ForceRebuild3(self, _: bool) -> bool:
+        return True
+
+    def ClearSelection2(self, top: bool) -> None:
+        self.clear_selection_calls.append(top)
+
+    def Save(self) -> int:
+        self.save_calls.append(())
+        return 1
+
+    def GetTitle(self) -> str:
+        return self._title
+
+    def GetPathName(self) -> str:
+        return self._path
+
+
+_SWEEP_FEATURE = {"type": "sweep"}
+_SWEEP_TARGET = {"profile": "Sketch1", "path": "Sketch2"}
+
+
+class TestProposeSweep:
+    def test_sweep_writes_record(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"; doc.touch()
+        _patch_wall2(monkeypatch, tmp_path, _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())))
+        r = sw_propose_feature_add(str(doc), _SWEEP_FEATURE, _SWEEP_TARGET)
+        assert r["ok"] is True
+
+    def test_sweep_rejects_missing_profile(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"; doc.touch()
+        _patch_wall2(monkeypatch, tmp_path, _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())))
+        r = sw_propose_feature_add(str(doc), _SWEEP_FEATURE, {"path": "Sketch2"})
+        assert r["ok"] is False and "profile" in r["error"]
+
+    def test_sweep_rejects_missing_path(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc = tmp_path / "t.sldprt"; doc.touch()
+        _patch_wall2(monkeypatch, tmp_path, _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())))
+        r = sw_propose_feature_add(str(doc), _SWEEP_FEATURE, {"profile": "Sketch1"})
+        assert r["ok"] is False and "path" in r["error"]
+
+
+class TestDryRunSweep:
+    def test_ok_inserts_sweep_with_marks_no_save(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"; doc_file.touch()
+        fm = _FakeFeatureManager(object(), object())  # materialized feature
+        sweep_doc = _FakeSweepDoc(str(doc_file), fm)
+        _patch_wall2(monkeypatch, tmp_path, sweep_doc)
+        pid = sw_propose_feature_add(str(doc_file), _SWEEP_FEATURE, _SWEEP_TARGET)["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+        assert r["ok"] is True and r["state"] == ST_DRY_RUN_OK
+        assert fm.create_def_calls == [17]
+        # profile select mark 1 (append False), path select mark 4 (append True)
+        assert sweep_doc.Extension.select_calls == [
+            ("Sketch1", "SKETCH", False, 1),
+            ("Sketch2", "SKETCH", True, 4),
+        ]
+        assert sweep_doc.save_calls == []
+
+    def test_noop_sweep_broke(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"; doc_file.touch()
+        fm = _FakeFeatureManager(object(), None)  # CreateFeature returns None
+        sweep_doc = _FakeSweepDoc(str(doc_file), fm)
+        _patch_wall2(monkeypatch, tmp_path, sweep_doc)
+        pid = sw_propose_feature_add(str(doc_file), _SWEEP_FEATURE, _SWEEP_TARGET)["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+        assert r["ok"] is False and r["state"] == ST_DRY_RUN_BROKE
+        assert "did not materialize" in r["error"]
+
+
+# ---------------------------------------------------------------------------
 # ProposalStore facade tests
 # ---------------------------------------------------------------------------
 
