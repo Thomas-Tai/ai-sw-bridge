@@ -262,6 +262,14 @@ SKETCH_TYPES = frozenset(
         "sketch_circle_on_plane",
         "sketch_circle_on_face",
         "sketch_circles_on_face",
+        # P1.7s — sketch primitives (stub handlers; live COM flagged 🔴 SEAT).
+        "sketch_line",
+        "sketch_arc",
+        "sketch_spline",
+        "sketch_slot",
+        "sketch_polygon",
+        "sketch_ellipse",
+        "sketch_text",
     }
 )
 EXTRUDE_TYPES = frozenset(

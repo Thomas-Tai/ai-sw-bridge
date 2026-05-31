@@ -58,7 +58,11 @@ def test_subschemas_reexported_from_descriptors():
     assert schema.NAME_PATTERN is descriptors.NAME_PATTERN
 
 
-def test_feature_order_covers_all_16():
-    assert len(descriptors.FEATURE_ORDER) == 16
+def test_feature_order_covers_all_descriptors():
+    # X3 shipped 16 primitives; P1.7s added 7 sketch-primitive stubs (23 total).
+    # The exact count is not the invariant — the invariant is that FEATURE_ORDER,
+    # FEATURE_FIELDS, FEATURE_META, and the golden snapshot all agree.
+    assert len(descriptors.FEATURE_ORDER) == 23
     assert set(descriptors.FEATURE_ORDER) == set(descriptors.FEATURE_FIELDS)
-    assert len(GOLDEN) == 16
+    assert set(descriptors.FEATURE_ORDER) == set(descriptors.FEATURE_META)
+    assert len(GOLDEN) == len(descriptors.FEATURE_ORDER)

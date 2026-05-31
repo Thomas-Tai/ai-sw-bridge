@@ -196,6 +196,213 @@ Creates multiple circles in a single sketch on the face of an earlier extrusion.
 
 Circle positions are literal mm only — no `{rhs}` on `u` or `v`.
 
+## Sketch primitives (P1.7s)
+
+Seven general-purpose sketch entities that host on one of the three default
+reference planes (Front / Top / Right). Live `ISketchManager.Create*` calls
+are **🔴 SEAT stubs** in this release — the spec schema validates and the
+descriptor registry is wired, but building a spec that contains any of these
+types will raise `NotImplementedError("... P1.7-seat/W0 ...")` until the
+P1.7-seat session GREEN-lights each COM signature. Every `LENGTH_SCHEMA`
+field accepts a plain millimetre number or a parametric `{rhs: "..."}` object
+for Equation Manager binding.
+
+### `sketch_line`
+
+A single line segment.
+
+```json
+{
+  "type": "sketch_line",
+  "name": "SK_Line_Diagonal",
+  "plane": "Front",
+  "start": {"x": 0.0, "y": 0.0},
+  "end":   {"x": 20.0, "y": 20.0},
+  "construction": false
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"sketch_line"` | |
+| `name` | yes | string | Unique feature name |
+| `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
+| `start` | yes | object | `{x, y}` in sketch-local mm |
+| `end` | yes | object | `{x, y}` in sketch-local mm |
+| `construction` | no | boolean | Mark as construction (centerline) entity. Default `false`. |
+
+### `sketch_arc`
+
+A circular arc (center + start + end).
+
+```json
+{
+  "type": "sketch_arc",
+  "name": "SK_Arc_Quarter",
+  "plane": "Front",
+  "center": {"x": 30.0, "y": 0.0},
+  "start":  {"x": 40.0, "y": 0.0},
+  "end":    {"x": 30.0, "y": 10.0},
+  "direction": "ccw"
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"sketch_arc"` | |
+| `name` | yes | string | Unique feature name |
+| `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
+| `center` | yes | object | `{x, y}` in sketch-local mm |
+| `start` | yes | object | `{x, y}` in sketch-local mm |
+| `end` | yes | object | `{x, y}` in sketch-local mm |
+| `direction` | no | enum | `"cw"` or `"ccw"`. Default `"ccw"`. |
+| `construction` | no | boolean | Default `false`. |
+
+### `sketch_spline`
+
+A freeform spline through a sequence of control points (min 2).
+
+```json
+{
+  "type": "sketch_spline",
+  "name": "SK_Spline_Curve",
+  "plane": "Front",
+  "points": [
+    {"x": 0.0, "y": 30.0},
+    {"x": 10.0, "y": 35.0},
+    {"x": 20.0, "y": 30.0}
+  ],
+  "closed": false
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"sketch_spline"` | |
+| `name` | yes | string | Unique feature name |
+| `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
+| `points` | yes | array | Min 2 points; each `{x, y, z?}` in sketch-local mm. If any point has non-zero `z`, the 3D-sketch COM path is selected. |
+| `closed` | no | boolean | Close the spline by joining the last point to the first. Default `false`. |
+| `construction` | no | boolean | Default `false`. |
+
+> **🔴 SEAT (P1.7-seat/W0):** The live call is `ISketchManager.CreateSpline2(pPointsSafeArray, b3D)`; the SAFEARRAY marshaling of the interleaved-double/triple point buffer must be confirmed on the seat.
+
+### `sketch_slot`
+
+A slot (rectangular or arc-ended) on a reference plane.
+
+```json
+{
+  "type": "sketch_slot",
+  "name": "SK_Slot_Horizontal",
+  "plane": "Front",
+  "center":    {"x": 30.0, "y": 30.0},
+  "width":     6.0,
+  "length":   20.0,
+  "slot_type": "arc",
+  "angle_deg":  0.0
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"sketch_slot"` | |
+| `name` | yes | string | Unique feature name |
+| `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
+| `center` | yes | object | `{x, y}` in sketch-local mm |
+| `width` | yes | length | Slot width (mm) |
+| `length` | yes | length | Slot length (mm) |
+| `slot_type` | no | enum | `"square"` (flat ends) or `"arc"` (rounded ends). Default `"square"`. |
+| `angle_deg` | no | number | Rotation of the slot's major axis from sketch X (degrees). Default `0`. |
+| `construction` | no | boolean | Default `false`. |
+
+### `sketch_polygon`
+
+A regular N-sided polygon.
+
+```json
+{
+  "type": "sketch_polygon",
+  "name": "SK_Polygon_Hex",
+  "plane": "Front",
+  "center":    {"x": 50.0, "y": 30.0},
+  "sides":     6,
+  "radius":    8.0,
+  "inscribed": true,
+  "angle_deg":  0.0
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"sketch_polygon"` | |
+| `name` | yes | string | Unique feature name |
+| `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
+| `center` | yes | object | `{x, y}` in sketch-local mm |
+| `sides` | yes | integer | Number of sides (3..40) |
+| `radius` | yes | length | Radius in mm. Meaning depends on `inscribed`. |
+| `inscribed` | no | boolean | If `true` (default), `radius` is the inscribed (apothem) radius — polygon edges are tangent to the circle. If `false`, `radius` is the circumscribed radius — polygon vertices lie on the circle. |
+| `angle_deg` | no | number | Rotation of the first vertex from sketch X (degrees). Default `0`. |
+| `construction` | no | boolean | Default `false`. |
+
+### `sketch_ellipse`
+
+An ellipse on a reference plane.
+
+```json
+{
+  "type": "sketch_ellipse",
+  "name": "SK_Ellipse_Oval",
+  "plane": "Front",
+  "center":       {"x": 70.0, "y": 30.0},
+  "major_radius": 10.0,
+  "minor_radius":  5.0,
+  "angle_deg":     0.0
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"sketch_ellipse"` | |
+| `name` | yes | string | Unique feature name |
+| `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
+| `center` | yes | object | `{x, y}` in sketch-local mm |
+| `major_radius` | yes | length | Semi-major axis (mm) |
+| `minor_radius` | yes | length | Semi-minor axis (mm) |
+| `angle_deg` | no | number | Rotation of the major axis from sketch X (degrees). Default `0`. |
+| `construction` | no | boolean | Default `false`. |
+
+### `sketch_text`
+
+A plain-text annotation sketch.
+
+```json
+{
+  "type": "sketch_text",
+  "name": "SK_Text_Label",
+  "plane": "Front",
+  "position": {"x": 0.0, "y": 50.0},
+  "content":  "ai-sw-bridge",
+  "height":    3.0,
+  "font":      "Arial",
+  "angle_deg":  0.0
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"sketch_text"` | |
+| `name` | yes | string | Unique feature name |
+| `plane` | yes | enum | `"Front"`, `"Top"`, or `"Right"` |
+| `position` | yes | object | `{x, y}` in sketch-local mm |
+| `content` | yes | string | Plain ASCII text content (non-empty). |
+| `height` | yes | length | Text cap height (mm) |
+| `font` | no | string | Font family name (e.g. `"Arial"`). |
+| `angle_deg` | no | number | Rotation of the baseline from sketch X (degrees). Default `0`. |
+| `construction` | no | boolean | Default `false`. |
+
+> **🔴 SEAT (P1.7-seat/W0):** The live call is `ISketchManager.CreateText(text, x, y, z, iFormatFlags)` where `iFormatFlags` packs font family / height / bold / italic — the exact bit layout must be confirmed on the seat.
+
 ## Extrude primitives
 
 ### `boss_extrude_blind`
