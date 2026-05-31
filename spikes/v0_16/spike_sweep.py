@@ -287,21 +287,19 @@ def run(keep_file: bool = False) -> dict[str, Any]:
                 fd = data
                 sweep_result["interface"] = "raw"
 
-            # Select profile and path
+            # Select profile and path — typed Extension for marked selects
+            # (D4: IModelDocExtension.SelectByID2 marshals mark + Callout
+            # correctly; IModelDoc2 late-bound SelectByID has no mark param).
             profile_name = geom.get("profile_sketch", "Sketch1")
             path_name = geom.get("path_sketch", "Sketch2")
+            ext = typed(doc.Extension, "IModelDocExtension", module=mod)
 
             sel_profile = _capture(
-                # TODO(D4/Opus): marked select (mark=1 for profile) — needs early-bound
-                # doc / typed Extension.SelectByID2; do NOT 5-arg (loses mark).
-                lambda: doc.SelectByID2(profile_name, "SKETCH", 0, 0, 0, False, 1, None, 0),
+                lambda: ext.SelectByID2(doc, profile_name, "SKETCH", 0, 0, 0, False, 1, None, 0),
                 "select_profile",
             )
             sel_path = _capture(
-                # TODO(D4/Opus): marked+appending select (mark=4 for path, append=True)
-                # — needs early-bound doc / typed Extension.SelectByID2; do NOT 5-arg
-                # (loses mark and multi-selection append).
-                lambda: doc.SelectByID2(path_name, "SKETCH", 0, 0, 0, True, 4, None, 0),
+                lambda: ext.SelectByID2(doc, path_name, "SKETCH", 0, 0, 0, True, 4, None, 0),
                 "select_path",
             )
             sweep_result["select_profile"] = sel_profile

@@ -30,7 +30,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from ..com.earlybind import read_persist_reference
+from ..com.earlybind import EarlyBindError, read_persist_reference, typed_qi
 from ..flags import resolve as resolve_flags
 from ..telemetry import histogram as telemetry_histogram
 
@@ -488,16 +488,19 @@ def _read_curve_mid_and_arc(
 ) -> Optional[tuple[tuple[float, float, float], float, str]]:
     """Read the *true* curve midpoint (parametric midpoint) and arc length.
 
-    Path: ``IEdge.GetCurve()`` -> ``ICurve`` -> ``GetParameterRange()`` for the
-    parametric bounds, ``Evaluate((tmin+tmax)/2)`` for the curve midpoint, and
-    ``IEdge.GetLength()`` for arc length. All reads are fail-soft under late
-    binding — any unreachable vtable, bad return shape, or non-float element
-    aborts and returns ``None``, letting the caller fall back to chord geometry.
+    Path: typed ``IEdge.GetCurve()`` -> typed_qi ``ICurve`` ->
+    ``GetEndParams()`` for the parametric bounds,
+    ``Evaluate((tmin+tmax)/2)`` for the curve midpoint, and
+    ``ICurve.GetLength(tmin, tmax)`` for arc length.
 
-    ``start`` / ``end`` are the endpoint 3-tuples already read from
-    ``GetCurveParams2``; they are the chord fallback when one of the two curve
-    reads succeeds and the other doesn't (partial success — rare under late
-    binding but possible on some SW builds).
+    Seat-confirmed (A-run, SW 2024 SP1 rev 32.1.0): the late-bound edge
+    proxies from ``body.GetEdges()`` cannot dispatch ``GetCurve`` or
+    ``GetLength`` (``Member not found``); typed_qi to ``IEdge`` / ``ICurve``
+    is required. ``ICurve`` exposes ``GetEndParams()`` (not
+    ``GetParameterRange``), ``Evaluate(t)`` (not ``Evaluate2`` — the "2"
+    variant takes a SAFEARRAY), and ``GetLength(t1, t2)`` (not a zero-arg
+    ``IEdge.GetLength``). All reads are fail-soft — any step failing leaves
+    that slot on ``None``, letting the caller fall back to chord geometry.
 
     Returns ``(curve_mid, arc_length, source_label)`` where ``source_label`` is
     one of ``"curve"`` (both reads OK), ``"curve-mid"`` (only Evaluate OK),
@@ -518,45 +521,83 @@ def _read_curve_mid_and_arc(
         except Exception:
             return None
 
-    # A-run: confirm IEdge.GetLength() signature on the seat (zero-arg, returns
-    # arc length in metres). Under late binding this reads as a property; the
-    # callable-or-attr shim above handles both dispatch shapes. Independent of
-    # the GetCurve chain — a curve-vtable failure must not suppress the length
-    # read, since GetLength lives on IEdge directly.
-    arc_length: Optional[float] = None
-    gl = _call0(edge, "GetLength")
-    if gl is not None:
-        try:
-            arc_length = float(gl)
-            if not math.isfinite(arc_length) or arc_length < 0.0:
-                arc_length = None
-        except (TypeError, ValueError):
-            arc_length = None
+    # Typed chain: edge -> IEdge.GetCurve() -> ICurve.{GetEndParams, Evaluate,
+    # GetLength}. Late-bound edge proxies from body.GetEdges() cannot dispatch
+    # GetCurve or GetLength (A-run: Member not found); typed_qi is required.
+    typed_curve = None
+    try:
+        te = typed_qi(edge, "IEdge")
+        raw_curve = te.GetCurve()
+        if raw_curve is not None:
+            typed_curve = typed_qi(raw_curve, "ICurve")
+    except EarlyBindError:
+        typed_curve = None
 
-    # A-run: confirm IEdge.GetCurve / ICurve.GetParameterRange / ICurve.Evaluate
-    # signatures on the seat. Under pywin32 late binding we expect zero-arg
-    # methods to auto-invoke on attribute access and Evaluate(t) to take a
-    # single float. Any of these raising / returning a malformed shape leaves
-    # curve_mid on None; the caller falls back to the chord midpoint for that
-    # slot while still using arc_length if the independent GetLength read
-    # succeeded (partial success — source label "curve-arc").
+    arc_length: Optional[float] = None
     curve_mid: Optional[tuple[float, float, float]] = None
-    curve = _call0(edge, "GetCurve")
-    if curve is not None:
-        pr = _call0(curve, "GetParameterRange")
-        if isinstance(pr, (tuple, list)) and len(pr) >= 2:
-            try:
-                tmin, tmax = float(pr[0]), float(pr[1])
-            except (TypeError, ValueError):
+
+    if typed_curve is not None:
+        # ICurve.GetEndParams() -> (status, tmin, tmax, is_closed, is_periodic)
+        try:
+            ep = typed_curve.GetEndParams()
+            if isinstance(ep, (tuple, list)) and len(ep) >= 3:
+                tmin, tmax = float(ep[1]), float(ep[2])
+            else:
                 tmin, tmax = 0.0, 0.0
-            if math.isfinite(tmin) and math.isfinite(tmax) and tmax > tmin:
-                tmid = (tmin + tmax) / 2.0
-                ev = _call1(curve, "Evaluate", tmid)
+        except Exception:
+            tmin, tmax = 0.0, 0.0
+
+        if math.isfinite(tmin) and math.isfinite(tmax) and tmax > tmin:
+            # ICurve.GetLength(tmin, tmax) — arc length in metres.
+            try:
+                gl = typed_curve.GetLength(tmin, tmax)
+                gl_f = float(gl)
+                if math.isfinite(gl_f) and gl_f >= 0.0:
+                    arc_length = gl_f
+            except Exception:
+                pass
+
+            # ICurve.Evaluate(tmid) — returns (x, y, z, dx, dy, dz, ...).
+            # Evaluate (not Evaluate2 — the "2" variant takes a SAFEARRAY
+            # and raises Type mismatch under pywin32).
+            tmid = (tmin + tmax) / 2.0
+            try:
+                ev = typed_curve.Evaluate(tmid)
                 if isinstance(ev, (tuple, list)) and len(ev) >= 3:
-                    try:
-                        curve_mid = (float(ev[0]), float(ev[1]), float(ev[2]))
-                    except (TypeError, ValueError):
-                        curve_mid = None
+                    curve_mid = (float(ev[0]), float(ev[1]), float(ev[2]))
+            except Exception:
+                pass
+
+    # Late-bound fallback (mock tests + future SW versions where late binding
+    # may dispatch GetCurve / GetLength directly). Independent reads — a curve
+    # chain failure must not suppress the length read.
+    if arc_length is None:
+        gl = _call0(edge, "GetLength")
+        if gl is not None:
+            try:
+                gl_f = float(gl)
+                if math.isfinite(gl_f) and gl_f >= 0.0:
+                    arc_length = gl_f
+            except (TypeError, ValueError):
+                pass
+
+    if curve_mid is None:
+        curve = _call0(edge, "GetCurve")
+        if curve is not None:
+            pr = _call0(curve, "GetParameterRange")
+            if isinstance(pr, (tuple, list)) and len(pr) >= 2:
+                try:
+                    tmin, tmax = float(pr[0]), float(pr[1])
+                except (TypeError, ValueError):
+                    tmin, tmax = 0.0, 0.0
+                if math.isfinite(tmin) and math.isfinite(tmax) and tmax > tmin:
+                    tmid = (tmin + tmax) / 2.0
+                    ev = _call1(curve, "Evaluate", tmid)
+                    if isinstance(ev, (tuple, list)) and len(ev) >= 3:
+                        try:
+                            curve_mid = (float(ev[0]), float(ev[1]), float(ev[2]))
+                        except (TypeError, ValueError):
+                            pass
 
     if curve_mid is None and arc_length is None:
         return None

@@ -1,0 +1,62 @@
+{
+  "binding": "hybrid early (com.earlybind pattern)",
+  "module_source": "com.sw_type_info.wrapper_module",
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "sw_revision": "32.1.0",
+  "build": {
+    "built": true,
+    "feature_name": "Boss-Extrude1"
+  },
+  "part_saved": "C:\\Users\\sky\\AppData\\Local\\Temp\\ai-sw-bridge\\spike_drawview_part.sldprt",
+  "drawing_opened": true,
+  "drawing_type": "CDispatch",
+  "views_attempted": 4,
+  "views_created": 0,
+  "drawing_saved": false,
+  "drawing_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\ai-sw-bridge\\spike_drawview.slddrw",
+  "probes": {
+    "GetIDrawingDoc": {
+      "status": "OK",
+      "type": "NoneType",
+      "_val": null,
+      "elapsed_ms": 1.717099999950733
+    },
+    "views": [
+      {
+        "view": "*Front",
+        "status": "EXCEPTION",
+        "exception_type": "AttributeError",
+        "message": "<unknown>.CreateDrawViewFromModelView3",
+        "hresult": null,
+        "elapsed_ms": 2.8851999995822553
+      },
+      {
+        "view": "*Top",
+        "status": "EXCEPTION",
+        "exception_type": "AttributeError",
+        "message": "<unknown>.CreateDrawViewFromModelView3",
+        "hresult": null,
+        "elapsed_ms": 314.7509999998874
+      },
+      {
+        "view": "*Right",
+        "status": "EXCEPTION",
+        "exception_type": "AttributeError",
+        "message": "<unknown>.CreateDrawViewFromModelView3",
+        "hresult": null,
+        "elapsed_ms": 0.8569000001443783
+      },
+      {
+        "view": "*Isometric",
+        "status": "EXCEPTION",
+        "exception_type": "AttributeError",
+        "message": "<unknown>.CreateDrawViewFromModelView3",
+        "hresult": null,
+        "elapsed_ms": 8.960600000136765
+      }
+    ]
+  },
+  "cleanup": "closed doc + removed temp files",
+  "overall": "PARTIAL",
+  "interpretation": "drawing opened but CreateDrawViewFromModelView3 failed -> run --mode vba to isolate the marshaler"
+}
