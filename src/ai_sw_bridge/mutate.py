@@ -381,6 +381,25 @@ def _hole_table_sizes(hsd: Any, std_name: str, fastener_index: int) -> list[str]
     return sizes
 
 
+# Show at most this many size strings in validation error messages; beyond that
+# we elide with a count suffix so the dry-run payload stays readable for the
+# larger fastener tables (Tap Drills has ~70 entries in the ANSI Metric DB).
+_SIZE_ERROR_DISPLAY_LIMIT = 20
+
+
+def _format_size_catalog(sizes: list[str]) -> str:
+    """Format a size list for an error message: full when short, elided with a
+    count when long. Always byte-stable — the same input list always produces
+    the same output, so downstream tests that assert on substrings stay green.
+    """
+    if not sizes:
+        return "<no sizes enumerated>"
+    if len(sizes) <= _SIZE_ERROR_DISPLAY_LIMIT:
+        return ", ".join(sizes)
+    head = ", ".join(sizes[:_SIZE_ERROR_DISPLAY_LIMIT])
+    return f"{head}, ... ({len(sizes)} total)"
+
+
 def _resolve_hole_args(
     generic_hole_type: int, standard: str, fastener_type: str, size: str
 ) -> tuple[bool, int, int, str | None]:
@@ -411,7 +430,8 @@ def _resolve_hole_args(
             break
     if std_index is None:
         return False, -1, -1, (
-            f"standard {standard!r} not found; available: {list(std_names)}"
+            f"standard {standard!r} not found; available: "
+            f"{_format_size_catalog([str(n) for n in std_names])}"
         )
 
     f_arrays = _arrays_from_out(hsd.GetFastenerTypes(std_name))
@@ -426,14 +446,23 @@ def _resolve_hole_args(
     if fastener_index is None:
         return False, -1, -1, (
             f"fastener type {fastener_type!r} not found for {std_name!r}; "
-            f"available: {list(f_names)}"
+            f"available: {_format_size_catalog([str(n) for n in f_names])}"
         )
 
     valid_sizes = _hole_table_sizes(hsd, std_name, fastener_index)
-    if valid_sizes and size not in valid_sizes:
+    if not valid_sizes:
+        # DB returned zero rows for this (standard, fastener) — either the
+        # table is empty or the COM read failed. Surface as a diagnostic
+        # error rather than silently accepting any size string; the caller
+        # gets a structured envelope they can act on.
+        return False, -1, -1, (
+            f"no sizes enumerated for {std_name!r}/{fastener_type!r} "
+            f"(DB returned 0 rows — check IHoleDataTable.GetRowCount)"
+        )
+    if size not in valid_sizes:
         return False, -1, -1, (
             f"size {size!r} invalid for {std_name!r}/{fastener_type!r}; "
-            f"valid sizes: {valid_sizes}"
+            f"{len(valid_sizes)} valid sizes: {_format_size_catalog(valid_sizes)}"
         )
     return True, int(std_index), int(fastener_index), None
 
