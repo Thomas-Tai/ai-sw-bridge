@@ -156,13 +156,19 @@ _SUPPORTED_FEATURE_TYPES = (
     "shell",
     "draft",
     "sweep",
-    # Wave-5 F0 ref-geom: seat-GREEN PAE on live SW 2024 SP1 (3 of 4 kinds).
+    # Wave-5 F0 ref-geom: seat-GREEN PAE on live SW 2024 SP1.
     # ref_plane / ref_axis / coordinate_system: propose->dry_run->commit all
-    # GREEN on a fresh part. ref_point DEFERRED -- SelectByID(VERTEX) walls
-    # from out-of-process Python; see docs/DEFERRED.md.
+    # GREEN on a fresh part.
     "ref_plane",
     "ref_axis",
     "coordinate_system",
+    # W5.3 Epic B: ref_point via durable face_ref (face-centroid, type 4).
+    # Production-handler PAE GREEN (spike 40ea050): _create_ref_point with a
+    # manifest face_ref resolves (resolve_manifest_face -> select_entity) and
+    # InsertReferencePoint(4,0,0.0,1) materializes a centroid point. The legacy
+    # vertex-coordinate path (target.point, type 5) still walls out-of-process
+    # and is retained only as a non-advertised fallback; see docs/DEFERRED.md.
+    "ref_point",
     # ---- Wave-5 F1–F6 kinds REMOVED from the advertised surface (W0 handback) ----
     # The handlers + dispatch entries remain below as characterized code; propose
     # must fail-close with "unsupported feature type" for any of these kinds

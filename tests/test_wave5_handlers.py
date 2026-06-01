@@ -421,18 +421,48 @@ class TestProposeCoordinateSystem:
 
 
 class TestProposeRefPoint:
-    def test_deferred_unsupported(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """W5.3 Epic B: ref_point advertised via durable face_ref (face-centroid).
+
+    Production-handler PAE GREEN (spike 40ea050). The legacy vertex-coordinate
+    path still walls but is retained as a non-advertised fallback.
+    """
+
+    def test_valid_face_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
         r = sw_propose_feature_add(
             str(doc_file),
             {"type": "ref_point"},
-            {"point": [0.01, 0.01, 0.01]},
+            {"face_ref": {"normal": [0, 0, 1], "centroid": [0, 0, 0.02], "area_mm2": 1600.0}},
+        )
+        assert r["ok"] is True
+        assert r["proposal_id"] is not None
+        assert r["error"] is None
+
+    def test_rejects_empty_face_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
+        r = sw_propose_feature_add(
+            str(doc_file),
+            {"type": "ref_point"},
+            {"face_ref": {}},
         )
         assert r["ok"] is False
-        assert "unsupported feature type" in r["error"]
-        assert "ref_point" in r["error"]
+        assert "face_ref" in r["error"]
+
+    def test_rejects_missing_target(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
+        r = sw_propose_feature_add(
+            str(doc_file),
+            {"type": "ref_point"},
+            {"unrelated": 1},
+        )
+        assert r["ok"] is False
+        assert "face_ref" in r["error"] or "point" in r["error"]
 
 
 class _FakeRefResolution:
