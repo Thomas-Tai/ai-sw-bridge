@@ -405,14 +405,60 @@ def _create_coordinate_system(
 def _create_ref_point(
     doc: Any, feature: dict, target: dict
 ) -> tuple[bool, str | None]:
-    """Create a reference point at a vertex or coordinate.
+    """Create a reference point — durable face-centroid or legacy vertex coord.
 
-    Seat-proven recipe (spike_refgeom, W3):
-      Select vertex at coords, then fm.InsertReferencePoint(5, 0, 0.0, 1).
+    Two ``target`` shapes:
+
+    * **Durable face-centroid (W5.3 Epic B, seat-GREEN spike ``880486a``):**
+      ``{"face_ref": <manifest-face dict>}`` — the face is resolved through the
+      persist→fingerprint hierarchy (:func:`resolve_manifest_face`) and selected
+      as a live entity (:func:`select_entity`, the same durable round-trip
+      ``wizard_hole``/``draft`` use), then
+      ``fm.InsertReferencePoint(4, 0, 0.0, 1)`` (type 4 =
+      ``swRefPointTypeInCentreOfFace``) materialises a point at the face
+      centroid. Proven out-of-process: entity-select cracked via typed
+      ``IEntity.Select2`` over the persist round-trip.
+    * **Legacy vertex coordinate (spike_refgeom, W3):**
+      ``{"point": [x,y,z]}`` — ``SelectByID("","VERTEX",x,y,z)`` then
+      ``InsertReferencePoint(5, 0, 0.0, 1)``. This path **walls** out-of-process
+      (SelectByID(VERTEX) returns False) and is retained only as a fallback; it
+      is *not* the advertised path. See docs/DEFERRED.md.
     """
-    point = target.get("point") if isinstance(target, dict) else None
+    if not isinstance(target, dict):
+        return False, "target must be a dict with 'face_ref' or 'point'"
+
+    fm = doc.FeatureManager
+
+    # Durable face-centroid path (type 4). Preferred + seat-proven.
+    face_ref = target.get("face_ref")
+    if face_ref is not None:
+        try:
+            try:
+                doc.ClearSelection2(True)
+            except Exception:  # noqa: BLE001
+                pass
+            res = resolve_manifest_face(doc, face_ref)
+            if res.entity is None:
+                return False, f"ref-point face unresolved (method={res.method})"
+            if not select_entity(res.entity):
+                return False, "could not select resolved face for ref-point"
+            # type 4 = swRefPointTypeInCentreOfFace (centroid of selected face).
+            feat = fm.InsertReferencePoint(4, 0, 0.0, 1)
+            if isinstance(feat, tuple):
+                feat = feat[0] if len(feat) == 1 else None
+            if feat is None or isinstance(feat, (int, bool)):
+                return False, (
+                    f"InsertReferencePoint(centroid) did not materialize "
+                    f"(returned {feat!r})"
+                )
+            return True, None
+        except Exception as exc:
+            return False, f"ref-point (face-centroid) pipeline failed: {exc!r}"
+
+    # Legacy vertex-coordinate path (type 5). Walls out-of-process.
+    point = target.get("point")
     if not isinstance(point, (list, tuple)) or len(point) != 3:
-        return False, "target.point must be a 3-element [x,y,z] in model metres"
+        return False, "target must contain a 'face_ref' or a 3-element 'point' [x,y,z]"
     try:
         doc.ClearSelection2(True)
         sel_ok = doc.SelectByID(
@@ -423,7 +469,6 @@ def _create_ref_point(
                 f"SelectByID(VERTEX at {list(point)}) failed -- "
                 "no selectable vertex at those coordinates"
             )
-        fm = doc.FeatureManager
         # InsertReferencePoint returns a Feature on success, but late-bound
         # COM may wrap it as a 1-tuple (None,) on failure. Reject None, False,
         # int, and any tuple whose only element is None.
@@ -1742,11 +1787,22 @@ def sw_propose_feature_add(
                 result["error"] = "ref_axis target.planes must be a 2-element list of plane names"
                 return result
 
-        # Wave-5: ref_point needs a 3-element vertex coordinate.
+        # Wave-5 / W5.3 Epic B: ref_point accepts a durable face-ref
+        # (face-centroid, preferred) OR a legacy 3-element vertex coordinate.
         if feat_type == "ref_point":
+            face_ref = target.get("face_ref")
             point = target.get("point")
-            if not isinstance(point, (list, tuple)) or len(point) != 3:
-                result["error"] = "ref_point target.point must be a 3-element [x,y,z]"
+            if face_ref is not None:
+                if not isinstance(face_ref, dict) or not face_ref:
+                    result["error"] = (
+                        "ref_point target.face_ref must be a non-empty manifest-face dict"
+                    )
+                    return result
+            elif not isinstance(point, (list, tuple)) or len(point) != 3:
+                result["error"] = (
+                    "ref_point target needs a 'face_ref' (durable manifest-face dict) "
+                    "or a 3-element 'point' [x,y,z]"
+                )
                 return result
 
         # Wave-5: sweep_cut mirrors sweep (profile + path).

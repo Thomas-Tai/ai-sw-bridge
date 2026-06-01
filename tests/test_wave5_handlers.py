@@ -435,6 +435,85 @@ class TestProposeRefPoint:
         assert "ref_point" in r["error"]
 
 
+class _FakeRefResolution:
+    def __init__(self, entity: object, method: str = "persist_id") -> None:
+        self.entity = entity
+        self.method = method
+
+
+class _FakeRefPointFm:
+    """FeatureManager whose InsertReferencePoint(type,...) materializes."""
+
+    def __init__(self, materialize: bool = True) -> None:
+        self.materialize = materialize
+        self.calls: list[tuple] = []
+
+    def InsertReferencePoint(self, ptype, ref, dist, count):  # noqa: N802
+        self.calls.append((ptype, ref, dist, count))
+        if not self.materialize:
+            return None
+        return object()  # a non-None, non-int "Feature"
+
+
+class _FakeRefPointDoc:
+    def __init__(self, fm: _FakeRefPointFm) -> None:
+        self.FeatureManager = fm
+
+    def ClearSelection2(self, flag: bool) -> None:  # noqa: N802
+        pass
+
+
+class TestCreateRefPointHandler:
+    """Direct handler tests for _create_ref_point (W5.3 Epic B face-centroid).
+
+    ref_point stays DE-ADVERTISED (gated behind a production-handler PAE), so
+    these exercise the wiring directly rather than through propose.
+    """
+
+    def test_face_ref_centroid_green(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        fm = _FakeRefPointFm(materialize=True)
+        doc = _FakeRefPointDoc(fm)
+        sentinel_face = object()
+        monkeypatch.setattr(
+            mutate, "resolve_manifest_face",
+            lambda d, fr: _FakeRefResolution(sentinel_face),
+        )
+        monkeypatch.setattr(mutate, "select_entity", lambda e: True)
+        ok, err = mutate._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "top"}})
+        assert ok is True
+        assert err is None
+        # type 4 = swRefPointTypeInCentreOfFace
+        assert fm.calls == [(4, 0, 0.0, 1)]
+
+    def test_face_ref_unresolved_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        doc = _FakeRefPointDoc(_FakeRefPointFm())
+        monkeypatch.setattr(
+            mutate, "resolve_manifest_face",
+            lambda d, fr: _FakeRefResolution(None, method="none"),
+        )
+        monkeypatch.setattr(mutate, "select_entity", lambda e: True)
+        ok, err = mutate._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "x"}})
+        assert ok is False
+        assert "unresolved" in err
+
+    def test_face_ref_select_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        doc = _FakeRefPointDoc(_FakeRefPointFm())
+        monkeypatch.setattr(
+            mutate, "resolve_manifest_face",
+            lambda d, fr: _FakeRefResolution(object()),
+        )
+        monkeypatch.setattr(mutate, "select_entity", lambda e: False)
+        ok, err = mutate._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "x"}})
+        assert ok is False
+        assert "could not select" in err
+
+    def test_no_target_fails_soft(self) -> None:
+        doc = _FakeRefPointDoc(_FakeRefPointFm())
+        ok, err = mutate._create_ref_point(doc, {"type": "ref_point"}, {})
+        assert ok is False
+        assert "face_ref" in err
+
+
 class TestProposeSweepCut_Deferred:
     def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
