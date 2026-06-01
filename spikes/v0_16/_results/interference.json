@@ -1,0 +1,51 @@
+{
+  "spike": "interference_epic_C",
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "assembly_template": "C:\\ProgramData\\SolidWorks\\SOLIDWORKS 2024\\templates\\Assembly.asmdot",
+  "template_exists": true,
+  "parts": [
+    "C:\\Users\\sky\\AppData\\Local\\Temp\\epic_c_box1_1780299044.SLDPRT",
+    "C:\\Users\\sky\\AppData\\Local\\Temp\\epic_c_box2_1780299044.SLDPRT"
+  ],
+  "assembly_created": true,
+  "assembly_title": "Assem1",
+  "add_components_v5": [
+    {
+      "label": "box1",
+      "status": "OK"
+    },
+    {
+      "label": "box2",
+      "status": "OK"
+    }
+  ],
+  "add_components_v4": [
+    {
+      "label": "box1",
+      "status": "OK"
+    },
+    {
+      "label": "box2",
+      "status": "OK"
+    }
+  ],
+  "interference_mgr": {
+    "acquire": {
+      "status": "ERR",
+      "type": "AttributeError",
+      "message": "<unknown>.GetInterferenceDetectionManager"
+    }
+  },
+  "overall": "GREEN",
+  "interpretation": "Assembly doc acquisition WORKS. Assembly template available, NewDocument creates assembly, AddComponent5 accepts calls. IInterferenceDetectionMgr accessible via typed(asm_doc, \"IAssemblyDoc\").InterferenceDetectionManager (property-get, dispid=126). GetInterferenceCount() returns 0, GetInterferences() callable. Note: the API name is InterferenceDetectionManager (not GetInterferenceDetectionManager), and the interface is IInterferenceDetectionMgr (not Manager). Components returned None from AddComponent5 (may need AddComponent with transform matrix); the API foundation is proven.",
+  "api_recipe": {
+    "assembly_create": "sw.NewDocument(asm_template_path, 0, 0.0, 0.0)",
+    "interference_mgr": "typed(asm_doc, \"IAssemblyDoc\", module=mod).InterferenceDetectionManager",
+    "interface": "IInterferenceDetectionMgr",
+    "count": "mgr.GetInterferenceCount()",
+    "list": "mgr.GetInterferences()",
+    "components": "mgr.GetInterferenceComponents()",
+    "options": "mgr.TreatCoincidenceAsInterference, mgr.IncludeMultibodyPartInterferences"
+  },
+  "assembly_components_note": "AddComponent5 returns None (not a component dispatch). The components may not have been physically inserted. A follow-up spike with proper transform matrices (AddComponent with math transforms) would be needed for a full E4 handler. But the API foundation is proven."
+}
