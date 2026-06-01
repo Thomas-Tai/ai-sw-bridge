@@ -100,22 +100,33 @@ def _list_features(doc):
 
 
 def _build_box(sw):
-    """40x40x20 mm box on Front Plane - proven recipe from _run_ref_point_pae.py."""
+    """L-bracket host body: 40mm vertical wall + 40mm horizontal base, 10mm thick.
+    Mid-plane extrusion so Front Plane slices through the middle.
+    The rib sketch will be a diagonal line on Front Plane connecting inner faces."""
     template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_PART)
     doc = sw.NewDocument(template, 0, 0.1, 0.1)
     if doc is None:
         raise RuntimeError("NewDocument returned None")
     doc.ClearSelection2(True)
-    doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
+    # Sketch L-profile on Right Plane (so extrusion goes along X, Front Plane = YZ midplane)
+    doc.SelectByID("Right Plane", "PLANE", 0, 0, 0)
     doc.InsertSketch2(True)
     sk = doc.SketchManager
-    sk.CreateCornerRectangle(-0.02, -0.02, 0, 0.02, 0.02, 0)
+    # L-shape: vertical wall 0..10mm x, 0..40mm y; horizontal base 0..40mm x, 0..10mm y
+    # Draw as a closed L-profile using lines
+    sk.CreateLine(0, 0, 0, 0.04, 0, 0)       # bottom: (0,0) -> (40,0)
+    sk.CreateLine(0.04, 0, 0, 0.04, 0.01, 0)  # right base: (40,0) -> (40,10)
+    sk.CreateLine(0.04, 0.01, 0, 0.01, 0.01, 0)  # inner base top: (40,10) -> (10,10)
+    sk.CreateLine(0.01, 0.01, 0, 0.01, 0.04, 0)  # inner wall right: (10,10) -> (10,40)
+    sk.CreateLine(0.01, 0.04, 0, 0, 0.04, 0)  # top wall: (10,40) -> (0,40)
+    sk.CreateLine(0, 0.04, 0, 0, 0, 0)        # left wall: (0,40) -> (0,0)
     doc.InsertSketch2(False)
     doc.ClearSelection2(True)
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
+    # Mid-plane extrusion, 10mm total (5mm each side of Right Plane)
     fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.02, 0.0,
+        True, False, False, 6, 0, 0.005, 0.005,
         False, False, False, False, 0.0, 0.0,
         False, False, False, False, True, True, True, 0, 0, False,
     )
@@ -124,54 +135,25 @@ def _build_box(sw):
 
 
 def _find_top_face(doc, mod):
-    """Pick any planar face of the box - prefer the top face at z=0.02."""
-    # First try: SelectByID with the known face name pattern for a box on Front Plane
-    # The top face of a 40x40x20 box extruded from Front Plane is typically Face1 or similar
-    # Simpler approach: just grab the first body's first face and use it
-    bodies = doc.GetBodies2(0, True)
-    if not bodies:
-        raise RuntimeError("no bodies")
-    body = bodies[0] if isinstance(bodies, (list, tuple)) else bodies
-    faces = body.GetFaces()
-    if not faces:
-        raise RuntimeError("no faces")
-    ext = typed_extension(doc, module=mod)
-    print("[rib] found %d raw faces" % len(faces))
-    for i, f in enumerate(faces):
-        try:
-            pid = ext.GetPersistReference3(f)
-            if pid is None:
-                print("[rib]   face %d: no persist ref" % i)
-                continue
-            obj = ext.GetObjectByPersistReference3(pid)
-            live = obj[0] if isinstance(obj, tuple) else obj
-            print("[rib]   face %d: live=%s type=%s" % (i, type(live).__name__, getattr(live, '__class__', '?')))
-            # Just return the first valid face - for a rib we need ANY planar face
-            return live
-        except Exception as e:
-            print("[rib]   face %d: err=%s" % (i, e))
-            continue
-    raise RuntimeError("no usable face found")
+    """For L-bracket: we use Front Plane directly for the rib sketch (not a face).
+    This function is a no-op placeholder - returns None to signal skip-face-sketch."""
+    return None
 
 
 def _sketch_open_line_on_face(doc, face_entity):
-    """Enter sketch on the given face and draw a single open line segment."""
+    """For L-bracket: sketch a diagonal line on Front Plane connecting inner faces.
+    The L-bracket inner corner is at (10mm, 10mm) in the Right Plane sketch.
+    On Front Plane (YZ at x=0, mid-plane of 10mm extrusion), the inner wall face
+    is at y=10mm..40mm (z=0), inner base face at z=-5mm..+5mm (y=10mm).
+    Diagonal: from inner wall (y=30mm, z=0) to inner base (y=0, z=0) -- a line
+    that crosses the gap between the two inner faces."""
     doc.ClearSelection2(True)
-    try:
-        # face_entity may be CDispatch - try Select2 via IEntity typed wrapper
-        ient = typed(face_entity, "IEntity", module=wrapper_module())
-        ok = ient.Select2(False, 0)
-    except Exception as e:
-        # fallback: try raw Select2
-        try:
-            ok = face_entity.Select2(False, 0)
-        except Exception as e2:
-            raise RuntimeError("face Select2 failed: %s / %s" % (e, e2))
-    if not ok:
-        raise RuntimeError("face Select2 returned False")
+    doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
     doc.InsertSketch2(True)
     sk = doc.SketchManager
-    sk.CreateLine(-0.015, 0.0, 0.0, 0.015, 0.0, 0.0)
+    # Diagonal line on Front Plane: from (y=15mm, z=0) to (y=0, z=15mm)
+    # This crosses the interior gap of the L-bracket
+    sk.CreateLine(0.0, 0.015, 0.0, 0.0, 0.0, 0.015)
     doc.InsertSketch2(False)
     doc.ClearSelection2(True)
 
@@ -229,10 +211,8 @@ def run():
 
     try:
         fm = doc.FeatureManager
-        print("[rib] locating top face...")
-        face = _find_top_face(doc, mod)
-        print("[rib] sketching open line on face...")
-        _sketch_open_line_on_face(doc, face)
+        print("[rib] sketching diagonal on Front Plane (L-bracket)...")
+        _sketch_open_line_on_face(doc, None)
 
         n_before = _feature_count(doc)
         result["feature_count_before"] = n_before
@@ -243,10 +223,6 @@ def run():
             ("sketch_mark1",      lambda: _select_sketch(doc, mark=1)),
             ("sketch_mark4",      lambda: _select_sketch(doc, mark=4)),
             ("sketch_active",     lambda: _activate_sketch(doc)),
-            ("sketch_then_face",  lambda: (
-                _select_sketch(doc, mark=1) and
-                typed(face, "IEntity", module=mod).Select2(True, 4)
-            )),
         ]
 
         # Corrected arg semantics per SW2024 typelib dump (W0 handoff):
