@@ -67,11 +67,20 @@ def read_inertia(mp: Any, mod: Any = None) -> dict[str, Any]:
         result["errors"].append(f"typed(IMassProperty2): {exc!r}")
         return result
 
-    # PrincipalAxesOfInertia — method on typed wrapper, needs VARIANT(array) arg.
-    # SEAT-PENDING (W0): VARIANT marshaling for the center-of-rotation arg
-    # currently fails out-of-process.
+    # PrincipalAxesOfInertia / GetMomentOfInertia — methods on typed wrapper
+    # that take a center-of-rotation VARIANT(array of 3 doubles). Seat-
+    # validated (SW 2024 SP1, 2026-06-01): both raise with zero args
+    # ("Invalid number of parameters"); with an explicit VARIANT(VT_ARRAY |
+    # VT_R8, [0,0,0]) they hit the out-of-process VARIANT marshaling wall
+    # ("int() argument must be a string ... not 'VARIANT'"). The helper
+    # records the error and moves on; center-of-mass is still readable.
     try:
-        axes = mp_typed.PrincipalAxesOfInertia()
+        import pythoncom
+        import win32com.client
+        center_v = win32com.client.VARIANT(
+            pythoncom.VT_ARRAY | pythoncom.VT_R8, [0.0, 0.0, 0.0]
+        )
+        axes = mp_typed.PrincipalAxesOfInertia(center_v)
         if axes is not None and len(axes) >= 9:
             result["principal_axes"] = [
                 [float(axes[i * 3 + j]) for j in range(3)] for i in range(3)
@@ -79,10 +88,13 @@ def read_inertia(mp: Any, mod: Any = None) -> dict[str, Any]:
     except Exception as exc:
         result["errors"].append(f"PrincipalAxesOfInertia: {exc!r}")
 
-    # GetMomentOfInertia — method on typed wrapper, needs VARIANT(array) args.
-    # SEAT-PENDING (W0): same VARIANT marshaling wall.
     try:
-        moi = mp_typed.GetMomentOfInertia()
+        import pythoncom
+        import win32com.client
+        center_v = win32com.client.VARIANT(
+            pythoncom.VT_ARRAY | pythoncom.VT_R8, [0.0, 0.0, 0.0]
+        )
+        moi = mp_typed.GetMomentOfInertia(center_v)
         if moi is not None and len(moi) >= 6:
             si = [float(moi[k]) for k in range(6)]
             result["moments_of_inertia_kg_mm2"] = [v * 1e6 for v in si]
@@ -113,8 +125,18 @@ def sw_get_inertia(doc: Any) -> dict[str, Any]:
         result["error"] = f"doc.Extension failed: {exc!r}"
         return result
 
+    # Seat-validated (SW 2024 SP1, 2026-06-01): ``CreateMassProperty`` is
+    # exposed as a property-get on the typed ``IModelDocExtension`` wrapper.
+    # Late-bound ``ext.CreateMassProperty()`` (as method-call) raises
+    # ``Member not found``. Route via typed() and read without parens.
     try:
-        mp = ext.CreateMassProperty()
+        from .com.earlybind import typed
+        from .com.sw_type_info import wrapper_module
+        mod = wrapper_module()
+        text = typed(ext, "IModelDocExtension", module=mod)
+        mp = text.CreateMassProperty  # property-get
+        if callable(mp):
+            mp = mp()
     except Exception as exc:
         result["error"] = f"CreateMassProperty failed: {exc!r}"
         return result
@@ -123,7 +145,7 @@ def sw_get_inertia(doc: Any) -> dict[str, Any]:
         result["error"] = "CreateMassProperty returned None"
         return result
 
-    inertia = read_inertia(mp)
+    inertia = read_inertia(mp, mod=mod)
     result.update(inertia)
     result["ok"] = True
     return result

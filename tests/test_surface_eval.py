@@ -32,14 +32,17 @@ class _FakeSurface:
     ) -> None:
         self._point = point
         self._normal = normal
-        self._param_range = param_range
+        # Seat-validated (SW 2024 SP1, 2026-06-01): Parameterization()
+        # returns an 11-element tuple whose first 4 entries are
+        # (u_min, u_max, v_min, v_max). The remaining 7 entries are
+        # garbage floats; pad with zeros for the fake.
+        self._param_range = tuple(param_range) + (0.0,) * (11 - len(param_range))
 
     def Evaluate(self, u1: float, v1: float, u2: float, v2: float) -> tuple[float, ...]:
         """Seat-validated 4-arg form returns (x, y, z, nx, ny, nz)."""
         return (*self._point, *self._normal)
 
-    @property
-    def ParameterRange(self) -> tuple[float, ...]:
+    def Parameterization(self) -> tuple[float, ...]:
         return self._param_range
 
 

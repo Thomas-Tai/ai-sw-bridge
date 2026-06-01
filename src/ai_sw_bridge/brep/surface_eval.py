@@ -118,15 +118,15 @@ def evaluate_surface_at_uv(
 def get_surface_parameter_range(face: Any, module: Any = None) -> dict[str, Any]:
     """Read the UV parameter range of a face's surface.
 
-    Seat-validated (SW 2024 SP1): ``ISurface.ParameterRange`` uses byref
-    VARIANT output parameters that do **not** marshal out-of-process —
-    the method returns ``self`` (the ISurface instance) rather than the
-    range values.  This is a known COM marshaling wall.
+    Seat-validated (SW 2024 SP1, 2026-06-01): ``ISurface.ParameterRange``
+    is **not exposed** on the typed ``ISurface`` wrapper; ``surf.Parameterization()``
+    is the correct access path and returns an 11-element tuple whose first
+    4 entries are ``(u_min, u_max, v_min, v_max)`` (the remaining 7 entries
+    are garbage and are discarded).
 
-    Returns ``{u_min, u_max, v_min, v_max}`` or error info.
-    When the marshaling wall is hit, returns a default range of (0,1,0,1)
-    with a warning in ``error`` so callers can still attempt Evaluate at
-    the parametric midpoint.
+    Returns ``{u_min, u_max, v_min, v_max}`` or error info.  If the call
+    fails, returns a default range of (0,1,0,1) with a warning in ``error``
+    so callers can still attempt Evaluate at the parametric midpoint.
     """
     result: dict[str, Any] = {
         "ok": False,
@@ -160,25 +160,37 @@ def get_surface_parameter_range(face: Any, module: Any = None) -> dict[str, Any]
         result["error"] = f"typed(ISurface) failed: {exc!r}"
         return result
 
-    # ParameterRange — seat-validated: returns self out-of-process.
+    # Seat-validated (SW 2024 SP1, 2026-06-01):
+    #   * ``ISurface.ParameterRange`` is **not exposed** on the typed
+    #     ``ISurface`` wrapper in SW 2024 (AttributeError).
+    #   * ``ISurface.Parameterization()`` **is exposed** and returns an
+    #     11-element tuple whose first 4 entries are
+    #     ``(u_min, u_max, v_min, v_max)``.  The remaining 7 entries are
+    #     uninitialized memory (sub-nanometer garbage floats) and must be
+    #     discarded.
     try:
-        pr = surf.ParameterRange
-        if isinstance(pr, (tuple, list)) and len(pr) >= 4:
-            result["u_min"] = float(pr[0])
-            result["u_max"] = float(pr[1])
-            result["v_min"] = float(pr[2])
-            result["v_max"] = float(pr[3])
+        pz = surf.Parameterization
+        if callable(pz):
+            pz = pz()
+        if isinstance(pz, (tuple, list)) and len(pz) >= 4:
+            result["u_min"] = float(pz[0])
+            result["u_max"] = float(pz[1])
+            result["v_min"] = float(pz[2])
+            result["v_max"] = float(pz[3])
             result["ok"] = True
         else:
-            # Marshaling wall — return default range so Evaluate can still be
-            # attempted at the midpoint (0.5, 0.5).
+            # Fallback: default range so Evaluate can still be attempted at
+            # the parametric midpoint (0.5, 0.5).
             result["u_min"] = 0.0
             result["u_max"] = 1.0
             result["v_min"] = 0.0
             result["v_max"] = 1.0
             result["ok"] = True
-            result["error"] = "ParameterRange not readable out-of-process; using default (0,1,0,1)"
+            result["error"] = (
+                f"Parameterization() unexpected shape {type(pz).__name__}; "
+                "using default (0,1,0,1)"
+            )
     except Exception as exc:
-        result["error"] = f"ParameterRange failed: {exc!r}"
+        result["error"] = f"Parameterization failed: {exc!r}"
 
     return result

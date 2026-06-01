@@ -43,6 +43,7 @@ class _FakeDocExtension:
     def __init__(self, mp: Any) -> None:
         self._mp = mp
 
+    @property
     def CreateMassProperty(self) -> Any:
         return self._mp
 
@@ -95,6 +96,8 @@ class TestReadInertia:
 
 class TestSwGetInertia:
     @patch("ai_sw_bridge.observe_inertia.typed", _fake_typed)
+    @patch("ai_sw_bridge.com.earlybind.typed", _fake_typed)
+    @patch("ai_sw_bridge.com.sw_type_info.wrapper_module", lambda: object())
     def test_ok(self) -> None:
         mp = _FakeMassProperty()
         doc = _FakeDoc(mp)
@@ -108,6 +111,8 @@ class TestSwGetInertia:
         assert result["ok"] is False
         assert "Extension" in result["error"]
 
+    @patch("ai_sw_bridge.com.earlybind.typed", _fake_typed)
+    @patch("ai_sw_bridge.com.sw_type_info.wrapper_module", lambda: object())
     def test_mass_property_none(self) -> None:
         doc = _FakeDoc(None)
         result = sw_get_inertia(doc)
