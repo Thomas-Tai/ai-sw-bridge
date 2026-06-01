@@ -55,10 +55,14 @@ class _FakeSweepCutExt:
 
 
 class _FakeSweepCutFm:
-    def __init__(self, create_feat_ret: Any = object()) -> None:
+    def __init__(self, create_feat_ret: Any = object(), *, materializes: bool = True) -> None:
         self.create_def_calls: list[int] = []
         self.create_feat_calls: list = []
         self._feat_ret = create_feat_ret
+        # W6 T4: production handler verifies via GetFeatures(True) delta, since
+        # CreateFeature may return None even on success.
+        self._count = 21
+        self._materializes = materializes
 
     def CreateDefinition(self, const: int) -> Any:
         self.create_def_calls.append(const)
@@ -66,7 +70,12 @@ class _FakeSweepCutFm:
 
     def CreateFeature(self, data: Any) -> Any:
         self.create_feat_calls.append(data)
+        if self._materializes:
+            self._count += 1
         return self._feat_ret
+
+    def GetFeatures(self, top_level: bool):  # noqa: N802, FBT001
+        return ["f"] * self._count
 
 
 class _FakeSweepCutDoc:
@@ -645,7 +654,52 @@ class TestCreateDomeHandler:
         assert "face_ref" in err or "face" in err
 
 
-class TestProposeSweepCut_Deferred:
+class TestCreateSweepCutHandler:
+    """Direct tests for the PRODUCTION mutate._create_sweep_cut (W6 T4).
+
+    Distinct from TestDryRunSweepCut, which exercises a test-local mirror.
+    Verifies the delta-based detection: CreateFeature may return None even on
+    success, so materialization is read from GetFeatures(True), not the return.
+    """
+
+    def test_green_delta_with_none_return(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_com_imports(monkeypatch)
+        # CreateFeature returns None but the feature count bumps -> GREEN.
+        fm = _FakeSweepCutFm(create_feat_ret=None, materializes=True)
+        doc = _FakeSweepCutDoc(fm)
+        ok, err = mutate._create_sweep_cut(
+            doc, {"type": "sweep_cut"}, {"profile": "Sketch2", "path": "Sketch3"}
+        )
+        assert ok is True
+        assert err is None
+        assert fm.create_def_calls == [mutate._SW_FM_SWEEP_CUT]
+
+    def test_no_delta_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_com_imports(monkeypatch)
+        # CreateFeature returns a non-None object but NO feature appears (the
+        # path didn't pierce the solid) -> must still fail on the delta.
+        fm = _FakeSweepCutFm(create_feat_ret=object(), materializes=False)
+        doc = _FakeSweepCutDoc(fm)
+        ok, err = mutate._create_sweep_cut(
+            doc, {"type": "sweep_cut"}, {"profile": "Sketch2", "path": "Sketch3"}
+        )
+        assert ok is False
+        assert "did not materialize" in err
+
+    def test_missing_path_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_com_imports(monkeypatch)
+        fm = _FakeSweepCutFm()
+        doc = _FakeSweepCutDoc(fm)
+        ok, err = mutate._create_sweep_cut(doc, {"type": "sweep_cut"}, {"profile": "Sketch2"})
+        assert ok is False
+        assert "profile" in err and "path" in err
+
+
+class TestProposeSweepCut_Advertised:
+    """W6 T4: sweep_cut advertised (13th kind). Recipe seat-GREEN (spike
+    b5d1174); the prior WALL was a geometry constraint (path must pierce the
+    solid), not an API wall."""
+
     def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
@@ -653,11 +707,11 @@ class TestProposeSweepCut_Deferred:
         r = sw_propose_feature_add(
             str(doc_file),
             {"type": "sweep_cut"},
-            {"profile": "Sketch1", "path": "Sketch2"},
+            {"profile": "Sketch2", "path": "Sketch3"},
         )
-        assert r["ok"] is False
-        assert "unsupported feature type" in r["error"]
-        assert "sweep_cut" in r["error"]
+        assert r["ok"] is True
+        assert r["proposal_id"] is not None
+        assert r["error"] is None
 
     def test_rejects_missing_path(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
@@ -666,11 +720,10 @@ class TestProposeSweepCut_Deferred:
         r = sw_propose_feature_add(
             str(doc_file),
             {"type": "sweep_cut"},
-            {"profile": "Sketch1"},
+            {"profile": "Sketch2"},
         )
         assert r["ok"] is False
-        assert "unsupported feature type" in r["error"]
-        assert "sweep_cut" in r["error"]
+        assert "path" in r["error"]
 
 
 class TestProposeLoft:

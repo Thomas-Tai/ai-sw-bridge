@@ -174,6 +174,12 @@ _SUPPORTED_FEATURE_TYPES = (
     # IModelDoc2.InsertDome(height_m, reverse, elliptical) -> Dome1 (verified by
     # GetFeatures(True) count delta; InsertDome returns None even on success).
     "dome",
+    # W6 T4: sweep_cut (swFmSweepCut=18). Recipe seat-GREEN (spike b5d1174):
+    # CreateDefinition(18) -> typed_qi(ISweepFeatureData) -> SelectByID2 marks
+    # (profile=1, path=4) -> CreateFeature -> Cut-Sweep1. The prior WALL was a
+    # geometry constraint (path must pierce the solid), not an API wall; verify
+    # via GetFeatures(True) delta (CreateFeature may return None on success).
+    "sweep_cut",
     # ---- Wave-5 F1–F6 kinds REMOVED from the advertised surface (W0 handback) ----
     # The handlers + dispatch entries remain below as characterized code; propose
     # must fail-close with "unsupported feature type" for any of these kinds
@@ -501,9 +507,21 @@ def _create_sweep_cut(
 ) -> tuple[bool, str | None]:
     """Create a sweep-cut feature — mirror of _create_sweep with swFmSweepCut=18.
 
-    Same ISweepFeatureData interface; same marked select pipeline
-    (profile=mark 1, path=mark 4). SEAT-PENDING (W0): confirm const=18 from
-    swconst.tlb and that ISweepFeatureData is the right interface for cuts.
+    Seat-validated recipe (W6 T4, spike ``b5d1174`` = GREEN, SW 2024 SP1):
+    ``CreateDefinition(18) → typed_qi(ISweepFeatureData) → CreateFeature``
+    with the marked select pipeline (profile=mark 1, path=mark 4).
+    Materializes ``Cut-Sweep1`` (``SweepCut``).
+
+    Two seat facts baked in:
+
+    * **The path sketch MUST pierce the solid body.** The prior "WALL" was a
+      pure geometry constraint, not an API issue: a path that stays outside the
+      solid (or on a plane that doesn't intersect it) makes the solver silently
+      no-op. The caller's path sketch must travel through the material.
+    * **``CreateFeature`` may return ``None`` even on success** (observed on the
+      seat). Do NOT trust the return value — verify via a feature-count delta
+      using ``len(FeatureManager.GetFeatures(True))`` (same as ``_create_dome``
+      / ``_create_shell``).
     """
     profile = target.get("profile") if isinstance(target, dict) else None
     path = target.get("path") if isinstance(target, dict) else None
@@ -524,13 +542,19 @@ def _create_sweep_cut(
             return False, f"could not select profile sketch {profile!r}"
         if not ext.SelectByID2(path, "SKETCH", 0, 0, 0, True, 4, None, 0):
             return False, f"could not select path sketch {path!r}"
-        # SEAT-PENDING (W0): confirm CreateFeature materializes a sweep cut.
-        feat = fm.CreateFeature(fd)
-        if _materialized(feat):
+        # CreateFeature may return None even on success — verify via a
+        # feature-count delta (GetFeatures(True), not the return value).
+        _feats = fm.GetFeatures(True)
+        before = len(_feats) if _feats else 0
+        fm.CreateFeature(fd)
+        doc.ForceRebuild3(False)
+        _feats = fm.GetFeatures(True)
+        after = len(_feats) if _feats else 0
+        if after > before:
             return True, None
         return False, (
-            "CreateFeature did not materialize "
-            "(the path sketch must leave the profile plane)"
+            "sweep-cut did not materialize "
+            f"(count {before} -> {after}); the path sketch must pierce the solid body"
         )
     except Exception as exc:
         return False, f"sweep-cut pipeline failed: {exc!r}"
