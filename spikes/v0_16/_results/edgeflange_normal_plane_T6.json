@@ -1,0 +1,145 @@
+{
+  "spike": "edgeflange_normal_plane_T6",
+  "ts": 1780309775.7309651,
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "edge_length": 0.05000000000000001,
+  "edge_midpoint": [
+    0.0,
+    0.025,
+    0.05
+  ],
+  "edge_tangent": [
+    -1.0,
+    -0.0,
+    -0.0
+  ],
+  "feature_count_before": 19,
+  "probes": [
+    {
+      "probe": "perp_only",
+      "constraints": [
+        16,
+        0
+      ],
+      "distances": [
+        0,
+        0
+      ],
+      "delta": 0,
+      "materialized": false,
+      "return_value": "None",
+      "error": null
+    },
+    {
+      "probe": "perp_coincident",
+      "constraints": [
+        16,
+        2
+      ],
+      "distances": [
+        0,
+        0
+      ],
+      "delta": 0,
+      "materialized": false,
+      "return_value": "None",
+      "error": null
+    },
+    {
+      "probe": "perp_angle",
+      "constraints": [
+        16,
+        4
+      ],
+      "distances": [
+        0,
+        90.0
+      ],
+      "delta": 0,
+      "materialized": false,
+      "return_value": "None",
+      "error": null
+    }
+  ],
+  "overall": "WALL",
+  "interpretation": "No constraint combo materialized a normal plane across 3 probes.",
+  "feature_count_after": 19,
+  "features_after": [
+    {
+      "name": "Comments",
+      "type": "CommentsFolder"
+    },
+    {
+      "name": "Favorites",
+      "type": "FavoriteFolder"
+    },
+    {
+      "name": "Folder ",
+      "type": "HistoryFolder"
+    },
+    {
+      "name": "Selection Sets",
+      "type": "SelectionSetFolder"
+    },
+    {
+      "name": "Sensors",
+      "type": "SensorFolder"
+    },
+    {
+      "name": "Design Binder",
+      "type": "DocsFolder"
+    },
+    {
+      "name": "Annotations",
+      "type": "DetailCabinet"
+    },
+    {
+      "name": "Surface Bodies",
+      "type": "SurfaceBodyFolder"
+    },
+    {
+      "name": "Solid Bodies",
+      "type": "SolidBodyFolder"
+    },
+    {
+      "name": "Lights and Cameras",
+      "type": "EnvFolder"
+    },
+    {
+      "name": "Markups",
+      "type": "InkMarkupFolder"
+    },
+    {
+      "name": "Equations",
+      "type": "EqnFolder"
+    },
+    {
+      "name": "Material <not specified>",
+      "type": "MaterialFolder"
+    },
+    {
+      "name": "Front Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Top Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Right Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Origin",
+      "type": "OriginProfileFeature"
+    },
+    {
+      "name": "Sketch1",
+      "type": "ProfileFeature"
+    },
+    {
+      "name": "Boss-Extrude1",
+      "type": "Extrusion"
+    }
+  ]
+}
