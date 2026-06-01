@@ -1,0 +1,1330 @@
+{
+  "spike": "rib_recipe_T1",
+  "ts": 1780302619.9780154,
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "feature_count_before": 20,
+  "features_before": [
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    }
+  ],
+  "probes": [
+    {
+      "sel": "sketch_mark0",
+      "args": "v1_linear_normal_2mm",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark0",
+      "args": "v2_linear_normal_thk2",
+      "arg_tuple": [
+        false,
+        true,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark0",
+      "args": "v3_bothsides",
+      "arg_tuple": [
+        true,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark0",
+      "args": "v4_parallel_to_sketch",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark0",
+      "args": "v5_natural_rib",
+      "arg_tuple": [
+        false,
+        false,
+        0.003,
+        1,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark0",
+      "args": "v6_all_flipped",
+      "arg_tuple": [
+        true,
+        true,
+        0.002,
+        0,
+        true,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark0",
+      "args": "v7_thicker_5mm",
+      "arg_tuple": [
+        false,
+        false,
+        0.005,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark0",
+      "args": "v8_reverse_parallel",
+      "arg_tuple": [
+        false,
+        true,
+        0.003,
+        0,
+        true,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark0",
+      "args": "v9_bothsides_parallel",
+      "arg_tuple": [
+        true,
+        false,
+        0.002,
+        0,
+        false,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark0",
+      "args": "v10_draft_5deg",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        true,
+        0.0873,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark0",
+      "args": "v11_draft_while",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        true,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v1_linear_normal_2mm",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v2_linear_normal_thk2",
+      "arg_tuple": [
+        false,
+        true,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v3_bothsides",
+      "arg_tuple": [
+        true,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v4_parallel_to_sketch",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v5_natural_rib",
+      "arg_tuple": [
+        false,
+        false,
+        0.003,
+        1,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v6_all_flipped",
+      "arg_tuple": [
+        true,
+        true,
+        0.002,
+        0,
+        true,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v7_thicker_5mm",
+      "arg_tuple": [
+        false,
+        false,
+        0.005,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v8_reverse_parallel",
+      "arg_tuple": [
+        false,
+        true,
+        0.003,
+        0,
+        true,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v9_bothsides_parallel",
+      "arg_tuple": [
+        true,
+        false,
+        0.002,
+        0,
+        false,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v10_draft_5deg",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        true,
+        0.0873,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark1",
+      "args": "v11_draft_while",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        true,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v1_linear_normal_2mm",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v2_linear_normal_thk2",
+      "arg_tuple": [
+        false,
+        true,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v3_bothsides",
+      "arg_tuple": [
+        true,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v4_parallel_to_sketch",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v5_natural_rib",
+      "arg_tuple": [
+        false,
+        false,
+        0.003,
+        1,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v6_all_flipped",
+      "arg_tuple": [
+        true,
+        true,
+        0.002,
+        0,
+        true,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v7_thicker_5mm",
+      "arg_tuple": [
+        false,
+        false,
+        0.005,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v8_reverse_parallel",
+      "arg_tuple": [
+        false,
+        true,
+        0.003,
+        0,
+        true,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v9_bothsides_parallel",
+      "arg_tuple": [
+        true,
+        false,
+        0.002,
+        0,
+        false,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v10_draft_5deg",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        true,
+        0.0873,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_mark4",
+      "args": "v11_draft_while",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        true,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v1_linear_normal_2mm",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v2_linear_normal_thk2",
+      "arg_tuple": [
+        false,
+        true,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v3_bothsides",
+      "arg_tuple": [
+        true,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v4_parallel_to_sketch",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v5_natural_rib",
+      "arg_tuple": [
+        false,
+        false,
+        0.003,
+        1,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v6_all_flipped",
+      "arg_tuple": [
+        true,
+        true,
+        0.002,
+        0,
+        true,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v7_thicker_5mm",
+      "arg_tuple": [
+        false,
+        false,
+        0.005,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v8_reverse_parallel",
+      "arg_tuple": [
+        false,
+        true,
+        0.003,
+        0,
+        true,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v9_bothsides_parallel",
+      "arg_tuple": [
+        true,
+        false,
+        0.002,
+        0,
+        false,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v10_draft_5deg",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        true,
+        0.0873,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_active",
+      "args": "v11_draft_while",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        true,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v1_linear_normal_2mm",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v2_linear_normal_thk2",
+      "arg_tuple": [
+        false,
+        true,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v3_bothsides",
+      "arg_tuple": [
+        true,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v4_parallel_to_sketch",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v5_natural_rib",
+      "arg_tuple": [
+        false,
+        false,
+        0.003,
+        1,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v6_all_flipped",
+      "arg_tuple": [
+        true,
+        true,
+        0.002,
+        0,
+        true,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v7_thicker_5mm",
+      "arg_tuple": [
+        false,
+        false,
+        0.005,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v8_reverse_parallel",
+      "arg_tuple": [
+        false,
+        true,
+        0.003,
+        0,
+        true,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v9_bothsides_parallel",
+      "arg_tuple": [
+        true,
+        false,
+        0.002,
+        0,
+        false,
+        false,
+        false,
+        0.0,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v10_draft_5deg",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        true,
+        0.0873,
+        false,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    },
+    {
+      "sel": "sketch_then_face",
+      "args": "v11_draft_while",
+      "arg_tuple": [
+        false,
+        false,
+        0.002,
+        0,
+        false,
+        true,
+        false,
+        0.0,
+        true,
+        true
+      ],
+      "materialized": false,
+      "feature": null,
+      "error": null,
+      "sel_count": "?",
+      "delta": 0
+    }
+  ],
+  "feature_count_after": 20,
+  "features_after": [
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    },
+    {
+      "name": "?",
+      "type": "?"
+    }
+  ],
+  "overall": "PARTIAL",
+  "interpretation": "No arg/selection combo materialized a Rib across 55 probes. Open-sketch-on-face hypothesis tested with 5 selection variants and 11 arg tuples. Next: check SW API docs for exact InsertRib semantics or try with the sketch line as a SELECTED ENTITY (not just the sketch feature)."
+}
