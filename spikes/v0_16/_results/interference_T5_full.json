@@ -1,0 +1,18 @@
+{
+  "spike": "interference_T5_full",
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "parts": [
+    "C:\\Users\\sky\\AppData\\Local\\Temp\\t5_box1_1780307962.SLDPRT",
+    "C:\\Users\\sky\\AppData\\Local\\Temp\\t5_box2_1780307962.SLDPRT"
+  ],
+  "assembly_title": "Assem1",
+  "comp1": "None",
+  "comp1_type": "None",
+  "comp2": "None",
+  "comp2_type": "None",
+  "mgr": "<win32com.gen_py.SldWorks 2024 Type Library.IInterferenceDetectionMgr instance at 0x2070042131280>",
+  "mgr_type": "IInterferenceDetectionMgr",
+  "interference_count": 0,
+  "overall": "PARTIAL",
+  "interpretation": "Components placed but count=0."
+}
