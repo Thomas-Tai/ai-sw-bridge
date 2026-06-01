@@ -5,50 +5,69 @@ Reads ``IMassProperty2`` inertia properties from a part document.
 Seat-validated on SW 2024 SP1 (rev 32.1.0):
   - ``IMassProperty2`` QI returns E_NOINTERFACE — must use ``typed()``
     (by-dispid wrap), NOT ``typed_qi()``.
-  - On the typed wrapper, ``PrincipalAxesOfInertia`` and
-    ``GetMomentOfInertia`` are **methods** (not properties) that take a
-    center-of-rotation VARIANT(array of 3 doubles) as the first arg.
-  - ``Moments`` and ``RadiusOfGyration`` are NOT exposed on the typed
-    wrapper in SW 2024 — they may require a different access pattern.
   - The basic properties ``Volume``, ``SurfaceArea``, ``Mass``,
     ``Density``, ``CenterOfMass`` are readable on the **late-bound**
     proxy (same as ``sw_get_volume``).
-
-The inertia tensor reads (``PrincipalAxesOfInertia``,
-``GetMomentOfInertia``) require VARIANT(array) arg marshaling that
-currently fails with "Type mismatch" / "Parameter not optional" on the
-out-of-process COM boundary.  This is a **known marshaling wall** —
-the helpers fail-soft and record the error.
+  - ``GetMomentOfInertia`` is ``GetMomentOfInertia([in] long WhereTaken)
+    -> VT_VARIANT`` (dispid=12, METHOD).  The earlier "VARIANT(array)"
+    diagnosis was **wrong** — it takes a single ``long`` frame selector,
+    NOT a centre-of-rotation array.  Passing a plain Python ``int``
+    works; it returns a 9-tuple = the row-major 3x3 inertia tensor in
+    SI units (kg*m^2).  ``WhereTaken=0`` (centre of mass) is the
+    physically meaningful frame and was cross-checked against the
+    textbook box formula (Ixx = m/12*(h^2+d^2)); ``1`` (output coord)
+    and ``2`` (model origin) return zeros unless a coordinate system is
+    defined.  Seat-proven 2026-06-01, Epic A (spike ``46e6294``).
+  - ``PrincipalAxesOfInertia`` (dispid=7, PROPGET) is **unreachable**
+    out-of-process: COM-level DISP_E_BADPARAMCOUNT ("Invalid number of
+    parameters") for every probed arg-count / invkind — the gen_py
+    wrapper's arity/invkind does not match the live server.  We do NOT
+    call it.  Principal moments + axes are **derived** from the inertia
+    tensor via ``numpy.linalg.eigh`` — this is exact, not an
+    approximation: the principal axes ARE the eigenvectors of the
+    (symmetric) inertia tensor and the principal moments ARE its
+    eigenvalues.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
+
 from .com.earlybind import typed
 from .sw_com import resolve
+
+# IMassProperty2.GetMomentOfInertia WhereTaken selector: 0 = about the
+# centre of mass (the only frame that returns a meaningful tensor without
+# a user-defined output coordinate system). Seat-validated.
+_WHERE_CENTER_OF_MASS = 0
 
 
 def read_inertia(mp: Any, mod: Any = None) -> dict[str, Any]:
     """Extract inertia properties from an ``IMassProperty2`` object.
 
-    Uses ``typed(mp, "IMassProperty2")`` for access to methods not
-    available on the late-bound proxy.  The inertia tensor reads
-    (PrincipalAxesOfInertia, GetMomentOfInertia) currently fail due
-    to COM VARIANT marshaling walls — the function fail-softs and
-    records the errors.
+    ``CenterOfMass`` is read on the late-bound proxy.  The full inertia
+    tensor is read via the typed wrapper's
+    ``GetMomentOfInertia(0)`` (seat-proven 9-tuple, SI kg*m^2); the
+    principal moments and axes are derived from it by eigendecomposition
+    (``PrincipalAxesOfInertia`` is unreachable out-of-process — see the
+    module docstring).  All reads fail-soft and record errors.
 
-    Returns a dict with ``center_of_mass_mm`` (always readable),
-    ``principal_axes``, ``moments_of_inertia_kg_mm2``, and ``errors``.
+    Returns a dict with ``center_of_mass_mm``, ``inertia_tensor_kg_m2``
+    (3x3, about the centre of mass), ``principal_moments_kg_m2``
+    (eigenvalues, ascending), ``principal_axes`` (3 unit eigenvectors),
+    and ``errors``.
     """
     result: dict[str, Any] = {
         "center_of_mass_mm": None,
+        "inertia_tensor_kg_m2": None,
+        "principal_moments_kg_m2": None,
         "principal_axes": None,
-        "moments_of_inertia_kg_mm2": None,
         "errors": [],
     }
 
-    # CenterOfMass — always readable on late-bound proxy.
+    # CenterOfMass — always readable on late-bound proxy (SW returns metres).
     try:
         com = resolve(mp, "CenterOfMass")
         if com is not None and len(com) >= 3:
@@ -56,7 +75,7 @@ def read_inertia(mp: Any, mod: Any = None) -> dict[str, Any]:
     except Exception as exc:
         result["errors"].append(f"CenterOfMass: {exc!r}")
 
-    # Try typed access for inertia tensor.
+    # Typed wrapper for the inertia-tensor read.
     if mod is None:
         from .com.sw_type_info import wrapper_module
         mod = wrapper_module()
@@ -67,39 +86,30 @@ def read_inertia(mp: Any, mod: Any = None) -> dict[str, Any]:
         result["errors"].append(f"typed(IMassProperty2): {exc!r}")
         return result
 
-    # PrincipalAxesOfInertia / GetMomentOfInertia — methods on typed wrapper
-    # that take a center-of-rotation VARIANT(array of 3 doubles). Seat-
-    # validated (SW 2024 SP1, 2026-06-01): both raise with zero args
-    # ("Invalid number of parameters"); with an explicit VARIANT(VT_ARRAY |
-    # VT_R8, [0,0,0]) they hit the out-of-process VARIANT marshaling wall
-    # ("int() argument must be a string ... not 'VARIANT'"). The helper
-    # records the error and moves on; center-of-mass is still readable.
+    # GetMomentOfInertia(long WhereTaken) -> row-major 3x3 inertia tensor
+    # (9-tuple, SI kg*m^2). Plain int arg; no VARIANT wrapping. Seat-proven.
     try:
-        import pythoncom
-        import win32com.client
-        center_v = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_R8, [0.0, 0.0, 0.0]
-        )
-        axes = mp_typed.PrincipalAxesOfInertia(center_v)
-        if axes is not None and len(axes) >= 9:
-            result["principal_axes"] = [
-                [float(axes[i * 3 + j]) for j in range(3)] for i in range(3)
-            ]
+        moi = mp_typed.GetMomentOfInertia(_WHERE_CENTER_OF_MASS)
+        if moi is None or len(moi) < 9:
+            result["errors"].append(
+                f"GetMomentOfInertia(0): expected 9-tuple, got {moi!r}"
+            )
+        else:
+            tensor = [[float(moi[i * 3 + j]) for j in range(3)] for i in range(3)]
+            result["inertia_tensor_kg_m2"] = tensor
+            # Principal moments + axes by eigendecomposition of the symmetric
+            # tensor (exact; replaces the unreachable PrincipalAxesOfInertia).
+            # eigh -> eigenvalues ascending, eigenvectors as columns.
+            try:
+                vals, vecs = np.linalg.eigh(np.asarray(tensor, dtype=float))
+                result["principal_moments_kg_m2"] = [float(v) for v in vals]
+                result["principal_axes"] = [
+                    [float(vecs[r, c]) for r in range(3)] for c in range(3)
+                ]
+            except Exception as exc:
+                result["errors"].append(f"eigh(inertia_tensor): {exc!r}")
     except Exception as exc:
-        result["errors"].append(f"PrincipalAxesOfInertia: {exc!r}")
-
-    try:
-        import pythoncom
-        import win32com.client
-        center_v = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_R8, [0.0, 0.0, 0.0]
-        )
-        moi = mp_typed.GetMomentOfInertia(center_v)
-        if moi is not None and len(moi) >= 6:
-            si = [float(moi[k]) for k in range(6)]
-            result["moments_of_inertia_kg_mm2"] = [v * 1e6 for v in si]
-    except Exception as exc:
-        result["errors"].append(f"GetMomentOfInertia: {exc!r}")
+        result["errors"].append(f"GetMomentOfInertia(0): {exc!r}")
 
     return result
 
@@ -107,16 +117,17 @@ def read_inertia(mp: Any, mod: Any = None) -> dict[str, Any]:
 def sw_get_inertia(doc: Any) -> dict[str, Any]:
     """Top-level observer: read inertia from a part document.
 
-    Acquires ``IMassProperty2`` via
-    ``doc.Extension.CreateMassProperty()``, then delegates to
-    :func:`read_inertia`.
+    Acquires ``IMassProperty2`` via the typed
+    ``IModelDocExtension.CreateMassProperty`` property-get, then
+    delegates to :func:`read_inertia`.
     """
     result: dict[str, Any] = {
         "ok": False,
         "error": None,
         "center_of_mass_mm": None,
+        "inertia_tensor_kg_m2": None,
+        "principal_moments_kg_m2": None,
         "principal_axes": None,
-        "moments_of_inertia_kg_mm2": None,
     }
 
     try:

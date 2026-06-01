@@ -2,8 +2,10 @@
 
 Mock-tests the read_inertia / sw_get_inertia functions without a SW seat.
 Seat-validated findings baked in: IMassProperty2 typed QI fails
-(E_NOINTERFACE), inertia tensor reads need VARIANT marshaling that
-currently fails out-of-process.
+(E_NOINTERFACE) so reads route via typed() by-dispid; the inertia tensor
+is read with GetMomentOfInertia(long WhereTaken) returning a 9-tuple
+(SI kg*m^2), and principal moments/axes are derived via eigendecomposition
+because PrincipalAxesOfInertia is unreachable out-of-process.
 """
 
 from __future__ import annotations
@@ -20,7 +22,8 @@ class _FakeMassProperty:
     """Fake IMassProperty2 (late-bound proxy behavior).
 
     Volume/SurfaceArea/Mass/Density/CenterOfMass work as properties.
-    Inertia tensor methods fail (COM marshaling wall).
+    GetMomentOfInertia(WhereTaken) returns a 9-tuple inertia tensor — an
+    axis-aligned box, so the tensor is diagonal (kg*m^2).
     """
 
     def __init__(self) -> None:
@@ -29,6 +32,24 @@ class _FakeMassProperty:
         self.Mass = 4e-6
         self.Density = 1000.0
         self.CenterOfMass = (0.0, 0.0, 0.005)
+
+    def GetMomentOfInertia(self, where_taken: int) -> tuple:
+        # Diagonal tensor about the centre of mass (axis-aligned box).
+        return (
+            5.333e-9, 0.0, 0.0,
+            0.0, 5.333e-9, 0.0,
+            0.0, 0.0, 8.533e-9,
+        )
+
+
+class _FakeMassPropertyNoTensor:
+    """Fake where CenterOfMass reads but GetMomentOfInertia returns None."""
+
+    def __init__(self) -> None:
+        self.CenterOfMass = (0.0, 0.0, 0.0)
+
+    def GetMomentOfInertia(self, where_taken: int) -> Any:
+        return None
 
 
 class _FakeMassPropertyFailing:
@@ -76,15 +97,35 @@ class TestReadInertia:
         ]
 
     @patch("ai_sw_bridge.observe_inertia.typed", _fake_typed)
-    def test_inertia_reads_fail_soft(self) -> None:
-        """Inertia tensor reads fail due to COM marshaling wall — fail-soft."""
+    def test_inertia_tensor_green(self) -> None:
+        """GetMomentOfInertia(0) -> tensor; principal moments/axes derived."""
         mp = _FakeMassProperty()
         result = read_inertia(mp)
-        # PrincipalAxesOfInertia and GetMomentOfInertia are not on the
-        # fake — they'll error, which is expected behavior.
+        assert result["inertia_tensor_kg_m2"] == [
+            [pytest.approx(5.333e-9), 0.0, 0.0],
+            [0.0, pytest.approx(5.333e-9), 0.0],
+            [0.0, 0.0, pytest.approx(8.533e-9)],
+        ]
+        # Principal moments = eigenvalues, ascending.
+        pm = result["principal_moments_kg_m2"]
+        assert pm[0] == pytest.approx(5.333e-9)
+        assert pm[1] == pytest.approx(5.333e-9)
+        assert pm[2] == pytest.approx(8.533e-9)
+        # Three orthonormal principal axes.
+        assert result["principal_axes"] is not None
+        assert len(result["principal_axes"]) == 3
+        assert all(len(ax) == 3 for ax in result["principal_axes"])
+        assert not result["errors"]
+
+    @patch("ai_sw_bridge.observe_inertia.typed", _fake_typed)
+    def test_tensor_fail_soft(self) -> None:
+        """GetMomentOfInertia returning None fails soft, records an error."""
+        mp = _FakeMassPropertyNoTensor()
+        result = read_inertia(mp)
+        assert result["inertia_tensor_kg_m2"] is None
         assert result["principal_axes"] is None
-        assert result["moments_of_inertia_kg_mm2"] is None
-        assert len(result["errors"]) >= 1
+        assert result["principal_moments_kg_m2"] is None
+        assert any("GetMomentOfInertia" in e for e in result["errors"])
 
     @patch("ai_sw_bridge.observe_inertia.typed", _fake_typed)
     def test_handles_com_failure(self) -> None:

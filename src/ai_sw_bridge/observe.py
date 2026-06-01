@@ -1268,10 +1268,15 @@ class SolidWorksObserver:
         return sw_get_volume()
 
     def inertia(self) -> dict[str, Any]:
-        """Return inertia tensor properties of the active part (Wave-5 E1).
+        """Return inertia properties of the active part (Wave-5 E1).
 
-        Reads principal axes, moments of inertia, principal moments, and
-        radius of gyration from IMassProperty2.
+        Reads the centre of mass and the full 3x3 inertia tensor (about
+        the centre of mass, SI kg*m^2) from IMassProperty2 via
+        ``GetMomentOfInertia(0)``; principal moments and axes are derived
+        from the tensor by eigendecomposition (``PrincipalAxesOfInertia``
+        is unreachable out-of-process). Keys: ``center_of_mass_mm``,
+        ``inertia_tensor_kg_m2``, ``principal_moments_kg_m2``,
+        ``principal_axes``.
         """
         doc = get_active_doc(get_sw_app())
         if doc is None:
