@@ -15,6 +15,10 @@ Exports the public API for the L1 B-rep lane:
   ``FaceAmbiguityError`` on failure.
 - ``find_face_by_normal(parent, normal, tolerance)`` — direct
   normal-vector lookup (requirements.md FR-v0.11-L1-02).
+- ``evaluate_surface_at_uv(face, u, v)`` — evaluate a face's underlying
+  surface at (U,V) returning 3-D point + unit normal (Wave-5 E2).
+- ``get_surface_parameter_range(face)`` — read the UV parameter bounds
+  of a face's surface (Wave-5 E2).
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ from .resolver import (
     find_face_by_normal,
     resolve_face_role,
 )
+from .surface_eval import evaluate_surface_at_uv, get_surface_parameter_range
 
 __all__ = [
     "BrepEdge",
@@ -35,8 +40,10 @@ __all__ = [
     "FaceAmbiguityError",
     "FaceResolutionError",
     "Manifest",
+    "evaluate_surface_at_uv",
     "find_face_by_normal",
     "fingerprint",
+    "get_surface_parameter_range",
     "interrogate",
     "resolve_face_role",
 ]

@@ -111,6 +111,9 @@ _SW_FM_HOLE_WZD = 25
 # profile/path selection (profile=mark 1, path=mark 4). The path sketch MUST
 # leave the profile plane or CreateFeature silently no-ops.
 _SW_FM_SWEEP = 17
+# Wave-5 feature constants — SEAT-PENDING (W0): confirm from swconst.tlb.
+# swFmSweepCut uses the same ISweepFeatureData interface as swFmSweep.
+_SW_FM_SWEEP_CUT = 18
 # Reference-geometry creation IDs (proven by spike_refgeom W3 PASS — these are
 # NOT CreateDefinition ids; ref-geom uses direct Insert* methods on fm/doc).
 _SW_REFPLANE_OFFSET = 8  # swRefPlaneReferenceConstraint_Distance (bit-flag)
@@ -158,6 +161,11 @@ _SUPPORTED_FEATURE_TYPES = (
     "ref_axis",
     "coordinate_system",
     "ref_point",
+    # ---- Wave-5 F1–F6 kinds REMOVED from the advertised surface (W0 handback) ----
+    # The handlers + dispatch entries remain below as characterized code; propose
+    # must fail-close with "unsupported feature type" for any of these kinds
+    # until a seat-run materializes them. Removing them here enforces the
+    # edge-flange precedent: never advertise a non-materializing kind.
 )
 
 
@@ -405,6 +413,236 @@ def _create_ref_point(
         return False, "InsertReferencePoint did not materialize"
     except Exception as exc:
         return False, f"ref-point pipeline failed: {exc!r}"
+
+
+# ---- Wave-5: F1 sweep-cut (mirror _create_sweep, swFmSweepCut=18) ----
+
+
+def _create_sweep_cut(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a sweep-cut feature — mirror of _create_sweep with swFmSweepCut=18.
+
+    Same ISweepFeatureData interface; same marked select pipeline
+    (profile=mark 1, path=mark 4). SEAT-PENDING (W0): confirm const=18 from
+    swconst.tlb and that ISweepFeatureData is the right interface for cuts.
+    """
+    profile = target.get("profile") if isinstance(target, dict) else None
+    path = target.get("path") if isinstance(target, dict) else None
+    if not profile or not path:
+        return False, "target must contain non-empty 'profile' and 'path' sketch names"
+    doc.ForceRebuild3(False)
+    try:
+        fm = doc.FeatureManager
+        data = fm.CreateDefinition(_SW_FM_SWEEP_CUT)
+        mod = wrapper_module()
+        fd = typed_qi(data, "ISweepFeatureData", module=mod)
+        ext = typed(doc.Extension, "IModelDocExtension", module=mod)
+        try:
+            doc.ClearSelection2(True)
+        except Exception:
+            pass
+        if not ext.SelectByID2(profile, "SKETCH", 0, 0, 0, False, 1, None, 0):
+            return False, f"could not select profile sketch {profile!r}"
+        if not ext.SelectByID2(path, "SKETCH", 0, 0, 0, True, 4, None, 0):
+            return False, f"could not select path sketch {path!r}"
+        # SEAT-PENDING (W0): confirm CreateFeature materializes a sweep cut.
+        feat = fm.CreateFeature(fd)
+        if _materialized(feat):
+            return True, None
+        return False, (
+            "CreateFeature did not materialize "
+            "(the path sketch must leave the profile plane)"
+        )
+    except Exception as exc:
+        return False, f"sweep-cut pipeline failed: {exc!r}"
+
+
+# ---- Wave-5: F2–F6 creation features (SEAT-PENDING — spike harnesses authored) ----
+
+
+def _create_loft(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a loft (blend) feature from multiple profile sketches.
+
+    Seat-validated (SW 2024 SP1): ``swFmBlend=9`` from ``swconst.tlb``.
+    ``CreateDefinition(9)`` returns None without pre-selected profiles.
+    Legacy ``InsertProtrusionBlend`` takes **17 args**.
+
+    Pipeline: pre-select profiles → ``CreateDefinition(9)`` →
+    ``typed_qi(ILoftFeatureData)`` → ``CreateFeature``.
+
+    SEAT-PENDING (W0): CreateFeature materialization needs seat
+    confirmation with correct profile geometry.
+    """
+    profiles = target.get("profiles") if isinstance(target, dict) else None
+    if not isinstance(profiles, list) or len(profiles) < 2:
+        return False, "target.profiles must be a list of >=2 sketch names"
+    try:
+        fm = doc.FeatureManager
+        mod = wrapper_module()
+        ext = typed(doc.Extension, "IModelDocExtension", module=mod)
+        doc.ClearSelection2(True)
+        for i, p in enumerate(profiles):
+            append = i > 0
+            if not ext.SelectByID2(p, "SKETCH", 0, 0, 0, append, 1, None, 0):
+                return False, f"could not select profile sketch {p!r}"
+        data = fm.CreateDefinition(9)
+        if data is None:
+            return False, "CreateDefinition(9) returned None (profiles may not be compatible)"
+        fd = typed_qi(data, "ILoftFeatureData", module=mod)
+        # SEAT-PENDING (W0): confirm CreateFeature materializes a loft.
+        feat = fm.CreateFeature(fd)
+        if _materialized(feat):
+            return True, None
+        return False, "CreateFeature did not materialize a loft"
+    except Exception as exc:
+        return False, f"loft pipeline failed: {exc!r}"
+
+
+def _create_rib(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a rib feature from a sketch.
+
+    Seat-validated (SW 2024 SP1): no ``swFmRib`` in ``swconst.tlb``.
+    Legacy ``IFeatureManager.InsertRib`` takes **10 args**:
+    ``(draftAngle, draftType, draftDir, thickness, normalToSketch,
+    refPlaneDir, ribTolerance, ribType, featureScope, autoSelect)``.
+
+    SEAT-PENDING (W0): InsertRib materialization needs seat confirmation
+    with correct sketch geometry and arg values.
+    """
+    sketch = target.get("sketch") if isinstance(target, dict) else None
+    if not isinstance(sketch, str) or not sketch:
+        return False, "target.sketch must be a non-empty sketch name"
+    thickness_mm = feature.get("thickness_mm", 2.0) if isinstance(feature, dict) else 2.0
+    thickness_m = float(thickness_mm) / 1000.0
+    try:
+        mod = wrapper_module()
+        ext = typed(doc.Extension, "IModelDocExtension", module=mod)
+        doc.ClearSelection2(True)
+        if not ext.SelectByID2(sketch, "SKETCH", 0, 0, 0, False, 0, None, 0):
+            return False, f"could not select rib sketch {sketch!r}"
+        fm = doc.FeatureManager
+        # SEAT-PENDING (W0): confirm InsertRib(10) materializes a rib.
+        feat = fm.InsertRib(
+            0.0,    # draftAngle
+            0,      # draftType
+            0,      # draftDir
+            thickness_m,
+            True,   # normalToSketch
+            0,      # refPlaneDir
+            0,      # ribTolerance
+            0,      # ribType (linear)
+            True,   # featureScope
+            False,  # autoSelect
+        )
+        if _materialized(feat):
+            return True, None
+        return False, "InsertRib did not materialize"
+    except Exception as exc:
+        return False, f"rib pipeline failed: {exc!r}"
+
+
+def _create_dome(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a dome feature on a selected face.
+
+    Seat-validated (SW 2024 SP1): no ``swFmDome`` in ``swconst.tlb``.
+    Legacy ``IModelDoc2.InsertDome`` takes **3 args**:
+    ``(distance, flipDir, elipticalDome)``.
+
+    SEAT-PENDING (W0): InsertDome materialization needs seat confirmation
+    with correct face selection and arg values.
+    """
+    face = target.get("face") if isinstance(target, dict) else None
+    if not isinstance(face, (list, tuple)) or len(face) != 3:
+        return False, "target.face must be a 3-element [x,y,z]"
+    distance_mm = feature.get("distance_mm", 5.0) if isinstance(feature, dict) else 5.0
+    distance_m = float(distance_mm) / 1000.0
+    try:
+        mod = wrapper_module()
+        ext = typed(doc.Extension, "IModelDocExtension", module=mod)
+        doc.ClearSelection2(True)
+        if not ext.SelectByID2("", "FACE", float(face[0]), float(face[1]), float(face[2]), False, 0, None, 0):
+            return False, "could not select face for dome"
+        # SEAT-PENDING (W0): confirm InsertDome(3) materializes a dome.
+        feat = doc.InsertDome(distance_m, False, False)
+        if _materialized(feat):
+            return True, None
+        return False, "InsertDome did not materialize"
+    except Exception as exc:
+        return False, f"dome pipeline failed: {exc!r}"
+
+
+def _create_wrap(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a wrap feature (sketch wrapped onto a face).
+
+    Seat-validated (SW 2024 SP1): no ``swFmWrap`` in ``swconst.tlb``.
+    ``IFeatureManager.InsertWrapFeature`` takes **3 args** (legacy).
+    ``IFeatureManager.InsertWrapFeature2`` takes **5 args**:
+    ``(type, thickness, draftAngle, draftDir, pullDir)``.
+
+    SEAT-PENDING (W0): InsertWrapFeature2 materialization needs seat
+    confirmation with correct sketch+face selection.
+    """
+    sketch = target.get("sketch") if isinstance(target, dict) else None
+    if not isinstance(sketch, str) or not sketch:
+        return False, "target.sketch must be a non-empty sketch name"
+    face = target.get("face") if isinstance(target, dict) else None
+    if not isinstance(face, (list, tuple)) or len(face) != 3:
+        return False, "target.face must be a 3-element [x,y,z]"
+    thickness_mm = feature.get("thickness_mm", 1.0) if isinstance(feature, dict) else 1.0
+    thickness_m = float(thickness_mm) / 1000.0
+    try:
+        mod = wrapper_module()
+        ext = typed(doc.Extension, "IModelDocExtension", module=mod)
+        doc.ClearSelection2(True)
+        if not ext.SelectByID2(sketch, "SKETCH", 0, 0, 0, False, 0, None, 0):
+            return False, f"could not select wrap sketch {sketch!r}"
+        if not ext.SelectByID2("", "FACE", float(face[0]), float(face[1]), float(face[2]), True, 0, None, 0):
+            return False, "could not select face for wrap"
+        fm = doc.FeatureManager
+        # SEAT-PENDING (W0): confirm InsertWrapFeature2(5) materializes.
+        feat = fm.InsertWrapFeature2(
+            0,          # type (0=emboss, 1=engrave, 2=scribe)
+            thickness_m,
+            0.0,        # draftAngle
+            False,      # draftDir
+            False,      # pullDir
+        )
+        if _materialized(feat):
+            return True, None
+        return False, "InsertWrapFeature2 did not materialize"
+    except Exception as exc:
+        return False, f"wrap pipeline failed: {exc!r}"
+
+
+def _create_boundary_boss(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a boundary boss/base from 2-direction profiles.
+
+    Seat-validated (SW 2024 SP1): **DEFERRED**.
+    - No ``swFmBoundaryBoss`` in ``swconst.tlb`` (``swFeatureNameID_e``).
+    - No ``InsertBoundaryBoss*`` method on ``IFeatureManager`` or
+      ``IModelDoc2`` (probed via ``GetIDsOfNames``).
+    - ``swBoundaryBoss*`` enums exist in ``swconst.tlb`` but only for
+      sub-parameters (tangency, direction, curve influence), not for
+      the feature creation itself.
+    Boundary boss creation is not reachable out-of-process via the
+    known API surface.
+    """
+    for key in ("dir1_profiles", "dir2_profiles"):
+        val = target.get(key) if isinstance(target, dict) else None
+        if not isinstance(val, list) or not val:
+            return False, f"target.{key} must be a non-empty list of sketch names"
+    return False, "boundary_boss: no reachable creation API (DEFERRED — see WAVE5_HANDBACK.md)"
 
 
 def _get_definition(feat: Any, mod: Any) -> Any:
@@ -864,6 +1102,18 @@ def _apply_feature(
         return _create_coordinate_system(doc, feature, target)
     if ftype == "ref_point":
         return _create_ref_point(doc, feature, target)
+    if ftype == "sweep_cut":
+        return _create_sweep_cut(doc, feature, target)
+    if ftype == "loft":
+        return _create_loft(doc, feature, target)
+    if ftype == "rib":
+        return _create_rib(doc, feature, target)
+    if ftype == "dome":
+        return _create_dome(doc, feature, target)
+    if ftype == "wrap":
+        return _create_wrap(doc, feature, target)
+    if ftype == "boundary_boss":
+        return _create_boundary_boss(doc, feature, target)
     return False, f"unsupported feature type {ftype!r}"
 
 
@@ -1476,6 +1726,53 @@ def sw_propose_feature_add(
             if not isinstance(point, (list, tuple)) or len(point) != 3:
                 result["error"] = "ref_point target.point must be a 3-element [x,y,z]"
                 return result
+
+        # Wave-5: sweep_cut mirrors sweep (profile + path).
+        if feat_type == "sweep_cut":
+            for pname in ("profile", "path"):
+                if not isinstance(target.get(pname), str) or not target.get(pname):
+                    result["error"] = (
+                        f"sweep_cut target.{pname} must be a non-empty sketch name"
+                    )
+                    return result
+
+        # Wave-5: loft needs >=2 profile sketch names.
+        if feat_type == "loft":
+            profiles = target.get("profiles")
+            if not isinstance(profiles, list) or len(profiles) < 2:
+                result["error"] = "loft target.profiles must be a list of >=2 sketch names"
+                return result
+
+        # Wave-5: rib needs a sketch name.
+        if feat_type == "rib":
+            if not isinstance(target.get("sketch"), str) or not target.get("sketch"):
+                result["error"] = "rib target.sketch must be a non-empty sketch name"
+                return result
+
+        # Wave-5: dome needs a face coordinate.
+        if feat_type == "dome":
+            face = target.get("face")
+            if not isinstance(face, (list, tuple)) or len(face) != 3:
+                result["error"] = "dome target.face must be a 3-element [x,y,z]"
+                return result
+
+        # Wave-5: wrap needs sketch + face.
+        if feat_type == "wrap":
+            if not isinstance(target.get("sketch"), str) or not target.get("sketch"):
+                result["error"] = "wrap target.sketch must be a non-empty sketch name"
+                return result
+            face = target.get("face")
+            if not isinstance(face, (list, tuple)) or len(face) != 3:
+                result["error"] = "wrap target.face must be a 3-element [x,y,z]"
+                return result
+
+        # Wave-5: boundary_boss needs dir1 + dir2 profile lists.
+        if feat_type == "boundary_boss":
+            for key in ("dir1_profiles", "dir2_profiles"):
+                val = target.get(key)
+                if not isinstance(val, list) or not val:
+                    result["error"] = f"boundary_boss target.{key} must be a non-empty list"
+                    return result
 
         if not doc_path or not Path(doc_path).exists():
             result["error"] = f"doc_path does not exist: {doc_path}"
