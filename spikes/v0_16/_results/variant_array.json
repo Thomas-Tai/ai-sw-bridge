@@ -1,0 +1,191 @@
+{
+  "spike": "variant_array_epic_A_definitive",
+  "date": "2026-06-01",
+  "sw_revision": "32.1.0",
+  "box_mm": [
+    40,
+    40,
+    20
+  ],
+  "overall": "GREEN",
+  "verdict_summary": "GetMomentOfInertia(long WhereTaken) is GREEN. The previous session diagnosed a VARIANT(VT_ARRAY|VT_R8) marshaling wall, but the actual typelib signature is [in] long (dispid=12, wFlags=1 METHOD). Passing a plain Python int works. Returns a 9-tuple (3x3 inertia tensor). Values verified against textbook formula for rectangular box. PrincipalAxesOfInertia (dispid=7, propget) remains a wall: COM-level \"Invalid number of parameters\" for all probed arg counts/flags. Likely gen_py wrapper mismatch. Compute from tensor via eigendecomp.",
+  "typelib_signatures": {
+    "GetMomentOfInertia": {
+      "dispid": 12,
+      "invkind": "METHOD (wFlags=1)",
+      "return": "VT_VARIANT",
+      "args": [
+        {
+          "name": "WhereTaken",
+          "vt": "VT_I4",
+          "flags": "PARAMFLAG_FIN"
+        }
+      ],
+      "gen_py_source": "self._ApplyTypes_(12, 1, (12, 0), ((3, 1),), ...)"
+    },
+    "PrincipalAxesOfInertia": {
+      "dispid": 7,
+      "invkind": "PROPGET (wFlags=2)",
+      "return": "VT_VARIANT",
+      "args": [
+        {
+          "name": "Axis",
+          "vt": "VT_I4",
+          "flags": "PARAMFLAG_FIN"
+        }
+      ],
+      "gen_py_source": "self._ApplyTypes_(7, 2, (12, 0), ((3, 1),), ...)",
+      "status": "WALL",
+      "wall_detail": "COM-level Invalid number of parameters for 0/1/2 args at both DISPATCH_METHOD and DISPATCH_PROPERTYGET. gen_py wrapper may have wrong arity/invkind for the live server."
+    }
+  },
+  "scalar_reads": {
+    "Volume": 3.2000000000000005e-05,
+    "SurfaceArea": 0.0064,
+    "Mass": 3.2000000000000005e-05,
+    "Density": 1.0,
+    "CenterOfMass": [
+      0.0,
+      0.0,
+      0.01
+    ]
+  },
+  "inertia_tensor": {
+    "WhereTaken=0_CenterOfMass": {
+      "raw_9tuple": [
+        5.333333333333335e-09,
+        -0.0,
+        -0.0,
+        -0.0,
+        5.333333333333335e-09,
+        -0.0,
+        -0.0,
+        -0.0,
+        8.533333333333335e-09
+      ],
+      "matrix_3x3": [
+        [
+          5.333333333333335e-09,
+          -0.0,
+          -0.0
+        ],
+        [
+          -0.0,
+          5.333333333333335e-09,
+          -0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          8.533333333333335e-09
+        ]
+      ]
+    },
+    "WhereTaken=1_OutputCoord": {
+      "raw_9tuple": [
+        0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        0.0
+      ],
+      "matrix_3x3": [
+        [
+          0.0,
+          -0.0,
+          -0.0
+        ],
+        [
+          -0.0,
+          0.0,
+          -0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          0.0
+        ]
+      ]
+    },
+    "WhereTaken=2_ModelOrigin": {
+      "raw_9tuple": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "matrix_3x3": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    }
+  },
+  "principal_axes_probes": [
+    {
+      "wflags": 1,
+      "args": [],
+      "error": "(-2147352567, 'Exception occurred.', (61836, 'SOLIDWORKS', 'Unable to read write-only property.', 'C:\\\\Program Files\\\\SOLIDWORKS Corp\\\\SOLIDWORKS\\\\lan"
+    },
+    {
+      "wflags": 1,
+      "args": [
+        0
+      ],
+      "error": "(-2147352562, 'Invalid number of parameters.', None, None)"
+    },
+    {
+      "wflags": 1,
+      "args": [
+        0,
+        1
+      ],
+      "error": "(-2147352562, 'Invalid number of parameters.', None, None)"
+    },
+    {
+      "wflags": 2,
+      "args": [],
+      "error": "(-2147352562, 'Invalid number of parameters.', None, None)"
+    },
+    {
+      "wflags": 2,
+      "args": [
+        0
+      ],
+      "error": "(-2147352562, 'Invalid number of parameters.', None, None)"
+    },
+    {
+      "wflags": 2,
+      "args": [
+        0,
+        1
+      ],
+      "error": "(-2147352562, 'Invalid number of parameters.', None, None)"
+    }
+  ],
+  "handler_recipe": {
+    "GetMomentOfInertia": "mp2 = typed(mp, \"IMassProperty2\", module=mod); tensor = mp2.GetMomentOfInertia(0)  # 0=CenterOfMass, returns 9-tuple; matrix = [[tensor[i*3+j] for j in range(3)] for i in range(3)]",
+    "PrincipalAxesOfInertia": "WALL: compute via eigendecomposition of inertia tensor using numpy. eigenvalues, eigenvectors = numpy.linalg.eigh(tensor_matrix)"
+  }
+}
