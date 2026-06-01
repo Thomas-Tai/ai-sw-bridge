@@ -21,6 +21,7 @@ from .sw_com import (
     get_sw_app,
     resolve,
 )
+from .observe_inertia import sw_get_inertia
 
 
 def _captures_dir() -> Path:
@@ -1265,6 +1266,17 @@ class SolidWorksObserver:
     def volume(self) -> dict[str, Any]:
         """Return volume, surface area, mass, and CoM of the active part."""
         return sw_get_volume()
+
+    def inertia(self) -> dict[str, Any]:
+        """Return inertia tensor properties of the active part (Wave-5 E1).
+
+        Reads principal axes, moments of inertia, principal moments, and
+        radius of gyration from IMassProperty2.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_inertia(doc)
 
     def screenshot(
         self,

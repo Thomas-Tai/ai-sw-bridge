@@ -3,7 +3,33 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+from typing import Any
+
+# Ensure the worktree's src/ takes priority over the installed package
+# (the venv may point to the main checkout's src/ via editable install).
+_worktree_src = str(Path(__file__).resolve().parent.parent / "src")
+if _worktree_src not in sys.path:
+    sys.path.insert(0, _worktree_src)
+
+
+def _extend_pkg_paths() -> None:
+    """Extend ai_sw_bridge sub-package __path__ with worktree dirs."""
+    for _name, _mod in list(sys.modules.items()):
+        if _name.startswith("ai_sw_bridge") and hasattr(_mod, "__path__"):
+            _parts = _name.split(".")
+            _wt_path = str(Path(_worktree_src).joinpath(*_parts))
+            if _wt_path not in _mod.__path__:
+                _mod.__path__.insert(0, _wt_path)
+
+
+_extend_pkg_paths()
+
+
+def pytest_sessionstart(session: Any) -> None:
+    """Re-extend package paths after all plugins are loaded."""
+    _extend_pkg_paths()
 
 import pytest
 

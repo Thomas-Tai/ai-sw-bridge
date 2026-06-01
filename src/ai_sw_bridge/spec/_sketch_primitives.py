@@ -212,3 +212,51 @@ def _strip_centerrectangle_midpoint_relation(doc: Any) -> bool:
         except Exception:
             continue
     return False
+
+
+def create_parabola(
+    sm: Any,
+    x_focal_mm: float,
+    y_focal_mm: float,
+    z_focal_mm: float,
+    x_vertex_mm: float,
+    y_vertex_mm: float,
+    z_vertex_mm: float,
+    x_end1_mm: float,
+    y_end1_mm: float,
+    z_end1_mm: float,
+    x_end2_mm: float,
+    y_end2_mm: float,
+    z_end2_mm: float,
+) -> Any:
+    """Create a parabola sketch segment via ``ISketchManager.CreateParabola``.
+
+    Seat-validated on SW 2024 SP1 (rev 32.1.0): the method takes **12 args**
+    — focal point (xyz), vertex (xyz), and two endpoints (xyz) — all in
+    model metres.  An 8-arg call raises ``DISP_E_BADPARAMCOUNT``.
+
+    All coordinate inputs are in **millimetres** (spec-layer convention);
+    converted to metres internally before the COM call.
+
+    Returns the ``ISketchSegment`` handle.  Raises ``RuntimeError`` if
+    SW returns None (under-defined or degenerate parabola).
+    """
+    seg = sm.CreateParabola(
+        _mm_to_m(x_focal_mm),
+        _mm_to_m(y_focal_mm),
+        _mm_to_m(z_focal_mm),
+        _mm_to_m(x_vertex_mm),
+        _mm_to_m(y_vertex_mm),
+        _mm_to_m(z_vertex_mm),
+        _mm_to_m(x_end1_mm),
+        _mm_to_m(y_end1_mm),
+        _mm_to_m(z_end1_mm),
+        _mm_to_m(x_end2_mm),
+        _mm_to_m(y_end2_mm),
+        _mm_to_m(z_end2_mm),
+    )
+    if seg is None:
+        raise RuntimeError(
+            "CreateParabola returned None (under-defined or degenerate parabola)"
+        )
+    return seg

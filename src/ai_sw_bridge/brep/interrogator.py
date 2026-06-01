@@ -33,6 +33,7 @@ from typing import Any, Optional
 from ..com.earlybind import EarlyBindError, read_persist_reference, typed_qi
 from ..flags import resolve as resolve_flags
 from ..telemetry import histogram as telemetry_histogram
+from .surface_eval import evaluate_surface_at_uv, get_surface_parameter_range
 
 logger = logging.getLogger("ai_sw_bridge.brep.interrogator")
 
@@ -62,6 +63,7 @@ class BrepFace:
     is_surface: bool = False
     is_hidden: bool = False
     persist_id: str = ""  # base64url (no pad) durable token; "" when uncaptured
+    surface_uv: dict = None  # Wave-5 E2: {point_mm, normal} at UV midpoint; None when not evaluated
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-serializable form for the manifest brep block.
@@ -69,6 +71,7 @@ class BrepFace:
         ``persist_id`` is included only when a token was captured (the
         ``persist_capture`` flag was on and the read succeeded); it is omitted
         otherwise so the manifest stays byte-identical to the no-capture case.
+        ``surface_uv`` is included only when surface evaluation succeeded.
         """
         out: dict[str, Any] = {
             "face_idx": self.face_idx,
@@ -85,6 +88,11 @@ class BrepFace:
         }
         if self.persist_id:
             out["persist_id"] = self.persist_id
+        if self.surface_uv and self.surface_uv.get("ok"):
+            out["surface_uv"] = {
+                "point_mm": self.surface_uv["point_mm"],
+                "normal": self.surface_uv["normal"],
+            }
         return out
 
 
@@ -419,6 +427,18 @@ def _probe_face(
         if pid:
             persist_id = base64.urlsafe_b64encode(pid).decode("ascii").rstrip("=")
 
+    # Wave-5 E2: evaluate the face's surface at the parametric midpoint
+    # for a more accurate point + normal than the box-derived approximation.
+    surface_uv = None
+    try:
+        uv_range = get_surface_parameter_range(face)
+        if uv_range.get("ok"):
+            u_mid = (uv_range["u_min"] + uv_range["u_max"]) / 2.0
+            v_mid = (uv_range["v_min"] + uv_range["v_max"]) / 2.0
+            surface_uv = evaluate_surface_at_uv(face, u_mid, v_mid)
+    except Exception:
+        pass
+
     return BrepFace(
         face_idx=face_idx,
         body_id=body_id,
@@ -431,6 +451,7 @@ def _probe_face(
         is_surface=is_surface,
         is_hidden=is_hidden,
         persist_id=persist_id,
+        surface_uv=surface_uv,
     )
 
 
