@@ -156,11 +156,12 @@ _SUPPORTED_FEATURE_TYPES = (
     "shell",
     "draft",
     "sweep",
-    # Wave-5 F0 additions (seat-proven by spike_refgeom, W3 PASS).
-    "ref_plane",
-    "ref_axis",
-    "coordinate_system",
-    "ref_point",
+    # ---- Wave-5 F0 ref-geom: handlers wired below, but NOT advertised yet ----
+    # The recipe is seat-proven at the spike level (spike_refgeom, W3 S-REFGEOM PASS),
+    # but per the W0 directive these kinds are gated on a fresh gold-standard PAE of
+    # the production handlers (propose→dry_run→commit on a live seat) before they
+    # enter the advertised surface. Re-add ref_plane / ref_axis / coordinate_system /
+    # ref_point here once that PAE is GREEN.
     # ---- Wave-5 F1–F6 kinds REMOVED from the advertised surface (W0 handback) ----
     # The handlers + dispatch entries remain below as characterized code; propose
     # must fail-close with "unsupported feature type" for any of these kinds

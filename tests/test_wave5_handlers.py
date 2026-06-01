@@ -332,8 +332,18 @@ def _patch_propose(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, doc: Any) ->
     monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
 
 
+# ---------------------------------------------------------------------------
+# F0 ref-geom: PAE-gated, NOT advertised yet (W0 directive).
+# The handlers are wired and the recipe is seat-proven at the spike level
+# (W3 S-REFGEOM PASS), but the production handlers have not had a fresh
+# gold-standard PAE. Until that PAE is GREEN these kinds fail closed at
+# propose, so the propose-validation tests assert rejection (mirroring the
+# F1–F6 deferred pattern). The original "test_valid" / param-validation tests
+# live in merge commit d7d43e6 and should be restored when ref_plane/ref_axis/
+# coordinate_system/ref_point are re-added to _SUPPORTED_FEATURE_TYPES.
+# ---------------------------------------------------------------------------
 class TestProposeRefPlane:
-    def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_deferred_unsupported(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -342,33 +352,13 @@ class TestProposeRefPlane:
             {"type": "ref_plane", "distance_mm": 50.0},
             {"plane": "Front Plane"},
         )
-        assert r["ok"] is True
-
-    def test_rejects_missing_plane(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc_file = tmp_path / "t.sldprt"
-        doc_file.touch()
-        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
-            str(doc_file),
-            {"type": "ref_plane", "distance_mm": 50.0},
-            {"other_key": "value"},
-        )
-        assert r["ok"] is False and "plane" in r["error"]
-
-    def test_rejects_bad_distance(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc_file = tmp_path / "t.sldprt"
-        doc_file.touch()
-        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
-            str(doc_file),
-            {"type": "ref_plane", "distance_mm": -1},
-            {"plane": "Front Plane"},
-        )
-        assert r["ok"] is False and "distance_mm" in r["error"]
+        assert r["ok"] is False
+        assert "unsupported feature type" in r["error"]
+        assert "ref_plane" in r["error"]
 
 
 class TestProposeRefAxis:
-    def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_deferred_unsupported(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -377,22 +367,13 @@ class TestProposeRefAxis:
             {"type": "ref_axis"},
             {"planes": ["Front Plane", "Right Plane"]},
         )
-        assert r["ok"] is True
-
-    def test_rejects_wrong_count(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc_file = tmp_path / "t.sldprt"
-        doc_file.touch()
-        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
-            str(doc_file),
-            {"type": "ref_axis"},
-            {"planes": ["Front Plane"]},
-        )
-        assert r["ok"] is False and "planes" in r["error"]
+        assert r["ok"] is False
+        assert "unsupported feature type" in r["error"]
+        assert "ref_axis" in r["error"]
 
 
 class TestProposeCoordinateSystem:
-    def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_deferred_unsupported(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -401,11 +382,13 @@ class TestProposeCoordinateSystem:
             {"type": "coordinate_system"},
             {"origin": [0, 0, 0]},
         )
-        assert r["ok"] is True
+        assert r["ok"] is False
+        assert "unsupported feature type" in r["error"]
+        assert "coordinate_system" in r["error"]
 
 
 class TestProposeRefPoint:
-    def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_deferred_unsupported(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -414,18 +397,9 @@ class TestProposeRefPoint:
             {"type": "ref_point"},
             {"point": [0.01, 0.01, 0.01]},
         )
-        assert r["ok"] is True
-
-    def test_rejects_bad_point(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc_file = tmp_path / "t.sldprt"
-        doc_file.touch()
-        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
-            str(doc_file),
-            {"type": "ref_point"},
-            {"point": [0.01, 0.01]},
-        )
-        assert r["ok"] is False and "point" in r["error"]
+        assert r["ok"] is False
+        assert "unsupported feature type" in r["error"]
+        assert "ref_point" in r["error"]
 
 
 class TestProposeSweepCut:
