@@ -1,0 +1,36 @@
+{
+  "kind": "sweep_cut",
+  "feature": {
+    "type": "sweep_cut"
+  },
+  "target": {
+    "profile": "Sketch2",
+    "path": "Sketch3"
+  },
+  "propose": {
+    "ok": true,
+    "proposal_id": "78d89dbedf57",
+    "doc_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\sweepcut_pae_1780290441.SLDPRT",
+    "feature": {
+      "type": "sweep_cut"
+    },
+    "target": {
+      "profile": "Sketch2",
+      "path": "Sketch3"
+    },
+    "state": "proposed",
+    "error": null
+  },
+  "dry_run": {
+    "ok": false,
+    "proposal_id": "78d89dbedf57",
+    "state": "dry_run_broke",
+    "dry_run_result": {
+      "ran_at": 1780290454.6873503,
+      "feature_ok": false,
+      "rebuild_ok": true,
+      "error": "CreateFeature did not materialize (the path sketch must leave the profile plane)"
+    },
+    "error": "CreateFeature did not materialize (the path sketch must leave the profile plane)"
+  }
+}
