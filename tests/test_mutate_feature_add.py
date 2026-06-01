@@ -1222,6 +1222,21 @@ class _FakeSelMgr:
         return object()  # a face entity stand-in
 
 
+class _FakeShellFM:
+    """FeatureManager exposing GetFeatures(True) -> list (len = feature count).
+
+    The shell handler verifies materialization via len(GetFeatures(True)) rather
+    than GetFeatureCount() (a non-callable property on the late-bound doc; the
+    W6 dome PAE exposed this).
+    """
+
+    def __init__(self, doc: "_FakeShellDoc") -> None:
+        self._doc = doc
+
+    def GetFeatures(self, top_level: bool):  # noqa: N802, FBT001
+        return ["f"] * self._doc._fcount
+
+
 class _FakeShellDoc:
     def __init__(self, path: str, features_added: int) -> None:
         self._path = path
@@ -1231,6 +1246,7 @@ class _FakeShellDoc:
         self.shell_calls: list[tuple] = []
         self.save_calls: list[tuple] = []
         self._title = Path(path).name
+        self.FeatureManager = _FakeShellFM(self)
 
     def ForceRebuild3(self, _: bool) -> bool:
         return True

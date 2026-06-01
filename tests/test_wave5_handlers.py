@@ -544,12 +544,24 @@ class TestCreateRefPointHandler:
         assert "face_ref" in err
 
 
+class _FakeDomeFeatureManager:
+    """FeatureManager exposing GetFeatures(True) -> list (len = feature count)."""
+
+    def __init__(self, doc: "_FakeDomeDoc") -> None:
+        self._doc = doc
+
+    def GetFeatures(self, top_level: bool):  # noqa: N802, FBT001
+        return ["f"] * self._doc._count
+
+
 class _FakeDomeDoc:
     """Doc whose InsertDome bumps the feature count iff a face was selected.
 
     Mirrors the seat finding: InsertDome returns None even on success, so the
-    handler must verify via a GetFeatureCount delta. mark=1 selection is the
-    trigger; here we model "selection happened" via the select flag.
+    handler must verify via a feature-count delta read from
+    FeatureManager.GetFeatures(True) (NOT GetFeatureCount(), which is a
+    non-callable property on the late-bound doc — the dome PAE exposed this).
+    mark=1 selection is the trigger; modeled via the select flag.
     """
 
     def __init__(self, *, will_materialize: bool = True) -> None:
@@ -557,15 +569,13 @@ class _FakeDomeDoc:
         self._will_materialize = will_materialize
         self.insert_args: tuple | None = None
         self.selected = False
+        self.FeatureManager = _FakeDomeFeatureManager(self)
 
     def ForceRebuild3(self, flag: bool) -> None:  # noqa: N802
         pass
 
     def ClearSelection2(self, flag: bool) -> None:  # noqa: N802
         pass
-
-    def GetFeatureCount(self) -> int:  # noqa: N802
-        return self._count
 
     def InsertDome(self, height, reverse, elliptical):  # noqa: N802
         self.insert_args = (height, reverse, elliptical)
@@ -707,18 +717,45 @@ class TestProposeRib:
 
 
 class TestProposeDome:
-    def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """W6 T2: dome advertised via durable face_ref. Production-handler PAE GREEN
+    (spike e44711f). Legacy face-coord path is a non-advertised fallback."""
+
+    def test_valid_face_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
+        r = sw_propose_feature_add(
+            str(doc_file),
+            {"type": "dome", "distance_mm": 10.0},
+            {"face_ref": {"normal": [0, 0, 1], "centroid": [0, 0, 0.02], "area_mm2": 1600.0}},
+        )
+        assert r["ok"] is True
+        assert r["proposal_id"] is not None
+        assert r["error"] is None
+
+    def test_rejects_empty_face_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
         r = sw_propose_feature_add(
             str(doc_file),
             {"type": "dome"},
-            {"face": [0, 0, 0.01]},
+            {"face_ref": {}},
         )
         assert r["ok"] is False
-        assert "unsupported feature type" in r["error"]
-        assert "dome" in r["error"]
+        assert "face_ref" in r["error"]
+
+    def test_rejects_missing_target(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
+        r = sw_propose_feature_add(
+            str(doc_file),
+            {"type": "dome"},
+            {"unrelated": 1},
+        )
+        assert r["ok"] is False
+        assert "face_ref" in r["error"] or "face" in r["error"]
 
 
 class TestProposeWrap:

@@ -169,6 +169,11 @@ _SUPPORTED_FEATURE_TYPES = (
     # vertex-coordinate path (target.point, type 5) still walls out-of-process
     # and is retained only as a non-advertised fallback; see docs/DEFERRED.md.
     "ref_point",
+    # W6 T2: dome via durable face_ref. Production-handler PAE GREEN (spike
+    # e44711f): _create_dome resolves the face, select_entity(mark=1), then
+    # IModelDoc2.InsertDome(height_m, reverse, elliptical) -> Dome1 (verified by
+    # GetFeatures(True) count delta; InsertDome returns None even on success).
+    "dome",
     # ---- Wave-5 F1–F6 kinds REMOVED from the advertised surface (W0 handback) ----
     # The handlers + dispatch entries remain below as characterized code; propose
     # must fail-close with "unsupported feature type" for any of these kinds
@@ -632,8 +637,10 @@ def _create_dome(
     * **Selection must use mark=1.** ``select_entity(face, mark=1)``; mark=0
       does *not* trigger creation.
     * **``InsertDome`` returns ``None`` even on success.** Do NOT trust the
-      return value — verify materialization via a ``GetFeatureCount`` delta
-      (same pattern as ``_create_shell`` / ``InsertFeatureShell``).
+      return value — verify materialization via a feature-count delta using
+      ``len(FeatureManager.GetFeatures(True))`` (NOT ``GetFeatureCount()``,
+      which is a property on the late-bound doc and is not callable; the dome
+      PAE exposed this). Same pattern as ``_create_shell``.
 
     ``target`` shapes (durable preferred, mirrors ``ref_point`` / wizard_hole):
 
@@ -1099,18 +1106,21 @@ def _create_shell(doc: Any, feature: dict, target: dict) -> tuple[bool, str | No
 
     Seat-validated recipe (spike_shell_draft_v2 = PASS): select the faces to
     remove as entities, then ``doc.InsertFeatureShell(thickness_m, outward)``.
-    InsertFeatureShell returns void, so success is confirmed via the feature
-    count (``IModelDoc2.GetFeatureCount`` — works on the typed reopened doc,
-    unlike ``GetBodies2`` which lives on ``IPartDoc``). ``target`` = ``{"faces":
-    [[x,y,z], ...]}`` (model-metre coords; v1 coordinate placement). Returns
-    (ok, error).
+    InsertFeatureShell returns void, so success is confirmed via a feature-count
+    delta. Counting uses ``len(FeatureManager.GetFeatures(True))`` (NOT
+    ``IModelDoc2.GetFeatureCount()`` — the latter is exposed as a *property* on
+    the late-bound doc and raises "int not callable" when invoked; the dome PAE,
+    W6 T2, exposed this. ``GetFeatures(True)`` is robust on both late-bound and
+    typed docs). ``target`` = ``{"faces": [[x,y,z], ...]}`` (model-metre coords;
+    v1 coordinate placement). Returns (ok, error).
     """
     thickness_mm = feature["thickness_mm"]
     outward = bool(feature.get("outward", False))
     face_coords = target["faces"]
     doc.ForceRebuild3(False)
     try:
-        before = int(doc.GetFeatureCount())
+        _feats = doc.FeatureManager.GetFeatures(True)
+        before = len(_feats) if _feats else 0
         ents = []
         for k, c in enumerate(face_coords):
             ent = _get_face_entity(doc, c)
