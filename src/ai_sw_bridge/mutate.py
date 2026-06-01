@@ -111,6 +111,9 @@ _SW_FM_HOLE_WZD = 25
 # profile/path selection (profile=mark 1, path=mark 4). The path sketch MUST
 # leave the profile plane or CreateFeature silently no-ops.
 _SW_FM_SWEEP = 17
+# Reference-geometry creation IDs (proven by spike_refgeom W3 PASS — these are
+# NOT CreateDefinition ids; ref-geom uses direct Insert* methods on fm/doc).
+_SW_REFPLANE_OFFSET = 8  # swRefPlaneReferenceConstraint_Distance (bit-flag)
 
 # swWzdGeneralHoleTypes_e — the hole-wizard "generic type". LLM-facing names
 # map to the integer InitializeHole expects.
@@ -150,6 +153,11 @@ _SUPPORTED_FEATURE_TYPES = (
     "shell",
     "draft",
     "sweep",
+    # Wave-5 F0 additions (seat-proven by spike_refgeom, W3 PASS).
+    "ref_plane",
+    "ref_axis",
+    "coordinate_system",
+    "ref_point",
 )
 
 
@@ -294,6 +302,109 @@ def _create_sweep(
         )
     except Exception as exc:
         return False, f"sweep pipeline failed: {exc!r}"
+
+
+# ---- Wave-5: F0 ref-geometry (seat-proven by spike_refgeom, W3 PASS) ----
+
+
+def _create_ref_plane(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create an offset reference plane.
+
+    Seat-proven recipe (spike_refgeom, W3):
+      doc.SelectByID(plane, "PLANE", 0,0,0)
+      fm.InsertRefPlane(8, distance_m, 0,0,0,0)
+    where 8 = swRefPlaneReferenceConstraint_Distance (bit-flag).
+    """
+    plane_name = target.get("plane") if isinstance(target, dict) else None
+    if not plane_name:
+        return False, "target.plane must be a non-empty plane name"
+    distance_mm = feature.get("distance_mm") if isinstance(feature, dict) else None
+    if not isinstance(distance_mm, (int, float)) or distance_mm <= 0:
+        return False, "distance_mm must be a positive number"
+    distance_m = float(distance_mm) / 1000.0
+    try:
+        doc.ClearSelection2(True)
+        doc.SelectByID(plane_name, "PLANE", 0, 0, 0)
+        fm = doc.FeatureManager
+        feat = fm.InsertRefPlane(
+            _SW_REFPLANE_OFFSET, distance_m, 0, 0, 0, 0
+        )
+        if _materialized(feat):
+            return True, None
+        return False, "InsertRefPlane did not materialize"
+    except Exception as exc:
+        return False, f"ref-plane pipeline failed: {exc!r}"
+
+
+def _create_ref_axis(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a reference axis from two-plane intersection.
+
+    Seat-proven recipe (spike_refgeom, W3):
+      Select plane1, append-select plane2, then doc.InsertAxis2(True).
+      InsertAxis2 is on IModelDoc2, NOT IFeatureManager.
+    """
+    planes = target.get("planes") if isinstance(target, dict) else None
+    if not isinstance(planes, list) or len(planes) != 2:
+        return False, "target.planes must be a 2-element list of plane names"
+    try:
+        doc.ClearSelection2(True)
+        doc.SelectByID(planes[0], "PLANE", 0, 0, 0)
+        doc.SelectByID(planes[1], "PLANE", 0, 0, 0)
+        feat = doc.InsertAxis2(True)
+        if feat is not None and not isinstance(feat, (int, bool)):
+            return True, None
+        return False, "InsertAxis2 did not materialize"
+    except Exception as exc:
+        return False, f"ref-axis pipeline failed: {exc!r}"
+
+
+def _create_coordinate_system(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a coordinate system.
+
+    Seat-proven recipe (spike_refgeom, W3):
+      fm.InsertCoordinateSystem(flip_x, flip_y, flip_z).
+    """
+    flip_x = bool(feature.get("flip_x", False)) if isinstance(feature, dict) else False
+    flip_y = bool(feature.get("flip_y", False)) if isinstance(feature, dict) else False
+    flip_z = bool(feature.get("flip_z", False)) if isinstance(feature, dict) else False
+    try:
+        doc.ClearSelection2(True)
+        fm = doc.FeatureManager
+        feat = fm.InsertCoordinateSystem(flip_x, flip_y, flip_z)
+        if _materialized(feat):
+            return True, None
+        return False, "InsertCoordinateSystem did not materialize"
+    except Exception as exc:
+        return False, f"coordinate-system pipeline failed: {exc!r}"
+
+
+def _create_ref_point(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a reference point at a vertex or coordinate.
+
+    Seat-proven recipe (spike_refgeom, W3):
+      Select vertex at coords, then fm.InsertReferencePoint(5, 0, 0.0, 1).
+    """
+    point = target.get("point") if isinstance(target, dict) else None
+    if not isinstance(point, (list, tuple)) or len(point) != 3:
+        return False, "target.point must be a 3-element [x,y,z] in model metres"
+    try:
+        doc.ClearSelection2(True)
+        doc.SelectByID("", "VERTEX", float(point[0]), float(point[1]), float(point[2]))
+        fm = doc.FeatureManager
+        feat = fm.InsertReferencePoint(5, 0, 0.0, 1)
+        if _materialized(feat):
+            return True, None
+        return False, "InsertReferencePoint did not materialize"
+    except Exception as exc:
+        return False, f"ref-point pipeline failed: {exc!r}"
 
 
 def _get_definition(feat: Any, mod: Any) -> Any:
@@ -745,6 +856,14 @@ def _apply_feature(
         return _create_draft(doc, feature, target)
     if ftype == "sweep":
         return _create_sweep(doc, feature, target)
+    if ftype == "ref_plane":
+        return _create_ref_plane(doc, feature, target)
+    if ftype == "ref_axis":
+        return _create_ref_axis(doc, feature, target)
+    if ftype == "coordinate_system":
+        return _create_coordinate_system(doc, feature, target)
+    if ftype == "ref_point":
+        return _create_ref_point(doc, feature, target)
     return False, f"unsupported feature type {ftype!r}"
 
 
@@ -1333,6 +1452,30 @@ def sw_propose_feature_add(
                         f"sweep target.{pname} must be a non-empty sketch name"
                     )
                     return result
+
+        # Wave-5: ref_plane needs plane name + distance_mm.
+        if feat_type == "ref_plane":
+            if not isinstance(target.get("plane"), str) or not target.get("plane"):
+                result["error"] = "ref_plane target.plane must be a non-empty plane name"
+                return result
+            dist = feature.get("distance_mm")
+            if not isinstance(dist, (int, float)) or dist <= 0:
+                result["error"] = f"ref_plane distance_mm must be a positive number, got {dist!r}"
+                return result
+
+        # Wave-5: ref_axis needs two plane names.
+        if feat_type == "ref_axis":
+            planes = target.get("planes")
+            if not isinstance(planes, list) or len(planes) != 2:
+                result["error"] = "ref_axis target.planes must be a 2-element list of plane names"
+                return result
+
+        # Wave-5: ref_point needs a 3-element vertex coordinate.
+        if feat_type == "ref_point":
+            point = target.get("point")
+            if not isinstance(point, (list, tuple)) or len(point) != 3:
+                result["error"] = "ref_point target.point must be a 3-element [x,y,z]"
+                return result
 
         if not doc_path or not Path(doc_path).exists():
             result["error"] = f"doc_path does not exist: {doc_path}"
