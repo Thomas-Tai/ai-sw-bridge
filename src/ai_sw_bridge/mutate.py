@@ -156,12 +156,13 @@ _SUPPORTED_FEATURE_TYPES = (
     "shell",
     "draft",
     "sweep",
-    # ---- Wave-5 F0 ref-geom: handlers wired below, but NOT advertised yet ----
-    # The recipe is seat-proven at the spike level (spike_refgeom, W3 S-REFGEOM PASS),
-    # but per the W0 directive these kinds are gated on a fresh gold-standard PAE of
-    # the production handlers (propose→dry_run→commit on a live seat) before they
-    # enter the advertised surface. Re-add ref_plane / ref_axis / coordinate_system /
-    # ref_point here once that PAE is GREEN.
+    # Wave-5 F0 ref-geom: seat-GREEN PAE on live SW 2024 SP1 (3 of 4 kinds).
+    # ref_plane / ref_axis / coordinate_system: propose->dry_run->commit all
+    # GREEN on a fresh part. ref_point DEFERRED -- SelectByID(VERTEX) walls
+    # from out-of-process Python; see docs/DEFERRED.md.
+    "ref_plane",
+    "ref_axis",
+    "coordinate_system",
     # ---- Wave-5 F1–F6 kinds REMOVED from the advertised surface (W0 handback) ----
     # The handlers + dispatch entries remain below as characterized code; propose
     # must fail-close with "unsupported feature type" for any of these kinds
@@ -361,12 +362,20 @@ def _create_ref_axis(
         return False, "target.planes must be a 2-element list of plane names"
     try:
         doc.ClearSelection2(True)
+        # SelectByID has no Append arg; route the append-select via the
+        # IModelDocExtension (where SelectByID2 lives).
+        ext = doc.Extension
         doc.SelectByID(planes[0], "PLANE", 0, 0, 0)
-        doc.SelectByID(planes[1], "PLANE", 0, 0, 0)
+        ext.SelectByID2(planes[1], "PLANE", 0, 0, 0, True, 0, None, 0)
+        # InsertAxis2 on IModelDoc2 returns a VARIANT_BOOL (True = success)
+        # in late-bound COM, not a Feature dispatch. Treat True as materialized;
+        # False / None / int as failure.
         feat = doc.InsertAxis2(True)
+        if feat is True:
+            return True, None
         if feat is not None and not isinstance(feat, (int, bool)):
             return True, None
-        return False, "InsertAxis2 did not materialize"
+        return False, f"InsertAxis2 did not materialize (returned {feat!r})"
     except Exception as exc:
         return False, f"ref-axis pipeline failed: {exc!r}"
 
@@ -406,12 +415,24 @@ def _create_ref_point(
         return False, "target.point must be a 3-element [x,y,z] in model metres"
     try:
         doc.ClearSelection2(True)
-        doc.SelectByID("", "VERTEX", float(point[0]), float(point[1]), float(point[2]))
+        sel_ok = doc.SelectByID(
+            "", "VERTEX", float(point[0]), float(point[1]), float(point[2])
+        )
+        if not sel_ok:
+            return False, (
+                f"SelectByID(VERTEX at {list(point)}) failed -- "
+                "no selectable vertex at those coordinates"
+            )
         fm = doc.FeatureManager
+        # InsertReferencePoint returns a Feature on success, but late-bound
+        # COM may wrap it as a 1-tuple (None,) on failure. Reject None, False,
+        # int, and any tuple whose only element is None.
         feat = fm.InsertReferencePoint(5, 0, 0.0, 1)
-        if _materialized(feat):
-            return True, None
-        return False, "InsertReferencePoint did not materialize"
+        if isinstance(feat, tuple):
+            feat = feat[0] if len(feat) == 1 else None
+        if feat is None or isinstance(feat, (int, bool)):
+            return False, f"InsertReferencePoint did not materialize (returned {feat!r})"
+        return True, None
     except Exception as exc:
         return False, f"ref-point pipeline failed: {exc!r}"
 
