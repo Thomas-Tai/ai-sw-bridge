@@ -544,6 +544,97 @@ class TestCreateRefPointHandler:
         assert "face_ref" in err
 
 
+class _FakeDomeDoc:
+    """Doc whose InsertDome bumps the feature count iff a face was selected.
+
+    Mirrors the seat finding: InsertDome returns None even on success, so the
+    handler must verify via a GetFeatureCount delta. mark=1 selection is the
+    trigger; here we model "selection happened" via the select flag.
+    """
+
+    def __init__(self, *, will_materialize: bool = True) -> None:
+        self._count = 19
+        self._will_materialize = will_materialize
+        self.insert_args: tuple | None = None
+        self.selected = False
+
+    def ForceRebuild3(self, flag: bool) -> None:  # noqa: N802
+        pass
+
+    def ClearSelection2(self, flag: bool) -> None:  # noqa: N802
+        pass
+
+    def GetFeatureCount(self) -> int:  # noqa: N802
+        return self._count
+
+    def InsertDome(self, height, reverse, elliptical):  # noqa: N802
+        self.insert_args = (height, reverse, elliptical)
+        # Models reality: returns None; bumps count only if selection + valid.
+        if self._will_materialize and self.selected:
+            self._count += 1
+        return None
+
+
+class TestCreateDomeHandler:
+    """Direct handler tests for _create_dome (W6 T2 face-centroid + delta verify).
+
+    Dome stays DE-ADVERTISED (gated behind a production-handler PAE), so these
+    exercise the wiring directly rather than through propose.
+    """
+
+    def test_face_ref_green_delta(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        doc = _FakeDomeDoc(will_materialize=True)
+        sentinel = object()
+
+        def _sel(entity, *, append=False, mark=0):
+            # mark=1 is the seat-proven trigger; only then mark "selected".
+            if mark == 1:
+                doc.selected = True
+                return True
+            return False
+
+        monkeypatch.setattr(
+            mutate, "resolve_manifest_face",
+            lambda d, fr: _FakeRefResolution(sentinel),
+        )
+        monkeypatch.setattr(mutate, "select_entity", _sel)
+        ok, err = mutate._create_dome(
+            doc, {"type": "dome", "distance_mm": 10.0}, {"face_ref": {"role": "top"}}
+        )
+        assert ok is True
+        assert err is None
+        # 10 mm -> 0.01 m height, forward, round.
+        assert doc.insert_args == (pytest.approx(0.01), False, False)
+
+    def test_face_ref_no_delta_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        doc = _FakeDomeDoc(will_materialize=False)
+        monkeypatch.setattr(
+            mutate, "resolve_manifest_face",
+            lambda d, fr: _FakeRefResolution(object()),
+        )
+        monkeypatch.setattr(mutate, "select_entity", lambda e, *, append=False, mark=0: True)
+        ok, err = mutate._create_dome(doc, {"type": "dome"}, {"face_ref": {"role": "x"}})
+        assert ok is False
+        assert "did not add a feature" in err
+
+    def test_face_ref_unresolved_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        doc = _FakeDomeDoc()
+        monkeypatch.setattr(
+            mutate, "resolve_manifest_face",
+            lambda d, fr: _FakeRefResolution(None, method="none"),
+        )
+        monkeypatch.setattr(mutate, "select_entity", lambda e, *, append=False, mark=0: True)
+        ok, err = mutate._create_dome(doc, {"type": "dome"}, {"face_ref": {"role": "x"}})
+        assert ok is False
+        assert "unresolved" in err
+
+    def test_no_target_fails_soft(self) -> None:
+        doc = _FakeDomeDoc()
+        ok, err = mutate._create_dome(doc, {"type": "dome"}, {})
+        assert ok is False
+        assert "face_ref" in err or "face" in err
+
+
 class TestProposeSweepCut_Deferred:
     def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"

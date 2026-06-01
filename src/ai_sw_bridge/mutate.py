@@ -622,31 +622,69 @@ def _create_rib(
 def _create_dome(
     doc: Any, feature: dict, target: dict
 ) -> tuple[bool, str | None]:
-    """Create a dome feature on a selected face.
+    """Create a dome on a selected planar face.
 
-    Seat-validated (SW 2024 SP1): no ``swFmDome`` in ``swconst.tlb``.
-    Legacy ``IModelDoc2.InsertDome`` takes **3 args**:
-    ``(distance, flipDir, elipticalDome)``.
+    Seat-validated recipe (W6 T2, spike ``28a5972`` = GREEN, SW 2024 SP1):
+    no ``swFmDome`` in ``swconst.tlb``; the legacy ``IModelDoc2.InsertDome``
+    (NOT on FeatureManager) takes 3 args ``(Height_m, ReverseDir,
+    DoEllipticSurface)``. Two gotchas the seat exposed:
 
-    SEAT-PENDING (W0): InsertDome materialization needs seat confirmation
-    with correct face selection and arg values.
+    * **Selection must use mark=1.** ``select_entity(face, mark=1)``; mark=0
+      does *not* trigger creation.
+    * **``InsertDome`` returns ``None`` even on success.** Do NOT trust the
+      return value — verify materialization via a ``GetFeatureCount`` delta
+      (same pattern as ``_create_shell`` / ``InsertFeatureShell``).
+
+    ``target`` shapes (durable preferred, mirrors ``ref_point`` / wizard_hole):
+
+    * ``{"face_ref": <manifest-face dict>}`` — resolved through
+      :func:`resolve_manifest_face` → :func:`select_entity` (mark=1).
+    * ``{"face": [x,y,z]}`` — legacy coordinate pick; **walls out-of-process**
+      (``SelectByID2(FACE)`` returns False), retained only as a fallback.
+
+    ``feature.distance_mm`` is the dome height (default 5 mm); optional
+    ``feature.reverse`` (bool) and ``feature.elliptical`` (bool).
     """
-    face = target.get("face") if isinstance(target, dict) else None
-    if not isinstance(face, (list, tuple)) or len(face) != 3:
-        return False, "target.face must be a 3-element [x,y,z]"
     distance_mm = feature.get("distance_mm", 5.0) if isinstance(feature, dict) else 5.0
     distance_m = float(distance_mm) / 1000.0
+    reverse = bool(feature.get("reverse", False)) if isinstance(feature, dict) else False
+    elliptical = bool(feature.get("elliptical", False)) if isinstance(feature, dict) else False
+    if not isinstance(target, dict):
+        return False, "target must be a dict with 'face_ref' or 'face'"
+    doc.ForceRebuild3(False)
     try:
-        mod = wrapper_module()
-        ext = typed(doc.Extension, "IModelDocExtension", module=mod)
-        doc.ClearSelection2(True)
-        if not ext.SelectByID2("", "FACE", float(face[0]), float(face[1]), float(face[2]), False, 0, None, 0):
-            return False, "could not select face for dome"
-        # SEAT-PENDING (W0): confirm InsertDome(3) materializes a dome.
-        feat = doc.InsertDome(distance_m, False, False)
-        if _materialized(feat):
+        before = int(doc.GetFeatureCount())
+        try:
+            doc.ClearSelection2(True)
+        except Exception:  # noqa: BLE001
+            pass
+
+        face_ref = target.get("face_ref")
+        if face_ref is not None:
+            res = resolve_manifest_face(doc, face_ref)
+            if res.entity is None:
+                return False, f"dome face unresolved (method={res.method})"
+            # mark=1 is REQUIRED for InsertDome (seat-proven; mark=0 no-ops).
+            if not select_entity(res.entity, mark=1):
+                return False, "could not select resolved face for dome"
+        else:
+            face = target.get("face")
+            if not isinstance(face, (list, tuple)) or len(face) != 3:
+                return False, "target must contain a 'face_ref' or a 3-element 'face' [x,y,z]"
+            mod = wrapper_module()
+            ext = typed(doc.Extension, "IModelDocExtension", module=mod)
+            if not ext.SelectByID2(
+                "", "FACE", float(face[0]), float(face[1]), float(face[2]), False, 1, None, 0
+            ):
+                return False, "could not select face for dome"
+
+        # InsertDome returns None even on success — verify via feature-count.
+        doc.InsertDome(distance_m, reverse, elliptical)
+        doc.ForceRebuild3(False)
+        after = int(doc.GetFeatureCount())
+        if after > before:
             return True, None
-        return False, "InsertDome did not materialize"
+        return False, f"dome did not add a feature (count {before} -> {after})"
     except Exception as exc:
         return False, f"dome pipeline failed: {exc!r}"
 
@@ -1833,11 +1871,21 @@ def sw_propose_feature_add(
                 result["error"] = "rib target.sketch must be a non-empty sketch name"
                 return result
 
-        # Wave-5: dome needs a face coordinate.
+        # Wave-6 T2: dome takes a durable face_ref (preferred) or legacy coord.
         if feat_type == "dome":
+            face_ref = target.get("face_ref")
             face = target.get("face")
-            if not isinstance(face, (list, tuple)) or len(face) != 3:
-                result["error"] = "dome target.face must be a 3-element [x,y,z]"
+            if face_ref is not None:
+                if not isinstance(face_ref, dict) or not face_ref:
+                    result["error"] = (
+                        "dome target.face_ref must be a non-empty manifest-face dict"
+                    )
+                    return result
+            elif not isinstance(face, (list, tuple)) or len(face) != 3:
+                result["error"] = (
+                    "dome target needs a 'face_ref' (durable manifest-face dict) "
+                    "or a 3-element 'face' [x,y,z]"
+                )
                 return result
 
         # Wave-5: wrap needs sketch + face.
