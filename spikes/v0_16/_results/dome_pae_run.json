@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "error": null,
+  "feature_count_before": 19,
+  "feature_count_after": 20,
+  "delta": 1,
+  "feature_name": "Dome1",
+  "feature_type": "Dome"
+}

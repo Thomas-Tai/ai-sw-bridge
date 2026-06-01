@@ -653,7 +653,8 @@ def _create_dome(
         return False, "target must be a dict with 'face_ref' or 'face'"
     doc.ForceRebuild3(False)
     try:
-        before = int(doc.GetFeatureCount())
+        _feats = doc.FeatureManager.GetFeatures(True)
+        before = len(_feats) if _feats else 0
         try:
             doc.ClearSelection2(True)
         except Exception:  # noqa: BLE001
@@ -681,7 +682,8 @@ def _create_dome(
         # InsertDome returns None even on success — verify via feature-count.
         doc.InsertDome(distance_m, reverse, elliptical)
         doc.ForceRebuild3(False)
-        after = int(doc.GetFeatureCount())
+        _feats = doc.FeatureManager.GetFeatures(True)
+        after = len(_feats) if _feats else 0
         if after > before:
             return True, None
         return False, f"dome did not add a feature (count {before} -> {after})"
@@ -1124,7 +1126,8 @@ def _create_shell(doc: Any, feature: dict, target: dict) -> tuple[bool, str | No
                 return False, f"could not select face[{k}]"
         doc.InsertFeatureShell(thickness_mm / 1000.0, outward)
         doc.ForceRebuild3(False)
-        after = int(doc.GetFeatureCount())
+        _feats = doc.FeatureManager.GetFeatures(True)
+        after = len(_feats) if _feats else 0
         if after > before:
             return True, None
         return False, f"shell did not add a feature (count {before} -> {after})"
