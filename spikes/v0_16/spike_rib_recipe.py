@@ -249,18 +249,26 @@ def run():
             )),
         ]
 
+        # Corrected arg semantics per SW2024 typelib dump (W0 handoff):
+        # InsertRib(Is2Sided:BOOL, ReverseThicknessDir:BOOL, Thickness:R8,
+        #           ReferenceEdgeIndex:I4, ReverseMaterialDir:BOOL, IsDrafted:BOOL,
+        #           DraftOutward:BOOL, DraftAngle:R8, IsNormToSketch:BOOL,
+        #           IsDraftedFromWall:BOOL)
+        # Key insight: arg4 (ReverseMaterialDir) controls whether rib extrudes
+        # INTO the host body or out into empty space. Must try both.
         arg_variants = [
-            ("v1_linear_normal_2mm",   (False, False, 0.002, 0, False, True,  False, 0.0, False, True)),
-            ("v2_linear_normal_thk2",  (False, True,  0.002, 0, False, True,  False, 0.0, False, True)),
-            ("v3_bothsides",           (True,  False, 0.002, 0, False, True,  False, 0.0, False, True)),
-            ("v4_parallel_to_sketch",  (False, False, 0.002, 0, False, False, False, 0.0, False, True)),
-            ("v5_natural_rib",         (False, False, 0.003, 1, False, True,  False, 0.0, False, True)),
-            ("v6_all_flipped",         (True,  True,  0.002, 0, True,  True,  False, 0.0, False, True)),
-            ("v7_thicker_5mm",         (False, False, 0.005, 0, False, True,  False, 0.0, False, True)),
-            ("v8_reverse_parallel",    (False, True,  0.003, 0, True,  False, False, 0.0, False, True)),
-            ("v9_bothsides_parallel",  (True,  False, 0.002, 0, False, False, False, 0.0, False, True)),
-            ("v10_draft_5deg",         (False, False, 0.002, 0, False, True,  True,  0.0873, False, True)),
-            ("v11_draft_while",        (False, False, 0.002, 0, False, True,  False, 0.0, True,  True)),
+            ("probe_A_fwd_5mm",  (True, False, 0.005, 0, False, False, False, 0.0, True, False)),
+            ("probe_B_rev_5mm",  (True, False, 0.005, 0, True,  False, False, 0.0, True, False)),
+            ("probe_C_fwd_2mm",  (True, False, 0.002, 0, False, False, False, 0.0, True, False)),
+            ("probe_D_rev_2mm",  (True, False, 0.002, 0, True,  False, False, 0.0, True, False)),
+            ("probe_E_1sided_fwd", (False, False, 0.005, 0, False, False, False, 0.0, True, False)),
+            ("probe_F_1sided_rev", (False, False, 0.005, 0, True,  False, False, 0.0, True, False)),
+            ("probe_G_parallel_fwd", (True, False, 0.005, 0, False, False, False, 0.0, False, False)),
+            ("probe_H_parallel_rev", (True, False, 0.005, 0, True,  False, False, 0.0, False, False)),
+            ("probe_I_revThk_fwd", (True, True,  0.005, 0, False, False, False, 0.0, True, False)),
+            ("probe_J_revThk_rev", (True, True,  0.005, 0, True,  False, False, 0.0, True, False)),
+            ("probe_K_draft_fwd",  (True, False, 0.005, 0, False, True,  True,  0.0873, True, False)),
+            ("probe_L_draft_rev",  (True, False, 0.005, 0, True,  True,  True,  0.0873, True, False)),
         ]
 
         probes = []
