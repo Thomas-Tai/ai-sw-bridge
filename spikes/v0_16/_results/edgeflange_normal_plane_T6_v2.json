@@ -1,0 +1,115 @@
+{
+  "spike": "edgeflange_normal_plane_T6_v2",
+  "ts": 1780543462.4615226,
+  "typelib": {
+    "raw_members": {
+      "swRefPlaneReferenceConstraint_Parallel": 1,
+      "swRefPlaneReferenceConstraint_Perpendicular": 2,
+      "swRefPlaneReferenceConstraint_Coincident": 4,
+      "swRefPlaneReferenceConstraint_Distance": 8,
+      "swRefPlaneReferenceConstraint_Angle": 16,
+      "swRefPlaneReferenceConstraint_Tangent": 32,
+      "swRefPlaneReferenceConstraint_Project": 64,
+      "swRefPlaneReferenceConstraint_MidPlane": 128,
+      "swRefPlaneReferenceConstraint_OptionFlip": 256,
+      "swRefPlaneReferenceConstraint_OptionOriginOnCurve": 512,
+      "swRefPlaneReferenceConstraint_OptionProjectToNearestLocation": 1024,
+      "swRefPlaneReferenceConstraint_OptionProjectAlongSketchNormal": 2048,
+      "swRefPlaneReferenceConstraint_ParallelToScreen": 4096,
+      "swRefPlaneReferenceConstraint_OptionReferenceFlip": 8192
+    },
+    "Distance": 8,
+    "distance_anchor_ok": true,
+    "Coincident": 4,
+    "Perpendicular": 2,
+    "Parallel": 1,
+    "Angle": 16,
+    "MidPlane": 128
+  },
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "edge_length": 0.05000000000000001,
+  "edge_diag": {
+    "edge_candidates": 12,
+    "linear_candidates": 12,
+    "vertex_acquired": true
+  },
+  "edge_midpoint": [
+    0.0,
+    0.025,
+    0.05
+  ],
+  "edge_tangent": [
+    -1.0,
+    -0.0,
+    -0.0
+  ],
+  "feature_count_before": 19,
+  "probe": {
+    "attempts": [
+      {
+        "label": "vtx(m=0)->edge(m=0) coin/perp",
+        "sel1": true,
+        "sel2": true,
+        "args": [
+          4,
+          0,
+          2,
+          0,
+          0,
+          0
+        ],
+        "delta": 0,
+        "materialized": false,
+        "return_value": "None",
+        "error": null
+      },
+      {
+        "label": "vtx(m=0)->edge(m=1) coin/perp",
+        "sel1": true,
+        "sel2": true,
+        "args": [
+          4,
+          0,
+          2,
+          0,
+          0,
+          0
+        ],
+        "delta": 1,
+        "materialized": true,
+        "return_value": "<COMObject <unknown>>",
+        "error": null
+      }
+    ],
+    "winner": {
+      "label": "vtx(m=0)->edge(m=1) coin/perp",
+      "sel1": true,
+      "sel2": true,
+      "args": [
+        4,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      "delta": 1,
+      "materialized": true,
+      "return_value": "<COMObject <unknown>>",
+      "error": null
+    },
+    "overall": "GREEN"
+  },
+  "overall": "GREEN",
+  "plane_name": "Plane1",
+  "sketch": {
+    "select_plane": false,
+    "rectangle_created": true,
+    "all_sketches": [
+      "Sketch1",
+      "Sketch2"
+    ],
+    "sketch_verified": true
+  },
+  "interpretation": "Normal plane materialized (delta>0) + sketch verified. Winning: vtx(m=0)->edge(m=1) coin/perp, args=[4, 0, 2, 0, 0, 0]. Coincident=4, Perpendicular=2. COM boundary is closed for T6 normal-plane milestone."
+}
