@@ -287,14 +287,15 @@ def verify_mates(
 ) -> list[dict[str, Any]]:
     """Three-layer solver verification for all mates in an assembly.
 
-    Traverses the feature tree via ``FeatureManager.GetFeatures(True)`` and
-    identifies mate features by their type name (contains "Mate" and is not
-    a folder). For each mate:
+    Traverses the flat feature list via ``FeatureManager.GetFeatures(False)``
+    (``TopLevelOnly=False``) and identifies mate features by their type name.
+    For each mate:
 
-      - **Layer 1 (existence):** Mate appears with a valid type name.
-      - **Layer 2 (error code):** ``GetErrorCode2()`` returns clean (0 or success).
+      - **Layer 1 (existence):** Mate appears with a valid type name
+        (``startswith("Mate")``, not ``MateGroup``, not ``Material``).
+      - **Layer 2 (error code):** ``GetErrorCode2()`` returns clean (0).
       - **Layer 3 (solver health):** After ``ForceRebuild3(False)``, the mate is
-        not suppressed-due-to-error and the assembly is not over-defined.
+        not suppressed-due-to-error.
 
     Args:
         asm_doc: the assembly document (``IModelDoc2``).
@@ -305,7 +306,7 @@ def verify_mates(
 
             {
                 "name": str,          # feature name (e.g. "Coincident1")
-                "type": str,          # type name (e.g. "MateCoincident")
+                "type": str,          # type name (e.g. "MateDistance")
                 "error_code": int,    # GetErrorCode2() value
                 "solved": bool,       # True if mate is healthy and solved
                 "suppressed": bool,   # True if suppressed due to error
@@ -322,10 +323,11 @@ def verify_mates(
 
     results: list[dict[str, Any]] = []
 
-    # Traverse features via FeatureManager
+    # Flat enumeration: GetFeatures(False) returns individual mate features
+    # as their own entries (not collapsed into the MateGroup folder).
     try:
         fm = asm_doc.FeatureManager
-        feats = fm.GetFeatures(True)
+        feats = fm.GetFeatures(False)
     except Exception:
         return results
 
@@ -337,63 +339,23 @@ def verify_mates(
             ifeat = typed(feat, "IFeature", module=mod)
             type_name = ifeat.GetTypeName2()
 
-            # MateGroup folder: traverse its sub-features for actual mates
-            if type_name == "MateGroup":
-                try:
-                    sub = feat.GetFirstSubFeature()
-                    while sub is not None:
-                        try:
-                            sub_ifeat = typed(sub, "IFeature", module=mod)
-                            sub_type = sub_ifeat.GetTypeName2()
-                            if "Mate" in sub_type and "Material" not in sub_type:
-                                mate_result: dict[str, Any] = {
-                                    "name": sub.Name if hasattr(sub, "Name") else "?",
-                                    "type": sub_type,
-                                    "error_code": -1,
-                                    "solved": False,
-                                    "suppressed": False,
-                                }
-                                try:
-                                    mate_result["suppressed"] = sub_ifeat.GetSuppression2() == 0
-                                except Exception:
-                                    pass
-                                try:
-                                    mate_result["error_code"] = sub_ifeat.GetErrorCode2()
-                                except Exception:
-                                    try:
-                                        mate_result["error_code"] = sub_ifeat.GetErrorCode()
-                                    except Exception:
-                                        pass
-                                mate_result["solved"] = (
-                                    not mate_result["suppressed"]
-                                    and mate_result["error_code"] == 0
-                                )
-                                results.append(mate_result)
-                        except Exception:
-                            pass
-                        try:
-                            sub = sub.GetNextSubFeature()
-                        except Exception:
-                            break
-                except Exception:
-                    pass
+            # Keep only mate features: startswith("Mate"), not MateGroup, not Material
+            if not type_name.startswith("Mate"):
                 continue
-
-            # Filter to mate features only (type contains "Mate" but not "Material")
-            if "Mate" not in type_name:
+            if type_name == "MateGroup":
                 continue
             if "Material" in type_name:
                 continue
 
             mate_result: dict[str, Any] = {
-                "name": feat.Name if hasattr(feat, "Name") else "?",
+                "name": ifeat.Name,
                 "type": type_name,
                 "error_code": -1,
                 "solved": False,
                 "suppressed": False,
             }
 
-            # Check if suppressed
+            # Check if suppressed (all calls on typed ifeat, never raw proxy)
             try:
                 suppress_state = ifeat.GetSuppression2()
                 mate_result["suppressed"] = suppress_state == 0
