@@ -163,6 +163,17 @@ _SUPPORTED_FEATURE_TYPES = (
     # Wave-5 F0 ref-geom: seat-GREEN PAE on live SW 2024 SP1.
     # ref_plane / ref_axis / coordinate_system: propose->dry_run->commit all
     # GREEN on a fresh part.
+    #
+    # ref_plane has TWO seat-proven target shapes:
+    #   * {"plane": <name>} + feature.distance_mm — offset plane (W3 F0).
+    #   * {"edge_ref": <DurableEdgeRef>} — plane NORMAL to a durable edge,
+    #     anchored at its start vertex (W6 T6 v2). Production-handler PAE GREEN
+    #     (spike 76b8369): DurableEdgeRef captured from a live box survives a
+    #     save/close/reopen cycle, resolves tier-1 via persist_id, and
+    #     _create_ref_plane_normal_to_edge materializes Plane1 (delta=1) via the
+    #     two-reference InsertRefPlane(4,0,2,0,0,0) (Coincident anchor +
+    #     Perpendicular edge; flags typelib-verified, Distance=8 anchor). v1's
+    #     one-reference attempt was an under-defined construction, not a COM wall.
     "ref_plane",
     "ref_axis",
     "coordinate_system",
