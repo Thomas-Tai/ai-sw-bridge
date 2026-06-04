@@ -1,0 +1,270 @@
+{
+  "spike": "edgeflange_custom_profile_W7",
+  "ts": 1780549094.87655,
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "typelib_signature": {
+    "method": "InsertSheetMetalEdgeFlange2",
+    "arg_count": 13,
+    "args": [
+      {
+        "pos": 1,
+        "name": "FlangeEdges",
+        "vt": "VARIANT(12)"
+      },
+      {
+        "pos": 2,
+        "name": "SketchFeats",
+        "vt": "VARIANT(12)"
+      },
+      {
+        "pos": 3,
+        "name": "BooleanOptions",
+        "vt": "I4(3)"
+      },
+      {
+        "pos": 4,
+        "name": "FlangeAngle",
+        "vt": "R8(5)"
+      },
+      {
+        "pos": 5,
+        "name": "FlangeRadius",
+        "vt": "R8(5)"
+      },
+      {
+        "pos": 6,
+        "name": "BendPosition",
+        "vt": "I4(3)"
+      },
+      {
+        "pos": 7,
+        "name": "FlangeOffsetDist",
+        "vt": "R8(5)"
+      },
+      {
+        "pos": 8,
+        "name": "ReliefType",
+        "vt": "I4(3)"
+      },
+      {
+        "pos": 9,
+        "name": "FlangeReliefRatio",
+        "vt": "R8(5)"
+      },
+      {
+        "pos": 10,
+        "name": "FlangeReliefWidth",
+        "vt": "R8(5)"
+      },
+      {
+        "pos": 11,
+        "name": "FlangeReliefDepth",
+        "vt": "R8(5)"
+      },
+      {
+        "pos": 12,
+        "name": "FlangeSharpType",
+        "vt": "I4(3)"
+      },
+      {
+        "pos": 13,
+        "name": "CustomBendAllowance",
+        "vt": "USERDEFINED(IDispatch)"
+      }
+    ]
+  },
+  "named_arg_vector": {
+    "BooleanOptions": {
+      "value": 129,
+      "name": "UseDefaultRadius|UseDefaultRelief"
+    },
+    "FlangeAngle": {
+      "value": 1.5707963267948966,
+      "name": "pi/2 (90 deg)"
+    },
+    "FlangeRadius": {
+      "value": 0.002,
+      "name": "2mm"
+    },
+    "BendPosition": {
+      "value": 1,
+      "name": "MaterialInside"
+    },
+    "ReliefType": {
+      "value": 2,
+      "name": "Tear"
+    },
+    "FlangeSharpType": {
+      "value": 0,
+      "name": "default (no enum)"
+    },
+    "CustomBendAllowance": {
+      "value": "VARIANT(VT_DISPATCH,None)",
+      "name": "null"
+    }
+  },
+  "profile": {
+    "built": true,
+    "sketch": "Sketch1"
+  },
+  "base_flange": {
+    "create_definition": {
+      "status": "OK",
+      "type": "CDispatch",
+      "elapsed_ms": 30.032200000277953
+    },
+    "typed_qi": {
+      "status": "OK",
+      "type": "IBaseFlangeFeatureData",
+      "elapsed_ms": 12.054200000420678
+    },
+    "set_Thickness": "OK",
+    "set_BendRadius": "OK",
+    "create_feature": {
+      "status": "OK",
+      "type": "CDispatch",
+      "elapsed_ms": 660.6271000000561,
+      "materialized": true,
+      "feature_name": "Base-Flange1",
+      "type_name": "SMBaseFlange"
+    },
+    "overall": "PASS"
+  },
+  "edge_count": 12,
+  "best_edge_mm": 60.0,
+  "plane_and_sketch": {
+    "plane_delta": 1,
+    "plane_name": "Plane1",
+    "select_plane": false,
+    "sketch_delta": 1,
+    "sketch_name": "Sketch6"
+  },
+  "sketch_feature_type": "CDispatch",
+  "attempts": [
+    {
+      "select": true,
+      "mark": 0,
+      "delta": 1,
+      "materialized": true,
+      "return_type": "CDispatch",
+      "error": null
+    }
+  ],
+  "attempt_count": 1,
+  "overall": "GREEN",
+  "winner": {
+    "select": true,
+    "mark": 0,
+    "delta": 1,
+    "materialized": true,
+    "return_type": "CDispatch",
+    "error": null
+  },
+  "features_after": [
+    {
+      "name": "Comments",
+      "type": "CommentsFolder"
+    },
+    {
+      "name": "Favorites",
+      "type": "FavoriteFolder"
+    },
+    {
+      "name": "Folder ",
+      "type": "HistoryFolder"
+    },
+    {
+      "name": "Selection Sets",
+      "type": "SelectionSetFolder"
+    },
+    {
+      "name": "Sensors",
+      "type": "SensorFolder"
+    },
+    {
+      "name": "Design Binder",
+      "type": "DocsFolder"
+    },
+    {
+      "name": "Annotations",
+      "type": "DetailCabinet"
+    },
+    {
+      "name": "Surface Bodies",
+      "type": "SurfaceBodyFolder"
+    },
+    {
+      "name": "Solid Bodies",
+      "type": "SolidBodyFolder"
+    },
+    {
+      "name": "Sheet<1>",
+      "type": "CutListFolder"
+    },
+    {
+      "name": "Lights and Cameras",
+      "type": "EnvFolder"
+    },
+    {
+      "name": "Markups",
+      "type": "InkMarkupFolder"
+    },
+    {
+      "name": "Equations",
+      "type": "EqnFolder"
+    },
+    {
+      "name": "Material <not specified>",
+      "type": "MaterialFolder"
+    },
+    {
+      "name": "Front Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Top Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Right Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Origin",
+      "type": "OriginProfileFeature"
+    },
+    {
+      "name": "Sketch1",
+      "type": "ProfileFeature"
+    },
+    {
+      "name": "Base-Flange1",
+      "type": "SMBaseFlange"
+    },
+    {
+      "name": "Plane1",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Sketch7",
+      "type": "ProfileFeature"
+    },
+    {
+      "name": "Edge-Flange1",
+      "type": "EdgeFlange"
+    },
+    {
+      "name": "Sheet-Metal1",
+      "type": "SheetMetal"
+    },
+    {
+      "name": "Flat-Pattern1",
+      "type": "FlatPattern"
+    }
+  ],
+  "flange_feature": {
+    "name": "Edge-Flange1",
+    "type": "EdgeFlange"
+  },
+  "interpretation": "Edge flange materialized with custom profile sketch. Ship as 14th kind."
+}
