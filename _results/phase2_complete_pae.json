@@ -1,6 +1,6 @@
 {
   "pae": "phase2_complete",
-  "timestamp": "2026-06-04T20:48:50",
+  "timestamp": "2026-06-04T21:46:02",
   "gates": {
     "build_part_a": {
       "ok": true,
@@ -20,7 +20,7 @@
     },
     "propose": {
       "ok": true,
-      "detail": "id=78da8b6fd9a5"
+      "detail": "id=e1200da86297"
     },
     "dry_run": {
       "ok": true,
@@ -39,15 +39,44 @@
       "detail": "count=4"
     },
     "verify_mates_nonempty": {
-      "ok": false,
-      "detail": "found 0 mates"
+      "ok": true,
+      "detail": "found 4 mates"
     },
     "all_mates_solved": {
-      "ok": false,
-      "detail": "solved=[], types=[]"
+      "ok": true,
+      "detail": "solved=[True, True, True, True], types=['MateDistanceDim', 'MateParallel', 'MatePerpendicular', 'MateConcentric']"
     }
   },
-  "per_mate_results": [],
+  "per_mate_results": [
+    {
+      "name": "Distance1",
+      "type": "MateDistanceDim",
+      "error_code": 0,
+      "solved": true,
+      "suppressed": false
+    },
+    {
+      "name": "Parallel1",
+      "type": "MateParallel",
+      "error_code": 0,
+      "solved": true,
+      "suppressed": false
+    },
+    {
+      "name": "Perpendicular1",
+      "type": "MatePerpendicular",
+      "error_code": 0,
+      "solved": true,
+      "suppressed": false
+    },
+    {
+      "name": "Concentric1",
+      "type": "MateConcentric",
+      "error_code": 0,
+      "solved": true,
+      "suppressed": false
+    }
+  ],
   "errors": [],
-  "assembly_path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\aisw-W10\\spikes\\phase2_complete.SLDASM"
+  "assembly_path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\aisw-W10\\spikes\\phase2_complete_v2.SLDASM"
 }

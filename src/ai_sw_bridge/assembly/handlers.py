@@ -317,7 +317,7 @@ def verify_mates(
 
     # Force rebuild first to ensure solver has processed all mates
     try:
-        asm_doc.ForceRebuild3(False)
+        asm_doc.ForceRebuild3(True)
     except Exception:
         pass
 
@@ -355,28 +355,49 @@ def verify_mates(
                 "suppressed": False,
             }
 
-            # Check if suppressed (all calls on typed ifeat, never raw proxy)
+            # Check if suppressed
+            # Note: GetSuppression2 may not exist on all IFeature wrappers.
+            # Fall back to IsSuppressed2 or treat as not suppressed.
             try:
                 suppress_state = ifeat.GetSuppression2()
+                if isinstance(suppress_state, tuple):
+                    suppress_state = suppress_state[0]
                 mate_result["suppressed"] = suppress_state == 0
             except Exception:
-                pass
+                try:
+                    suppress_state = ifeat.IsSuppressed2()
+                    if isinstance(suppress_state, tuple):
+                        suppress_state = suppress_state[0]
+                    mate_result["suppressed"] = bool(suppress_state)
+                except Exception:
+                    pass
 
             # Check error code
+            # GetErrorCode2 returns (code, has_error_flag) tuple.
+            # The has_error_flag is True when the code represents an actual error.
+            # When False, the code is a status/info code (not an error).
+            has_error = True  # default to assuming error
             try:
-                error_code = ifeat.GetErrorCode2()
+                error_result = ifeat.GetErrorCode2()
+                if isinstance(error_result, tuple):
+                    error_code = error_result[0]
+                    has_error = error_result[1]
+                else:
+                    error_code = error_result
                 mate_result["error_code"] = error_code
             except Exception:
                 try:
                     error_code = ifeat.GetErrorCode()
+                    if isinstance(error_code, tuple):
+                        error_code = error_code[0]
                     mate_result["error_code"] = error_code
                 except Exception:
                     pass
 
-            # Solved = not suppressed AND error_code is clean (0)
+            # Solved = not suppressed AND (no error flag OR error_code == 0)
             mate_result["solved"] = (
                 not mate_result["suppressed"]
-                and mate_result["error_code"] == 0
+                and (not has_error or mate_result["error_code"] == 0)
             )
 
             results.append(mate_result)

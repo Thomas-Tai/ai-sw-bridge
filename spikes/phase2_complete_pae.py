@@ -75,7 +75,7 @@ PART_SPEC = {
 
 PART_A_PATH = os.path.join(WORKTREE, "spikes", "phase2_part_a.SLDPRT")
 PART_B_PATH = os.path.join(WORKTREE, "spikes", "phase2_part_b.SLDPRT")
-OUTPUT_ASM = os.path.join(WORKTREE, "spikes", "phase2_complete.SLDASM")
+OUTPUT_ASM = os.path.join(WORKTREE, "spikes", "phase2_complete_v2.SLDASM")
 
 # Clean up
 for p in [PART_A_PATH, PART_B_PATH, OUTPUT_ASM]:
@@ -234,13 +234,13 @@ ASSEMBLY_SPEC = {
         {
             "id": "part_b",
             "part": PART_B_PATH,
-            "transform": {"xyz_mm": [0, 0, 50]},
+            "transform": {"xyz_mm": [0, 0, 15]},
         },
     ],
     "mates": [
         {
             "type": "distance",
-            "alignment": "anti_aligned",
+            "alignment": "aligned",
             "value_mm": 5.0,
             "a": {"component": "part_a", "face_ref": make_face_ref(face_a_top)},
             "b": {"component": "part_b", "face_ref": make_face_ref(face_b_bottom)},
@@ -321,7 +321,7 @@ if os.path.isfile(OUTPUT_ASM):
         if docs:
             for d in docs:
                 t = d.GetTitle() if callable(d.GetTitle) else d.GetTitle
-                if "phase2_complete" in t.lower():
+                if "phase2_complete_v2" in t.lower():
                     asm_doc = d
                     break
     except Exception:
