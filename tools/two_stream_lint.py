@@ -36,6 +36,7 @@ CLI_EMITTERS = frozenset(
         "build.py",
         "observe.py",
         "mutate.py",
+        "assembly.py",
         "codegen.py",
         "probe.py",
         "history.py",
