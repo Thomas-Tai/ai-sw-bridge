@@ -1,0 +1,55 @@
+{
+  "pae": "slice-8b_real_partspec",
+  "timestamp": "2026-06-04T18:07:32",
+  "gates": {
+    "propose": {
+      "ok": true,
+      "detail": "proposal_id=0e099a2a5e4d"
+    },
+    "dry_run": {
+      "ok": true,
+      "detail": "state=dry_run_ok"
+    },
+    "commit": {
+      "ok": true,
+      "detail": "ok=True, asm_on_disk=True, state=committed"
+    },
+    "component_count": {
+      "ok": true,
+      "detail": "count=2"
+    },
+    "assembly_saved": {
+      "ok": true,
+      "detail": "path=slice8b_assembly.SLDASM, size=45738"
+    },
+    "lid_built_by_lifecycle": {
+      "ok": true,
+      "detail": "path=asm_parts_1780567601_lid.SLDPRT, on_disk=True"
+    },
+    "mate_materialized": {
+      "ok": true,
+      "detail": "mate_count=1"
+    },
+    "manifest_roundtrip": {
+      "ok": true,
+      "detail": "components=2, mates=1"
+    },
+    "feature_add_rejects_assembly": {
+      "ok": true,
+      "detail": "rejected=True, error=unsupported feature type assembly"
+    }
+  },
+  "assembly_path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\aisw-W9\\spikes\\slice8b_assembly.SLDASM",
+  "lid_part_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\asm_parts_1780567601_lid.SLDPRT",
+  "built_by_lifecycle": true,
+  "commit_result": {
+    "ok": true,
+    "component_count": 2,
+    "mate_count": 1,
+    "sources": {
+      "base": "part",
+      "lid": "part_spec"
+    }
+  },
+  "errors": []
+}

@@ -1,0 +1,5 @@
+# Reproducible SOLIDWORKS build artifacts — never commit
+*.SLDPRT
+*.SLDASM
+*.sldprt
+*.sldasm
