@@ -2307,6 +2307,65 @@ def sw_propose_feature_add(
         return result
 
 
+def sw_propose_assembly(spec: dict[str, Any]) -> dict[str, Any]:
+    """Stage an assembly proposal. Validates offline; no SW state touched.
+
+    The assembly kind is **de-advertised** — this function is the only entry
+    point and is not reachable through ``sw_propose_feature_add``. It validates
+    the spec structurally (jsonschema against ``ASSEMBLY_SCHEMA``) and
+    semantically (``validate_assembly``) before writing a proposal record with
+    ``kind: "assembly"``.
+    """
+    import jsonschema
+
+    from .assembly.schema import ASSEMBLY_SCHEMA
+    from .assembly.validator import AssemblyValidationError, validate_assembly
+
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": None,
+        "kind": "assembly",
+        "spec": spec,
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+    try:
+        if not isinstance(spec, dict):
+            result["error"] = "spec must be a dict"
+            return result
+
+        try:
+            jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+        except jsonschema.ValidationError as exc:
+            result["error"] = f"schema: {exc.message}"
+            return result
+
+        try:
+            validate_assembly(spec)
+        except AssemblyValidationError as exc:
+            result["error"] = str(exc)
+            return result
+
+        proposal_id = uuid.uuid4().hex[:12]
+        record = {
+            "kind": "assembly",
+            "proposal_id": proposal_id,
+            "created_at": time.time(),
+            "spec": spec,
+            "state": ST_PROPOSED,
+            "dry_run_result": None,
+            "committed_at": None,
+        }
+        _save_proposal(proposal_id, record)
+        result["proposal_id"] = proposal_id
+        result["ok"] = True
+        return result
+
+    except Exception as exc:
+        result["error"] = f"unexpected: {exc!r}"
+        return result
+
+
 def sw_dry_run_feature_add(proposal_id: str) -> dict[str, Any]:
     """Open the doc, resolve the edge, add the fillet, rebuild, close without saving."""
     result: dict[str, Any] = {
