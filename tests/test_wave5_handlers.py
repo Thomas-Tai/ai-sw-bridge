@@ -12,6 +12,7 @@ Test structure mirrors ``test_mutate_feature_add.py``:
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -797,6 +798,193 @@ class TestCreateRefPlaneNormalToEdge:
         )
         assert ok is False
         assert "start vertex" in err
+
+
+# ---------------------------------------------------------------------------
+# edge_flange — Wave-7 T6 custom-profile (seat spike 1897670 = GREEN).
+# Monolithic handler: resolve edge -> normal-edge plane -> profile line ->
+# SAFEARRAY InsertSheetMetalEdgeFlange2. DE-ADVERTISED pending production PAE,
+# so these exercise the handler directly + assert propose fails closed.
+# ---------------------------------------------------------------------------
+class _FF:
+    """Minimal fake IFeature: Name + GetTypeName2."""
+
+    def __init__(self, name: str, tname: str) -> None:
+        self.Name = name
+        self._t = tname
+
+    def GetTypeName2(self) -> str:  # noqa: N802
+        return self._t
+
+
+class _FakeEFEdge:
+    def __init__(self, vertex: object) -> None:
+        self._v = vertex
+
+    def GetStartVertex(self):  # noqa: N802
+        return self._v
+
+
+class _FakeEFExt:
+    def __init__(self, edge: object) -> None:
+        self._edge = edge
+
+    def GetObjectByPersistReference3(self, pid: bytes):  # noqa: N802
+        return self._edge
+
+
+class _FakeEFSketchMgr:
+    def __init__(self, doc: "_FakeEdgeFlangeDoc") -> None:
+        self._doc = doc
+
+    def CreateLine(self, *a):  # noqa: N802
+        self._doc.line_args = a
+        return None
+
+
+class _FakeEFFm:
+    def __init__(self, doc: "_FakeEdgeFlangeDoc") -> None:
+        self._doc = doc
+
+    def GetFeatures(self, top: bool):  # noqa: N802, FBT001
+        return list(self._doc._feats)
+
+    def InsertRefPlane(self, *a):  # noqa: N802
+        self._doc.plane_args = a
+        self._doc._plane_built = True
+        self._doc._feats.append(_FF("Plane1", "RefPlane"))
+        return None
+
+    def InsertSheetMetalEdgeFlange2(self, *a):  # noqa: N802
+        self._doc.flange_args = a
+        if (self._doc._will_materialize and self._doc._plane_built
+                and self._doc._sketch_built):
+            self._doc._feats.append(_FF("Edge-Flange1", "EdgeFlange"))
+        return None
+
+
+class _FakeEdgeFlangeDoc:
+    """Models the seat: InsertRefPlane/InsertSheetMetalEdgeFlange2 return None and
+    bump the feature list; the flange only materializes when plane+sketch exist."""
+
+    def __init__(self, *, will_materialize: bool = True) -> None:
+        self._feats = [_FF("Sketch1", "ProfileFeature"), _FF("Base-Flange1", "SMBaseFlange")]
+        self._will_materialize = will_materialize
+        self._plane_built = False
+        self._sketch_built = False
+        self.plane_args: tuple | None = None
+        self.flange_args: tuple | None = None
+        self.line_args: tuple | None = None
+        self._vertex = object()
+        self._edge = _FakeEFEdge(self._vertex)
+        self.Extension = _FakeEFExt(self._edge)
+        self.FeatureManager = _FakeEFFm(self)
+        self.SketchManager = _FakeEFSketchMgr(self)
+
+    def ForceRebuild3(self, flag: bool) -> None:  # noqa: N802
+        pass
+
+    def ClearSelection2(self, flag: bool) -> None:  # noqa: N802
+        pass
+
+    def SelectByID(self, *a) -> bool:  # noqa: N802
+        return True
+
+    def InsertSketch2(self, flag: bool) -> None:  # noqa: N802, FBT001
+        if not flag:  # closing the sketch adds the profile feature
+            self._feats.append(_FF("Sketch7", "ProfileFeature"))
+            self._sketch_built = True
+        return None
+
+
+_EF_TARGET = {
+    "edge_ref": {
+        "persist_id": "AAAA", "start": [0.0, 0.0, 0.0],
+        "end": [0.0, 0.0, 0.05], "length": 0.05,
+    }
+}
+
+
+class TestCreateEdgeFlangeHandler:
+    def _patch(self, monkeypatch: pytest.MonkeyPatch, doc: _FakeEdgeFlangeDoc) -> None:
+        _patch_com_imports(monkeypatch)
+        monkeypatch.setattr(
+            mutate, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(doc._edge)
+        )
+        monkeypatch.setattr(mutate, "read_persist_reference", lambda d, e: b"pid")
+        monkeypatch.setattr(
+            mutate, "select_entity", lambda e, *, append=False, mark=0: True
+        )
+        monkeypatch.setattr(mutate, "VARIANT", lambda vt, val: ("V", vt, val))
+
+    def test_green_delta(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        doc = _FakeEdgeFlangeDoc(will_materialize=True)
+        self._patch(monkeypatch, doc)
+        ok, err = mutate._create_edge_flange(
+            doc, {"type": "edge_flange", "height_mm": 10}, _EF_TARGET
+        )
+        assert ok is True
+        assert err is None
+        # default angle 90deg / radius 2mm; proven fixed args carried.
+        assert doc.flange_args[2] == 129  # BooleanOptions
+        assert doc.flange_args[3] == pytest.approx(math.radians(90))
+        assert doc.flange_args[4] == pytest.approx(0.002)
+        assert doc.flange_args[5] == 1  # BendPosition MaterialInside
+        # profile line drawn to the 10 mm flange height.
+        assert doc.line_args[4] == pytest.approx(0.010)
+
+    def test_flange_noop_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Plane+sketch build, but the flange call no-ops -> must NOT report success
+        # off the plane/sketch delta (the bug the count-around-the-flange guards).
+        doc = _FakeEdgeFlangeDoc(will_materialize=False)
+        self._patch(monkeypatch, doc)
+        ok, err = mutate._create_edge_flange(
+            doc, {"type": "edge_flange", "height_mm": 10}, _EF_TARGET
+        )
+        assert ok is False
+        assert "did not materialize" in err
+
+    def test_edge_unresolved_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        doc = _FakeEdgeFlangeDoc()
+        _patch_com_imports(monkeypatch)
+        monkeypatch.setattr(
+            mutate, "resolve_edge_ref",
+            lambda d, ref: _FakeRefResolution(None, method="none"),
+        )
+        ok, err = mutate._create_edge_flange(
+            doc, {"type": "edge_flange", "height_mm": 10}, _EF_TARGET
+        )
+        assert ok is False
+        assert "unresolved" in err
+
+    def test_rejects_non_positive_height(self) -> None:
+        doc = _FakeEdgeFlangeDoc()
+        ok, err = mutate._create_edge_flange(
+            doc, {"type": "edge_flange", "height_mm": 0}, _EF_TARGET
+        )
+        assert ok is False
+        assert "height_mm" in err
+
+    def test_rejects_missing_edge_ref(self) -> None:
+        doc = _FakeEdgeFlangeDoc()
+        ok, err = mutate._create_edge_flange(
+            doc, {"type": "edge_flange", "height_mm": 10}, {}
+        )
+        assert ok is False
+        assert "edge_ref" in err
+
+
+class TestProposeEdgeFlangeDeadvertised:
+    def test_propose_fails_closed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        # edge_flange is NOT in _SUPPORTED_FEATURE_TYPES until the PAE clears it.
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
+        r = sw_propose_feature_add(
+            str(doc_file), {"type": "edge_flange", "height_mm": 10}, _EF_TARGET
+        )
+        assert r["ok"] is False
+        assert "unsupported feature type" in r["error"]
 
 
 class TestCreateSweepCutHandler:
