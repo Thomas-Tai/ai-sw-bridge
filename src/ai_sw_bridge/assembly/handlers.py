@@ -215,43 +215,26 @@ def create_mate(
         if mate_data is None:
             return None, f"CreateMateData({mate_type_enum}) returned None"
 
-        # Try to QI the typed interface for properties
-        typed_iface_name = MATE_TYPE_INTERFACES.get(mate_type_str)
-        typed_iface = None
-        if typed_iface_name:
-            try:
-                typed_iface = typed_qi(mate_data, typed_iface_name, module=mod)
-            except Exception:
-                typed_iface = None
-
-        # Set EntitiesToMate and MateAlignment on typed interface (preferred)
-        # or fall back to base IMateFeatureData
+        # ALWAYS use base IMateFeatureData for EntitiesToMate and MateAlignment
+        # (typed interfaces may not expose these properties in gen_py wrappers)
+        base_iface = typed_qi(mate_data, "IMateFeatureData", module=mod)
         face_arr = w32.VARIANT(
             pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
         )
+        base_iface.EntitiesToMate = face_arr
+        base_iface.MateAlignment = alignment
 
-        if typed_iface is not None:
-            try:
-                typed_iface.EntitiesToMate = face_arr
-                typed_iface.MateAlignment = alignment
-
-                # Set type-specific properties
-                if mate_type_str == "distance":
-                    value_mm = mate_spec.get("value_mm")
-                    if value_mm is not None:
-                        # Convert mm to meters (SW internal units)
-                        distance_m = float(value_mm) / 1000.0
-                        typed_iface.Distance = distance_m
-            except AttributeError:
-                # Typed interface doesn't have these properties — fall back
-                base_iface = typed_qi(mate_data, "IMateFeatureData", module=mod)
-                base_iface.EntitiesToMate = face_arr
-                base_iface.MateAlignment = alignment
-        else:
-            # Fallback: use base IMateFeatureData
-            base_iface = typed_qi(mate_data, "IMateFeatureData", module=mod)
-            base_iface.EntitiesToMate = face_arr
-            base_iface.MateAlignment = alignment
+        # QI typed interface ONLY for type-specific scalar properties
+        typed_iface_name = MATE_TYPE_INTERFACES.get(mate_type_str)
+        if typed_iface_name and mate_type_str == "distance":
+            value_mm = mate_spec.get("value_mm")
+            if value_mm is not None:
+                try:
+                    typed_iface = typed_qi(mate_data, typed_iface_name, module=mod)
+                    distance_m = float(value_mm) / 1000.0
+                    typed_iface.Distance = distance_m
+                except Exception:
+                    pass
 
         mate_ret = typed_asm.CreateMate(mate_data)
     except Exception as exc:
