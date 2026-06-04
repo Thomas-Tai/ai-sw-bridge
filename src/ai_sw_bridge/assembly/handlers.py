@@ -215,26 +215,34 @@ def create_mate(
         if mate_data is None:
             return None, f"CreateMateData({mate_type_enum}) returned None"
 
-        # ALWAYS use base IMateFeatureData for EntitiesToMate and MateAlignment
-        # (typed interfaces may not expose these properties in gen_py wrappers)
-        base_iface = typed_qi(mate_data, "IMateFeatureData", module=mod)
+        # ALWAYS use the typed interface for EntitiesToMate and MateAlignment.
+        # All five typed interfaces (ICoincidentMateFeatureData,
+        # IDistanceMateFeatureData, IConcentricMateFeatureData,
+        # IParallelMateFeatureData, IPerpendicularMateFeatureData) expose
+        # these properties. The base IMateFeatureData does NOT.
+        typed_iface_name = MATE_TYPE_INTERFACES.get(mate_type_str)
+        if typed_iface_name is None:
+            return None, f"no typed interface for mate type {mate_type_str!r}"
+
+        typed_iface = typed_qi(mate_data, typed_iface_name, module=mod)
         face_arr = w32.VARIANT(
             pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
         )
-        base_iface.EntitiesToMate = face_arr
-        base_iface.MateAlignment = alignment
+        typed_iface.EntitiesToMate = face_arr
 
-        # QI typed interface ONLY for type-specific scalar properties
-        typed_iface_name = MATE_TYPE_INTERFACES.get(mate_type_str)
-        if typed_iface_name and mate_type_str == "distance":
+        # MateAlignment: not all typed interfaces support it (e.g. perpendicular
+        # mates have no alignment concept). Set only when available.
+        try:
+            typed_iface.MateAlignment = alignment
+        except AttributeError:
+            pass
+
+        # Set type-specific scalar properties
+        if mate_type_str == "distance":
             value_mm = mate_spec.get("value_mm")
             if value_mm is not None:
-                try:
-                    typed_iface = typed_qi(mate_data, typed_iface_name, module=mod)
-                    distance_m = float(value_mm) / 1000.0
-                    typed_iface.Distance = distance_m
-                except Exception:
-                    pass
+                distance_m = float(value_mm) / 1000.0
+                typed_iface.Distance = distance_m
 
         mate_ret = typed_asm.CreateMate(mate_data)
     except Exception as exc:
@@ -279,9 +287,11 @@ def verify_mates(
 ) -> list[dict[str, Any]]:
     """Three-layer solver verification for all mates in an assembly.
 
-    Traverses the MateGroup feature tree and checks each mate:
+    Traverses the feature tree via ``FeatureManager.GetFeatures(True)`` and
+    identifies mate features by their type name (contains "Mate" and is not
+    a folder). For each mate:
 
-      - **Layer 1 (existence):** Mate appears in MateGroup with a valid type name.
+      - **Layer 1 (existence):** Mate appears with a valid type name.
       - **Layer 2 (error code):** ``GetErrorCode2()`` returns clean (0 or success).
       - **Layer 3 (solver health):** After ``ForceRebuild3(False)``, the mate is
         not suppressed-due-to-error and the assembly is not over-defined.
@@ -304,8 +314,6 @@ def verify_mates(
     if mod is None:
         mod = wrapper_module()
 
-    typed_asm = typed(asm_doc, "IAssemblyDoc", module=mod)
-
     # Force rebuild first to ensure solver has processed all mates
     try:
         asm_doc.ForceRebuild3(False)
@@ -314,38 +322,80 @@ def verify_mates(
 
     results: list[dict[str, Any]] = []
 
+    # Traverse features via FeatureManager
     try:
-        mate_group = typed_asm.GetMateGroup()
+        fm = asm_doc.FeatureManager
+        feats = fm.GetFeatures(True)
     except Exception:
         return results
 
-    if mate_group is None:
+    if not feats:
         return results
 
-    # Traverse mates via GetFirstSubFeature / GetNextSubFeature
-    try:
-        sub = mate_group.GetFirstSubFeature()
-    except Exception:
-        return results
-
-    while sub is not None:
-        mate_result: dict[str, Any] = {
-            "name": "?",
-            "type": "?",
-            "error_code": -1,
-            "solved": False,
-            "suppressed": False,
-        }
-
+    for feat in feats:
         try:
-            ifeat = typed(sub, "IFeature", module=mod)
-            mate_result["name"] = sub.Name if hasattr(sub, "Name") else "?"
-            mate_result["type"] = ifeat.GetTypeName2()
+            ifeat = typed(feat, "IFeature", module=mod)
+            type_name = ifeat.GetTypeName2()
+
+            # MateGroup folder: traverse its sub-features for actual mates
+            if type_name == "MateGroup":
+                try:
+                    sub = feat.GetFirstSubFeature()
+                    while sub is not None:
+                        try:
+                            sub_ifeat = typed(sub, "IFeature", module=mod)
+                            sub_type = sub_ifeat.GetTypeName2()
+                            if "Mate" in sub_type and "Material" not in sub_type:
+                                mate_result: dict[str, Any] = {
+                                    "name": sub.Name if hasattr(sub, "Name") else "?",
+                                    "type": sub_type,
+                                    "error_code": -1,
+                                    "solved": False,
+                                    "suppressed": False,
+                                }
+                                try:
+                                    mate_result["suppressed"] = sub_ifeat.GetSuppression2() == 0
+                                except Exception:
+                                    pass
+                                try:
+                                    mate_result["error_code"] = sub_ifeat.GetErrorCode2()
+                                except Exception:
+                                    try:
+                                        mate_result["error_code"] = sub_ifeat.GetErrorCode()
+                                    except Exception:
+                                        pass
+                                mate_result["solved"] = (
+                                    not mate_result["suppressed"]
+                                    and mate_result["error_code"] == 0
+                                )
+                                results.append(mate_result)
+                        except Exception:
+                            pass
+                        try:
+                            sub = sub.GetNextSubFeature()
+                        except Exception:
+                            break
+                except Exception:
+                    pass
+                continue
+
+            # Filter to mate features only (type contains "Mate" but not "Material")
+            if "Mate" not in type_name:
+                continue
+            if "Material" in type_name:
+                continue
+
+            mate_result: dict[str, Any] = {
+                "name": feat.Name if hasattr(feat, "Name") else "?",
+                "type": type_name,
+                "error_code": -1,
+                "solved": False,
+                "suppressed": False,
+            }
 
             # Check if suppressed
             try:
                 suppress_state = ifeat.GetSuppression2()
-                # swFeatureSuppressed = 0, swFeatureUnsuppressed = 1
                 mate_result["suppressed"] = suppress_state == 0
             except Exception:
                 pass
@@ -367,14 +417,8 @@ def verify_mates(
                 and mate_result["error_code"] == 0
             )
 
+            results.append(mate_result)
         except Exception:
-            pass
-
-        results.append(mate_result)
-
-        try:
-            sub = sub.GetNextSubFeature()
-        except Exception:
-            break
+            continue
 
     return results

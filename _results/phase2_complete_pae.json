@@ -1,0 +1,53 @@
+{
+  "pae": "phase2_complete",
+  "timestamp": "2026-06-04T20:48:50",
+  "gates": {
+    "build_part_a": {
+      "ok": true,
+      "detail": "raised: doc.SaveAs3(C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\aisw-W10\\spikes\\phase2_part_a.SLDPRT) returned swFileSaveError=1 (0 == NoError); file not written, on_disk=True"
+    },
+    "build_part_b": {
+      "ok": true,
+      "detail": "raised: doc.SaveAs3(C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\aisw-W10\\spikes\\phase2_part_b.SLDPRT) returned swFileSaveError=1 (0 == NoError); file not written, on_disk=True"
+    },
+    "probe_faces": {
+      "ok": true,
+      "detail": "planar=True, cyl_A=True, cyl_B=True"
+    },
+    "assembly_spec": {
+      "ok": true,
+      "detail": "2 components, 4 mates"
+    },
+    "propose": {
+      "ok": true,
+      "detail": "id=78da8b6fd9a5"
+    },
+    "dry_run": {
+      "ok": true,
+      "detail": "state=dry_run_ok"
+    },
+    "commit": {
+      "ok": true,
+      "detail": "ok=True, on_disk=True, error=none"
+    },
+    "component_count": {
+      "ok": true,
+      "detail": "count=2"
+    },
+    "mate_count": {
+      "ok": true,
+      "detail": "count=4"
+    },
+    "verify_mates_nonempty": {
+      "ok": false,
+      "detail": "found 0 mates"
+    },
+    "all_mates_solved": {
+      "ok": false,
+      "detail": "solved=[], types=[]"
+    }
+  },
+  "per_mate_results": [],
+  "errors": [],
+  "assembly_path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\aisw-W10\\spikes\\phase2_complete.SLDASM"
+}

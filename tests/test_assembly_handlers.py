@@ -525,22 +525,20 @@ class TestCreateMate:
 
 
 class TestVerifyMates:
-    """Tests for the verify_mates() MateGroup traversal."""
+    """Tests for the verify_mates() FeatureManager traversal."""
 
     @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
     @patch("ai_sw_bridge.assembly.handlers.typed")
-    def test_returns_empty_when_no_mate_group(
+    def test_returns_empty_when_no_features(
         self, mock_typed: MagicMock, mock_wm: MagicMock
     ) -> None:
         from ai_sw_bridge.assembly.handlers import verify_mates
 
         asm = MagicMock()
-        asm.GetMateGroup.return_value = None
+        asm.FeatureManager.GetFeatures.return_value = []
         asm.ForceRebuild3.return_value = True
 
-        mock_typed.side_effect = lambda obj, iface, module=None: (
-            asm if iface == "IAssemblyDoc" else obj
-        )
+        mock_typed.side_effect = lambda obj, iface, module=None: obj
 
         results = verify_mates(asm)
         assert results == []
@@ -552,46 +550,26 @@ class TestVerifyMates:
     ) -> None:
         from ai_sw_bridge.assembly.handlers import verify_mates
 
-        # Build fake MateGroup with two sub-features
         mate1 = MagicMock()
         mate1.Name = "Coincident1"
         mate1.GetTypeName2.return_value = "MateCoincident"
-        mate1.GetSuppression2.return_value = 1  # unsuppressed
+        mate1.GetSuppression2.return_value = 1
         mate1.GetErrorCode2.return_value = 0
-        mate1.GetNextSubFeature.return_value = None
 
         mate2 = MagicMock()
         mate2.Name = "Distance1"
         mate2.GetTypeName2.return_value = "MateDistance"
         mate2.GetSuppression2.return_value = 1
         mate2.GetErrorCode2.return_value = 0
-        mate2.GetNextSubFeature.return_value = None
 
-        # Chain: mate2 -> mate1 -> None
-        mate1.GetNextSubFeature.return_value = None
-        mate2.GetFirstSubFeature = None  # not used
-
-        mate_group = MagicMock()
-        mate_group.GetFirstSubFeature.return_value = mate2
-        mate2.GetNextSubFeature.return_value = mate1
-        mate1.GetNextSubFeature.return_value = None
+        non_mate = MagicMock()
+        non_mate.GetTypeName2.return_value = "Extrusion"
 
         asm = MagicMock()
-        asm.GetMateGroup.return_value = mate_group
+        asm.FeatureManager.GetFeatures.return_value = [non_mate, mate2, mate1]
         asm.ForceRebuild3.return_value = True
 
-        # typed() returns ifeat-like objects for IFeature
-        mock_ifeat1 = mate1
-        mock_ifeat2 = mate2
-
-        def typed_side(obj, iface, module=None):
-            if iface == "IAssemblyDoc":
-                return asm
-            if iface == "IFeature":
-                return obj  # obj already has the methods
-            return obj
-
-        mock_typed.side_effect = typed_side
+        mock_typed.side_effect = lambda obj, iface, module=None: obj
 
         results = verify_mates(asm)
         assert len(results) == 2
@@ -614,18 +592,12 @@ class TestVerifyMates:
         mate.GetTypeName2.return_value = "MateCoincident"
         mate.GetSuppression2.return_value = 0  # suppressed
         mate.GetErrorCode2.return_value = 2  # error
-        mate.GetNextSubFeature.return_value = None
-
-        mate_group = MagicMock()
-        mate_group.GetFirstSubFeature.return_value = mate
 
         asm = MagicMock()
-        asm.GetMateGroup.return_value = mate_group
+        asm.FeatureManager.GetFeatures.return_value = [mate]
         asm.ForceRebuild3.return_value = True
 
-        mock_typed.side_effect = lambda obj, iface, module=None: (
-            asm if iface == "IAssemblyDoc" else obj
-        )
+        mock_typed.side_effect = lambda obj, iface, module=None: obj
 
         results = verify_mates(asm)
         assert len(results) == 1

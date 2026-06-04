@@ -116,10 +116,15 @@ def _resolve_via_fingerprint(
     Walks ``comp.GetBodies(0).GetFaces()`` and scores each face against the
     manifest face_ref by normal + centroid proximity. Returns the best match
     if within tolerance.
+
+    For cylindrical faces (``is_cylinder: true`` in face_ref), matches the
+    first cylindrical face on the component body via ``ISurface.IsCylinder()``.
     """
     target_normal = face_ref.get("normal")
     target_centroid = face_ref.get("centroid")
-    if target_normal is None:
+    is_cylinder = face_ref.get("is_cylinder", False)
+
+    if target_normal is None and not is_cylinder:
         return ComponentFaceResolution(
             None, "unresolved", "no persist_id and no normal for fingerprint"
         )
@@ -139,6 +144,26 @@ def _resolve_via_fingerprint(
     except Exception as exc:
         return ComponentFaceResolution(
             None, "unresolved", f"body access failed: {type(exc).__name__}"
+        )
+
+    # Cylindrical face matching: find the first cylindrical face on the body
+    if is_cylinder:
+        for face in faces:
+            try:
+                if mod is not None:
+                    iface = typed(face, "IFace2", module=mod)
+                    surf = iface.GetSurface()
+                    isurf = typed(surf, "ISurface", module=mod)
+                else:
+                    iface = face
+                    surf = iface.GetSurface()
+                    isurf = surf
+                if isurf.IsCylinder():
+                    return ComponentFaceResolution(face, "fingerprint")
+            except Exception:
+                continue
+        return ComponentFaceResolution(
+            None, "unresolved", "no cylindrical face found on component"
         )
 
     best_face = None
