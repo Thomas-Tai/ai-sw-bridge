@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "feature_count_before": 19,
+  "edge_ref": {
+    "start": [
+      0.025,
+      0.025,
+      0.05
+    ],
+    "end": [
+      -0.025,
+      0.025,
+      0.05
+    ],
+    "length": 0.05000000000000001,
+    "role_hint": "edge",
+    "persist_id": "aEIAAAMAAAD__v8AAAAAAP__AQALAG1vRWRnZVJlZl9jAQAAAAAAAAAEAAAAAAMAAAAAAAB9w5QlrUmyVH3DlCWtSbJUAAD__wEAFABtb0VuZEZhY2VTdXJmSWRSZXBfYwAA__8BAAYAbW9GUl9j__8BAA0AbW9FeHRPYmplY3RfY___AQARAG1vQ1N0cmluZ0hhbmRsZV9j__7_AAmA__7_BlAAYQByAHQAMQA2AAIAAHD7IGr__v8A__7_AP_-_wAAAAAAAAAAAAAAAAAAAAAAAAD__v8HRABlAGYAYQB1AGwAdAAAAAAAAAAAAAAAAAAAAAAAIAAAAHH7IGoBAAAAAAAAAP__AQAXAG1vRnJvbVNrdEVudFN1cmZJZFJlcF9jAAAFgAgAIAAAAHH7IGoDAAAADIAAAAWACAAgAAAAcfsgagIAAAAMgAAABYAIACAAAABx-yBqBAAAAAAAAAAAAAAAaEIAAAAAAAA",
+    "midpoint": [
+      0.0,
+      0.025,
+      0.05
+    ]
+  },
+  "edge_diag": {
+    "tangent": [
+      -1.0,
+      -0.0,
+      -0.0
+    ],
+    "linear_edges": 12
+  },
+  "edge_ref_method": "persist_id",
+  "propose": {
+    "ok": true,
+    "proposal_id": "c22949f7a054",
+    "error": null
+  },
+  "dry_run": {
+    "ok": true,
+    "error": null,
+    "state": "dry_run_ok"
+  },
+  "commit": {
+    "ok": true,
+    "error": null,
+    "state": "committed",
+    "doc_saved": true
+  },
+  "feature_count_after": 20,
+  "delta": 1,
+  "feature_name": "Plane1",
+  "feature_type": "RefPlane",
+  "perpendicularity": {
+    "checked": false,
+    "plane_name": "Plane1",
+    "normal_error": "AttributeError: '<win32com.gen_py.SldWorks 2024 Type Library.IRefPlaneFeatureData instance at 0x2637100525488>' object has no attribute 'NormalVector'"
+  }
+}
