@@ -215,37 +215,41 @@ def create_mate(
         if mate_data is None:
             return None, f"CreateMateData({mate_type_enum}) returned None"
 
-        # Try to QI the typed interface for type-specific properties
+        # Try to QI the typed interface for properties
         typed_iface_name = MATE_TYPE_INTERFACES.get(mate_type_str)
         typed_iface = None
         if typed_iface_name:
             try:
                 typed_iface = typed_qi(mate_data, typed_iface_name, module=mod)
             except Exception:
-                # No typed interface — use base IMateFeatureData path
                 typed_iface = None
 
-        # Set EntitiesToMate and MateAlignment
-        if typed_iface is not None:
-            face_arr = w32.VARIANT(
-                pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
-            )
-            typed_iface.EntitiesToMate = face_arr
-            typed_iface.MateAlignment = alignment
+        # Set EntitiesToMate and MateAlignment on typed interface (preferred)
+        # or fall back to base IMateFeatureData
+        face_arr = w32.VARIANT(
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
+        )
 
-            # Set type-specific properties
-            if mate_type_str == "distance":
-                value_mm = mate_spec.get("value_mm")
-                if value_mm is not None:
-                    # Convert mm to meters (SW internal units)
-                    distance_m = float(value_mm) / 1000.0
-                    typed_iface.Distance = distance_m
+        if typed_iface is not None:
+            try:
+                typed_iface.EntitiesToMate = face_arr
+                typed_iface.MateAlignment = alignment
+
+                # Set type-specific properties
+                if mate_type_str == "distance":
+                    value_mm = mate_spec.get("value_mm")
+                    if value_mm is not None:
+                        # Convert mm to meters (SW internal units)
+                        distance_m = float(value_mm) / 1000.0
+                        typed_iface.Distance = distance_m
+            except AttributeError:
+                # Typed interface doesn't have these properties — fall back
+                base_iface = typed_qi(mate_data, "IMateFeatureData", module=mod)
+                base_iface.EntitiesToMate = face_arr
+                base_iface.MateAlignment = alignment
         else:
-            # Base IMateFeatureData path (no typed interface)
+            # Fallback: use base IMateFeatureData
             base_iface = typed_qi(mate_data, "IMateFeatureData", module=mod)
-            face_arr = w32.VARIANT(
-                pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
-            )
             base_iface.EntitiesToMate = face_arr
             base_iface.MateAlignment = alignment
 

@@ -1,0 +1,53 @@
+{
+  "pae": "phase2_mates_planar",
+  "timestamp": "2026-06-04T19:18:32",
+  "gates": {
+    "build_part_a": {
+      "ok": true,
+      "detail": "ok=True, features=['SK_Base', 'EX_Box'], on_disk=True"
+    },
+    "build_part_b": {
+      "ok": true,
+      "detail": "ok=True, features=['SK_Base', 'EX_Box'], on_disk=True"
+    },
+    "probe_faces": {
+      "ok": true,
+      "detail": "A_top=True, B_bottom=True"
+    },
+    "assembly_spec": {
+      "ok": true,
+      "detail": "2 components, 2 mates"
+    },
+    "propose": {
+      "ok": true,
+      "detail": "id=9ca68f2a7fb4"
+    },
+    "dry_run": {
+      "ok": true,
+      "detail": "state=dry_run_ok"
+    },
+    "commit": {
+      "ok": true,
+      "detail": "ok=True, on_disk=True, error=none"
+    },
+    "component_count": {
+      "ok": true,
+      "detail": "count=2"
+    },
+    "mate_count": {
+      "ok": true,
+      "detail": "count=2"
+    },
+    "layer3_rebuild": {
+      "ok": true,
+      "detail": "ForceRebuild3=True"
+    },
+    "layer3_not_overdefined": {
+      "ok": true,
+      "detail": "assembly solved"
+    }
+  },
+  "per_mate_results": [],
+  "errors": [],
+  "assembly_path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\aisw-W10\\spikes\\phase2_assembly.SLDASM"
+}
