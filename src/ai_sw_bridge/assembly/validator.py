@@ -166,6 +166,24 @@ def _check_mates(
                 "coincident mate requires 'alignment'", path
             )
 
+        value_mm = mate.get("value_mm")
+        if mtype == "distance":
+            if value_mm is None:
+                raise AssemblyValidationError(
+                    "distance mate requires 'value_mm'", path
+                )
+            if not isinstance(value_mm, (int, float)) or value_mm <= 0:
+                raise AssemblyValidationError(
+                    f"distance mate value_mm must be a positive number, got {value_mm!r}",
+                    path,
+                )
+        elif mtype in ("concentric", "parallel", "perpendicular"):
+            if value_mm is not None:
+                raise AssemblyValidationError(
+                    f"{mtype} mate does not accept 'value_mm' (geometric constraint)",
+                    path,
+                )
+
         for ref_key in ("a", "b"):
             ref = mate.get(ref_key)
             ref_path = f"{path}/{ref_key}"

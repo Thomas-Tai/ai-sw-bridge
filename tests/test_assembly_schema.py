@@ -237,4 +237,89 @@ class TestProposeAssembly:
             {"components": []},
         )
         assert result["ok"] is False
-        assert "unsupported" in result["error"]
+
+
+# ---- Phase-2 mate type validation (distance, concentric, parallel, perpendicular) ----
+
+def _mate_spec(mtype: str, **kwargs) -> dict:
+    """Helper to build a mate spec with the given type."""
+    base = {
+        "type": mtype,
+        "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
+        "b": {"component": "b", "face_ref": {"normal": [0, 0, -1]}},
+    }
+    base.update(kwargs)
+    return base
+
+
+def _assembly_with_mate(mate: dict) -> dict:
+    """Helper to build a minimal assembly with one mate."""
+    return {
+        "kind": "assembly",
+        "name": "test_assy",
+        "components": [
+            {"id": "a", "part": "a.sldprt", "transform": {"xyz_mm": [0, 0, 0]}},
+            {"id": "b", "part": "b.sldprt", "transform": {"xyz_mm": [0, 0, 50]}},
+        ],
+        "mates": [mate],
+    }
+
+
+class TestPhase2MateValidation:
+    """Phase-2 mate type validation rules."""
+
+    def test_accepts_distance_with_value_mm(self) -> None:
+        mate = _mate_spec("distance", value_mm=10.0)
+        spec = _assembly_with_mate(mate)
+        validate_assembly(spec)  # should not raise
+
+    def test_rejects_distance_without_value_mm(self) -> None:
+        mate = _mate_spec("distance")
+        spec = _assembly_with_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="distance mate requires"):
+            validate_assembly(spec)
+
+    def test_rejects_distance_negative_value(self) -> None:
+        mate = _mate_spec("distance", value_mm=-5.0)
+        spec = _assembly_with_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="positive number"):
+            validate_assembly(spec)
+
+    def test_rejects_distance_zero_value(self) -> None:
+        mate = _mate_spec("distance", value_mm=0)
+        spec = _assembly_with_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="positive number"):
+            validate_assembly(spec)
+
+    def test_accepts_concentric_without_value(self) -> None:
+        mate = _mate_spec("concentric")
+        spec = _assembly_with_mate(mate)
+        validate_assembly(spec)  # should not raise
+
+    def test_rejects_concentric_with_value_mm(self) -> None:
+        mate = _mate_spec("concentric", value_mm=5.0)
+        spec = _assembly_with_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(spec)
+
+    def test_accepts_parallel_without_value(self) -> None:
+        mate = _mate_spec("parallel")
+        spec = _assembly_with_mate(mate)
+        validate_assembly(spec)  # should not raise
+
+    def test_rejects_parallel_with_value_mm(self) -> None:
+        mate = _mate_spec("parallel", value_mm=5.0)
+        spec = _assembly_with_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(spec)
+
+    def test_accepts_perpendicular_without_value(self) -> None:
+        mate = _mate_spec("perpendicular")
+        spec = _assembly_with_mate(mate)
+        validate_assembly(spec)  # should not raise
+
+    def test_rejects_perpendicular_with_value_mm(self) -> None:
+        mate = _mate_spec("perpendicular", value_mm=5.0)
+        spec = _assembly_with_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(spec)

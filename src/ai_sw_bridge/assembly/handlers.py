@@ -7,10 +7,10 @@ assembly document. Both use the W8 seat-proven COM recipes:
     pre-open) → ``typed(asm, "IAssemblyDoc").AddComponent4(path, "", x, y, z)``
     → real ``IComponent2`` with B-rep.
 
-  - **Coincident mate:** ``CreateMateData(0)`` → ``typed_qi(
-    ICoincidentMateFeatureData)`` → ``EntitiesToMate = VARIANT(VT_ARRAY |
-    VT_DISPATCH, (f1, f2))`` → ``MateAlignment`` → ``CreateMate(data)``.
-    Faces from ``comp.GetBodies(0).GetFaces()`` (component context).
+  - **Mate:** ``CreateMateData(type)`` → ``typed_qi(I<Type>MateFeatureData)``
+    (where available) → ``EntitiesToMate = VARIANT(VT_ARRAY | VT_DISPATCH,
+    (f1, f2))`` → ``MateAlignment`` → ``CreateMate(data)``. Faces from
+    ``comp.GetBodies(0).GetFaces()`` (component context).
 """
 
 from __future__ import annotations
@@ -25,6 +25,32 @@ from ..com.earlybind import typed, typed_qi, typed_extension
 from ..com.sw_type_info import wrapper_module
 
 from .face_resolver import resolve_component_face
+
+
+# swMateType_e enum values (typelib-verified; COINCIDENT=0 is Phase-1 proven).
+# Phase-2 values (CONCENTRIC, PERPENDICULAR, PARALLEL, DISTANCE) are from
+# SolidWorks API documentation and will be empirically verified during PAE.
+MATE_TYPE_ENUMS = {
+    "coincident": 0,       # swMateCOINCIDENT (Phase-1 anchor)
+    "concentric": 1,       # swMateCONCENTRIC
+    "perpendicular": 2,    # swMatePERPENDICULAR
+    "parallel": 3,         # swMatePARALLEL
+    "tangent": 4,          # swMateTANGENT (not in Phase-2 scope)
+    "distance": 5,         # swMateDISTANCE
+    "angle": 6,            # swMateANGLE (not in Phase-2 scope)
+}
+
+# Typed interface names per mate type (from typelib dump).
+# Where a typed interface exists, we QI it to set type-specific properties.
+# Where it doesn't, we use the base IMateFeatureData path.
+MATE_TYPE_INTERFACES = {
+    "coincident": "ICoincidentMateFeatureData",
+    "concentric": "IConcentricMateFeatureData",
+    "perpendicular": "IPerpendicularMateFeatureData",
+    "parallel": "IParallelMateFeatureData",
+    "distance": "IDistanceMateFeatureData",
+    "angle": "IAngleMateFeatureData",
+}
 
 
 def place_components(
@@ -119,22 +145,26 @@ def place_components(
     return placed, None
 
 
-def create_coincident_mate(
+def create_mate(
     asm_doc: Any,
     placed: dict[str, Any],
     mate_spec: dict[str, Any],
     *,
     mod: Any | None = None,
 ) -> tuple[Any | None, str | None]:
-    """Create a coincident mate between two component faces.
+    """Create a mate between two component faces.
+
+    Generalized from the Phase-1 coincident-only handler to support all five
+    mate types (coincident, distance, concentric, parallel, perpendicular).
 
     Uses the W8 seat-proven recipe:
       1. Resolve both face_refs against their component bodies.
-      2. ``CreateMateData(0)`` (COINCIDENT).
-      3. ``typed_qi(ICoincidentMateFeatureData)``.
+      2. ``CreateMateData(type_enum)`` for the mate type.
+      3. ``typed_qi(I<Type>MateFeatureData)`` where a typed interface exists.
       4. ``EntitiesToMate = VARIANT(VT_ARRAY | VT_DISPATCH, (f1, f2))``.
       5. ``MateAlignment`` from the spec's alignment field.
-      6. ``CreateMate(data)`` → verify returned IFeature.
+      6. Set type-specific properties (e.g., ``Distance`` for distance mates).
+      7. ``CreateMate(data)`` → verify returned IFeature.
 
     Args:
         asm_doc: the assembly document.
@@ -152,6 +182,11 @@ def create_coincident_mate(
     alignment_map = {"aligned": 0, "anti_aligned": 1, "closest": 2}
     alignment_str = mate_spec.get("alignment", "aligned")
     alignment = alignment_map.get(alignment_str, 0)
+
+    mate_type_str = mate_spec.get("type", "coincident")
+    mate_type_enum = MATE_TYPE_ENUMS.get(mate_type_str)
+    if mate_type_enum is None:
+        return None, f"unsupported mate type: {mate_type_str!r}"
 
     typed_asm = typed(asm_doc, "IAssemblyDoc", module=mod)
 
@@ -176,18 +211,38 @@ def create_coincident_mate(
 
     # CreateMateData + EntitiesToMate SAFEARRAY + CreateMate
     try:
-        mate_data = typed_asm.CreateMateData(0)  # 0 = swMateCOINCIDENT
+        mate_data = typed_asm.CreateMateData(mate_type_enum)
         if mate_data is None:
-            return None, "CreateMateData returned None"
+            return None, f"CreateMateData({mate_type_enum}) returned None"
 
-        coin_data = typed_qi(
-            mate_data, "ICoincidentMateFeatureData", module=mod
-        )
+        # ALWAYS use the typed interface for EntitiesToMate and MateAlignment.
+        # All five typed interfaces (ICoincidentMateFeatureData,
+        # IDistanceMateFeatureData, IConcentricMateFeatureData,
+        # IParallelMateFeatureData, IPerpendicularMateFeatureData) expose
+        # these properties. The base IMateFeatureData does NOT.
+        typed_iface_name = MATE_TYPE_INTERFACES.get(mate_type_str)
+        if typed_iface_name is None:
+            return None, f"no typed interface for mate type {mate_type_str!r}"
+
+        typed_iface = typed_qi(mate_data, typed_iface_name, module=mod)
         face_arr = w32.VARIANT(
             pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
         )
-        coin_data.EntitiesToMate = face_arr
-        coin_data.MateAlignment = alignment
+        typed_iface.EntitiesToMate = face_arr
+
+        # MateAlignment: not all typed interfaces support it (e.g. perpendicular
+        # mates have no alignment concept). Set only when available.
+        try:
+            typed_iface.MateAlignment = alignment
+        except AttributeError:
+            pass
+
+        # Set type-specific scalar properties
+        if mate_type_str == "distance":
+            value_mm = mate_spec.get("value_mm")
+            if value_mm is not None:
+                distance_m = float(value_mm) / 1000.0
+                typed_iface.Distance = distance_m
 
         mate_ret = typed_asm.CreateMate(mate_data)
     except Exception as exc:
@@ -204,10 +259,149 @@ def create_coincident_mate(
     # Verify: cast to IFeature and check type
     try:
         ifeat = typed(mate_ret, "IFeature", module=mod)
-        mate_type = ifeat.GetTypeName2()
-        if "Mate" not in mate_type and "mate" not in mate_type.lower():
-            return None, f"unexpected feature type: {mate_type}"
+        feat_type = ifeat.GetTypeName2()
+        if "Mate" not in feat_type and "mate" not in feat_type.lower():
+            return None, f"unexpected feature type: {feat_type}"
     except Exception as exc:
         return None, f"mate verification failed: {exc!r}"
 
     return mate_ret, None
+
+
+# Backward compatibility: Phase-1 code calls create_coincident_mate
+def create_coincident_mate(
+    asm_doc: Any,
+    placed: dict[str, Any],
+    mate_spec: dict[str, Any],
+    *,
+    mod: Any | None = None,
+) -> tuple[Any | None, str | None]:
+    """Backward-compatible wrapper for coincident mates (Phase-1 API)."""
+    return create_mate(asm_doc, placed, mate_spec, mod=mod)
+
+
+def verify_mates(
+    asm_doc: Any,
+    *,
+    mod: Any | None = None,
+) -> list[dict[str, Any]]:
+    """Three-layer solver verification for all mates in an assembly.
+
+    Traverses the flat feature list via ``FeatureManager.GetFeatures(False)``
+    (``TopLevelOnly=False``) and identifies mate features by their type name.
+    For each mate:
+
+      - **Layer 1 (existence):** Mate appears with a valid type name
+        (``startswith("Mate")``, not ``MateGroup``, not ``Material``).
+      - **Layer 2 (error code):** ``GetErrorCode2()`` returns clean (0).
+      - **Layer 3 (solver health):** After ``ForceRebuild3(False)``, the mate is
+        not suppressed-due-to-error.
+
+    Args:
+        asm_doc: the assembly document (``IModelDoc2``).
+        mod: the gen_py wrapper module.
+
+    Returns:
+        A list of per-mate result dicts, each with::
+
+            {
+                "name": str,          # feature name (e.g. "Coincident1")
+                "type": str,          # type name (e.g. "MateDistance")
+                "error_code": int,    # GetErrorCode2() value
+                "solved": bool,       # True if mate is healthy and solved
+                "suppressed": bool,   # True if suppressed due to error
+            }
+    """
+    if mod is None:
+        mod = wrapper_module()
+
+    # Force rebuild first to ensure solver has processed all mates
+    try:
+        asm_doc.ForceRebuild3(True)
+    except Exception:
+        pass
+
+    results: list[dict[str, Any]] = []
+
+    # Flat enumeration: GetFeatures(False) returns individual mate features
+    # as their own entries (not collapsed into the MateGroup folder).
+    try:
+        fm = asm_doc.FeatureManager
+        feats = fm.GetFeatures(False)
+    except Exception:
+        return results
+
+    if not feats:
+        return results
+
+    for feat in feats:
+        try:
+            ifeat = typed(feat, "IFeature", module=mod)
+            type_name = ifeat.GetTypeName2()
+
+            # Keep only mate features: startswith("Mate"), not MateGroup, not Material
+            if not type_name.startswith("Mate"):
+                continue
+            if type_name == "MateGroup":
+                continue
+            if "Material" in type_name:
+                continue
+
+            mate_result: dict[str, Any] = {
+                "name": ifeat.Name,
+                "type": type_name,
+                "error_code": -1,
+                "solved": False,
+                "suppressed": False,
+            }
+
+            # Check if suppressed
+            # Note: GetSuppression2 may not exist on all IFeature wrappers.
+            # Fall back to IsSuppressed2 or treat as not suppressed.
+            try:
+                suppress_state = ifeat.GetSuppression2()
+                if isinstance(suppress_state, tuple):
+                    suppress_state = suppress_state[0]
+                mate_result["suppressed"] = suppress_state == 0
+            except Exception:
+                try:
+                    suppress_state = ifeat.IsSuppressed2()
+                    if isinstance(suppress_state, tuple):
+                        suppress_state = suppress_state[0]
+                    mate_result["suppressed"] = bool(suppress_state)
+                except Exception:
+                    pass
+
+            # Check error code
+            # GetErrorCode2 returns (code, has_error_flag) tuple.
+            # The has_error_flag is True when the code represents an actual error.
+            # When False, the code is a status/info code (not an error).
+            has_error = True  # default to assuming error
+            try:
+                error_result = ifeat.GetErrorCode2()
+                if isinstance(error_result, tuple):
+                    error_code = error_result[0]
+                    has_error = error_result[1]
+                else:
+                    error_code = error_result
+                mate_result["error_code"] = error_code
+            except Exception:
+                try:
+                    error_code = ifeat.GetErrorCode()
+                    if isinstance(error_code, tuple):
+                        error_code = error_code[0]
+                    mate_result["error_code"] = error_code
+                except Exception:
+                    pass
+
+            # Solved = not suppressed AND (no error flag OR error_code == 0)
+            mate_result["solved"] = (
+                not mate_result["suppressed"]
+                and (not has_error or mate_result["error_code"] == 0)
+            )
+
+            results.append(mate_result)
+        except Exception:
+            continue
+
+    return results

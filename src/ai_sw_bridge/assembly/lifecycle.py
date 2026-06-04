@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from .face_resolver import resolve_component_face
-from .handlers import create_coincident_mate, place_components
+from .handlers import create_mate, place_components
 from .storage import AssemblyManifest, ComponentInstance, MateRecord
 
 
@@ -330,7 +330,7 @@ def commit_assembly(
         # Create mates
         mate_count = 0
         for i, mate_spec in enumerate(spec.get("mates", [])):
-            mate_feat, mate_err = create_coincident_mate(
+            mate_feat, mate_err = create_mate(
                 asm_doc, placed, mate_spec, mod=mod
             )
             if mate_err:

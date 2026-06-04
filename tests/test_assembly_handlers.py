@@ -301,3 +301,306 @@ class TestCreateCoincidentMate:
         feat, err = create_coincident_mate(asm, placed, mate_spec)
         assert feat is None
         assert "not placed" in err
+
+
+# ---- Phase-2 mate type tests -----------------------------------------------
+
+
+class TestCreateMate:
+    """Tests for the generalized create_mate handler supporting all mate types."""
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    @patch("ai_sw_bridge.assembly.handlers.typed_qi")
+    @patch("ai_sw_bridge.assembly.handlers.resolve_component_face")
+    def test_creates_distance_mate_with_value(
+        self,
+        mock_resolve: MagicMock,
+        mock_typed_qi: MagicMock,
+        mock_typed: MagicMock,
+        mock_wm: MagicMock,
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import create_mate
+        from ai_sw_bridge.assembly.face_resolver import ComponentFaceResolution
+
+        asm = FakeAssemblyDoc()
+        fake_face_a = MagicMock()
+        fake_face_b = MagicMock()
+
+        mock_resolve.side_effect = [
+            ComponentFaceResolution(fake_face_a, "persist_id"),
+            ComponentFaceResolution(fake_face_b, "persist_id"),
+        ]
+
+        mock_dist_data = MagicMock()
+        mock_typed_qi.return_value = mock_dist_data
+
+        mock_mate_feat = MagicMock()
+        asm.CreateMate = lambda data: mock_mate_feat
+
+        mock_ifeat = MagicMock()
+        mock_ifeat.GetTypeName2.return_value = "MateDistance"
+
+        mock_typed.side_effect = lambda obj, iface, module=None: (
+            asm if iface == "IAssemblyDoc" else
+            mock_ifeat if iface == "IFeature" else
+            obj
+        )
+
+        placed = {"a": FakeComponent("a-1"), "b": FakeComponent("b-1")}
+        mate_spec = {
+            "type": "distance",
+            "alignment": "aligned",
+            "value_mm": 25.0,
+            "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
+            "b": {"component": "b", "face_ref": {"normal": [0, 0, -1]}},
+        }
+
+        feat, err = create_mate(asm, placed, mate_spec)
+        assert err is None
+        assert feat is mock_mate_feat
+        # Verify Distance was set (25mm = 0.025m)
+        assert mock_dist_data.Distance == pytest.approx(0.025)
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    @patch("ai_sw_bridge.assembly.handlers.typed_qi")
+    @patch("ai_sw_bridge.assembly.handlers.resolve_component_face")
+    def test_creates_concentric_mate(
+        self,
+        mock_resolve: MagicMock,
+        mock_typed_qi: MagicMock,
+        mock_typed: MagicMock,
+        mock_wm: MagicMock,
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import create_mate
+        from ai_sw_bridge.assembly.face_resolver import ComponentFaceResolution
+
+        asm = FakeAssemblyDoc()
+        mock_resolve.side_effect = [
+            ComponentFaceResolution(MagicMock(), "persist_id"),
+            ComponentFaceResolution(MagicMock(), "persist_id"),
+        ]
+
+        mock_typed_qi.return_value = MagicMock()
+
+        mock_mate_feat = MagicMock()
+        asm.CreateMate = lambda data: mock_mate_feat
+
+        mock_ifeat = MagicMock()
+        mock_ifeat.GetTypeName2.return_value = "MateConcentric"
+
+        mock_typed.side_effect = lambda obj, iface, module=None: (
+            asm if iface == "IAssemblyDoc" else
+            mock_ifeat if iface == "IFeature" else
+            obj
+        )
+
+        placed = {"a": FakeComponent("a-1"), "b": FakeComponent("b-1")}
+        mate_spec = {
+            "type": "concentric",
+            "a": {"component": "a", "face_ref": {"normal": [1, 0, 0]}},
+            "b": {"component": "b", "face_ref": {"normal": [1, 0, 0]}},
+        }
+
+        feat, err = create_mate(asm, placed, mate_spec)
+        assert err is None
+        assert feat is mock_mate_feat
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    @patch("ai_sw_bridge.assembly.handlers.typed_qi")
+    @patch("ai_sw_bridge.assembly.handlers.resolve_component_face")
+    def test_creates_parallel_mate(
+        self,
+        mock_resolve: MagicMock,
+        mock_typed_qi: MagicMock,
+        mock_typed: MagicMock,
+        mock_wm: MagicMock,
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import create_mate
+        from ai_sw_bridge.assembly.face_resolver import ComponentFaceResolution
+
+        asm = FakeAssemblyDoc()
+        mock_resolve.side_effect = [
+            ComponentFaceResolution(MagicMock(), "persist_id"),
+            ComponentFaceResolution(MagicMock(), "persist_id"),
+        ]
+
+        mock_typed_qi.return_value = MagicMock()
+
+        mock_mate_feat = MagicMock()
+        asm.CreateMate = lambda data: mock_mate_feat
+
+        mock_ifeat = MagicMock()
+        mock_ifeat.GetTypeName2.return_value = "MateParallel"
+
+        mock_typed.side_effect = lambda obj, iface, module=None: (
+            asm if iface == "IAssemblyDoc" else
+            mock_ifeat if iface == "IFeature" else
+            obj
+        )
+
+        placed = {"a": FakeComponent("a-1"), "b": FakeComponent("b-1")}
+        mate_spec = {
+            "type": "parallel",
+            "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
+            "b": {"component": "b", "face_ref": {"normal": [0, 0, 1]}},
+        }
+
+        feat, err = create_mate(asm, placed, mate_spec)
+        assert err is None
+        assert feat is mock_mate_feat
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    @patch("ai_sw_bridge.assembly.handlers.typed_qi")
+    @patch("ai_sw_bridge.assembly.handlers.resolve_component_face")
+    def test_creates_perpendicular_mate(
+        self,
+        mock_resolve: MagicMock,
+        mock_typed_qi: MagicMock,
+        mock_typed: MagicMock,
+        mock_wm: MagicMock,
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import create_mate
+        from ai_sw_bridge.assembly.face_resolver import ComponentFaceResolution
+
+        asm = FakeAssemblyDoc()
+        mock_resolve.side_effect = [
+            ComponentFaceResolution(MagicMock(), "persist_id"),
+            ComponentFaceResolution(MagicMock(), "persist_id"),
+        ]
+
+        mock_typed_qi.return_value = MagicMock()
+
+        mock_mate_feat = MagicMock()
+        asm.CreateMate = lambda data: mock_mate_feat
+
+        mock_ifeat = MagicMock()
+        mock_ifeat.GetTypeName2.return_value = "MatePerpendicular"
+
+        mock_typed.side_effect = lambda obj, iface, module=None: (
+            asm if iface == "IAssemblyDoc" else
+            mock_ifeat if iface == "IFeature" else
+            obj
+        )
+
+        placed = {"a": FakeComponent("a-1"), "b": FakeComponent("b-1")}
+        mate_spec = {
+            "type": "perpendicular",
+            "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
+            "b": {"component": "b", "face_ref": {"normal": [1, 0, 0]}},
+        }
+
+        feat, err = create_mate(asm, placed, mate_spec)
+        assert err is None
+        assert feat is mock_mate_feat
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    def test_rejects_unsupported_mate_type(
+        self, mock_typed: MagicMock, mock_wm: MagicMock
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import create_mate
+
+        asm = FakeAssemblyDoc()
+        mock_typed.side_effect = lambda obj, iface, module=None: (
+            asm if iface == "IAssemblyDoc" else obj
+        )
+
+        placed = {"a": FakeComponent("a-1"), "b": FakeComponent("b-1")}
+        mate_spec = {
+            "type": "unknown_mate",
+            "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
+            "b": {"component": "b", "face_ref": {"normal": [0, 0, -1]}},
+        }
+
+        feat, err = create_mate(asm, placed, mate_spec)
+        assert feat is None
+        assert "unsupported mate type" in err
+
+
+# ---- verify_mates tests ----------------------------------------------------
+
+
+class TestVerifyMates:
+    """Tests for the verify_mates() FeatureManager traversal."""
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    def test_returns_empty_when_no_features(
+        self, mock_typed: MagicMock, mock_wm: MagicMock
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import verify_mates
+
+        asm = MagicMock()
+        asm.FeatureManager.GetFeatures.return_value = []
+        asm.ForceRebuild3.return_value = True
+
+        mock_typed.side_effect = lambda obj, iface, module=None: obj
+
+        results = verify_mates(asm)
+        assert results == []
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    def test_traverses_two_mates(
+        self, mock_typed: MagicMock, mock_wm: MagicMock
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import verify_mates
+
+        mate1 = MagicMock()
+        mate1.Name = "Coincident1"
+        mate1.GetTypeName2.return_value = "MateCoincident"
+        mate1.GetSuppression2.return_value = 1
+        mate1.GetErrorCode2.return_value = 0
+
+        mate2 = MagicMock()
+        mate2.Name = "Distance1"
+        mate2.GetTypeName2.return_value = "MateDistance"
+        mate2.GetSuppression2.return_value = 1
+        mate2.GetErrorCode2.return_value = 0
+
+        non_mate = MagicMock()
+        non_mate.GetTypeName2.return_value = "Extrusion"
+
+        asm = MagicMock()
+        asm.FeatureManager.GetFeatures.return_value = [non_mate, mate2, mate1]
+        asm.ForceRebuild3.return_value = True
+
+        mock_typed.side_effect = lambda obj, iface, module=None: obj
+
+        results = verify_mates(asm)
+        assert len(results) == 2
+        assert results[0]["name"] == "Distance1"
+        assert results[0]["type"] == "MateDistance"
+        assert results[0]["solved"] is True
+        assert results[1]["name"] == "Coincident1"
+        assert results[1]["type"] == "MateCoincident"
+        assert results[1]["solved"] is True
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    def test_detects_suppressed_mate(
+        self, mock_typed: MagicMock, mock_wm: MagicMock
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import verify_mates
+
+        mate = MagicMock()
+        mate.Name = "BadMate"
+        mate.GetTypeName2.return_value = "MateCoincident"
+        mate.GetSuppression2.return_value = 0  # suppressed
+        mate.GetErrorCode2.return_value = 2  # error
+
+        asm = MagicMock()
+        asm.FeatureManager.GetFeatures.return_value = [mate]
+        asm.ForceRebuild3.return_value = True
+
+        mock_typed.side_effect = lambda obj, iface, module=None: obj
+
+        results = verify_mates(asm)
+        assert len(results) == 1
+        assert results[0]["solved"] is False
+        assert results[0]["suppressed"] is True
+        assert results[0]["error_code"] == 2
