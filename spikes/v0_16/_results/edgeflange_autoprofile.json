@@ -1,0 +1,624 @@
+{
+  "spike": "edgeflange_autoprofile",
+  "ts": 1780547368.1029968,
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "profile": {
+    "built": true,
+    "sketch": "Sketch1"
+  },
+  "base_flange": {
+    "create_definition": {
+      "status": "OK",
+      "type": "CDispatch",
+      "elapsed_ms": 37.239199999021366
+    },
+    "typed_qi": {
+      "status": "OK",
+      "type": "IBaseFlangeFeatureData",
+      "elapsed_ms": 12.08290000067791
+    },
+    "set_Thickness": "OK",
+    "set_BendRadius": "OK",
+    "create_feature": {
+      "status": "OK",
+      "type": "CDispatch",
+      "elapsed_ms": 663.4989000012865,
+      "materialized": true,
+      "feature_name": "Base-Flange1",
+      "type_name": "SMBaseFlange"
+    },
+    "overall": "PASS"
+  },
+  "edge_count": 12,
+  "edge_ranking": [
+    {
+      "idx": 4,
+      "line": true,
+      "mm": 60.0
+    },
+    {
+      "idx": 6,
+      "line": true,
+      "mm": 60.0
+    },
+    {
+      "idx": 8,
+      "line": true,
+      "mm": 60.0
+    },
+    {
+      "idx": 10,
+      "line": true,
+      "mm": 60.0
+    },
+    {
+      "idx": 5,
+      "line": true,
+      "mm": 40.0
+    },
+    {
+      "idx": 9,
+      "line": true,
+      "mm": 40.0
+    }
+  ],
+  "attempts": [
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_edge_arg",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 45.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "preselect_only",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "preselect_only",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "preselect_only",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "preselect_only",
+      "mark": 0,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "preselect_only",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "preselect_only",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad|UseDefRel(129)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "preselect_only",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "preselect_only",
+      "mark": 1,
+      "select": true,
+      "opts": "UseDefRad(1)",
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": null,
+      "edge_len_mm": 60.0
+    },
+    {
+      "route": "legacy_no2",
+      "mark": 0,
+      "select": true,
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": "com_error: (-2147352571, 'Type mismatch.', None, 2)"
+    },
+    {
+      "route": "legacy_no2",
+      "mark": 0,
+      "select": true,
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": "com_error: (-2147352571, 'Type mismatch.', None, 2)"
+    },
+    {
+      "route": "legacy_no2",
+      "mark": 1,
+      "select": true,
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": "com_error: (-2147352571, 'Type mismatch.', None, 2)"
+    },
+    {
+      "route": "legacy_no2",
+      "mark": 1,
+      "select": true,
+      "angle_deg": 90.0,
+      "radius_mm": 2.0,
+      "delta": 0,
+      "materialized": false,
+      "return_type": "None",
+      "error": "com_error: (-2147352571, 'Type mismatch.', None, 2)"
+    }
+  ],
+  "attempt_count": 36,
+  "overall": "WALL",
+  "features_after": [
+    {
+      "name": "Comments",
+      "type": "CommentsFolder"
+    },
+    {
+      "name": "Favorites",
+      "type": "FavoriteFolder"
+    },
+    {
+      "name": "Folder ",
+      "type": "HistoryFolder"
+    },
+    {
+      "name": "Selection Sets",
+      "type": "SelectionSetFolder"
+    },
+    {
+      "name": "Sensors",
+      "type": "SensorFolder"
+    },
+    {
+      "name": "Design Binder",
+      "type": "DocsFolder"
+    },
+    {
+      "name": "Annotations",
+      "type": "DetailCabinet"
+    },
+    {
+      "name": "Surface Bodies",
+      "type": "SurfaceBodyFolder"
+    },
+    {
+      "name": "Solid Bodies",
+      "type": "SolidBodyFolder"
+    },
+    {
+      "name": "Sheet<1>",
+      "type": "CutListFolder"
+    },
+    {
+      "name": "Lights and Cameras",
+      "type": "EnvFolder"
+    },
+    {
+      "name": "Markups",
+      "type": "InkMarkupFolder"
+    },
+    {
+      "name": "Equations",
+      "type": "EqnFolder"
+    },
+    {
+      "name": "Material <not specified>",
+      "type": "MaterialFolder"
+    },
+    {
+      "name": "Front Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Top Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Right Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Origin",
+      "type": "OriginProfileFeature"
+    },
+    {
+      "name": "Sketch1",
+      "type": "ProfileFeature"
+    },
+    {
+      "name": "Base-Flange1",
+      "type": "SMBaseFlange"
+    },
+    {
+      "name": "Sheet-Metal1",
+      "type": "SheetMetal"
+    },
+    {
+      "name": "Flat-Pattern1",
+      "type": "FlatPattern"
+    }
+  ],
+  "error_histogram": {
+    "None": 32,
+    "com_error: (-2147352571, 'Type mismatch.', None, 2)": 4
+  },
+  "interpretation": "WALL: 36 attempts across mark sweep \u00d7 BooleanOptions \u00d7 angles \u00d7 legacy/preselect/no2 routes \u2014 all delta=0. Auto-profile edge flange does not materialize out-of-process. Edge-flange defers to Wave-7 VBA cluster. Wave-6 still closes (2 shipped + characterized)."
+}
