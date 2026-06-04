@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "name": "BoxLid",
+  "features": [
+    {
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_Base",
+      "plane": "Front",
+      "width": 30.0,
+      "height": 30.0
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "EX_Box",
+      "sketch": "SK_Base",
+      "depth": 10.0
+    }
+  ]
+}

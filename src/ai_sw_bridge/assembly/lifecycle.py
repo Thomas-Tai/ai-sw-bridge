@@ -39,6 +39,85 @@ def _find_assembly_template() -> str | None:
     return None
 
 
+def _load_part_spec(spec_path: str) -> dict[str, Any]:
+    """Load + parse a part spec JSON file.
+
+    Raises ``FileNotFoundError`` for a missing file and ``ValueError`` on
+    JSON or schema/validation errors. Does NOT touch SW — pure offline
+    validation via :func:`ai_sw_bridge.spec.validator.validate`.
+    """
+    import json
+
+    from ..spec.validator import ValidationError as _SpecValidationError
+    from ..spec.validator import validate as _spec_validate
+
+    p = Path(spec_path)
+    if not p.is_file():
+        raise FileNotFoundError(f"part_spec file not found: {spec_path}")
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"part_spec {spec_path!r}: invalid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"part_spec {spec_path!r}: top-level value must be an object"
+        )
+    try:
+        _spec_validate(data, spec_path=p)
+    except _SpecValidationError as exc:
+        raise ValueError(
+            f"part_spec {spec_path!r}: validation failed: {exc}"
+        ) from exc
+    return data
+
+
+def _build_part_spec(
+    part_spec: dict[str, Any],
+    save_as: str,
+) -> dict[str, Any]:
+    """Build a validated part spec via ``spec.builder.build`` and SaveAs3.
+
+    The build runs on the live SW session acquired internally by
+    :func:`ai_sw_bridge.spec.builder.build` (no SW arg is threaded —
+    ``get_sw_app()`` is the canonical seam). Returns a result dict with
+    ``ok``, ``save_as``, ``save_as_verified``, and ``error``.
+    """
+    from ..spec.builder import BuildResult, build as _part_build
+
+    out: dict[str, Any] = {"ok": False, "save_as": save_as}
+    try:
+        br: BuildResult = _part_build(
+            part_spec,
+            save_as=save_as,
+            save_format="current",
+            no_dim=True,
+        )
+    except Exception as exc:
+        out["error"] = f"build raised: {exc!r}"
+        return out
+
+    out["build_ok"] = bool(br.ok)
+    out["save_as_verified"] = br.save_as_verified
+    out["features_built"] = list(br.features_built)
+    if br.error:
+        out["error"] = br.error
+    if not br.ok:
+        return out
+    if not os.path.isfile(save_as):
+        out["error"] = f"build reported ok but {save_as!r} not on disk"
+        return out
+    out["ok"] = True
+    return out
+
+
+def _temp_part_path(component_id: str) -> str:
+    """Stable per-component temp .sldprt path for build-then-place."""
+    return os.path.join(
+        tempfile.gettempdir(),
+        f"asm_parts_{int(time.time())}_{component_id}.SLDPRT",
+    )
+
+
 def dry_run_assembly(
     spec: dict[str, Any],
     *,
@@ -61,32 +140,60 @@ def dry_run_assembly(
     """
     result: dict[str, Any] = {"ok": False}
     resolved_parts: dict[str, str] = {}
+    part_spec_validated: dict[str, str] = {}
+    sources: dict[str, str] = {}
 
     for comp in spec.get("components", []):
         cid = comp["id"]
         part_path = comp.get("part")
+        source = "part" if part_path else None
         if part_path is None and part_paths:
-            part_path = part_paths.get(cid)
+            pp = part_paths.get(cid)
+            if pp is not None:
+                part_path = pp
+                source = "part_paths"
         if part_path is None:
-            part_path = comp.get("part_spec_path")
+            psp = comp.get("part_spec_path")
+            if psp is not None:
+                part_path = psp
+                source = "part_spec_path"
 
-        if part_path is None:
+        if part_path is not None:
+            if not os.path.isfile(part_path):
+                result["error"] = (
+                    f"component {cid!r}: file not found: {part_path}"
+                )
+                return result
+            resolved_parts[cid] = part_path
+            sources[cid] = source or "part"
+            continue
+
+        # No override — the component cites `part_spec`. Validate the
+        # spec file offline (no build, no SW).
+        spec_path = comp.get("part_spec")
+        if spec_path is None:
             result["error"] = f"component {cid!r}: no part path resolved"
             return result
-        if not os.path.isfile(part_path):
-            result["error"] = f"component {cid!r}: file not found: {part_path}"
+        try:
+            _load_part_spec(spec_path)
+        except (FileNotFoundError, ValueError) as exc:
+            result["error"] = f"component {cid!r}: {exc}"
             return result
-        resolved_parts[cid] = part_path
+        part_spec_validated[cid] = spec_path
+        sources[cid] = "part_spec"
 
     result["resolved_parts"] = resolved_parts
+    result["part_spec_validated"] = part_spec_validated
+    result["sources"] = sources
 
     face_checks: list[dict[str, Any]] = []
+    known_components = set(resolved_parts) | set(part_spec_validated)
     for i, mate in enumerate(spec.get("mates", [])):
         for ref_key in ("a", "b"):
             ref = mate.get(ref_key, {})
             cid = ref.get("component")
             face_ref = ref.get("face_ref", {})
-            if cid not in resolved_parts:
+            if cid not in known_components:
                 result["error"] = (
                     f"mate[{i}].{ref_key}: component {cid!r} not in spec"
                 )
@@ -136,19 +243,62 @@ def commit_assembly(
 
     result: dict[str, Any] = {"ok": False}
 
-    # Resolve part paths
+    # Resolve part paths. Order: part -> part_paths[cid] -> part_spec_path
+    # -> build part_spec to a temp .sldprt.
     resolved: dict[str, str] = {}
+    sources: dict[str, str] = {}
+    built_specs: dict[str, dict[str, Any]] = {}
     for comp in spec.get("components", []):
         cid = comp["id"]
         pp = comp.get("part")
+        source = "part" if pp else None
         if pp is None and part_paths:
-            pp = part_paths.get(cid)
+            override = part_paths.get(cid)
+            if override is not None:
+                pp = override
+                source = "part_paths"
         if pp is None:
-            pp = comp.get("part_spec_path")
-        if pp is None:
+            psp = comp.get("part_spec_path")
+            if psp is not None:
+                pp = psp
+                source = "part_spec_path"
+        if pp is not None:
+            resolved[cid] = pp
+            sources[cid] = source or "part"
+            continue
+
+        spec_path = comp.get("part_spec")
+        if spec_path is None:
             result["error"] = f"component {cid!r}: no part path resolved"
             return result
-        resolved[cid] = pp
+
+        # Load + validate the spec file (offline).
+        try:
+            part_spec_data = _load_part_spec(spec_path)
+        except (FileNotFoundError, ValueError) as exc:
+            result["error"] = f"component {cid!r}: {exc}"
+            return result
+
+        # Build the part on the live SW session.
+        save_to = _temp_part_path(cid)
+        build_out = _build_part_spec(part_spec_data, save_to)
+        if not build_out.get("ok"):
+            result["error"] = (
+                f"component {cid!r}: part_spec build failed: "
+                f"{build_out.get('error')}"
+            )
+            return result
+        resolved[cid] = save_to
+        sources[cid] = "part_spec"
+        built_specs[cid] = {
+            "spec_path": spec_path,
+            "save_as": save_to,
+            "features_built": build_out.get("features_built", []),
+            "save_as_verified": build_out.get("save_as_verified"),
+        }
+
+    result["built_part_specs"] = built_specs
+    result["sources"] = sources
 
     # Build enriched component specs with resolved paths
     comp_specs = []

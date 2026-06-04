@@ -2912,8 +2912,18 @@ def build(
             ),
         )
     finally:
-        # Always restore the user's preference, even on exception
-        sw.SetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE, prev_input_dim)
+        # Always restore the user's preference, even on exception. Swallow
+        # COM errors: a transient RPC disconnect here would otherwise mask
+        # a successful build (the BuildResult on the stack is lost when the
+        # finally raises). The user's preference toggle is session state,
+        # not part of the build contract.
+        try:
+            sw.SetUserPreferenceToggle(SW_PREF_INPUT_DIM_VAL_ON_CREATE, prev_input_dim)
+        except Exception as exc:
+            logger.warning(
+                "failed to restore SW_PREF_INPUT_DIM_VAL_ON_CREATE: %s",
+                exc,
+            )
         # L4 checkpoint: release the SQLite handle. Swallow close errors
         # so they don't mask the primary build result.
         if cp_store is not None:
