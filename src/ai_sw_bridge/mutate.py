@@ -413,10 +413,14 @@ def _create_ref_plane_normal_to_edge(
         ref = DurableEdgeRef.from_dict(edge_ref)
     except Exception as exc:  # noqa: BLE001
         return False, f"invalid edge_ref: {exc!r}"
+    # Rebuild BEFORE resolving — ForceRebuild3 invalidates any entity proxy
+    # resolved beforehand (stale COM disconnect). The v2 spike had no rebuild
+    # between resolve and GetStartVertex; this production handler does, so the
+    # order must match the dome handler: rebuild, then resolve a fresh entity.
+    doc.ForceRebuild3(False)
     res = resolve_edge_ref(doc, ref)
     if res.entity is None:
         return False, f"edge unresolved (method={res.method})"
-    doc.ForceRebuild3(False)
     try:
         try:
             vertex = typed(res.entity, "IEdge", module=mod).GetStartVertex()
