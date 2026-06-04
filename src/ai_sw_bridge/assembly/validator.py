@@ -129,6 +129,15 @@ def _check_transform(
                 f"component {cid!r} rpy_deg must be a 3-element numeric array",
                 path,
             )
+        # Phase 1 is translation-only: AddComponent4 places at xyz, and rotation
+        # via MathTransform/IComponent2.Transform2 is unproven (W8 only placed at
+        # xyz). Fail closed on any non-zero rotation rather than silently drop it.
+        if any(float(v) != 0.0 for v in rpy):
+            raise AssemblyValidationError(
+                f"component {cid!r}: rotation (rpy_deg) is not supported in "
+                f"Phase 1 (translation-only); use [0, 0, 0] or omit it",
+                path,
+            )
 
 
 def _check_mates(

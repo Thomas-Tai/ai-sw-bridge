@@ -117,10 +117,18 @@ class TestValidateAssembly:
         }
         validate_assembly(spec)
 
-    def test_accepts_transform_with_rpy(self) -> None:
+    def test_accepts_zero_rpy(self) -> None:
+        # Phase 1 is translation-only: a zero rotation is allowed.
+        spec = _minimal_assembly()
+        spec["components"][0]["transform"]["rpy_deg"] = [0, 0, 0]
+        validate_assembly(spec)
+
+    def test_rejects_nonzero_rpy_phase1(self) -> None:
+        # Non-zero rotation is rejected fail-closed (rotation unsupported in P1).
         spec = _minimal_assembly()
         spec["components"][0]["transform"]["rpy_deg"] = [0, 0, 90]
-        validate_assembly(spec)
+        with pytest.raises(AssemblyValidationError, match="rotation"):
+            validate_assembly(spec)
 
     def test_accepts_no_transform(self) -> None:
         spec = _minimal_assembly()

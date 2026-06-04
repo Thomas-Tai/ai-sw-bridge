@@ -36,6 +36,11 @@ def place_components(
 ) -> tuple[dict[str, Any], str | None]:
     """Place all components into an assembly document.
 
+    Phase 1 is **translation-only**: ``AddComponent4`` places at ``xyz_mm``;
+    rotation (``rpy_deg``) is rejected at validation (rotation via
+    ``MathTransform``/``IComponent2.Transform2`` is unproven and deferred), so a
+    placed component is never silently mis-oriented.
+
     For each component:
       1. ``OpenDoc6(part_path)`` — mandatory pre-open (its absence was the E4 wall).
       2. ``AddComponent4(path, "", x, y, z)`` at the transform.
