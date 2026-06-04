@@ -1,0 +1,398 @@
+{
+  "ok": true,
+  "ts": 1780562881.8593261,
+  "build_base": {
+    "saved": true,
+    "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\pae_base_1780562881.SLDPRT"
+  },
+  "build_lid": {
+    "saved": true,
+    "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\pae_lid_1780562881.SLDPRT"
+  },
+  "capture_base": {
+    "ok": true,
+    "face_ref": {
+      "normal": [
+        -0.0,
+        -0.0,
+        1.0
+      ],
+      "centroid": [
+        0.0,
+        0.0,
+        0.05
+      ],
+      "area_mm2": 2500.0000000000005,
+      "persist_id": "aEIAAAMAAAD__v8AAAAAAP__AQALAG1vRmFjZVJlZl9jAQAAAAAAAAAGAAAAAAIAAAAAAAB9w5QlrUmyVH3DlCWtSbJUAAD__wEAFABtb0VuZEZhY2VTdXJmSWRSZXBfYwAA__8BAAYAbW9GUl9j__8BAA0AbW9FeHRPYmplY3RfY___AQARAG1vQ1N0cmluZ0hhbmRsZV9j__7_OkMAOgBcAFUAcwBlAHIAcwBcAHMAawB5AFwAQQBwAHAARABhAHQAYQBcAEwAbwBjAGEAbABcAFQAZQBtAHAAXABwAGEAZQBfAGIAYQBzAGUAXwAxADcAOAAwADUANgAyADgAOAAxAC4AUwBMAEQAUABSAFQACYD__v8TcABhAGUAXwBiAGEAcwBlAF8AMQA3ADgAMAA1ADYAMgA4ADgAMQACAADCOyFq__7_AP_-_wD__v8AAAAAAAAAAAAAAAAAAAAAAAAA__7_B0QAZQBmAGEAdQBsAHQAAAAAAAAAAAAAAAAAAAAAACAAAADDOyFqAQAAAAAAAAD__wEAFwBtb0Zyb21Ta3RFbnRTdXJmSWRSZXBfYwAABYAIACAAAADDOyFqBAAAAAyAAAAFgAgAIAAAAMM7IWoBAAAADIAAAAWACAAgAAAAwzshagIAAAAMgAAABYAIACAAAADDOyFqAwAAAAAAAAAAAAAAAABoQgAAAAAAAAAAAAA"
+    },
+    "score": 0.0
+  },
+  "capture_lid": {
+    "ok": true,
+    "face_ref": {
+      "normal": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "centroid": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "area_mm2": 2500.0000000000005,
+      "persist_id": "aEIAAAMAAAD__v8AAAAAAP__AQALAG1vRmFjZVJlZl9jAQAAAAAAAAAGAAAAAAIAAAAAAAB9w5QlrUmyVH3DlCWtSbJUAAD__wEAFABtb0VuZEZhY2VTdXJmSWRSZXBfYwAA__8BAAYAbW9GUl9j__8BAA0AbW9FeHRPYmplY3RfY___AQARAG1vQ1N0cmluZ0hhbmRsZV9j__7_OUMAOgBcAFUAcwBlAHIAcwBcAHMAawB5AFwAQQBwAHAARABhAHQAYQBcAEwAbwBjAGEAbABcAFQAZQBtAHAAXABwAGEAZQBfAGwAaQBkAF8AMQA3ADgAMAA1ADYAMgA4ADgAMQAuAFMATABEAFAAUgBUAAmA__7_EnAAYQBlAF8AbABpAGQAXwAxADcAOAAwADUANgAyADgAOAAxAAIAAMQ7IWr__v8A__7_AP_-_wAAAAAAAAAAAAAAAAAAAAAAAAD__v8HRABlAGYAYQB1AGwAdAAAAAAAAAAAAAAAAAAAAAAAIAAAAMU7IWoAAAAAAAAAAP__AQAXAG1vRnJvbVNrdEVudFN1cmZJZFJlcF9jAAAFgAgAIAAAAMU7IWoEAAAADIAAAAWACAAgAAAAxTshagMAAAAMgAAABYAIACAAAADFOyFqAgAAAAyAAAAFgAgAIAAAAMU7IWoBAAAAAAAAAAAAAAAAAGhCAAAAAAAAAAAAAA"
+    },
+    "score": 0.0
+  },
+  "spec": {
+    "kind": "assembly",
+    "name": "pae_asm",
+    "components": [
+      {
+        "id": "base",
+        "part": "C:\\Users\\sky\\AppData\\Local\\Temp\\pae_base_1780562881.SLDPRT",
+        "transform": {
+          "xyz_mm": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "id": "lid",
+        "part": "C:\\Users\\sky\\AppData\\Local\\Temp\\pae_lid_1780562881.SLDPRT",
+        "transform": {
+          "xyz_mm": [
+            0,
+            0,
+            50
+          ]
+        }
+      }
+    ],
+    "mates": [
+      {
+        "type": "coincident",
+        "alignment": "anti_aligned",
+        "a": {
+          "component": "base",
+          "face_ref": {
+            "normal": [
+              -0.0,
+              -0.0,
+              1.0
+            ],
+            "centroid": [
+              0.0,
+              0.0,
+              0.05
+            ],
+            "area_mm2": 2500.0000000000005,
+            "persist_id": "aEIAAAMAAAD__v8AAAAAAP__AQALAG1vRmFjZVJlZl9jAQAAAAAAAAAGAAAAAAIAAAAAAAB9w5QlrUmyVH3DlCWtSbJUAAD__wEAFABtb0VuZEZhY2VTdXJmSWRSZXBfYwAA__8BAAYAbW9GUl9j__8BAA0AbW9FeHRPYmplY3RfY___AQARAG1vQ1N0cmluZ0hhbmRsZV9j__7_OkMAOgBcAFUAcwBlAHIAcwBcAHMAawB5AFwAQQBwAHAARABhAHQAYQBcAEwAbwBjAGEAbABcAFQAZQBtAHAAXABwAGEAZQBfAGIAYQBzAGUAXwAxADcAOAAwADUANgAyADgAOAAxAC4AUwBMAEQAUABSAFQACYD__v8TcABhAGUAXwBiAGEAcwBlAF8AMQA3ADgAMAA1ADYAMgA4ADgAMQACAADCOyFq__7_AP_-_wD__v8AAAAAAAAAAAAAAAAAAAAAAAAA__7_B0QAZQBmAGEAdQBsAHQAAAAAAAAAAAAAAAAAAAAAACAAAADDOyFqAQAAAAAAAAD__wEAFwBtb0Zyb21Ta3RFbnRTdXJmSWRSZXBfYwAABYAIACAAAADDOyFqBAAAAAyAAAAFgAgAIAAAAMM7IWoBAAAADIAAAAWACAAgAAAAwzshagIAAAAMgAAABYAIACAAAADDOyFqAwAAAAAAAAAAAAAAAABoQgAAAAAAAAAAAAA"
+          }
+        },
+        "b": {
+          "component": "lid",
+          "face_ref": {
+            "normal": [
+              0.0,
+              0.0,
+              -1.0
+            ],
+            "centroid": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "area_mm2": 2500.0000000000005,
+            "persist_id": "aEIAAAMAAAD__v8AAAAAAP__AQALAG1vRmFjZVJlZl9jAQAAAAAAAAAGAAAAAAIAAAAAAAB9w5QlrUmyVH3DlCWtSbJUAAD__wEAFABtb0VuZEZhY2VTdXJmSWRSZXBfYwAA__8BAAYAbW9GUl9j__8BAA0AbW9FeHRPYmplY3RfY___AQARAG1vQ1N0cmluZ0hhbmRsZV9j__7_OUMAOgBcAFUAcwBlAHIAcwBcAHMAawB5AFwAQQBwAHAARABhAHQAYQBcAEwAbwBjAGEAbABcAFQAZQBtAHAAXABwAGEAZQBfAGwAaQBkAF8AMQA3ADgAMAA1ADYAMgA4ADgAMQAuAFMATABEAFAAUgBUAAmA__7_EnAAYQBlAF8AbABpAGQAXwAxADcAOAAwADUANgAyADgAOAAxAAIAAMQ7IWr__v8A__7_AP_-_wAAAAAAAAAAAAAAAAAAAAAAAAD__v8HRABlAGYAYQB1AGwAdAAAAAAAAAAAAAAAAAAAAAAAIAAAAMU7IWoAAAAAAAAAAP__AQAXAG1vRnJvbVNrdEVudFN1cmZJZFJlcF9jAAAFgAgAIAAAAMU7IWoEAAAADIAAAAWACAAgAAAAxTshagMAAAAMgAAABYAIACAAAADFOyFqAgAAAAyAAAAFgAgAIAAAAMU7IWoBAAAAAAAAAAAAAAAAAGhCAAAAAAAAAAAAAA"
+          }
+        }
+      }
+    ]
+  },
+  "propose": {
+    "ok": true,
+    "proposal_id": "5f4540e18d81",
+    "kind": "assembly",
+    "spec": {
+      "kind": "assembly",
+      "name": "pae_asm",
+      "components": [
+        {
+          "id": "base",
+          "part": "C:\\Users\\sky\\AppData\\Local\\Temp\\pae_base_1780562881.SLDPRT",
+          "transform": {
+            "xyz_mm": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "id": "lid",
+          "part": "C:\\Users\\sky\\AppData\\Local\\Temp\\pae_lid_1780562881.SLDPRT",
+          "transform": {
+            "xyz_mm": [
+              0,
+              0,
+              50
+            ]
+          }
+        }
+      ],
+      "mates": [
+        {
+          "type": "coincident",
+          "alignment": "anti_aligned",
+          "a": {
+            "component": "base",
+            "face_ref": {
+              "normal": [
+                -0.0,
+                -0.0,
+                1.0
+              ],
+              "centroid": [
+                0.0,
+                0.0,
+                0.05
+              ],
+              "area_mm2": 2500.0000000000005,
+              "persist_id": "aEIAAAMAAAD__v8AAAAAAP__AQALAG1vRmFjZVJlZl9jAQAAAAAAAAAGAAAAAAIAAAAAAAB9w5QlrUmyVH3DlCWtSbJUAAD__wEAFABtb0VuZEZhY2VTdXJmSWRSZXBfYwAA__8BAAYAbW9GUl9j__8BAA0AbW9FeHRPYmplY3RfY___AQARAG1vQ1N0cmluZ0hhbmRsZV9j__7_OkMAOgBcAFUAcwBlAHIAcwBcAHMAawB5AFwAQQBwAHAARABhAHQAYQBcAEwAbwBjAGEAbABcAFQAZQBtAHAAXABwAGEAZQBfAGIAYQBzAGUAXwAxADcAOAAwADUANgAyADgAOAAxAC4AUwBMAEQAUABSAFQACYD__v8TcABhAGUAXwBiAGEAcwBlAF8AMQA3ADgAMAA1ADYAMgA4ADgAMQACAADCOyFq__7_AP_-_wD__v8AAAAAAAAAAAAAAAAAAAAAAAAA__7_B0QAZQBmAGEAdQBsAHQAAAAAAAAAAAAAAAAAAAAAACAAAADDOyFqAQAAAAAAAAD__wEAFwBtb0Zyb21Ta3RFbnRTdXJmSWRSZXBfYwAABYAIACAAAADDOyFqBAAAAAyAAAAFgAgAIAAAAMM7IWoBAAAADIAAAAWACAAgAAAAwzshagIAAAAMgAAABYAIACAAAADDOyFqAwAAAAAAAAAAAAAAAABoQgAAAAAAAAAAAAA"
+            }
+          },
+          "b": {
+            "component": "lid",
+            "face_ref": {
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "centroid": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "area_mm2": 2500.0000000000005,
+              "persist_id": "aEIAAAMAAAD__v8AAAAAAP__AQALAG1vRmFjZVJlZl9jAQAAAAAAAAAGAAAAAAIAAAAAAAB9w5QlrUmyVH3DlCWtSbJUAAD__wEAFABtb0VuZEZhY2VTdXJmSWRSZXBfYwAA__8BAAYAbW9GUl9j__8BAA0AbW9FeHRPYmplY3RfY___AQARAG1vQ1N0cmluZ0hhbmRsZV9j__7_OUMAOgBcAFUAcwBlAHIAcwBcAHMAawB5AFwAQQBwAHAARABhAHQAYQBcAEwAbwBjAGEAbABcAFQAZQBtAHAAXABwAGEAZQBfAGwAaQBkAF8AMQA3ADgAMAA1ADYAMgA4ADgAMQAuAFMATABEAFAAUgBUAAmA__7_EnAAYQBlAF8AbABpAGQAXwAxADcAOAAwADUANgAyADgAOAAxAAIAAMQ7IWr__v8A__7_AP_-_wAAAAAAAAAAAAAAAAAAAAAAAAD__v8HRABlAGYAYQB1AGwAdAAAAAAAAAAAAAAAAAAAAAAAIAAAAMU7IWoAAAAAAAAAAP__AQAXAG1vRnJvbVNrdEVudFN1cmZJZFJlcF9jAAAFgAgAIAAAAMU7IWoEAAAADIAAAAWACAAgAAAAxTshagMAAAAMgAAABYAIACAAAADFOyFqAgAAAAyAAAAFgAgAIAAAAMU7IWoBAAAAAAAAAAAAAAAAAGhCAAAAAAAAAAAAAA"
+            }
+          }
+        }
+      ]
+    },
+    "state": "proposed",
+    "error": null
+  },
+  "dry_run": {
+    "ok": true,
+    "proposal_id": "5f4540e18d81",
+    "state": "dry_run_ok",
+    "error": null,
+    "resolved_parts": {
+      "base": "C:\\Users\\sky\\AppData\\Local\\Temp\\pae_base_1780562881.SLDPRT",
+      "lid": "C:\\Users\\sky\\AppData\\Local\\Temp\\pae_lid_1780562881.SLDPRT"
+    },
+    "face_checks": [
+      {
+        "mate_index": 0,
+        "ref": "a",
+        "component": "base",
+        "face_ref_keys": [
+          "area_mm2",
+          "centroid",
+          "normal",
+          "persist_id"
+        ]
+      },
+      {
+        "mate_index": 0,
+        "ref": "b",
+        "component": "lid",
+        "face_ref_keys": [
+          "area_mm2",
+          "centroid",
+          "normal",
+          "persist_id"
+        ]
+      }
+    ]
+  },
+  "commit": {
+    "ok": true,
+    "proposal_id": "5f4540e18d81",
+    "state": "committed",
+    "error": null,
+    "component_count": 2,
+    "mate_count": 1,
+    "manifest": {
+      "schema_version": 1,
+      "components": [
+        {
+          "id": "base",
+          "sw_name": "pae_base_1780562881-1",
+          "part_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\pae_base_1780562881.SLDPRT",
+          "transform": {
+            "xyz_mm": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "id": "lid",
+          "sw_name": "pae_lid_1780562881-1",
+          "part_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\pae_lid_1780562881.SLDPRT",
+          "transform": {
+            "xyz_mm": [
+              0,
+              0,
+              50
+            ]
+          }
+        }
+      ],
+      "mates": [
+        {
+          "type": "coincident",
+          "alignment": "anti_aligned",
+          "a": {
+            "component": "base",
+            "face_ref": {
+              "normal": [
+                -0.0,
+                -0.0,
+                1.0
+              ],
+              "centroid": [
+                0.0,
+                0.0,
+                0.05
+              ],
+              "area_mm2": 2500.0000000000005,
+              "persist_id": "aEIAAAMAAAD__v8AAAAAAP__AQALAG1vRmFjZVJlZl9jAQAAAAAAAAAGAAAAAAIAAAAAAAB9w5QlrUmyVH3DlCWtSbJUAAD__wEAFABtb0VuZEZhY2VTdXJmSWRSZXBfYwAA__8BAAYAbW9GUl9j__8BAA0AbW9FeHRPYmplY3RfY___AQARAG1vQ1N0cmluZ0hhbmRsZV9j__7_OkMAOgBcAFUAcwBlAHIAcwBcAHMAawB5AFwAQQBwAHAARABhAHQAYQBcAEwAbwBjAGEAbABcAFQAZQBtAHAAXABwAGEAZQBfAGIAYQBzAGUAXwAxADcAOAAwADUANgAyADgAOAAxAC4AUwBMAEQAUABSAFQACYD__v8TcABhAGUAXwBiAGEAcwBlAF8AMQA3ADgAMAA1ADYAMgA4ADgAMQACAADCOyFq__7_AP_-_wD__v8AAAAAAAAAAAAAAAAAAAAAAAAA__7_B0QAZQBmAGEAdQBsAHQAAAAAAAAAAAAAAAAAAAAAACAAAADDOyFqAQAAAAAAAAD__wEAFwBtb0Zyb21Ta3RFbnRTdXJmSWRSZXBfYwAABYAIACAAAADDOyFqBAAAAAyAAAAFgAgAIAAAAMM7IWoBAAAADIAAAAWACAAgAAAAwzshagIAAAAMgAAABYAIACAAAADDOyFqAwAAAAAAAAAAAAAAAABoQgAAAAAAAAAAAAA"
+            }
+          },
+          "b": {
+            "component": "lid",
+            "face_ref": {
+              "normal": [
+                0.0,
+                0.0,
+                -1.0
+              ],
+              "centroid": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "area_mm2": 2500.0000000000005,
+              "persist_id": "aEIAAAMAAAD__v8AAAAAAP__AQALAG1vRmFjZVJlZl9jAQAAAAAAAAAGAAAAAAIAAAAAAAB9w5QlrUmyVH3DlCWtSbJUAAD__wEAFABtb0VuZEZhY2VTdXJmSWRSZXBfYwAA__8BAAYAbW9GUl9j__8BAA0AbW9FeHRPYmplY3RfY___AQARAG1vQ1N0cmluZ0hhbmRsZV9j__7_OUMAOgBcAFUAcwBlAHIAcwBcAHMAawB5AFwAQQBwAHAARABhAHQAYQBcAEwAbwBjAGEAbABcAFQAZQBtAHAAXABwAGEAZQBfAGwAaQBkAF8AMQA3ADgAMAA1ADYAMgA4ADgAMQAuAFMATABEAFAAUgBUAAmA__7_EnAAYQBlAF8AbABpAGQAXwAxADcAOAAwADUANgAyADgAOAAxAAIAAMQ7IWr__v8A__7_AP_-_wAAAAAAAAAAAAAAAAAAAAAAAAD__v8HRABlAGYAYQB1AGwAdAAAAAAAAAAAAAAAAAAAAAAAIAAAAMU7IWoAAAAAAAAAAP__AQAXAG1vRnJvbVNrdEVudFN1cmZJZFJlcF9jAAAFgAgAIAAAAMU7IWoEAAAADIAAAAWACAAgAAAAxTshagMAAAAMgAAABYAIACAAAADFOyFqAgAAAAyAAAAFgAgAIAAAAMU7IWoBAAAAAAAAAAAAAAAAAGhCAAAAAAAAAAAAAA"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "assembly_saved": true,
+  "component_count": 2,
+  "component_brep": [
+    {
+      "has_model": true,
+      "bodies": 1
+    },
+    {
+      "has_model": true,
+      "bodies": 1
+    }
+  ],
+  "mate_features": [
+    {
+      "name": "Coincident1",
+      "type": "MateCoincident"
+    }
+  ],
+  "mate_count": 1,
+  "all_features": [
+    {
+      "name": "Comments",
+      "type": "CommentsFolder"
+    },
+    {
+      "name": "Favorites",
+      "type": "FavoriteFolder"
+    },
+    {
+      "name": "Folder ",
+      "type": "HistoryFolder"
+    },
+    {
+      "name": "Selection Sets",
+      "type": "SelectionSetFolder"
+    },
+    {
+      "name": "Sensors",
+      "type": "SensorFolder"
+    },
+    {
+      "name": "Live Section Planes",
+      "type": "LiveSectionFolder"
+    },
+    {
+      "name": "Design Binder",
+      "type": "DocsFolder"
+    },
+    {
+      "name": "Annotations",
+      "type": "DetailCabinet"
+    },
+    {
+      "name": "Lights and Cameras",
+      "type": "EnvFolder"
+    },
+    {
+      "name": "Markups",
+      "type": "InkMarkupFolder"
+    },
+    {
+      "name": "Equations",
+      "type": "EqnFolder"
+    },
+    {
+      "name": "Front Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Top Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Right Plane",
+      "type": "RefPlane"
+    },
+    {
+      "name": "Origin",
+      "type": "OriginProfileFeature"
+    },
+    {
+      "name": "pae_base_1780562881-1",
+      "type": "Reference"
+    },
+    {
+      "name": "pae_lid_1780562881-1",
+      "type": "Reference"
+    },
+    {
+      "name": "Mates",
+      "type": "MateGroup"
+    }
+  ],
+  "manifest_roundtrip": true,
+  "feature_add_gate_rejected": true,
+  "gate_error": "unsupported feature type 'assembly'; supported: fillet_constant_radius, base_flange, variable_radius_fillet, wizard_hole, shell, draft, sweep, ref_plane, ref_axis, coordinate_system, ref_point, dome, "
+}

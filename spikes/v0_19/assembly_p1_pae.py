@@ -41,7 +41,7 @@ sys.path.insert(0, str(_V15))
 import pythoncom
 
 from ai_sw_bridge.brep.interrogator import _probe_face
-from ai_sw_bridge.com.earlybind import typed
+from ai_sw_bridge.com.earlybind import typed, typed_qi
 from ai_sw_bridge.com.sw_type_info import wrapper_module
 from ai_sw_bridge.mutate import (
     sw_commit_assembly,
@@ -107,13 +107,22 @@ def _capture_planar_face(sw: Any, part_path: str, target_normal: tuple, mod: Any
     if part_doc is None:
         return {"error": "OpenDoc6 None"}
 
+    # OpenDoc6 returns an IModelDoc2 typed proxy, which does not declare
+    # GetBodies2 (that's on IPartDoc). QI to IPartDoc for body enumeration;
+    # keep the IModelDoc2 proxy for ForceRebuild3 / persist capture.
+    try:
+        ipart = typed_qi(part_doc, "IPartDoc", module=mod)
+    except Exception as exc:
+        sw.CloseDoc(_title(part_doc))
+        return {"error": f"IPartDoc QI failed: {exc!r}"}
+
     try:
         try:
             part_doc.ForceRebuild3(False)
         except Exception:
             pass
 
-        bodies = part_doc.GetBodies2(0, True)
+        bodies = ipart.GetBodies2(0, True)
         if not bodies:
             return {"error": "no bodies"}
         body = bodies[0] if isinstance(bodies, (list, tuple)) else bodies
@@ -127,8 +136,13 @@ def _capture_planar_face(sw: Any, part_path: str, target_normal: tuple, mod: Any
             bf = _probe_face(face, body_id=0, face_idx=0, doc=part_doc, capture=True)
             if bf is None or bf.normal_vec is None:
                 continue
+            # Positive-dot match: we want the face whose normal points in the
+            # same direction as target_normal (e.g. +Z top vs -Z bottom),
+            # not merely a parallel face.
             dot = sum(a * b for a, b in zip(target_normal, bf.normal_vec))
-            score = 1.0 - abs(dot)
+            if dot < 0.9:
+                continue  # wrong-facing or non-parallel face
+            score = 1.0 - dot
             if score < best_score:
                 best_score = score
                 best = bf
@@ -216,6 +230,12 @@ def main() -> int:
             return 1
 
         # ----- STEP 4: author the assembly spec -----
+        # NOTE: the shipping lifecycle resolves part paths via `part` (saved
+        # .sldprt) or via the `part_paths` arg for pre-built components. The
+        # `part_spec` build-then-place resolver (read JSON spec -> build part
+        # -> SaveAs -> feed into placement) is not yet wired; the PAE uses
+        # `part:` for both components to exercise the load-bearing path:
+        # placement + mate + manifest through real saved files.
         spec = {
             "kind": "assembly",
             "name": "pae_asm",
@@ -227,8 +247,7 @@ def main() -> int:
                 },
                 {
                     "id": "lid",
-                    "part_spec": "lid.aisw.json",
-                    "part_spec_path": lid_path,
+                    "part": lid_path,
                     "transform": {"xyz_mm": [0, 0, 50]},
                 },
             ],
@@ -264,9 +283,7 @@ def main() -> int:
 
         # ----- STEP 7: commit -----
         print("[pae] sw_commit_assembly(%s)..." % pid)
-        commit = sw_commit_assembly(
-            pid, asm_path, part_paths={"lid": lid_path},
-        )
+        commit = sw_commit_assembly(pid, asm_path)
         out["commit"] = commit
         out["assembly_saved"] = os.path.isfile(asm_path)
         if not commit.get("ok"):
@@ -286,18 +303,30 @@ def main() -> int:
             return 1
 
         try:
-            typed_asm = typed(asm_doc, "IAssemblyDoc", module=mod)
+            # ForceRebuild3 to materialize any pending mate features in the
+            # tree before we walk them.
+            try:
+                asm_doc.ForceRebuild3(False)
+            except Exception:
+                pass
+            # Use the late-bound ActiveDoc for GetComponents / GetModelDoc2
+            # (these aren't declared on the typed IAssemblyDoc / IModelDoc2
+            # early-bind proxies but ARE reachable via IDispatch).
+            asm_lb = sw.ActiveDoc
+            typed_asm = typed(asm_lb, "IAssemblyDoc", module=mod)
             comps = typed_asm.GetComponents(True)
             comp_count = len(comps) if comps else 0
             out["component_count"] = comp_count
 
-            # B-rep on each component
+            # B-rep on each component — GetModelDoc2 on the late-bound
+            # IComponent2 proxy (via the typed QI to IComponent2).
             brep_ok = True
             comp_brep = []
             if comps:
                 for c in comps:
                     try:
-                        md = c.GetModelDoc2()
+                        ic = typed_qi(c, "IComponent2", module=mod)
+                        md = ic.GetModelDoc2()
                         bs = md.GetBodies2(0, True) if md else None
                         n = len(bs) if bs else 0
                         comp_brep.append({"has_model": md is not None, "bodies": n})
@@ -308,14 +337,38 @@ def main() -> int:
                         brep_ok = False
             out["component_brep"] = comp_brep
 
-            # Mate feature
-            feats = _feature_types(asm_doc, mod)
-            mate_feats = [
-                f for f in feats
-                if "Mate" in f.get("type", "") and f.get("type") != "MateGroup"
-            ]
+            # Mate feature — Mates live as sub-features of the MateGroup
+            # container. The documented access path is
+            # ``IFeature.GetFirstSubFeature()`` (GetChildren returns None on
+            # MateGroup; GetSubFeatures isn't declared on the typed proxy).
+            mate_feats: list[dict[str, str]] = []
+            try:
+                top_feats = asm_lb.FeatureManager.GetFeatures(True) or []
+                for f in top_feats:
+                    ifeat = typed(f, "IFeature", module=mod)
+                    if ifeat.GetTypeName2() != "MateGroup":
+                        continue
+                    sub = ifeat.GetFirstSubFeature()
+                    while sub is not None:
+                        try:
+                            sf = typed(sub, "IFeature", module=mod)
+                            mate_feats.append({
+                                "name": sf.Name,
+                                "type": sf.GetTypeName2(),
+                            })
+                        except Exception:
+                            pass
+                        try:
+                            sub = sub.GetNextSubFeature()
+                        except Exception:
+                            sub = None
+            except Exception as exc:
+                out["mate_walk_error"] = f"{type(exc).__name__}: {exc}"[:200]
+
+            feats = _feature_types(asm_lb, mod)
             out["mate_features"] = mate_feats
             out["mate_count"] = len(mate_feats)
+            out["all_features"] = feats
 
             # Manifest round-trip
             manifest_path = asm_path + ".manifest.json"
