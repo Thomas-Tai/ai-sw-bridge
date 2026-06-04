@@ -362,6 +362,20 @@ class TestProposeRefPlane:
         assert r["proposal_id"] is not None
         assert r["error"] is None
 
+    def test_valid_edge_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        # Normal-to-edge variant: a durable edge_ref, no plane/distance_mm.
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
+        r = sw_propose_feature_add(
+            str(doc_file),
+            {"type": "ref_plane"},
+            {"edge_ref": {"persist_id": "AAAA", "length": 0.05}},
+        )
+        assert r["ok"] is True
+        assert r["proposal_id"] is not None
+        assert r["error"] is None
+
     def test_rejects_missing_plane(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
@@ -652,6 +666,137 @@ class TestCreateDomeHandler:
         ok, err = mutate._create_dome(doc, {"type": "dome"}, {})
         assert ok is False
         assert "face_ref" in err or "face" in err
+
+
+# ---------------------------------------------------------------------------
+# ref_plane normal-to-edge variant (W6 T6 v2, seat spike 13b35e3 = GREEN).
+# Two-reference construction: vertex (Coincident, mark=0) + edge (Perpendicular,
+# append mark=1) -> InsertRefPlane(4,0,2,0,0,0), delta-verified.
+# ---------------------------------------------------------------------------
+class _FakeEdgePlaneFm:
+    def __init__(self, doc: "_FakeEdgePlaneDoc") -> None:
+        self._doc = doc
+
+    def GetFeatures(self, top_level: bool):  # noqa: N802, FBT001
+        return ["f"] * self._doc._count
+
+    def InsertRefPlane(self, c1, d1, c2, d2, c3, d3):  # noqa: N802
+        self._doc.insert_args = (c1, d1, c2, d2, c3, d3)
+        # Models reality: returns None/bare COMObject; bumps count only when
+        # BOTH references were selected (vertex anchor + edge).
+        if self._doc._will_materialize and self._doc.sel_vertex and self._doc.sel_edge:
+            self._doc._count += 1
+        return None
+
+
+class _FakeEdge:
+    def __init__(self, vertex: object) -> None:
+        self._vertex = vertex
+
+    def GetStartVertex(self):  # noqa: N802
+        return self._vertex
+
+
+class _FakeEdgePlaneDoc:
+    def __init__(self, *, will_materialize: bool = True) -> None:
+        self._count = 19
+        self._will_materialize = will_materialize
+        self.insert_args: tuple | None = None
+        self.sel_vertex = False
+        self.sel_edge = False
+        self.FeatureManager = _FakeEdgePlaneFm(self)
+
+    def ForceRebuild3(self, flag: bool) -> None:  # noqa: N802
+        pass
+
+    def ClearSelection2(self, flag: bool) -> None:  # noqa: N802
+        pass
+
+
+_VALID_EDGE_REF = {
+    "persist_id": "AAAA",
+    "start": [0.0, 0.0, 0.0],
+    "end": [0.0, 0.0, 0.05],
+    "length": 0.05,
+}
+
+
+class TestCreateRefPlaneNormalToEdge:
+    """Direct handler tests for the normal-to-edge ref_plane variant.
+
+    Stays DE-ADVERTISED until a production-handler PAE; these exercise the
+    two-reference selection + delta verification wiring directly.
+    """
+
+    def test_edge_ref_green_delta(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_com_imports(monkeypatch)
+        doc = _FakeEdgePlaneDoc(will_materialize=True)
+        vertex = object()
+        edge = _FakeEdge(vertex)
+        monkeypatch.setattr(
+            mutate, "resolve_edge_ref",
+            lambda d, ref: _FakeRefResolution(edge),
+        )
+
+        def _sel(entity, *, append=False, mark=0):
+            if entity is vertex and mark == 0 and not append:
+                doc.sel_vertex = True
+                return True
+            if entity is edge and mark == 1 and append:
+                doc.sel_edge = True
+                return True
+            return False
+
+        monkeypatch.setattr(mutate, "select_entity", _sel)
+        ok, err = mutate._create_ref_plane(
+            doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
+        )
+        assert ok is True
+        assert err is None
+        # Coincident=4 (vertex slot), Perpendicular=2 (edge slot).
+        assert doc.insert_args == (4, 0, 2, 0, 0, 0)
+
+    def test_edge_ref_no_delta_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_com_imports(monkeypatch)
+        doc = _FakeEdgePlaneDoc(will_materialize=False)
+        edge = _FakeEdge(object())
+        monkeypatch.setattr(
+            mutate, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
+        )
+        monkeypatch.setattr(
+            mutate, "select_entity", lambda e, *, append=False, mark=0: True,
+        )
+        ok, err = mutate._create_ref_plane(
+            doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
+        )
+        assert ok is False
+        assert "did not materialize" in err
+
+    def test_edge_ref_unresolved_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_com_imports(monkeypatch)
+        doc = _FakeEdgePlaneDoc()
+        monkeypatch.setattr(
+            mutate, "resolve_edge_ref",
+            lambda d, ref: _FakeRefResolution(None, method="none"),
+        )
+        ok, err = mutate._create_ref_plane(
+            doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
+        )
+        assert ok is False
+        assert "unresolved" in err
+
+    def test_edge_ref_no_start_vertex_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_com_imports(monkeypatch)
+        doc = _FakeEdgePlaneDoc()
+        edge = _FakeEdge(None)  # GetStartVertex -> None
+        monkeypatch.setattr(
+            mutate, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
+        )
+        ok, err = mutate._create_ref_plane(
+            doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
+        )
+        assert ok is False
+        assert "start vertex" in err
 
 
 class TestCreateSweepCutHandler:

@@ -117,6 +117,10 @@ _SW_FM_SWEEP_CUT = 18
 # Reference-geometry creation IDs (proven by spike_refgeom W3 PASS — these are
 # NOT CreateDefinition ids; ref-geom uses direct Insert* methods on fm/doc).
 _SW_REFPLANE_OFFSET = 8  # swRefPlaneReferenceConstraint_Distance (bit-flag)
+# swRefPlaneReferenceConstraints_e — typelib-verified from swconst.tlb by the
+# T6 v2 spike (13b35e3); Distance=8 anchors the block (matches _SW_REFPLANE_OFFSET).
+_SW_REFPLANE_PERPENDICULAR = 2  # swRefPlaneReferenceConstraint_Perpendicular
+_SW_REFPLANE_COINCIDENT = 4  # swRefPlaneReferenceConstraint_Coincident
 
 # swWzdGeneralHoleTypes_e — the hole-wizard "generic type". LLM-facing names
 # map to the integer InitializeHole expects.
@@ -337,14 +341,26 @@ def _create_sweep(
 def _create_ref_plane(
     doc: Any, feature: dict, target: dict
 ) -> tuple[bool, str | None]:
-    """Create an offset reference plane.
+    """Create a reference plane — offset-from-plane OR normal-to-edge.
 
-    Seat-proven recipe (spike_refgeom, W3):
-      doc.SelectByID(plane, "PLANE", 0,0,0)
-      fm.InsertRefPlane(8, distance_m, 0,0,0,0)
-    where 8 = swRefPlaneReferenceConstraint_Distance (bit-flag).
+    Two seat-proven variants, dispatched by ``target`` shape:
+
+    * **Offset** — ``{"plane": <name>}`` + ``feature.distance_mm`` (spike_refgeom,
+      W3 PASS): ``doc.SelectByID(plane,"PLANE",...)`` →
+      ``fm.InsertRefPlane(8, dist_m, 0,0,0,0)`` where 8 =
+      swRefPlaneReferenceConstraint_Distance.
+    * **Normal-to-edge** — ``{"edge_ref": <DurableEdgeRef dict>}`` (T6 v2 spike
+      ``13b35e3`` = GREEN, SW 2024 SP1): a plane perpendicular to a durable edge,
+      anchored at the edge's start vertex. See
+      :func:`_create_ref_plane_normal_to_edge`.
     """
-    plane_name = target.get("plane") if isinstance(target, dict) else None
+    if not isinstance(target, dict):
+        return False, "target must be a dict with 'plane' or 'edge_ref'"
+
+    if target.get("edge_ref") is not None:
+        return _create_ref_plane_normal_to_edge(doc, target["edge_ref"])
+
+    plane_name = target.get("plane")
     if not plane_name:
         return False, "target.plane must be a non-empty plane name"
     distance_mm = feature.get("distance_mm") if isinstance(feature, dict) else None
@@ -363,6 +379,76 @@ def _create_ref_plane(
         return False, "InsertRefPlane did not materialize"
     except Exception as exc:
         return False, f"ref-plane pipeline failed: {exc!r}"
+
+
+def _create_ref_plane_normal_to_edge(
+    doc: Any, edge_ref: Any
+) -> tuple[bool, str | None]:
+    """Create a reference plane perpendicular to a durable edge.
+
+    Seat-validated recipe (T6 v2 spike ``13b35e3`` = GREEN, SW 2024 SP1). A
+    normal-to-edge plane is a **two-reference** construction: it needs the edge
+    (Perpendicular) *and* an anchor point (Coincident) — without the anchor the
+    plane is geometrically under-defined and ``InsertRefPlane`` no-ops. We use
+    the edge's own start vertex as the anchor.
+
+    Recipe (each step seat-proven):
+
+    1. Resolve the durable edge (:func:`resolve_edge_ref`); derive its start
+       vertex via the typed ``IEdge.GetStartVertex()`` — a live entity in this
+       same doc session, directly selectable (no second persist round-trip).
+    2. Select **vertex first** (``mark=0`` → Coincident slot), then **edge**
+       (``append``, ``mark=1`` → Perpendicular slot). The marks matter: the v2
+       seat sweep showed edge ``mark=0`` no-ops, ``mark=1`` materializes (same
+       per-feature mark sensitivity as the dome).
+    3. ``fm.InsertRefPlane(4, 0, 2, 0, 0, 0)`` — Coincident=4, Perpendicular=2;
+       the flag order matches the selection order. The enum is typelib-verified
+       (Distance=8 anchors the block).
+    4. ``InsertRefPlane`` returns ``None`` (mark=0) or a bare COMObject (mark=1)
+       — never trust the return value; verify via a feature-count delta using
+       ``len(FeatureManager.GetFeatures(True))`` (dome lesson).
+    """
+    mod = wrapper_module()
+    try:
+        ref = DurableEdgeRef.from_dict(edge_ref)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"invalid edge_ref: {exc!r}"
+    res = resolve_edge_ref(doc, ref)
+    if res.entity is None:
+        return False, f"edge unresolved (method={res.method})"
+    doc.ForceRebuild3(False)
+    try:
+        try:
+            vertex = typed(res.entity, "IEdge", module=mod).GetStartVertex()
+        except Exception as exc:  # noqa: BLE001
+            return False, f"could not derive edge start vertex: {exc!r}"
+        if vertex is None:
+            return False, "edge has no start vertex to anchor the plane"
+
+        _feats = doc.FeatureManager.GetFeatures(True)
+        before = len(_feats) if _feats else 0
+
+        doc.ClearSelection2(True)
+        # vertex = Coincident anchor (mark=0); edge = Perpendicular (mark=1).
+        if not select_entity(vertex, mark=0):
+            return False, "could not select edge start vertex (Coincident anchor)"
+        if not select_entity(res.entity, append=True, mark=1):
+            return False, "could not select edge (Perpendicular reference)"
+
+        fm = doc.FeatureManager
+        fm.InsertRefPlane(
+            _SW_REFPLANE_COINCIDENT, 0, _SW_REFPLANE_PERPENDICULAR, 0, 0, 0
+        )
+        doc.ForceRebuild3(False)
+        _feats = doc.FeatureManager.GetFeatures(True)
+        after = len(_feats) if _feats else 0
+        if after > before:
+            return True, None
+        return False, (
+            f"normal-to-edge plane did not materialize (count {before} -> {after})"
+        )
+    except Exception as exc:  # noqa: BLE001
+        return False, f"normal-to-edge ref-plane pipeline failed: {exc!r}"
 
 
 def _create_ref_axis(
@@ -1851,15 +1937,24 @@ def sw_propose_feature_add(
                     )
                     return result
 
-        # Wave-5: ref_plane needs plane name + distance_mm.
+        # Wave-5/6: ref_plane is either an offset plane (plane name +
+        # distance_mm) or a normal-to-edge plane (durable edge_ref).
         if feat_type == "ref_plane":
-            if not isinstance(target.get("plane"), str) or not target.get("plane"):
-                result["error"] = "ref_plane target.plane must be a non-empty plane name"
-                return result
-            dist = feature.get("distance_mm")
-            if not isinstance(dist, (int, float)) or dist <= 0:
-                result["error"] = f"ref_plane distance_mm must be a positive number, got {dist!r}"
-                return result
+            if target.get("edge_ref") is not None:
+                if not isinstance(target.get("edge_ref"), dict):
+                    result["error"] = "ref_plane target.edge_ref must be a DurableEdgeRef dict"
+                    return result
+            else:
+                if not isinstance(target.get("plane"), str) or not target.get("plane"):
+                    result["error"] = (
+                        "ref_plane target needs an 'edge_ref' (normal-to-edge) "
+                        "or a non-empty 'plane' name (offset)"
+                    )
+                    return result
+                dist = feature.get("distance_mm")
+                if not isinstance(dist, (int, float)) or dist <= 0:
+                    result["error"] = f"ref_plane distance_mm must be a positive number, got {dist!r}"
+                    return result
 
         # Wave-5: ref_axis needs two plane names.
         if feat_type == "ref_axis":
