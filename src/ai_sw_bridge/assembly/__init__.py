@@ -11,14 +11,17 @@ Phase-1 PAE clears.
 from .schema import ASSEMBLY_SCHEMA, MATE_TYPES, MATE_ALIGNMENTS
 from .validator import validate_assembly, AssemblyValidationError
 from .storage import AssemblyManifest, ComponentInstance, MateRecord
+from .face_resolver import resolve_component_face, ComponentFaceResolution
 
 __all__ = [
     "ASSEMBLY_SCHEMA",
     "AssemblyManifest",
     "AssemblyValidationError",
+    "ComponentFaceResolution",
     "ComponentInstance",
     "MATE_ALIGNMENTS",
     "MATE_TYPES",
     "MateRecord",
+    "resolve_component_face",
     "validate_assembly",
 ]
