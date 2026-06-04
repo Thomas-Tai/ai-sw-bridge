@@ -207,6 +207,15 @@ _SUPPORTED_FEATURE_TYPES = (
     # geometry constraint (path must pierce the solid), not an API wall; verify
     # via GetFeatures(True) delta (CreateFeature may return None on success).
     "sweep_cut",
+    # W7 T6: edge_flange (sheet-metal custom-profile). Production-handler PAE
+    # GREEN (spike 644edf6): on a base_flange body, _create_edge_flange resolves a
+    # durable edge -> normal-to-edge plane + profile line -> legacy
+    # InsertSheetMetalEdgeFlange2 (13 args, typelib-verified) -> Edge-Flange1
+    # (delta-verified). THE marshaling key: FlangeEdges + SketchFeats MUST be
+    # VARIANT(VT_ARRAY|VT_DISPATCH, (obj,)) SAFEARRAYs — a bare object/None
+    # silently no-ops (the same wall behind Wave-4 AddEdges + Wave-6 auto-profile).
+    # Authoring: target.edge_ref + height_mm (+ angle_deg=90, radius_mm=2).
+    "edge_flange",
     # ---- Wave-5 F1–F6 kinds REMOVED from the advertised surface (W0 handback) ----
     # The handlers + dispatch entries remain below as characterized code; propose
     # must fail-close with "unsupported feature type" for any of these kinds

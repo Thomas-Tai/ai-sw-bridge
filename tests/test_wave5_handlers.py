@@ -974,17 +974,42 @@ class TestCreateEdgeFlangeHandler:
         assert "edge_ref" in err
 
 
-class TestProposeEdgeFlangeDeadvertised:
-    def test_propose_fails_closed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        # edge_flange is NOT in _SUPPORTED_FEATURE_TYPES until the PAE clears it.
+class TestProposeEdgeFlange:
+    """edge_flange is advertised (14th kind) after the production PAE — propose
+    accepts a valid edge_ref + height_mm and rejects bad params."""
+
+    def test_propose_accepts_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
         r = sw_propose_feature_add(
-            str(doc_file), {"type": "edge_flange", "height_mm": 10}, _EF_TARGET
+            str(doc_file),
+            {"type": "edge_flange", "height_mm": 10, "angle_deg": 90, "radius_mm": 2},
+            _EF_TARGET,
+        )
+        assert r["ok"] is True
+        assert r["proposal_id"] is not None
+        assert r["error"] is None
+
+    def test_propose_rejects_non_positive_height(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
+        r = sw_propose_feature_add(
+            str(doc_file), {"type": "edge_flange", "height_mm": 0}, _EF_TARGET
         )
         assert r["ok"] is False
-        assert "unsupported feature type" in r["error"]
+        assert "height_mm" in r["error"]
+
+    def test_propose_rejects_missing_edge_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
+        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
+        r = sw_propose_feature_add(
+            str(doc_file), {"type": "edge_flange", "height_mm": 10}, {"nope": 1}
+        )
+        assert r["ok"] is False
+        assert "edge_ref" in r["error"]
 
 
 class TestCreateSweepCutHandler:
