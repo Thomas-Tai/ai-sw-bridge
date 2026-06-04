@@ -2366,6 +2366,98 @@ def sw_propose_assembly(spec: dict[str, Any]) -> dict[str, Any]:
         return result
 
 
+def sw_dry_run_assembly(proposal_id: str) -> dict[str, Any]:
+    """Dry-run an assembly proposal — validate bindings without mutating SW.
+
+    Resolves part file paths, confirms files exist, and validates mate face_refs
+    are well-formed. Does not open any SW documents.
+    """
+    from .assembly.lifecycle import dry_run_assembly
+
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": proposal_id,
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+
+    rec = _load_proposal(proposal_id)
+    if rec is None:
+        result["error"] = f"proposal {proposal_id} not found"
+        return result
+    if rec.get("kind") != "assembly":
+        result["error"] = f"proposal {proposal_id} is not an assembly proposal"
+        return result
+
+    spec = rec["spec"]
+    dry = dry_run_assembly(spec)
+    result.update(dry)
+
+    if dry.get("ok"):
+        rec["state"] = ST_DRY_RUN_OK
+        rec["dry_run_result"] = dry
+        _save_proposal(proposal_id, rec)
+        result["state"] = ST_DRY_RUN_OK
+
+    return result
+
+
+def sw_commit_assembly(
+    proposal_id: str,
+    output_path: str,
+    *,
+    part_paths: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Build the assembly — place components, create mates, save.
+
+    Requires the proposal to be in ``dry_run_ok`` state. Opens an assembly
+    document, places all components, creates all mates, saves the ``.sldasm``,
+    and writes the assembly manifest alongside it.
+    """
+    from .assembly.lifecycle import commit_assembly
+
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": proposal_id,
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+
+    rec = _load_proposal(proposal_id)
+    if rec is None:
+        result["error"] = f"proposal {proposal_id} not found"
+        return result
+    if rec.get("kind") != "assembly":
+        result["error"] = f"proposal {proposal_id} is not an assembly proposal"
+        return result
+    if rec["state"] != ST_DRY_RUN_OK:
+        result["error"] = (
+            f"refusing to commit proposal in state {rec['state']!r}; "
+            "must be 'dry_run_ok' (run sw_dry_run_assembly first)"
+        )
+        return result
+
+    spec = rec["spec"]
+
+    try:
+        sw = get_sw_app()
+    except Exception as exc:
+        result["error"] = f"could not connect to SW: {exc!r}"
+        return result
+
+    commit = commit_assembly(sw, spec, output_path, part_paths=part_paths)
+    result.update(commit)
+
+    if commit.get("ok"):
+        rec["state"] = ST_COMMITTED
+        rec["committed_at"] = time.time()
+        rec["manifest"] = commit.get("manifest")
+        _save_proposal(proposal_id, rec)
+        result["state"] = ST_COMMITTED
+
+    return result
+
+
 def sw_dry_run_feature_add(proposal_id: str) -> dict[str, Any]:
     """Open the doc, resolve the edge, add the fillet, rebuild, close without saving."""
     result: dict[str, Any] = {

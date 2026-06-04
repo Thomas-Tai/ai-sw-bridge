@@ -12,6 +12,7 @@ from .schema import ASSEMBLY_SCHEMA, MATE_TYPES, MATE_ALIGNMENTS
 from .validator import validate_assembly, AssemblyValidationError
 from .storage import AssemblyManifest, ComponentInstance, MateRecord
 from .face_resolver import resolve_component_face, ComponentFaceResolution
+from .lifecycle import dry_run_assembly, commit_assembly
 
 __all__ = [
     "ASSEMBLY_SCHEMA",
@@ -22,6 +23,8 @@ __all__ = [
     "MATE_ALIGNMENTS",
     "MATE_TYPES",
     "MateRecord",
+    "commit_assembly",
+    "dry_run_assembly",
     "resolve_component_face",
     "validate_assembly",
 ]
