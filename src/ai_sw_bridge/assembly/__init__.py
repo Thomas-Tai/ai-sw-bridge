@@ -10,11 +10,15 @@ Phase-1 PAE clears.
 
 from .schema import ASSEMBLY_SCHEMA, MATE_TYPES, MATE_ALIGNMENTS
 from .validator import validate_assembly, AssemblyValidationError
+from .storage import AssemblyManifest, ComponentInstance, MateRecord
 
 __all__ = [
     "ASSEMBLY_SCHEMA",
+    "AssemblyManifest",
     "AssemblyValidationError",
+    "ComponentInstance",
     "MATE_ALIGNMENTS",
     "MATE_TYPES",
+    "MateRecord",
     "validate_assembly",
 ]
