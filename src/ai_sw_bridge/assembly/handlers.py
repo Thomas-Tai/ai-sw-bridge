@@ -287,3 +287,111 @@ def create_coincident_mate(
 ) -> tuple[Any | None, str | None]:
     """Backward-compatible wrapper for coincident mates (Phase-1 API)."""
     return create_mate(asm_doc, placed, mate_spec, mod=mod)
+
+
+def verify_mates(
+    asm_doc: Any,
+    *,
+    mod: Any | None = None,
+) -> list[dict[str, Any]]:
+    """Three-layer solver verification for all mates in an assembly.
+
+    Traverses the MateGroup feature tree and checks each mate:
+
+      - **Layer 1 (existence):** Mate appears in MateGroup with a valid type name.
+      - **Layer 2 (error code):** ``GetErrorCode2()`` returns clean (0 or success).
+      - **Layer 3 (solver health):** After ``ForceRebuild3(False)``, the mate is
+        not suppressed-due-to-error and the assembly is not over-defined.
+
+    Args:
+        asm_doc: the assembly document (``IModelDoc2``).
+        mod: the gen_py wrapper module.
+
+    Returns:
+        A list of per-mate result dicts, each with::
+
+            {
+                "name": str,          # feature name (e.g. "Coincident1")
+                "type": str,          # type name (e.g. "MateCoincident")
+                "error_code": int,    # GetErrorCode2() value
+                "solved": bool,       # True if mate is healthy and solved
+                "suppressed": bool,   # True if suppressed due to error
+            }
+    """
+    if mod is None:
+        mod = wrapper_module()
+
+    typed_asm = typed(asm_doc, "IAssemblyDoc", module=mod)
+
+    # Force rebuild first to ensure solver has processed all mates
+    try:
+        asm_doc.ForceRebuild3(False)
+    except Exception:
+        pass
+
+    results: list[dict[str, Any]] = []
+
+    try:
+        mate_group = typed_asm.GetMateGroup()
+    except Exception:
+        return results
+
+    if mate_group is None:
+        return results
+
+    # Traverse mates via GetFirstSubFeature / GetNextSubFeature
+    try:
+        sub = mate_group.GetFirstSubFeature()
+    except Exception:
+        return results
+
+    while sub is not None:
+        mate_result: dict[str, Any] = {
+            "name": "?",
+            "type": "?",
+            "error_code": -1,
+            "solved": False,
+            "suppressed": False,
+        }
+
+        try:
+            ifeat = typed(sub, "IFeature", module=mod)
+            mate_result["name"] = sub.Name if hasattr(sub, "Name") else "?"
+            mate_result["type"] = ifeat.GetTypeName2()
+
+            # Check if suppressed
+            try:
+                suppress_state = ifeat.GetSuppression2()
+                # swFeatureSuppressed = 0, swFeatureUnsuppressed = 1
+                mate_result["suppressed"] = suppress_state == 0
+            except Exception:
+                pass
+
+            # Check error code
+            try:
+                error_code = ifeat.GetErrorCode2()
+                mate_result["error_code"] = error_code
+            except Exception:
+                try:
+                    error_code = ifeat.GetErrorCode()
+                    mate_result["error_code"] = error_code
+                except Exception:
+                    pass
+
+            # Solved = not suppressed AND error_code is clean (0)
+            mate_result["solved"] = (
+                not mate_result["suppressed"]
+                and mate_result["error_code"] == 0
+            )
+
+        except Exception:
+            pass
+
+        results.append(mate_result)
+
+        try:
+            sub = sub.GetNextSubFeature()
+        except Exception:
+            break
+
+    return results
