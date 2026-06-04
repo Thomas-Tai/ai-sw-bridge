@@ -7,10 +7,10 @@ assembly document. Both use the W8 seat-proven COM recipes:
     pre-open) → ``typed(asm, "IAssemblyDoc").AddComponent4(path, "", x, y, z)``
     → real ``IComponent2`` with B-rep.
 
-  - **Coincident mate:** ``CreateMateData(0)`` → ``typed_qi(
-    ICoincidentMateFeatureData)`` → ``EntitiesToMate = VARIANT(VT_ARRAY |
-    VT_DISPATCH, (f1, f2))`` → ``MateAlignment`` → ``CreateMate(data)``.
-    Faces from ``comp.GetBodies(0).GetFaces()`` (component context).
+  - **Mate:** ``CreateMateData(type)`` → ``typed_qi(I<Type>MateFeatureData)``
+    (where available) → ``EntitiesToMate = VARIANT(VT_ARRAY | VT_DISPATCH,
+    (f1, f2))`` → ``MateAlignment`` → ``CreateMate(data)``. Faces from
+    ``comp.GetBodies(0).GetFaces()`` (component context).
 """
 
 from __future__ import annotations
@@ -25,6 +25,32 @@ from ..com.earlybind import typed, typed_qi, typed_extension
 from ..com.sw_type_info import wrapper_module
 
 from .face_resolver import resolve_component_face
+
+
+# swMateType_e enum values (typelib-verified; COINCIDENT=0 is Phase-1 proven).
+# Phase-2 values (CONCENTRIC, PERPENDICULAR, PARALLEL, DISTANCE) are from
+# SolidWorks API documentation and will be empirically verified during PAE.
+MATE_TYPE_ENUMS = {
+    "coincident": 0,       # swMateCOINCIDENT (Phase-1 anchor)
+    "concentric": 1,       # swMateCONCENTRIC
+    "perpendicular": 2,    # swMatePERPENDICULAR
+    "parallel": 3,         # swMatePARALLEL
+    "tangent": 4,          # swMateTANGENT (not in Phase-2 scope)
+    "distance": 5,         # swMateDISTANCE
+    "angle": 6,            # swMateANGLE (not in Phase-2 scope)
+}
+
+# Typed interface names per mate type (from typelib dump).
+# Where a typed interface exists, we QI it to set type-specific properties.
+# Where it doesn't, we use the base IMateFeatureData path.
+MATE_TYPE_INTERFACES = {
+    "coincident": "ICoincidentMateFeatureData",
+    "concentric": "IConcentricMateFeatureData",
+    "perpendicular": "IPerpendicularMateFeatureData",
+    "parallel": "IParallelMateFeatureData",
+    "distance": "IDistanceMateFeatureData",
+    "angle": "IAngleMateFeatureData",
+}
 
 
 def place_components(
@@ -119,22 +145,26 @@ def place_components(
     return placed, None
 
 
-def create_coincident_mate(
+def create_mate(
     asm_doc: Any,
     placed: dict[str, Any],
     mate_spec: dict[str, Any],
     *,
     mod: Any | None = None,
 ) -> tuple[Any | None, str | None]:
-    """Create a coincident mate between two component faces.
+    """Create a mate between two component faces.
+
+    Generalized from the Phase-1 coincident-only handler to support all five
+    mate types (coincident, distance, concentric, parallel, perpendicular).
 
     Uses the W8 seat-proven recipe:
       1. Resolve both face_refs against their component bodies.
-      2. ``CreateMateData(0)`` (COINCIDENT).
-      3. ``typed_qi(ICoincidentMateFeatureData)``.
+      2. ``CreateMateData(type_enum)`` for the mate type.
+      3. ``typed_qi(I<Type>MateFeatureData)`` where a typed interface exists.
       4. ``EntitiesToMate = VARIANT(VT_ARRAY | VT_DISPATCH, (f1, f2))``.
       5. ``MateAlignment`` from the spec's alignment field.
-      6. ``CreateMate(data)`` → verify returned IFeature.
+      6. Set type-specific properties (e.g., ``Distance`` for distance mates).
+      7. ``CreateMate(data)`` → verify returned IFeature.
 
     Args:
         asm_doc: the assembly document.
@@ -152,6 +182,11 @@ def create_coincident_mate(
     alignment_map = {"aligned": 0, "anti_aligned": 1, "closest": 2}
     alignment_str = mate_spec.get("alignment", "aligned")
     alignment = alignment_map.get(alignment_str, 0)
+
+    mate_type_str = mate_spec.get("type", "coincident")
+    mate_type_enum = MATE_TYPE_ENUMS.get(mate_type_str)
+    if mate_type_enum is None:
+        return None, f"unsupported mate type: {mate_type_str!r}"
 
     typed_asm = typed(asm_doc, "IAssemblyDoc", module=mod)
 
@@ -176,18 +211,43 @@ def create_coincident_mate(
 
     # CreateMateData + EntitiesToMate SAFEARRAY + CreateMate
     try:
-        mate_data = typed_asm.CreateMateData(0)  # 0 = swMateCOINCIDENT
+        mate_data = typed_asm.CreateMateData(mate_type_enum)
         if mate_data is None:
-            return None, "CreateMateData returned None"
+            return None, f"CreateMateData({mate_type_enum}) returned None"
 
-        coin_data = typed_qi(
-            mate_data, "ICoincidentMateFeatureData", module=mod
-        )
-        face_arr = w32.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
-        )
-        coin_data.EntitiesToMate = face_arr
-        coin_data.MateAlignment = alignment
+        # Try to QI the typed interface for type-specific properties
+        typed_iface_name = MATE_TYPE_INTERFACES.get(mate_type_str)
+        typed_iface = None
+        if typed_iface_name:
+            try:
+                typed_iface = typed_qi(mate_data, typed_iface_name, module=mod)
+            except Exception:
+                # No typed interface — use base IMateFeatureData path
+                typed_iface = None
+
+        # Set EntitiesToMate and MateAlignment
+        if typed_iface is not None:
+            face_arr = w32.VARIANT(
+                pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
+            )
+            typed_iface.EntitiesToMate = face_arr
+            typed_iface.MateAlignment = alignment
+
+            # Set type-specific properties
+            if mate_type_str == "distance":
+                value_mm = mate_spec.get("value_mm")
+                if value_mm is not None:
+                    # Convert mm to meters (SW internal units)
+                    distance_m = float(value_mm) / 1000.0
+                    typed_iface.Distance = distance_m
+        else:
+            # Base IMateFeatureData path (no typed interface)
+            base_iface = typed_qi(mate_data, "IMateFeatureData", module=mod)
+            face_arr = w32.VARIANT(
+                pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
+            )
+            base_iface.EntitiesToMate = face_arr
+            base_iface.MateAlignment = alignment
 
         mate_ret = typed_asm.CreateMate(mate_data)
     except Exception as exc:
@@ -204,10 +264,22 @@ def create_coincident_mate(
     # Verify: cast to IFeature and check type
     try:
         ifeat = typed(mate_ret, "IFeature", module=mod)
-        mate_type = ifeat.GetTypeName2()
-        if "Mate" not in mate_type and "mate" not in mate_type.lower():
-            return None, f"unexpected feature type: {mate_type}"
+        feat_type = ifeat.GetTypeName2()
+        if "Mate" not in feat_type and "mate" not in feat_type.lower():
+            return None, f"unexpected feature type: {feat_type}"
     except Exception as exc:
         return None, f"mate verification failed: {exc!r}"
 
     return mate_ret, None
+
+
+# Backward compatibility: Phase-1 code calls create_coincident_mate
+def create_coincident_mate(
+    asm_doc: Any,
+    placed: dict[str, Any],
+    mate_spec: dict[str, Any],
+    *,
+    mod: Any | None = None,
+) -> tuple[Any | None, str | None]:
+    """Backward-compatible wrapper for coincident mates (Phase-1 API)."""
+    return create_mate(asm_doc, placed, mate_spec, mod=mod)
