@@ -31,6 +31,7 @@ from typing import Any
 from ..mutate import (
     sw_commit_assembly,
     sw_dry_run_assembly,
+    sw_edit_assembly,
     sw_propose_assembly,
 )
 from .stability import add_tier, cli_stability
@@ -62,6 +63,29 @@ def _run_commit(args: argparse.Namespace) -> dict[str, Any]:
         if not isinstance(part_paths, dict):
             return {"ok": False, "error": "--part-paths must be a JSON object"}
     return sw_commit_assembly(args.proposal_id, args.out, part_paths=part_paths)
+
+
+def _load_op(raw: str) -> dict[str, Any] | None:
+    """Parse --op as inline JSON or @file path. Returns None on error."""
+    if raw.startswith("@"):
+        p = Path(raw[1:])
+        if not p.is_file():
+            return None
+        raw = p.read_text(encoding="utf-8")
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+
+def _run_edit(args: argparse.Namespace) -> dict[str, Any]:
+    manifest_path = args.manifest
+    if not Path(manifest_path).is_file():
+        return {"ok": False, "error": f"manifest not found: {manifest_path}"}
+    op = _load_op(args.op)
+    if op is None:
+        return {"ok": False, "error": f"invalid --op JSON: {args.op}"}
+    return sw_edit_assembly(manifest_path, op)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -123,6 +147,28 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.set_defaults(func=_run_commit)
+
+    p = subs.add_parser(
+        "edit",
+        help=(
+            "Apply a declarative edit op to a manifest, validate, and propose. "
+            "Returns a proposal_id for dry_run/commit."
+        ),
+    )
+    p.add_argument(
+        "--manifest",
+        required=True,
+        help="Path to the .manifest.json sidecar.",
+    )
+    p.add_argument(
+        "--op",
+        required=True,
+        help=(
+            "Edit op as inline JSON or @file path. "
+            "Ops: add_component, remove_component, add_mate, remove_mate."
+        ),
+    )
+    p.set_defaults(func=_run_edit)
 
     return parser
 

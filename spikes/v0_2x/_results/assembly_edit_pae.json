@@ -1,0 +1,87 @@
+{
+  "pae": "w15_assembly_edit",
+  "timestamp": "2026-06-05T15:06:06",
+  "gates": {
+    "build_a": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "build_b": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "initial_propose": {
+      "ok": true,
+      "detail": "pid=3be3ce78a6d3"
+    },
+    "initial_dry_run": {
+      "ok": true,
+      "detail": ""
+    },
+    "initial_commit": {
+      "ok": true,
+      "detail": "components=2, mates=1"
+    },
+    "initial_manifest": {
+      "ok": true,
+      "detail": ""
+    },
+    "edit1_propose": {
+      "ok": true,
+      "detail": "pid=fcb77fe6628b"
+    },
+    "edit1_dry_run": {
+      "ok": true,
+      "detail": ""
+    },
+    "edit1_commit": {
+      "ok": true,
+      "detail": "mates=2"
+    },
+    "edit1_manifest": {
+      "ok": true,
+      "detail": ""
+    },
+    "edit1_lossless": {
+      "ok": true,
+      "detail": "reloaded spec matches edited spec"
+    },
+    "edit1_two_mates": {
+      "ok": true,
+      "detail": "mates=2"
+    },
+    "edit1_verify_mates": {
+      "ok": true,
+      "detail": "mates=2, solved=2"
+    },
+    "edit1_parallel_mate_exists": {
+      "ok": true,
+      "detail": "types=['MateCoincident', 'MateParallel']"
+    },
+    "edit2_propose": {
+      "ok": true,
+      "detail": "pid=3cafa31da4fc"
+    },
+    "edit2_dry_run": {
+      "ok": true,
+      "detail": ""
+    },
+    "edit2_commit": {
+      "ok": true,
+      "detail": "mates=1"
+    },
+    "edit2_lossless": {
+      "ok": true,
+      "detail": "reloaded spec matches edited spec"
+    },
+    "edit2_one_mate": {
+      "ok": true,
+      "detail": "mates=1"
+    },
+    "OVERALL_GREEN": {
+      "ok": true,
+      "detail": "19/19 gates pass"
+    }
+  },
+  "verdict": "GREEN"
+}
