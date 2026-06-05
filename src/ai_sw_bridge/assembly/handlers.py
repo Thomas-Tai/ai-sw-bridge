@@ -56,6 +56,33 @@ MATE_TYPE_INTERFACES = {
 }
 
 
+def _rpy_to_transform(
+    roll_deg: float, pitch_deg: float, yaw_deg: float,
+    tx_m: float, ty_m: float, tz_m: float,
+) -> list[float]:
+    """Build 16-element SW IMathTransform array: R = Rz . Ry . Rx, row-major.
+
+    Layout: [r00,r01,r02, r10,r11,r12, r20,r21,r22, tx,ty,tz, scale, 0,0,0]
+    Translation is in metres. Convention pinned in W13 spike.
+    """
+    rx, ry, rz = (
+        math.radians(roll_deg),
+        math.radians(pitch_deg),
+        math.radians(yaw_deg),
+    )
+    cx, sx = math.cos(rx), math.sin(rx)
+    cy, sy = math.cos(ry), math.sin(ry)
+    cz, sz = math.cos(rz), math.sin(rz)
+
+    return [
+        cz * cy, cz * sy * sx - sz * cx, cz * sy * cx + sz * sx,
+        sz * cy, sz * sy * sx + cz * cx, sz * sy * cx - cz * sx,
+        -sy,     cy * sx,               cy * cx,
+        tx_m, ty_m, tz_m,
+        1.0, 0.0, 0.0, 0.0,
+    ]
+
+
 def place_components(
     sw: Any,
     asm_doc: Any,
@@ -142,6 +169,27 @@ def place_components(
                     )
         except Exception as exc:
             return placed, f"component {cid!r}: B-rep verify failed: {exc!r}"
+
+        # Apply rotation if rpy_deg is present and non-zero
+        rpy = transform.get("rpy_deg")
+        if rpy is not None and any(float(v) != 0.0 for v in rpy):
+            try:
+                mu = typed(sw.GetMathUtility, "IMathUtility", module=mod)
+                arr = _rpy_to_transform(
+                    float(rpy[0]), float(rpy[1]), float(rpy[2]),
+                    x_m, y_m, z_m,
+                )
+                varr = w32.VARIANT(
+                    pythoncom.VT_ARRAY | pythoncom.VT_R8, tuple(arr)
+                )
+                xform = mu.CreateTransform(varr)
+                comp_typed = typed_qi(comp, "IComponent2", module=mod)
+                comp_typed.Transform2 = xform
+                comp_typed.SetTransformAndSolve(xform)
+            except Exception as exc:
+                return placed, (
+                    f"component {cid!r}: rotation transform failed: {exc!r}"
+                )
 
         placed[cid] = comp
 

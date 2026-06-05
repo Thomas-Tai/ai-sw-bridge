@@ -1,0 +1,57 @@
+{
+  "pae": "w13_rotated_placement",
+  "timestamp": "2026-06-05T13:43:19",
+  "gates": {
+    "build_part": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "asm_create": {
+      "ok": true,
+      "detail": ""
+    },
+    "place_with_rotation": {
+      "ok": true,
+      "detail": "placed=1, err=None"
+    },
+    "rotation_matrix": {
+      "ok": true,
+      "detail": "expected=[0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0], got=[0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]"
+    },
+    "save_assembly": {
+      "ok": true,
+      "detail": ""
+    },
+    "persist_after_reopen": {
+      "ok": true,
+      "detail": "rotation preserved: [0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]"
+    },
+    "zero_rpy_still_works": {
+      "ok": true,
+      "detail": "placed=1, err=None"
+    },
+    "OVERALL_GREEN": {
+      "ok": true,
+      "detail": "rotation applied + persisted + zero-rpy regression clean"
+    }
+  },
+  "transform_readback": [
+    0.0,
+    -1.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "verdict": "GREEN"
+}

@@ -128,12 +128,11 @@ class TestValidateAssembly:
         spec["components"][0]["transform"]["rpy_deg"] = [0, 0, 0]
         validate_assembly(spec)
 
-    def test_rejects_nonzero_rpy_phase1(self) -> None:
-        # Non-zero rotation is rejected fail-closed (rotation unsupported in P1).
+    def test_accepts_nonzero_rpy(self) -> None:
+        # Rotation is now supported (W13 proven via Transform2 pipeline).
         spec = _minimal_assembly()
         spec["components"][0]["transform"]["rpy_deg"] = [0, 0, 90]
-        with pytest.raises(AssemblyValidationError, match="rotation"):
-            validate_assembly(spec)
+        validate_assembly(spec)  # should not raise
 
     def test_accepts_no_transform(self) -> None:
         spec = _minimal_assembly()
@@ -566,3 +565,46 @@ class TestWidthMateValidation:
         spec = _assembly_with_width_mate(mate)
         with pytest.raises(AssemblyValidationError, match="face_ref"):
             validate_assembly(spec)
+
+
+# ---- RPY convention pin (Wave-13) ----
+# The rpy_to_transform helper must produce the correct SW IMathTransform
+# layout for known rotations. Convention: R = Rz(yaw) . Ry(pitch) . Rx(roll).
+
+
+class TestRpyConvention:
+    """Pin the rpy_deg → 16-element transform matrix convention."""
+
+    def test_identity(self) -> None:
+        from ai_sw_bridge.assembly.handlers import _rpy_to_transform
+        m = _rpy_to_transform(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        expected = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]
+        assert [round(v, 6) for v in m] == expected
+
+    def test_90_deg_about_z(self) -> None:
+        from ai_sw_bridge.assembly.handlers import _rpy_to_transform
+        m = _rpy_to_transform(0.0, 0.0, 90.0, 0.0, 0.0, 0.0)
+        # Rz(90°) = [[0,-1,0],[1,0,0],[0,0,1]]
+        rot = [round(v, 6) for v in m[:9]]
+        assert rot == [0, -1, 0, 1, 0, 0, 0, 0, 1]
+
+    def test_90_deg_about_x(self) -> None:
+        from ai_sw_bridge.assembly.handlers import _rpy_to_transform
+        m = _rpy_to_transform(90.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        # Rx(90°) = [[1,0,0],[0,0,-1],[0,1,0]]
+        rot = [round(v, 6) for v in m[:9]]
+        assert rot == [1, 0, 0, 0, 0, -1, 0, 1, 0]
+
+    def test_translation_in_metres(self) -> None:
+        from ai_sw_bridge.assembly.handlers import _rpy_to_transform
+        m = _rpy_to_transform(0.0, 0.0, 0.0, 0.05, 0.1, 0.2)
+        tx, ty, tz = m[9], m[10], m[11]
+        assert abs(tx - 0.05) < 1e-9
+        assert abs(ty - 0.1) < 1e-9
+        assert abs(tz - 0.2) < 1e-9
+
+    def test_scale_is_one(self) -> None:
+        from ai_sw_bridge.assembly.handlers import _rpy_to_transform
+        m = _rpy_to_transform(45.0, 30.0, 60.0, 1.0, 2.0, 3.0)
+        assert m[12] == 1.0
+        assert m[13:] == [0.0, 0.0, 0.0]
