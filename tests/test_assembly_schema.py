@@ -344,10 +344,9 @@ class TestPhase3MateValidation:
     def test_angle_is_advertised(self) -> None:
         assert "angle" in MATE_TYPES
 
-    def test_width_is_not_advertised(self) -> None:
-        # Width is seat-proven in spike but not production-wired (different
-        # selection structure); it must stay gated until its handler ships.
-        assert "width" not in MATE_TYPES
+    def test_width_is_advertised(self) -> None:
+        # Width mate PAE cleared in W12 — production handler proven.
+        assert "width" in MATE_TYPES
 
     # --- tangent: geometric, no scalar ---
 

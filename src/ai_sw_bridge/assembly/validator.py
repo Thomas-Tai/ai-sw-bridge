@@ -149,7 +149,7 @@ def _check_mates(
             raise AssemblyValidationError("mate must be a dict", path)
 
         mtype = mate.get("type")
-        if mtype not in MATE_TYPES and mtype != "width":
+        if mtype not in MATE_TYPES:
             raise AssemblyValidationError(
                 f"mate type {mtype!r} not in {sorted(MATE_TYPES)}", path
             )

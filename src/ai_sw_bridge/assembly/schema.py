@@ -22,6 +22,7 @@ MATE_TYPES = frozenset(
         "perpendicular",
         "tangent",
         "angle",
+        "width",
     }
 )
 
