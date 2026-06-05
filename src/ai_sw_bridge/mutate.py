@@ -2458,6 +2458,65 @@ def sw_commit_assembly(
     return result
 
 
+def sw_edit_assembly(
+    manifest_path: str, op: dict[str, Any]
+) -> dict[str, Any]:
+    """Edit an assembly via its manifest sidecar.
+
+    Loads the manifest, extracts the verbatim spec via ``to_spec()``,
+    applies the declarative edit op, re-validates, and proposes the
+    edited spec. Returns a ``proposal_id`` that feeds the existing
+    ``sw_dry_run_assembly`` → ``sw_commit_assembly`` pipeline.
+
+    Args:
+        manifest_path: path to the ``.manifest.json`` sidecar.
+        op: a declarative edit op dict (see ``assembly.edit``).
+
+    Returns:
+        A result dict with ``ok``, ``proposal_id``, ``edit_applied``,
+        and ``error``.
+    """
+    from pathlib import Path as _Path
+
+    from .assembly.edit import AssemblyEditError, apply_edit_op
+    from .assembly.storage import AssemblyManifest
+    from .assembly.validator import AssemblyValidationError, validate_assembly
+
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": None,
+        "edit_applied": False,
+        "error": None,
+    }
+
+    try:
+        manifest = AssemblyManifest.load(_Path(manifest_path))
+        old_spec = manifest.to_spec()
+    except (FileNotFoundError, ValueError) as exc:
+        result["error"] = f"manifest load failed: {exc}"
+        return result
+
+    try:
+        new_spec = apply_edit_op(old_spec, op)
+    except AssemblyEditError as exc:
+        result["error"] = f"edit op rejected: {exc.message}"
+        return result
+
+    result["edit_applied"] = True
+
+    try:
+        validate_assembly(new_spec)
+    except AssemblyValidationError as exc:
+        result["error"] = (
+            f"edited spec failed validation: {exc.message}"
+        )
+        return result
+
+    propose = sw_propose_assembly(new_spec)
+    result.update(propose)
+    return result
+
+
 def sw_dry_run_feature_add(proposal_id: str) -> dict[str, Any]:
     """Open the doc, resolve the edge, add the fillet, rebuild, close without saving."""
     result: dict[str, Any] = {
