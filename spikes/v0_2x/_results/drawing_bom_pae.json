@@ -1,0 +1,58 @@
+{
+  "pae": "w18_drawing_bom",
+  "timestamp": "2026-06-05T19:41:39",
+  "gates": {
+    "build_a": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "build_b": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "asm_commit": {
+      "ok": true,
+      "detail": "components=2, mates=1"
+    },
+    "drw_propose": {
+      "ok": true,
+      "detail": "pid=c158624837b3"
+    },
+    "drw_dry_run": {
+      "ok": true,
+      "detail": ""
+    },
+    "drw_commit": {
+      "ok": true,
+      "detail": "views=['front', 'isometric'], bom_inserted=True, bom_data_rows=2"
+    },
+    "bom_data_rows_gt_zero_commit": {
+      "ok": true,
+      "detail": "bom_data_rows=2"
+    },
+    "bom_data_rows_eq_components": {
+      "ok": true,
+      "detail": "bom_data_rows=2, component_count=2"
+    },
+    "drw_file_exists": {
+      "ok": true,
+      "detail": "size=42151"
+    },
+    "reopen_bom_rows_gt_zero": {
+      "ok": true,
+      "detail": "reopen_bom_rows=2"
+    },
+    "reopen_bom_rows_eq_components": {
+      "ok": true,
+      "detail": "reopen_bom_rows=2, component_count=2"
+    },
+    "OVERALL_GREEN": {
+      "ok": true,
+      "detail": "11/11 gates pass"
+    }
+  },
+  "component_count": 2,
+  "drawing_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\w18pae_1780659699.SLDDRW",
+  "reopen_bom_rows": 2,
+  "verdict": "GREEN"
+}

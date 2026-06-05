@@ -198,6 +198,14 @@ def run() -> str:
 
     # --- Re-open drawing and verify BOM rows ---
     print("\n--- Re-open drawing and verify BOM ---")
+    # Open the assembly first so referenced components are resolved
+    # (GetBomTable returns None when component files are not loaded)
+    try:
+        tsw = typed(sw, "ISldWorks", module=mod)
+        tsw.OpenDoc6(ASM_PATH, 2, 1, "", 0, 0)
+    except Exception:
+        pass
+
     try:
         tsw = typed(sw, "ISldWorks", module=mod)
         ret = tsw.OpenDoc6(DRW_PATH, 3, 1, "", 0, 0)
@@ -206,11 +214,12 @@ def run() -> str:
         if drw_doc:
             drw_typed = typed_qi(drw_doc, "IDrawingDoc", module=mod)
 
-            # Walk views looking for a BOM via IView.GetBomTable() (late-bound
-            # Dispatch path, dispid 108). Then QI to IBomTableAnnotation to
-            # use _count_bom_data_rows — the confirmed working probe.
-            # NOTE: IGetBomTable() (dispid 109) fails with SW error 61836;
-            #       IView.GetTableAnnotationCount() always 0 for BOM tables.
+            # Walk views looking for a BOM via GetFirstTableAnnotation() +
+            # IBomTableAnnotation QI + _count_bom_data_rows.
+            # The BOM is on the SHEET view (Sheet1, index 0), not on model
+            # views — confirmed by W18 diagnostic. GetBomTable() returns None
+            # even with assembly loaded; GetFirstTableAnnotation() is the
+            # correct traversal path.
             reopen_bom_rows = 0
             reopen_errors: list[str] = []
             try:
@@ -218,21 +227,25 @@ def run() -> str:
                 while v is not None:
                     tv = typed_qi(v, "IView", module=mod)
                     try:
-                        bom_raw = tv.GetBomTable()
-                        if bom_raw is not None and not isinstance(bom_raw, int):
+                        ta = tv.GetFirstTableAnnotation()
+                        while ta is not None:
                             try:
                                 bom_ann = typed_qi(
-                                    bom_raw, "IBomTableAnnotation", module=mod
+                                    ta, "IBomTableAnnotation", module=mod
                                 )
                                 rows = _count_bom_data_rows(bom_ann)
-                                if rows > 0:
+                                if rows > 0 and rows > reopen_bom_rows:
                                     reopen_bom_rows = rows
-                            except Exception as exc2:
-                                reopen_errors.append(
-                                    f"IBomTableAnnotation QI: {exc2!r}"[:80]
-                                )
+                            except Exception:
+                                pass
+                            try:
+                                ta = ta.GetNext()
+                            except Exception:
+                                break
                     except Exception as exc3:
-                        reopen_errors.append(f"GetBomTable: {exc3!r}"[:80])
+                        reopen_errors.append(
+                            f"GetFirstTableAnnotation: {exc3!r}"[:80]
+                        )
                     try:
                         v = tv.GetNextView()
                     except Exception:
