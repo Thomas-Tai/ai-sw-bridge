@@ -92,10 +92,11 @@ def place_components(
 ) -> tuple[dict[str, Any], str | None]:
     """Place all components into an assembly document.
 
-    Phase 1 is **translation-only**: ``AddComponent4`` places at ``xyz_mm``;
-    rotation (``rpy_deg``) is rejected at validation (rotation via
-    ``MathTransform``/``IComponent2.Transform2`` is unproven and deferred), so a
-    placed component is never silently mis-oriented.
+    Placement is **translation + rotation** (W13): ``AddComponent4`` places at
+    ``xyz_mm``; a non-zero ``rpy_deg`` is then applied via
+    ``IMathUtility.CreateTransform`` → ``IComponent2.SetTransformAndSolve``
+    (seat-proven — a bare ``Transform2`` propput does NOT move geometry).
+    A zero/absent ``rpy_deg`` stays on the fast translation-only path.
 
     For each component:
       1. ``OpenDoc6(part_path)`` — mandatory pre-open (its absence was the E4 wall).
