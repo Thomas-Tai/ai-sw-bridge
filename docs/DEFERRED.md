@@ -16,7 +16,7 @@ git log) and reference the implementing commit in `CHANGELOG.md`.
 |---|---|---|
 | **L5 collapse via VBA emit-and-run** | 2026-05-23 | `SolidworksMCP-python/vba_adapter.py` pattern may make the C# in-process adapter obsolete. Re-evaluate after v0.13 produces stability telemetry. |
 | **L3 corpus boundary** — `sldworksapiprogguide.chm` ingestion strategy | 2026-05-23 | Whether the programmer's guide goes into the main corpus (dedup) or stays as a separate `examples` sub-corpus. Decide after gathering precision@k data from real RAG usage. |
-| **L4 multi-part storage** — per-part `.sqlite` vs shared per-project DB | 2026-05-23 | Premature without assembly support. Decide when multi-part assemblies actually ship. |
+| **L4 multi-part storage** — per-part `.sqlite` vs shared per-project DB | 2026-05-23 | **RESOLVED 2026-06-05 (W14):** neither — extended the per-assembly JSON manifest (`<asm>.sldasm.manifest.json`, schema v2: verbatim spec + runtime overlay) instead of SQLite. Consistent with the per-part `brep.manifest` pattern, git-friendly, zero new deps. SQLite-per-project stays deferred until a cross-assembly query/scale need actually exists. Retained for decision history. |
 
 ## Open technical questions
 
