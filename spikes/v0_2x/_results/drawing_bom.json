@@ -1,0 +1,88 @@
+{
+  "spike": "w18_drawing_bom",
+  "timestamp": "2026-06-05T19:19:58",
+  "gates": {
+    "bom_template_found": {
+      "ok": true,
+      "detail": "path=C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\lang\\english\\bom-all.sldbomtbt"
+    },
+    "drw_template_found": {
+      "ok": true,
+      "detail": "path=C:\\ProgramData\\SOLIDWORKS\\SOLIDWORKS 2024\\templates\\Drawing.DRWDOT"
+    },
+    "build_part_a": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "build_part_b": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "assembly_commit": {
+      "ok": true,
+      "detail": "ok=True, mates=1"
+    },
+    "asm_component_count": {
+      "ok": true,
+      "detail": "GetComponents(True)=2"
+    },
+    "drawing_create": {
+      "ok": true,
+      "detail": "type=CDispatch"
+    },
+    "drawing_qi": {
+      "ok": true,
+      "detail": "IDrawingDoc QI ok"
+    },
+    "view_created": {
+      "ok": true,
+      "detail": "type=IView"
+    },
+    "route_a_insert": {
+      "ok": true,
+      "detail": "returned type=IBomTableAnnotation"
+    },
+    "post_insert_table_count": {
+      "ok": false,
+      "detail": "pre=0, post=0"
+    },
+    "bom_row_count": {
+      "ok": false,
+      "detail": "IBomTable unavailable (all paths failed)"
+    },
+    "LIVENESS_DATA_ROWS_GT_ZERO": {
+      "ok": false,
+      "detail": "data_rows=-1 (row_count=-1 - 1 header)"
+    },
+    "LIVENESS_ROWS_EQ_COMPONENT_COUNT": {
+      "ok": false,
+      "detail": "data_rows=-1, component_count=2"
+    },
+    "drawing_save": {
+      "ok": true,
+      "detail": "size=38360"
+    },
+    "OVERALL": {
+      "ok": false,
+      "detail": "liveness=False, saved=True"
+    }
+  },
+  "characterization": {
+    "bom_template": "C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\lang\\english\\bom-all.sldbomtbt",
+    "component_count": 2,
+    "asm_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\w18_bom_1780658398.SLDASM",
+    "component_count_verified": 2,
+    "pre_insert_table_count": 0,
+    "route_a": {
+      "result_type": "IBomTableAnnotation",
+      "result_repr": "<win32com.gen_py.SldWorks 2024 Type Library.IBomTableAnnotation instance at 0x1987246561936>",
+      "ok": true
+    },
+    "post_insert_table_count": 0,
+    "igetbomtable_error": "com_error(-2147352567, 'Exception occurred.', (61836, 'SOLIDWORKS', 'Unable to read write-only property.', 'C:\\\\PROGRA~1\\\\SOLIDW~1\\\\SOLIDW~1\\\\lang\\\\english\\\\sldworks.chm', 455052, 0), None)",
+    "ibomtable_qi_error": "EarlyBindError(\"object does not implement 'IBomTable' (E_NOINTERFACE)\")",
+    "liveness_ok": false,
+    "component_count_at_check": 2
+  },
+  "verdict": "NO-GO"
+}
