@@ -2517,6 +2517,128 @@ def sw_edit_assembly(
     return result
 
 
+# ---- Drawing lifecycle (Wave-16) ----
+
+
+def sw_propose_drawing(spec: dict[str, Any]) -> dict[str, Any]:
+    """Propose a drawing spec — validate offline.
+
+    Returns a result dict with ``ok``, ``proposal_id``, and ``error``.
+    """
+    import jsonschema
+
+    from .drawing.lifecycle import validate_drawing_spec
+    from .drawing.spec_schema import DRAWING_SPEC_SCHEMA
+
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": None,
+        "kind": "drawing",
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+
+    try:
+        jsonschema.validate(spec, DRAWING_SPEC_SCHEMA)
+    except jsonschema.ValidationError as exc:
+        result["error"] = f"schema error: {exc.message}"
+        return result
+
+    try:
+        validate_drawing_spec(spec)
+    except ValueError as exc:
+        result["error"] = str(exc)
+        return result
+
+    pid = uuid.uuid4().hex[:12]
+    rec = {
+        "kind": "drawing",
+        "state": ST_PROPOSED,
+        "spec": spec,
+        "proposed_at": time.time(),
+    }
+    _save_proposal(pid, rec)
+    result["ok"] = True
+    result["proposal_id"] = pid
+    return result
+
+
+def sw_dry_run_drawing(proposal_id: str) -> dict[str, Any]:
+    """Dry-run a drawing proposal — confirm model file exists."""
+    from .drawing.lifecycle import dry_run_drawing
+
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": proposal_id,
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+
+    rec = _load_proposal(proposal_id)
+    if rec is None:
+        result["error"] = f"proposal {proposal_id} not found"
+        return result
+    if rec.get("kind") != "drawing":
+        result["error"] = f"proposal {proposal_id} is not a drawing proposal"
+        return result
+
+    dry = dry_run_drawing(rec["spec"])
+    result.update(dry)
+
+    if dry.get("ok"):
+        rec["state"] = ST_DRY_RUN_OK
+        _save_proposal(proposal_id, rec)
+        result["state"] = ST_DRY_RUN_OK
+
+    return result
+
+
+def sw_commit_drawing(
+    proposal_id: str,
+    output_path: str,
+) -> dict[str, Any]:
+    """Commit a drawing proposal — create views, save .SLDDRW."""
+    from .drawing.lifecycle import commit_drawing
+
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": proposal_id,
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+
+    rec = _load_proposal(proposal_id)
+    if rec is None:
+        result["error"] = f"proposal {proposal_id} not found"
+        return result
+    if rec.get("kind") != "drawing":
+        result["error"] = f"proposal {proposal_id} is not a drawing proposal"
+        return result
+    if rec["state"] != ST_DRY_RUN_OK:
+        result["error"] = (
+            f"refusing to commit proposal in state {rec['state']!r}; "
+            "must be 'dry_run_ok'"
+        )
+        return result
+
+    try:
+        sw = get_sw_app()
+    except Exception as exc:
+        result["error"] = f"could not connect to SW: {exc!r}"
+        return result
+
+    commit = commit_drawing(sw, rec["spec"], output_path)
+    result.update(commit)
+
+    if commit.get("ok"):
+        rec["state"] = ST_COMMITTED
+        rec["committed_at"] = time.time()
+        _save_proposal(proposal_id, rec)
+        result["state"] = ST_COMMITTED
+
+    return result
+
+
 def sw_dry_run_feature_add(proposal_id: str) -> dict[str, Any]:
     """Open the doc, resolve the edge, add the fillet, rebuild, close without saving."""
     result: dict[str, Any] = {
