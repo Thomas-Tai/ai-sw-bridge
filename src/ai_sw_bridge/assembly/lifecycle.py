@@ -23,7 +23,7 @@ from typing import Any
 
 from .face_resolver import resolve_component_face
 from .handlers import create_mate, place_components
-from .storage import AssemblyManifest, ComponentInstance, MateRecord
+from .storage import AssemblyManifest, ComponentInstance, sha256_of_file
 
 
 def _find_assembly_template() -> str | None:
@@ -376,39 +376,35 @@ def commit_assembly(
 
         # Build the manifest
         typed_asm = typed(asm_doc, "IAssemblyDoc", module=mod)
-        manifest = AssemblyManifest()
+
+        # L4 (W14): persist a v2 manifest (verbatim spec + runtime overlay)
+        # alongside the .sldasm so the assembly is durable and losslessly
+        # re-openable. Provenance: when a component was built from a part_spec,
+        # record the source path + its content hash.
+        manifest = AssemblyManifest(spec=spec, assembly_path=str(output_path))
         for cid, comp in placed.items():
             try:
                 sw_name = comp.Name if hasattr(comp, "Name") else str(comp)
             except Exception:
                 sw_name = cid
             comp_spec = next(c for c in comp_specs if c["id"] == cid)
+            spec_path = built_specs.get(cid, {}).get("spec_path")
             manifest.components.append(ComponentInstance(
                 id=cid,
                 sw_name=str(sw_name),
                 part_path=resolved[cid],
                 transform=comp_spec.get("transform", {}),
+                part_spec_path=spec_path,
+                part_spec_sha256=sha256_of_file(spec_path),
             ))
 
-        for mate_spec in spec.get("mates", []):
-            if mate_spec["type"] == "width":
-                manifest.mates.append(MateRecord(
-                    type=mate_spec["type"],
-                    alignment=None,
-                    a={},
-                    b={},
-                    value=None,
-                    width_faces=mate_spec.get("width_faces"),
-                    tab_faces=mate_spec.get("tab_faces"),
-                ))
-            else:
-                manifest.mates.append(MateRecord(
-                    type=mate_spec["type"],
-                    alignment=mate_spec.get("alignment"),
-                    a=mate_spec["a"],
-                    b=mate_spec["b"],
-                    value=mate_spec.get("value_mm"),
-                ))
+        manifest_path = str(output_path) + ".manifest.json"
+        try:
+            manifest.save(Path(manifest_path))
+            result["manifest_path"] = manifest_path
+        except OSError as exc:
+            result["manifest_path"] = None
+            result["manifest_save_error"] = f"{type(exc).__name__}: {exc}"
 
         result["manifest"] = manifest.to_dict()
         result["ok"] = True

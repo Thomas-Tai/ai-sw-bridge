@@ -1,0 +1,83 @@
+{
+  "pae": "w14_l4_persistence",
+  "timestamp": "2026-06-05T14:42:15",
+  "gates": {
+    "build_part_a": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "write_part_spec_b": {
+      "ok": true,
+      "detail": ""
+    },
+    "authored_spec": {
+      "ok": true,
+      "detail": "components=2, mates=1"
+    },
+    "propose_ok": {
+      "ok": true,
+      "detail": "proposal_id=955689f9df91"
+    },
+    "dry_run_ok": {
+      "ok": true,
+      "detail": "state=dry_run_ok, resolved=1"
+    },
+    "commit_ok": {
+      "ok": true,
+      "detail": "state=committed, components=2, mates=1"
+    },
+    "manifest_path_set": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w14_l4_1780641735.SLDASM.manifest.json"
+    },
+    "manifest_file_exists": {
+      "ok": true,
+      "detail": "size=1946"
+    },
+    "lossless_to_spec": {
+      "ok": true,
+      "detail": "reloaded keys=['components', 'kind', 'mates', 'name'], authored keys=['components', 'kind', 'mates', 'name']"
+    },
+    "runtime_has_both_components": {
+      "ok": true,
+      "detail": "ids=['plate_a', 'plate_b']"
+    },
+    "sw_name_plate_a": {
+      "ok": true,
+      "detail": "sw_name='w14_l4_1780641735_plateA-1'"
+    },
+    "sw_name_plate_b": {
+      "ok": true,
+      "detail": "sw_name='asm_parts_1780641742_plate_b-1'"
+    },
+    "plate_b_has_part_spec_path": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w14_l4_1780641735_plateB.aisw.json"
+    },
+    "plate_b_sha256_match": {
+      "ok": true,
+      "detail": "expected=c04afb02dde777f19337d90e65bde4f8c758583b14db1858acb962b50db92ecf, got=c04afb02dde777f19337d90e65bde4f8c758583b14db1858acb962b50db92ecf"
+    },
+    "assembly_path_relative": {
+      "ok": true,
+      "detail": "on_disk='w14_l4_1780641735.SLDASM'"
+    },
+    "part_path_relative_plate_a": {
+      "ok": true,
+      "detail": "on_disk='w14_l4_1780641735_plateA.SLDPRT'"
+    },
+    "part_path_relative_plate_b": {
+      "ok": true,
+      "detail": "on_disk='asm_parts_1780641742_plate_b.SLDPRT'"
+    },
+    "spec_block_verbatim_on_disk": {
+      "ok": true,
+      "detail": "spec block matches authored spec byte-for-byte"
+    },
+    "OVERALL_GREEN": {
+      "ok": true,
+      "detail": "18/18 gates pass"
+    }
+  },
+  "verdict": "GREEN"
+}
