@@ -13,7 +13,17 @@ The schema enforces:
 
 from __future__ import annotations
 
-MATE_TYPES = frozenset({"coincident", "distance", "concentric", "parallel", "perpendicular"})
+MATE_TYPES = frozenset(
+    {
+        "coincident",
+        "distance",
+        "concentric",
+        "parallel",
+        "perpendicular",
+        "tangent",
+        "angle",
+    }
+)
 
 MATE_ALIGNMENTS = frozenset({"aligned", "anti_aligned", "closest"})
 

@@ -323,3 +323,85 @@ class TestPhase2MateValidation:
         spec = _assembly_with_mate(mate)
         with pytest.raises(AssemblyValidationError, match="does not accept"):
             validate_assembly(spec)
+
+
+# ---- Phase-3 mate type validation (tangent, angle, limit) ----
+# Seat-proven W11: tangent (MateTangent), angle (MatePlanarAngleDim, deg->rad),
+# limit on distance/angle (Min/Max variation). Width remains de-advertised
+# (needs a separate two-reference-set handler path — see DEFERRED.md).
+
+class TestPhase3MateValidation:
+    """Phase-3 mate type validation rules (tangent / angle / limit)."""
+
+    def test_tangent_is_advertised(self) -> None:
+        assert "tangent" in MATE_TYPES
+
+    def test_angle_is_advertised(self) -> None:
+        assert "angle" in MATE_TYPES
+
+    def test_width_is_not_advertised(self) -> None:
+        # Width is seat-proven in spike but not production-wired (different
+        # selection structure); it must stay gated until its handler ships.
+        assert "width" not in MATE_TYPES
+
+    # --- tangent: geometric, no scalar ---
+
+    def test_accepts_tangent_without_value(self) -> None:
+        spec = _assembly_with_mate(_mate_spec("tangent"))
+        validate_assembly(spec)  # should not raise
+
+    def test_rejects_tangent_with_value_mm(self) -> None:
+        spec = _assembly_with_mate(_mate_spec("tangent", value_mm=5.0))
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(spec)
+
+    def test_rejects_tangent_with_value_deg(self) -> None:
+        spec = _assembly_with_mate(_mate_spec("tangent", value_deg=30.0))
+        with pytest.raises(AssemblyValidationError, match="does not accept 'value_deg'"):
+            validate_assembly(spec)
+
+    # --- angle: requires value_deg, rejects value_mm ---
+
+    def test_accepts_angle_with_value_deg(self) -> None:
+        spec = _assembly_with_mate(_mate_spec("angle", value_deg=45.0))
+        validate_assembly(spec)  # should not raise
+
+    def test_rejects_angle_without_value_deg(self) -> None:
+        spec = _assembly_with_mate(_mate_spec("angle"))
+        with pytest.raises(AssemblyValidationError, match="angle mate requires 'value_deg'"):
+            validate_assembly(spec)
+
+    def test_rejects_angle_with_value_mm(self) -> None:
+        spec = _assembly_with_mate(_mate_spec("angle", value_deg=45.0, value_mm=5.0))
+        with pytest.raises(AssemblyValidationError, match="does not accept 'value_mm'"):
+            validate_assembly(spec)
+
+    # --- limit: distance/angle only, both bounds, min < max ---
+
+    def test_accepts_distance_limit(self) -> None:
+        mate = _mate_spec("distance", value_mm=5.0, limit={"min_mm": 3.0, "max_mm": 7.0})
+        validate_assembly(_assembly_with_mate(mate))  # should not raise
+
+    def test_accepts_angle_limit(self) -> None:
+        mate = _mate_spec("angle", value_deg=45.0, limit={"min_deg": 30.0, "max_deg": 60.0})
+        validate_assembly(_assembly_with_mate(mate))  # should not raise
+
+    def test_rejects_limit_on_non_distance_angle(self) -> None:
+        mate = _mate_spec("parallel", limit={"min_mm": 3.0, "max_mm": 7.0})
+        with pytest.raises(AssemblyValidationError, match="only supported for distance and angle"):
+            validate_assembly(_assembly_with_mate(mate))
+
+    def test_rejects_distance_limit_missing_bound(self) -> None:
+        mate = _mate_spec("distance", value_mm=5.0, limit={"min_mm": 3.0})
+        with pytest.raises(AssemblyValidationError, match="requires both 'min_mm' and 'max_mm'"):
+            validate_assembly(_assembly_with_mate(mate))
+
+    def test_rejects_distance_limit_min_ge_max(self) -> None:
+        mate = _mate_spec("distance", value_mm=5.0, limit={"min_mm": 7.0, "max_mm": 3.0})
+        with pytest.raises(AssemblyValidationError, match="must be less than"):
+            validate_assembly(_assembly_with_mate(mate))
+
+    def test_rejects_angle_limit_min_ge_max(self) -> None:
+        mate = _mate_spec("angle", value_deg=45.0, limit={"min_deg": 60.0, "max_deg": 30.0})
+        with pytest.raises(AssemblyValidationError, match="must be less than"):
+            validate_assembly(_assembly_with_mate(mate))
