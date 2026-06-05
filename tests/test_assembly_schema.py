@@ -9,7 +9,12 @@ from __future__ import annotations
 
 import pytest
 
-from ai_sw_bridge.assembly.schema import ASSEMBLY_SCHEMA, MATE_ALIGNMENTS, MATE_TYPES
+from ai_sw_bridge.assembly.schema import (
+    ASSEMBLY_SCHEMA,
+    MATE_ALIGNMENTS,
+    MATE_TYPES,
+    WIDTH_MATE_SCHEMA,
+)
 from ai_sw_bridge.assembly.validator import (
     AssemblyValidationError,
     validate_assembly,
@@ -405,3 +410,160 @@ class TestPhase3MateValidation:
         mate = _mate_spec("angle", value_deg=45.0, limit={"min_deg": 60.0, "max_deg": 30.0})
         with pytest.raises(AssemblyValidationError, match="must be less than"):
             validate_assembly(_assembly_with_mate(mate))
+
+
+# ---- Width mate validation (Wave-12) ----
+# Width uses width_faces / tab_faces (2 refs each) instead of a / b.
+# De-advertised ("width" not in MATE_TYPES) until the production PAE clears.
+
+
+def _width_mate_spec(**overrides: object) -> dict:
+    """Build a well-formed width mate spec."""
+    base: dict = {
+        "type": "width",
+        "width_faces": [
+            {"component": "a", "face_ref": {"normal": [-1, 0, 0]}},
+            {"component": "a", "face_ref": {"normal": [1, 0, 0]}},
+        ],
+        "tab_faces": [
+            {"component": "b", "face_ref": {"normal": [-1, 0, 0]}},
+            {"component": "b", "face_ref": {"normal": [1, 0, 0]}},
+        ],
+    }
+    base.update(overrides)
+    return base
+
+
+def _assembly_with_width_mate(mate: dict | None = None) -> dict:
+    """Minimal assembly with one width mate."""
+    if mate is None:
+        mate = _width_mate_spec()
+    return {
+        "kind": "assembly",
+        "name": "test_width",
+        "components": [
+            {"id": "a", "part": "slot.sldprt", "transform": {"xyz_mm": [0, 0, 0]}},
+            {"id": "b", "part": "tab.sldprt", "transform": {"xyz_mm": [0, 0, 50]}},
+        ],
+        "mates": [mate],
+    }
+
+
+class TestWidthMateSchemaValidation:
+    """Structural (jsonschema) tests for the width mate schema."""
+
+    def test_width_schema_accepts_well_formed(self) -> None:
+        import jsonschema
+        jsonschema.validate(_width_mate_spec(), WIDTH_MATE_SCHEMA)
+
+    def test_width_schema_rejects_one_width_face(self) -> None:
+        import jsonschema
+        spec = _width_mate_spec(width_faces=[
+            {"component": "a", "face_ref": {"normal": [-1, 0, 0]}},
+        ])
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, WIDTH_MATE_SCHEMA)
+
+    def test_width_schema_rejects_three_tab_faces(self) -> None:
+        import jsonschema
+        spec = _width_mate_spec(tab_faces=[
+            {"component": "b", "face_ref": {"normal": [-1, 0, 0]}},
+            {"component": "b", "face_ref": {"normal": [1, 0, 0]}},
+            {"component": "b", "face_ref": {"normal": [0, 1, 0]}},
+        ])
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, WIDTH_MATE_SCHEMA)
+
+    def test_width_schema_rejects_stray_alignment(self) -> None:
+        import jsonschema
+        spec = _width_mate_spec(alignment="aligned")
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, WIDTH_MATE_SCHEMA)
+
+    def test_assembly_schema_accepts_width_mate(self) -> None:
+        import jsonschema
+        jsonschema.validate(_assembly_with_width_mate(), ASSEMBLY_SCHEMA)
+
+
+class TestWidthMateValidation:
+    """Semantic (validate_assembly) tests for width mate rules."""
+
+    def test_accepts_well_formed(self) -> None:
+        validate_assembly(_assembly_with_width_mate())
+
+    def test_rejects_missing_width_faces(self) -> None:
+        mate = _width_mate_spec()
+        del mate["width_faces"]
+        mate["width_faces"] = None  # type: ignore[typeddict-item]
+        # jsonschema rejects None; validator catches missing set
+        mate = {"type": "width", "tab_faces": _width_mate_spec()["tab_faces"]}
+        # Use a raw dict to bypass schema — test the validator directly
+        spec = _assembly_with_width_mate(mate)
+        # Validator should catch missing width_faces
+        with pytest.raises(Exception):
+            validate_assembly(spec)
+
+    def test_rejects_wrong_count_width_faces(self) -> None:
+        mate = _width_mate_spec(width_faces=[
+            {"component": "a", "face_ref": {"normal": [-1, 0, 0]}},
+        ])
+        spec = _assembly_with_width_mate(mate)
+        with pytest.raises(Exception):
+            validate_assembly(spec)
+
+    def test_rejects_stray_value_mm(self) -> None:
+        mate = _width_mate_spec(value_mm=5.0)
+        spec = _assembly_with_width_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(spec)
+
+    def test_rejects_stray_value_deg(self) -> None:
+        mate = _width_mate_spec(value_deg=30.0)
+        spec = _assembly_with_width_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(spec)
+
+    def test_rejects_stray_limit(self) -> None:
+        mate = _width_mate_spec(limit={"min_mm": 3.0, "max_mm": 7.0})
+        spec = _assembly_with_width_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(spec)
+
+    def test_rejects_stray_a(self) -> None:
+        mate = _width_mate_spec(a={"component": "a", "face_ref": {"normal": [0, 0, 1]}})
+        spec = _assembly_with_width_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(spec)
+
+    def test_rejects_stray_b(self) -> None:
+        mate = _width_mate_spec(b={"component": "b", "face_ref": {"normal": [0, 0, 1]}})
+        spec = _assembly_with_width_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(spec)
+
+    def test_rejects_unknown_component_in_width_faces(self) -> None:
+        mate = _width_mate_spec(width_faces=[
+            {"component": "ghost", "face_ref": {"normal": [-1, 0, 0]}},
+            {"component": "a", "face_ref": {"normal": [1, 0, 0]}},
+        ])
+        spec = _assembly_with_width_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="ghost"):
+            validate_assembly(spec)
+
+    def test_rejects_unknown_component_in_tab_faces(self) -> None:
+        mate = _width_mate_spec(tab_faces=[
+            {"component": "b", "face_ref": {"normal": [-1, 0, 0]}},
+            {"component": "ghost", "face_ref": {"normal": [1, 0, 0]}},
+        ])
+        spec = _assembly_with_width_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="ghost"):
+            validate_assembly(spec)
+
+    def test_rejects_empty_face_ref_in_width_faces(self) -> None:
+        mate = _width_mate_spec(width_faces=[
+            {"component": "a", "face_ref": {}},
+            {"component": "a", "face_ref": {"normal": [1, 0, 0]}},
+        ])
+        spec = _assembly_with_width_mate(mate)
+        with pytest.raises(AssemblyValidationError, match="face_ref"):
+            validate_assembly(spec)

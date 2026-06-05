@@ -94,6 +94,27 @@ MATE_SCHEMA = {
     },
 }
 
+WIDTH_MATE_SCHEMA = {
+    "type": "object",
+    "required": ["type", "width_faces", "tab_faces"],
+    "additionalProperties": False,
+    "properties": {
+        "type": {"const": "width"},
+        "width_faces": {
+            "type": "array",
+            "items": MATE_REF_SCHEMA,
+            "minItems": 2,
+            "maxItems": 2,
+        },
+        "tab_faces": {
+            "type": "array",
+            "items": MATE_REF_SCHEMA,
+            "minItems": 2,
+            "maxItems": 2,
+        },
+    },
+}
+
 ASSEMBLY_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "ai-sw-bridge assembly spec v1",
@@ -110,7 +131,9 @@ ASSEMBLY_SCHEMA = {
         },
         "mates": {
             "type": "array",
-            "items": MATE_SCHEMA,
+            "items": {
+                "oneOf": [MATE_SCHEMA, WIDTH_MATE_SCHEMA],
+            },
         },
     },
 }

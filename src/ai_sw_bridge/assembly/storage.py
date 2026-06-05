@@ -58,25 +58,33 @@ class ComponentInstance:
 
 @dataclass(frozen=True)
 class MateRecord:
-    """A mate between two component faces.
+    """A mate between component faces.
 
-    ``a`` and ``b`` are dicts of ``{component: <id>, face_ref: <manifest-face>}``.
+    Symmetric mates (coincident, distance, etc.) use ``a`` and ``b`` dicts
+    of ``{component: <id>, face_ref: <manifest-face>}``.
+    Width mates use ``width_faces`` and ``tab_faces`` arrays instead.
     ``value`` is present for distance/angle mates (Phase 2+).
     """
 
     type: str
     alignment: str | None
-    a: dict[str, Any]
-    b: dict[str, Any]
+    a: dict[str, Any] = field(default_factory=dict)
+    b: dict[str, Any] = field(default_factory=dict)
     value: float | None = None
+    width_faces: list[dict[str, Any]] | None = None
+    tab_faces: list[dict[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {
             "type": self.type,
             "alignment": self.alignment,
-            "a": dict(self.a),
-            "b": dict(self.b),
         }
+        if self.width_faces is not None:
+            out["width_faces"] = [dict(r) for r in self.width_faces]
+            out["tab_faces"] = [dict(r) for r in (self.tab_faces or [])]
+        else:
+            out["a"] = dict(self.a)
+            out["b"] = dict(self.b)
         if self.value is not None:
             out["value"] = self.value
         return out
@@ -86,9 +94,11 @@ class MateRecord:
         return cls(
             type=data["type"],
             alignment=data.get("alignment"),
-            a=data["a"],
-            b=data["b"],
+            a=data.get("a", {}),
+            b=data.get("b", {}),
             value=data.get("value"),
+            width_faces=data.get("width_faces"),
+            tab_faces=data.get("tab_faces"),
         )
 
 

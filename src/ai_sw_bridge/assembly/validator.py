@@ -149,10 +149,51 @@ def _check_mates(
             raise AssemblyValidationError("mate must be a dict", path)
 
         mtype = mate.get("type")
-        if mtype not in MATE_TYPES:
+        if mtype not in MATE_TYPES and mtype != "width":
             raise AssemblyValidationError(
                 f"mate type {mtype!r} not in {sorted(MATE_TYPES)}", path
             )
+
+        if mtype == "width":
+            for scalar in ("value_mm", "value_deg", "limit", "a", "b"):
+                if mate.get(scalar) is not None:
+                    raise AssemblyValidationError(
+                        f"width mate does not accept {scalar!r} "
+                        f"(uses width_faces/tab_faces only)",
+                        path,
+                    )
+            for set_key in ("width_faces", "tab_faces"):
+                face_set = mate.get(set_key)
+                if not isinstance(face_set, list) or len(face_set) != 2:
+                    raise AssemblyValidationError(
+                        f"width mate requires {set_key} with exactly 2 refs",
+                        path,
+                    )
+                for j, ref in enumerate(face_set):
+                    ref_path = f"{path}/{set_key}/{j}"
+                    if not isinstance(ref, dict):
+                        raise AssemblyValidationError(
+                            f"{set_key}[{j}] must be a dict", ref_path
+                        )
+                    ref_comp = ref.get("component")
+                    if not isinstance(ref_comp, str) or not ref_comp:
+                        raise AssemblyValidationError(
+                            f"{set_key}[{j}].component must be a non-empty string",
+                            ref_path,
+                        )
+                    if ref_comp not in component_ids:
+                        raise AssemblyValidationError(
+                            f"{set_key}[{j}].component {ref_comp!r} not found in "
+                            f"component ids {sorted(component_ids)}",
+                            ref_path,
+                        )
+                    face_ref = ref.get("face_ref")
+                    if not isinstance(face_ref, dict) or not face_ref:
+                        raise AssemblyValidationError(
+                            f"{set_key}[{j}].face_ref must be a non-empty dict",
+                            ref_path,
+                        )
+            continue
 
         alignment = mate.get("alignment")
         if alignment is not None and alignment not in MATE_ALIGNMENTS:
