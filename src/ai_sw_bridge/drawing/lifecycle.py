@@ -187,6 +187,45 @@ def commit_drawing(
         if view_errors:
             result["view_errors"] = view_errors
 
+        # Insert model dimensions if requested (W17)
+        insert_dims = spec.get("dimensions", False)
+        if insert_dims and views_placed:
+            try:
+                drawing_doc.InsertModelAnnotations3(
+                    0, -1, True, False, True, 0
+                )
+                result["dimensions_inserted"] = True
+            except Exception as exc:
+                result["dimensions_inserted"] = False
+                result["error"] = (
+                    f"InsertModelAnnotations3 failed: {exc!r}"
+                )
+                return result
+
+            # Fail-closed: verify at least one annotation was inserted
+            try:
+                sheet = drawing_doc.GetCurrentSheet()
+                sheet_views = sheet.GetViews()
+                total_annotations = 0
+                if sheet_views:
+                    for sv in sheet_views:
+                        try:
+                            ac = sv.GetAnnotationCount()
+                            total_annotations += ac if ac else 0
+                        except Exception:
+                            pass
+                result["total_annotations"] = total_annotations
+                if total_annotations == 0:
+                    result["error"] = (
+                        "dimensions: true but zero annotations inserted "
+                        "(model may have been built with no_dim=True; "
+                        "rebuild with no_dim=False for dimensioned output)"
+                    )
+                    return result
+            except Exception as exc:
+                result["total_annotations"] = -1
+                result["dim_verify_error"] = str(exc)[:200]
+
         # Save the drawing
         try:
             doc_raw.SaveAs3(output_path, 0, 2)

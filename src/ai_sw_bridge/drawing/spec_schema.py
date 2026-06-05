@@ -49,6 +49,15 @@ DRAWING_SPEC_SCHEMA: dict[str, Any] = {
                 },
             },
         },
+        "dimensions": {
+            "type": "boolean",
+            "default": False,
+            "description": (
+                "If true, insert model dimensions onto each view via "
+                "InsertModelAnnotations3. Requires the model to have "
+                "display dimensions (built with no_dim=False)."
+            ),
+        },
     },
 }
 

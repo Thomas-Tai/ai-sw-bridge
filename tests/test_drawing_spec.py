@@ -204,3 +204,53 @@ class TestDrawingCli:
         args = argparse.Namespace(spec=str(spec_file))
         result = _run_propose(args)
         assert result["ok"] is True
+
+
+# ---- W17: dimensions flag ----
+
+
+class TestDimensionsSchema:
+    def test_accepts_dimensions_true(self) -> None:
+        import jsonschema
+        jsonschema.validate(
+            _drawing_spec(dimensions=True), DRAWING_SPEC_SCHEMA
+        )
+
+    def test_accepts_dimensions_false(self) -> None:
+        import jsonschema
+        jsonschema.validate(
+            _drawing_spec(dimensions=False), DRAWING_SPEC_SCHEMA
+        )
+
+    def test_rejects_dimensions_string(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(dimensions="yes"), DRAWING_SPEC_SCHEMA
+            )
+
+    def test_rejects_dimensions_int(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(dimensions=1), DRAWING_SPEC_SCHEMA
+            )
+
+    def test_dimensions_optional(self) -> None:
+        import jsonschema
+        jsonschema.validate(_drawing_spec(), DRAWING_SPEC_SCHEMA)
+
+
+class TestDimensionsPropose:
+    def test_propose_with_dimensions_true(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(_drawing_spec(dimensions=True))
+        assert result["ok"] is True
+        assert result["kind"] == "drawing"
+
+    def test_propose_with_dimensions_false(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(_drawing_spec(dimensions=False))
+        assert result["ok"] is True
