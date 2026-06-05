@@ -1,0 +1,79 @@
+{
+  "spike": "w17_drawing_dims_v2",
+  "timestamp": "2026-06-05T16:07:52",
+  "gates": {
+    "suppress_toggle_9": {
+      "ok": true,
+      "detail": "set to False"
+    },
+    "suppress_toggle_10": {
+      "ok": true,
+      "detail": "set to False"
+    },
+    "suppress_toggle_22": {
+      "ok": true,
+      "detail": "set to False"
+    },
+    "suppress_toggle_23": {
+      "ok": true,
+      "detail": "set to False"
+    },
+    "build_part_with_dims": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "drawing_create": {
+      "ok": true,
+      "detail": ""
+    },
+    "view_create": {
+      "ok": true,
+      "detail": "type=IView"
+    },
+    "pre_annotation_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "routeC_insert": {
+      "ok": true,
+      "detail": "result_type=tuple"
+    },
+    "post_annotation_count": {
+      "ok": true,
+      "detail": "count=2"
+    },
+    "dims_inserted": {
+      "ok": true,
+      "detail": "pre=0, post=2"
+    },
+    "OVERALL_GO": {
+      "ok": true,
+      "detail": "pre=0, post=2"
+    }
+  },
+  "routes": {
+    "C_drawingdoc": {
+      "status": "GO",
+      "params": "(0, -1, True, False, True, 0)"
+    }
+  },
+  "characterization": {
+    "popup_suppression": {
+      "toggles": [
+        9,
+        10,
+        22,
+        23
+      ],
+      "description": "SetUserPreferenceToggle(toggle_id, False) for IDs 9, 10, 22, 23 suppresses the AddDimension2 popup."
+    },
+    "working_route": {
+      "object": "IDrawingDoc",
+      "method": "InsertModelAnnotations3",
+      "params": "(0, -1, True, False, True, 0)"
+    }
+  },
+  "verdict": "GO",
+  "pre_count": 0,
+  "post_count": 2
+}

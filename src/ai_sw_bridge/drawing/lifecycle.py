@@ -161,6 +161,7 @@ def commit_drawing(
         views = spec.get("views", [])
         views_placed: list[str] = []
         view_errors: list[str] = []
+        placed_views: list[Any] = []  # typed IView references
 
         for i, view_name in enumerate(views):
             fmt = resolve_format(view_name)
@@ -173,6 +174,9 @@ def commit_drawing(
                 )
                 if view is not None and not isinstance(view, int):
                     views_placed.append(view_name)
+                    placed_views.append(
+                        typed_qi(view, "IView", module=mod)
+                    )
                 else:
                     view_errors.append(
                         f"{view_name}: CreateDrawViewFromModelView3 "
@@ -186,6 +190,39 @@ def commit_drawing(
 
         if view_errors:
             result["view_errors"] = view_errors
+
+        # Insert model dimensions if requested (W17)
+        insert_dims = spec.get("dimensions", False)
+        if insert_dims and views_placed:
+            try:
+                drawing_doc.InsertModelAnnotations3(
+                    0, -1, True, False, True, 0
+                )
+                result["dimensions_inserted"] = True
+            except Exception as exc:
+                result["dimensions_inserted"] = False
+                result["error"] = (
+                    f"InsertModelAnnotations3 failed: {exc!r}"
+                )
+                return result
+
+            # Fail-closed: verify at least one annotation was inserted
+            # using the typed IView references we already hold.
+            total_annotations = 0
+            for v in placed_views:
+                try:
+                    ac = v.GetAnnotationCount()
+                    total_annotations += ac if ac else 0
+                except Exception:
+                    pass
+            result["total_annotations"] = total_annotations
+            if total_annotations == 0:
+                result["error"] = (
+                    "dimensions: true but zero annotations inserted "
+                    "(model may have been built with no_dim=True; "
+                    "rebuild with no_dim=False for dimensioned output)"
+                )
+                return result
 
         # Save the drawing
         try:

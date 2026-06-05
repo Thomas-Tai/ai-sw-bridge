@@ -1,0 +1,47 @@
+{
+  "pae": "w17_drawing_dims",
+  "timestamp": "2026-06-05T16:16:06",
+  "gates": {
+    "popup_suppressed": {
+      "ok": true,
+      "detail": "toggles=[9, 10, 22, 23]"
+    },
+    "build_dim_part": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "drw_propose": {
+      "ok": true,
+      "detail": "pid=b8ff9cc6e6c9"
+    },
+    "drw_dry_run": {
+      "ok": true,
+      "detail": ""
+    },
+    "drw_commit": {
+      "ok": true,
+      "detail": "views=['front', 'top', 'right', 'isometric'], annotations=6"
+    },
+    "drw_file_exists": {
+      "ok": true,
+      "detail": "size=32956"
+    },
+    "dimensions_inserted": {
+      "ok": true,
+      "detail": "dimensions_inserted=True"
+    },
+    "annotations_gt_zero": {
+      "ok": true,
+      "detail": "total_annotations=6"
+    },
+    "reopen_annotations": {
+      "ok": true,
+      "detail": "views=5, total_annotations=6"
+    },
+    "OVERALL_GREEN": {
+      "ok": true,
+      "detail": "9/9 gates pass"
+    }
+  },
+  "verdict": "GREEN"
+}
