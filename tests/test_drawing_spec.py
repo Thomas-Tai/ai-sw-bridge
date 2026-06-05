@@ -254,3 +254,84 @@ class TestDimensionsPropose:
         from ai_sw_bridge.mutate import sw_propose_drawing
         result = sw_propose_drawing(_drawing_spec(dimensions=False))
         assert result["ok"] is True
+
+
+# ---- W18: bom flag ----
+
+
+class TestBomSchema:
+    def test_accepts_bom_true(self) -> None:
+        import jsonschema
+        jsonschema.validate(_drawing_spec(bom=True), DRAWING_SPEC_SCHEMA)
+
+    def test_accepts_bom_false(self) -> None:
+        import jsonschema
+        jsonschema.validate(_drawing_spec(bom=False), DRAWING_SPEC_SCHEMA)
+
+    def test_bom_optional_absent(self) -> None:
+        import jsonschema
+        jsonschema.validate(_drawing_spec(), DRAWING_SPEC_SCHEMA)
+
+    def test_rejects_bom_string(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(_drawing_spec(bom="yes"), DRAWING_SPEC_SCHEMA)
+
+    def test_rejects_bom_int(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(_drawing_spec(bom=1), DRAWING_SPEC_SCHEMA)
+
+
+class TestBomSemanticValidation:
+    def test_accepts_bom_true_with_sldasm(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(_drawing_spec(model="asm.sldasm", bom=True))
+
+    def test_accepts_bom_false_with_sldprt(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(_drawing_spec(model="part.sldprt", bom=False))
+
+    def test_accepts_bom_absent_with_sldprt(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(_drawing_spec(model="part.sldprt"))
+
+    def test_rejects_bom_true_with_sldprt(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        with pytest.raises(ValueError, match="assembly model"):
+            validate_drawing_spec(_drawing_spec(model="part.sldprt", bom=True))
+
+    def test_rejects_bom_true_with_uppercase_sldprt(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        with pytest.raises(ValueError, match="assembly model"):
+            validate_drawing_spec(_drawing_spec(model="Part.SLDPRT", bom=True))
+
+    def test_rejects_bom_non_bool(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        with pytest.raises(ValueError, match="bom must be a boolean"):
+            validate_drawing_spec(_drawing_spec(bom="yes"))
+
+
+class TestBomPropose:
+    def test_propose_bom_true_with_sldasm(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(_drawing_spec(model="asm.sldasm", bom=True))
+        assert result["ok"] is True
+
+    def test_propose_bom_true_with_sldprt_fails(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(_drawing_spec(model="part.sldprt", bom=True))
+        assert result["ok"] is False
+        assert "assembly model" in result["error"]
+
+    def test_propose_bom_false_with_sldprt_ok(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(_drawing_spec(model="part.sldprt", bom=False))
+        assert result["ok"] is True
