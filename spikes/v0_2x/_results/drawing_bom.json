@@ -1,0 +1,90 @@
+{
+  "spike": "w18_drawing_bom_v3_definitive",
+  "timestamp": "2026-06-05T19:27:57",
+  "gates": {
+    "bom_template_found": {
+      "ok": true,
+      "detail": "path=C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\lang\\english\\bom-all.sldbomtbt"
+    },
+    "drw_template_found": {
+      "ok": true,
+      "detail": "path=C:\\ProgramData\\SOLIDWORKS\\SOLIDWORKS 2024\\templates\\Drawing.DRWDOT"
+    },
+    "build_a": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "build_b": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "assembly_commit": {
+      "ok": true,
+      "detail": "components=2"
+    },
+    "drawing_create": {
+      "ok": true,
+      "detail": "type=CDispatch"
+    },
+    "drawing_qi": {
+      "ok": true,
+      "detail": "IDrawingDoc QI ok"
+    },
+    "view_created": {
+      "ok": true,
+      "detail": "type=IView"
+    },
+    "bom_inserted": {
+      "ok": true,
+      "detail": "returned type=IBomTableAnnotation"
+    },
+    "bom_data_rows_gt_zero": {
+      "ok": true,
+      "detail": "data_rows=2"
+    },
+    "bom_rows_eq_component_count": {
+      "ok": true,
+      "detail": "data_rows=2, component_count=2"
+    },
+    "drawing_save": {
+      "ok": true,
+      "detail": "size=38715"
+    },
+    "OVERALL_GO": {
+      "ok": true,
+      "detail": "BOM data_rows=2/2 components, file=True"
+    }
+  },
+  "characterization": {
+    "dead_paths": {
+      "GetTableAnnotationCount": "always 0 for BOM tables",
+      "GetTableAnnotations": "returns None for BOM tables",
+      "IGetBomTable": "SW error 61836 Unable to read write-only property",
+      "IBomTable_QI": "E_NOINTERFACE \u2014 IBomTableAnnotation != IBomTable"
+    },
+    "bom_template_source": "C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\lang\\english\\bom-all.sldbomtbt",
+    "bom_template_glob": "C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\lang\\english\\*.sldbomtbt",
+    "component_count": 2,
+    "asm_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\w18v3_1780658877.SLDASM",
+    "working_route": "IView.InsertBomTable4",
+    "signature": "InsertBomTable4(UseAnchorPoint:bool, X:float, Y:float, AnchorType:int, BomType:int, Configuration:str, TableTemplate:str, Hidden:bool, IndentedNumberingType:int, DetailedCutList:bool) -> IBomTableAnnotation",
+    "dispid": 414,
+    "bom_row_data": [
+      {
+        "row_index": 1,
+        "component_count": 1,
+        "item_number": "1",
+        "part_number": "w18v3_1780658877_a"
+      },
+      {
+        "row_index": 2,
+        "component_count": 1,
+        "item_number": "2",
+        "part_number": "w18v3_1780658877_b"
+      }
+    ],
+    "bom_data_rows": 2,
+    "drawing_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\w18v3_1780658877.SLDDRW"
+  },
+  "verdict": "GO"
+}

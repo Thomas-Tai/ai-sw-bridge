@@ -1,4 +1,4 @@
-"""Drawing spec JSON schema (Wave-16).
+"""Drawing spec JSON schema (Wave-16/W18).
 
 Defines the ``kind: "drawing"`` spec structure: a model path and a list
 of standard views to generate. This is a standalone spec kind (sibling
@@ -10,6 +10,7 @@ The schema enforces:
   - ``model`` (required, path to .sldasm or .sldprt)
   - ``views[]`` — each in the allowed standard view set
   - ``sheet`` — optional template size
+  - ``bom`` — optional bool; requires .sldasm model (W18)
 """
 
 from __future__ import annotations
@@ -56,6 +57,15 @@ DRAWING_SPEC_SCHEMA: dict[str, Any] = {
                 "If true, insert model dimensions onto each view via "
                 "InsertModelAnnotations3. Requires the model to have "
                 "display dimensions (built with no_dim=False)."
+            ),
+        },
+        "bom": {
+            "type": "boolean",
+            "default": False,
+            "description": (
+                "If true, insert a top-level Bill-of-Materials table "
+                "anchored to the first view. Requires model to be a "
+                ".sldasm — a .sldprt rejects with a clear error message."
             ),
         },
     },
