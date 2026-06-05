@@ -250,6 +250,20 @@ def create_mate(
             if value_deg is not None:
                 typed_iface.Angle = math.radians(float(value_deg))
 
+        # Limit mates: min/max variation on distance or angle
+        limit = mate_spec.get("limit")
+        if limit is not None:
+            if mate_type_str == "distance":
+                if "min_mm" in limit:
+                    typed_iface.MinimumDistance = float(limit["min_mm"]) / 1000.0
+                if "max_mm" in limit:
+                    typed_iface.MaximumDistance = float(limit["max_mm"]) / 1000.0
+            elif mate_type_str == "angle":
+                if "min_deg" in limit:
+                    typed_iface.MinimumAngle = math.radians(float(limit["min_deg"]))
+                if "max_deg" in limit:
+                    typed_iface.MaximumAngle = math.radians(float(limit["max_deg"]))
+
         mate_ret = typed_asm.CreateMate(mate_data)
     except Exception as exc:
         return None, f"mate pipeline failed: {exc!r}"

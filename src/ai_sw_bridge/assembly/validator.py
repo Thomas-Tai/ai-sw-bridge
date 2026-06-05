@@ -206,6 +206,43 @@ def _check_mates(
                     path,
                 )
 
+        limit = mate.get("limit")
+        if limit is not None:
+            if mtype not in ("distance", "angle"):
+                raise AssemblyValidationError(
+                    f"'limit' is only supported for distance and angle mates, "
+                    f"not {mtype!r}",
+                    path,
+                )
+            if mtype == "distance":
+                min_mm = limit.get("min_mm")
+                max_mm = limit.get("max_mm")
+                if min_mm is None or max_mm is None:
+                    raise AssemblyValidationError(
+                        "distance limit requires both 'min_mm' and 'max_mm'",
+                        f"{path}/limit",
+                    )
+                if min_mm >= max_mm:
+                    raise AssemblyValidationError(
+                        f"distance limit min_mm ({min_mm}) must be less than "
+                        f"max_mm ({max_mm})",
+                        f"{path}/limit",
+                    )
+            elif mtype == "angle":
+                min_deg = limit.get("min_deg")
+                max_deg = limit.get("max_deg")
+                if min_deg is None or max_deg is None:
+                    raise AssemblyValidationError(
+                        "angle limit requires both 'min_deg' and 'max_deg'",
+                        f"{path}/limit",
+                    )
+                if min_deg >= max_deg:
+                    raise AssemblyValidationError(
+                        f"angle limit min_deg ({min_deg}) must be less than "
+                        f"max_deg ({max_deg})",
+                        f"{path}/limit",
+                    )
+
         for ref_key in ("a", "b"):
             ref = mate.get(ref_key)
             ref_path = f"{path}/{ref_key}"

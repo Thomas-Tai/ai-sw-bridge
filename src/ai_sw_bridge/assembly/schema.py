@@ -69,6 +69,16 @@ MATE_SCHEMA = {
         "alignment": {"type": "string", "enum": sorted(MATE_ALIGNMENTS)},
         "value_mm": {"type": "number"},
         "value_deg": {"type": "number"},
+        "limit": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "min_mm": {"type": "number"},
+                "max_mm": {"type": "number"},
+                "min_deg": {"type": "number"},
+                "max_deg": {"type": "number"},
+            },
+        },
         "a": MATE_REF_SCHEMA,
         "b": MATE_REF_SCHEMA,
     },
