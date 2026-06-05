@@ -161,6 +161,7 @@ def commit_drawing(
         views = spec.get("views", [])
         views_placed: list[str] = []
         view_errors: list[str] = []
+        placed_views: list[Any] = []  # typed IView references
 
         for i, view_name in enumerate(views):
             fmt = resolve_format(view_name)
@@ -173,6 +174,9 @@ def commit_drawing(
                 )
                 if view is not None and not isinstance(view, int):
                     views_placed.append(view_name)
+                    placed_views.append(
+                        typed_qi(view, "IView", module=mod)
+                    )
                 else:
                     view_errors.append(
                         f"{view_name}: CreateDrawViewFromModelView3 "
@@ -203,28 +207,22 @@ def commit_drawing(
                 return result
 
             # Fail-closed: verify at least one annotation was inserted
-            try:
-                sheet = drawing_doc.GetCurrentSheet()
-                sheet_views = sheet.GetViews()
-                total_annotations = 0
-                if sheet_views:
-                    for sv in sheet_views:
-                        try:
-                            ac = sv.GetAnnotationCount()
-                            total_annotations += ac if ac else 0
-                        except Exception:
-                            pass
-                result["total_annotations"] = total_annotations
-                if total_annotations == 0:
-                    result["error"] = (
-                        "dimensions: true but zero annotations inserted "
-                        "(model may have been built with no_dim=True; "
-                        "rebuild with no_dim=False for dimensioned output)"
-                    )
-                    return result
-            except Exception as exc:
-                result["total_annotations"] = -1
-                result["dim_verify_error"] = str(exc)[:200]
+            # using the typed IView references we already hold.
+            total_annotations = 0
+            for v in placed_views:
+                try:
+                    ac = v.GetAnnotationCount()
+                    total_annotations += ac if ac else 0
+                except Exception:
+                    pass
+            result["total_annotations"] = total_annotations
+            if total_annotations == 0:
+                result["error"] = (
+                    "dimensions: true but zero annotations inserted "
+                    "(model may have been built with no_dim=True; "
+                    "rebuild with no_dim=False for dimensioned output)"
+                )
+                return result
 
         # Save the drawing
         try:
