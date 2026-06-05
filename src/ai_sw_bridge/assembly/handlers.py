@@ -38,6 +38,7 @@ MATE_TYPE_ENUMS = {
     "tangent": 4,          # swMateTANGENT (not in Phase-2 scope)
     "distance": 5,         # swMateDISTANCE
     "angle": 6,            # swMateANGLE (not in Phase-2 scope)
+    "width": 11,           # swMateWIDTH (two-reference-set, W12)
 }
 
 # Typed interface names per mate type (from typelib dump).
@@ -51,6 +52,7 @@ MATE_TYPE_INTERFACES = {
     "tangent": "ITangentMateFeatureData",
     "distance": "IDistanceMateFeatureData",
     "angle": "IAngleMateFeatureData",
+    "width": "IWidthMateFeatureData",
 }
 
 
@@ -146,6 +148,94 @@ def place_components(
     return placed, None
 
 
+def _create_width_mate(
+    asm_doc: Any,
+    typed_asm: Any,
+    placed: dict[str, Any],
+    mate_spec: dict[str, Any],
+    mod: Any,
+) -> tuple[Any | None, str | None]:
+    """Width mate handler — two reference sets via WidthSelection/TabSelection.
+
+    Lifted from the seat-proven spike_phase3_2C recipe. Width is a structural
+    departure from the symmetric a/b types: it takes two SAFEARRAYs of 2 faces
+    each (groove faces → WidthSelection, tab faces → TabSelection) and does
+    NOT use EntitiesToMate or MateAlignment.
+    """
+    width_refs = mate_spec.get("width_faces", [])
+    tab_refs = mate_spec.get("tab_faces", [])
+
+    def _resolve_set(
+        refs: list[dict[str, Any]], label: str
+    ) -> tuple[list[Any], str | None]:
+        entities: list[Any] = []
+        for j, ref in enumerate(refs):
+            cid = ref["component"]
+            comp = placed.get(cid)
+            if comp is None:
+                return [], f"{label}[{j}]: component {cid!r} not placed"
+            resolution = resolve_component_face(
+                asm_doc, comp, ref["face_ref"], mod=mod
+            )
+            if not resolution.ok:
+                return [], (
+                    f"{label}[{j}]: face unresolved on {cid!r} "
+                    f"(method={resolution.method}, error={resolution.error})"
+                )
+            entities.append(resolution.entity)
+        return entities, None
+
+    width_entities, w_err = _resolve_set(width_refs, "width_faces")
+    if w_err:
+        return None, w_err
+
+    tab_entities, t_err = _resolve_set(tab_refs, "tab_faces")
+    if t_err:
+        return None, t_err
+
+    try:
+        mate_data = typed_asm.CreateMateData(11)
+        if mate_data is None:
+            return None, "CreateMateData(11) returned None"
+
+        w_iface = typed_qi(
+            mate_data, "IWidthMateFeatureData", module=mod
+        )
+
+        width_arr = w32.VARIANT(
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
+            tuple(width_entities),
+        )
+        tab_arr = w32.VARIANT(
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
+            tuple(tab_entities),
+        )
+        w_iface.WidthSelection = width_arr
+        w_iface.TabSelection = tab_arr
+
+        mate_ret = typed_asm.CreateMate(mate_data)
+    except Exception as exc:
+        return None, f"width mate pipeline failed: {exc!r}"
+
+    if mate_ret is None or isinstance(mate_ret, int):
+        try:
+            mfd = typed_qi(mate_data, "IMateFeatureData", module=mod)
+            es = mfd.ErrorStatus
+        except Exception:
+            es = "?"
+        return None, f"CreateMate returned None (ErrorStatus={es})"
+
+    try:
+        ifeat = typed(mate_ret, "IFeature", module=mod)
+        feat_type = ifeat.GetTypeName2()
+        if "Mate" not in feat_type and "mate" not in feat_type.lower():
+            return None, f"unexpected feature type: {feat_type}"
+    except Exception as exc:
+        return None, f"mate verification failed: {exc!r}"
+
+    return mate_ret, None
+
+
 def create_mate(
     asm_doc: Any,
     placed: dict[str, Any],
@@ -190,6 +280,11 @@ def create_mate(
         return None, f"unsupported mate type: {mate_type_str!r}"
 
     typed_asm = typed(asm_doc, "IAssemblyDoc", module=mod)
+
+    # Width mate: two reference sets (width_faces → WidthSelection,
+    # tab_faces → TabSelection). Never touches the symmetric a/b path.
+    if mate_type_str == "width":
+        return _create_width_mate(asm_doc, typed_asm, placed, mate_spec, mod)
 
     # Resolve both face entities
     faces = []

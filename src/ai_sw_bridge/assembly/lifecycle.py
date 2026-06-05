@@ -189,24 +189,51 @@ def dry_run_assembly(
     face_checks: list[dict[str, Any]] = []
     known_components = set(resolved_parts) | set(part_spec_validated)
     for i, mate in enumerate(spec.get("mates", [])):
-        for ref_key in ("a", "b"):
-            ref = mate.get(ref_key, {})
-            cid = ref.get("component")
-            face_ref = ref.get("face_ref", {})
-            if cid not in known_components:
-                result["error"] = (
-                    f"mate[{i}].{ref_key}: component {cid!r} not in spec"
-                )
-                return result
-            if not face_ref:
-                result["error"] = f"mate[{i}].{ref_key}: empty face_ref"
-                return result
-            face_checks.append({
-                "mate_index": i,
-                "ref": ref_key,
-                "component": cid,
-                "face_ref_keys": sorted(face_ref.keys()),
-            })
+        if mate.get("type") == "width":
+            ref_keys = ("width_faces", "tab_faces")
+        else:
+            ref_keys = ("a", "b")
+        for ref_key in ref_keys:
+            if mate.get("type") == "width":
+                ref_list = mate.get(ref_key, [])
+                for j, ref in enumerate(ref_list):
+                    cid = ref.get("component")
+                    face_ref = ref.get("face_ref", {})
+                    if cid not in known_components:
+                        result["error"] = (
+                            f"mate[{i}].{ref_key}[{j}]: component {cid!r} "
+                            f"not in spec"
+                        )
+                        return result
+                    if not face_ref:
+                        result["error"] = (
+                            f"mate[{i}].{ref_key}[{j}]: empty face_ref"
+                        )
+                        return result
+                    face_checks.append({
+                        "mate_index": i,
+                        "ref": f"{ref_key}[{j}]",
+                        "component": cid,
+                        "face_ref_keys": sorted(face_ref.keys()),
+                    })
+            else:
+                ref = mate.get(ref_key, {})
+                cid = ref.get("component")
+                face_ref = ref.get("face_ref", {})
+                if cid not in known_components:
+                    result["error"] = (
+                        f"mate[{i}].{ref_key}: component {cid!r} not in spec"
+                    )
+                    return result
+                if not face_ref:
+                    result["error"] = f"mate[{i}].{ref_key}: empty face_ref"
+                    return result
+                face_checks.append({
+                    "mate_index": i,
+                    "ref": ref_key,
+                    "component": cid,
+                    "face_ref_keys": sorted(face_ref.keys()),
+                })
 
     result["face_checks"] = face_checks
     result["ok"] = True
@@ -364,13 +391,24 @@ def commit_assembly(
             ))
 
         for mate_spec in spec.get("mates", []):
-            manifest.mates.append(MateRecord(
-                type=mate_spec["type"],
-                alignment=mate_spec.get("alignment"),
-                a=mate_spec["a"],
-                b=mate_spec["b"],
-                value=mate_spec.get("value_mm"),
-            ))
+            if mate_spec["type"] == "width":
+                manifest.mates.append(MateRecord(
+                    type=mate_spec["type"],
+                    alignment=None,
+                    a={},
+                    b={},
+                    value=None,
+                    width_faces=mate_spec.get("width_faces"),
+                    tab_faces=mate_spec.get("tab_faces"),
+                ))
+            else:
+                manifest.mates.append(MateRecord(
+                    type=mate_spec["type"],
+                    alignment=mate_spec.get("alignment"),
+                    a=mate_spec["a"],
+                    b=mate_spec["b"],
+                    value=mate_spec.get("value_mm"),
+                ))
 
         result["manifest"] = manifest.to_dict()
         result["ok"] = True
