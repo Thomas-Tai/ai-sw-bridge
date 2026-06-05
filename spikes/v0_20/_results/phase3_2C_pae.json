@@ -1,0 +1,95 @@
+{
+  "pae": "phase3_slice2C",
+  "timestamp": "2026-06-05T11:28:08",
+  "gates": {
+    "create_mate_data_width": {
+      "ok": true,
+      "detail": "md=CDispatch"
+    },
+    "qi_width": {
+      "ok": true,
+      "detail": "type=IWidthMateFeatureData"
+    },
+    "build_part_a": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "build_part_b": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "width_faces": {
+      "ok": true,
+      "detail": "groove L=1, R=1, tab L=1, R=1"
+    },
+    "place_components": {
+      "ok": true,
+      "detail": "placed=2"
+    },
+    "resolve_faces": {
+      "ok": true,
+      "detail": "groove_L=True, groove_R=True, tab_L=True, tab_R=True"
+    },
+    "set_width_selection": {
+      "ok": true,
+      "detail": "WidthSelection accepted 2 groove faces"
+    },
+    "set_tab_selection": {
+      "ok": true,
+      "detail": "TabSelection accepted 2 tab faces"
+    },
+    "create_width_mate": {
+      "ok": true,
+      "detail": "mate_ret=CDispatch"
+    },
+    "width_mate_solved": {
+      "ok": true,
+      "detail": "total=1, solved=1"
+    }
+  },
+  "characterization": {
+    "properties": {
+      "WidthSelection": {
+        "value": "None",
+        "type": "NoneType",
+        "is_method": false
+      },
+      "TabSelection": {
+        "value": "None",
+        "type": "NoneType",
+        "is_method": false
+      },
+      "ConstraintType": {
+        "value": "0",
+        "type": "int",
+        "is_method": false
+      },
+      "DistanceFromEnd": {
+        "value": "-1.0",
+        "type": "float",
+        "is_method": false
+      },
+      "PercentDistanceFromEnd": {
+        "value": "-1.0",
+        "type": "float",
+        "is_method": false
+      },
+      "FlipDimension": {
+        "value": "False",
+        "type": "bool",
+        "is_method": false
+      }
+    }
+  },
+  "verify_mates": [
+    {
+      "name": "Width1",
+      "type": "MateWidth",
+      "error_code": 0,
+      "solved": true,
+      "suppressed": false
+    }
+  ],
+  "overall": "GREEN",
+  "verdict": "Width mate pipeline works \u2014 full implementation possible"
+}

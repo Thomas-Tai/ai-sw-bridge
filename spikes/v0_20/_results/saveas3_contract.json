@@ -1,0 +1,55 @@
+{
+  "spike": "saveas3_contract",
+  "wave": 11,
+  "slice": "1A",
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "sw_revision": "32.1.0",
+  "build": {
+    "built": true,
+    "feature_name": "Boss-Extrude1"
+  },
+  "probe_good": {
+    "label": "good_path",
+    "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\saveas3_probe_1780628363.SLDPRT",
+    "raised": false,
+    "exception": null,
+    "return_value": "0",
+    "return_type": "int",
+    "return_int": 0,
+    "return_bool": false,
+    "elapsed_ms": 349.35,
+    "get_save_flag_TYPED_PROPERTY": "bound method (truthy artifact — must CALL as GetSaveFlag())",
+    "get_save_flag_TYPED_CALLED": false,
+    "get_save_flag_LATE_PROPERTY": false,
+    "file_exists": true,
+    "file_size_bytes": 46048
+  },
+  "dirty": {
+    "dirtied": true
+  },
+  "probe_bad": {
+    "label": "forced_fail",
+    "path": "Q:\\invalid_drive\\saveas3_fail.SLDPRT",
+    "raised": false,
+    "exception": null,
+    "return_value": "1",
+    "return_type": "int",
+    "return_int": 1,
+    "return_bool": true,
+    "elapsed_ms": 5.52,
+    "get_save_flag_TYPED_PROPERTY": "bound method (truthy artifact)",
+    "file_exists": false,
+    "file_size_bytes": 0
+  },
+  "binding_comparison": {
+    "late_bound_success_ret": 0,
+    "typed_success_ret": 0,
+    "late_bound_failure_ret": 1,
+    "binding_effect": "NONE — both paths return identical values"
+  },
+  "overall": "WALL",
+  "verdict": "DISPATCH PREMISE FALSIFIED. SaveAs3 returns swFileSaveError_e (0=NoError=success, nonzero=error), NOT a bool. Both late-bound and typed paths agree: success→0, failure→1. The existing `if err_code != 0: raise` logic is CORRECT for the return value. The dispatch's bool-TRUE hypothesis is wrong.",
+  "secondary_finding": "GetSaveFlag on typed IModelDoc2 is a METHOD that must be CALLED as GetSaveFlag(), not accessed as a property. Under late binding, zero-arg auto-invoke returns the bool directly. The first spike's GetSaveFlag=True was a method-object-is-truthy artifact, NOT a dirty-flag bug.",
+  "real_bug_hypothesis": "The W10 PAE symptom (raise swFileSaveError=1 with file on disk) is NOT reproducible in the spike: success returns 0 (no raise) and failure returns 1 (no file). The root cause may be elsewhere — possibly a different SaveAs3 overload, a stale doc state, or the production build pipeline setting up conditions where SaveAs3 genuinely returns 1 despite writing. NEEDS FURTHER INVESTIGATION before any production code change.",
+  "checkpoint": "HARD CHECKPOINT — pausing per dispatch instructions. The fix premise (scalar return is NOT a reliable error code) is NOT confirmed. W0 must review and redirect."
+}
