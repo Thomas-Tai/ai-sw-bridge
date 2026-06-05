@@ -1,0 +1,189 @@
+{
+  "spike": "w17_drawing_dims",
+  "timestamp": "2026-06-05T15:49:27",
+  "gates": {
+    "build_part": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "drawing_create": {
+      "ok": true,
+      "detail": ""
+    },
+    "view_create": {
+      "ok": true,
+      "detail": "type=IView"
+    },
+    "pre_annotation_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "pre_display_dims": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "pre_dimension_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "pre_get_annotations": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "routeA_default": {
+      "ok": false,
+      "detail": "raised: '<win32com.gen_py.SldWorks 2024 Type Library.IView instance at 0x2957224190848>'"
+    },
+    "routeA_all_types": {
+      "ok": false,
+      "detail": "raised: '<win32com.gen_py.SldWorks 2024 Type Library.IView instance at 0x2957224190848>'"
+    },
+    "routeA_dims_only_1": {
+      "ok": false,
+      "detail": "raised: '<win32com.gen_py.SldWorks 2024 Type Library.IView instance at 0x2957224190848>'"
+    },
+    "routeA_dims_only_2": {
+      "ok": false,
+      "detail": "raised: '<win32com.gen_py.SldWorks 2024 Type Library.IView instance at 0x2957224190848>'"
+    },
+    "routeB_default": {
+      "ok": false,
+      "detail": "raised: '<win32com.gen_py.SldWorks 2024 Type Library.ISheet instance at 0x2957242186144>"
+    },
+    "routeB_all_types": {
+      "ok": false,
+      "detail": "raised: '<win32com.gen_py.SldWorks 2024 Type Library.ISheet instance at 0x2957242186144>"
+    },
+    "routeB_dims_only": {
+      "ok": false,
+      "detail": "raised: '<win32com.gen_py.SldWorks 2024 Type Library.ISheet instance at 0x2957242186144>"
+    },
+    "routeC_default": {
+      "ok": true,
+      "detail": "result=None"
+    },
+    "postC_default_annotation_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "postC_default_display_dims": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "postC_default_dimension_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "postC_default_get_annotations": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "routeC_all_types": {
+      "ok": true,
+      "detail": "result=None"
+    },
+    "postC_all_types_annotation_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "postC_all_types_display_dims": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "postC_all_types_dimension_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "postC_all_types_get_annotations": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "routeC_dims_only": {
+      "ok": true,
+      "detail": "result=None"
+    },
+    "postC_dims_only_annotation_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "postC_dims_only_display_dims": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "postC_dims_only_dimension_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "postC_dims_only_get_annotations": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "final_annotation_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "final_display_dims": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "final_dimension_count": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "final_get_annotations": {
+      "ok": true,
+      "detail": "count=0"
+    },
+    "OVERALL_NO_GO": {
+      "ok": false,
+      "detail": "pre=0, final=0 (insert-but-zero or all routes wall)"
+    }
+  },
+  "routes": {
+    "A_view": {
+      "status": "NOT_TRIED",
+      "default": {
+        "error": "'<win32com.gen_py.SldWorks 2024 Type Library.IView instance at 0x2957224190848>' object has no attribute 'InsertModelAnnotations3'"
+      },
+      "all_types": {
+        "error": "'<win32com.gen_py.SldWorks 2024 Type Library.IView instance at 0x2957224190848>' object has no attribute 'InsertModelAnnotations3'"
+      },
+      "dims_only_1": {
+        "error": "'<win32com.gen_py.SldWorks 2024 Type Library.IView instance at 0x2957224190848>' object has no attribute 'InsertModelAnnotations3'"
+      },
+      "dims_only_2": {
+        "error": "'<win32com.gen_py.SldWorks 2024 Type Library.IView instance at 0x2957224190848>' object has no attribute 'InsertModelAnnotations3'"
+      }
+    },
+    "B_sheet": {
+      "status": "NOT_TRIED",
+      "default": {
+        "error": "'<win32com.gen_py.SldWorks 2024 Type Library.ISheet instance at 0x2957242186144>' object has no attribute 'InsertModelAnnotations3'"
+      },
+      "all_types": {
+        "error": "'<win32com.gen_py.SldWorks 2024 Type Library.ISheet instance at 0x2957242186144>' object has no attribute 'InsertModelAnnotations3'"
+      },
+      "dims_only": {
+        "error": "'<win32com.gen_py.SldWorks 2024 Type Library.ISheet instance at 0x2957242186144>' object has no attribute 'InsertModelAnnotations3'"
+      }
+    },
+    "C_drawing": {
+      "status": "NOT_TRIED",
+      "default": {
+        "result": "None"
+      },
+      "default_post_count": 0,
+      "all_types": {
+        "result": "None"
+      },
+      "all_types_post_count": 0,
+      "dims_only": {
+        "result": "None"
+      },
+      "dims_only_post_count": 0
+    }
+  },
+  "verdict": "NO-GO",
+  "pre_count": 0,
+  "final_count": 0
+}
