@@ -177,10 +177,32 @@ def _check_mates(
                     f"distance mate value_mm must be a positive number, got {value_mm!r}",
                     path,
                 )
-        elif mtype in ("concentric", "parallel", "perpendicular"):
+        elif mtype in ("concentric", "parallel", "perpendicular", "tangent"):
             if value_mm is not None:
                 raise AssemblyValidationError(
                     f"{mtype} mate does not accept 'value_mm' (geometric constraint)",
+                    path,
+                )
+            if mate.get("value_deg") is not None:
+                raise AssemblyValidationError(
+                    f"{mtype} mate does not accept 'value_deg'",
+                    path,
+                )
+
+        if mtype == "angle":
+            value_deg = mate.get("value_deg")
+            if value_deg is None:
+                raise AssemblyValidationError(
+                    "angle mate requires 'value_deg'", path
+                )
+            if not isinstance(value_deg, (int, float)):
+                raise AssemblyValidationError(
+                    f"angle mate value_deg must be a number, got {value_deg!r}",
+                    path,
+                )
+            if value_mm is not None:
+                raise AssemblyValidationError(
+                    "angle mate does not accept 'value_mm'; use 'value_deg'",
                     path,
                 )
 

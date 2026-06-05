@@ -48,6 +48,7 @@ MATE_TYPE_INTERFACES = {
     "concentric": "IConcentricMateFeatureData",
     "perpendicular": "IPerpendicularMateFeatureData",
     "parallel": "IParallelMateFeatureData",
+    "tangent": "ITangentMateFeatureData",
     "distance": "IDistanceMateFeatureData",
     "angle": "IAngleMateFeatureData",
 }
@@ -243,6 +244,11 @@ def create_mate(
             if value_mm is not None:
                 distance_m = float(value_mm) / 1000.0
                 typed_iface.Distance = distance_m
+
+        if mate_type_str == "angle":
+            value_deg = mate_spec.get("value_deg")
+            if value_deg is not None:
+                typed_iface.Angle = math.radians(float(value_deg))
 
         mate_ret = typed_asm.CreateMate(mate_data)
     except Exception as exc:

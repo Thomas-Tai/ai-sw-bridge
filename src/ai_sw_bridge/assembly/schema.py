@@ -68,6 +68,7 @@ MATE_SCHEMA = {
         "type": {"type": "string", "enum": sorted(MATE_TYPES)},
         "alignment": {"type": "string", "enum": sorted(MATE_ALIGNMENTS)},
         "value_mm": {"type": "number"},
+        "value_deg": {"type": "number"},
         "a": MATE_REF_SCHEMA,
         "b": MATE_REF_SCHEMA,
     },
