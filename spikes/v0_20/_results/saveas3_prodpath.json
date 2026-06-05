@@ -1,0 +1,24 @@
+{
+  "spike": "saveas3_prodpath",
+  "wave": 11,
+  "sw_revision": "32.1.0",
+  "production_save": {
+    "raised": false,
+    "exception": null,
+    "saved_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\saveas3_prodpath_1780628583.sldprt",
+    "verified": true,
+    "elapsed_ms": 332.55,
+    "file_exists": true,
+    "file_size": 46659
+  },
+  "get_save_flag_after": false,
+  "overall": "GREEN",
+  "verdict": "_save_as_with_verification SUCCEEDS through the production code path on a live SW 2024 SP1 seat. The W10 PAE symptom does NOT reproduce. The existing err_code check and retry loop are functioning correctly for the normal case.",
+  "export_save": {
+    "ok": true,
+    "error": null,
+    "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\saveas3_prodpath_1780628583.step",
+    "file_exists": true,
+    "file_size": 15921
+  }
+}
