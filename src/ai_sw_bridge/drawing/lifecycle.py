@@ -195,8 +195,107 @@ def _create_detail_view(
     return det_view, placed_name
 
 
+def _validate_views_array(
+    views: list[Any],
+    *,
+    path_prefix: str,
+) -> None:
+    """Validate one views[] array (shared between legacy + per-sheet modes).
+
+    Raises ``ValueError`` on the first semantic error found.
+
+    ``path_prefix`` is the dotted path used in error messages (``"views"`` for
+    legacy mode, ``"sheets[k].views"`` for multi-sheet mode) so the caller's
+    position in the spec is obvious from the message alone.
+    """
+    if not isinstance(views, list) or not views:
+        raise ValueError(f"{path_prefix} must be a non-empty array")
+
+    seen_string_views: set[str] = set()
+    for i, v in enumerate(views):
+        if isinstance(v, str):
+            if v not in DRAWING_FORMATS:
+                raise ValueError(
+                    f"{path_prefix}[{i}]: unknown view {v!r}; "
+                    f"allowed: {sorted(DRAWING_FORMATS)}"
+                )
+            seen_string_views.add(v)
+        elif isinstance(v, dict):
+            vtype = v.get("type")
+            if vtype not in ("section", "detail"):
+                raise ValueError(
+                    f"{path_prefix}[{i}]: object entry type must be "
+                    f"'section' or 'detail'"
+                )
+            vname = v.get("name")
+            if not isinstance(vname, str) or not vname:
+                raise ValueError(
+                    f"{path_prefix}[{i}]: name must be a non-empty string"
+                )
+            parent = v.get("parent")
+            if not isinstance(parent, str) or not parent:
+                raise ValueError(
+                    f"{path_prefix}[{i}]: parent must be a non-empty string"
+                )
+            if parent not in seen_string_views:
+                raise ValueError(
+                    f"{path_prefix}[{i}]: parent {parent!r} must be an earlier "
+                    f"ortho/iso string view within the same sheet "
+                    f"(seen so far: {sorted(seen_string_views) or 'none'})"
+                )
+            if vtype == "section":
+                cut = v.get("cut")
+                if cut not in ("horizontal", "vertical"):
+                    raise ValueError(
+                        f"{path_prefix}[{i}]: section view requires "
+                        f"cut: 'horizontal' or 'vertical'"
+                    )
+            if vtype == "detail":
+                center = v.get("center")
+                if center is not None:
+                    if not (isinstance(center, list) and len(center) == 2):
+                        raise ValueError(
+                            f"{path_prefix}[{i}]: detail center must be "
+                            f"[cx_frac, cy_frac] (two numbers)"
+                        )
+                radius = v.get("radius")
+                if radius is not None and not (
+                    isinstance(radius, (int, float)) and radius > 0
+                ):
+                    raise ValueError(
+                        f"{path_prefix}[{i}]: detail radius must be a "
+                        f"positive number"
+                    )
+        else:
+            raise ValueError(
+                f"{path_prefix}[{i}]: each entry must be a string or object, "
+                f"got {type(v).__name__}"
+            )
+
+
+def _validate_bom_for_model(bom: Any, model: str, *, path: str) -> None:
+    """bom:true requires a .sldasm model (shared between legacy + per-sheet)."""
+    if bom is not None and not isinstance(bom, bool):
+        raise ValueError(f"{path} must be a boolean")
+    if bom:
+        if not model.lower().endswith(".sldasm"):
+            raise ValueError(
+                "a BOM requires an assembly model; "
+                "parts have no bill of materials "
+                f"(.sldprt does not support {path}:true)"
+            )
+
+
 def validate_drawing_spec(spec: dict[str, Any]) -> None:
     """Semantic validation beyond the structural JSON-schema check.
+
+    Two authoring modes (W23):
+
+      - **Legacy**: top-level ``views`` (with optional ``sheet``/``dimensions``/
+        ``bom``). Unchanged behaviour from pre-W23.
+      - **Multi-sheet**: ``sheets[]`` array; each entry carries its own
+        ``views`` (plus optional ``name``/``template_size``/``dimensions``/
+        ``bom``). Top-level ``views``/``sheet``/``dimensions`` MUST be absent.
 
     Raises ``ValueError`` on the first semantic error found.
     """
@@ -213,67 +312,75 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
     if not isinstance(model, str) or not model:
         raise ValueError("model must be a non-empty string")
 
-    views = spec.get("views")
-    if not isinstance(views, list) or not views:
-        raise ValueError("views must be a non-empty array")
+    has_views = "views" in spec
+    has_sheets = "sheets" in spec
 
-    # Track string view names seen so far for parent-reference validation.
-    # Derived views may only reference earlier ortho/iso string entries.
-    seen_string_views: set[str] = set()
+    if has_views and has_sheets:
+        raise ValueError(
+            "views and sheets are mutually exclusive — "
+            "use top-level views (legacy single-sheet mode) "
+            "OR sheets[] (multi-sheet mode), not both"
+        )
+    if not has_views and not has_sheets:
+        raise ValueError(
+            "spec must declare views (legacy mode) or sheets (multi-sheet mode)"
+        )
 
-    for i, v in enumerate(views):
-        if isinstance(v, str):
-            if v not in DRAWING_FORMATS:
-                raise ValueError(
-                    f"views[{i}]: unknown view {v!r}; "
-                    f"allowed: {sorted(DRAWING_FORMATS)}"
-                )
-            seen_string_views.add(v)
-        elif isinstance(v, dict):
-            vtype = v.get("type")
-            if vtype not in ("section", "detail"):
-                raise ValueError(
-                    f"views[{i}]: object entry type must be 'section' or 'detail'"
-                )
-            vname = v.get("name")
-            if not isinstance(vname, str) or not vname:
-                raise ValueError(f"views[{i}]: name must be a non-empty string")
-            parent = v.get("parent")
-            if not isinstance(parent, str) or not parent:
-                raise ValueError(f"views[{i}]: parent must be a non-empty string")
-            if parent not in seen_string_views:
-                raise ValueError(
-                    f"views[{i}]: parent {parent!r} must be an earlier "
-                    f"ortho/iso string view (seen so far: "
-                    f"{sorted(seen_string_views) or 'none'})"
-                )
-            if vtype == "section":
-                cut = v.get("cut")
-                if cut not in ("horizontal", "vertical"):
-                    raise ValueError(
-                        f"views[{i}]: section view requires "
-                        f"cut: 'horizontal' or 'vertical'"
-                    )
-            if vtype == "detail":
-                center = v.get("center")
-                if center is not None:
-                    if not (isinstance(center, list) and len(center) == 2):
-                        raise ValueError(
-                            f"views[{i}]: detail center must be "
-                            f"[cx_frac, cy_frac] (two numbers)"
-                        )
-                radius = v.get("radius")
-                if radius is not None and not (
-                    isinstance(radius, (int, float)) and radius > 0
-                ):
-                    raise ValueError(
-                        f"views[{i}]: detail radius must be a positive number"
-                    )
-        else:
+    if has_sheets:
+        # --- multi-sheet mode ---
+        if spec.get("sheet") is not None:
             raise ValueError(
-                f"views[{i}]: each entry must be a string or object, "
-                f"got {type(v).__name__}"
+                "sheet (legacy single-sheet template) is not allowed "
+                "with sheets[]; set template_size on each sheet entry"
             )
+        if spec.get("dimensions") is not None:
+            raise ValueError(
+                "top-level dimensions is not allowed with sheets[]; "
+                "set dimensions on each sheet entry"
+            )
+        if spec.get("bom") is not None:
+            raise ValueError(
+                "top-level bom is not allowed with sheets[]; "
+                "set bom on each sheet entry"
+            )
+
+        sheets = spec.get("sheets")
+        if not isinstance(sheets, list) or not sheets:
+            raise ValueError("sheets must be a non-empty array")
+
+        seen_names: set[str] = set()
+        for k, sh in enumerate(sheets):
+            if not isinstance(sh, dict):
+                raise ValueError(f"sheets[{k}] must be a dict")
+            sh_name = sh.get("name")
+            if sh_name is not None:
+                if not isinstance(sh_name, str) or not sh_name:
+                    raise ValueError(
+                        f"sheets[{k}].name must be a non-empty string"
+                    )
+                if sh_name in seen_names:
+                    raise ValueError(
+                        f"sheets[{k}].name {sh_name!r} duplicates an "
+                        f"earlier sheet name"
+                    )
+                seen_names.add(sh_name)
+            ts = sh.get("template_size")
+            if ts is not None and ts not in SHEET_SIZES:
+                raise ValueError(
+                    f"sheets[{k}].template_size {ts!r} not in "
+                    f"{sorted(SHEET_SIZES)}"
+                )
+            _validate_views_array(
+                sh.get("views", []), path_prefix=f"sheets[{k}].views"
+            )
+            _validate_bom_for_model(
+                sh.get("bom"), model, path=f"sheets[{k}].bom"
+            )
+        return
+
+    # --- legacy single-sheet mode ---
+    views = spec.get("views", [])
+    _validate_views_array(views, path_prefix="views")
 
     sheet = spec.get("sheet")
     if sheet is not None:
@@ -285,16 +392,7 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
                 f"sheet.template_size {ts!r} not in {sorted(SHEET_SIZES)}"
             )
 
-    bom = spec.get("bom")
-    if bom is not None and not isinstance(bom, bool):
-        raise ValueError("bom must be a boolean")
-    if bom:
-        if not model.lower().endswith(".sldasm"):
-            raise ValueError(
-                "a BOM requires an assembly model; "
-                "parts have no bill of materials "
-                "(.sldprt does not support bom:true)"
-            )
+    _validate_bom_for_model(spec.get("bom"), model, path="bom")
 
 
 def dry_run_drawing(spec: dict[str, Any]) -> dict[str, Any]:
@@ -310,8 +408,311 @@ def dry_run_drawing(spec: dict[str, Any]) -> dict[str, Any]:
         return result
 
     result["model_path"] = model_path
-    result["views_requested"] = spec.get("views", [])
+    if "sheets" in spec:
+        result["sheets_requested"] = len(spec["sheets"])
+        result["views_per_sheet"] = [
+            len(sh.get("views", [])) for sh in spec["sheets"]
+        ]
+    else:
+        result["views_requested"] = spec.get("views", [])
     result["ok"] = True
+    return result
+
+
+def _normalize_sheets(spec: dict[str, Any]) -> list[dict[str, Any]]:
+    """Convert either authoring mode to a uniform list of per-sheet specs.
+
+    Legacy mode (``views`` at top level) -> one-element list that carries the
+    top-level ``sheet``/``dimensions``/``bom`` onto a single synthesized sheet.
+
+    Multi-sheet mode (``sheets[]``) -> the array verbatim.
+
+    The returned dicts all have the same shape:
+    ``{name, template_size, views, dimensions, bom}`` with defaults filled in.
+    ``name`` is ``None`` for "use whatever the default sheet is called".
+    """
+    if "sheets" in spec:
+        out: list[dict[str, Any]] = []
+        for sh in spec["sheets"]:
+            out.append(
+                {
+                    "name": sh.get("name"),
+                    "template_size": sh.get("template_size"),
+                    "views": sh.get("views", []),
+                    "dimensions": bool(sh.get("dimensions", False)),
+                    "bom": bool(sh.get("bom", False)),
+                }
+            )
+        return out
+
+    sheet = spec.get("sheet") or {}
+    return [
+        {
+            "name": None,
+            "template_size": sheet.get("template_size"),
+            "views": spec.get("views", []),
+            "dimensions": bool(spec.get("dimensions", False)),
+            "bom": bool(spec.get("bom", False)),
+        }
+    ]
+
+
+# swDwgPaperSizes_e (subset used by the drawing spec schema).
+_PAPER_SIZE_ENUM: dict[str, int] = {
+    "A4": 8,
+    "A3": 11,
+    "A2": 12,
+    "A1": 13,
+    "A0": 14,
+    "A": 1,
+    "B": 2,
+    "C": 3,
+    "D": 4,
+    "E": 5,
+}
+
+# swDwgTemplates_e: 1 = swDwgTemplateCustom (caller supplies Width/Height).
+_TEMPLATE_CUSTOM = 1
+
+
+def _retemplate_first_sheet(
+    drawing_doc: Any,
+    width_m: float,
+    height_m: float,
+    template_size_name: str | None,
+) -> None:
+    """Resize Sheet1 (the sheet NewDocument created) to the requested size.
+
+    Uses ``ISheet.SetProperties2`` (8 args, makepy-authoritative) on the
+    active sheet. The default sheet already exists when we enter this
+    function -- we just retarget its size. If ``template_size_name`` is
+    ``None`` we leave the sheet at the size NewDocument gave it.
+    """
+    if template_size_name is None:
+        return
+    paper_enum = _PAPER_SIZE_ENUM.get(template_size_name)
+    sheet_raw = drawing_doc.GetCurrentSheet()
+    if sheet_raw is None or isinstance(sheet_raw, int):
+        return
+    from ..com.earlybind import typed_qi
+    from ..com.sw_type_info import wrapper_module
+    sheet = typed_qi(sheet_raw, "ISheet", module=wrapper_module())
+    try:
+        sheet.SetProperties2(
+            paper_enum if paper_enum is not None else 0,  # PaperSz (I4)
+            _TEMPLATE_CUSTOM,                           # Templ (I4)
+            1.0,                                        # Scale1 (R8)
+            1.0,                                        # Scale2 (R8)
+            True,                                       # FirstAngle (BOOL)
+            width_m,                                    # Width (R8, metres)
+            height_m,                                   # Height (R8, metres)
+            False,                                      # SameCustomPropAsSheetInDocProp (BOOL)
+        )
+    except Exception:
+        # Retemplate is best-effort: the sheet size the user asked for may
+        # not be supported by their template, but the views still land on it.
+        pass
+
+
+def _activate_sheet_by_name(drawing_doc: Any, sheet_name: str) -> None:
+    """Activate a sheet by name before placing views on it.
+
+    Per-sheet view routing (W23) depends on ActivateSheet being called
+    BEFORE CreateDrawViewFromModelView3 / InsertModelAnnotations3 /
+    InsertBomTable4 -- otherwise the view silently lands on whichever sheet
+    happens to be active (the same trap as W18's per-view ActivateView).
+    """
+    ok = drawing_doc.ActivateSheet(sheet_name)
+    if not ok:
+        raise RuntimeError(
+            f"ActivateSheet({sheet_name!r}) returned False; "
+            f"subsequent views would land on the wrong sheet"
+        )
+
+
+def _build_sheet_views(
+    drawing_doc: Any,
+    mdoc2: Any,
+    sheet_spec: dict[str, Any],
+    model_path: str,
+    *,
+    sheet_index: int,
+    is_first: bool,
+    mod: Any,
+    typed_qi: Any,
+) -> dict[str, Any]:
+    """Build one sheet's views/dims/bom. Returns a per-sheet result dict.
+
+    Fail-closed on any view failure: the caller aggregates errors and aborts
+    SaveAs3 if any sheet reports ``view_errors``. Dimensions and BOM are only
+    attempted when all views on the sheet materialised.
+    """
+    from ..com.earlybind import typed_qi as _tq  # noqa: F401 (kept for clarity)
+
+    result: dict[str, Any] = {
+        "sheet_index": sheet_index,
+        "sheet_name": sheet_spec.get("name"),
+        "views_placed": [],
+        "view_count": 0,
+        "view_errors": [],
+    }
+
+    views = sheet_spec.get("views", [])
+    views_placed: list[str] = []
+    placed_views: list[Any] = []
+    placed_by_name: dict[str, Any] = {}
+    view_errors: list[str] = []
+
+    # ------------------------------------------------------------------
+    # Pass 1: ortho/iso string views
+    # ------------------------------------------------------------------
+    ortho_indices = [i for i, v in enumerate(views) if isinstance(v, str)]
+    derived_indices = [i for i, v in enumerate(views) if not isinstance(v, str)]
+
+    for i in ortho_indices:
+        view_entry = views[i]
+        fmt = resolve_format(view_entry)
+        x = fmt.default_x + (i * 0.001)
+        y = fmt.default_y
+        try:
+            view_raw = drawing_doc.CreateDrawViewFromModelView3(
+                model_path, fmt.view_name, x, y, 0.0
+            )
+            if view_raw is not None and not isinstance(view_raw, int):
+                tview = typed_qi(view_raw, "IView", module=mod)
+                views_placed.append(view_entry)
+                placed_views.append(tview)
+                placed_by_name[view_entry] = tview
+            else:
+                view_errors.append(
+                    f"sheet[{sheet_index}].{view_entry}: "
+                    f"CreateDrawViewFromModelView3 returned {view_raw!r}"
+                )
+        except Exception as exc:
+            view_errors.append(f"sheet[{sheet_index}].{view_entry}: {exc!r}")
+
+    # ------------------------------------------------------------------
+    # Pass 2: derived views (section / detail) in spec order
+    # ------------------------------------------------------------------
+    for i in derived_indices:
+        vspec = views[i]
+        vtype = vspec.get("type")
+        vname = vspec.get("name", "")
+        parent_key = vspec.get("parent", "")
+        parent_iview = placed_by_name.get(parent_key)
+
+        if parent_iview is None:
+            view_errors.append(
+                f"sheet[{sheet_index}].views[{i}] ({vtype} '{vname}'): "
+                f"parent view '{parent_key}' was not placed"
+            )
+            continue
+
+        try:
+            if vtype == "section":
+                tview, placed_name = _create_section_view(
+                    drawing_doc, mdoc2, parent_iview, vspec, typed_qi, mod
+                )
+            else:  # detail
+                tview, placed_name = _create_detail_view(
+                    drawing_doc, mdoc2, parent_iview, vspec, typed_qi, mod
+                )
+            views_placed.append(placed_name)
+            placed_views.append(tview)
+        except Exception as exc:
+            view_errors.append(
+                f"sheet[{sheet_index}].views[{i}] ({vtype} '{vname}'): "
+                f"{exc!r}"
+            )
+
+    result["views_placed"] = views_placed
+    result["view_count"] = len(views_placed)
+    result["view_errors"] = view_errors
+
+    if view_errors:
+        return result
+
+    # ------------------------------------------------------------------
+    # Dimensions (per-sheet)
+    # ------------------------------------------------------------------
+    if sheet_spec.get("dimensions") and views_placed:
+        try:
+            drawing_doc.InsertModelAnnotations3(0, -1, True, False, True, 0)
+            result["dimensions_inserted"] = True
+        except Exception as exc:
+            result["dimensions_inserted"] = False
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].dimensions: "
+                f"InsertModelAnnotations3 failed: {exc!r}"
+            )
+            return result
+
+        total_annotations = 0
+        for v in placed_views:
+            try:
+                ac = v.GetAnnotationCount()
+                total_annotations += ac if ac else 0
+            except Exception:
+                pass
+        result["total_annotations"] = total_annotations
+        if total_annotations == 0:
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].dimensions: "
+                f"dimensions:true but zero annotations inserted"
+            )
+            return result
+
+    # ------------------------------------------------------------------
+    # BOM (per-sheet; requires .sldasm -- validated upstream)
+    # ------------------------------------------------------------------
+    if sheet_spec.get("bom") and views_placed and placed_views:
+        bom_tmpl = _find_bom_template()
+        if bom_tmpl is None:
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].bom: bom:true but no BOM template "
+                f"(.sldbomtbt) found under "
+                f"C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\lang\\english\\"
+            )
+            return result
+
+        first_view = placed_views[0]
+        try:
+            vn = first_view.GetName2() or ""
+            if vn:
+                drawing_doc.ActivateView(vn)
+        except Exception:
+            pass
+
+        try:
+            bom_annotation = first_view.InsertBomTable4(
+                False, 0.05, 0.22, 1, 1, "", bom_tmpl, False, 2, False,
+            )
+        except Exception as exc:
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].bom: InsertBomTable4 failed: {exc!r}"
+            )
+            return result
+
+        bom_ok = (
+            bom_annotation is not None
+            and not isinstance(bom_annotation, int)
+        )
+        if not bom_ok:
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].bom: InsertBomTable4 returned None"
+            )
+            return result
+
+        data_rows = _count_bom_data_rows(bom_annotation)
+        result["bom_data_rows"] = data_rows
+        if data_rows == 0:
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].bom: zero data rows "
+                f"(assembly has no visible components in this view)"
+            )
+            return result
+        result["bom_inserted"] = True
+
     return result
 
 
@@ -324,11 +725,19 @@ def commit_drawing(
 ) -> dict[str, Any]:
     """Build the drawing -- create views from the model, save .SLDDRW.
 
-    Two-pass view strategy (W19):
-      Pass 1 -- ortho/iso string entries: CreateDrawViewFromModelView3,
-                builds ``placed_by_name`` dict for parent lookup.
-      Pass 2 -- derived object entries in spec order: section views via
-                CreateSectionViewAt5, detail views via CreateDetailViewAt4.
+    Two authoring modes (W23):
+
+      - **Legacy**: top-level ``views`` -> normalised to a single sheet;
+        behaviour unchanged from pre-W23.
+      - **Multi-sheet**: ``sheets[]`` array -> one sheet per entry; sheet 1
+        reuses the default sheet NewDocument created (renamed + retemplated);
+        sheets 2..N added via ``IDrawingDoc.NewSheet3(name, template_in,
+        paper_size, scale1, scale2, first_angle)`` then
+        ``ActivateSheet(name)`` before every view/dim/bom call so the view
+        provably lands on the intended sheet.
+
+    Fail-closed (W20/W21): ANY sheet or view failure aborts BEFORE dims /
+    BOM / SaveAs3 -- no partial .SLDDRW is written to disk.
 
     Args:
         sw: the ``SldWorks.Application`` COM object.
@@ -337,8 +746,9 @@ def commit_drawing(
         mod: the gen_py wrapper module.
 
     Returns:
-        A result dict with ``ok``, ``view_count``, ``views_placed``,
-        and ``error``.
+        A result dict with ``ok``, ``sheet_count``, per-sheet
+        ``sheets`` details, aggregated ``view_count`` / ``views_placed``,
+        and ``error`` on failure.
     """
     from ..com.earlybind import typed, typed_qi
     from ..com.sw_type_info import wrapper_module
@@ -359,10 +769,14 @@ def commit_drawing(
         result["error"] = "drawing template (.DRWDOT) not found"
         return result
 
-    # Sheet dimensions
-    sheet = spec.get("sheet", {})
-    size_name = sheet.get("template_size", DEFAULT_SHEET_SIZE)
-    width_m, height_m = SHEET_SIZES.get(size_name, SHEET_SIZES[DEFAULT_SHEET_SIZE])
+    # Resolve per-sheet layout from either authoring mode
+    sheet_specs = _normalize_sheets(spec)
+
+    # Sheet-1 dimensions (for NewDocument + fallback retemplate of sheet 1)
+    first_size_name = sheet_specs[0].get("template_size") or DEFAULT_SHEET_SIZE
+    width_m, height_m = SHEET_SIZES.get(
+        first_size_name, SHEET_SIZES[DEFAULT_SHEET_SIZE]
+    )
 
     # Open the model document (required for view creation)
     try:
@@ -374,7 +788,7 @@ def commit_drawing(
         result["error"] = f"OpenDoc6 failed: {exc!r}"
         return result
 
-    # Create drawing document
+    # Create drawing document (default sheet 1 is created here)
     try:
         doc_raw = sw.NewDocument(template, 0, width_m, height_m)
     except Exception as exc:
@@ -387,193 +801,146 @@ def commit_drawing(
 
     try:
         drawing_doc = typed_qi(doc_raw, "IDrawingDoc", module=mod)
-        # IDrawingDoc does not inherit IModelDoc2 in the typelib --
-        # SketchManager must be accessed via a separate IModelDoc2 QI (W19 S1)
         mdoc2 = typed_qi(doc_raw, "IModelDoc2", module=mod)
 
-        views = spec.get("views", [])
-        views_placed: list[str] = []
-        view_errors: list[str] = []
-        placed_views: list[Any] = []         # all typed IView refs (ortho + derived)
-        placed_by_name: dict[str, Any] = {}  # string_view_name -> typed IView
+        # Resize default sheet if sheet 1 asked for a non-default size
+        _retemplate_first_sheet(drawing_doc, width_m, height_m, first_size_name)
 
-        # ------------------------------------------------------------------
-        # Pass 1: ortho/iso string views
-        # ------------------------------------------------------------------
-        ortho_indices: list[int] = []
-        derived_indices: list[int] = []
-        for i, v in enumerate(views):
-            if isinstance(v, str):
-                ortho_indices.append(i)
+        per_sheet_results: list[dict[str, Any]] = []
+        all_views_placed: list[str] = []
+        total_view_count = 0
+        all_errors: list[str] = []
+        sheet_names_created: list[str] = []
+
+        for idx, sheet_spec in enumerate(sheet_specs):
+            is_first = idx == 0
+
+            # ----------------------------------------------------------
+            # Create additional sheets via NewSheet3 (W23 S1 recipe,
+            # 10-arg makepy-authoritative signature)
+            # ----------------------------------------------------------
+            if not is_first:
+                requested_name = sheet_spec.get("name") or f"Sheet{idx + 1}"
+                size_name = sheet_spec.get("template_size") or DEFAULT_SHEET_SIZE
+                w, h = SHEET_SIZES.get(
+                    size_name, SHEET_SIZES[DEFAULT_SHEET_SIZE]
+                )
+                paper_enum = _PAPER_SIZE_ENUM.get(size_name, 0)
+                try:
+                    new_sheet_ok = drawing_doc.NewSheet3(
+                        requested_name,
+                        paper_enum,          # PaperSize (I4)
+                        _TEMPLATE_CUSTOM,    # TemplateIn (I4)
+                        1.0,                 # Scale1 (R8)
+                        1.0,                 # Scale2 (R8)
+                        True,                # FirstAngle (BOOL)
+                        "",                  # TemplateName (BSTR)
+                        w,                   # Width (R8, metres)
+                        h,                   # Height (R8, metres)
+                        "",                  # PropertyViewName (BSTR)
+                    )
+                except Exception as exc:
+                    all_errors.append(
+                        f"sheet[{idx}] NewSheet3({requested_name!r}) "
+                        f"raised: {exc!r}"
+                    )
+                    break
+                if not new_sheet_ok:
+                    all_errors.append(
+                        f"sheet[{idx}] NewSheet3({requested_name!r}) "
+                        f"returned False"
+                    )
+                    break
+                sheet_names_created.append(requested_name)
+
+            # Resolve the actual active sheet name (for sheet 1, which we did
+            # not rename -- ask the drawing doc what it's called)
+            try:
+                active_raw = drawing_doc.GetCurrentSheet()
+                active_sheet = (
+                    typed_qi(active_raw, "ISheet", module=mod)
+                    if active_raw is not None
+                    and not isinstance(active_raw, int)
+                    else None
+                )
+                current_name = (
+                    active_sheet.GetName() if active_sheet is not None else ""
+                )
+            except Exception:
+                current_name = ""
+
+            if is_first:
+                sheet_spec["name"] = sheet_spec.get("name") or current_name
+                # Rename sheet 1 if the spec asked for a specific name
+                if sheet_spec["name"] and sheet_spec["name"] != current_name:
+                    try:
+                        active_sheet.SetName(sheet_spec["name"])
+                        current_name = sheet_spec["name"]
+                    except Exception as exc:
+                        all_errors.append(
+                            f"sheet[0] rename to {sheet_spec['name']!r} "
+                            f"failed: {exc!r}"
+                        )
+                        break
+                sheet_names_created.append(current_name)
+                # Always ActivateSheet(sheet 1) explicitly -- NewSheet3 for
+                # later sheets may change the active sheet, and we must not
+                # rely on NewDocument's "sheet 1 is active" invariant.
+                try:
+                    _activate_sheet_by_name(drawing_doc, current_name)
+                except Exception as exc:
+                    all_errors.append(str(exc))
+                    break
             else:
-                derived_indices.append(i)
+                # Activate the sheet we just created so views land on it
+                try:
+                    _activate_sheet_by_name(drawing_doc, requested_name)
+                    current_name = requested_name
+                except Exception as exc:
+                    all_errors.append(str(exc))
+                    break
 
-        for i in ortho_indices:
-            view_entry = views[i]
-            fmt = resolve_format(view_entry)
-            x = fmt.default_x + (i * 0.001)
-            y = fmt.default_y
+            # ----------------------------------------------------------
+            # Build this sheet's views / dims / bom
+            # ----------------------------------------------------------
+            sheet_result = _build_sheet_views(
+                drawing_doc,
+                mdoc2,
+                sheet_spec,
+                model_path,
+                sheet_index=idx,
+                is_first=is_first,
+                mod=mod,
+                typed_qi=typed_qi,
+            )
+            sheet_result["sheet_name"] = current_name
+            per_sheet_results.append(sheet_result)
 
-            try:
-                view_raw = drawing_doc.CreateDrawViewFromModelView3(
-                    model_path, fmt.view_name, x, y, 0.0
-                )
-                if view_raw is not None and not isinstance(view_raw, int):
-                    tview = typed_qi(view_raw, "IView", module=mod)
-                    views_placed.append(view_entry)
-                    placed_views.append(tview)
-                    placed_by_name[view_entry] = tview
-                else:
-                    view_errors.append(
-                        f"{view_entry}: CreateDrawViewFromModelView3 "
-                        f"returned {view_raw!r}"
-                    )
-            except Exception as exc:
-                view_errors.append(f"{view_entry}: {exc!r}")
+            all_views_placed.extend(sheet_result.get("views_placed", []))
+            total_view_count += sheet_result.get("view_count", 0)
 
-        # ------------------------------------------------------------------
-        # Pass 2: derived views (section / detail) in spec order
-        # ------------------------------------------------------------------
-        for i in derived_indices:
-            vspec = views[i]
-            vtype = vspec.get("type")
-            vname = vspec.get("name", "")
-            parent_key = vspec.get("parent", "")
-            parent_iview = placed_by_name.get(parent_key)
+            if sheet_result.get("view_errors"):
+                all_errors.extend(sheet_result["view_errors"])
+                # Fail-closed (W20/W21): abort BEFORE creating further sheets
+                # or SaveAs3 -- a partial drawing on disk is worse than no
+                # drawing.
+                break
 
-            if parent_iview is None:
-                view_errors.append(
-                    f"views[{i}] ({vtype} '{vname}'): "
-                    f"parent view '{parent_key}' was not placed"
-                )
-                continue
+        result["sheets"] = per_sheet_results
+        result["sheet_count"] = len(per_sheet_results)
+        result["sheet_names"] = sheet_names_created
+        result["views_placed"] = all_views_placed
+        result["view_count"] = total_view_count
 
-            try:
-                if vtype == "section":
-                    tview, placed_name = _create_section_view(
-                        drawing_doc, mdoc2, parent_iview, vspec, typed_qi, mod
-                    )
-                else:  # detail
-                    tview, placed_name = _create_detail_view(
-                        drawing_doc, mdoc2, parent_iview, vspec, typed_qi, mod
-                    )
-                views_placed.append(placed_name)
-                placed_views.append(tview)
-            except Exception as exc:
-                view_errors.append(
-                    f"views[{i}] ({vtype} '{vname}'): {exc!r}"
-                )
-
-        result["views_placed"] = views_placed
-        result["view_count"] = len(views_placed)
-
-        if view_errors:
-            result["view_errors"] = view_errors
-            # Fail-closed (W20 hardening): a declarative drawing spec names an
-            # EXACT set of views. If ANY requested view (ortho OR derived)
-            # failed to materialise, abort BEFORE dims / BOM / SaveAs3 rather
-            # than writing a partial .SLDDRW to disk — parity with the W17 dims
-            # / W18 BOM hard-return posture and the W9/W11 assembly fail-closed
-            # invariant. The validator blocks every structural error at
-            # propose-time, so a commit-time view error is a live COM failure
-            # that must fail the commit, not silently degrade the output.
+        if all_errors:
+            result["view_errors"] = all_errors
             result["error"] = (
-                f"{len(view_errors)} requested view(s) could not be created; "
-                f"no drawing was saved: {'; '.join(view_errors)}"
+                f"{len(all_errors)} sheet/view failure(s); "
+                f"no drawing was saved: {'; '.join(all_errors)}"
             )
             return result
 
-        # Insert model dimensions if requested (W17)
-        insert_dims = spec.get("dimensions", False)
-        if insert_dims and views_placed:
-            try:
-                drawing_doc.InsertModelAnnotations3(
-                    0, -1, True, False, True, 0
-                )
-                result["dimensions_inserted"] = True
-            except Exception as exc:
-                result["dimensions_inserted"] = False
-                result["error"] = (
-                    f"InsertModelAnnotations3 failed: {exc!r}"
-                )
-                return result
-
-            total_annotations = 0
-            for v in placed_views:
-                try:
-                    ac = v.GetAnnotationCount()
-                    total_annotations += ac if ac else 0
-                except Exception:
-                    pass
-            result["total_annotations"] = total_annotations
-            if total_annotations == 0:
-                result["error"] = (
-                    "dimensions: true but zero annotations inserted "
-                    "(model may have been built with no_dim=True; "
-                    "rebuild with no_dim=False for dimensioned output)"
-                )
-                return result
-
-        # Insert BOM if requested (W18)
-        insert_bom = spec.get("bom", False)
-        if insert_bom and views_placed and placed_views:
-            bom_tmpl = _find_bom_template()
-            if bom_tmpl is None:
-                result["error"] = (
-                    "bom: true but no BOM template (.sldbomtbt) found; "
-                    "expected under "
-                    "C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\lang\\english\\"
-                )
-                return result
-
-            first_view = placed_views[0]
-            try:
-                vn = first_view.GetName2() or ""
-                if vn:
-                    drawing_doc.ActivateView(vn)
-            except Exception:
-                pass
-
-            try:
-                bom_annotation = first_view.InsertBomTable4(
-                    False,    # UseAnchorPoint
-                    0.05,     # X metres on sheet
-                    0.22,     # Y metres on sheet
-                    1,        # AnchorType = swTableAnchor_TopLeft
-                    1,        # BomType = swBomType_TopLevelOnly
-                    "",       # Configuration (default)
-                    bom_tmpl, # TableTemplate
-                    False,    # Hidden
-                    2,        # IndentedNumberingType = swIndentedNumberingType_None
-                    False,    # DetailedCutList
-                )
-            except Exception as exc:
-                result["error"] = f"BOM InsertBomTable4 failed: {exc!r}"
-                return result
-
-            bom_ok = (
-                bom_annotation is not None
-                and not isinstance(bom_annotation, int)
-            )
-            if not bom_ok:
-                result["error"] = (
-                    "InsertBomTable4 returned None -- BOM not placed "
-                    "(assembly may have no components in this view context)"
-                )
-                return result
-
-            data_rows = _count_bom_data_rows(bom_annotation)
-            result["bom_data_rows"] = data_rows
-            if data_rows == 0:
-                result["error"] = (
-                    "bom: true but the BOM table has zero data rows "
-                    "(model has no visible components in the drawing view)"
-                )
-                return result
-
-            result["bom_inserted"] = True
-
-        # Save the drawing
+        # Save the drawing (only reached when EVERY sheet succeeded)
         try:
             doc_raw.SaveAs3(output_path, 0, 2)
             result["save_path"] = output_path
@@ -581,9 +948,6 @@ def commit_drawing(
             result["error"] = f"SaveAs3 failed: {exc!r}"
             return result
 
-        # view_errors is guaranteed empty here: the fail-closed guard after
-        # Pass 2 returns early on any view failure (W20 hardening), so reaching
-        # this point means every requested view materialised.
         result["ok"] = True
         return result
 
