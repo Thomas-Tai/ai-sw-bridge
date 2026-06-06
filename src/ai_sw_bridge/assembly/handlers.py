@@ -16,6 +16,7 @@ assembly document. Both use the W8 seat-proven COM recipes:
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import Any
 
 import pythoncom
@@ -569,3 +570,113 @@ def verify_mates(
             continue
 
     return results
+
+
+PLANE_FULL_NAME = {
+    "front": "Front Plane",
+    "top": "Top Plane",
+    "right": "Right Plane",
+}
+
+
+def mirror_components(
+    sw: Any,
+    asm_doc: Any,
+    placed: dict[str, Any],
+    patterns: list[dict[str, Any]],
+    output_path: str,
+    *,
+    mod: Any | None = None,
+) -> tuple[int, str | None]:
+    """Mirror seed components about a reference plane.
+
+    Uses the seat-proven W22 recipe: ``IAssemblyDoc.MirrorComponents`` (v1,
+    9 args) with raw ``PyIDispatch`` pointers (``_oleobj_``). The assembly
+    must be saved before mirroring (mirror creates new part files on disk).
+
+    Args:
+        sw: the ``SldWorks.Application`` COM object.
+        asm_doc: the assembly document (``IModelDoc2``).
+        placed: map of ``component_id → IComponent2`` from ``place_components``.
+        patterns: list of mirror pattern dicts (``seed``, ``plane``,
+            optional ``name_modifier``).
+        output_path: the assembly ``.sldasm`` path (used to determine the
+            mirror file output directory).
+        mod: the gen_py wrapper module.
+
+    Returns:
+        ``(mirrored_count, error)`` — the number of components successfully
+        mirrored, or ``(0, message)`` on the first failure.
+    """
+    if mod is None:
+        mod = wrapper_module()
+
+    import pythoncom
+    from win32com.client import VARIANT
+
+    typed_asm = typed(asm_doc, "IAssemblyDoc", module=mod)
+    asm_dir = str(Path(output_path).parent)
+
+    # Save assembly before mirror (mirror creates new part files)
+    try:
+        asm_doc.SaveAs3(output_path, 0, 2)
+    except Exception as exc:
+        return 0, f"SaveAs3 before mirror failed: {exc!r}"
+
+    mirrored = 0
+    for i, pat in enumerate(patterns):
+        seed_id = pat["seed"]
+        comp = placed.get(seed_id)
+        if comp is None:
+            return mirrored, f"pattern[{i}]: seed {seed_id!r} not placed"
+
+        plane_name = PLANE_FULL_NAME[pat["plane"]]
+
+        # Select mirror plane to get the raw entity
+        asm_doc.ClearSelection2(True)
+        try:
+            ok = asm_doc.SelectByID(plane_name, "PLANE", 0, 0, 0)
+        except Exception as exc:
+            return mirrored, f"pattern[{i}]: SelectByID plane: {exc!r}"
+        if not ok:
+            return mirrored, f"pattern[{i}]: could not select plane {plane_name!r}"
+
+        sel_mgr = asm_doc.SelectionManager
+        plane_entity = sel_mgr.GetSelectedObject6(1, -1)
+        if plane_entity is None:
+            return mirrored, f"pattern[{i}]: plane entity is None"
+
+        # Raw PyIDispatch pointers (gen_py wrappers cannot be marshaled)
+        raw_plane = plane_entity._oleobj_
+        raw_comp = comp._oleobj_
+
+        comp_array = VARIANT(
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (raw_comp,)
+        )
+
+        name_modifier = pat.get("name_modifier", 0)
+
+        try:
+            ret = typed_asm.MirrorComponents(
+                raw_plane,
+                comp_array,
+                comp_array,
+                None,
+                False,
+                int(name_modifier),
+                "",
+                asm_dir,
+                False,
+            )
+        except Exception as exc:
+            return mirrored, f"pattern[{i}]: MirrorComponents raised: {exc!r}"
+
+        if ret is None:
+            return mirrored, (
+                f"pattern[{i}]: MirrorComponents returned None "
+                f"(seed={seed_id!r}, plane={pat['plane']!r})"
+            )
+
+        mirrored += 1
+
+    return mirrored, None

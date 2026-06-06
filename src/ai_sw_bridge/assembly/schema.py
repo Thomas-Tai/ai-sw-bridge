@@ -116,6 +116,23 @@ WIDTH_MATE_SCHEMA = {
     },
 }
 
+MIRROR_PATTERN_SCHEMA = {
+    "type": "object",
+    "required": ["type", "seed", "plane"],
+    "additionalProperties": False,
+    "properties": {
+        "type": {"const": "mirror"},
+        "seed": {"type": "string", "minLength": 1},
+        "plane": {"type": "string", "enum": ["front", "top", "right"]},
+        "name_modifier": {"type": "integer", "minimum": 0},
+    },
+}
+
+COMPONENT_PATTERNS_SCHEMA = {
+    "type": "array",
+    "items": MIRROR_PATTERN_SCHEMA,
+}
+
 ASSEMBLY_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "ai-sw-bridge assembly spec v1",
@@ -136,5 +153,6 @@ ASSEMBLY_SCHEMA = {
                 "oneOf": [MATE_SCHEMA, WIDTH_MATE_SCHEMA],
             },
         },
+        "component_patterns": COMPONENT_PATTERNS_SCHEMA,
     },
 }
