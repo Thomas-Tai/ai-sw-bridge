@@ -13,6 +13,7 @@ Example in a v2 spec::
     "export": [
         {"format": "step214"},
         {"format": "pdf"},
+        {"format": "pdf", "sheets": ["Overview", "Detail"]},
         {"format": "dxf_flat"}
     ]
 """
@@ -48,6 +49,22 @@ EXPORT_ENTRY_SCHEMA: dict[str, Any] = {
             "description": (
                 "Override the output directory for this entry. "
                 "Defaults to the spec-level output directory or CWD."
+            ),
+        },
+        "sheets": {
+            "oneOf": [
+                {"type": "string", "const": "all"},
+                {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                },
+            ],
+            "description": (
+                "Which drawing sheets to export (PDF only). "
+                '"all" (default) exports every sheet; a list of sheet '
+                "names exports only those sheets. Ignored for non-PDF "
+                "formats. Unknown sheet names are rejected at dispatch."
             ),
         },
     },

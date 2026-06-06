@@ -22,7 +22,8 @@ class _MockDoc:
     """Minimal IModelDoc2 mock for export dispatch tests.
 
     Simulates ``SaveAs3`` by creating the file on disk when the
-    extension is one the mock knows about.
+    extension is one the mock knows about. Does NOT simulate
+    IExportPdfData (the PDF path is tested with _MockDrawingDoc).
     """
 
     SUPPORTED_EXTENSIONS = {".step", ".igs", ".x_t", ".stl", ".3mf", ".dxf"}
@@ -44,6 +45,17 @@ class _MockDoc:
             p.write_bytes(b"\x00" * 64)
         return 0
 
+    def GetType(self) -> int:
+        """Mock: return Part doc type (1)."""
+        return 1
+
+
+class _MockDrawingDoc(_MockDoc):
+    """A mock doc that identifies as a Drawing (GetType=3)."""
+
+    def GetType(self) -> int:
+        return 3
+
 
 class TestExportRequest:
     def test_frozen(self) -> None:
@@ -55,6 +67,16 @@ class TestExportRequest:
         req = ExportRequest(format="step214", output_dir=Path("/tmp"))
         assert req.filename is None
 
+    def test_sheets_default_all(self) -> None:
+        req = ExportRequest(format="pdf", output_dir=Path("/tmp"))
+        assert req.sheets == "all"
+
+    def test_sheets_list(self) -> None:
+        req = ExportRequest(
+            format="pdf", output_dir=Path("/tmp"), sheets=["Overview", "Detail"]
+        )
+        assert req.sheets == ["Overview", "Detail"]
+
 
 class TestExportResult:
     def test_to_dict_success(self) -> None:
@@ -65,10 +87,10 @@ class TestExportResult:
 
     def test_to_dict_failure(self) -> None:
         r = ExportResult(
-            format="pdf", path="/out/part.pdf", ok=False, error="SEAT-gated"
+            format="pdf", path="/out/part.pdf", ok=False, error="not a drawing"
         )
         d = r.to_dict()
-        assert d["error"] == "SEAT-gated"
+        assert d["error"] == "not a drawing"
         assert d["ok"] is False
 
 
@@ -145,12 +167,25 @@ class TestExportOne:
         assert result.ok is False
         assert "Unknown export format" in result.error
 
-    def test_pdf_is_seat_gated(self, tmp_path: Path) -> None:
-        doc = _MockDoc()
+    def test_pdf_on_part_rejected(self, tmp_path: Path) -> None:
+        """format:'pdf' on a Part doc (GetType=1) is rejected."""
+        doc = _MockDoc()  # GetType returns 1 (Part)
         req = ExportRequest(format="pdf", output_dir=tmp_path)
         result = _export_one(doc, req, "TestPart")
         assert result.ok is False
-        assert "SEAT-gated" in result.error
+        assert "Drawing" in result.error
+
+    def test_pdf_on_drawing_doc_type_check(self, tmp_path: Path) -> None:
+        """format:'pdf' passes the doc-type check on a Drawing mock
+        but still fails because the mock doesn't implement COM."""
+        doc = _MockDrawingDoc()
+        req = ExportRequest(format="pdf", output_dir=tmp_path)
+        result = _export_one(doc, req, "TestPart")
+        # The doc-type check passes (GetType=3), but the COM path
+        # will fail because mock doesn't have Extension/GetExportFileData
+        assert result.ok is False
+        # Should NOT contain "Drawing" doc-type error
+        assert "Drawing (.SLDDRW)" not in result.error
 
     def test_dxf_flat_is_seat_gated(self, tmp_path: Path) -> None:
         doc = _MockDoc()
@@ -179,6 +214,16 @@ class TestExportOne:
         req = ExportRequest(format=fmt_name, output_dir=tmp_path)
         result = _export_one(doc, req, "TestPart")
         assert result.ok is True, f"{fmt_name}: {result.error}"
+
+    def test_pdf_invalid_sheets_value(self, tmp_path: Path) -> None:
+        """sheets with empty list is rejected."""
+        doc = _MockDrawingDoc()
+        req = ExportRequest(
+            format="pdf", output_dir=tmp_path, sheets=[]
+        )
+        result = _export_one(doc, req, "TestPart")
+        assert result.ok is False
+        assert "Invalid" in result.error
 
 
 class TestExportAll:

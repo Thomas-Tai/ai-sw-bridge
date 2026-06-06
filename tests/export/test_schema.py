@@ -53,3 +53,34 @@ class TestExportBlockSchema:
     def test_format_required(self) -> None:
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate([{"filename": "no_format"}], EXPORT_BLOCK_SCHEMA)
+
+    def test_sheets_all_valid(self) -> None:
+        block = [{"format": "pdf", "sheets": "all"}]
+        jsonschema.validate(block, EXPORT_BLOCK_SCHEMA)
+
+    def test_sheets_list_valid(self) -> None:
+        block = [{"format": "pdf", "sheets": ["Overview", "Detail"]}]
+        jsonschema.validate(block, EXPORT_BLOCK_SCHEMA)
+
+    def test_sheets_empty_list_rejected(self) -> None:
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                [{"format": "pdf", "sheets": []}],
+                EXPORT_BLOCK_SCHEMA,
+            )
+
+    def test_sheets_invalid_string_rejected(self) -> None:
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                [{"format": "pdf", "sheets": "current"}],
+                EXPORT_BLOCK_SCHEMA,
+            )
+
+    def test_sheets_optional(self) -> None:
+        block = [{"format": "pdf"}]
+        jsonschema.validate(block, EXPORT_BLOCK_SCHEMA)
+
+    def test_sheets_on_step_ignored_by_schema(self) -> None:
+        """Schema allows 'sheets' on any format; dispatch validates."""
+        block = [{"format": "step214", "sheets": "all"}]
+        jsonschema.validate(block, EXPORT_BLOCK_SCHEMA)
