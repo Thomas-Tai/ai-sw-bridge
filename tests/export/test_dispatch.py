@@ -140,6 +140,9 @@ class TestExportOne:
         """Mock returns NoError but doesn't create the file."""
 
         class _BadDoc:
+            def GetType(self) -> int:
+                return 1  # Part doc (needed for W34 3D format guard)
+
             def SaveAs3(self, path: str, opts: int, ver: int) -> int:
                 return 0
 
@@ -151,6 +154,9 @@ class TestExportOne:
 
     def test_saveas3_direct_exception(self, tmp_path: Path) -> None:
         class _RaisingDoc:
+            def GetType(self) -> int:
+                return 1  # Part doc (needed for W34 3D format guard)
+
             def SaveAs3(self, path: str, opts: int, ver: int) -> int:
                 raise RuntimeError("COM timeout")
 
@@ -230,6 +236,22 @@ class TestExportOne:
         assert result.ok is False
         assert "Drawing (.SLDDRW)" in result.error
         assert "doc type is 1" in result.error
+
+    # --- W34: 3D formats reject Drawing docs ---
+
+    @pytest.mark.parametrize(
+        "fmt_name", ["step214", "step203", "iges", "stl", "parasolid", "3mf"]
+    )
+    def test_3d_format_rejects_drawing_doc(
+        self, tmp_path: Path, fmt_name: str
+    ) -> None:
+        """3D formats (STEP/IGES/STL/Parasolid/3MF) require Part or Assembly (W34)."""
+        doc = _MockDrawingDoc()  # GetType() = 3 (Drawing)
+        req = ExportRequest(format=fmt_name, output_dir=tmp_path)
+        result = _export_one(doc, req, "TestDrawing")
+        assert result.ok is False, f"{fmt_name}: should reject Drawing doc"
+        assert "Part (.SLDPRT) or Assembly" in result.error
+        assert "doc type is 3" in result.error
 
     def test_pdf_invalid_sheets_value(self, tmp_path: Path) -> None:
         """sheets with empty list is rejected."""
