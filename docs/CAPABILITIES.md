@@ -6,9 +6,7 @@
 > `docs/DEFERRED.md`. Paradigm: **declarative JSON is the only authoring surface;
 > propose→approve→execute; zero arbitrary code exec; out-of-process Python.**
 >
-> Last reconciled: 2026-06-06 (through W33). **The Export §3 is held pending the
-> W34 handback** — six 3D-neutral formats carry `seat_confirmed=True` but have no
-> verify-the-bytes PAE evidence; W34 is auditing them.
+> Last reconciled: 2026-06-06 (through W35). Suite: **2011 passed**, 34 skipped.
 
 ## 0. Surfaces
 
@@ -52,7 +50,7 @@ construction + text fidelity — `spec/builder.py`.)*
 count+type+reopen (caught the circular-pattern radians bug); SAFEARRAY args must be
 `VARIANT(VT_ARRAY|VT_DISPATCH, (obj,))` — a bare object silently no-ops.
 
-## 2. Assembly — `ai-sw-assembly` (W9–W26)
+## 2. Assembly — `ai-sw-assembly` (W9–W32)
 
 | Capability | Detail |
 |---|---|
@@ -62,26 +60,27 @@ count+type+reopen (caught the circular-pattern radians bug); SAFEARRAY args must
 | Limit modifier | distance/angle limit mates |
 | **component_arrays** | linear + circular via **placement expansion** (zero new COM) |
 | **mirror component** | `IAssemblyDoc.MirrorComponents` v1 (9-arg, raw Plane + VT_ARRAY\|VT_DISPATCH) |
+| **Exploded views** | `CreateExplodedView` → `AddExplodeStep` with 2-entity selection (component + direction ref plane); Transform delta verified (W32) |
 | Interactive edit | declarative add/remove component+mate → re-commit |
 | L4 persistence | manifest v2 (verbatim spec + runtime overlay, lossless `to_spec()`) |
 
 **Walls:** linear/circular **component** patterns (assembly-level) = no `IAssemblyDoc`
-creation method → Route-C/VBA. *In flight: W32v exploded views (re-probe).*
+creation method → Route-C/VBA. `ShowExploded2` VARIANT dispatch fails (but transform
+proves effect). *Deferred: rotational steps, radial patterns, explode-line sketches,
+multiple views per config, animation.*
 
-## 3. Export — `ai-sw-` export ⚠️ HELD FOR W34
-
-<!-- W34-HOLD: this section is intentionally incomplete.
-     pdf (W25v) and dxf (W33) are verify-the-bytes PROVEN.
-     step214/step203/iges/parasolid/stl/3mf carry seat_confirmed=True from
-     commit daa7e4f but have NO PAE evidence — W34 is auditing whether those
-     flags are honest or silent-no-op stubs (the W25 trap). Finalize this
-     table from W34's export_3d.json. -->
+## 3. Export — `ai-sw-` export (W25v + W33 + W34)
 
 | Format | Flag | verify-the-bytes proof |
 |---|---|---|
 | `pdf` | ✅ | **W25v** — page-count discrimination (Solo=1pg, Quad=1pg, all=2pg) |
 | `dxf` | ✅ | **W33** — entity parse (box front view → 4 LINE) |
-| `step214` `step203` `iges` `parasolid` `stl` `3mf` | ⚠️ | **flagged `seat_confirmed=True` at `daa7e4f`, NO PAE — W34 auditing** |
+| `step214` | ✅ | **W34** — 27 CARTESIAN_POINT + 6 ADVANCED_FACE + 1 CLOSED_SHELL |
+| `iges` | ✅ | **W34** — 79 DE entities + 109 P lines (⚠️ only `.igs` ext works; `.iges` → error 256) |
+| `stl` | ✅ | **W34** — binary, 12 triangles (box = 6 faces × 2) |
+| `step203` | ⚠️ | same SaveAs3_DIRECT path as step214 (save_version=1); not independently byte-verified |
+| `parasolid` | ⚠️ | same SaveAs3_DIRECT path; not independently byte-verified |
+| `3mf` | ⚠️ | same SaveAs3_DIRECT path; not independently byte-verified |
 | `dxf_flat` | ⬜ | deferred (sheet-metal flat pattern) |
 
 ## 4. Drawing — `ai-sw-drawing` (W4, W16–W28)
@@ -96,8 +95,7 @@ creation method → Route-C/VBA. *In flight: W32v exploded views (re-probe).*
 | **Dim tolerances** | `IDimension.SetToleranceType/Values` (model-owned, persists in .SLDPRT) | W28 |
 | BOM table | `IView.InsertBomTable4` (dispid 414) | W18 |
 
-**Tolerance types:** symmetric=4 / bilateral=2 / limit=3. *In flight: W31v2
-ordinate/baseline (Gate 1 solved via `IView.SelectEntity`; Gate-2 Insert* re-probe).*
+**Tolerance types:** symmetric=4 / bilateral=2 / limit=3.
 
 ## 5. Observe — read-only perception (CLI **+ MCP**)
 
@@ -107,10 +105,10 @@ ordinate/baseline (Gate 1 solved via `IView.SelectEntity`; Gate-2 Insert* re-pro
 | Interference | `sw_interference` | `InterferenceDetectionManager` (dispid 126, prop-get) | W27 |
 | Measure (selection) | `sw_measure` / `sw_measure_selection` | `CreateMeasure`→`Calculate(None)` | W30 |
 | Bounding box (part) | `sw_bbox` / `sw_bounding_box` | `IPartDoc.GetPartBox(True)` (part-only) | W30 |
+| **Clearance (min-distance)** | `sw_clearance` | `IComponent2.Select2`×2 → `IMeasure.Distance` (assembly-only) | W35 |
 | Custom properties | `sw_custom_props` | (read side) | W29* |
 
-*W29 properties write-side parked offline; seat PAE unrun. In flight: W35 clearance
-(min-distance between components).*
+*W29 properties write-side parked offline; seat PAE unrun.*
 
 ## 6. Persistence / infra
 
@@ -127,10 +125,7 @@ retrieval (`ai-sw-apidoc`) · codegen (`ai-sw-codegen`) · MCP lane (`ai-sw-mcp`
 | `rib` / `wrap` / `boundary-boss` | solver-deep, out-of-process COM wall |
 | `miter flange` | no SW2024 interface |
 | linear/circular **component** patterns | no `IAssemblyDoc` creation method |
-
-**Held (NOT yet earned NO-GOs, under re-probe):** drawing ordinate/baseline (W31v2),
-assembly exploded view (W32v). A NO-GO is a claim of impossibility → earned only
-after the *proven* sibling techniques + preconditions are exhausted.
+| drawing **ordinate / baseline** dims | all 6 Insert*/Add*/baseline methods produce zero dims with confirmed datum; interactive-mode starters, not one-shot creators (W31v2 earned NO-GO) |
 
 ---
 
