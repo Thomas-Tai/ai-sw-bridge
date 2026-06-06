@@ -4,12 +4,15 @@ Subcommands:
   active_doc          -> sw_get_active_doc()
   feature_errors      -> sw_get_feature_errors()
   equations           -> sw_get_equations()
-  bbox                -> sw_get_bbox()             [part only]
+  bbox                -> sw_get_bbox()             [part only, legacy]
+  bounding_box        -> bounding_box()            [part only, W30]
   volume              -> sw_get_volume()           [part only]
   screenshot          -> sw_screenshot(width, height, fit_view, filename)
-  measure             -> sw_measure(entity_a, entity_b)
+  measure             -> sw_measure(entity_a, entity_b)  [legacy]
+  measure_selection   -> measure_selection()      [W30, pre-selected entities]
   mate_errors         -> sw_get_mate_errors()  [assembly only]
   interference        -> sw_get_interference()  [assembly only, W27/E4]
+  inertia             -> inertia()               [part only, W5 E1]
   custom_props        -> sw_get_custom_props()  [experimental]
   addins              -> sw_get_enabled_addins()  [experimental, W7.1]
 
@@ -50,6 +53,10 @@ def _run_bbox(_args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().bbox()
 
 
+def _run_bounding_box(_args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().bounding_box()
+
+
 def _run_volume(_args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().volume()
 
@@ -65,6 +72,14 @@ def _run_screenshot(args: argparse.Namespace) -> dict[str, Any]:
 
 def _run_measure(args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().measure(entity_a=args.entity_a, entity_b=args.entity_b)
+
+
+def _run_measure_selection(_args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().measure_selection()
+
+
+def _run_inertia(_args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().inertia()
 
 
 def _run_custom_props(_args: argparse.Namespace) -> dict[str, Any]:
@@ -107,14 +122,27 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p = subs.add_parser(
         "bbox",
-        help="Report the active part's axis-aligned bounding box (part only).",
+        help="Report the active part's axis-aligned bounding box (part only, legacy).",
         description=(
             "Read the active part's bounding box via IPartDoc.GetPartBox. "
             "Reports min/max corners and spans in BOTH mm and m. Part docs "
             "only -- returns a typed error result for assemblies/drawings."
+            "Legacy method -- for W30-style mm-only report, use bounding_box."
         ),
     )
     p.set_defaults(func=_run_bbox)
+
+    p = subs.add_parser(
+        "bounding_box",
+        help="Report the active part's bounding box (part only, W30).",
+        description=(
+            "Wave-30 perception axis — read the active part's bounding box "
+            "via IPartDoc.GetPartBox(True). Reports mm values only: "
+            "{x_min_mm, x_max_mm, y_min_mm, y_max_mm, z_min_mm, z_max_mm, "
+            "dx_mm, dy_mm, dz_mm}. Part docs only."
+        ),
+    )
+    p.set_defaults(func=_run_bounding_box)
 
     p = subs.add_parser(
         "volume",
@@ -156,11 +184,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p = subs.add_parser(
         "measure",
-        help="Measure entities in the active document.",
+        help="Measure entities in the active document (legacy).",
         description=(
             "Measure entities in the active document. With no args, measures "
             "whatever is currently selected in the SW UI. With --entity-a, "
             "programmatically selects that entity and reports area/perimeter."
+            "Legacy method -- for W30-style pre-selected measurement, use measure_selection."
         ),
     )
     p.add_argument(
@@ -176,6 +205,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Name of the second entity (note: two-entity named selection is unsupported).",
     )
     p.set_defaults(func=_run_measure)
+
+    p = subs.add_parser(
+        "measure_selection",
+        help="Measure currently selected entities (W30).",
+        description=(
+            "Wave-30 perception axis — measure whatever entities are "
+            "currently selected in SW via IMeasure.Calculate. Returns "
+            "{distance_mm, delta_x_mm, delta_y_mm, delta_z_mm}. "
+            "Pre-select entities via select_entity or SW UI before calling."
+        ),
+    )
+    p.set_defaults(func=_run_measure_selection)
 
     p = subs.add_parser(
         "mate_errors",
@@ -194,6 +235,18 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.set_defaults(func=_run_interference)
+
+    p = subs.add_parser(
+        "inertia",
+        help="Report inertia tensor of the active part (W5 E1).",
+        description=(
+            "Wave-5 E1 — read the full 3x3 inertia tensor via "
+            "IMassProperty2.GetMomentOfInertia(0). Reports "
+            "center_of_mass_mm, inertia_tensor_kg_m2, "
+            "principal_moments_kg_m2, principal_axes. Part docs only."
+        ),
+    )
+    p.set_defaults(func=_run_inertia)
 
     p = subs.add_parser(
         "custom_props",

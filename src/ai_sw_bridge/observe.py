@@ -21,8 +21,10 @@ from .sw_com import (
     get_sw_app,
     resolve,
 )
+from .observe_bbox import sw_get_bbox_from_doc
 from .observe_inertia import sw_get_inertia
 from .observe_interference import sw_get_interference
+from .observe_measure import sw_get_measure_from_doc
 
 
 def _captures_dir() -> Path:
@@ -1261,8 +1263,27 @@ class SolidWorksObserver:
         return sw_get_equations()
 
     def bbox(self) -> dict[str, Any]:
-        """Return the active part's axis-aligned bounding box (parts only)."""
+        """Return the active part's axis-aligned bounding box (parts only).
+
+        Legacy method — returns both m and mm values plus spans.
+        For W30-style report (only mm values with dx_mm/dy_mm/dz_mm),
+        use ``bounding_box()`` instead.
+        """
         return sw_get_bbox()
+
+    def bounding_box(self) -> dict[str, Any]:
+        """Return the active part's bounding box (W30 perception axis).
+
+        Uses ``IPartDoc.GetPartBox(True)`` to get axis-aligned bounding box
+        in the part's coordinate system. Returns mm values only:
+        ``{"ok": bool, "bounding_box": {x_min_mm..z_max_mm, dx_mm,dy_mm,dz_mm}}``.
+
+        Parts only — assemblies/drawings get a typed error result.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_bbox_from_doc(doc)
 
     def volume(self) -> dict[str, Any]:
         """Return volume, surface area, mass, and CoM of the active part."""
@@ -1312,8 +1333,28 @@ class SolidWorksObserver:
         entity_a: str | None = None,
         entity_b: str | None = None,
     ) -> dict[str, Any]:
-        """Measure entities in the active document."""
+        """Measure entities in the active document.
+
+        Legacy method — supports named entity selection via entity_a/entity_b args.
+        For W30-style measurement of pre-selected entities, use
+        ``measure_selection()`` instead (reads Distance, DeltaX/Y/Z only).
+        """
         return sw_measure(entity_a=entity_a, entity_b=entity_b)
+
+    def measure_selection(self) -> dict[str, Any]:
+        """Measure currently selected entities (W30 perception axis).
+
+        Uses ``IModelDocExtension.CreateMeasure`` → ``IMeasure.Calculate(None)``
+        to measure whatever is currently selected in SW. Returns:
+        ``{"ok": bool, "measure": {distance_mm, delta_x_mm, delta_y_mm, delta_z_mm}}``.
+
+        Caller must pre-select entities via ``select_entity`` or SW UI.
+        Returns error if no entities are selected.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_measure_from_doc(doc)
 
     def enabled_addins(self) -> dict[str, Any]:
         """Enumerate currently-loaded SOLIDWORKS add-ins (W7.1)."""
