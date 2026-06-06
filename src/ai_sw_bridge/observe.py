@@ -22,6 +22,7 @@ from .sw_com import (
     resolve,
 )
 from .observe_inertia import sw_get_inertia
+from .observe_interference import sw_get_interference
 
 
 def _captures_dir() -> Path:
@@ -1317,3 +1318,17 @@ class SolidWorksObserver:
     def enabled_addins(self) -> dict[str, Any]:
         """Enumerate currently-loaded SOLIDWORKS add-ins (W7.1)."""
         return sw_get_enabled_addins()
+
+    def interference(self) -> dict[str, Any]:
+        """Detect physical interferences in the active assembly (Wave-27 E4).
+
+        Uses ``IAssemblyDoc.InterferenceDetectionManager`` (dispid 126) to
+        detect component clashes. Returns ``interference_count`` and a list
+        of interferences with component names and volumes (mm³).
+
+        Assembly documents only. Parts/drawings get a typed error result.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_interference(doc)

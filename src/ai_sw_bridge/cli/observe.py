@@ -9,6 +9,7 @@ Subcommands:
   screenshot          -> sw_screenshot(width, height, fit_view, filename)
   measure             -> sw_measure(entity_a, entity_b)
   mate_errors         -> sw_get_mate_errors()  [assembly only]
+  interference        -> sw_get_interference()  [assembly only, W27/E4]
   custom_props        -> sw_get_custom_props()  [experimental]
   addins              -> sw_get_enabled_addins()  [experimental, W7.1]
 
@@ -72,6 +73,10 @@ def _run_custom_props(_args: argparse.Namespace) -> dict[str, Any]:
 
 def _run_addins(_args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().enabled_addins()
+
+
+def _run_interference(_args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().interference()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -177,6 +182,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Walk an assembly's mate set and report per-mate status (assembly only).",
     )
     p.set_defaults(func=_run_mate_errors)
+
+    p = subs.add_parser(
+        "interference",
+        help="Detect physical interferences in the active assembly (W27/E4).",
+        description=(
+            "Wave-27 E4 — detect component clashes via "
+            "IAssemblyDoc.InterferenceDetectionManager. Reports "
+            "interference_count and a list of interferences with "
+            "component names and volumes (mm³). Assembly docs only."
+        ),
+    )
+    p.set_defaults(func=_run_interference)
 
     p = subs.add_parser(
         "custom_props",

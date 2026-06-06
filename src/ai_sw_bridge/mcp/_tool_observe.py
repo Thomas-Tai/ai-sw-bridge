@@ -1,6 +1,6 @@
 """Observation MCP tools (W5.4, §6.1).
 
-Ten read-only tools that mirror the ``ai-sw-observe`` CLI
+Eleven read-only tools that mirror the ``ai-sw-observe`` CLI
 subcommands. Each tool is a thin wrapper around a
 :class:`ai_sw_bridge.observe.SolidWorksObserver` method, decorated
 with ``@com_tool`` so the body runs on the ComExecutor's STA
@@ -95,3 +95,14 @@ def register(mcp: Any) -> None:
     def sw_enabled_addins() -> dict[str, Any]:
         """Enumerate currently-loaded SOLIDWORKS add-ins."""
         return SolidWorksObserver().enabled_addins()
+
+    @mcp.tool()
+    @com_tool
+    def sw_interference() -> dict[str, Any]:
+        """Detect physical interferences in the active assembly (W27/E4).
+
+        Uses IAssemblyDoc.InterferenceDetectionManager to detect component
+        clashes. Returns interference_count and a list of interferences with
+        component names and volumes (mm³). Assembly documents only.
+        """
+        return SolidWorksObserver().interference()
