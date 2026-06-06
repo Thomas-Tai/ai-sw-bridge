@@ -1,0 +1,22 @@
+{
+  "verdict": "PASS",
+  "bbox": {
+    "ok": true,
+    "dx_mm": 20.0,
+    "dy_mm": 30.0,
+    "dz_mm": 40.0
+  },
+  "measure": {
+    "ok": true,
+    "distance_mm": 53.85165
+  },
+  "gates": [
+    "bbox_ok: True",
+    "bbox_dx=20.0mm: True (got 20.0)",
+    "bbox_dy=30.0mm: True (got 30.0)",
+    "bbox_dz=40.0mm: True (got 40.0)",
+    "measure_ok: True",
+    "measure_distance=53.85mm: True (got 53.85165)"
+  ],
+  "errors": []
+}

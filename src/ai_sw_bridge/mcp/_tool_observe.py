@@ -1,6 +1,6 @@
-"""Observation MCP tools (W5.4, §6.1).
+"""Observation MCP tools (W5.4, §6.1, W30).
 
-Eleven read-only tools that mirror the ``ai-sw-observe`` CLI
+Thirteen read-only tools that mirror the ``ai-sw-observe`` CLI
 subcommands. Each tool is a thin wrapper around a
 :class:`ai_sw_bridge.observe.SolidWorksObserver` method, decorated
 with ``@com_tool`` so the body runs on the ComExecutor's STA
@@ -106,3 +106,39 @@ def register(mcp: Any) -> None:
         component names and volumes (mm³). Assembly documents only.
         """
         return SolidWorksObserver().interference()
+
+    @mcp.tool()
+    @com_tool
+    def sw_bounding_box() -> dict[str, Any]:
+        """Return the active part's bounding box (W30 perception axis).
+
+        Uses IPartDoc.GetPartBox(True) to get axis-aligned bounding box
+        in the part's coordinate system. Returns mm values only:
+        {x_min_mm, x_max_mm, y_min_mm, y_max_mm, z_min_mm, z_max_mm,
+        dx_mm, dy_mm, dz_mm}. Parts only — assemblies/drawings error.
+        """
+        return SolidWorksObserver().bounding_box()
+
+    @mcp.tool()
+    @com_tool
+    def sw_measure_selection() -> dict[str, Any]:
+        """Measure currently selected entities (W30 perception axis).
+
+        Uses IModelDocExtension.CreateMeasure → IMeasure.Calculate(None)
+        to measure whatever is currently selected in SW. Returns
+        {distance_mm, delta_x_mm, delta_y_mm, delta_z_mm}.
+        Pre-select entities via select_entity or SW UI before calling.
+        """
+        return SolidWorksObserver().measure_selection()
+
+    @mcp.tool()
+    @com_tool
+    def sw_inertia() -> dict[str, Any]:
+        """Return inertia tensor of the active part (W5 E1).
+
+        Uses IMassProperty2.GetMomentOfInertia(0) to read the full
+        3x3 inertia tensor about the center of mass. Returns
+        center_of_mass_mm, inertia_tensor_kg_m2, principal_moments_kg_m2,
+        principal_axes. Parts only — assemblies/drawings error.
+        """
+        return SolidWorksObserver().inertia()
