@@ -1596,3 +1596,214 @@ class TestSaveDoc:
         cr = sw_commit_feature_add(pid)
         assert cr["ok"] is True
         assert cr["doc_saved"] is True
+
+
+# ---------------------------------------------------------------------------
+# Chamfer (W24) — fillet sibling via IChamferFeatureData2
+# DE-ADVERTISED: "chamfer" is NOT in _SUPPORTED_FEATURE_TYPES until PAE clears.
+# These tests monkeypatch the advertised tuple so validation is reachable.
+# ---------------------------------------------------------------------------
+
+
+class _FakeChamferData:
+    def __init__(self) -> None:
+        self.init_calls: list[int] = []
+        self.distance: float | None = None
+        self.angle: float | None = None
+
+    def Initialize(self, t: int) -> None:
+        self.init_calls.append(t)
+
+    @property
+    def Distance(self) -> float:
+        return self.distance or 0.0
+
+    @Distance.setter
+    def Distance(self, v: float) -> None:
+        self.distance = v
+
+    @property
+    def Angle(self) -> float:
+        return self.angle or 0.0
+
+    @Angle.setter
+    def Angle(self, v: float) -> None:
+        self.angle = v
+
+
+_VALID_CHAMFER_FEATURE = {"type": "chamfer", "distance_mm": 2.0}
+_VALID_CHAMFER_FEATURE_ANGLE = {"type": "chamfer", "distance_mm": 2.0, "angle_deg": 30.0}
+
+
+def _patch_chamfer_advertised(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Temporarily add 'chamfer' to _SUPPORTED_FEATURE_TYPES for testing."""
+    monkeypatch.setattr(
+        mutate, "_SUPPORTED_FEATURE_TYPES",
+        mutate._SUPPORTED_FEATURE_TYPES + ("chamfer",),
+    )
+
+
+class TestChamferDeAdvertised:
+    def test_not_in_supported_types(
+        self,
+    ) -> None:
+        assert "chamfer" not in mutate._SUPPORTED_FEATURE_TYPES
+
+    def test_rejected_without_advertisement(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        r = sw_propose_feature_add(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
+        assert r["ok"] is False
+        assert "unsupported" in r["error"]
+
+
+class TestProposeChamfer:
+    def test_writes_record(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        r = sw_propose_feature_add(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
+        assert r["ok"] is True
+
+    def test_rejects_bad_distance(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        r = sw_propose_feature_add(
+            str(doc), {"type": "chamfer", "distance_mm": -1}, _VALID_TARGET
+        )
+        assert r["ok"] is False
+        assert "distance_mm" in r["error"]
+
+    def test_rejects_zero_distance(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        r = sw_propose_feature_add(
+            str(doc), {"type": "chamfer", "distance_mm": 0}, _VALID_TARGET
+        )
+        assert r["ok"] is False
+        assert "distance_mm" in r["error"]
+
+    def test_rejects_bad_angle(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        r = sw_propose_feature_add(
+            str(doc),
+            {"type": "chamfer", "distance_mm": 2.0, "angle_deg": 95},
+            _VALID_TARGET,
+        )
+        assert r["ok"] is False
+        assert "angle_deg" in r["error"]
+
+    def test_rejects_zero_angle(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        r = sw_propose_feature_add(
+            str(doc),
+            {"type": "chamfer", "distance_mm": 2.0, "angle_deg": 0},
+            _VALID_TARGET,
+        )
+        assert r["ok"] is False
+        assert "angle_deg" in r["error"]
+
+    def test_default_angle_45(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        r = sw_propose_feature_add(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
+        assert r["ok"] is True
+        rec = json.loads(
+            (tmp_path / "proposals" / f"{r['proposal_id']}.json").read_text()
+        )
+        assert "angle_deg" not in rec["feature"]
+
+
+class TestDryRunChamfer:
+    def test_ok_sets_distance_angle_no_save(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        cd = _FakeChamferData()
+        fakes = _patch_all(
+            monkeypatch, tmp_path, str(doc), _FakeEntity(), object(), data=cd
+        )
+        _patch_chamfer_advertised(monkeypatch)
+        pid = sw_propose_feature_add(
+            str(doc), _VALID_CHAMFER_FEATURE_ANGLE, _VALID_TARGET
+        )["proposal_id"]
+
+        r = sw_dry_run_feature_add(pid)
+
+        assert r["ok"] is True
+        assert r["state"] == ST_DRY_RUN_OK
+        assert fakes["fm"].create_def_calls == [1]  # swFmFillet = swFmChamfer
+        assert cd.init_calls == [1]  # swChamferAngleDistance
+        assert cd.distance == pytest.approx(0.002)
+        assert cd.angle == pytest.approx(math.radians(30.0))
+        assert len(fakes["fm"].create_feat_calls) == 1
+        assert fakes["doc"].save_calls == []
+
+    def test_default_angle_is_45_deg(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        cd = _FakeChamferData()
+        fakes = _patch_all(
+            monkeypatch, tmp_path, str(doc), _FakeEntity(), object(), data=cd
+        )
+        _patch_chamfer_advertised(monkeypatch)
+        pid = sw_propose_feature_add(
+            str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET
+        )["proposal_id"]
+
+        r = sw_dry_run_feature_add(pid)
+
+        assert r["ok"] is True
+        assert cd.angle == pytest.approx(math.radians(45.0))
+
+    def test_unresolved_edge_broke(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        cd = _FakeChamferData()
+        fakes = _patch_all(
+            monkeypatch, tmp_path, str(doc), None, object(), data=cd
+        )
+        _patch_chamfer_advertised(monkeypatch)
+        pid = sw_propose_feature_add(
+            str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET
+        )["proposal_id"]
+
+        r = sw_dry_run_feature_add(pid)
+
+        assert r["ok"] is False
+        assert r["state"] == ST_DRY_RUN_BROKE
+        assert "unresolved" in r["error"]
+        assert fakes["fm"].create_feat_calls == []

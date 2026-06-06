@@ -292,6 +292,42 @@ def _create_fillet(doc: Any, target: dict, radius_mm: float) -> tuple[bool, str 
         return False, f"fillet pipeline failed: {exc!r}"
 
 
+_SW_FM_CHAMFER = _SW_FM_FILLET
+_SW_CHAMFER_ANGLE_DISTANCE = 1
+
+
+def _create_chamfer(
+    doc: Any, target: dict, distance_mm: float, angle_deg: float
+) -> tuple[bool, str | None]:
+    """Run the chamfer pipeline on a durable edge — fillet sibling.
+
+    Uses the SAME ``CreateDefinition(swFmFillet=1)`` id as fillet (the SW API
+    groups fillet and chamfer under swFmFillet) but QI's for
+    ``IChamferFeatureData2`` and initializes with ``swChamferAngleDistance``.
+    Returns (ok, error).
+    """
+    edge_ref = DurableEdgeRef.from_dict(target)
+    doc.ForceRebuild3(False)
+    res = resolve_edge_ref(doc, edge_ref)
+    if res.entity is None:
+        return False, f"edge unresolved (method={res.method})"
+    try:
+        fm = doc.FeatureManager
+        data = fm.CreateDefinition(_SW_FM_CHAMFER)
+        mod = wrapper_module()
+        fd = typed_qi(data, "IChamferFeatureData2", module=mod)
+        fd.Initialize(_SW_CHAMFER_ANGLE_DISTANCE)
+        fd.Distance = distance_mm / 1000.0
+        fd.Angle = angle_deg * math.pi / 180.0
+        select_entity(res.entity)
+        feat = fm.CreateFeature(fd)
+        if _materialized(feat):
+            return True, None
+        return False, "CreateFeature did not materialize"
+    except Exception as exc:
+        return False, f"chamfer pipeline failed: {exc!r}"
+
+
 def _create_base_flange(
     doc: Any, target: dict, thickness_mm: float, bend_radius_mm: float
 ) -> tuple[bool, str | None]:
@@ -1755,6 +1791,10 @@ def _apply_feature(
     ftype = feature.get("type") if isinstance(feature, dict) else None
     if ftype == "fillet_constant_radius":
         return _create_fillet(doc, target, feature["radius_mm"])
+    if ftype == "chamfer":
+        return _create_chamfer(
+            doc, target, feature["distance_mm"], feature.get("angle_deg", 45.0)
+        )
     if ftype == "base_flange":
         return _create_base_flange(
             doc, target, feature["thickness_mm"], feature["bend_radius_mm"]
@@ -2243,6 +2283,19 @@ def sw_propose_feature_add(
             if not isinstance(radius_mm, (int, float)) or radius_mm <= 0:
                 result["error"] = (
                     f"radius_mm must be a positive number, got {radius_mm!r}"
+                )
+                return result
+        elif feat_type == "chamfer":
+            distance_mm = feature.get("distance_mm")
+            if not isinstance(distance_mm, (int, float)) or distance_mm <= 0:
+                result["error"] = (
+                    f"distance_mm must be a positive number, got {distance_mm!r}"
+                )
+                return result
+            angle_deg = feature.get("angle_deg", 45.0)
+            if not isinstance(angle_deg, (int, float)) or not (0 < angle_deg < 90):
+                result["error"] = (
+                    f"angle_deg must be in (0, 90), got {angle_deg!r}"
                 )
                 return result
         elif feat_type == "base_flange":
