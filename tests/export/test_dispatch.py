@@ -205,7 +205,7 @@ class TestExportOne:
 
     @pytest.mark.parametrize(
         "fmt_name",
-        ["step214", "iges", "parasolid", "stl", "3mf", "dxf"],
+        ["step214", "iges", "parasolid", "stl", "3mf"],  # DXF excluded: requires Drawing doc
     )
     def test_all_saveas3_formats_succeed(
         self, tmp_path: Path, fmt_name: str
@@ -214,6 +214,22 @@ class TestExportOne:
         req = ExportRequest(format=fmt_name, output_dir=tmp_path)
         result = _export_one(doc, req, "TestPart")
         assert result.ok is True, f"{fmt_name}: {result.error}"
+
+    def test_dxf_succeeds_on_drawing_doc(self, tmp_path: Path) -> None:
+        """DXF export requires a Drawing doc (W33 doc-type fail-closed)."""
+        doc = _MockDrawingDoc()
+        req = ExportRequest(format="dxf", output_dir=tmp_path)
+        result = _export_one(doc, req, "TestDrawing")
+        assert result.ok is True, f"dxf on drawing: {result.error}"
+
+    def test_dxf_fails_on_part_doc(self, tmp_path: Path) -> None:
+        """DXF export rejects Part docs with clear error (W33)."""
+        doc = _MockDoc()  # GetType() = 1 (Part)
+        req = ExportRequest(format="dxf", output_dir=tmp_path)
+        result = _export_one(doc, req, "TestPart")
+        assert result.ok is False
+        assert "Drawing (.SLDDRW)" in result.error
+        assert "doc type is 1" in result.error
 
     def test_pdf_invalid_sheets_value(self, tmp_path: Path) -> None:
         """sheets with empty list is rejected."""

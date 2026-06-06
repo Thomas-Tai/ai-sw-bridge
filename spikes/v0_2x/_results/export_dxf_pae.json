@@ -1,0 +1,77 @@
+{
+  "probe": "w33_export_dxf_pae",
+  "timestamp": "2026-06-06T17:14:33",
+  "gates": {
+    "part_build": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w33_pae_box_1780737276.SLDPRT"
+    },
+    "template_found": {
+      "ok": true,
+      "detail": "path=C:\\ProgramData\\SOLIDWORKS\\SOLIDWORKS 2024\\templates\\Drawing.DRWDOT"
+    },
+    "drawing_build": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w33_pae_drawing_1780737276.SLDDRW"
+    },
+    "open_drawing": {
+      "ok": true,
+      "detail": ""
+    },
+    "export_ok": {
+      "ok": true,
+      "detail": "error=None"
+    },
+    "dxf_exists": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w33_pae_dxf_1780737276.dxf"
+    },
+    "dxf_size": {
+      "ok": true,
+      "detail": "size=20146 bytes"
+    },
+    "entity_count": {
+      "ok": true,
+      "detail": "total=4, lines=4"
+    },
+    "open_part": {
+      "ok": true,
+      "detail": ""
+    },
+    "part_dxf_error_msg": {
+      "ok": true,
+      "detail": "error=format:'dxf' requires a Drawing (.SLDDRW) document, but doc type is 1 (1=Part, 2=Assembly, 3=Drawing)"
+    },
+    "part_dxf_not_created": {
+      "ok": true,
+      "detail": "no DXF file for part"
+    }
+  },
+  "verdict": "PASS",
+  "dxf_paths": {
+    "drawing": "C:\\Users\\sky\\AppData\\Local\\Temp\\w33_pae_drawing_1780737276.SLDDRW"
+  },
+  "entity_counts": {
+    "drawing": {
+      "LINE": 4,
+      "LWPOLYLINE": 0,
+      "POLYLINE": 0,
+      "CIRCLE": 0,
+      "ARC": 0,
+      "SPLINE": 0,
+      "ELLIPSE": 0,
+      "POINT": 0,
+      "TEXT": 0,
+      "MTEXT": 0,
+      "_total_geometry": 4
+    }
+  },
+  "dxf_size_bytes": {
+    "drawing": 20146
+  },
+  "doc_type_rejection": {
+    "ok": false,
+    "error": "format:'dxf' requires a Drawing (.SLDDRW) document, but doc type is 1 (1=Part, 2=Assembly, 3=Drawing)",
+    "expected": "Drawing (.SLDDRW) document required"
+  }
+}

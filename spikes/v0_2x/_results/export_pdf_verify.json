@@ -1,0 +1,72 @@
+{
+  "probe": "w25v_export_pdf_verify",
+  "timestamp": "2026-06-06T16:25:22",
+  "gates": {
+    "template_found": {
+      "ok": true,
+      "detail": "path=C:\\ProgramData\\SOLIDWORKS\\SOLIDWORKS 2024\\templates\\Drawing.DRWDOT"
+    },
+    "drawing_build": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w25v_verify_drawing_1780734329.SLDDRW"
+    },
+    "drawing_sheet_names": {
+      "ok": true,
+      "detail": "expected ['Solo', 'Quad'], got ['Solo', 'Quad']"
+    },
+    "open_drawing": {
+      "ok": true,
+      "detail": ""
+    },
+    "export_all_ok": {
+      "ok": true,
+      "detail": "error=None"
+    },
+    "pdf_all_exists": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w25v_verify_all_1780734323.pdf"
+    },
+    "pages_all_count": {
+      "ok": true,
+      "detail": "pages=2 (expected 2)"
+    },
+    "export_solo_ok": {
+      "ok": true,
+      "detail": "error=None"
+    },
+    "pdf_solo_exists": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w25v_verify_solo_1780734323.pdf"
+    },
+    "pages_solo_count": {
+      "ok": true,
+      "detail": "pages=1 (expected 1)"
+    },
+    "export_quad_ok": {
+      "ok": true,
+      "detail": "error=None"
+    },
+    "pdf_quad_exists": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w25v_verify_quad_1780734323.pdf"
+    },
+    "pages_quad_count": {
+      "ok": true,
+      "detail": "pages=1 (expected 1)"
+    }
+  },
+  "verdict": "GREEN",
+  "page_counts": {
+    "all": 2,
+    "solo": 1,
+    "quad": 1
+  },
+  "pdf_paths": {
+    "drawing": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25v_verify_drawing_1780734329.SLDDRW",
+    "all": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25v_verify_all_1780734323.pdf",
+    "solo": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25v_verify_solo_1780734323.pdf",
+    "quad": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25v_verify_quad_1780734323.pdf"
+  },
+  "page_counting_method": "raw_byte_scan:/Type/Page(?![s])",
+  "trace": null
+}
