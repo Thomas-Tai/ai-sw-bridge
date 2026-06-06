@@ -469,6 +469,19 @@ def commit_drawing(
 
         if view_errors:
             result["view_errors"] = view_errors
+            # Fail-closed (W20 hardening): a declarative drawing spec names an
+            # EXACT set of views. If ANY requested view (ortho OR derived)
+            # failed to materialise, abort BEFORE dims / BOM / SaveAs3 rather
+            # than writing a partial .SLDDRW to disk — parity with the W17 dims
+            # / W18 BOM hard-return posture and the W9/W11 assembly fail-closed
+            # invariant. The validator blocks every structural error at
+            # propose-time, so a commit-time view error is a live COM failure
+            # that must fail the commit, not silently degrade the output.
+            result["error"] = (
+                f"{len(view_errors)} requested view(s) could not be created; "
+                f"no drawing was saved: {'; '.join(view_errors)}"
+            )
+            return result
 
         # Insert model dimensions if requested (W17)
         insert_dims = spec.get("dimensions", False)
@@ -568,13 +581,10 @@ def commit_drawing(
             result["error"] = f"SaveAs3 failed: {exc!r}"
             return result
 
-        result["ok"] = len(view_errors) == 0
-        if view_errors and not result.get("error"):
-            result["error"] = (
-                f"{len(view_errors)} view(s) failed: "
-                f"{'; '.join(view_errors)}"
-            )
-
+        # view_errors is guaranteed empty here: the fail-closed guard after
+        # Pass 2 returns early on any view failure (W20 hardening), so reaching
+        # this point means every requested view materialised.
+        result["ok"] = True
         return result
 
     finally:
