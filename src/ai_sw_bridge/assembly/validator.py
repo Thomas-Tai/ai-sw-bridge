@@ -75,6 +75,14 @@ def validate_assembly(spec: dict[str, Any]) -> None:
             )
         _check_component_arrays(arrays, component_ids)
 
+    exploded = spec.get("exploded_views")
+    if exploded is not None:
+        if not isinstance(exploded, list):
+            raise AssemblyValidationError(
+                "exploded_views must be an array", "/exploded_views"
+            )
+        _check_exploded_views(exploded, component_ids)
+
 
 def _check_components(components: list[dict[str, Any]]) -> None:
     seen_ids: set[str] = set()
@@ -480,3 +488,83 @@ def _check_component_arrays(
                     path,
                 )
             expanded_ids.add(expanded_id)
+
+
+def _check_exploded_views(
+    views: list[dict[str, Any]], component_ids: set[str]
+) -> None:
+    """Validate exploded_views entries.
+
+    Checks: name present + unique, steps non-empty, each step has valid
+    component references, positive distance, known direction.
+    """
+    seen_names: set[str] = set()
+
+    for i, view in enumerate(views):
+        path = f"/exploded_views/{i}"
+        if not isinstance(view, dict):
+            raise AssemblyValidationError("exploded view must be a dict", path)
+
+        name = view.get("name")
+        if not isinstance(name, str) or not name:
+            raise AssemblyValidationError(
+                "exploded view name must be a non-empty string", path
+            )
+        if name in seen_names:
+            raise AssemblyValidationError(
+                f"duplicate exploded view name {name!r}", path
+            )
+        seen_names.add(name)
+
+        steps = view.get("steps")
+        if not isinstance(steps, list) or not steps:
+            raise AssemblyValidationError(
+                f"exploded view {name!r} must have at least one step",
+                f"{path}/steps",
+            )
+
+        for j, step in enumerate(steps):
+            step_path = f"{path}/steps/{j}"
+            if not isinstance(step, dict):
+                raise AssemblyValidationError("step must be a dict", step_path)
+
+            comps = step.get("components")
+            if not isinstance(comps, list) or not comps:
+                raise AssemblyValidationError(
+                    "step must have at least one component id",
+                    f"{step_path}/components",
+                )
+            for cid in comps:
+                if not isinstance(cid, str) or not cid:
+                    raise AssemblyValidationError(
+                        f"component id must be a non-empty string, got {cid!r}",
+                        f"{step_path}/components",
+                    )
+                if cid not in component_ids:
+                    raise AssemblyValidationError(
+                        f"component {cid!r} not found in component ids "
+                        f"{sorted(component_ids)}",
+                        f"{step_path}/components",
+                    )
+
+            dist = step.get("distance_mm")
+            if not isinstance(dist, (int, float)) or dist <= 0:
+                raise AssemblyValidationError(
+                    f"step distance_mm must be a positive number, got {dist!r}",
+                    f"{step_path}/distance_mm",
+                )
+
+            direction = step.get("direction")
+            if direction not in ("front", "top", "right"):
+                raise AssemblyValidationError(
+                    f"step direction must be 'front', 'top', or 'right', "
+                    f"got {direction!r}",
+                    f"{step_path}/direction",
+                )
+
+            reverse = step.get("reverse")
+            if reverse is not None and not isinstance(reverse, bool):
+                raise AssemblyValidationError(
+                    f"step reverse must be a boolean, got {reverse!r}",
+                    f"{step_path}/reverse",
+                )

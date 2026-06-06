@@ -680,3 +680,166 @@ def mirror_components(
         mirrored += 1
 
     return mirrored, None
+
+
+# Map direction spec values to assembly reference plane names for SelectByID2.
+# SW default planes: Front = XY (Z normal), Top = XZ (Y normal), Right = YZ (X normal).
+_DIRECTION_TO_PLANE = {
+    "front": "Front Plane",
+    "top": "Top Plane",
+    "right": "Right Plane",
+}
+
+
+def create_exploded_view(
+    asm_doc: Any,
+    placed: dict[str, Any],
+    view_spec: dict[str, Any],
+    *,
+    mod: Any | None = None,
+) -> tuple[int, str | None]:
+    """Create an exploded view with one or more explode steps.
+
+    Recipe (seat-proven W32v):
+      1. ``IAssemblyDoc.CreateExplodedView()`` → creates empty view.
+      2. For each step:
+         a. ``IComponent2.Select2(False, 1)`` → select component to explode.
+         b. ``SelectByID2("<PlaneName>@<AsmName>", "PLANE", 0,0,0, True, 0, None, 0)``
+            → append direction reference (assembly ref plane).
+         c. ``IConfiguration.AddExplodeStep(dist_m, False, False, False)``
+            → returns IExplodeStep with component auto-populated from selection.
+
+    Args:
+        asm_doc: the assembly document (``IModelDoc2``).
+        placed: mapping of ``id → IComponent2`` from ``place_components``.
+        view_spec: exploded view spec dict with ``name`` and ``steps[]``.
+        mod: the gen_py wrapper module.
+
+    Returns:
+        ``(step_count, error)`` where ``step_count`` is the number of
+        successfully created steps and ``error`` is ``None`` on success.
+    """
+    if mod is None:
+        mod = wrapper_module()
+
+    typed_asm = typed(asm_doc, "IAssemblyDoc", module=mod)
+    typed_model = typed(asm_doc, "IModelDoc2", module=mod)
+
+    # Step 1: Create empty exploded view
+    try:
+        view_ok = typed_asm.CreateExplodedView()
+    except Exception as exc:
+        return 0, f"CreateExplodedView raised: {exc!r}"
+
+    if not view_ok:
+        return 0, "CreateExplodedView returned False"
+
+    # Get assembly title for direction reference SelectByID2
+    try:
+        asm_title = asm_doc.GetTitle
+        if callable(asm_title):
+            asm_title = asm_title()
+        asm_name = asm_title.replace(".SLDASM", "") if asm_title else "Asm1"
+    except Exception:
+        asm_name = "Asm1"
+
+    # Get IConfiguration for AddExplodeStep
+    try:
+        config = typed_model.GetActiveConfiguration()
+    except Exception as exc:
+        return 0, f"GetActiveConfiguration failed: {exc!r}"
+
+    # Wrap config in early-bound IConfiguration for AddExplodeStep
+    cfg_cls = getattr(mod, "IConfiguration", None)
+    if cfg_cls is None:
+        return 0, "IConfiguration not in gen_py module"
+    typed_config = cfg_cls(config._oleobj_)
+
+    sel_mgr = typed_model.SelectionManager
+    model_ext = typed_model.Extension
+
+    step_count = 0
+
+    for i, step_spec in enumerate(view_spec.get("steps", [])):
+        # Resolve component objects
+        comp_ids = step_spec.get("components", [])
+        comp_objects = []
+        for cid in comp_ids:
+            comp = placed.get(cid)
+            if comp is None:
+                return step_count, (
+                    f"step[{i}]: component {cid!r} not found in placed components"
+                )
+            comp_objects.append(comp)
+
+        # Resolve direction plane name
+        direction = step_spec.get("direction", "front")
+        plane_name = _DIRECTION_TO_PLANE.get(direction)
+        if plane_name is None:
+            return step_count, (
+                f"step[{i}]: unknown direction {direction!r}"
+            )
+
+        dist_mm = step_spec.get("distance_mm", 50.0)
+        dist_m = float(dist_mm) / 1000.0
+        reverse = bool(step_spec.get("reverse", False))
+
+        # Clear selection before each step
+        try:
+            typed_model.ClearSelection2(True)
+        except Exception:
+            pass
+
+        # Select first component with mark=1
+        first_comp = comp_objects[0]
+        try:
+            sel_ok = first_comp.Select2(False, 1)
+        except Exception as exc:
+            return step_count, (
+                f"step[{i}]: Select2 failed on {comp_ids[0]!r}: {exc!r}"
+            )
+        if not sel_ok:
+            return step_count, (
+                f"step[{i}]: Select2 returned False on {comp_ids[0]!r}"
+            )
+
+        # Append direction reference plane with mark=0
+        dir_ref = f"{plane_name}@{asm_name}"
+        try:
+            sel_dir = model_ext.SelectByID2(
+                dir_ref, "PLANE", 0, 0, 0, True, 0, None, 0
+            )
+        except Exception as exc:
+            return step_count, (
+                f"step[{i}]: SelectByID2({dir_ref!r}) raised: {exc!r}"
+            )
+
+        # Verify 2-entity selection
+        try:
+            sel_count = sel_mgr.GetSelectedObjectCount2(-1)
+        except Exception:
+            sel_count = 0
+
+        if sel_count < 2:
+            return step_count, (
+                f"step[{i}]: selection count={sel_count} (expected >=2)"
+            )
+
+        # Create explode step
+        try:
+            step = typed_config.AddExplodeStep(
+                dist_m, reverse, False, False
+            )
+        except Exception as exc:
+            return step_count, (
+                f"step[{i}]: AddExplodeStep raised: {exc!r}"
+            )
+
+        if step is None or step == 0:
+            return step_count, (
+                f"step[{i}]: AddExplodeStep returned None/0"
+            )
+
+        step_count += 1
+
+    return step_count, None

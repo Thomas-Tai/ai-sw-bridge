@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from .face_resolver import resolve_component_face
-from .handlers import create_mate, mirror_components, place_components
+from .handlers import create_exploded_view, create_mate, mirror_components, place_components
 from .storage import AssemblyManifest, ComponentInstance, sha256_of_file
 
 
@@ -249,6 +249,27 @@ def dry_run_assembly(
                 })
 
     result["face_checks"] = face_checks
+
+    # Validate exploded_views component references (offline, no SW).
+    exploded = spec.get("exploded_views")
+    if exploded:
+        ev_checks: list[dict[str, Any]] = []
+        for ev_i, ev in enumerate(exploded):
+            for st_i, step in enumerate(ev.get("steps", [])):
+                for cid in step.get("components", []):
+                    if cid not in known_components:
+                        result["error"] = (
+                            f"exploded_views[{ev_i}].steps[{st_i}]: "
+                            f"component {cid!r} not in spec"
+                        )
+                        return result
+                    ev_checks.append({
+                        "view_index": ev_i,
+                        "step_index": st_i,
+                        "component": cid,
+                    })
+        result["exploded_checks"] = ev_checks
+
     result["ok"] = True
     return result
 
@@ -419,7 +440,25 @@ def commit_assembly(
 
         result["mirror_count"] = mirror_count
 
-        # Save the assembly (final save includes mirrored components)
+        # Apply exploded views — after mirrors/mates, before final save.
+        # Exploded views are created on the configuration and persist in .SLDASM.
+        exploded_views = spec.get("exploded_views")
+        exploded_step_count = 0
+        if exploded_views:
+            for ev_idx, ev_spec in enumerate(exploded_views):
+                ev_steps, ev_err = create_exploded_view(
+                    asm_doc, placed, ev_spec, mod=mod
+                )
+                if ev_err:
+                    result["error"] = (
+                        f"exploded_views[{ev_idx}]: {ev_err}"
+                    )
+                    return result
+                exploded_step_count += ev_steps
+
+        result["exploded_step_count"] = exploded_step_count
+
+        # Save the assembly (final save includes mirrors + exploded views)
         try:
             asm_doc.SaveAs3(output_path, 0, 2)
         except Exception as exc:

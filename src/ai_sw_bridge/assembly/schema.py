@@ -180,6 +180,41 @@ COMPONENT_ARRAYS_SCHEMA = {
     "items": {"oneOf": [LINEAR_ARRAY_SCHEMA, CIRCULAR_ARRAY_SCHEMA]},
 }
 
+EXPLODE_STEP_SCHEMA = {
+    "type": "object",
+    "required": ["components", "distance_mm", "direction"],
+    "additionalProperties": False,
+    "properties": {
+        "components": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "minItems": 1,
+        },
+        "distance_mm": {"type": "number", "exclusiveMinimum": 0},
+        "direction": {"type": "string", "enum": ["front", "top", "right"]},
+        "reverse": {"type": "boolean"},
+    },
+}
+
+EXPLODED_VIEW_SCHEMA = {
+    "type": "object",
+    "required": ["name", "steps"],
+    "additionalProperties": False,
+    "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "steps": {
+            "type": "array",
+            "items": EXPLODE_STEP_SCHEMA,
+            "minItems": 1,
+        },
+    },
+}
+
+EXPLODED_VIEWS_SCHEMA = {
+    "type": "array",
+    "items": EXPLODED_VIEW_SCHEMA,
+}
+
 ASSEMBLY_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "ai-sw-bridge assembly spec v1",
@@ -202,5 +237,6 @@ ASSEMBLY_SCHEMA = {
         },
         "component_patterns": COMPONENT_PATTERNS_SCHEMA,
         "component_arrays": COMPONENT_ARRAYS_SCHEMA,
+        "exploded_views": EXPLODED_VIEWS_SCHEMA,
     },
 }
