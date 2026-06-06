@@ -179,3 +179,61 @@ class TestAssemblyPipeline:
         )
         assert commit["ok"] is False
         assert "dry_run_ok" in commit["error"]
+
+
+# ---- Exploded views in dry_run -------------------------------------------
+
+
+class TestDryRunExplodedViews:
+    """Dry-run validation for exploded_views (W32v)."""
+
+    def test_accepts_valid_exploded_view(self, tmp_path: Path) -> None:
+        spec = _assembly_spec()
+        spec["components"][0]["part"] = str(tmp_path / "a.sldprt")
+        spec["components"][1]["part"] = str(tmp_path / "b.sldprt")
+        (tmp_path / "a.sldprt").write_text("fake")
+        (tmp_path / "b.sldprt").write_text("fake")
+        spec["exploded_views"] = [
+            {
+                "name": "Default",
+                "steps": [
+                    {"components": ["b"], "distance_mm": 50.0, "direction": "front"},
+                ],
+            }
+        ]
+
+        result = dry_run_assembly(spec)
+        assert result["ok"] is True
+        assert "exploded_checks" in result
+        assert len(result["exploded_checks"]) == 1
+
+    def test_fails_unknown_component(self, tmp_path: Path) -> None:
+        spec = _assembly_spec()
+        spec["components"][0]["part"] = str(tmp_path / "a.sldprt")
+        spec["components"][1]["part"] = str(tmp_path / "b.sldprt")
+        (tmp_path / "a.sldprt").write_text("fake")
+        (tmp_path / "b.sldprt").write_text("fake")
+        spec["exploded_views"] = [
+            {
+                "name": "Default",
+                "steps": [
+                    {"components": ["nonexistent"], "distance_mm": 50.0,
+                     "direction": "front"},
+                ],
+            }
+        ]
+
+        result = dry_run_assembly(spec)
+        assert result["ok"] is False
+        assert "nonexistent" in result["error"]
+
+    def test_accepts_no_exploded_views(self, tmp_path: Path) -> None:
+        spec = _assembly_spec()
+        spec["components"][0]["part"] = str(tmp_path / "a.sldprt")
+        spec["components"][1]["part"] = str(tmp_path / "b.sldprt")
+        (tmp_path / "a.sldprt").write_text("fake")
+        (tmp_path / "b.sldprt").write_text("fake")
+
+        result = dry_run_assembly(spec)
+        assert result["ok"] is True
+        assert "exploded_checks" not in result

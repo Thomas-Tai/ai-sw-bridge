@@ -604,3 +604,196 @@ class TestVerifyMates:
         assert results[0]["solved"] is False
         assert results[0]["suppressed"] is True
         assert results[0]["error_code"] == 2
+
+
+# ---- create_exploded_view -------------------------------------------------
+
+
+class TestCreateExplodedView:
+    """Tests for the exploded view handler (W32v)."""
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    def test_creates_step_on_happy_path(
+        self, mock_typed: MagicMock, mock_wm: MagicMock
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import create_exploded_view
+
+        # Fake IConfiguration that records AddExplodeStep calls
+        step_obj = MagicMock()
+        step_obj.GetNumOfComponents.return_value = 1
+
+        mock_cfg_cls = MagicMock()
+        mock_cfg_inst = MagicMock()
+        mock_cfg_inst.AddExplodeStep.return_value = step_obj
+        mock_cfg_cls.return_value = mock_cfg_inst
+        mock_wm.return_value = MagicMock(IConfiguration=mock_cfg_cls)
+
+        sel_mgr = MagicMock()
+        sel_mgr.GetSelectedObjectCount2.return_value = 2
+
+        model_ext = MagicMock()
+        model_ext.SelectByID2.return_value = True
+
+        typed_model_mock = MagicMock()
+        typed_model_mock.GetActiveConfiguration.return_value = MagicMock(_oleobj_=MagicMock())
+        typed_model_mock.SelectionManager = sel_mgr
+        typed_model_mock.Extension = model_ext
+        typed_model_mock.ClearSelection2.return_value = True
+
+        def typed_side(obj, iface, module=None):
+            if iface == "IAssemblyDoc":
+                m = MagicMock()
+                m.CreateExplodedView.return_value = True
+                return m
+            elif iface == "IModelDoc2":
+                return typed_model_mock
+            return MagicMock()
+
+        mock_typed.side_effect = typed_side
+
+        asm = MagicMock()
+        asm.GetTitle = "Asm1.SLDASM"
+
+        comp = MagicMock()
+        comp.Select2.return_value = True
+        comp._oleobj_ = MagicMock()
+        placed = {"b": comp}
+
+        view_spec = {
+            "name": "Default",
+            "steps": [
+                {
+                    "components": ["b"],
+                    "distance_mm": 50.0,
+                    "direction": "front",
+                },
+            ],
+        }
+
+        count, err = create_exploded_view(asm, placed, view_spec)
+
+        assert err is None
+        assert count == 1
+        mock_cfg_inst.AddExplodeStep.assert_called_once()
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    def test_fails_on_create_exploded_view_false(
+        self, mock_typed: MagicMock, mock_wm: MagicMock
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import create_exploded_view
+
+        def typed_side(obj, iface, module=None):
+            if iface == "IAssemblyDoc":
+                m = MagicMock()
+                m.CreateExplodedView.return_value = False
+                return m
+            return MagicMock()
+
+        mock_typed.side_effect = typed_side
+
+        asm = MagicMock()
+        count, err = create_exploded_view(asm, {}, {"name": "X", "steps": []})
+
+        assert count == 0
+        assert "CreateExplodedView" in (err or "")
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    def test_fails_on_missing_component(
+        self, mock_typed: MagicMock, mock_wm: MagicMock
+    ) -> None:
+        from ai_sw_bridge.assembly.handlers import create_exploded_view
+
+        step_obj = MagicMock()
+
+        mock_cfg_cls = MagicMock()
+        mock_cfg_inst = MagicMock()
+        mock_cfg_inst.AddExplodeStep.return_value = step_obj
+        mock_cfg_cls.return_value = mock_cfg_inst
+        mock_wm.return_value = MagicMock(IConfiguration=mock_cfg_cls)
+
+        typed_model_mock = MagicMock()
+        typed_model_mock.GetActiveConfiguration.return_value = MagicMock(_oleobj_=MagicMock())
+        typed_model_mock.SelectionManager = MagicMock()
+        typed_model_mock.Extension = MagicMock()
+
+        def typed_side(obj, iface, module=None):
+            if iface == "IAssemblyDoc":
+                m = MagicMock()
+                m.CreateExplodedView.return_value = True
+                return m
+            elif iface == "IModelDoc2":
+                return typed_model_mock
+            return MagicMock()
+
+        mock_typed.side_effect = typed_side
+
+        asm = MagicMock()
+        asm.GetTitle = "Asm1.SLDASM"
+
+        # Empty placed dict — component "b" not found
+        count, err = create_exploded_view(
+            asm, {},
+            {"name": "X", "steps": [
+                {"components": ["b"], "distance_mm": 50.0, "direction": "front"}
+            ]},
+        )
+
+        assert count == 0
+        assert "not found" in (err or "")
+
+    @patch("ai_sw_bridge.assembly.handlers.wrapper_module")
+    @patch("ai_sw_bridge.assembly.handlers.typed")
+    def test_multiple_steps(self, mock_typed: MagicMock, mock_wm: MagicMock) -> None:
+        from ai_sw_bridge.assembly.handlers import create_exploded_view
+
+        step_obj = MagicMock()
+
+        mock_cfg_cls = MagicMock()
+        mock_cfg_inst = MagicMock()
+        mock_cfg_inst.AddExplodeStep.return_value = step_obj
+        mock_cfg_cls.return_value = mock_cfg_inst
+        mock_wm.return_value = MagicMock(IConfiguration=mock_cfg_cls)
+
+        sel_mgr = MagicMock()
+        sel_mgr.GetSelectedObjectCount2.return_value = 2
+
+        typed_model_mock = MagicMock()
+        typed_model_mock.GetActiveConfiguration.return_value = MagicMock(_oleobj_=MagicMock())
+        typed_model_mock.SelectionManager = sel_mgr
+        typed_model_mock.Extension = MagicMock(SelectByID2=MagicMock(return_value=True))
+        typed_model_mock.ClearSelection2.return_value = True
+
+        def typed_side(obj, iface, module=None):
+            if iface == "IAssemblyDoc":
+                m = MagicMock()
+                m.CreateExplodedView.return_value = True
+                return m
+            elif iface == "IModelDoc2":
+                return typed_model_mock
+            return MagicMock()
+
+        mock_typed.side_effect = typed_side
+
+        asm = MagicMock()
+        asm.GetTitle = "Asm1.SLDASM"
+
+        comp_a = MagicMock(Select2=MagicMock(return_value=True))
+        comp_b = MagicMock(Select2=MagicMock(return_value=True))
+        placed = {"a": comp_a, "b": comp_b}
+
+        view_spec = {
+            "name": "Default",
+            "steps": [
+                {"components": ["a"], "distance_mm": 30.0, "direction": "top"},
+                {"components": ["b"], "distance_mm": 50.0, "direction": "right"},
+            ],
+        }
+
+        count, err = create_exploded_view(asm, placed, view_spec)
+
+        assert err is None
+        assert count == 2
+        assert mock_cfg_inst.AddExplodeStep.call_count == 2

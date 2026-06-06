@@ -885,3 +885,102 @@ class TestComponentArraysValidator:
         ]
         with pytest.raises(AssemblyValidationError, match="duplicate"):
             validate_assembly(spec)
+
+
+# ---- Exploded views -------------------------------------------------------
+
+
+def _with_exploded_view(
+    spec: dict, *, name: str = "Default", steps: list | None = None
+) -> dict:
+    if steps is None:
+        steps = [
+            {
+                "components": ["b"],
+                "distance_mm": 50.0,
+                "direction": "front",
+            },
+        ]
+    spec["exploded_views"] = [{"name": name, "steps": steps}]
+    return spec
+
+
+class TestExplodedViewsSchema:
+    def test_accepts_valid_exploded_view(self) -> None:
+        spec = _with_exploded_view(_minimal_assembly())
+        validate_assembly(spec)
+
+    def test_accepts_multiple_steps(self) -> None:
+        spec = _minimal_assembly()
+        spec = _with_exploded_view(spec, steps=[
+            {"components": ["a"], "distance_mm": 30.0, "direction": "top"},
+            {"components": ["b"], "distance_mm": 50.0, "direction": "front",
+             "reverse": True},
+        ])
+        validate_assembly(spec)
+
+    def test_rejects_unknown_direction(self) -> None:
+        spec = _with_exploded_view(_minimal_assembly(), steps=[
+            {"components": ["b"], "distance_mm": 50.0, "direction": "diagonal"},
+        ])
+        with pytest.raises(Exception, match="direction"):
+            validate_assembly(spec)
+
+    def test_rejects_zero_distance(self) -> None:
+        spec = _with_exploded_view(_minimal_assembly(), steps=[
+            {"components": ["b"], "distance_mm": 0, "direction": "front"},
+        ])
+        with pytest.raises(Exception):
+            validate_assembly(spec)
+
+    def test_rejects_unknown_component(self) -> None:
+        spec = _with_exploded_view(_minimal_assembly(), steps=[
+            {"components": ["nonexistent"], "distance_mm": 50.0, "direction": "front"},
+        ])
+        with pytest.raises(AssemblyValidationError, match="not found"):
+            validate_assembly(spec)
+
+    def test_rejects_empty_components(self) -> None:
+        spec = _with_exploded_view(_minimal_assembly(), steps=[
+            {"components": [], "distance_mm": 50.0, "direction": "front"},
+        ])
+        with pytest.raises(Exception):
+            validate_assembly(spec)
+
+    def test_rejects_empty_steps(self) -> None:
+        spec = _minimal_assembly()
+        spec["exploded_views"] = [{"name": "Default", "steps": []}]
+        with pytest.raises(AssemblyValidationError, match="at least one step"):
+            validate_assembly(spec)
+
+    def test_rejects_duplicate_view_name(self) -> None:
+        spec = _minimal_assembly()
+        step = {"components": ["b"], "distance_mm": 50.0, "direction": "front"}
+        spec["exploded_views"] = [
+            {"name": "Default", "steps": [step]},
+            {"name": "Default", "steps": [step]},
+        ]
+        with pytest.raises(AssemblyValidationError, match="duplicate"):
+            validate_assembly(spec)
+
+    def test_accepts_reverse_boolean(self) -> None:
+        spec = _with_exploded_view(_minimal_assembly(), steps=[
+            {"components": ["b"], "distance_mm": 50.0, "direction": "right",
+             "reverse": False},
+        ])
+        validate_assembly(spec)
+
+    def test_rejects_non_boolean_reverse(self) -> None:
+        spec = _with_exploded_view(_minimal_assembly(), steps=[
+            {"components": ["b"], "distance_mm": 50.0, "direction": "front",
+             "reverse": "yes"},
+        ])
+        with pytest.raises(AssemblyValidationError, match="reverse"):
+            validate_assembly(spec)
+
+    def test_all_directions_accepted(self) -> None:
+        for d in ("front", "top", "right"):
+            spec = _with_exploded_view(_minimal_assembly(), steps=[
+                {"components": ["b"], "distance_mm": 50.0, "direction": d},
+            ])
+            validate_assembly(spec)
