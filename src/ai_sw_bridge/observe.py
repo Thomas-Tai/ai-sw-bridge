@@ -22,6 +22,7 @@ from .sw_com import (
     resolve,
 )
 from .observe_bbox import sw_get_bbox_from_doc
+from .observe_clearance import sw_get_clearance
 from .observe_inertia import sw_get_inertia
 from .observe_interference import sw_get_interference
 from .observe_measure import sw_get_measure_from_doc
@@ -1373,3 +1374,21 @@ class SolidWorksObserver:
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
         return sw_get_interference(doc)
+
+    def clearance(self, comp_a: str, comp_b: str) -> dict[str, Any]:
+        """Measure minimum distance between two assembly components (Wave-35).
+
+        Uses ``IModelDocExtension.CreateMeasure`` → ``IMeasure.Distance``
+        after selecting both components via ``IComponent2.Select2``. The
+        ``Distance`` value is proven to be the minimum gap (not
+        center-to-center or corner-to-corner distance).
+
+        Returns ``{min_distance_mm, components: [a, b], touching: bool}``.
+        ``touching=True`` when components are flush (0mm) or overlapping.
+
+        Assembly documents only. Parts/drawings get a typed error result.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_clearance(doc, comp_a, comp_b)

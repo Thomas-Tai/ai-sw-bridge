@@ -59,7 +59,7 @@ class TestToolRegistration:
 
     EXPECTED_TOOLS = frozenset(
         {
-            # Observation (10)
+            # Observation (15)
             "sw_active_doc",
             "sw_feature_errors",
             "sw_equations",
@@ -70,6 +70,15 @@ class TestToolRegistration:
             "sw_mate_errors",
             "sw_custom_props",
             "sw_enabled_addins",
+            # W27 — interference
+            "sw_interference",
+            # W30 — perception axis
+            "sw_bounding_box",
+            "sw_measure_selection",
+            # W5 E1 — inertia
+            "sw_inertia",
+            # W35 — clearance
+            "sw_clearance",
             # Build (1)
             "sw_build",
             # API doc (5)
