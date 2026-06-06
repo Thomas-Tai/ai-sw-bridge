@@ -1,4 +1,4 @@
-"""Drawing spec JSON schema (Wave-16/W18/W19/W23).
+"""Drawing spec JSON schema (Wave-16/W18/W19/W23/W28).
 
 Defines the ``kind: "drawing"`` spec structure: a model path and a list
 of standard views to generate. This is a standalone spec kind (sibling
@@ -10,6 +10,13 @@ Two authoring modes (W23):
   - **Multi-sheet**: optional ``sheets[]`` array; each entry carries its
     own ``views[]`` plus optional ``name``/``template_size``/``dimensions``/
     ``bom``. Top-level ``views`` MUST be absent.
+
+W28 adds dimension tolerances:
+  - ``dimensions`` extended from ``boolean`` to ``boolean | object``
+  - ``dimensions: true`` unchanged (dims with NO tolerance)
+  - ``dimensions: {tolerance: {...}}`` applies general tolerance to all dims
+  - Supported tolerance types: symmetric, bilateral, limit
+  - GD&T (feature-control-frames) explicitly deferred
 
 The schema enforces:
   - ``kind`` == "drawing" (required)
@@ -29,6 +36,95 @@ from __future__ import annotations
 from typing import Any
 
 from .formats import DRAWING_FORMAT_NAMES
+
+# W28: Tolerance schema fragment
+# swTolType_e values: symmetric=4, bilateral=2, limit=3
+# Units: metres (SW system units)
+_TOLERANCE_SYMMETRIC_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["type", "value"],
+    "additionalProperties": False,
+    "properties": {
+        "type": {"const": "symmetric"},
+        "value": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Tolerance value in metres (±value)",
+        },
+    },
+}
+
+_TOLERANCE_BILATERAL_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["type", "max", "min"],
+    "additionalProperties": False,
+    "properties": {
+        "type": {"const": "bilateral"},
+        "max": {
+            "type": "number",
+            "description": "Upper tolerance in metres (+max)",
+        },
+        "min": {
+            "type": "number",
+            "description": "Lower tolerance in metres (-min, typically negative)",
+        },
+    },
+}
+
+_TOLERANCE_LIMIT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["type", "max", "min"],
+    "additionalProperties": False,
+    "properties": {
+        "type": {"const": "limit"},
+        "max": {
+            "type": "number",
+            "description": "Upper limit delta in metres",
+        },
+        "min": {
+            "type": "number",
+            "description": "Lower limit delta in metres",
+        },
+    },
+}
+
+_TOLERANCE_SCHEMA: dict[str, Any] = {
+    "oneOf": [
+        _TOLERANCE_SYMMETRIC_SCHEMA,
+        _TOLERANCE_BILATERAL_SCHEMA,
+        _TOLERANCE_LIMIT_SCHEMA,
+    ],
+    "description": (
+        "Dimension tolerance specification. v1 supports only symmetric, "
+        "bilateral, and limit types. GD&T (feature-control-frames) is deferred."
+    ),
+}
+
+# dimensions: true (bool) OR {tolerance: {...}}
+_DIMENSIONS_SCHEMA: dict[str, Any] = {
+    "oneOf": [
+        {
+            "type": "boolean",
+            "description": (
+                "true = insert model dimensions with no tolerance; "
+                "false = skip dimension insertion"
+            ),
+        },
+        {
+            "type": "object",
+            "required": ["tolerance"],
+            "additionalProperties": False,
+            "properties": {
+                "tolerance": _TOLERANCE_SCHEMA,
+            },
+            "description": (
+                "Insert model dimensions and apply a general tolerance "
+                "to all dimensions on this sheet."
+            ),
+        },
+    ],
+    "default": False,
+}
 
 _VIEW_ITEM_SCHEMA: dict[str, Any] = {
     "oneOf": [
@@ -76,7 +172,7 @@ _SHEET_ENTRY_SCHEMA: dict[str, Any] = {
         "name": {"type": "string", "minLength": 1},
         "template_size": _SHEET_SIZE_ENUM,
         "views": _VIEWS_ARRAY_SCHEMA,
-        "dimensions": {"type": "boolean", "default": False},
+        "dimensions": _DIMENSIONS_SCHEMA,
         "bom": {"type": "boolean", "default": False},
     },
 }
@@ -102,15 +198,7 @@ DRAWING_SPEC_SCHEMA: dict[str, Any] = {
             "additionalProperties": False,
             "properties": {"template_size": _SHEET_SIZE_ENUM},
         },
-        "dimensions": {
-            "type": "boolean",
-            "default": False,
-            "description": (
-                "If true, insert model dimensions onto each view via "
-                "InsertModelAnnotations3. Requires the model to have "
-                "display dimensions (built with no_dim=False)."
-            ),
-        },
+        "dimensions": _DIMENSIONS_SCHEMA,
         "bom": {
             "type": "boolean",
             "default": False,

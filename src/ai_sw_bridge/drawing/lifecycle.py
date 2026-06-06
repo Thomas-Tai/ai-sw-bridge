@@ -430,28 +430,33 @@ def _normalize_sheets(spec: dict[str, Any]) -> list[dict[str, Any]]:
     The returned dicts all have the same shape:
     ``{name, template_size, views, dimensions, bom}`` with defaults filled in.
     ``name`` is ``None`` for "use whatever the default sheet is called".
+
+    W28: ``dimensions`` can be bool or object (with tolerance sub-object).
+    ``bool(dimensions)`` returns True for both, so we preserve the raw value.
     """
     if "sheets" in spec:
         out: list[dict[str, Any]] = []
         for sh in spec["sheets"]:
+            dims_raw = sh.get("dimensions", False)
             out.append(
                 {
                     "name": sh.get("name"),
                     "template_size": sh.get("template_size"),
                     "views": sh.get("views", []),
-                    "dimensions": bool(sh.get("dimensions", False)),
+                    "dimensions": dims_raw,  # Preserve bool OR object (W28)
                     "bom": bool(sh.get("bom", False)),
                 }
             )
         return out
 
     sheet = spec.get("sheet") or {}
+    dims_raw = spec.get("dimensions", False)
     return [
         {
             "name": None,
             "template_size": sheet.get("template_size"),
             "views": spec.get("views", []),
-            "dimensions": bool(spec.get("dimensions", False)),
+            "dimensions": dims_raw,  # Preserve bool OR object (W28)
             "bom": bool(spec.get("bom", False)),
         }
     ]
@@ -530,6 +535,128 @@ def _activate_sheet_by_name(drawing_doc: Any, sheet_name: str) -> None:
         )
 
 
+# W28: swTolType_e values (confirmed by spike_drawing_tol.py)
+_SW_TOL_SYMMETRIC = 4
+_SW_TOL_BILATERAL = 2
+_SW_TOL_LIMIT = 3
+
+
+def _apply_tolerance_to_dims(
+    views: list[Any],
+    tolerance_spec: dict[str, Any],
+    model_mdoc2: Any,
+    mod: Any,
+    typed_qi: Any,
+    sheet_index: int,
+) -> dict[str, Any]:
+    """Apply a general tolerance to all display dimensions on the given views.
+
+    W28: Tolerances are MODEL-OWNED. Setting tolerance on a drawing's
+    IDimension (via GetDimension2) affects the PART/ASM's underlying dimension.
+    The caller must save the MODEL after this function returns.
+
+    Args:
+        views: list of IView objects that have display dimensions
+        tolerance_spec: {type, value|max, min} dict from the spec
+        model_mdoc2: IModelDoc2 of the PART/ASM (for EditRebuild3)
+        mod: gen_py wrapper module
+        typed_qi: typed_qi function
+        sheet_index: for error messages
+
+    Returns:
+        dict with dims_processed, tolerance_applied, errors
+    """
+    tol_type_str = tolerance_spec.get("type", "")
+    if tol_type_str not in ("symmetric", "bilateral", "limit"):
+        return {
+            "dims_processed": 0,
+            "tolerance_applied": False,
+            "errors": [f"unsupported tolerance type '{tol_type_str}'"],
+        }
+
+    # Map string type to swTolType_e
+    sw_tol_type = {
+        "symmetric": _SW_TOL_SYMMETRIC,
+        "bilateral": _SW_TOL_BILATERAL,
+        "limit": _SW_TOL_LIMIT,
+    }[tol_type_str]
+
+    # Extract tolerance values (in metres, SW system units)
+    tol_min = 0.0
+    tol_max = 0.0
+    if tol_type_str == "symmetric":
+        value = tolerance_spec.get("value", 0)
+        if value < 0:
+            return {
+                "dims_processed": 0,
+                "tolerance_applied": False,
+                "errors": [f"symmetric tolerance value must be >= 0 (got {value})"],
+            }
+        tol_min = -value
+        tol_max = value
+    else:  # bilateral or limit
+        tol_max = tolerance_spec.get("max", 0)
+        tol_min = tolerance_spec.get("min", 0)
+
+    dims_processed = 0
+    tolerance_applied_count = 0
+    errors: list[str] = []
+
+    for view in views:
+        try:
+            disp_dims = view.GetDisplayDimensions()
+        except Exception:
+            continue
+
+        if not disp_dims:
+            continue
+
+        for dd_raw in disp_dims:
+            if dd_raw is None:
+                continue
+            try:
+                dd = typed_qi(dd_raw, "IDisplayDimension", module=mod)
+            except Exception:
+                continue
+
+            try:
+                dim_raw = dd.GetDimension2(0)
+            except Exception:
+                continue
+
+            if dim_raw is None:
+                continue
+
+            try:
+                dim = typed_qi(dim_raw, "IDimension", module=mod)
+            except Exception:
+                continue
+
+            dims_processed += 1
+
+            try:
+                dim.SetToleranceType(sw_tol_type)
+                dim.SetToleranceValues(tol_min, tol_max)
+                tolerance_applied_count += 1
+            except Exception as e:
+                dim_name = ""
+                try:
+                    dim_name = dim.FullName
+                except Exception:
+                    pass
+                errors.append(
+                    f"sheet[{sheet_index}] dim '{dim_name}': "
+                    f"SetToleranceValues failed: {e!r}"
+                )
+
+    return {
+        "dims_processed": dims_processed,
+        "tolerance_applied": tolerance_applied_count > 0,
+        "tolerance_applied_count": tolerance_applied_count,
+        "errors": errors,
+    }
+
+
 def _build_sheet_views(
     drawing_doc: Any,
     mdoc2: Any,
@@ -540,12 +667,17 @@ def _build_sheet_views(
     is_first: bool,
     mod: Any,
     typed_qi: Any,
+    model_mdoc2: Any | None = None,
 ) -> dict[str, Any]:
     """Build one sheet's views/dims/bom. Returns a per-sheet result dict.
 
     Fail-closed on any view failure: the caller aggregates errors and aborts
     SaveAs3 if any sheet reports ``view_errors``. Dimensions and BOM are only
     attempted when all views on the sheet materialised.
+
+    W28: ``dimensions`` can be bool or object with tolerance. When tolerance
+    is specified, we apply it to all dims via the model_mdoc2 (tolerances are
+    MODEL-OWNED, so the model must be saved after this returns).
     """
     from ..com.earlybind import typed_qi as _tq  # noqa: F401 (kept for clarity)
 
@@ -633,9 +765,14 @@ def _build_sheet_views(
         return result
 
     # ------------------------------------------------------------------
-    # Dimensions (per-sheet)
+    # Dimensions (per-sheet) — W28: bool or object with tolerance
     # ------------------------------------------------------------------
-    if sheet_spec.get("dimensions") and views_placed:
+    dims_spec = sheet_spec.get("dimensions")
+    if dims_spec and views_placed:
+        # W28: dims_spec can be bool (true/false) or object {tolerance: {...}}
+        has_tolerance = isinstance(dims_spec, dict) and "tolerance" in dims_spec
+        tolerance_spec = dims_spec.get("tolerance") if has_tolerance else None
+
         try:
             drawing_doc.InsertModelAnnotations3(0, -1, True, False, True, 0)
             result["dimensions_inserted"] = True
@@ -659,6 +796,29 @@ def _build_sheet_views(
             result["view_errors"].append(
                 f"sheet[{sheet_index}].dimensions: "
                 f"dimensions:true but zero annotations inserted"
+            )
+            return result
+
+        # W28: Apply tolerance if specified
+        if has_tolerance and tolerance_spec and model_mdoc2 is not None:
+            tol_result = _apply_tolerance_to_dims(
+                placed_views,
+                tolerance_spec,
+                model_mdoc2,
+                mod,
+                typed_qi,
+                sheet_index,
+            )
+            result["tolerance_result"] = tol_result
+            if tol_result.get("errors"):
+                result["view_errors"].extend(tol_result["errors"])
+                return result
+            result["tolerance_applied"] = tol_result.get("tolerance_applied", False)
+            result["dims_with_tolerance"] = tol_result.get("tolerance_applied_count", 0)
+        elif has_tolerance and model_mdoc2 is None:
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].dimensions.tolerance: "
+                f"tolerance specified but model doc not available"
             )
             return result
 
@@ -778,12 +938,18 @@ def commit_drawing(
         first_size_name, SHEET_SIZES[DEFAULT_SHEET_SIZE]
     )
 
-    # Open the model document (required for view creation)
+    # Open the model document (required for view creation AND W28 tolerance)
+    # W28: tolerance is MODEL-OWNED, so we need the model doc to save it
+    model_doc = None
+    model_mdoc2 = None
     try:
         tsw = typed(sw, "ISldWorks", module=mod)
         ext = os.path.splitext(model_path)[1].lower()
         doc_type = 2 if ext in (".sldasm",) else 1  # assembly vs part
-        tsw.OpenDoc6(model_path, doc_type, 1, "", 0, 0)
+        ret = tsw.OpenDoc6(model_path, doc_type, 1, "", 0, 0)
+        model_doc = ret[0] if isinstance(ret, tuple) else ret
+        if model_doc is not None:
+            model_mdoc2 = typed_qi(model_doc, "IModelDoc2", module=mod)
     except Exception as exc:
         result["error"] = f"OpenDoc6 failed: {exc!r}"
         return result
@@ -912,6 +1078,7 @@ def commit_drawing(
                 is_first=is_first,
                 mod=mod,
                 typed_qi=typed_qi,
+                model_mdoc2=model_mdoc2,  # W28: for tolerance application
             )
             sheet_result["sheet_name"] = current_name
             per_sheet_results.append(sheet_result)
@@ -940,6 +1107,25 @@ def commit_drawing(
             )
             return result
 
+        # W28: Save the MODEL if any tolerance was applied
+        # Tolerances are MODEL-OWNED (stored in .SLDPRT/.SLDASM, not .SLDDRW)
+        any_tolerance_applied = any(
+            sr.get("tolerance_applied", False)
+            for sr in per_sheet_results
+        )
+        if any_tolerance_applied and model_doc is not None and model_mdoc2 is not None:
+            try:
+                model_mdoc2.EditRebuild3()
+            except Exception:
+                pass
+            try:
+                model_doc.SaveAs3(model_path, 0, 2)
+                result["model_saved"] = True
+                result["model_save_path"] = model_path
+            except Exception as exc:
+                result["error"] = f"Model SaveAs3 failed (tolerance): {exc!r}"
+                return result
+
         # Save the drawing (only reached when EVERY sheet succeeded)
         try:
             doc_raw.SaveAs3(output_path, 0, 2)
@@ -958,3 +1144,11 @@ def commit_drawing(
             sw.CloseDoc(t)
         except Exception:
             pass
+        # W28: Also close the model doc (we kept it open for tolerance)
+        if model_doc is not None:
+            try:
+                mt = model_doc.GetTitle
+                mt = mt() if callable(mt) else mt
+                sw.CloseDoc(mt)
+            except Exception:
+                pass
