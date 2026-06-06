@@ -2974,6 +2974,126 @@ def sw_commit_drawing(
     return result
 
 
+# ---- properties support (W29) ------------------------------------------------
+
+
+def sw_propose_properties(spec: dict[str, Any]) -> dict[str, Any]:
+    """Propose a properties spec — validate offline.
+
+    Returns a result dict with ``ok``, ``proposal_id``, and ``error``.
+    """
+    import jsonschema
+
+    from .metadata.lifecycle import propose_properties
+    from .metadata.spec_schema import PROPERTIES_SPEC_SCHEMA
+
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": None,
+        "kind": "properties",
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+
+    try:
+        jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
+    except jsonschema.ValidationError as exc:
+        result["error"] = f"schema validation failed: {exc.message}"
+        return result
+
+    propose_result = propose_properties(spec)
+    if not propose_result.get("ok"):
+        result["error"] = propose_result.get("error")
+        return result
+
+    pid = uuid.uuid4().hex[:12]
+    rec = {
+        "kind": "properties",
+        "state": ST_PROPOSED,
+        "spec": spec,
+        "proposed_at": time.time(),
+    }
+    _save_proposal(pid, rec)
+
+    result["ok"] = True
+    result["proposal_id"] = pid
+    return result
+
+
+def sw_dry_run_properties(proposal_id: str) -> dict[str, Any]:
+    """Dry-run a properties proposal — confirm model file exists."""
+    from .metadata.lifecycle import dry_run_properties
+
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": proposal_id,
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+
+    rec = _load_proposal(proposal_id)
+    if rec is None:
+        result["error"] = f"proposal {proposal_id} not found"
+        return result
+    if rec.get("kind") != "properties":
+        result["error"] = f"proposal {proposal_id} is not a properties proposal"
+        return result
+
+    dry = dry_run_properties(rec["spec"])
+    result.update(dry)
+
+    if dry.get("ok"):
+        rec["state"] = ST_DRY_RUN_OK
+        rec["dry_run_at"] = time.time()
+        _save_proposal(proposal_id, rec)
+        result["state"] = ST_DRY_RUN_OK
+
+    return result
+
+
+def sw_commit_properties(proposal_id: str) -> dict[str, Any]:
+    """Commit a properties proposal — set custom properties on the model."""
+    from .metadata.lifecycle import commit_properties
+
+    result: dict[str, Any] = {
+        "ok": False,
+        "proposal_id": proposal_id,
+        "state": ST_PROPOSED,
+        "error": None,
+    }
+
+    rec = _load_proposal(proposal_id)
+    if rec is None:
+        result["error"] = f"proposal {proposal_id} not found"
+        return result
+    if rec.get("kind") != "properties":
+        result["error"] = f"proposal {proposal_id} is not a properties proposal"
+        return result
+    if rec["state"] != ST_DRY_RUN_OK:
+        result["error"] = (
+            f"refusing to commit proposal in state {rec['state']!r}; "
+            "must be 'dry_run_ok'"
+        )
+        return result
+
+    try:
+        sw = get_sw_app()
+    except Exception as exc:
+        result["error"] = f"could not connect to SW: {exc!r}"
+        return result
+
+    commit_result = commit_properties(sw, rec["spec"])
+    result.update(commit_result)
+
+    if commit_result.get("ok"):
+        rec["state"] = ST_COMMITTED
+        rec["committed_at"] = time.time()
+        _save_proposal(proposal_id, rec)
+        result["state"] = ST_COMMITTED
+
+    return result
+
+
 def sw_dry_run_feature_add(proposal_id: str) -> dict[str, Any]:
     """Open the doc, resolve the edge, add the fillet, rebuild, close without saving."""
     result: dict[str, Any] = {
