@@ -129,6 +129,7 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         extension=".dxf",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="DXF — general 2D/3D exchange (Drawing docs only; Part→DXF needs Drawing pipeline)",
+        seat_confirmed=True,  # W33 seat-confirmed: SaveAs3(path, 0, 0) with .dxf extension
     ),
     "dxf_flat": ExportFormat(
         name="dxf_flat",
