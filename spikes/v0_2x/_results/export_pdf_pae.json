@@ -1,10 +1,10 @@
 {
   "pae": "w25_export_pdf",
-  "timestamp": "2026-06-06T15:28:30",
+  "timestamp": "2026-06-06T16:28:47",
   "gates": {
     "drawing_build": {
       "ok": true,
-      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_drawing_1780730912.SLDDRW"
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_drawing_1780734534.SLDDRW"
     },
     "open_drawing": {
       "ok": true,
@@ -16,39 +16,51 @@
     },
     "pdf_all_exists": {
       "ok": true,
-      "detail": "size=31760"
+      "detail": "size=32133"
     },
     "pdf_all_nontrivial": {
       "ok": true,
-      "detail": "size=31760B (threshold 10KB)"
+      "detail": "size=32133B (threshold 10KB)"
     },
-    "export_subset_ok": {
+    "pages_all_count": {
+      "ok": true,
+      "detail": "pages=2 (expected 2)"
+    },
+    "export_solo_ok": {
       "ok": true,
       "detail": "error=None"
     },
-    "pdf_subset_exists": {
+    "pdf_solo_exists": {
       "ok": true,
-      "detail": "size=31769"
+      "detail": "size=5484"
     },
-    "export_overview_ok": {
+    "pages_solo_count": {
+      "ok": true,
+      "detail": "pages=1 (expected 1)"
+    },
+    "export_quad_ok": {
       "ok": true,
       "detail": "error=None"
     },
-    "multi_sheet_size_proof": {
-      "ok": false,
-      "detail": "all=31760B, subset=31769B, ratio=1.00 (threshold >1.3)"
+    "pdf_quad_exists": {
+      "ok": true,
+      "detail": "size=31403"
     },
-    "overview_vs_all_proof": {
-      "ok": false,
-      "detail": "all=31760B, overview=31770B, ratio=1.00"
+    "pages_quad_count": {
+      "ok": true,
+      "detail": "pages=1 (expected 1)"
+    },
+    "page_count_discrimination_proof": {
+      "ok": true,
+      "detail": "pages(all)=2, pages(solo)=1, pages(quad)=1 -> selection filters correctly"
     },
     "unknown_sheet_rejected": {
       "ok": true,
-      "detail": "error=Unknown sheet name(s): ['NonexistentSheet']. Available sheets: ['DetailSheet', 'Overview']"
+      "detail": "error=Unknown sheet name(s): ['NonexistentSheet']. Available sheets: ['Quad', 'Solo']"
     },
     "unknown_sheet_message": {
       "ok": true,
-      "detail": "error=Unknown sheet name(s): ['NonexistentSheet']. Available sheets: ['DetailSheet', 'Overview']"
+      "detail": "error=Unknown sheet name(s): ['NonexistentSheet']. Available sheets: ['Quad', 'Solo']"
     },
     "pdf_on_part_rejected": {
       "ok": true,
@@ -59,24 +71,29 @@
       "detail": "error contains 'Drawing': format:'pdf' requires a Drawing (.SLDDRW) document, but doc type is 1 (1=Part, 2=Assembly, 3=Drawing)"
     }
   },
-  "verdict": "FAIL (['multi_sheet_size_proof', 'overview_vs_all_proof'])",
+  "verdict": "PASS",
   "pdf_paths": {
-    "drawing": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_drawing_1780730912.SLDDRW",
-    "all_sheets": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_all_1780730910.pdf",
-    "subset": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_subset_1780730910.pdf",
-    "overview": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_overview_1780730910.pdf"
+    "drawing": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_drawing_1780734534.SLDDRW",
+    "all_sheets": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_all_1780734527.pdf",
+    "solo": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_solo_1780734527.pdf",
+    "quad": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_quad_1780734527.pdf"
   },
   "sizes": {
-    "all_sheets": 31760,
-    "subset": 31769,
-    "overview": 31770
+    "all_sheets": 32133,
+    "solo": 5484,
+    "quad": 31403
   },
+  "page_counts": {
+    "all": 2,
+    "solo": 1,
+    "quad": 1
+  },
+  "page_counting_method": "raw_byte_scan:/Type/Page(?![s])",
   "multi_sheet_proof": {
-    "method": "size_comparison",
-    "all_sheets_size": 31760,
-    "subset_size": 31769,
-    "ratio": 1.0,
-    "threshold": 1.3,
-    "passed": false
+    "method": "page_count",
+    "pages_all": 2,
+    "pages_solo": 1,
+    "pages_quad": 1,
+    "passed": true
   }
 }
