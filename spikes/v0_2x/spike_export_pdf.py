@@ -380,28 +380,57 @@ def _export_pdf(
 
     try:
         # SaveAs(Name, Version, Options, ExportData, Errors, Warnings) -> BOOL
-        # _ApplyTypes_ returns a tuple: (return_val, Errors, Warnings)
-        save_result = ext.SaveAs(
+        # Use late-bind InvokeTypes to avoid the makepy [out] VARIANT handling
+        # dispid 93, return type BOOL (11, 0)
+        # arg types: BSTR (8), I4 (3), I4 (3), IDispatch (9), [out] VARIANT (16396), [out] VARIANT (16396)
+        # Note: 16396 = VT_ERROR | VT_BYREF, used for [out] error codes
+        import pythoncom
+
+        # Build arg tuple for InvokeTypes
+        # For [out] params, use VT_BYREF | VT_I4 (16387)
+        # Actually, let's try passing empty VARIANTs as VT_EMPTY byref
+        LCID = 0  # LOCALE_SYSTEM_DEFAULT
+
+        # InvokeTypes: (dispid, LCID, flags, return_type, arg_types_tuple, *args)
+        # flags: 1 = DISPATCH_METHOD
+        # For [out] params, the value tuple must contain placeholder values
+        LCID = 0  # LOCALE_SYSTEM_DEFAULT
+
+        result = ext._oleobj_.InvokeTypes(
+            93,  # dispid for SaveAs
+            LCID,
+            1,  # DISPATCH_METHOD
+            (11, 0),  # Return: BOOL
+            (
+                (8, 1),   # Name: BSTR in
+                (3, 1),   # Version: I4 in
+                (3, 1),   # Options: I4 in
+                (9, 1),   # ExportData: IDispatch in
+                (16387, 3),  # Errors: VARIANT|BYREF, in/out
+                (16387, 3),  # Warnings: VARIANT|BYREF, in/out
+            ),
             out_path,
             SW_SAVE_AS_CURRENT_VERSION,
             SW_SAVE_AS_OPTIONS_SILENT,
-            pdf_data,
+            pdf_data._oleobj_,  # Get the underlying COM object
+            0,  # placeholder for [out] Errors
+            0,  # placeholder for [out] Warnings
         )
-        # With _ApplyTypes_, [out] params are appended to the return
-        if isinstance(save_result, tuple):
-            retval = save_result[0]
-            errors = save_result[1] if len(save_result) > 1 else None
-            warnings = save_result[2] if len(save_result) > 2 else None
+
+        # result is a tuple: (retval, errors_var, warnings_var)
+        if isinstance(result, tuple):
+            retval = result[0]
+            errors = result[1] if len(result) > 1 else None
+            warnings = result[2] if len(result) > 2 else None
         else:
-            retval = save_result
+            retval = result
             errors = None
             warnings = None
 
         gate(
-            "ext_saveas_return",
+            "ext_saveas",
             True,
-            f"retval={retval!r}, errors={errors}, warnings={warnings}, "
-            f"result_type={type(save_result).__name__}",
+            f"retval={retval!r}, errors={errors}, warnings={warnings}",
         )
     except Exception as e:
         gate("ext_saveas", False, f"raised: {e}")

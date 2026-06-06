@@ -114,13 +114,13 @@ def _build_2sheet_drawing(sw: Any, part_path: str, template_path: str) -> str | 
 
     Returns the drawing file path, or None on failure.
     """
-    from ai_sw_bridge.drawing.lifecycle import DrawingSpec, commit_drawing
+    from ai_sw_bridge.drawing.lifecycle import commit_drawing
 
     _tmp = Path(tempfile.gettempdir())
     _ts = int(time.time())
     drw_path = str(_tmp / f"w25_pae_drawing_{_ts}.SLDDRW")
 
-    spec: DrawingSpec = {
+    spec: dict[str, Any] = {
         "kind": "drawing",
         "model": part_path,
         "sheets": [
@@ -137,28 +137,21 @@ def _build_2sheet_drawing(sw: Any, part_path: str, template_path: str) -> str | 
         "filename": f"w25_pae_drawing_{_ts}",
     }
 
-    # The drawing lifecycle needs sw and template
-    import win32com.client as w32
-    from ai_sw_bridge.com.earlybind import typed
-    from ai_sw_bridge.com.sw_type_info import wrapper_module
-
-    mod = wrapper_module()
-    tsw = typed(sw, "ISldWorks", module=mod)
+    # The drawing lifecycle takes (sw, spec, output_path)
+    output_path = str(_tmp / f"w25_pae_drawing_{_ts}.SLDDRW")
 
     result = commit_drawing(
+        sw,
         spec,
-        sw_app=sw,
-        template_path=template_path,
-        output_dir=_tmp,
-        filename=f"w25_pae_drawing_{_ts}",
+        output_path,
     )
 
-    if not result.ok:
-        gate("drawing_build", False, f"commit_drawing failed: {result.error}")
+    if not result.get("ok", False):
+        gate("drawing_build", False, f"commit_drawing failed: {result.get('error', 'unknown')}")
         return None
 
     # The commit_drawing returns the saved drawing path
-    drawing_path = result.path
+    drawing_path = result.get("path", output_path)
     if not os.path.isfile(drawing_path):
         gate("drawing_exists", False, f"Drawing not found at {drawing_path}")
         return None
@@ -221,12 +214,18 @@ def run() -> str:
     print("\n--- Open drawing for export ---")
     tsw = typed(sw, "ISldWorks", module=mod)
     try:
-        doc_raw = tsw.OpenDoc6(drawing_path, 3, 1, "", 0, 0)  # 3 = Drawing
+        open_ret = tsw.OpenDoc6(drawing_path, 3, 1, "", 0, 0)  # 3 = Drawing
     except Exception as e:
         gate("open_drawing", False, f"raised: {e}")
         results["verdict"] = "FAIL (cannot open drawing)"
         save_results()
         return "FAIL"
+
+    # OpenDoc6 may return a tuple (early-bind) or a dispatch
+    if isinstance(open_ret, tuple):
+        doc_raw = open_ret[0]
+    else:
+        doc_raw = open_ret
 
     if doc_raw is None or isinstance(doc_raw, int):
         gate("open_drawing", False, f"returned {doc_raw!r}")
@@ -397,10 +396,16 @@ def run() -> str:
     print("\n=== TEST 5: PDF on Part doc rejected ===")
     # Open the part doc
     try:
-        part_doc_raw = tsw.OpenDoc6(part_path, 1, 1, "", 0, 0)  # 1 = Part
+        part_open_ret = tsw.OpenDoc6(part_path, 1, 1, "", 0, 0)  # 1 = Part
     except Exception as e:
         gate("open_part_for_rejection_test", False, f"raised: {e}")
-        part_doc_raw = None
+        part_open_ret = None
+
+    # OpenDoc6 may return a tuple
+    if isinstance(part_open_ret, tuple):
+        part_doc_raw = part_open_ret[0]
+    else:
+        part_doc_raw = part_open_ret
 
     if part_doc_raw is not None and not isinstance(part_doc_raw, int):
         part_doc = typed_qi(part_doc_raw, "IModelDoc2", module=mod)

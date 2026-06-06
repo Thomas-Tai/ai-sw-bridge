@@ -1,0 +1,82 @@
+{
+  "pae": "w25_export_pdf",
+  "timestamp": "2026-06-06T15:28:30",
+  "gates": {
+    "drawing_build": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_drawing_1780730912.SLDDRW"
+    },
+    "open_drawing": {
+      "ok": true,
+      "detail": ""
+    },
+    "export_all_ok": {
+      "ok": true,
+      "detail": "error=None"
+    },
+    "pdf_all_exists": {
+      "ok": true,
+      "detail": "size=31760"
+    },
+    "pdf_all_nontrivial": {
+      "ok": true,
+      "detail": "size=31760B (threshold 10KB)"
+    },
+    "export_subset_ok": {
+      "ok": true,
+      "detail": "error=None"
+    },
+    "pdf_subset_exists": {
+      "ok": true,
+      "detail": "size=31769"
+    },
+    "export_overview_ok": {
+      "ok": true,
+      "detail": "error=None"
+    },
+    "multi_sheet_size_proof": {
+      "ok": false,
+      "detail": "all=31760B, subset=31769B, ratio=1.00 (threshold >1.3)"
+    },
+    "overview_vs_all_proof": {
+      "ok": false,
+      "detail": "all=31760B, overview=31770B, ratio=1.00"
+    },
+    "unknown_sheet_rejected": {
+      "ok": true,
+      "detail": "error=Unknown sheet name(s): ['NonexistentSheet']. Available sheets: ['DetailSheet', 'Overview']"
+    },
+    "unknown_sheet_message": {
+      "ok": true,
+      "detail": "error=Unknown sheet name(s): ['NonexistentSheet']. Available sheets: ['DetailSheet', 'Overview']"
+    },
+    "pdf_on_part_rejected": {
+      "ok": true,
+      "detail": "error=format:'pdf' requires a Drawing (.SLDDRW) document, but doc type is 1 (1=Part, 2=Assembly, 3=Drawing)"
+    },
+    "pdf_on_part_message": {
+      "ok": true,
+      "detail": "error contains 'Drawing': format:'pdf' requires a Drawing (.SLDDRW) document, but doc type is 1 (1=Part, 2=Assembly, 3=Drawing)"
+    }
+  },
+  "verdict": "FAIL (['multi_sheet_size_proof', 'overview_vs_all_proof'])",
+  "pdf_paths": {
+    "drawing": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_drawing_1780730912.SLDDRW",
+    "all_sheets": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_all_1780730910.pdf",
+    "subset": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_subset_1780730910.pdf",
+    "overview": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_pae_overview_1780730910.pdf"
+  },
+  "sizes": {
+    "all_sheets": 31760,
+    "subset": 31769,
+    "overview": 31770
+  },
+  "multi_sheet_proof": {
+    "method": "size_comparison",
+    "all_sheets_size": 31760,
+    "subset_size": 31769,
+    "ratio": 1.0,
+    "threshold": 1.3,
+    "passed": false
+  }
+}

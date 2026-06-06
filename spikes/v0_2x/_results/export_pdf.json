@@ -1,0 +1,171 @@
+{
+  "spike": "w25_export_pdf",
+  "timestamp": "2026-06-06T15:24:01",
+  "gates": {
+    "typelib_dump": {
+      "ok": true,
+      "detail": "recorded"
+    },
+    "part_build": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w25_spike_box_1780730641.SLDPRT"
+    },
+    "drwdot_found": {
+      "ok": true,
+      "detail": "count=1"
+    },
+    "newdocument": {
+      "ok": true,
+      "detail": "type=CDispatch"
+    },
+    "qi_idrawingdoc": {
+      "ok": true,
+      "detail": ""
+    },
+    "sheet1_place_front": {
+      "ok": true,
+      "detail": "type=IView"
+    },
+    "sheet_count": {
+      "ok": true,
+      "detail": "expected 2, got 2"
+    },
+    "drawing_save": {
+      "ok": true,
+      "detail": "err=0, exists=True"
+    },
+    "get_export_file_data": {
+      "ok": true,
+      "detail": "type=CDispatch"
+    },
+    "qi_export_pdf_data": {
+      "ok": true,
+      "detail": ""
+    },
+    "set_sheets_1": {
+      "ok": true,
+      "detail": "SetSheets returned False, mode=1, names=['Sheet1', 'DetailSheet']"
+    },
+    "ext_saveas": {
+      "ok": true,
+      "detail": "retval=True, errors=0, warnings=0"
+    },
+    "single_sheet_pdf": {
+      "ok": true,
+      "detail": "size=5484, PDF written (5484 bytes)"
+    },
+    "newsheet_DetailSheet": {
+      "ok": true,
+      "detail": "NewSheet3 returned True"
+    },
+    "sheet2_place_*Right": {
+      "ok": true,
+      "detail": ""
+    },
+    "multi_sheet_pdf": {
+      "ok": true,
+      "detail": "size=32248, PDF written (32248 bytes)"
+    },
+    "multi_sheet_size_proof": {
+      "ok": true,
+      "detail": "2-sheet=32248B, 1-sheet=5484B, ratio=5.88 (threshold > 1.3)"
+    },
+    "set_sheets_3": {
+      "ok": true,
+      "detail": "SetSheets returned False, mode=3, names=['DetailSheet']"
+    },
+    "specified_sheet_pdf": {
+      "ok": true,
+      "detail": "size=32251, PDF written (32251 bytes)"
+    },
+    "subset_smaller_than_all": {
+      "ok": false,
+      "detail": "subset=32251B < all=32248B"
+    },
+    "set_sheets_2": {
+      "ok": true,
+      "detail": "SetSheets returned False, mode=2, names=[]"
+    },
+    "current_sheet_pdf": {
+      "ok": true,
+      "detail": "size=31520, PDF written (31520 bytes)"
+    },
+    "current_sheet_smaller_than_all": {
+      "ok": true,
+      "detail": "current=31520B < all=32248B"
+    }
+  },
+  "verdict": "GO",
+  "typelib_dump": {
+    "IExportPdfData": {
+      "CLSID": "{33D23C34-D27A-4635-91DF-8BEFFE51900A}",
+      "methods": [
+        "CLSID",
+        "GetSheets",
+        "GetWhichSheets",
+        "SetSheets",
+        "coclass_clsid"
+      ],
+      "SetSheets_signature": "SetSheets(Which: I4, Sheets: SAFEARRAY(BSTR)) -> BOOL"
+    },
+    "GetExportFileData": {
+      "exists": true,
+      "signature": "GetExportFileData(FileType: I4) -> IDispatch",
+      "swExportPdfData_enum_value": 1
+    },
+    "IModelDocExtension.SaveAs": {
+      "exists": true
+    },
+    "IModelDocExtension.SaveAs2": {
+      "exists": true
+    },
+    "IModelDocExtension.SaveAs3": {
+      "exists": true
+    },
+    "IModelDocExtension.SaveAs_signature": "SaveAs(Name: BSTR, Version: I4, Options: I4, ExportData: IDispatch, Errors: [out] I4, Warnings: [out] I4) -> BOOL",
+    "swExportDataSheetsToExport_e": {
+      "swExportData_ExportAllSheets": 1,
+      "swExportData_ExportCurrentSheet": 2,
+      "swExportData_ExportSpecifiedSheets": 3
+    },
+    "swExportDataFileType_e": {
+      "swExportPdfData": 1
+    }
+  },
+  "export_recipe": {
+    "step_1": "tsw.GetExportFileData(1)  # swExportPdfData = 1",
+    "step_2": "typed_qi(pdf_data_raw, 'IExportPdfData')",
+    "step_3": "pdf_data.SetSheets(mode, sheet_names)  # mode: 1=all, 2=current, 3=specified",
+    "step_4": "ext = typed(doc.Extension, 'IModelDocExtension')",
+    "step_5": "ext.SaveAs(path, 0, 1, pdf_data)  # SaveAs(Name, Version, Options, ExportData, [out] Errors, [out] Warnings)",
+    "step_6": "Verify PDF on disk (exists + non-trivial size)",
+    "confirmed_sigs": {
+      "GetExportFileData": "GetExportFileData(FileType: I4) -> IDispatch",
+      "IExportPdfData.SetSheets": "SetSheets(Which: I4, Sheets: SAFEARRAY(BSTR)) -> BOOL",
+      "IModelDocExtension.SaveAs": "SaveAs(Name: BSTR, Version: I4, Options: I4, ExportData: IDispatch, Errors: [out] I4, Warnings: [out] I4) -> BOOL"
+    },
+    "enum_values": {
+      "swExportPdfData": 1,
+      "swExportData_ExportAllSheets": 1,
+      "swExportData_ExportCurrentSheet": 2,
+      "swExportData_ExportSpecifiedSheets": 3
+    },
+    "multi_sheet_proof_method": "size_comparison",
+    "multi_sheet_proof_detail": "2-sheet PDF is materially larger (>1.3x) than 1-sheet PDF with the same per-sheet content; specified-sheet subset is smaller than all-sheets PDF"
+  },
+  "pdf_paths": {
+    "drawing": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_spike_drawing_1780730645.SLDDRW",
+    "single_sheet": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_spike_1sheet_1780730641.pdf",
+    "multi_sheet": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_spike_2sheets_1780730641.pdf",
+    "specified_sheet": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_spike_specified_1780730641.pdf",
+    "current_sheet": "C:\\Users\\sky\\AppData\\Local\\Temp\\w25_spike_current_1780730641.pdf"
+  },
+  "multi_sheet_proof": {
+    "method": "size_comparison",
+    "single_sheet_size": 5484,
+    "multi_sheet_size": 32248,
+    "ratio": 5.88,
+    "threshold": 1.3,
+    "passed": true
+  }
+}

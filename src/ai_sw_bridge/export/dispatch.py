@@ -303,31 +303,46 @@ def _export_pdf(
         # Step 3: SetSheets
         pdf_data.SetSheets(sheets_mode, sheet_names)
 
-        # Step 4: IModelDocExtension.SaveAs
+        # Step 4: IModelDocExtension.SaveAs via InvokeTypes
+        # (early-bind SaveAs has [out] VARIANT handling issues in pywin32)
         ext = typed(doc.Extension, "IModelDocExtension", module=mod)
-        save_result = ext.SaveAs(
+
+        # InvokeTypes with 6 args (including placeholders for [out] VARIANT*)
+        # dispid 93, return BOOL, arg types: BSTR, I4, I4, IDispatch, [out] VARIANT, [out] VARIANT
+        result = ext._oleobj_.InvokeTypes(
+            93,  # dispid for SaveAs
+            0,   # LCID
+            1,   # DISPATCH_METHOD
+            (11, 0),  # Return: BOOL
+            (
+                (8, 1),      # Name: BSTR in
+                (3, 1),      # Version: I4 in
+                (3, 1),      # Options: I4 in
+                (9, 1),      # ExportData: IDispatch in
+                (16387, 3),  # Errors: VARIANT|BYREF, in/out
+                (16387, 3),  # Warnings: VARIANT|BYREF, in/out
+            ),
             path_str,
             _SW_SAVE_AS_CURRENT_VERSION,
             _SW_SAVE_AS_OPTIONS_SILENT,
-            pdf_data,
+            pdf_data._oleobj_,  # Underlying COM object
+            0,  # placeholder for [out] Errors
+            0,  # placeholder for [out] Warnings
         )
 
-        # _ApplyTypes_ returns (retval, Errors, Warnings) as a tuple
-        if isinstance(save_result, tuple):
-            retval = save_result[0]
-            errors = save_result[1] if len(save_result) > 1 else None
+        # result is the BOOL return value (InvokeTypes returns just the retval for [out] VARIANT*)
+        if isinstance(result, tuple):
+            retval = result[0]
         else:
-            retval = save_result
-            errors = None
+            retval = result
 
         # Check return value
         if not retval:
-            err_detail = f"swFileSaveError={errors}" if errors else "returned False"
             return ExportResult(
                 format=fmt.name,
                 path=path_str,
                 ok=False,
-                error=f"IModelDocExtension.SaveAs failed: {err_detail}",
+                error="IModelDocExtension.SaveAs returned False",
             )
 
     except ValueError as exc:
