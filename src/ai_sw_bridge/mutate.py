@@ -216,6 +216,15 @@ _SUPPORTED_FEATURE_TYPES = (
     # silently no-ops (the same wall behind Wave-4 AddEdges + Wave-6 auto-profile).
     # Authoring: target.edge_ref + height_mm (+ angle_deg=90, radius_mm=2).
     "edge_flange",
+    # W21 T1: linear_pattern + circular_pattern + mirror_feature.
+    # Production-handler PAE GREEN (spike 5a94b05): FeatureLinearPattern5
+    # (22 args, seed mark=4, direction mark=1) → LPattern; FeatureCircularPattern5
+    # (14 args, seed mark=4, axis mark=1) → CirPattern; InsertMirrorFeature2
+    # (5 args, seed mark=1, plane mark=2) → MirrorPattern. All RETURN_VALUE
+    # contract. Linear CONSTRAINT: seed must be non-ICE (Extrusion type).
+    "linear_pattern",
+    "circular_pattern",
+    "mirror_feature",
     # ---- Wave-5 F1–F6 kinds REMOVED from the advertised surface (W0 handback) ----
     # The handlers + dispatch entries remain below as characterized code; propose
     # must fail-close with "unsupported feature type" for any of these kinds
@@ -1524,6 +1533,214 @@ def _create_draft(doc: Any, feature: dict, target: dict) -> tuple[bool, str | No
         return False, f"draft pipeline failed: {exc!r}"
 
 
+# ---- W21: pattern features (seat-GREEN, spike 5a94b05) ----
+
+
+def _find_feature_by_name(doc: Any, name: str) -> Any:
+    """Look up a feature by its tree-name. Returns the IFeature or None."""
+    feats = doc.FeatureManager.GetFeatures(True)
+    if not feats:
+        return None
+    for f in feats:
+        try:
+            n = f.Name
+            n = n() if callable(n) else n
+            if str(n) == name:
+                return f
+        except Exception:
+            continue
+    return None
+
+
+def _create_linear_pattern(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a linear pattern of a seed feature along a direction edge.
+
+    Seat-validated recipe (W21 S1, spike ``5a94b05``, SW 2024 SP1):
+    ``fm.FeatureLinearPattern5(22 args)`` with marked selections:
+      direction edge = mark 1 (SelectByID(EDGE) + SetSelectedObjectMark)
+      seed feature   = mark 4 (IFeature.Select2(append=True, mark=4))
+
+    CONSTRAINT: the seed feature must be a non-ICE type (Extrusion, Cut,
+    etc.). ICE (Instant3D) features are silently rejected by
+    FeatureLinearPattern5 — the spike proved this by comparing a Boss
+    (Extrusion, GO) vs Boss_Seed (ICE, NO-GO).
+
+    ``target`` shape: ``{"seed": "<name>", "direction": {"x": mm, "y": mm,
+    "z": mm}}`` where the point lies on the desired direction edge.
+    ``feature.spacing_mm`` (positive number), ``feature.count`` (int >= 2),
+    optional ``feature.flip`` (bool).
+    """
+    seed_name = target.get("seed") if isinstance(target, dict) else None
+    if not seed_name:
+        return False, "target.seed must be a non-empty feature name"
+    direction = target.get("direction") if isinstance(target, dict) else None
+    if not isinstance(direction, dict):
+        return False, "target.direction must be a dict with x, y, z (mm)"
+    spacing_mm = feature.get("spacing_mm") if isinstance(feature, dict) else None
+    if not isinstance(spacing_mm, (int, float)) or spacing_mm <= 0:
+        return False, "feature.spacing_mm must be a positive number"
+    count = feature.get("count") if isinstance(feature, dict) else None
+    if not isinstance(count, int) or count < 2:
+        return False, "feature.count must be an integer >= 2"
+    flip = bool(feature.get("flip", False)) if isinstance(feature, dict) else False
+
+    doc.ForceRebuild3(False)
+    try:
+        fm = doc.FeatureManager
+        seed_feat = _find_feature_by_name(doc, seed_name)
+        if seed_feat is None:
+            return False, f"seed feature {seed_name!r} not found in feature tree"
+
+        # 1. Direction edge (mark=1)
+        dx = float(direction["x"]) / 1000.0
+        dy = float(direction["y"]) / 1000.0
+        dz = float(direction["z"]) / 1000.0
+        doc.ClearSelection2(True)
+        if not doc.SelectByID("", "EDGE", dx, dy, dz):
+            return False, (
+                f"could not select direction edge at ({direction['x']}, "
+                f"{direction['y']}, {direction['z']}) mm"
+            )
+        sel_mgr = doc.SelectionManager
+        if not sel_mgr.SetSelectedObjectMark(1, 1, 0):
+            return False, "SetSelectedObjectMark(1, 1, 0) failed for direction"
+
+        # 2. Seed (mark=4)
+        if not seed_feat.Select2(True, 4):
+            return False, f"IFeature.Select2 on seed {seed_name!r} returned False"
+
+        # 3. FeatureLinearPattern5 (22 args)
+        spacing_m = float(spacing_mm) / 1000.0
+        feat = fm.FeatureLinearPattern5(
+            count, spacing_m, 1, 0.0,
+            flip, False, "", "",
+            False, False, False, False,
+            False, False, False, False,
+            False, False, 0.0, 0.0, False, False,
+        )
+        if _materialized(feat):
+            return True, None
+        return False, "FeatureLinearPattern5 returned None (seed may be an ICE/Instant3D feature, which is unsupported)"
+    except Exception as exc:
+        return False, f"linear pattern pipeline failed: {exc!r}"
+
+
+def _create_circular_pattern(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Create a circular pattern of a seed feature around an axis.
+
+    Seat-validated recipe (W21 S1, spike ``5a94b05``, SW 2024 SP1):
+    ``fm.FeatureCircularPattern5(14 args)`` with marked selections:
+      axis = mark 1 (SelectByID2(AXIS, mark=1))
+      seed = mark 4 (IFeature.Select2(append=True, mark=4))
+
+    ``target`` shape: ``{"seed": "<name>", "axis": "<axis name>"}``.
+    ``feature.count`` (int >= 2), ``feature.angle_deg`` (positive number,
+    default 360) OR ``feature.equal_spacing`` (bool, default True),
+    optional ``feature.flip`` (bool).
+    """
+    import math
+
+    seed_name = target.get("seed") if isinstance(target, dict) else None
+    if not seed_name:
+        return False, "target.seed must be a non-empty feature name"
+    axis_name = target.get("axis") if isinstance(target, dict) else None
+    if not axis_name:
+        return False, "target.axis must be a non-empty axis name"
+    count = feature.get("count") if isinstance(feature, dict) else None
+    if not isinstance(count, int) or count < 2:
+        return False, "feature.count must be an integer >= 2"
+    equal_spacing = bool(feature.get("equal_spacing", True)) if isinstance(feature, dict) else True
+    angle_deg = feature.get("angle_deg", 360.0) if isinstance(feature, dict) else 360.0
+    if not isinstance(angle_deg, (int, float)) or angle_deg <= 0:
+        return False, "feature.angle_deg must be a positive number"
+    flip = bool(feature.get("flip", False)) if isinstance(feature, dict) else False
+
+    doc.ForceRebuild3(False)
+    try:
+        fm = doc.FeatureManager
+        mod = wrapper_module()
+        seed_feat = _find_feature_by_name(doc, seed_name)
+        if seed_feat is None:
+            return False, f"seed feature {seed_name!r} not found in feature tree"
+
+        # 1. Axis (mark=1)
+        ext = typed(doc.Extension, "IModelDocExtension", module=mod)
+        doc.ClearSelection2(True)
+        if not ext.SelectByID2(axis_name, "AXIS", 0, 0, 0, False, 1, None, 0):
+            return False, f"could not select axis {axis_name!r}"
+
+        # 2. Seed (mark=4)
+        if not seed_feat.Select2(True, 4):
+            return False, f"IFeature.Select2 on seed {seed_name!r} returned False"
+
+        # 3. FeatureCircularPattern5 (14 args)
+        angle_rad = float(angle_deg) * math.pi / 180.0
+        feat = fm.FeatureCircularPattern5(
+            count, angle_rad, flip, "",
+            False, equal_spacing, False, False,
+            False, False, 1, 0.0, "", False,
+        )
+        if _materialized(feat):
+            return True, None
+        return False, "FeatureCircularPattern5 returned None"
+    except Exception as exc:
+        return False, f"circular pattern pipeline failed: {exc!r}"
+
+
+def _create_mirror_feature(
+    doc: Any, feature: dict, target: dict
+) -> tuple[bool, str | None]:
+    """Mirror a seed feature about a named plane.
+
+    Seat-validated recipe (W21 S1, spike ``5a94b05``, SW 2024 SP1):
+    ``fm.InsertMirrorFeature2(False, False, False, False, 0)`` (5 args)
+    with marked selections:
+      plane = mark 2 (SelectByID(PLANE) + SetSelectedObjectMark)
+      seed  = mark 1 (IFeature.Select2(append=True, mark=1))
+
+    ``target`` shape: ``{"seed": "<name>", "plane": "<plane name>"}``.
+    Plane can be a standard plane name ("Front Plane", "Top Plane",
+    "Right Plane") or a user-created ref_plane name.
+    """
+    seed_name = target.get("seed") if isinstance(target, dict) else None
+    if not seed_name:
+        return False, "target.seed must be a non-empty feature name"
+    plane_name = target.get("plane") if isinstance(target, dict) else None
+    if not plane_name:
+        return False, "target.plane must be a non-empty plane name"
+
+    doc.ForceRebuild3(False)
+    try:
+        fm = doc.FeatureManager
+        seed_feat = _find_feature_by_name(doc, seed_name)
+        if seed_feat is None:
+            return False, f"seed feature {seed_name!r} not found in feature tree"
+
+        # 1. Plane (mark=2)
+        doc.ClearSelection2(True)
+        if not doc.SelectByID(plane_name, "PLANE", 0.0, 0.0, 0.0):
+            return False, f"could not select plane {plane_name!r}"
+        sel_mgr = doc.SelectionManager
+        if not sel_mgr.SetSelectedObjectMark(1, 2, 0):
+            return False, "SetSelectedObjectMark(1, 2, 0) failed for plane"
+
+        # 2. Seed (mark=1)
+        if not seed_feat.Select2(True, 1):
+            return False, f"IFeature.Select2 on seed {seed_name!r} returned False"
+
+        # 3. InsertMirrorFeature2 (5 args)
+        feat = fm.InsertMirrorFeature2(False, False, False, False, 0)
+        if _materialized(feat):
+            return True, None
+        return False, "InsertMirrorFeature2 returned None"
+    except Exception as exc:
+        return False, f"mirror feature pipeline failed: {exc!r}"
+
+
 def _apply_feature(
     doc: Any, feature: dict, target: dict
 ) -> tuple[bool, str | None]:
@@ -1572,6 +1789,12 @@ def _apply_feature(
         return _create_boundary_boss(doc, feature, target)
     if ftype == "edge_flange":
         return _create_edge_flange(doc, feature, target)
+    if ftype == "linear_pattern":
+        return _create_linear_pattern(doc, feature, target)
+    if ftype == "circular_pattern":
+        return _create_circular_pattern(doc, feature, target)
+    if ftype == "mirror_feature":
+        return _create_mirror_feature(doc, feature, target)
     return False, f"unsupported feature type {ftype!r}"
 
 
@@ -2280,6 +2503,55 @@ def sw_propose_feature_add(
                 if not isinstance(val, list) or not val:
                     result["error"] = f"boundary_boss target.{key} must be a non-empty list"
                     return result
+
+        # W21: linear_pattern — seed + direction + spacing_mm + count.
+        if feat_type == "linear_pattern":
+            if not isinstance(target.get("seed"), str) or not target.get("seed"):
+                result["error"] = "linear_pattern target.seed must be a non-empty feature name"
+                return result
+            direction = target.get("direction")
+            if not isinstance(direction, dict):
+                result["error"] = "linear_pattern target.direction must be a dict with x, y, z"
+                return result
+            for k in ("x", "y", "z"):
+                v = direction.get(k)
+                if not isinstance(v, (int, float)):
+                    result["error"] = f"linear_pattern target.direction.{k} must be a number"
+                    return result
+            spacing = feature.get("spacing_mm")
+            if not isinstance(spacing, (int, float)) or spacing <= 0:
+                result["error"] = f"linear_pattern spacing_mm must be a positive number, got {spacing!r}"
+                return result
+            cnt = feature.get("count")
+            if not isinstance(cnt, int) or cnt < 2:
+                result["error"] = f"linear_pattern count must be an integer >= 2, got {cnt!r}"
+                return result
+
+        # W21: circular_pattern — seed + axis + count + angle/equal_spacing.
+        if feat_type == "circular_pattern":
+            if not isinstance(target.get("seed"), str) or not target.get("seed"):
+                result["error"] = "circular_pattern target.seed must be a non-empty feature name"
+                return result
+            if not isinstance(target.get("axis"), str) or not target.get("axis"):
+                result["error"] = "circular_pattern target.axis must be a non-empty axis name"
+                return result
+            cnt = feature.get("count")
+            if not isinstance(cnt, int) or cnt < 2:
+                result["error"] = f"circular_pattern count must be an integer >= 2, got {cnt!r}"
+                return result
+            angle = feature.get("angle_deg", 360.0)
+            if not isinstance(angle, (int, float)) or angle <= 0:
+                result["error"] = f"circular_pattern angle_deg must be a positive number, got {angle!r}"
+                return result
+
+        # W21: mirror_feature — seed + plane.
+        if feat_type == "mirror_feature":
+            if not isinstance(target.get("seed"), str) or not target.get("seed"):
+                result["error"] = "mirror_feature target.seed must be a non-empty feature name"
+                return result
+            if not isinstance(target.get("plane"), str) or not target.get("plane"):
+                result["error"] = "mirror_feature target.plane must be a non-empty plane name"
+                return result
 
         if not doc_path or not Path(doc_path).exists():
             result["error"] = f"doc_path does not exist: {doc_path}"
