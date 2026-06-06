@@ -318,7 +318,7 @@ class TestProposeFeatureAdd:
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
 
         r = sw_propose_feature_add(
-            str(doc), {"type": "chamfer", "radius_mm": 1.0}, _VALID_TARGET
+            str(doc), {"type": "wrap", "radius_mm": 1.0}, _VALID_TARGET
         )
         assert r["ok"] is False
         assert "unsupported" in r["error"]
@@ -1689,21 +1689,20 @@ def _patch_chamfer_advertised(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-class TestChamferDeAdvertised:
-    def test_not_in_supported_types(
+class TestChamferAdvertised:
+    def test_in_supported_types(
         self,
     ) -> None:
-        assert "chamfer" not in mutate._SUPPORTED_FEATURE_TYPES
+        assert "chamfer" in mutate._SUPPORTED_FEATURE_TYPES
 
-    def test_rejected_without_advertisement(
+    def test_accepted_with_valid_params(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         r = sw_propose_feature_add(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
-        assert r["ok"] is False
-        assert "unsupported" in r["error"]
+        assert r["ok"] is True
 
 
 class TestProposeChamfer:

@@ -166,6 +166,10 @@ _DRAFT_PROPAGATION = {
 # Feature types the feature_add PAE lifecycle knows how to build.
 _SUPPORTED_FEATURE_TYPES = (
     "fillet_constant_radius",
+    # W24: chamfer — distance-angle bevel on a durable edge via
+    # InsertFeatureChamfer (8 args, seat-proven by spike c8a3124).
+    # Production-handler PAE GREEN.
+    "chamfer",
     "base_flange",
     "variable_radius_fillet",
     "wizard_hole",
