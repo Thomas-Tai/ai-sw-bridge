@@ -407,8 +407,37 @@ def _saveas3_direct(
     The per-format extension string is 🔴 SEAT — confirmed on a live
     seat per the spike-first law. This skeleton implements the call
     shape; the format strings are not yet confirmed.
+
+    Doc-type fail-closed (W33):
+      - DXF requires a Drawing document (.SLDDRW). A part or assembly
+        passed to format:'dxf' raises a clear ValueError.
     """
     path_str = str(out_path)
+
+    # --- Fail-closed: DXF requires a Drawing doc (W33) ---
+    if fmt.name == "dxf":
+        try:
+            doc_type = doc.GetType()
+        except Exception as exc:
+            return ExportResult(
+                format=fmt.name,
+                path=path_str,
+                ok=False,
+                error=f"Cannot determine document type: {exc}",
+            )
+
+        if doc_type != _SW_DOC_DRAWING:
+            return ExportResult(
+                format=fmt.name,
+                path=path_str,
+                ok=False,
+                error=(
+                    f"format:'dxf' requires a Drawing (.SLDDRW) document, "
+                    f"but doc type is {doc_type} "
+                    f"(1=Part, 2=Assembly, 3=Drawing)"
+                ),
+            )
+
     try:
         err = doc.SaveAs3(path_str, 0, fmt.save_version)
     except Exception as exc:

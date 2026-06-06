@@ -64,8 +64,8 @@ class TestExportFormats:
         assert EXPORT_FORMATS["step203"].save_version != 0
 
     def test_seat_confirmed_formats(self) -> None:
-        """P1.1-seat confirmed 6 SAVEAS3_DIRECT formats + PDF on SW 2024 SP1."""
-        expected = {"step214", "step203", "iges", "parasolid", "stl", "3mf", "pdf"}
+        """P1.1-seat confirmed 7 SAVEAS3_DIRECT formats + PDF + DXF on SW 2024 SP1."""
+        expected = {"step214", "step203", "iges", "parasolid", "stl", "3mf", "pdf", "dxf"}
         confirmed = {n for n, f in EXPORT_FORMATS.items() if f.seat_confirmed}
         assert confirmed == expected
 
