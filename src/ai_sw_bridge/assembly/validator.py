@@ -67,6 +67,14 @@ def validate_assembly(spec: dict[str, Any]) -> None:
             )
         _check_component_patterns(patterns, component_ids)
 
+    arrays = spec.get("component_arrays")
+    if arrays is not None:
+        if not isinstance(arrays, list):
+            raise AssemblyValidationError(
+                "component_arrays must be an array", "/component_arrays"
+            )
+        _check_component_arrays(arrays, component_ids)
+
 
 def _check_components(components: list[dict[str, Any]]) -> None:
     seen_ids: set[str] = set()
@@ -353,3 +361,122 @@ def _check_component_patterns(
                     f"integer, got {name_modifier!r}",
                     path,
                 )
+
+
+def _check_component_arrays(
+    arrays: list[dict[str, Any]], component_ids: set[str]
+) -> None:
+    """Validate component_arrays entries.
+
+    Checks: id present + unique, type is linear or circular, count >= 2,
+    positive spacing_mm/radius_mm, non-zero direction/axis, valid part
+    reference, expanded-id collisions with existing component ids.
+    """
+    import math
+
+    seen_array_ids: set[str] = set()
+    expanded_ids: set[str] = set(component_ids)
+
+    for i, arr in enumerate(arrays):
+        path = f"/component_arrays/{i}"
+        if not isinstance(arr, dict):
+            raise AssemblyValidationError("array must be a dict", path)
+
+        aid = arr.get("id")
+        if not isinstance(aid, str) or not aid:
+            raise AssemblyValidationError(
+                "array id must be a non-empty string", path
+            )
+        if aid in seen_array_ids:
+            raise AssemblyValidationError(
+                f"duplicate array id {aid!r}", path
+            )
+        seen_array_ids.add(aid)
+
+        atype = arr.get("type")
+        if atype not in ("linear", "circular"):
+            raise AssemblyValidationError(
+                f"unknown array type {atype!r} (must be 'linear' or 'circular')",
+                path,
+            )
+
+        count = arr.get("count")
+        if not isinstance(count, int) or count < 2:
+            raise AssemblyValidationError(
+                f"array count must be an integer >= 2, got {count!r}", path
+            )
+
+        # Check part reference
+        has_part = "part" in arr and arr["part"] is not None
+        has_part_spec = "part_spec" in arr and arr["part_spec"] is not None
+        if not has_part and not has_part_spec:
+            raise AssemblyValidationError(
+                f"array {aid!r} must have either 'part' or 'part_spec'", path
+            )
+        if has_part and has_part_spec:
+            raise AssemblyValidationError(
+                f"array {aid!r} has both 'part' and 'part_spec'; "
+                "exactly one is required",
+                path,
+            )
+
+        if atype == "linear":
+            spacing = arr.get("spacing_mm")
+            if not isinstance(spacing, (int, float)) or spacing <= 0:
+                raise AssemblyValidationError(
+                    f"linear array spacing_mm must be a positive number, "
+                    f"got {spacing!r}",
+                    path,
+                )
+
+            direction = arr.get("direction")
+            if (
+                not isinstance(direction, (list, tuple))
+                or len(direction) != 3
+                or not all(isinstance(v, (int, float)) for v in direction)
+            ):
+                raise AssemblyValidationError(
+                    "linear array direction must be a 3-element numeric array",
+                    path,
+                )
+            dlen = math.sqrt(sum(v ** 2 for v in direction))
+            if dlen < 1e-12:
+                raise AssemblyValidationError(
+                    "linear array direction must be non-zero", path
+                )
+
+        elif atype == "circular":
+            radius = arr.get("radius_mm")
+            if not isinstance(radius, (int, float)) or radius <= 0:
+                raise AssemblyValidationError(
+                    f"circular array radius_mm must be a positive number, "
+                    f"got {radius!r}",
+                    path,
+                )
+
+            axis = arr.get("axis")
+            if (
+                not isinstance(axis, (list, tuple))
+                or len(axis) != 3
+                or not all(isinstance(v, (int, float)) for v in axis)
+            ):
+                raise AssemblyValidationError(
+                    "circular array axis must be a 3-element numeric array",
+                    path,
+                )
+            alen = math.sqrt(sum(v ** 2 for v in axis))
+            if alen < 1e-12:
+                raise AssemblyValidationError(
+                    "circular array axis must be non-zero", path
+                )
+
+        # Check expanded-id collisions
+        for k in range(count):
+            expanded_id = f"{aid}_{k}"
+            if expanded_id in expanded_ids:
+                raise AssemblyValidationError(
+                    f"expanded id {expanded_id!r} collides with existing "
+                    f"component or previously expanded id",
+                    path,
+                )
+            expanded_ids.add(expanded_id)

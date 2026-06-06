@@ -718,3 +718,170 @@ class TestComponentPatternsValidator:
             {"type": "mirror", "seed": "b", "plane": "front"},
         ]
         validate_assembly(spec)
+
+
+# ---- Component arrays (linear + circular) ---------------------------------
+
+
+class TestComponentArraysSchema:
+    def test_accepts_linear_array(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "rail", "type": "linear", "part": "r.sldprt",
+             "count": 5, "spacing_mm": 40, "direction": [1, 0, 0]},
+        ]
+        jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_accepts_circular_array(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "bolt", "type": "circular", "part": "b.sldprt",
+             "count": 6, "radius_mm": 50, "axis": [0, 0, 1]},
+        ]
+        jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_rejects_count_less_than_2(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "r", "type": "linear", "part": "r.sldprt",
+             "count": 1, "spacing_mm": 40, "direction": [1, 0, 0]},
+        ]
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_rejects_zero_spacing(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "r", "type": "linear", "part": "r.sldprt",
+             "count": 3, "spacing_mm": 0, "direction": [1, 0, 0]},
+        ]
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_rejects_unknown_type(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "x", "type": "spiral", "part": "x.sldprt",
+             "count": 3, "radius_mm": 50, "axis": [0, 0, 1]},
+        ]
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_accepts_no_arrays(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+
+class TestComponentArraysValidator:
+    def test_accepts_valid_linear(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "rail", "type": "linear", "part": "r.sldprt",
+             "count": 3, "spacing_mm": 40, "direction": [1, 0, 0]},
+        ]
+        validate_assembly(spec)
+
+    def test_accepts_valid_circular(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "bolt", "type": "circular", "part": "b.sldprt",
+             "count": 4, "radius_mm": 50, "axis": [0, 0, 1], "angle_deg": 360},
+        ]
+        validate_assembly(spec)
+
+    def test_rejects_unknown_type(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "x", "type": "grid", "part": "x.sldprt",
+             "count": 3, "spacing_mm": 10, "direction": [1, 0, 0]},
+        ]
+        with pytest.raises(AssemblyValidationError, match="unknown array type"):
+            validate_assembly(spec)
+
+    def test_rejects_count_less_than_2(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "r", "type": "linear", "part": "r.sldprt",
+             "count": 1, "spacing_mm": 10, "direction": [1, 0, 0]},
+        ]
+        with pytest.raises(AssemblyValidationError, match="count must be"):
+            validate_assembly(spec)
+
+    def test_rejects_negative_spacing(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "r", "type": "linear", "part": "r.sldprt",
+             "count": 3, "spacing_mm": -5, "direction": [1, 0, 0]},
+        ]
+        with pytest.raises(AssemblyValidationError, match="positive"):
+            validate_assembly(spec)
+
+    def test_rejects_zero_direction(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "r", "type": "linear", "part": "r.sldprt",
+             "count": 3, "spacing_mm": 10, "direction": [0, 0, 0]},
+        ]
+        with pytest.raises(AssemblyValidationError, match="non-zero"):
+            validate_assembly(spec)
+
+    def test_rejects_zero_axis(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "b", "type": "circular", "part": "b.sldprt",
+             "count": 4, "radius_mm": 50, "axis": [0, 0, 0]},
+        ]
+        with pytest.raises(AssemblyValidationError, match="non-zero"):
+            validate_assembly(spec)
+
+    def test_rejects_negative_radius(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "b", "type": "circular", "part": "b.sldprt",
+             "count": 4, "radius_mm": -10, "axis": [0, 0, 1]},
+        ]
+        with pytest.raises(AssemblyValidationError, match="positive"):
+            validate_assembly(spec)
+
+    def test_rejects_id_collision(self) -> None:
+        """Array expanded id 'a_0' collides with existing component 'a_0'."""
+        spec = {
+            "kind": "assembly",
+            "name": "test",
+            "components": [
+                {"id": "a_0", "part": "a.sldprt"},
+                {"id": "b", "part": "b.sldprt"},
+            ],
+            "component_arrays": [
+                {"id": "a", "type": "linear", "part": "r.sldprt",
+                 "count": 3, "spacing_mm": 10, "direction": [1, 0, 0]},
+            ],
+        }
+        with pytest.raises(AssemblyValidationError, match="collides"):
+            validate_assembly(spec)
+
+    def test_rejects_missing_part(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "r", "type": "linear",
+             "count": 3, "spacing_mm": 10, "direction": [1, 0, 0]},
+        ]
+        with pytest.raises(AssemblyValidationError, match="part"):
+            validate_assembly(spec)
+
+    def test_rejects_duplicate_array_id(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_arrays"] = [
+            {"id": "r", "type": "linear", "part": "r.sldprt",
+             "count": 2, "spacing_mm": 10, "direction": [1, 0, 0]},
+            {"id": "r", "type": "linear", "part": "r.sldprt",
+             "count": 2, "spacing_mm": 10, "direction": [0, 1, 0]},
+        ]
+        with pytest.raises(AssemblyValidationError, match="duplicate"):
+            validate_assembly(spec)

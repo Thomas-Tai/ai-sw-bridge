@@ -1,0 +1,66 @@
+{
+  "pae": "wave26_asm_component_arrays",
+  "timestamp": "2026-06-06T14:03:56",
+  "gates": {
+    "build_box": {
+      "ok": true,
+      "detail": "ok=True"
+    },
+    "validate": {
+      "ok": true,
+      "detail": "spec valid"
+    },
+    "dry_run": {
+      "ok": true,
+      "detail": "resolved=8"
+    },
+    "commit": {
+      "ok": true,
+      "detail": "components=8, expanded=7"
+    },
+    "expanded_count": {
+      "ok": true,
+      "detail": "7 expanded (3 rail + 4 bolt)"
+    },
+    "total_count": {
+      "ok": true,
+      "detail": "8 total (1 seed + 7 expanded)"
+    },
+    "asm_saved": {
+      "ok": true,
+      "detail": "size=36393"
+    },
+    "reopen": {
+      "ok": true,
+      "detail": "assembly re-opened"
+    },
+    "comp_count": {
+      "ok": true,
+      "detail": "expected 8, got 8"
+    },
+    "sampled_instances": {
+      "ok": true,
+      "detail": "sampled 8 of 8 expected"
+    },
+    "linear_spacing": {
+      "ok": true,
+      "detail": "found 3 candidates, xs=[100.0, 140.0, 180.0]"
+    },
+    "circular_radius": {
+      "ok": true,
+      "detail": "found 4, radii=[50.0, 50.0, 50.0, 50.0]"
+    },
+    "manifest_exists": {
+      "ok": true,
+      "detail": "C:\\Users\\sky\\AppData\\Local\\Temp\\w26_arr_1780725836_asm.SLDASM.manifest.json"
+    },
+    "manifest_roundtrip": {
+      "ok": true,
+      "detail": "stored 2 arrays, original 2"
+    },
+    "runtime_instances": {
+      "ok": true,
+      "detail": "8 runtime instances"
+    }
+  }
+}

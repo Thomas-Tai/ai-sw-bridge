@@ -14,6 +14,7 @@ from .storage import AssemblyManifest, ComponentInstance, MateRecord
 from .face_resolver import resolve_component_face, ComponentFaceResolution
 from .lifecycle import dry_run_assembly, commit_assembly
 from .handlers import mirror_components
+from .arrays import expand_component_arrays, expand_linear_array, expand_circular_array
 
 __all__ = [
     "ASSEMBLY_SCHEMA",
@@ -26,6 +27,9 @@ __all__ = [
     "MateRecord",
     "commit_assembly",
     "dry_run_assembly",
+    "expand_circular_array",
+    "expand_component_arrays",
+    "expand_linear_array",
     "mirror_components",
     "resolve_component_face",
     "validate_assembly",
