@@ -300,8 +300,29 @@ def _export_pdf(
         # Step 2: QI to IExportPdfData
         pdf_data = typed_qi(pdf_data_raw, "IExportPdfData", module=mod)
 
-        # Step 3: SetSheets
-        pdf_data.SetSheets(sheets_mode, sheet_names)
+        # Step 3: SetSheets via InvokeTypes with correct arg types
+        # (the makepy-generated method uses VT_VARIANT (12) for the Sheets arg,
+        #  but the actual API expects VT_ARRAY|VT_BSTR (8200) for SAFEARRAY(BSTR))
+        # dispid 3, return BOOL (11), args: I4 (3, 1), SAFEARRAY|BSTR (8200, 1)
+        VT_ARRAY = 8192
+        VT_BSTR = 8
+        VT_ARRAY_BSTR = VT_ARRAY | VT_BSTR  # 8200
+        set_sheets_ok = pdf_data._oleobj_.InvokeTypes(
+            3,  # dispid for SetSheets
+            0,  # LCID
+            1,  # DISPATCH_METHOD
+            (11, 0),  # Return: BOOL
+            ((3, 1), (VT_ARRAY_BSTR, 1)),  # Which: I4, Sheets: SAFEARRAY(BSTR)
+            sheets_mode,
+            tuple(sheet_names),  # Convert to tuple for SAFEARRAY marshaling
+        )
+        if not set_sheets_ok:
+            logger.warning(
+                "SetSheets(mode=%d, names=%s) returned False; export may include "
+                "more sheets than requested",
+                sheets_mode,
+                sheet_names,
+            )
 
         # Step 4: IModelDocExtension.SaveAs via InvokeTypes
         # (early-bind SaveAs has [out] VARIANT handling issues in pywin32)
