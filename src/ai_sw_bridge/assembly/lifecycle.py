@@ -143,7 +143,20 @@ def dry_run_assembly(
     part_spec_validated: dict[str, str] = {}
     sources: dict[str, str] = {}
 
-    for comp in spec.get("components", []):
+    # Expand component_arrays for dry-run validation
+    from .arrays import expand_component_arrays
+
+    all_components = list(spec.get("components", []))
+    arrays = spec.get("component_arrays")
+    if arrays:
+        existing_ids = {c["id"] for c in all_components}
+        expanded, expand_err = expand_component_arrays(arrays, existing_ids)
+        if expand_err:
+            result["error"] = f"component_arrays expansion: {expand_err}"
+            return result
+        all_components.extend(expanded)
+
+    for comp in all_components:
         cid = comp["id"]
         part_path = comp.get("part")
         source = "part" if part_path else None
@@ -270,12 +283,30 @@ def commit_assembly(
 
     result: dict[str, Any] = {"ok": False}
 
+    # Expand component_arrays into synthetic component entries.
+    # The original spec is preserved verbatim for the manifest; expansion
+    # produces a working component list for resolution + placement.
+    from .arrays import expand_component_arrays
+
+    all_components = list(spec.get("components", []))
+    arrays = spec.get("component_arrays")
+    if arrays:
+        existing_ids = {c["id"] for c in all_components}
+        expanded, expand_err = expand_component_arrays(arrays, existing_ids)
+        if expand_err:
+            result["error"] = f"component_arrays expansion: {expand_err}"
+            return result
+        all_components.extend(expanded)
+        result["array_expanded_count"] = len(expanded)
+
     # Resolve part paths. Order: part -> part_paths[cid] -> part_spec_path
     # -> build part_spec to a temp .sldprt.
     resolved: dict[str, str] = {}
     sources: dict[str, str] = {}
     built_specs: dict[str, dict[str, Any]] = {}
-    for comp in spec.get("components", []):
+    # Build-once dedup: spec_path -> resolved temp .sldprt path
+    _built_part_specs: dict[str, str] = {}
+    for comp in all_components:
         cid = comp["id"]
         pp = comp.get("part")
         source = "part" if pp else None
@@ -299,6 +330,12 @@ def commit_assembly(
             result["error"] = f"component {cid!r}: no part path resolved"
             return result
 
+        # Build-once: reuse already-built part_spec
+        if spec_path in _built_part_specs:
+            resolved[cid] = _built_part_specs[spec_path]
+            sources[cid] = "part_spec"
+            continue
+
         # Load + validate the spec file (offline).
         try:
             part_spec_data = _load_part_spec(spec_path)
@@ -315,6 +352,7 @@ def commit_assembly(
                 f"{build_out.get('error')}"
             )
             return result
+        _built_part_specs[spec_path] = save_to
         resolved[cid] = save_to
         sources[cid] = "part_spec"
         built_specs[cid] = {
@@ -329,7 +367,7 @@ def commit_assembly(
 
     # Build enriched component specs with resolved paths
     comp_specs = []
-    for comp in spec.get("components", []):
+    for comp in all_components:
         c = dict(comp)
         c["part"] = resolved[c["id"]]
         comp_specs.append(c)

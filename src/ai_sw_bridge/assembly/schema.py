@@ -133,6 +133,53 @@ COMPONENT_PATTERNS_SCHEMA = {
     "items": MIRROR_PATTERN_SCHEMA,
 }
 
+_DIRECTION_SCHEMA = {
+    "type": "array",
+    "items": {"type": "number"},
+    "minItems": 3,
+    "maxItems": 3,
+}
+
+LINEAR_ARRAY_SCHEMA = {
+    "type": "object",
+    "required": ["id", "type", "count", "spacing_mm", "direction"],
+    "additionalProperties": False,
+    "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {"const": "linear"},
+        "count": {"type": "integer", "minimum": 2},
+        "spacing_mm": {"type": "number", "exclusiveMinimum": 0},
+        "direction": _DIRECTION_SCHEMA,
+        "base_xyz_mm": XYZ_MM_SCHEMA,
+        "base_rpy_deg": XYZ_MM_SCHEMA,
+        "part": {"type": "string", "minLength": 1},
+        "part_spec": {"type": "string", "minLength": 1},
+    },
+}
+
+CIRCULAR_ARRAY_SCHEMA = {
+    "type": "object",
+    "required": ["id", "type", "count", "radius_mm", "axis"],
+    "additionalProperties": False,
+    "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {"const": "circular"},
+        "count": {"type": "integer", "minimum": 2},
+        "radius_mm": {"type": "number", "exclusiveMinimum": 0},
+        "axis": _DIRECTION_SCHEMA,
+        "center_xyz_mm": XYZ_MM_SCHEMA,
+        "angle_deg": {"type": "number", "exclusiveMinimum": 0, "maximum": 360},
+        "base_rpy_deg": XYZ_MM_SCHEMA,
+        "part": {"type": "string", "minLength": 1},
+        "part_spec": {"type": "string", "minLength": 1},
+    },
+}
+
+COMPONENT_ARRAYS_SCHEMA = {
+    "type": "array",
+    "items": {"oneOf": [LINEAR_ARRAY_SCHEMA, CIRCULAR_ARRAY_SCHEMA]},
+}
+
 ASSEMBLY_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "ai-sw-bridge assembly spec v1",
@@ -154,5 +201,6 @@ ASSEMBLY_SCHEMA = {
             },
         },
         "component_patterns": COMPONENT_PATTERNS_SCHEMA,
+        "component_arrays": COMPONENT_ARRAYS_SCHEMA,
     },
 }
