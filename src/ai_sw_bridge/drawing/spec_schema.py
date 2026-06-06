@@ -1,4 +1,4 @@
-"""Drawing spec JSON schema (Wave-16/W18).
+"""Drawing spec JSON schema (Wave-16/W18/W19).
 
 Defines the ``kind: "drawing"`` spec structure: a model path and a list
 of standard views to generate. This is a standalone spec kind (sibling
@@ -8,7 +8,9 @@ The schema enforces:
   - ``kind`` == "drawing" (required)
   - ``name`` (required, non-empty string)
   - ``model`` (required, path to .sldasm or .sldprt)
-  - ``views[]`` — each in the allowed standard view set
+  - ``views[]`` — each entry is either a string (ortho/iso name) or an
+    object with ``type`` in {section, detail}; cross-field validation
+    (parent exists, cut present for section) is done in validate_drawing_spec
   - ``sheet`` — optional template size
   - ``bom`` — optional bool; requires .sldasm model (W18)
 """
@@ -32,8 +34,39 @@ DRAWING_SPEC_SCHEMA: dict[str, Any] = {
         "views": {
             "type": "array",
             "items": {
-                "type": "string",
-                "enum": sorted(DRAWING_FORMAT_NAMES),
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "enum": sorted(DRAWING_FORMAT_NAMES),
+                    },
+                    {
+                        "type": "object",
+                        "required": ["type", "name", "parent"],
+                        "additionalProperties": False,
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": ["section", "detail"],
+                            },
+                            "name": {"type": "string", "minLength": 1},
+                            "parent": {"type": "string", "minLength": 1},
+                            "cut": {
+                                "type": "string",
+                                "enum": ["horizontal", "vertical"],
+                            },
+                            "center": {
+                                "type": "array",
+                                "items": {"type": "number"},
+                                "minItems": 2,
+                                "maxItems": 2,
+                            },
+                            "radius": {
+                                "type": "number",
+                                "exclusiveMinimum": 0,
+                            },
+                        },
+                    },
+                ]
             },
             "minItems": 1,
         },
