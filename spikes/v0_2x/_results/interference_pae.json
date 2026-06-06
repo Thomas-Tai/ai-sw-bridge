@@ -1,0 +1,24 @@
+{
+  "verdict": "PASS",
+  "overlap": {
+    "count": 1,
+    "volume_mm3": 4000.0000000000005,
+    "components": [
+      "block_20mm-1",
+      "block_20mm-2"
+    ],
+    "errors": null
+  },
+  "clearance": {
+    "count": 0,
+    "errors": null
+  },
+  "errors": [],
+  "gates": [
+    "overlap_count>0: True (count=1)",
+    "clearance_count==0: True (count=0)",
+    "overlap_volume>0: True (volume_mm3=4000.0000000000005)",
+    "overlap_components>=2: True (components=['block_20mm-1', 'block_20mm-2'])",
+    "no_detection_errors: True"
+  ]
+}
