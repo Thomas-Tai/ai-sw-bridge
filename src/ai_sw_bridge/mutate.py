@@ -221,7 +221,10 @@ _SUPPORTED_FEATURE_TYPES = (
     # (22 args, seed mark=4, direction mark=1) → LPattern; FeatureCircularPattern5
     # (14 args, seed mark=4, axis mark=1) → CirPattern; InsertMirrorFeature2
     # (5 args, seed mark=1, plane mark=2) → MirrorPattern. All RETURN_VALUE
-    # contract. Linear CONSTRAINT: seed must be non-ICE (Extrusion type).
+    # contract; instance multiplication verified by volume/face delta (S4,
+    # spike 240474a; circular angle-units bug fixed 5b1f3b6). Linear:
+    # handler fail-closes if the API rejects a seed (returns None). S1↔S4
+    # disagree on ICE seeds (NO-GO vs N=3 GO) → ICE is NOT a hard ban.
     "linear_pattern",
     "circular_pattern",
     "mirror_feature",
@@ -1562,10 +1565,11 @@ def _create_linear_pattern(
       direction edge = mark 1 (SelectByID(EDGE) + SetSelectedObjectMark)
       seed feature   = mark 4 (IFeature.Select2(append=True, mark=4))
 
-    CONSTRAINT: the seed feature must be a non-ICE type (Extrusion, Cut,
-    etc.). ICE (Instant3D) features are silently rejected by
-    FeatureLinearPattern5 — the spike proved this by comparing a Boss
-    (Extrusion, GO) vs Boss_Seed (ICE, NO-GO).
+    SEED COMPATIBILITY (S1↔S4 unreconciled): S1 saw an ICE (Instant3D)
+    seed NO-GO, but S4 patterned an ICE seed to N=3 — so ICE-ness alone is
+    NOT a reliable predictor of rejection. The handler is fail-closed
+    either way: if FeatureLinearPattern5 rejects the seed it returns None
+    and we surface an error; a compatible seed materializes normally.
 
     ``target`` shape: ``{"seed": "<name>", "direction": {"x": mm, "y": mm,
     "z": mm}}`` where the point lies on the desired direction edge.
@@ -1622,7 +1626,7 @@ def _create_linear_pattern(
         )
         if _materialized(feat):
             return True, None
-        return False, "FeatureLinearPattern5 returned None (seed may be an ICE/Instant3D feature, which is unsupported)"
+        return False, "FeatureLinearPattern5 returned None (the seed feature was rejected by the API — e.g. an incompatible seed type)"
     except Exception as exc:
         return False, f"linear pattern pipeline failed: {exc!r}"
 
@@ -1642,8 +1646,6 @@ def _create_circular_pattern(
     default 360) OR ``feature.equal_spacing`` (bool, default True),
     optional ``feature.flip`` (bool).
     """
-    import math
-
     seed_name = target.get("seed") if isinstance(target, dict) else None
     if not seed_name:
         return False, "target.seed must be a non-empty feature name"
