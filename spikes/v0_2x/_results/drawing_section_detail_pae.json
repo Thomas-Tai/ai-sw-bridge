@@ -1,0 +1,111 @@
+{
+  "pae": "w19_drawing_section_detail",
+  "timestamp": "2026-06-06T10:37:03",
+  "gates": {
+    "part_build": {
+      "ok": true,
+      "detail": "ok=True, path=C:\\Users\\sky\\AppData\\Local\\Temp\\w19pae_1780713424.SLDPRT"
+    },
+    "drw_propose": {
+      "ok": true,
+      "detail": "pid=7f5aa40fe1f6, err=None"
+    },
+    "drw_dry_run": {
+      "ok": true,
+      "detail": "state=dry_run_ok, err=None"
+    },
+    "drw_commit": {
+      "ok": true,
+      "detail": "view_count=3, views=['front', 'Section View A-A', 'Detail View B (2 : 1)'], err=None"
+    },
+    "commit_view_count_ge_3": {
+      "ok": true,
+      "detail": "view_count=3 (front + section A + detail B)"
+    },
+    "commit_has_section_view": {
+      "ok": true,
+      "detail": "views_placed=['front', 'Section View A-A', 'Detail View B (2 : 1)']"
+    },
+    "commit_has_detail_view": {
+      "ok": true,
+      "detail": "views_placed=['front', 'Section View A-A', 'Detail View B (2 : 1)']"
+    },
+    "drw_file_exists": {
+      "ok": true,
+      "detail": "size=60202"
+    },
+    "reopen_drawing": {
+      "ok": true,
+      "detail": "type=IModelDoc2"
+    },
+    "reopen_total_model_views_ge_3": {
+      "ok": true,
+      "detail": "non-sheet views=3"
+    },
+    "reopen_has_section_type": {
+      "ok": true,
+      "detail": "section (type=2) count=1"
+    },
+    "reopen_has_detail_type": {
+      "ok": true,
+      "detail": "detail (type=3) count=1"
+    },
+    "OVERALL_GREEN": {
+      "ok": true,
+      "detail": "12/12 gates pass"
+    }
+  },
+  "confirmed_type_constants": {
+    "section": 2,
+    "detail": 3,
+    "source": "W19 S1 spike empirical"
+  },
+  "part_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\w19pae_1780713424.SLDPRT",
+  "drawing_spec": {
+    "kind": "drawing",
+    "name": "w19_sec_det_pae",
+    "model": "C:\\Users\\sky\\AppData\\Local\\Temp\\w19pae_1780713424.SLDPRT",
+    "views": [
+      "front",
+      {
+        "type": "section",
+        "name": "A",
+        "parent": "front",
+        "cut": "vertical"
+      },
+      {
+        "type": "detail",
+        "name": "B",
+        "parent": "front",
+        "center": [
+          0.5,
+          0.5
+        ],
+        "radius": 0.25
+      }
+    ],
+    "sheet": {
+      "template_size": "A3"
+    }
+  },
+  "views_placed": [
+    "front",
+    "Section View A-A",
+    "Detail View B (2 : 1)"
+  ],
+  "view_count": 3,
+  "drawing_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\w19pae_1780713424.SLDDRW",
+  "reopen_view_names": [
+    "Sheet1",
+    "Drawing View1",
+    "Section View A-A",
+    "Detail View B (2 : 1)"
+  ],
+  "reopen_view_types": [
+    1,
+    7,
+    2,
+    3
+  ],
+  "verdict": "GREEN"
+}

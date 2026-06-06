@@ -1,6 +1,6 @@
-"""Tests for drawing spec schema + validator + lifecycle (Wave-16).
+"""Tests for drawing spec schema + validator + lifecycle (Wave-16/W19).
 
-Pure-Python — no SOLIDWORKS required. Covers structural schema rejection,
+Pure-Python -- no SOLIDWORKS required. Covers structural schema rejection,
 semantic validation, view mapping, and the propose pipeline.
 """
 
@@ -335,3 +335,246 @@ class TestBomPropose:
         from ai_sw_bridge.mutate import sw_propose_drawing
         result = sw_propose_drawing(_drawing_spec(model="part.sldprt", bom=False))
         assert result["ok"] is True
+
+
+# ---- W19: section + detail views ----
+
+_SECTION_VIEW = {
+    "type": "section",
+    "name": "A",
+    "parent": "front",
+    "cut": "vertical",
+}
+_DETAIL_VIEW = {
+    "type": "detail",
+    "name": "B",
+    "parent": "front",
+    "center": [0.5, 0.5],
+    "radius": 0.25,
+}
+
+
+class TestSectionDetailSchema:
+    """jsonschema structural checks for the oneOf views items (W19)."""
+
+    def test_accepts_section_object(self) -> None:
+        import jsonschema
+        jsonschema.validate(
+            _drawing_spec(views=["front", _SECTION_VIEW]),
+            DRAWING_SPEC_SCHEMA,
+        )
+
+    def test_accepts_detail_object(self) -> None:
+        import jsonschema
+        jsonschema.validate(
+            _drawing_spec(views=["front", _DETAIL_VIEW]),
+            DRAWING_SPEC_SCHEMA,
+        )
+
+    def test_accepts_mixed_views(self) -> None:
+        import jsonschema
+        jsonschema.validate(
+            _drawing_spec(views=["front", _SECTION_VIEW, _DETAIL_VIEW]),
+            DRAWING_SPEC_SCHEMA,
+        )
+
+    def test_accepts_section_without_cut(self) -> None:
+        # Schema does NOT enforce cut presence -- that's semantic validation
+        import jsonschema
+        spec = dict(_SECTION_VIEW)
+        del spec["cut"]
+        jsonschema.validate(
+            _drawing_spec(views=["front", spec]),
+            DRAWING_SPEC_SCHEMA,
+        )
+
+    def test_accepts_detail_minimal(self) -> None:
+        # center and radius are optional at schema level
+        import jsonschema
+        jsonschema.validate(
+            _drawing_spec(views=["front", {"type": "detail", "name": "B", "parent": "front"}]),
+            DRAWING_SPEC_SCHEMA,
+        )
+
+    def test_rejects_unknown_type(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(views=["front", {"type": "auxiliary", "name": "C", "parent": "front"}]),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+    def test_rejects_missing_name(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(views=["front", {"type": "section", "parent": "front", "cut": "vertical"}]),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+    def test_rejects_missing_parent(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(views=["front", {"type": "section", "name": "A", "cut": "vertical"}]),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+    def test_rejects_extra_properties(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(views=["front", {**_SECTION_VIEW, "unknown_key": 99}]),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+    def test_rejects_invalid_cut_value(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(views=["front", {**_SECTION_VIEW, "cut": "diagonal"}]),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+    def test_rejects_center_wrong_length(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(views=["front", {**_DETAIL_VIEW, "center": [0.5]}]),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+    def test_rejects_negative_radius(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(views=["front", {**_DETAIL_VIEW, "radius": -1.0}]),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+    def test_rejects_zero_radius(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(views=["front", {**_DETAIL_VIEW, "radius": 0}]),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+
+class TestSectionDetailSemanticValidation:
+    """validate_drawing_spec cross-field checks for derived views (W19)."""
+
+    def test_accepts_section_with_valid_parent(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(_drawing_spec(views=["front", _SECTION_VIEW]))
+
+    def test_accepts_detail_with_valid_parent(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(_drawing_spec(views=["front", _DETAIL_VIEW]))
+
+    def test_accepts_mixed_views(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(
+            _drawing_spec(views=["front", "top", _SECTION_VIEW, _DETAIL_VIEW])
+        )
+
+    def test_accepts_horizontal_cut(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        v = {**_SECTION_VIEW, "cut": "horizontal"}
+        validate_drawing_spec(_drawing_spec(views=["front", v]))
+
+    def test_accepts_detail_without_center_radius(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(
+            _drawing_spec(views=["front", {"type": "detail", "name": "B", "parent": "front"}])
+        )
+
+    def test_rejects_forward_ref_parent(self) -> None:
+        # section comes before its parent string view
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        with pytest.raises(ValueError, match="earlier"):
+            validate_drawing_spec(
+                _drawing_spec(views=[_SECTION_VIEW, "front"])
+            )
+
+    def test_rejects_unknown_parent(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        v = {**_SECTION_VIEW, "parent": "bottom"}
+        with pytest.raises(ValueError, match="earlier"):
+            validate_drawing_spec(_drawing_spec(views=["front", v]))
+
+    def test_rejects_section_without_cut(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        v = {k: val for k, val in _SECTION_VIEW.items() if k != "cut"}
+        with pytest.raises(ValueError, match="cut"):
+            validate_drawing_spec(_drawing_spec(views=["front", v]))
+
+    def test_rejects_section_invalid_cut(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        v = {**_SECTION_VIEW, "cut": "diagonal"}
+        with pytest.raises(ValueError, match="cut"):
+            validate_drawing_spec(_drawing_spec(views=["front", v]))
+
+    def test_rejects_section_of_section(self) -> None:
+        # derived view cannot reference another derived view as parent
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        sec2 = {"type": "section", "name": "B", "parent": "A", "cut": "horizontal"}
+        with pytest.raises(ValueError, match="earlier"):
+            validate_drawing_spec(
+                _drawing_spec(views=["front", _SECTION_VIEW, sec2])
+            )
+
+    def test_rejects_detail_bad_center_length(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        v = {**_DETAIL_VIEW, "center": [0.5]}
+        with pytest.raises(ValueError, match="center"):
+            validate_drawing_spec(_drawing_spec(views=["front", v]))
+
+    def test_rejects_detail_negative_radius(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        v = {**_DETAIL_VIEW, "radius": -0.1}
+        with pytest.raises(ValueError, match="radius"):
+            validate_drawing_spec(_drawing_spec(views=["front", v]))
+
+    def test_rejects_non_string_non_dict_entry(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        with pytest.raises(ValueError, match="string or object"):
+            validate_drawing_spec(_drawing_spec(views=["front", 42]))
+
+
+class TestSectionDetailPropose:
+    """Propose pipeline passes for specs containing derived views (W19)."""
+
+    def test_propose_section_ok(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(
+            _drawing_spec(views=["front", _SECTION_VIEW])
+        )
+        assert result["ok"] is True
+        assert result["kind"] == "drawing"
+
+    def test_propose_detail_ok(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(
+            _drawing_spec(views=["front", _DETAIL_VIEW])
+        )
+        assert result["ok"] is True
+
+    def test_propose_mixed_views_ok(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(
+            _drawing_spec(views=["front", "top", _SECTION_VIEW, _DETAIL_VIEW])
+        )
+        assert result["ok"] is True
+
+    def test_propose_forward_ref_fails(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(
+            _drawing_spec(views=[_SECTION_VIEW, "front"])
+        )
+        assert result["ok"] is False
+        assert "earlier" in result["error"]

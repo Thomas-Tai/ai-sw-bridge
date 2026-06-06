@@ -1,11 +1,13 @@
-"""Drawing lifecycle — propose/dry_run/commit (Wave-16/W18).
+"""Drawing lifecycle — propose/dry_run/commit (Wave-16/W18/W19).
 
-End-to-end ``propose → dry_run → commit`` for ``kind: "drawing"`` specs.
+End-to-end ``propose -> dry_run -> commit`` for ``kind: "drawing"`` specs.
 
   - **propose**: validate offline (jsonschema + semantic).
   - **dry_run**: confirm model file exists and is openable.
-  - **commit**: NewDocument(drwdot) → IDrawingDoc → per-view
-    CreateDrawViewFromModelView3 → optional BOM (W18) → SaveAs3 .SLDDRW.
+  - **commit**: NewDocument(drwdot) -> IDrawingDoc -> ortho views first
+    (CreateDrawViewFromModelView3), then derived views in order
+    (section: CreateSectionViewAt5 / detail: CreateDetailViewAt4) ->
+    optional dims (W17) -> optional BOM (W18) -> SaveAs3 .SLDDRW.
 """
 
 from __future__ import annotations
@@ -56,8 +58,8 @@ def _count_bom_data_rows(bom_annotation: Any) -> int:
     Dead paths (characterised W18 S1):
       - IView.GetTableAnnotationCount() is always 0 for BOM tables.
       - IView.IGetBomTable() fails with SW error 61836 ("Unable to read
-        write-only property") — not a usable getter in this context.
-      - QI IBomTableAnnotation → IBomTable raises E_NOINTERFACE.
+        write-only property") -- not a usable getter in this context.
+      - QI IBomTableAnnotation -> IBomTable raises E_NOINTERFACE.
     """
     data_rows = 0
     for row_idx in range(1, 256):
@@ -70,6 +72,127 @@ def _count_bom_data_rows(bom_annotation: Any) -> int:
         except Exception:
             break
     return data_rows
+
+
+def _create_section_view(
+    drawing_doc: Any,
+    mdoc2: Any,
+    parent_iview: Any,
+    view_spec: dict[str, Any],
+    typed_qi: Any,
+    mod: Any,
+) -> tuple[Any, str]:
+    """Create a section view from a parent IView.
+
+    Returns ``(typed_iview, sw_name)`` or raises on failure.
+    Confirmed sigs (W19 S1): CreateLine(x1,y1,z1,x2,y2,z2),
+    Select2(Append:BOOL, Mark:I4 must be int 0),
+    CreateSectionViewAt5(X,Y,Z,SectionLabel,Options,ExcludedComponents,SectionDepth).
+    """
+    cut = view_spec.get("cut", "vertical")
+    # SW section labels are single uppercase letters
+    label = (view_spec.get("name") or "A")[0].upper()
+
+    ol = parent_iview.GetOutline()  # [xmin, ymin, xmax, ymax] metres
+    cx = (ol[0] + ol[2]) / 2.0
+    cy = (ol[1] + ol[3]) / 2.0
+    margin = 0.005  # 5 mm overshoot past bbox edge
+
+    parent_name = parent_iview.GetName2() or ""
+    drawing_doc.ActivateView(parent_name)
+    skm = mdoc2.SketchManager
+
+    if cut == "vertical":
+        line = skm.CreateLine(cx, ol[1] - margin, 0.0, cx, ol[3] + margin, 0.0)
+        sv_x = ol[2] + 0.06  # place section view to the right
+        sv_y = cy
+    else:  # horizontal
+        line = skm.CreateLine(ol[0] - margin, cy, 0.0, ol[2] + margin, cy, 0.0)
+        sv_x = cx
+        sv_y = ol[3] + 0.06  # place section view above
+
+    if line is None:
+        raise RuntimeError("skm.CreateLine returned None")
+    line.Select2(False, 0)
+
+    sec_raw = drawing_doc.CreateSectionViewAt5(
+        sv_x, sv_y, 0.0,
+        label,  # SectionLabel
+        0,      # Options
+        None,   # ExcludedComponents (VARIANT None = no exclusions)
+        0.0,    # SectionDepth
+    )
+    if sec_raw is None:
+        raise RuntimeError("CreateSectionViewAt5 returned None")
+
+    sec_view = typed_qi(sec_raw, "IView", module=mod)
+    placed_name = sec_view.GetName2() or f"Section View {label}-{label}"
+    return sec_view, placed_name
+
+
+def _create_detail_view(
+    drawing_doc: Any,
+    mdoc2: Any,
+    parent_iview: Any,
+    view_spec: dict[str, Any],
+    typed_qi: Any,
+    mod: Any,
+) -> tuple[Any, str]:
+    """Create a detail view from a parent IView.
+
+    Returns ``(typed_iview, sw_name)`` or raises on failure.
+    Confirmed sigs (W19 S1): CreateCircleByRadius(XC,YC,ZC,Radius),
+    Select2(Append:BOOL, Mark:I4 must be int 0),
+    CreateDetailViewAt4 returns CDispatch -- typed_qi to IView required.
+    """
+    label = (view_spec.get("name") or "B")[0].upper()
+
+    ol = parent_iview.GetOutline()  # [xmin, ymin, xmax, ymax] metres
+    bbox_w = ol[2] - ol[0]
+    bbox_h = ol[3] - ol[1]
+    cy = (ol[1] + ol[3]) / 2.0
+
+    # center: [cx_frac, cy_frac] in [0,1] x [0,1] relative to parent bbox
+    center_frac = view_spec.get("center") or [0.5, 0.5]
+    det_cx = ol[0] + float(center_frac[0]) * bbox_w
+    det_cy = ol[1] + float(center_frac[1]) * bbox_h
+
+    # radius: fraction of the shorter bbox dimension
+    radius_frac = view_spec.get("radius") or 0.25
+    det_r = float(radius_frac) * min(bbox_w, bbox_h)
+
+    # Place detail view to the right of parent
+    det_x = ol[2] + 0.06
+    det_y = cy
+
+    parent_name = parent_iview.GetName2() or ""
+    drawing_doc.ActivateView(parent_name)
+    skm = mdoc2.SketchManager
+
+    circle = skm.CreateCircleByRadius(det_cx, det_cy, 0.0, det_r)
+    if circle is None:
+        raise RuntimeError("skm.CreateCircleByRadius returned None")
+    circle.Select2(False, 0)
+
+    det_raw = drawing_doc.CreateDetailViewAt4(
+        det_x, det_y, 0.0,
+        0,     # Style = swDetailViewStyle_PerStandard
+        2.0,   # Scale1
+        1.0,   # Scale2
+        label, # LabelIn
+        0,     # Showtype
+        True,  # FullOutline
+        False, # JaggedOutline
+        False, # NoOutline
+        50,    # ShapeIntensity
+    )
+    if det_raw is None:
+        raise RuntimeError("CreateDetailViewAt4 returned None")
+
+    # CreateDetailViewAt4 returns CDispatch, not IView -- QI required (W19 S1)
+    det_view = typed_qi(det_raw, "IView", module=mod)
+    placed_name = det_view.GetName2() or f"Detail View {label}"
+    return det_view, placed_name
 
 
 def validate_drawing_spec(spec: dict[str, Any]) -> None:
@@ -94,11 +217,62 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
     if not isinstance(views, list) or not views:
         raise ValueError("views must be a non-empty array")
 
+    # Track string view names seen so far for parent-reference validation.
+    # Derived views may only reference earlier ortho/iso string entries.
+    seen_string_views: set[str] = set()
+
     for i, v in enumerate(views):
-        if v not in DRAWING_FORMATS:
+        if isinstance(v, str):
+            if v not in DRAWING_FORMATS:
+                raise ValueError(
+                    f"views[{i}]: unknown view {v!r}; "
+                    f"allowed: {sorted(DRAWING_FORMATS)}"
+                )
+            seen_string_views.add(v)
+        elif isinstance(v, dict):
+            vtype = v.get("type")
+            if vtype not in ("section", "detail"):
+                raise ValueError(
+                    f"views[{i}]: object entry type must be 'section' or 'detail'"
+                )
+            vname = v.get("name")
+            if not isinstance(vname, str) or not vname:
+                raise ValueError(f"views[{i}]: name must be a non-empty string")
+            parent = v.get("parent")
+            if not isinstance(parent, str) or not parent:
+                raise ValueError(f"views[{i}]: parent must be a non-empty string")
+            if parent not in seen_string_views:
+                raise ValueError(
+                    f"views[{i}]: parent {parent!r} must be an earlier "
+                    f"ortho/iso string view (seen so far: "
+                    f"{sorted(seen_string_views) or 'none'})"
+                )
+            if vtype == "section":
+                cut = v.get("cut")
+                if cut not in ("horizontal", "vertical"):
+                    raise ValueError(
+                        f"views[{i}]: section view requires "
+                        f"cut: 'horizontal' or 'vertical'"
+                    )
+            if vtype == "detail":
+                center = v.get("center")
+                if center is not None:
+                    if not (isinstance(center, list) and len(center) == 2):
+                        raise ValueError(
+                            f"views[{i}]: detail center must be "
+                            f"[cx_frac, cy_frac] (two numbers)"
+                        )
+                radius = v.get("radius")
+                if radius is not None and not (
+                    isinstance(radius, (int, float)) and radius > 0
+                ):
+                    raise ValueError(
+                        f"views[{i}]: detail radius must be a positive number"
+                    )
+        else:
             raise ValueError(
-                f"views[{i}]: unknown view {v!r}; "
-                f"allowed: {sorted(DRAWING_FORMATS)}"
+                f"views[{i}]: each entry must be a string or object, "
+                f"got {type(v).__name__}"
             )
 
     sheet = spec.get("sheet")
@@ -115,7 +289,6 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
     if bom is not None and not isinstance(bom, bool):
         raise ValueError("bom must be a boolean")
     if bom:
-        model = spec.get("model", "")
         if not model.lower().endswith(".sldasm"):
             raise ValueError(
                 "a BOM requires an assembly model; "
@@ -125,7 +298,7 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
 
 
 def dry_run_drawing(spec: dict[str, Any]) -> dict[str, Any]:
-    """Dry-run a drawing spec — confirm model file exists.
+    """Dry-run a drawing spec -- confirm model file exists.
 
     Returns a result dict with ``ok``, ``model_path``, and ``error``.
     """
@@ -149,7 +322,13 @@ def commit_drawing(
     *,
     mod: Any | None = None,
 ) -> dict[str, Any]:
-    """Build the drawing — create views from the model, save .SLDDRW.
+    """Build the drawing -- create views from the model, save .SLDDRW.
+
+    Two-pass view strategy (W19):
+      Pass 1 -- ortho/iso string entries: CreateDrawViewFromModelView3,
+                builds ``placed_by_name`` dict for parent lookup.
+      Pass 2 -- derived object entries in spec order: section views via
+                CreateSectionViewAt5, detail views via CreateDetailViewAt4.
 
     Args:
         sw: the ``SldWorks.Application`` COM object.
@@ -208,33 +387,82 @@ def commit_drawing(
 
     try:
         drawing_doc = typed_qi(doc_raw, "IDrawingDoc", module=mod)
+        # IDrawingDoc does not inherit IModelDoc2 in the typelib --
+        # SketchManager must be accessed via a separate IModelDoc2 QI (W19 S1)
+        mdoc2 = typed_qi(doc_raw, "IModelDoc2", module=mod)
 
         views = spec.get("views", [])
         views_placed: list[str] = []
         view_errors: list[str] = []
-        placed_views: list[Any] = []  # typed IView references
+        placed_views: list[Any] = []         # all typed IView refs (ortho + derived)
+        placed_by_name: dict[str, Any] = {}  # string_view_name -> typed IView
 
-        for i, view_name in enumerate(views):
-            fmt = resolve_format(view_name)
-            x = fmt.default_x + (i * 0.001)  # tiny offset to avoid overlap
+        # ------------------------------------------------------------------
+        # Pass 1: ortho/iso string views
+        # ------------------------------------------------------------------
+        ortho_indices: list[int] = []
+        derived_indices: list[int] = []
+        for i, v in enumerate(views):
+            if isinstance(v, str):
+                ortho_indices.append(i)
+            else:
+                derived_indices.append(i)
+
+        for i in ortho_indices:
+            view_entry = views[i]
+            fmt = resolve_format(view_entry)
+            x = fmt.default_x + (i * 0.001)
             y = fmt.default_y
 
             try:
-                view = drawing_doc.CreateDrawViewFromModelView3(
+                view_raw = drawing_doc.CreateDrawViewFromModelView3(
                     model_path, fmt.view_name, x, y, 0.0
                 )
-                if view is not None and not isinstance(view, int):
-                    views_placed.append(view_name)
-                    placed_views.append(
-                        typed_qi(view, "IView", module=mod)
-                    )
+                if view_raw is not None and not isinstance(view_raw, int):
+                    tview = typed_qi(view_raw, "IView", module=mod)
+                    views_placed.append(view_entry)
+                    placed_views.append(tview)
+                    placed_by_name[view_entry] = tview
                 else:
                     view_errors.append(
-                        f"{view_name}: CreateDrawViewFromModelView3 "
-                        f"returned {view!r}"
+                        f"{view_entry}: CreateDrawViewFromModelView3 "
+                        f"returned {view_raw!r}"
                     )
             except Exception as exc:
-                view_errors.append(f"{view_name}: {exc!r}")
+                view_errors.append(f"{view_entry}: {exc!r}")
+
+        # ------------------------------------------------------------------
+        # Pass 2: derived views (section / detail) in spec order
+        # ------------------------------------------------------------------
+        for i in derived_indices:
+            vspec = views[i]
+            vtype = vspec.get("type")
+            vname = vspec.get("name", "")
+            parent_key = vspec.get("parent", "")
+            parent_iview = placed_by_name.get(parent_key)
+
+            if parent_iview is None:
+                view_errors.append(
+                    f"views[{i}] ({vtype} '{vname}'): "
+                    f"parent view '{parent_key}' was not placed"
+                )
+                continue
+
+            try:
+                if vtype == "section":
+                    tview, placed_name = _create_section_view(
+                        drawing_doc, mdoc2, parent_iview, vspec, typed_qi, mod
+                    )
+                else:  # detail
+                    tview, placed_name = _create_detail_view(
+                        drawing_doc, mdoc2, parent_iview, vspec, typed_qi, mod
+                    )
+                views_placed.append(placed_name)
+                placed_views.append(tview)
+            except Exception as exc:
+                view_errors.append(
+                    f"views[{i}] ({vtype} '{vname}'): {exc!r}"
+                )
 
         result["views_placed"] = views_placed
         result["view_count"] = len(views_placed)
@@ -257,8 +485,6 @@ def commit_drawing(
                 )
                 return result
 
-            # Fail-closed: verify at least one annotation was inserted
-            # using the typed IView references we already hold.
             total_annotations = 0
             for v in placed_views:
                 try:
@@ -288,26 +514,25 @@ def commit_drawing(
                 return result
 
             first_view = placed_views[0]
-            # Activate view — confirmed required for BOM insertion context (W18 S1)
             try:
-                view_name = first_view.GetName2() or ""
-                if view_name:
-                    drawing_doc.ActivateView(view_name)
+                vn = first_view.GetName2() or ""
+                if vn:
+                    drawing_doc.ActivateView(vn)
             except Exception:
                 pass
 
             try:
                 bom_annotation = first_view.InsertBomTable4(
-                    False,  # UseAnchorPoint
-                    0.05,   # X metres on sheet
-                    0.22,   # Y metres on sheet
-                    1,      # AnchorType = swTableAnchor_TopLeft
-                    1,      # BomType = swBomType_TopLevelOnly
-                    "",     # Configuration (default)
-                    bom_tmpl,  # TableTemplate
-                    False,  # Hidden
-                    2,      # IndentedNumberingType = swIndentedNumberingType_None
-                    False,  # DetailedCutList
+                    False,    # UseAnchorPoint
+                    0.05,     # X metres on sheet
+                    0.22,     # Y metres on sheet
+                    1,        # AnchorType = swTableAnchor_TopLeft
+                    1,        # BomType = swBomType_TopLevelOnly
+                    "",       # Configuration (default)
+                    bom_tmpl, # TableTemplate
+                    False,    # Hidden
+                    2,        # IndentedNumberingType = swIndentedNumberingType_None
+                    False,    # DetailedCutList
                 )
             except Exception as exc:
                 result["error"] = f"BOM InsertBomTable4 failed: {exc!r}"
@@ -319,7 +544,7 @@ def commit_drawing(
             )
             if not bom_ok:
                 result["error"] = (
-                    "InsertBomTable4 returned None — BOM not placed "
+                    "InsertBomTable4 returned None -- BOM not placed "
                     "(assembly may have no components in this view context)"
                 )
                 return result
@@ -353,7 +578,6 @@ def commit_drawing(
         return result
 
     finally:
-        # Close drawing doc
         try:
             t = doc_raw.GetTitle
             t = t() if callable(t) else t
