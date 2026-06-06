@@ -1,0 +1,24 @@
+{
+  "spike": "w28_tol_diag2",
+  "timestamp": "2026-06-06T15:19:46",
+  "tests": {
+    "initial_tol": {
+      "type": 0,
+      "vals": "None"
+    },
+    "drawing_dim_after_set": {
+      "type": 4,
+      "vals": "(-5e-05, 5e-05)"
+    },
+    "part_dim_lookup": {
+      "error": "'<win32com.gen_py.SldWorks 2024 Type Library.IFeature instance at 0x1820643646320>' object has no attribute 'GetDimensions2'"
+    },
+    "dim_feature_owner": {
+      "name": "SK"
+    },
+    "reopen_part_dim": {
+      "found": false
+    }
+  },
+  "verdict": "NO-GO"
+}
