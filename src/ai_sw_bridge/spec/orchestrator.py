@@ -169,11 +169,13 @@ def _parse_export_requests(block: list[Any]) -> list[Any]:
         if not fmt:
             continue
         out_dir = entry.get("output_dir")
+        sheets = entry.get("sheets", "all")
         out.append(
             ExportRequest(
                 format=str(fmt),
                 output_dir=Path(out_dir) if out_dir else Path("."),
                 filename=entry.get("filename"),
+                sheets=sheets,
             )
         )
     return out

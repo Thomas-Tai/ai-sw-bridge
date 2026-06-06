@@ -16,7 +16,10 @@ and structures the dispatch loop. The actual COM save calls are:
   ``builder.py``. The extension in the path selects the exporter.
   SW-free in the sense that the call shape is already proven for
   ``.sldprt``; the per-format extension strings need a seat to confirm.
-- **ExportPdfData** (``pdf``): needs ``IExportPdfData`` — SEAT-gated.
+- **ExportPdfData** (``pdf``): uses ``ISldWorks.GetExportFileData(1)``
+  → ``IExportPdfData.SetSheets`` → ``IModelDocExtension.SaveAs``.
+  Requires the open document to be a Drawing (.SLDDRW). W25 seat-
+  confirmed.
 - **Flat-pattern DXF** (``dxf_flat``): needs the flat-pattern config
   activated first — SEAT-gated + gated by S-SHEETMETAL.
 """
@@ -38,6 +41,22 @@ from .formats import (
 
 logger = logging.getLogger("ai_sw_bridge.export")
 
+# swDocumentTypes_e
+_SW_DOC_DRAWING = 3
+
+# swExportDataFileType_e
+_SW_EXPORT_PDF_DATA = 1
+
+# swExportDataSheetsToExport_e
+_SW_EXPORT_ALL_SHEETS = 1
+_SW_EXPORT_SPECIFIED_SHEETS = 3
+
+# swSaveAsVersion_e
+_SW_SAVE_AS_CURRENT_VERSION = 0
+
+# swSaveAsOptions_e
+_SW_SAVE_AS_OPTIONS_SILENT = 1
+
 
 @dataclass(frozen=True)
 class ExportRequest:
@@ -48,11 +67,15 @@ class ExportRequest:
         output_dir: Directory to write the exported file into.
         filename: Override filename (without extension). When ``None``,
             the part name is used.
+        sheets: PDF-only sheet selection. ``"all"`` (default) exports
+            every sheet; a list of sheet name strings exports only
+            those. Ignored for non-PDF formats.
     """
 
     format: str
     output_dir: Path
     filename: str | None = None
+    sheets: str | list[str] = "all"
 
 
 @dataclass
@@ -151,16 +174,7 @@ def _export_one(doc: Any, req: ExportRequest, part_name: str) -> ExportResult:
     if fmt.save_method == SaveMethod.SAVEAS3_DIRECT:
         return _saveas3_direct(doc, fmt, out_path)
     if fmt.save_method == SaveMethod.EXPORT_PDF:
-        return ExportResult(
-            format=fmt.name,
-            path=path_str,
-            ok=False,
-            error=(
-                "PDF export via IExportPdfData is SEAT-gated (P1.1). "
-                "The SaveAs3-direct path may work for single-sheet PDF; "
-                "multi-sheet needs a live SW seat to confirm the marshal."
-            ),
-        )
+        return _export_pdf(doc, fmt, out_path, req.sheets)
     if fmt.save_method == SaveMethod.FLAT_PATTERN_DXF:
         return ExportResult(
             format=fmt.name,
@@ -178,6 +192,170 @@ def _export_one(doc: Any, req: ExportRequest, part_name: str) -> ExportResult:
         ok=False,
         error=f"Unhandled save method: {fmt.save_method}",
     )
+
+
+def _export_pdf(
+    doc: Any,
+    fmt: ExportFormat,
+    out_path: Path,
+    sheets: str | list[str],
+) -> ExportResult:
+    """Export a drawing document to PDF via IExportPdfData.
+
+    Requires the open document to be a Drawing (``.SLDDRW``). Uses
+    the W25-confirmed recipe::
+
+        sw.GetExportFileData(1)           # swExportPdfData
+        typed_qi(raw, "IExportPdfData")
+        pdf_data.SetSheets(mode, names)   # mode: 1=all, 3=specified
+        ext.SaveAs(path, 0, 1, pdf_data)  # IModelDocExtension.SaveAs
+
+    Fail-closed: ``format:"pdf"`` on a non-drawing document raises
+    ``ValueError`` (mirrors W18 ``bom:true``+``.sldprt`` cross-field).
+    Unknown sheet names in ``sheets`` list are rejected.
+    """
+    path_str = str(out_path)
+
+    # --- Fail-closed: PDF requires a Drawing doc ---
+    try:
+        doc_type = doc.GetType()
+    except Exception as exc:
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error=f"Cannot determine document type: {exc}",
+        )
+
+    if doc_type != _SW_DOC_DRAWING:
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error=(
+                f"format:'pdf' requires a Drawing (.SLDDRW) document, "
+                f"but doc type is {doc_type} "
+                f"(1=Part, 2=Assembly, 3=Drawing)"
+            ),
+        )
+
+    # --- Resolve sheet selection ---
+    if sheets == "all":
+        sheets_mode = _SW_EXPORT_ALL_SHEETS
+        sheet_names: list[str] = []
+    elif isinstance(sheets, list) and len(sheets) > 0:
+        sheets_mode = _SW_EXPORT_SPECIFIED_SHEETS
+        sheet_names = sheets
+        # Validate sheet names against the drawing
+        try:
+            from ai_sw_bridge.com.earlybind import typed_qi
+
+            drawing_doc = typed_qi(doc, "IDrawingDoc")
+            actual_names = set(drawing_doc.GetSheetNames())
+            unknown = [n for n in sheet_names if n not in actual_names]
+            if unknown:
+                return ExportResult(
+                    format=fmt.name,
+                    path=path_str,
+                    ok=False,
+                    error=(
+                        f"Unknown sheet name(s): {unknown}. "
+                        f"Available sheets: {sorted(actual_names)}"
+                    ),
+                )
+        except Exception as exc:
+            # If we can't validate sheet names, let the COM call fail
+            # naturally — don't block the export attempt
+            logger.warning(
+                "Could not validate sheet names against drawing: %s", exc
+            )
+    else:
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error=f"Invalid 'sheets' value: {sheets!r}. Expected 'all' or a non-empty list of sheet names.",
+        )
+
+    # --- COM export path ---
+    try:
+        from ai_sw_bridge.com.earlybind import typed, typed_qi
+        from ai_sw_bridge.com.sw_type_info import wrapper_module
+        from ai_sw_bridge.sw_com import get_sw_app
+
+        mod = wrapper_module()
+        sw = get_sw_app()
+        tsw = typed(sw, "ISldWorks", module=mod)
+
+        # Step 1: GetExportFileData
+        pdf_data_raw = tsw.GetExportFileData(_SW_EXPORT_PDF_DATA)
+        if pdf_data_raw is None:
+            return ExportResult(
+                format=fmt.name,
+                path=path_str,
+                ok=False,
+                error="GetExportFileData(swExportPdfData) returned None",
+            )
+
+        # Step 2: QI to IExportPdfData
+        pdf_data = typed_qi(pdf_data_raw, "IExportPdfData", module=mod)
+
+        # Step 3: SetSheets
+        pdf_data.SetSheets(sheets_mode, sheet_names)
+
+        # Step 4: IModelDocExtension.SaveAs
+        ext = typed(doc.Extension, "IModelDocExtension", module=mod)
+        save_result = ext.SaveAs(
+            path_str,
+            _SW_SAVE_AS_CURRENT_VERSION,
+            _SW_SAVE_AS_OPTIONS_SILENT,
+            pdf_data,
+        )
+
+        # _ApplyTypes_ returns (retval, Errors, Warnings) as a tuple
+        if isinstance(save_result, tuple):
+            retval = save_result[0]
+            errors = save_result[1] if len(save_result) > 1 else None
+        else:
+            retval = save_result
+            errors = None
+
+        # Check return value
+        if not retval:
+            err_detail = f"swFileSaveError={errors}" if errors else "returned False"
+            return ExportResult(
+                format=fmt.name,
+                path=path_str,
+                ok=False,
+                error=f"IModelDocExtension.SaveAs failed: {err_detail}",
+            )
+
+    except ValueError as exc:
+        # Re-raise ValueError (our fail-closed checks)
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error=str(exc),
+        )
+    except Exception as exc:
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error=f"PDF export raised {type(exc).__name__}: {exc}",
+        )
+
+    # Step 5: Verify file on disk
+    if not out_path.exists() or out_path.stat().st_size == 0:
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error="SaveAs returned True but PDF is missing or empty on disk",
+        )
+
+    return ExportResult(format=fmt.name, path=path_str, ok=True)
 
 
 def _saveas3_direct(

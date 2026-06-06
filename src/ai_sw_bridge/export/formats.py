@@ -122,6 +122,7 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         extension=".pdf",
         save_method=SaveMethod.EXPORT_PDF,
         description="PDF — single-sheet or multi-sheet via IExportPdfData",
+        seat_confirmed=True,
     ),
     "dxf": ExportFormat(
         name="dxf",
