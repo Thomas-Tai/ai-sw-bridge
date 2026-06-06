@@ -42,6 +42,7 @@ dev = [
     "pytest>=7",
     "pytest-cov",
     "pytest-asyncio>=1.0",
+    "pytest-xdist>=3",
     "black==25.12.0",
     "flake8>=7",
     "mypy>=1.13",
