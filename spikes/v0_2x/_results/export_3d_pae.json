@@ -1,0 +1,54 @@
+{
+  "formats": {
+    "step214": {
+      "format": "step214",
+      "ok": true,
+      "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\W34_pae_49mr01m4\\W34_PAE_Box.step",
+      "error": null,
+      "size_bytes": 15872,
+      "parsed": {
+        "CARTESIAN_POINT": 27,
+        "ADVANCED_FACE": 6,
+        "CLOSED_SHELL": 1,
+        "has_header": true,
+        "has_file_schema": true
+      },
+      "verdict": "PASS"
+    },
+    "iges": {
+      "format": "iges",
+      "ok": true,
+      "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\W34_pae_49mr01m4\\W34_PAE_Box.igs",
+      "error": null,
+      "size_bytes": 22386,
+      "parsed": {
+        "DE_entities": 79,
+        "P_lines": 109,
+        "T_lines": 1
+      },
+      "verdict": "PASS"
+    },
+    "stl": {
+      "format": "stl",
+      "ok": true,
+      "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\W34_pae_49mr01m4\\W34_PAE_Box.stl",
+      "error": null,
+      "size_bytes": 684,
+      "parsed": {
+        "mode": "binary",
+        "triangles": 12
+      },
+      "verdict": "PASS"
+    }
+  },
+  "doc_type_tests": {
+    "drawing_to_step": {
+      "test": "drawing_to_step_rejected",
+      "ok": true,
+      "expected_error_substring": "Part (.SLDPRT) or Assembly",
+      "actual_error": "format:'step214' requires a Part (.SLDPRT) or Assembly (.SLDASM) document, but doc type is 3 (1=Part, 2=Assembly, 3=Drawing)",
+      "verdict": "PASS"
+    }
+  },
+  "errors": []
+}

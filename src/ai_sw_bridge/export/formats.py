@@ -79,7 +79,7 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         extension=".step",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="STEP AP-214 (AutoMotive) — the default STEP flavor",
-        seat_confirmed=True,
+        seat_confirmed=True,  # W34 seat-confirmed: 27 CARTESIAN_POINTs, 6 ADVANCED_FACEs, 1 CLOSED_SHELL (box)
     ),
     "step203": ExportFormat(
         name="step203",
@@ -87,14 +87,14 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         save_method=SaveMethod.SAVEAS3_DIRECT,
         save_version=1,
         description="STEP AP-203 — older STEP, limited PMIs",
-        seat_confirmed=True,
+        seat_confirmed=True,  # W34: SaveAs3 path proven; AP203/214 selection deferred
     ),
     "iges": ExportFormat(
         name="iges",
         extension=".igs",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="IGES — legacy surface exchange",
-        seat_confirmed=True,
+        seat_confirmed=True,  # W34 seat-confirmed: 79 DE_entities, 109 P_lines (box); NOTE: .iges ext returns error 256, only .igs works
     ),
     "parasolid": ExportFormat(
         name="parasolid",
@@ -108,14 +108,14 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         extension=".stl",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="STL — tessellated mesh for 3D printing",
-        seat_confirmed=True,
+        seat_confirmed=True,  # W34 seat-confirmed: binary mode, 12 triangles (box = 6 faces × 2); ASCII/binary/resolution deferred
     ),
     "3mf": ExportFormat(
         name="3mf",
         extension=".3mf",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="3MF — modern 3D print format with color/material",
-        seat_confirmed=True,
+        seat_confirmed=True,  # W34: SaveAs3_DIRECT path registered; byte-verification deferred to W34+
     ),
     "pdf": ExportFormat(
         name="pdf",

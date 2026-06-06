@@ -42,7 +42,14 @@ from .formats import (
 logger = logging.getLogger("ai_sw_bridge.export")
 
 # swDocumentTypes_e
+_SW_DOC_PART = 1
+_SW_DOC_ASSEMBLY = 2
 _SW_DOC_DRAWING = 3
+
+# 3D formats require Part or Assembly (NOT Drawing) — W34 doc-type guard.
+_3D_FORMATS: frozenset[str] = frozenset({
+    "step214", "step203", "iges", "parasolid", "stl", "3mf",
+})
 
 # swExportDataFileType_e
 _SW_EXPORT_PDF_DATA = 1
@@ -105,6 +112,17 @@ class ExportResult:
         if self.error is not None:
             out["error"] = self.error
         return out
+
+
+def _get_doc_type(doc: Any) -> int:
+    """Return the document type (1=Part, 2=Assembly, 3=Drawing).
+
+    Handles both early-bound typed dispatch (``GetType`` is a method
+    requiring ``()``) and late-bound CDispatch (``GetType`` auto-invokes
+    on attribute access, returning the int directly).
+    """
+    raw = doc.GetType
+    return raw() if callable(raw) else int(raw)
 
 
 def resolve_output_path(
@@ -218,7 +236,7 @@ def _export_pdf(
 
     # --- Fail-closed: PDF requires a Drawing doc ---
     try:
-        doc_type = doc.GetType()
+        doc_type = _get_doc_type(doc)
     except Exception as exc:
         return ExportResult(
             format=fmt.name,
@@ -408,16 +426,18 @@ def _saveas3_direct(
     seat per the spike-first law. This skeleton implements the call
     shape; the format strings are not yet confirmed.
 
-    Doc-type fail-closed (W33):
+    Doc-type fail-closed (W33 + W34):
       - DXF requires a Drawing document (.SLDDRW). A part or assembly
         passed to format:'dxf' raises a clear ValueError.
+      - STEP/IGES/STL/Parasolid/3MF require a Part or Assembly document.
+        A drawing (.SLDDRW) passed to these formats raises ValueError.
     """
     path_str = str(out_path)
 
     # --- Fail-closed: DXF requires a Drawing doc (W33) ---
     if fmt.name == "dxf":
         try:
-            doc_type = doc.GetType()
+            doc_type = _get_doc_type(doc)
         except Exception as exc:
             return ExportResult(
                 format=fmt.name,
@@ -432,8 +452,32 @@ def _saveas3_direct(
                 path=path_str,
                 ok=False,
                 error=(
-                    f"format:'dxf' requires a Drawing (.SLDDRW) document, "
+                    f"format:'{fmt.name}' requires a Drawing (.SLDDRW) document, "
                     f"but doc type is {doc_type} "
+                    f"(1=Part, 2=Assembly, 3=Drawing)"
+                ),
+            )
+
+    # --- Fail-closed: 3D formats require Part or Assembly (W34) ---
+    if fmt.name in _3D_FORMATS:
+        try:
+            doc_type = _get_doc_type(doc)
+        except Exception as exc:
+            return ExportResult(
+                format=fmt.name,
+                path=path_str,
+                ok=False,
+                error=f"Cannot determine document type: {exc}",
+            )
+
+        if doc_type not in (_SW_DOC_PART, _SW_DOC_ASSEMBLY):
+            return ExportResult(
+                format=fmt.name,
+                path=path_str,
+                ok=False,
+                error=(
+                    f"format:'{fmt.name}' requires a Part (.SLDPRT) or Assembly "
+                    f"(.SLDASM) document, but doc type is {doc_type} "
                     f"(1=Part, 2=Assembly, 3=Drawing)"
                 ),
             )
