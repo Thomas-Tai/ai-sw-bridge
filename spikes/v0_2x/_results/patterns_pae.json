@@ -1,0 +1,75 @@
+{
+  "pae": "w21_patterns",
+  "timestamp": "2026-06-06T12:04:01",
+  "gates": {
+    "new_doc": {
+      "ok": true,
+      "detail": ""
+    },
+    "build_box": {
+      "ok": true,
+      "detail": "type=Extrusion"
+    },
+    "build_axis": {
+      "ok": true,
+      "detail": "Axis1 (Front x Right)"
+    },
+    "feature_count_before": {
+      "ok": true,
+      "detail": "20"
+    },
+    "linear_handler": {
+      "ok": true,
+      "detail": "delta=1"
+    },
+    "linear_type": {
+      "ok": true,
+      "detail": "LPattern"
+    },
+    "circular_handler": {
+      "ok": true,
+      "detail": "delta=1"
+    },
+    "circular_type": {
+      "ok": true,
+      "detail": "CirPattern"
+    },
+    "mirror_handler": {
+      "ok": true,
+      "detail": "delta=1"
+    },
+    "mirror_type": {
+      "ok": true,
+      "detail": "MirrorPattern"
+    },
+    "save": {
+      "ok": true,
+      "detail": "C:\\Users\\sky\\AppData\\Local\\Temp\\ai-sw-bridge-w21\\w21_patterns_pae.sldprt"
+    },
+    "reopen": {
+      "ok": true,
+      "detail": ""
+    },
+    "reopen_linear": {
+      "ok": true,
+      "detail": "LPattern found=True"
+    },
+    "reopen_circular": {
+      "ok": true,
+      "detail": "CirPattern found=True"
+    },
+    "reopen_mirror": {
+      "ok": true,
+      "detail": "MirrorPattern found=True"
+    },
+    "file_exists": {
+      "ok": true,
+      "detail": "size=62794"
+    },
+    "OVERALL_GREEN": {
+      "ok": true,
+      "detail": "16/16 gates pass"
+    }
+  },
+  "verdict": "GREEN"
+}

@@ -1,0 +1,247 @@
+{
+  "spike": "w21_patterns_materialization",
+  "timestamp": "2026-06-06T11:49:45",
+  "binding": "hybrid early (com.earlybind pattern)",
+  "module_source": "com.sw_type_info.wrapper_module",
+  "sw_revision": "32.1.0",
+  "geometry": {
+    "box": "Boss_Box",
+    "seed": "Boss_Seed",
+    "ref_axis": true
+  },
+  "seed_selection_probe": {
+    "select_by_id2": {
+      "result": true,
+      "sel_count": 1,
+      "obj_type": "CDispatch"
+    },
+    "ifeature_select2": {
+      "result": true,
+      "sel_count": 1
+    }
+  },
+  "linear_pattern": {
+    "feature_count_before": 22,
+    "direction_select": {
+      "method": "SelectByID+SetMark",
+      "result": true,
+      "mark_set": true
+    },
+    "seed_select": {
+      "method": "IFeature.Select2",
+      "result": true
+    },
+    "selection_count": 2,
+    "selected_objects": [
+      {
+        "index": 1,
+        "type": "CDispatch"
+      },
+      {
+        "index": 2,
+        "type": "CDispatch"
+      }
+    ],
+    "create_feature": {
+      "is_none": true,
+      "type": "NoneType"
+    },
+    "feature_count_after": 22,
+    "count_delta": 0,
+    "feature_tree": [
+      {
+        "name": "Comments",
+        "type": "CommentsFolder"
+      },
+      {
+        "name": "Favorites",
+        "type": "FavoriteFolder"
+      },
+      {
+        "name": "Folder ",
+        "type": "HistoryFolder"
+      },
+      {
+        "name": "Selection Sets",
+        "type": "SelectionSetFolder"
+      },
+      {
+        "name": "Sensors",
+        "type": "SensorFolder"
+      },
+      {
+        "name": "Design Binder",
+        "type": "DocsFolder"
+      },
+      {
+        "name": "Annotations",
+        "type": "DetailCabinet"
+      },
+      {
+        "name": "Surface Bodies",
+        "type": "SurfaceBodyFolder"
+      },
+      {
+        "name": "Solid Bodies",
+        "type": "SolidBodyFolder"
+      },
+      {
+        "name": "Lights and Cameras",
+        "type": "EnvFolder"
+      },
+      {
+        "name": "Markups",
+        "type": "InkMarkupFolder"
+      },
+      {
+        "name": "Equations",
+        "type": "EqnFolder"
+      },
+      {
+        "name": "Material <not specified>",
+        "type": "MaterialFolder"
+      },
+      {
+        "name": "Front Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Top Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Right Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Origin",
+        "type": "OriginProfileFeature"
+      },
+      {
+        "name": "Sketch1",
+        "type": "ProfileFeature"
+      },
+      {
+        "name": "Boss_Box",
+        "type": "Extrusion"
+      },
+      {
+        "name": "Sketch2",
+        "type": "ProfileFeature"
+      },
+      {
+        "name": "Boss_Seed",
+        "type": "ICE"
+      },
+      {
+        "name": "Axis1",
+        "type": "RefAxis"
+      }
+    ],
+    "new_feature_type_name": null,
+    "new_feature_name": null,
+    "verdict": "NO-GO",
+    "failure_point": "pattern did not materialize (delta=0, type=None)",
+    "alternate_axis_approach": {
+      "axis_direction_select": {
+        "result": true
+      },
+      "seed_select_alt": {
+        "result": true
+      },
+      "create_feature_alt": {
+        "is_none": true,
+        "type": "NoneType"
+      },
+      "count_delta_alt": 0
+    }
+  },
+  "linear_alt_seed_type": "Extrusion",
+  "linear_alt_box": {
+    "create_result": "CDispatch",
+    "count_delta": 1,
+    "type_name": "LPattern"
+  },
+  "circular_pattern": {
+    "feature_count_before": 22,
+    "axis_select": {
+      "method": "SelectByID2 AXIS",
+      "result": true
+    },
+    "seed_select": {
+      "method": "IFeature.Select2",
+      "result": true
+    },
+    "create_feature": {
+      "is_none": false,
+      "type": "CDispatch",
+      "type_name": "CirPattern",
+      "name": "CirPattern1"
+    },
+    "feature_count_after": 23,
+    "count_delta": 1,
+    "new_feature_type_name": "CirPattern",
+    "new_feature_name": "CirPattern1",
+    "instance_count": null,
+    "verdict": "GO",
+    "instance_verified": false,
+    "instance_note": "GetSubFeatures returned None; pattern type name confirms creation but exact instance count unverified out-of-process",
+    "success_signal_contract": "RETURN_VALUE"
+  },
+  "mirror_feature": {
+    "feature_count_before": 22,
+    "plane_select": {
+      "method": "SelectByID+SetMark",
+      "result": true
+    },
+    "seed_select": {
+      "method": "IFeature.Select2",
+      "result": true
+    },
+    "create_feature": {
+      "is_none": false,
+      "type": "CDispatch",
+      "type_name": "MirrorPattern",
+      "name": "Mirror1"
+    },
+    "feature_count_after": 23,
+    "count_delta": 1,
+    "new_feature_type_name": "MirrorPattern",
+    "verdict": "GO",
+    "success_signal_contract": "RETURN_VALUE"
+  },
+  "overall": "GO",
+  "summary": {
+    "linear": "GO",
+    "circular": "GO",
+    "mirror": "GO"
+  },
+  "confirmed_sigs": {
+    "linear": {
+      "api": "fm.FeatureLinearPattern5(22 args)",
+      "seed_mark": 4,
+      "direction_mark": 1,
+      "selection_path": "SelectByID(EDGE)+SetMark(1) for direction; IFeature.Select2(True,4) for seed",
+      "success_contract": "RETURN_VALUE (returns CDispatch/IFeature)",
+      "type_name": "LPattern",
+      "constraint": "seed MUST be non-ICE (Extrusion, Cut, etc.); ICE (Instant3D) features are silently rejected"
+    },
+    "circular": {
+      "api": "fm.FeatureCircularPattern5(14 args)",
+      "seed_mark": 4,
+      "axis_mark": 1,
+      "selection_path": "SelectByID2(AXIS,mark=1) for axis; IFeature.Select2(True,4) for seed",
+      "success_contract": "RETURN_VALUE (returns CDispatch/IFeature)",
+      "type_name": "CirPattern"
+    },
+    "mirror": {
+      "api": "fm.InsertMirrorFeature2(5 args: False,False,False,False,0)",
+      "seed_mark": 1,
+      "plane_mark": 2,
+      "selection_path": "SelectByID(PLANE)+SetMark(2) for plane; IFeature.Select2(True,1) for seed",
+      "success_contract": "RETURN_VALUE (returns CDispatch/IFeature)",
+      "type_name": "MirrorPattern"
+    }
+  },
+  "interpretation": "All three pattern types materialize on SW 2024 SP1 (rev 32.1.0). KEY FINDING: FeatureLinearPattern5 silently rejects ICE (Instant3D) seed features (type 'ICE' from CreateCircleByRadius-based extrusions) but works with standard Extrusion seeds. Circular pattern (FeatureCircularPattern5) and mirror (InsertMirrorFeature2) work with any seed type. All three return the feature object (RETURN_VALUE contract, like sweep; no count-delta needed). Seed selection works via _find_feature_by_name + IFeature.Select2(append, mark) — the feature_add path has no direct IFeature reference but can look up by tree-name. Direction/axis/plane selection uses the proven SelectByID (5-arg) + SetSelectedObjectMark pattern from the build-spec builder."
+}
