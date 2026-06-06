@@ -1678,9 +1678,9 @@ def _create_circular_pattern(
             return False, f"IFeature.Select2 on seed {seed_name!r} returned False"
 
         # 3. FeatureCircularPattern5 (14 args)
-        angle_rad = float(angle_deg) * math.pi / 180.0
+        # NOTE: Spacing is in DEGREES (not radians) — seat-proven W21 S4.
         feat = fm.FeatureCircularPattern5(
-            count, angle_rad, flip, "",
+            count, float(angle_deg), flip, "",
             False, equal_spacing, False, False,
             False, False, 1, 0.0, "", False,
         )
