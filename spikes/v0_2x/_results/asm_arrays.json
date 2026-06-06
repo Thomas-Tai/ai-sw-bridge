@@ -1,0 +1,121 @@
+{
+  "spike": "w26_asm_arrays_transform_proof",
+  "timestamp": "2026-06-06T14:02:25",
+  "sw_revision": "32.1.0",
+  "part_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\w26_array_box_1780725745.SLDPRT",
+  "validation": "ok",
+  "commit": {
+    "ok": true,
+    "component_count": 8,
+    "array_expanded_count": 7,
+    "error": null
+  },
+  "component_count_reopen": 8,
+  "expected_count": 8,
+  "count_verified": true,
+  "instances": [
+    {
+      "name": "w26_array_box_1780725745-5",
+      "tx_mm": 0.0,
+      "ty_mm": 50.0,
+      "tz_mm": -2.5
+    },
+    {
+      "name": "w26_array_box_1780725745-4",
+      "tx_mm": 180.0,
+      "ty_mm": 0.0,
+      "tz_mm": -2.5
+    },
+    {
+      "name": "w26_array_box_1780725745-3",
+      "tx_mm": 140.0,
+      "ty_mm": 0.0,
+      "tz_mm": -2.5
+    },
+    {
+      "name": "w26_array_box_1780725745-1",
+      "tx_mm": 0.0,
+      "ty_mm": 0.0,
+      "tz_mm": -2.5
+    },
+    {
+      "name": "w26_array_box_1780725745-2",
+      "tx_mm": 100.0,
+      "ty_mm": 0.0,
+      "tz_mm": -2.5
+    },
+    {
+      "name": "w26_array_box_1780725745-6",
+      "tx_mm": 50.0,
+      "ty_mm": 100.0,
+      "tz_mm": 0.0
+    },
+    {
+      "name": "w26_array_box_1780725745-7",
+      "tx_mm": 0.0,
+      "ty_mm": 150.0,
+      "tz_mm": 0.0
+    },
+    {
+      "name": "w26_array_box_1780725745-8",
+      "tx_mm": -50.0,
+      "ty_mm": 100.0,
+      "tz_mm": 0.0
+    }
+  ],
+  "linear_instances": [
+    {
+      "name": "w26_array_box_1780725745-4",
+      "tx_mm": 180.0,
+      "ty_mm": 0.0,
+      "tz_mm": -2.5
+    },
+    {
+      "name": "w26_array_box_1780725745-3",
+      "tx_mm": 140.0,
+      "ty_mm": 0.0,
+      "tz_mm": -2.5
+    },
+    {
+      "name": "w26_array_box_1780725745-2",
+      "tx_mm": 100.0,
+      "ty_mm": 0.0,
+      "tz_mm": -2.5
+    }
+  ],
+  "linear_verified": true,
+  "circular_instances": [
+    {
+      "name": "w26_array_box_1780725745-5",
+      "tx_mm": 0.0,
+      "ty_mm": 50.0,
+      "tz_mm": -2.5
+    },
+    {
+      "name": "w26_array_box_1780725745-6",
+      "tx_mm": 50.0,
+      "ty_mm": 100.0,
+      "tz_mm": 0.0
+    },
+    {
+      "name": "w26_array_box_1780725745-7",
+      "tx_mm": 0.0,
+      "ty_mm": 150.0,
+      "tz_mm": 0.0
+    },
+    {
+      "name": "w26_array_box_1780725745-8",
+      "tx_mm": -50.0,
+      "ty_mm": 100.0,
+      "tz_mm": 0.0
+    }
+  ],
+  "circular_radii": [
+    50.0,
+    50.0,
+    50.0,
+    50.0
+  ],
+  "circular_verified": true,
+  "overall": "GO"
+}
