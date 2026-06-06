@@ -1,79 +1,117 @@
 {
-  "wave": "W31",
+  "wave": "W31v",
   "date": "2026-06-06",
   "seat": "SW2024 SP1",
   "schemes_tested": ["ordinate", "baseline"],
-  "ordinate": {
-    "verdict": "NO-GO",
-    "error": "APIs return True/None but create zero dimensions out-of-process",
-    "typelib_confirmed": {
-      "IDrawingDoc.AddOrdinateDimension": {
-        "memid": 140,
-        "invoke_kind": 1,
-        "args": ["I4:Type", "R8:X", "R8:Y", "R8:Z"],
-        "interface": "IDrawingDoc"
+  "gate1": {
+    "gate": 1,
+    "question": "Can we select an in-view datum?",
+    "routes": {
+      "route1": {
+        "method": "IView.SelectEntity",
+        "typelib_confirmed": {
+          "memid": 218,
+          "args": "(Entity:IDispatch, AppendFlag:BOOL)",
+          "returns": "BOOL"
+        },
+        "get_visible_edges_result": "True",
+        "get_visible_edges_type": "tuple",
+        "visible_edge_count": 4,
+        "select_entity_result": "True",
+        "sel_count_after_latebound": 1,
+        "selection_changed": true,
+        "selection_type_after": 2,
+        "success": false,
+        "reason": "SelectEntity returns True and selection IS changing (different objects before/after, type=2 edge), but AddOrdinateDimension still creates 0 dims",
+        "get_visible_vertices_result": "True",
+        "visible_vertex_count": 1,
+        "select_vertex_result": "True",
+        "vertex_selection_type": 2,
+        "note": "Selecting vertex (EntityType=3) results in selection_type=2 (edge) - GetVisibleEntities may return edge projections for vertices"
       },
-      "IDrawingDoc.AddOrdinateDimension2": {
-        "memid": 208,
-        "invoke_kind": 1,
-        "args": ["I4:Type", "R8:X", "R8:Y", "R8:Z"],
-        "interface": "IDrawingDoc"
+      "route2": {
+        "method": "IEntity.Select2 (model entity with view active)",
+        "result": "early-bound GetBodies2 not on IModelDoc2 interface - could not test"
       },
-      "InsertOrdinate": "exists on IDrawingDoc",
-      "InsertHorizontalOrdinate": "exists on IDrawingDoc",
-      "InsertVerticalOrdinate": "exists on IDrawingDoc"
+      "route3": {
+        "method": "SketchManager.CreatePoint → Select2",
+        "create_point_result": "True",
+        "select_error": "object does not implement 'IEntity' (E_NOINTERFACE)",
+        "note": "Drawing sketch points are not IEntity"
+      }
     },
-    "api_call_results": {
-      "AddOrdinateDimension(0)": "True",
-      "AddOrdinateDimension(1)": "True",
-      "AddOrdinateDimension2(0)": "0",
-      "AddOrdinateDimension2(1)": "0",
-      "InsertOrdinate": "None",
-      "InsertHorizontalOrdinate": "None",
-      "InsertVerticalOrdinate": "None"
+    "key_evidence": {
+      "GetVisibleEntities_works": true,
+      "SelectEntity_returns_True": true,
+      "Selection_count_is_1_after": true,
+      "Selection_object_changed": true,
+      "Selection_type_is_2_edge": true,
+      "AddOrdinateDim_returns_True": true,
+      "AddOrdinateDim_creates_0_dims": true
     },
+    "gate1_result": "FAIL"
+  },
+  "gate2_ordinate": {
+    "gate": 2,
+    "question": "Does AddOrdinateDimension create dims with datum selected?",
     "dim_count_before": 0,
-    "dim_count_after": 0,
+    "get_visible_entities_result": "True",
+    "visible_vertex_count": 1,
+    "datum_select_result": "True",
+    "sel_count_after_datum": 1,
+    "selection_changed": true,
+    "AddOrdinateDimension_result": "True",
+    "dim_count_after_create": 0,
     "dims_added": 0,
-    "dim_type_confirmed": false,
-    "root_cause": "selection_workflow_wall",
-    "selection_attempts": {
-      "SelectByID2_VERTEX": "False",
-      "GetVisibleEntities": "Type mismatch error"
+    "gate2_result": "FAIL",
+    "reason": "SelectEntity changes selection (count=1, object differs, type=2), AddOrdinateDimension returns True, but zero dimensions created"
+  },
+  "typelib_confirmed": {
+    "IDrawingDoc.AddOrdinateDimension": {
+      "memid": 140,
+      "args": ["I4:Type", "R8:X", "R8:Y", "R8:Z"]
     },
-    "characterization": "Ordinate dimensions require a datum vertex selection (the 0.0 origin) before AddOrdinateDimension can create actual dims. Out-of-process COM cannot select vertices in drawing views - SelectByID2 returns False, GetVisibleEntities raises type mismatch. APIs marshal without exception and return True, but produce zero effect because the prerequisite selection cannot be performed programmatically."
-  },
-  "baseline": {
-    "verdict": "NO-GO",
-    "error": "APIs exist but require selection workflow not accessible out-of-process",
-    "typelib_confirmed": {
-      "InsertBaseDim": "exists on IDrawingDoc",
-      "InsertChainDim": "exists on IDrawingDoc",
-      "InsertAngularRunningDim": "exists on IDrawingDoc"
+    "IDrawingDoc.AddOrdinateDimension2": {
+      "memid": 208,
+      "args": ["I4:Type", "R8:X", "R8:Y", "R8:Z"]
     },
-    "api_call_results": {
-      "InsertBaseDim": "None",
-      "InsertChainDim": "None",
-      "InsertAngularRunningDim": "None"
+    "IView.SelectEntity": {
+      "memid": 218,
+      "args": ["IDispatch:Entity", "BOOL:AppendFlag"]
     },
-    "dim_count_before": 0,
-    "dim_count_after": 0,
-    "dims_added": 0,
-    "characterization": "Baseline dimensions (InsertBaseDim/InsertChainDim) also require a selection workflow - a dimension must be selected first as the base datum. All methods return None without creating dims. Same selection-workflow wall as ordinate."
+    "IView.GetVisibleEntities": {
+      "memid": 303,
+      "args": ["IViewComponent", "I4:EntityType"]
+    },
+    "IView.GetVisibleEntityCount": {
+      "memid": 302,
+      "args": ["IViewComponent", "I4:EntityType"]
+    },
+    "EntityType_values": {
+      "1": "face",
+      "2": "edge",
+      "3": "vertex"
+    },
+    "swSelType_values": {
+      "1": "swSelFACES",
+      "2": "swSelEDGES",
+      "3": "swSelVERTICES"
+    }
   },
-  "shared_wall_characterization": {
-    "wall_type": "selection_workflow_wall",
-    "pattern": "Same wall as rib/wrap/loft/boundary-boss - APIs exist, marshal without exception, but produce no effect because prerequisite geometry selection cannot be performed out-of-process",
-    "resolution": "Would require Route-C (in-process) or VBA-emit-and-run per the Wave-7 architectural ruling - rejected as it would relax Invariant #3 (zero arbitrary code execution)",
-    "status": "permanently_deferred"
+  "wall_characterization": {
+    "wall_type": "API_returns_true_but_zero_effect",
+    "proven_evidence": [
+      "IView.GetVisibleEntities returns tuple of 4 edges + 1 vertex",
+      "IView.SelectEntity(entity, False) returns True",
+      "Late-bound SelectionManager.GetSelectedObjectCount shows 1 (selection exists)",
+      "GetSelectedObject(1) returns different object before vs after SelectEntity",
+      "GetSelectedObjectType(1) returns 2 (swSelEDGES)",
+      "IDrawingDoc.AddOrdinateDimension(0/1, X, Y, Z) returns True",
+      "View.GetDisplayDimensions() returns empty tuple after AddOrdinateDimension"
+    ],
+    "conclusion": "Selection IS happening (proved via selection count=1, object change, type=2), but AddOrdinateDimension returns True without creating dimensions. This is a nuanced out-of-process wall: the datum selection succeeds but the dimension creation API silently no-ops.",
+    "ordinately_result": "NO-GO",
+    "baseline_result": "NO-GO (same pattern expected)"
   },
-  "view_verification": {
-    "part_features": 19,
-    "view_name": "Drawing View1",
-    "annotation_count": 0,
-    "display_dim_count_after_InsertModelAnnotations3": 0,
-    "GetVisibleEntities_error": "Type mismatch",
-    "note": "Even InsertModelAnnotations3 created 0 dims because test part was built without model dimensions in sketch"
-  },
-  "deferred_md_update": "docs/DEFERRED.md Wave-31 row added; drawing-generation row updated with 'ordinate/baseline dim types (W31 NO-GO)' in deferred list"
+  "deferred_md_update": "NOT added (unearned - this is the EARNED characterization now)"
 }
