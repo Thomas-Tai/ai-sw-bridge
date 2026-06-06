@@ -1,0 +1,86 @@
+{
+  "spike": "w32_exploded_view_probe",
+  "timestamp": "2026-06-06T17:45:00",
+  "sw_revision": "32.1.0",
+  "typelib_info": {
+    "tlb_path": "C:\\Program Files\\SOLIDWORKS Corp\\OLIDWORKS\\sldworks.tlb",
+    "major": 32,
+    "minor": 0
+  },
+  "overall": "NO-GO",
+  "verdict_details": {
+    "create_exploded_view": "PASS - returns True, creates view (count=1)",
+    "get_exploded_view_count": "PASS - returns count after creation",
+    "component_selection": "PASS - IComponent2.Select2(False, 1) returns True",
+    "add_explode_step": "WALL - IConfiguration.AddExplodeStep returns None consistently",
+    "show_exploded2": "PARTIAL - InvokeTypes issue with VARIANT_BOOL param",
+    "liveness": "FAIL - no explode step created, components don't move"
+  },
+  "typelib_findings": {
+    "IAssemblyDoc_methods_found": [
+      {"name": "CreateExplodedView", "dispid": 155, "returns": "VT_BOOL"},
+      {"name": "ShowExploded", "dispid": 51},
+      {"name": "ShowExploded2", "dispid": 156},
+      {"name": "GetExplodedViewCount", "dispid": 158},
+      {"name": "GetExplodedViewNames", "dispid": 157},
+      {"name": "IGetExplodedViewNames", "dispid": 159}
+    ],
+    "IConfiguration_methods_found": [
+      {"name": "AddExplodeStep", "dispid": 14, "sig": "(VT_DISPATCH return, VT_R8 dist, VT_BOOL*3)"},
+      {"name": "AddExplodeStep2", "dispid": "?", "more_params": true},
+      {"name": "IAddExplodeStep", "dispid": "?"}
+    ],
+    "IExplodeStep_exists": true,
+    "IExplodeStep_methods": [
+      "GetNumOfComponents",
+      "GetComponentName",
+      "GetComponentXform",
+      "GetComponents",
+      "SetComponents",
+      "GetExplodeDirection",
+      "SetExplodeDirection",
+      "ExplodeDistance (property)",
+      "ExplodeStepType (property)"
+    ],
+    "IExplodeStepWizard_exists": false,
+    "IExplodedView_exists": false
+  },
+  "investigation_summary": {
+    "tested_approaches": [
+      "IConfiguration.AddExplodeStep(dist_m, False, False, False) -> None",
+      "IConfiguration.AddExplodeStep(dist_m, 0, 0, 0) -> None",
+      "Raw InvokeTypes(14, VT_R8, VT_BOOL*3) -> None",
+      "IConfiguration.IAddExplodeStep -> None",
+      "IConfiguration.AddExplodeStep2 -> not tested (different signature)"
+    ],
+    "preconditions_attempted": [
+      "Component selected via Select2(False, mark=1)",
+      "Exploded view created via CreateExplodedView()",
+      "Configuration obtained via IModelDoc2.GetActiveConfiguration()"
+    ],
+    "consistent_result": "All AddExplodeStep calls return None (not 0, not error - just None)",
+    "interpretation": "IConfiguration.AddExplodeStep appears to require UI context/edit mode not available out-of-process"
+  },
+  "wall_characterization": {
+    "method": "IConfiguration.AddExplodeStep",
+    "location": "IConfiguration interface, dispid=14",
+    "signature": "VT_DISPATCH return (IExplodeStep), args: VT_R8 distance, VT_BOOL*3 flags",
+    "behavior": "Returns None consistently in out-of-process COM automation",
+    "likely_cause": "SW exploded view editing requires UI interaction context (edit mode) that is not accessible via COM out-of-process",
+    "similar_patterns": "Other SW features requiring UI context: miter flange, certain pattern operations",
+    "alternative_paths_checked": [
+      "CreateExplodeStepWizard - NOT FOUND",
+      "IExplodeStepWizard - NOT FOUND",
+      "FeatureManager.CreateExplodeStep - NOT FOUND",
+      "GetFirstExplodedView -> NOT FOUND on IAssemblyDoc"
+    ]
+  },
+  "deferred_reason": "IConfiguration.AddExplodeStep returns None in out-of-process COM. Exploded view creation requires SW UI edit mode context not accessible from Python automation. Potential Route-C: in-process .NET add-in for explode step creation.",
+  "confirmed_recipe_partial": {
+    "create_view": "IAssemblyDoc.CreateExplodedView() -> True, creates empty exploded view",
+    "get_count": "IAssemblyDoc.GetExplodedViewCount() -> count of views",
+    "select_component": "IComponent2.Select2(False, mark=1) -> True",
+    "add_step": "BLOCKED - IConfiguration.AddExplodeStep returns None (wall)",
+    "show_exploded": "ShowExploded2 requires VARIANT_TRUE=-1, partial"
+  }
+}
