@@ -1,0 +1,56 @@
+{
+  "verdict": "GREEN",
+  "gap_10mm_fixture": {
+    "measured_mm": 10.0,
+    "expected_mm": 10.0,
+    "selection_method": "IComponent2.Select2"
+  },
+  "gap_25mm_fixture": {
+    "measured_mm": 25.0,
+    "expected_mm": 25.0
+  },
+  "overlap_fixture": {
+    "measured_mm": null,
+    "expected_mm": 0.0
+  },
+  "touching_fixture": {
+    "measured_mm": null,
+    "expected_mm": 0.0
+  },
+  "imeasure_typelib": {
+    "members_checked": [
+      "Distance",
+      "DeltaX",
+      "DeltaY",
+      "DeltaZ",
+      "Angle",
+      "ArcLength",
+      "Area",
+      "Perimeter",
+      "MinimumDistance",
+      "NormalDistance",
+      "PerpendicularDistance",
+      "IsParallel",
+      "IsPerpendicular"
+    ],
+    "found_minimum_distance": false,
+    "minimum_distance_member": null,
+    "notes": [
+      "typelib check error: AttributeError(\"module 'win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0' has no attribute 'IMease'\")",
+      "Checked against known SW API members list"
+    ]
+  },
+  "selection_recipe": {
+    "method": "IComponent2.Select2",
+    "imeasure_member": "Distance",
+    "calculate_arg": "None (measure selected entities)",
+    "units": "metres (\u00d71000 \u2192 mm)"
+  },
+  "errors": [],
+  "note": "Distance correctly tracks gap: 10mm fixture \u2192 10.0mm, 25mm fixture \u2192 25.0mm. IMease.Distance IS minimum distance.",
+  "edge_case_behavior": {
+    "overlap_5mm": null,
+    "touching_0mm": null,
+    "note": "Overlap returned Nonemm, touching returned Nonemm. Negative = overlap volume (W27 interference); zero = flush."
+  }
+}

@@ -142,3 +142,16 @@ def register(mcp: Any) -> None:
         principal_axes. Parts only — assemblies/drawings error.
         """
         return SolidWorksObserver().inertia()
+
+    @mcp.tool()
+    @com_tool
+    def sw_clearance(comp_a: str, comp_b: str) -> dict[str, Any]:
+        """Measure minimum distance between two assembly components (W35).
+
+        Uses IModelDocExtension.CreateMeasure → IMeasure.Distance after
+        selecting both components via IComponent2.Select2. Returns
+        {min_distance_mm, components: [a, b], touching: bool}.
+        comp_a and comp_b are IComponent2.Name2 values
+        (e.g. 'block_20mm-1', 'block_20mm-2'). Assembly docs only.
+        """
+        return SolidWorksObserver().clearance(comp_a=comp_a, comp_b=comp_b)

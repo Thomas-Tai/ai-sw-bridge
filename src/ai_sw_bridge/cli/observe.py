@@ -94,6 +94,10 @@ def _run_interference(_args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().interference()
 
 
+def _run_clearance(args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().clearance(comp_a=args.comp_a, comp_b=args.comp_b)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="ai-sw-observe",
@@ -235,6 +239,31 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.set_defaults(func=_run_interference)
+
+    p = subs.add_parser(
+        "clearance",
+        help="Measure minimum distance between two assembly components (W35).",
+        description=(
+            "Wave-35 perception axis — measure the minimum gap between two "
+            "named components via IModelDocExtension.CreateMeasure → "
+            "IMeasure.Distance after selecting both with IComponent2.Select2. "
+            "Reports {min_distance_mm, components: [a, b], touching: bool}. "
+            "Assembly docs only."
+        ),
+    )
+    p.add_argument(
+        "--comp-a",
+        dest="comp_a",
+        required=True,
+        help="Name of the first component (IComponent2.Name2, e.g. 'block_20mm-1').",
+    )
+    p.add_argument(
+        "--comp-b",
+        dest="comp_b",
+        required=True,
+        help="Name of the second component (IComponent2.Name2, e.g. 'block_20mm-2').",
+    )
+    p.set_defaults(func=_run_clearance)
 
     p = subs.add_parser(
         "inertia",
