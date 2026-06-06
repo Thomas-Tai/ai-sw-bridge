@@ -59,6 +59,14 @@ def validate_assembly(spec: dict[str, Any]) -> None:
             raise AssemblyValidationError("mates must be an array", "/mates")
         _check_mates(mates, component_ids)
 
+    patterns = spec.get("component_patterns")
+    if patterns is not None:
+        if not isinstance(patterns, list):
+            raise AssemblyValidationError(
+                "component_patterns must be an array", "/component_patterns"
+            )
+        _check_component_patterns(patterns, component_ids)
+
 
 def _check_components(components: list[dict[str, Any]]) -> None:
     seen_ids: set[str] = set()
@@ -299,4 +307,49 @@ def _check_mates(
                 raise AssemblyValidationError(
                     f"mate {ref_key}.face_ref must be a non-empty dict",
                     ref_path,
+                )
+
+
+def _check_component_patterns(
+    patterns: list[dict[str, Any]], component_ids: set[str]
+) -> None:
+    for i, pat in enumerate(patterns):
+        path = f"/component_patterns/{i}"
+        if not isinstance(pat, dict):
+            raise AssemblyValidationError("pattern must be a dict", path)
+
+        ptype = pat.get("type")
+        if ptype != "mirror":
+            raise AssemblyValidationError(
+                f"unknown pattern type {ptype!r} (only 'mirror' is supported)",
+                path,
+            )
+
+        seed = pat.get("seed")
+        if not isinstance(seed, str) or not seed:
+            raise AssemblyValidationError(
+                "mirror pattern requires a non-empty 'seed' string", path
+            )
+        if seed not in component_ids:
+            raise AssemblyValidationError(
+                f"mirror pattern seed {seed!r} not found in component ids "
+                f"{sorted(component_ids)}",
+                path,
+            )
+
+        plane = pat.get("plane")
+        if plane not in ("front", "top", "right"):
+            raise AssemblyValidationError(
+                f"mirror pattern plane must be 'front', 'top', or 'right', "
+                f"got {plane!r}",
+                path,
+            )
+
+        name_modifier = pat.get("name_modifier")
+        if name_modifier is not None:
+            if not isinstance(name_modifier, int) or name_modifier < 0:
+                raise AssemblyValidationError(
+                    f"mirror pattern name_modifier must be a non-negative "
+                    f"integer, got {name_modifier!r}",
+                    path,
                 )

@@ -1,0 +1,327 @@
+{
+  "spike": "w22_asm_component_patterns",
+  "timestamp": "2026-06-06T13:20:48",
+  "binding": "hybrid early (com.earlybind pattern)",
+  "sw_revision": "32.1.0",
+  "part_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\w22_pattern_box_1780723248.SLDPRT",
+  "seed_placement": {
+    "comp": "<IComponent2>",
+    "name": "w22_pattern_box_1780723248-1",
+    "type": "IComponent2"
+  },
+  "seed_component_name": "w22_pattern_box_1780723248-1",
+  "ref_axis": {
+    "ok": true,
+    "method": "Front\u2229Right"
+  },
+  "linear_pattern": {
+    "component_count_before": 1,
+    "direction_select": {
+      "method": "SelectByID EDGE",
+      "point": [
+        0.01,
+        0.005,
+        0.0
+      ],
+      "ok": true,
+      "mark": 1
+    },
+    "seed_select": {
+      "method": "IFeature.Select2",
+      "ok": true,
+      "selected": true
+    },
+    "selection_count": 2,
+    "create_feature": {
+      "is_none": true,
+      "type": "NoneType"
+    },
+    "component_count_after": 1,
+    "count_delta": 0,
+    "pattern_feature": {
+      "type": null,
+      "name": null
+    },
+    "feature_tree": [
+      {
+        "name": "Comments",
+        "type": "CommentsFolder"
+      },
+      {
+        "name": "Favorites",
+        "type": "FavoriteFolder"
+      },
+      {
+        "name": "Folder ",
+        "type": "HistoryFolder"
+      },
+      {
+        "name": "Selection Sets",
+        "type": "SelectionSetFolder"
+      },
+      {
+        "name": "Sensors",
+        "type": "SensorFolder"
+      },
+      {
+        "name": "Live Section Planes",
+        "type": "LiveSectionFolder"
+      },
+      {
+        "name": "Design Binder",
+        "type": "DocsFolder"
+      },
+      {
+        "name": "Annotations",
+        "type": "DetailCabinet"
+      },
+      {
+        "name": "Lights and Cameras",
+        "type": "EnvFolder"
+      },
+      {
+        "name": "Markups",
+        "type": "InkMarkupFolder"
+      },
+      {
+        "name": "Equations",
+        "type": "EqnFolder"
+      },
+      {
+        "name": "Front Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Top Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Right Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Origin",
+        "type": "OriginProfileFeature"
+      },
+      {
+        "name": "Axis1",
+        "type": "RefAxis"
+      },
+      {
+        "name": "w22_pattern_box_1780723248-1",
+        "type": "Reference"
+      },
+      {
+        "name": "Mates",
+        "type": "MateGroup"
+      }
+    ],
+    "verdict": "NO-GO",
+    "failure_point": "pattern did not materialize (delta=0, type=None)"
+  },
+  "circular_pattern": {
+    "component_count_before": 1,
+    "axis_select": {
+      "method": "SelectByID AXIS",
+      "ok": true
+    },
+    "seed_select": {
+      "method": "IFeature.Select2",
+      "ok": true,
+      "selected": true
+    },
+    "create_feature": {
+      "is_none": true,
+      "type": "NoneType"
+    },
+    "component_count_after": 1,
+    "count_delta": 0,
+    "pattern_feature": {
+      "type": null,
+      "name": null
+    },
+    "feature_tree": [
+      {
+        "name": "Comments",
+        "type": "CommentsFolder"
+      },
+      {
+        "name": "Favorites",
+        "type": "FavoriteFolder"
+      },
+      {
+        "name": "Folder ",
+        "type": "HistoryFolder"
+      },
+      {
+        "name": "Selection Sets",
+        "type": "SelectionSetFolder"
+      },
+      {
+        "name": "Sensors",
+        "type": "SensorFolder"
+      },
+      {
+        "name": "Live Section Planes",
+        "type": "LiveSectionFolder"
+      },
+      {
+        "name": "Design Binder",
+        "type": "DocsFolder"
+      },
+      {
+        "name": "Annotations",
+        "type": "DetailCabinet"
+      },
+      {
+        "name": "Lights and Cameras",
+        "type": "EnvFolder"
+      },
+      {
+        "name": "Markups",
+        "type": "InkMarkupFolder"
+      },
+      {
+        "name": "Equations",
+        "type": "EqnFolder"
+      },
+      {
+        "name": "Front Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Top Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Right Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Origin",
+        "type": "OriginProfileFeature"
+      },
+      {
+        "name": "Axis1",
+        "type": "RefAxis"
+      },
+      {
+        "name": "w22_pattern_box_1780723248-1",
+        "type": "Reference"
+      },
+      {
+        "name": "Mates",
+        "type": "MateGroup"
+      }
+    ],
+    "verdict": "NO-GO",
+    "failure_point": "pattern did not materialize (delta=0, type=None)"
+  },
+  "mirror_components": {
+    "component_count_before": 1,
+    "save_before_mirror": {
+      "return": "0"
+    },
+    "plane_select": {
+      "ok": true,
+      "entity_type": "CDispatch"
+    },
+    "seed_component": {
+      "name": "w22_pattern_box_1780723248-1",
+      "type": "CDispatch"
+    },
+    "mirror_call": {
+      "method": "MirrorComponents (v1, 9 args)",
+      "return_type": "tuple",
+      "return_value": "(<COMObject MirrorComponents>,)"
+    },
+    "component_count_after": 2,
+    "count_delta": 1,
+    "feature_tree": [
+      {
+        "name": "Comments",
+        "type": "CommentsFolder"
+      },
+      {
+        "name": "Favorites",
+        "type": "FavoriteFolder"
+      },
+      {
+        "name": "Folder ",
+        "type": "HistoryFolder"
+      },
+      {
+        "name": "Selection Sets",
+        "type": "SelectionSetFolder"
+      },
+      {
+        "name": "Sensors",
+        "type": "SensorFolder"
+      },
+      {
+        "name": "Live Section Planes",
+        "type": "LiveSectionFolder"
+      },
+      {
+        "name": "Design Binder",
+        "type": "DocsFolder"
+      },
+      {
+        "name": "Annotations",
+        "type": "DetailCabinet"
+      },
+      {
+        "name": "Lights and Cameras",
+        "type": "EnvFolder"
+      },
+      {
+        "name": "Markups",
+        "type": "InkMarkupFolder"
+      },
+      {
+        "name": "Equations",
+        "type": "EqnFolder"
+      },
+      {
+        "name": "Front Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Top Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Right Plane",
+        "type": "RefPlane"
+      },
+      {
+        "name": "Origin",
+        "type": "OriginProfileFeature"
+      },
+      {
+        "name": "w22_pattern_box_1780723248-1",
+        "type": "Reference"
+      },
+      {
+        "name": "Mirrorw22_pattern_box_1780723248-1",
+        "type": "Reference"
+      },
+      {
+        "name": "Mates",
+        "type": "MateGroup"
+      }
+    ],
+    "mirror_feature": {
+      "type": null
+    },
+    "verdict": "GO",
+    "instance_verified": true,
+    "success_signal_contract": "COUNT_DELTA"
+  },
+  "overall": "GO",
+  "summary": {
+    "linear": "NO-GO",
+    "circular": "NO-GO",
+    "mirror": "GO"
+  }
+}

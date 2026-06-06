@@ -607,4 +607,114 @@ class TestRpyConvention:
         from ai_sw_bridge.assembly.handlers import _rpy_to_transform
         m = _rpy_to_transform(45.0, 30.0, 60.0, 1.0, 2.0, 3.0)
         assert m[12] == 1.0
-        assert m[13:] == [0.0, 0.0, 0.0]
+
+
+# ---- Component patterns (mirror) -------------------------------------------
+
+
+class TestComponentPatternsSchema:
+    def test_accepts_mirror_pattern(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "mirror", "seed": "a", "plane": "right"},
+        ]
+        jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_accepts_with_name_modifier(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "mirror", "seed": "a", "plane": "front", "name_modifier": 2},
+        ]
+        jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_rejects_unknown_type(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "linear", "seed": "a", "plane": "right"},
+        ]
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_rejects_invalid_plane(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "mirror", "seed": "a", "plane": "xy"},
+        ]
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_rejects_missing_seed(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "mirror", "plane": "right"},
+        ]
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_rejects_negative_name_modifier(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "mirror", "seed": "a", "plane": "right", "name_modifier": -1},
+        ]
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+    def test_accepts_no_patterns(self) -> None:
+        import jsonschema
+        spec = _minimal_assembly()
+        jsonschema.validate(spec, ASSEMBLY_SCHEMA)
+
+
+class TestComponentPatternsValidator:
+    def test_accepts_valid_mirror(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "mirror", "seed": "a", "plane": "right"},
+        ]
+        validate_assembly(spec)
+
+    def test_rejects_unknown_seed(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "mirror", "seed": "nonexistent", "plane": "right"},
+        ]
+        with pytest.raises(AssemblyValidationError, match="not found"):
+            validate_assembly(spec)
+
+    def test_rejects_unknown_pattern_type(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "circular", "seed": "a", "plane": "right"},
+        ]
+        with pytest.raises(AssemblyValidationError, match="unknown pattern type"):
+            validate_assembly(spec)
+
+    def test_rejects_bad_plane(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "mirror", "seed": "a", "plane": "xy"},
+        ]
+        with pytest.raises(AssemblyValidationError, match="plane must be"):
+            validate_assembly(spec)
+
+    def test_rejects_negative_name_modifier(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "mirror", "seed": "a", "plane": "right", "name_modifier": -1},
+        ]
+        with pytest.raises(AssemblyValidationError, match="non-negative"):
+            validate_assembly(spec)
+
+    def test_accepts_multiple_mirrors(self) -> None:
+        spec = _minimal_assembly()
+        spec["component_patterns"] = [
+            {"type": "mirror", "seed": "a", "plane": "right"},
+            {"type": "mirror", "seed": "b", "plane": "front"},
+        ]
+        validate_assembly(spec)

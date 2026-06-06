@@ -13,6 +13,7 @@ from .validator import validate_assembly, AssemblyValidationError
 from .storage import AssemblyManifest, ComponentInstance, MateRecord
 from .face_resolver import resolve_component_face, ComponentFaceResolution
 from .lifecycle import dry_run_assembly, commit_assembly
+from .handlers import mirror_components
 
 __all__ = [
     "ASSEMBLY_SCHEMA",
@@ -25,6 +26,7 @@ __all__ = [
     "MateRecord",
     "commit_assembly",
     "dry_run_assembly",
+    "mirror_components",
     "resolve_component_face",
     "validate_assembly",
 ]

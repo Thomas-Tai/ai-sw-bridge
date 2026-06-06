@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from .face_resolver import resolve_component_face
-from .handlers import create_mate, place_components
+from .handlers import create_mate, mirror_components, place_components
 from .storage import AssemblyManifest, ComponentInstance, sha256_of_file
 
 
@@ -367,7 +367,21 @@ def commit_assembly(
 
         result["mate_count"] = mate_count
 
-        # Save the assembly
+        # Apply component patterns (mirror) — after mates, before final save.
+        # Mirror handler saves the assembly internally (required for new files).
+        patterns = spec.get("component_patterns")
+        mirror_count = 0
+        if patterns:
+            mirror_count, mirror_err = mirror_components(
+                sw, asm_doc, placed, patterns, output_path, mod=mod
+            )
+            if mirror_err:
+                result["error"] = f"component_patterns: {mirror_err}"
+                return result
+
+        result["mirror_count"] = mirror_count
+
+        # Save the assembly (final save includes mirrored components)
         try:
             asm_doc.SaveAs3(output_path, 0, 2)
         except Exception as exc:
