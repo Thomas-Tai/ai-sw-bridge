@@ -56,7 +56,7 @@ SW_DEFAULT_TEMPLATE_PART = 8
 SWCONST_TLB = Path(r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\swconst.tlb")
 SLDWORKS_TLB = Path(r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\sldworks.tlb")
 
-_SW_FM_FILLET = 1
+_SW_FM_CHAMFER = 0
 _SW_CHAMFER_ANGLE_DISTANCE = 1
 _SW_CHAMFER_DISTANCE_DISTANCE = 2
 
@@ -74,17 +74,17 @@ CHAMFER_IFACES = (
 
 CHAMFER_CANDIDATE_MEMBERS = (
     "Type",
+    "EdgeChamferAngle",
+    "SetEdgeChamferDistance",
+    "GetEdgeChamferDistance",
+    "EqualDistance",
+    "TangentPropagation",
+    "SetIsFlipped",
+    "GetIsFlipped",
+    "AccessSelections",
+    "Initialize",
     "Distance",
     "Angle",
-    "OtherDistance",
-    "DefaultRadius",
-    "Initialize",
-    "Options",
-    "FlipDirection",
-    "TangentPropagation",
-    "SetDistance",
-    "SetAngle",
-    "SetOtherDistance",
 )
 
 
@@ -374,99 +374,122 @@ def _probe_chamfer(
         result["reason"] = f"edge unresolved (method={res.method})"
         return result
 
-    # Try IChamferFeatureData2 first, then IChamferFeatureData
+    # CreateDefinition(swFmChamfer=0) — confirmed from swconst.tlb
     data = None
     fd = None
     used_iface = None
-    for iface in CHAMFER_IFACES:
-        try:
-            data = fm.CreateDefinition(_SW_FM_FILLET)
-            if data is None:
-                result[f"CreateDefinition_{iface}"] = "returned None"
-                continue
-            fd = typed_qi(data, iface, module=mod)
-            used_iface = iface
-            result[f"typed_qi_{iface}"] = "OK"
-            break
-        except EarlyBindError as e:
-            result[f"typed_qi_{iface}"] = f"E_NOINTERFACE: {e}"
-            data = None
-            fd = None
-        except Exception as e:
-            result[f"typed_qi_{iface}"] = f"{type(e).__name__}: {e}"
-            data = None
-            fd = None
-
-    if fd is None:
-        # Fallback: try ISimpleFilletFeatureData2 with chamfer Initialize
-        try:
-            data = fm.CreateDefinition(_SW_FM_FILLET)
-            fd = typed_qi(data, "ISimpleFilletFeatureData2", module=mod)
-            used_iface = "ISimpleFilletFeatureData2"
-            result["typed_qi_ISimpleFilletFeatureData2"] = "OK (fallback)"
-        except Exception as e:
-            result["typed_qi_ISimpleFilletFeatureData2"] = f"{type(e).__name__}: {e}"
-            result["verdict"] = "NO-GO"
-            result["reason"] = "no chamfer or fillet interface QI-able"
-            return result
-
-    result["used_interface"] = used_iface
-
-    members = _probe_members(fd, CHAMFER_CANDIDATE_MEMBERS)
-    result["members"] = members
-
-    # Initialize
-    init_rec: dict[str, Any] = {}
     try:
-        fd.Initialize(_SW_CHAMFER_ANGLE_DISTANCE)
-        init_rec["status"] = "OK"
-        init_rec["arg"] = _SW_CHAMFER_ANGLE_DISTANCE
-    except Exception as e:
-        init_rec["status"] = f"{type(e).__name__}: {str(e)[:200]}"
-        result["verdict"] = "NO-GO"
-        result["reason"] = f"Initialize({_SW_CHAMFER_ANGLE_DISTANCE}) failed"
-        result["initialize"] = init_rec
-        return result
-    result["initialize"] = init_rec
-
-    # Set chamfer properties
-    set_recs: dict[str, Any] = {}
-    for name, val in (
-        ("Distance", CHAMFER_DISTANCE_M),
-        ("Angle", CHAMFER_ANGLE_RAD),
-    ):
-        if members.get(name) == "present":
-            try:
-                setattr(fd, name, val)
-                set_recs[name] = "OK"
-            except Exception as e:
-                set_recs[name] = f"{type(e).__name__}: {str(e)[:120]}"
-        else:
-            set_recs[name] = f"MISSING (member={members.get(name)})"
-    result["set_props"] = set_recs
-
-    # Select edge
-    sel_ok = select_entity(res.entity)
-    result["select_entity"] = sel_ok
-
-    # CreateFeature
-    try:
-        feat = fm.CreateFeature(fd)
-        result["create_feature"] = {
-            "materialized": _materialized(feat),
-            "type": type(feat).__name__ if feat is not None else "None",
+        data = fm.CreateDefinition(_SW_FM_CHAMFER)
+        result["create_definition"] = {
+            "id": _SW_FM_CHAMFER,
+            "returned_none": data is None,
         }
-        if _materialized(feat):
-            result["create_feature"]["type_name"] = _type_name(feat)
-            try:
-                result["create_feature"]["name"] = feat.Name
-            except Exception:
-                pass
     except Exception as e:
-        result["create_feature"] = {
+        result["create_definition"] = {
+            "id": _SW_FM_CHAMFER,
             "exception": f"{type(e).__name__}: {str(e)[:200]}",
         }
-        feat = None
+        data = None
+
+    if data is not None:
+        # Try IChamferFeatureData2 first, then IChamferFeatureData
+        for iface in CHAMFER_IFACES:
+            try:
+                fd = typed_qi(data, iface, module=mod)
+                used_iface = iface
+                result[f"typed_qi_{iface}"] = "OK"
+                break
+            except EarlyBindError:
+                result[f"typed_qi_{iface}"] = "E_NOINTERFACE"
+            except Exception as e:
+                result[f"typed_qi_{iface}"] = f"{type(e).__name__}: {str(e)[:100]}"
+
+        if fd is not None:
+            result["used_interface"] = used_iface
+            members = _probe_members(fd, CHAMFER_CANDIDATE_MEMBERS)
+            result["members"] = members
+
+            # Set Type property (swChamferAngleDistance=1)
+            try:
+                fd.Type = _SW_CHAMFER_ANGLE_DISTANCE
+                result["set_type"] = "OK"
+            except Exception as e:
+                result["set_type"] = f"FAILED: {type(e).__name__}: {str(e)[:200]}"
+
+            # Set distance + angle
+            set_recs: dict[str, Any] = {}
+            if members.get("SetEdgeChamferDistance") == "present":
+                try:
+                    fd.SetEdgeChamferDistance(CHAMFER_DISTANCE_M)
+                    set_recs["SetEdgeChamferDistance"] = "OK"
+                except Exception as e:
+                    set_recs["SetEdgeChamferDistance"] = f"{type(e).__name__}: {str(e)[:120]}"
+            if members.get("EdgeChamferAngle") == "present":
+                try:
+                    fd.EdgeChamferAngle = CHAMFER_ANGLE_RAD
+                    set_recs["EdgeChamferAngle"] = "OK"
+                except Exception as e:
+                    set_recs["EdgeChamferAngle"] = f"{type(e).__name__}: {str(e)[:120]}"
+            if members.get("TangentPropagation") == "present":
+                try:
+                    fd.TangentPropagation = True
+                    set_recs["TangentPropagation"] = "OK"
+                except Exception:
+                    pass
+            result["set_props"] = set_recs
+
+            sel_ok = select_entity(res.entity)
+            result["select_entity"] = sel_ok
+            try:
+                feat = fm.CreateFeature(fd)
+                result["create_feature"] = {
+                    "materialized": _materialized(feat),
+                    "type": type(feat).__name__ if feat is not None else "None",
+                }
+                if _materialized(feat):
+                    result["create_feature"]["type_name"] = _type_name(feat)
+            except Exception as e:
+                result["create_feature"] = {
+                    "exception": f"{type(e).__name__}: {str(e)[:200]}",
+                }
+
+    # Fallback: legacy InsertFeatureChamfer (proven in builder.py)
+    legacy_result: dict[str, Any] = {}
+    if not result.get("create_feature", {}).get("materialized"):
+        try:
+            doc.ClearSelection2(True)
+        except Exception:
+            pass
+        try:
+            sel_ok2 = select_entity(res.entity)
+            legacy_result["select_entity"] = sel_ok2
+        except Exception as e:
+            legacy_result["select_entity"] = f"{type(e).__name__}: {e}"
+
+        # InsertFeatureChamfer(Options, ChamferType, Width, Angle, OtherDist, 0, 0, 0)
+        # From builder.py: swChamferAngleDistance=1, options=tangent_prop=4
+        options = 4  # swFeatureChamferTangentPropagation
+        chamfer_type = _SW_CHAMFER_ANGLE_DISTANCE
+        width = CHAMFER_DISTANCE_M
+        angle = CHAMFER_ANGLE_RAD
+        other_dist = 0.0
+        try:
+            feat2 = fm.InsertFeatureChamfer(options, chamfer_type, width, angle, other_dist, 0.0, 0.0, 0.0)
+            legacy_result["returned_none"] = feat2 is None
+            legacy_result["type"] = type(feat2).__name__ if feat2 is not None else "None"
+            if _materialized(feat2):
+                legacy_result["type_name"] = _type_name(feat2)
+                legacy_result["materialized"] = True
+                try:
+                    legacy_result["name"] = feat2.Name
+                except Exception:
+                    pass
+            else:
+                legacy_result["materialized"] = False
+        except Exception as e:
+            legacy_result["exception"] = f"{type(e).__name__}: {str(e)[:200]}"
+            legacy_result["materialized"] = False
+    result["legacy_insert"] = legacy_result
 
     # Geometry delta
     count_after = _feat_count(doc)
@@ -484,9 +507,9 @@ def _probe_chamfer(
     }
 
     # Verdict
-    feat_ok = result.get("create_feature", {}).get("materialized", False)
-    delta_ok = result["delta"]["feature_count"] == 1
-    type_name = result.get("create_feature", {}).get("type_name", "")
+    cd_ok = result.get("create_feature", {}).get("materialized", False)
+    legacy_ok = result.get("legacy_insert", {}).get("materialized", False)
+    delta_ok = result["delta"]["feature_count"] >= 1
     face_delta = result["delta"].get("face_count")
     vol_delta = result["delta"].get("volume")
     geometry_altered = (
@@ -494,17 +517,21 @@ def _probe_chamfer(
         or (vol_delta is not None and abs(vol_delta) > 1e-12)
     )
 
-    if feat_ok and delta_ok and geometry_altered:
+    if cd_ok and delta_ok and geometry_altered:
         result["verdict"] = "GO"
-    elif feat_ok and delta_ok and not geometry_altered:
+        result["path"] = "CreateDefinition"
+    elif legacy_ok and delta_ok and geometry_altered:
+        result["verdict"] = "GO"
+        result["path"] = "InsertFeatureChamfer (legacy)"
+    elif (cd_ok or legacy_ok) and delta_ok and not geometry_altered:
         result["verdict"] = "NO-GO"
         result["reason"] = "feature created but geometry unchanged (no-op trap)"
-    elif feat_ok and not delta_ok:
+    elif (cd_ok or legacy_ok) and not delta_ok:
         result["verdict"] = "NO-GO"
         result["reason"] = f"feature created but count delta={result['delta']['feature_count']}"
     else:
         result["verdict"] = "NO-GO"
-        result["reason"] = "CreateFeature did not materialize"
+        result["reason"] = "neither CreateDefinition nor InsertFeatureChamfer materialized"
 
     return result
 

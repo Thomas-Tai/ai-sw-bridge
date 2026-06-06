@@ -292,7 +292,6 @@ def _create_fillet(doc: Any, target: dict, radius_mm: float) -> tuple[bool, str 
         return False, f"fillet pipeline failed: {exc!r}"
 
 
-_SW_FM_CHAMFER = _SW_FM_FILLET
 _SW_CHAMFER_ANGLE_DISTANCE = 1
 
 
@@ -301,10 +300,10 @@ def _create_chamfer(
 ) -> tuple[bool, str | None]:
     """Run the chamfer pipeline on a durable edge — fillet sibling.
 
-    Uses the SAME ``CreateDefinition(swFmFillet=1)`` id as fillet (the SW API
-    groups fillet and chamfer under swFmFillet) but QI's for
-    ``IChamferFeatureData2`` and initializes with ``swChamferAngleDistance``.
-    Returns (ok, error).
+    Uses ``InsertFeatureChamfer`` (the proven seat-validated 8-arg call from
+    builder.py). ``CreateDefinition(swFmChamfer=0)`` returns ``None`` on
+    SW 2024 SP1 — the CreateDefinition pipeline is fillet-only. Returns
+    (ok, error).
     """
     edge_ref = DurableEdgeRef.from_dict(target)
     doc.ForceRebuild3(False)
@@ -312,18 +311,23 @@ def _create_chamfer(
     if res.entity is None:
         return False, f"edge unresolved (method={res.method})"
     try:
+        doc.ClearSelection2(True)
+    except Exception:
+        pass
+    if not select_entity(res.entity):
+        return False, "select_entity failed for chamfer edge"
+    try:
         fm = doc.FeatureManager
-        data = fm.CreateDefinition(_SW_FM_CHAMFER)
-        mod = wrapper_module()
-        fd = typed_qi(data, "IChamferFeatureData2", module=mod)
-        fd.Initialize(_SW_CHAMFER_ANGLE_DISTANCE)
-        fd.Distance = distance_mm / 1000.0
-        fd.Angle = angle_deg * math.pi / 180.0
-        select_entity(res.entity)
-        feat = fm.CreateFeature(fd)
+        distance_m = distance_mm / 1000.0
+        angle_rad = angle_deg * math.pi / 180.0
+        options = 4  # swFeatureChamferTangentPropagation
+        feat = fm.InsertFeatureChamfer(
+            options, _SW_CHAMFER_ANGLE_DISTANCE,
+            distance_m, angle_rad, 0.0, 0.0, 0.0, 0.0,
+        )
         if _materialized(feat):
             return True, None
-        return False, "CreateFeature did not materialize"
+        return False, "InsertFeatureChamfer did not materialize"
     except Exception as exc:
         return False, f"chamfer pipeline failed: {exc!r}"
 
