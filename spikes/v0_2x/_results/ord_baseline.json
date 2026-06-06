@@ -1,0 +1,188 @@
+{
+  "wave": "W31v2",
+  "date": "2026-06-06",
+  "seat": "SW2024 SP1",
+  "gate": 2,
+  "gate1_status": "SOLVED",
+  "gate1_evidence": {
+    "SelectionManager_path": "dmdoc2.SelectionManager (CDispatch, memid=65537)",
+    "ISelectionManager_path": "FAILS: 'Unable to read write-only property'",
+    "SelectEntity_return": true,
+    "sel_count_after": 1,
+    "sel_type_after": 2,
+    "datum_used": "vertex-entity(sel_type=edge)"
+  },
+  "key_finding_SelectionManager": "ISelectionManager (memid=65711) fails with 'Unable to read write-only property' on BOTH typed IModelDoc2 AND late-bound CDispatch. SelectionManager (memid=65537, PROPGET) works and returns a CDispatch. GetSelectedObjectCount2(-1) and GetSelectedObjectType2(1) work on this CDispatch.",
+  "methods": [
+    {
+      "name": "InsertOrdinate",
+      "scheme": "ordinate",
+      "sig": "() -> None (interactive mode starter)",
+      "args": []
+    },
+    {
+      "name": "InsertHorizontalOrdinate",
+      "scheme": "ordinate",
+      "sig": "() -> None",
+      "args": []
+    },
+    {
+      "name": "InsertVerticalOrdinate",
+      "scheme": "ordinate",
+      "sig": "() -> None",
+      "args": []
+    },
+    {
+      "name": "AddOrdinateDimension2",
+      "scheme": "ordinate",
+      "sig": "(type:I4, X:R8, Y:R8, Z:R8) -> I4 (dim count or error code)",
+      "args": [
+        0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "InsertBaseDim",
+      "scheme": "baseline",
+      "sig": "() -> None",
+      "args": []
+    },
+    {
+      "name": "InsertChainDim",
+      "scheme": "baseline",
+      "sig": "() -> None",
+      "args": []
+    }
+  ],
+  "results": [
+    {
+      "method": "InsertOrdinate",
+      "scheme": "ordinate",
+      "sig": "() -> None (interactive mode starter)",
+      "datum_type_at_call": 2,
+      "datum_sel_count": 1,
+      "args_called": [],
+      "return": "None",
+      "dims_before": 0,
+      "dims_immediate": 0,
+      "dim_types_immediate": [],
+      "verdict_immediate": "ZERO_DIMS",
+      "dims_reopen": 0,
+      "dim_types_reopen": [],
+      "verdict": "NO-GO",
+      "reason": "Zero dims both immediate and on reopen"
+    },
+    {
+      "method": "InsertHorizontalOrdinate",
+      "scheme": "ordinate",
+      "sig": "() -> None",
+      "datum_type_at_call": 2,
+      "datum_sel_count": 1,
+      "args_called": [],
+      "return": "None",
+      "dims_before": 0,
+      "dims_immediate": 0,
+      "dim_types_immediate": [],
+      "verdict_immediate": "ZERO_DIMS",
+      "dims_reopen": 0,
+      "dim_types_reopen": [],
+      "verdict": "NO-GO",
+      "reason": "Zero dims both immediate and on reopen"
+    },
+    {
+      "method": "InsertVerticalOrdinate",
+      "scheme": "ordinate",
+      "sig": "() -> None",
+      "datum_type_at_call": 2,
+      "datum_sel_count": 1,
+      "args_called": [],
+      "return": "None",
+      "dims_before": 0,
+      "dims_immediate": 0,
+      "dim_types_immediate": [],
+      "verdict_immediate": "ZERO_DIMS",
+      "dims_reopen": 0,
+      "dim_types_reopen": [],
+      "verdict": "NO-GO",
+      "reason": "Zero dims both immediate and on reopen"
+    },
+    {
+      "method": "AddOrdinateDimension2",
+      "scheme": "ordinate",
+      "sig": "(type:I4, X:R8, Y:R8, Z:R8) -> I4 (dim count or error code)",
+      "datum_type_at_call": 2,
+      "datum_sel_count": 1,
+      "args_called": [
+        0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "return": "0",
+      "dims_before": 0,
+      "dims_immediate": 0,
+      "dim_types_immediate": [],
+      "verdict_immediate": "ZERO_DIMS",
+      "dims_reopen": 0,
+      "dim_types_reopen": [],
+      "verdict": "NO-GO",
+      "reason": "Zero dims both immediate and on reopen"
+    },
+    {
+      "method": "InsertBaseDim",
+      "scheme": "baseline",
+      "sig": "() -> None",
+      "datum_type_at_call": 2,
+      "datum_sel_count": 1,
+      "args_called": [],
+      "return": "None",
+      "dims_before": 0,
+      "dims_immediate": 0,
+      "dim_types_immediate": [],
+      "verdict_immediate": "ZERO_DIMS",
+      "dims_reopen": 0,
+      "dim_types_reopen": [],
+      "verdict": "NO-GO",
+      "reason": "Zero dims both immediate and on reopen"
+    },
+    {
+      "method": "InsertChainDim",
+      "scheme": "baseline",
+      "sig": "() -> None",
+      "datum_type_at_call": 2,
+      "datum_sel_count": 1,
+      "args_called": [],
+      "return": "None",
+      "dims_before": 0,
+      "dims_immediate": 0,
+      "dim_types_immediate": [],
+      "verdict_immediate": "ZERO_DIMS",
+      "dims_reopen": 0,
+      "dim_types_reopen": [],
+      "verdict": "NO-GO",
+      "reason": "Zero dims both immediate and on reopen"
+    }
+  ],
+  "schemes": {
+    "ordinate": {
+      "methods": [
+        "InsertOrdinate",
+        "InsertHorizontalOrdinate",
+        "InsertVerticalOrdinate",
+        "AddOrdinateDimension2"
+      ],
+      "any_green": false,
+      "verdict": "EARNED NO-GO"
+    },
+    "baseline": {
+      "methods": [
+        "InsertBaseDim",
+        "InsertChainDim"
+      ],
+      "any_green": false,
+      "verdict": "EARNED NO-GO"
+    }
+  }
+}
