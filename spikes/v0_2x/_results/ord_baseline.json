@@ -1,0 +1,79 @@
+{
+  "wave": "W31",
+  "date": "2026-06-06",
+  "seat": "SW2024 SP1",
+  "schemes_tested": ["ordinate", "baseline"],
+  "ordinate": {
+    "verdict": "NO-GO",
+    "error": "APIs return True/None but create zero dimensions out-of-process",
+    "typelib_confirmed": {
+      "IDrawingDoc.AddOrdinateDimension": {
+        "memid": 140,
+        "invoke_kind": 1,
+        "args": ["I4:Type", "R8:X", "R8:Y", "R8:Z"],
+        "interface": "IDrawingDoc"
+      },
+      "IDrawingDoc.AddOrdinateDimension2": {
+        "memid": 208,
+        "invoke_kind": 1,
+        "args": ["I4:Type", "R8:X", "R8:Y", "R8:Z"],
+        "interface": "IDrawingDoc"
+      },
+      "InsertOrdinate": "exists on IDrawingDoc",
+      "InsertHorizontalOrdinate": "exists on IDrawingDoc",
+      "InsertVerticalOrdinate": "exists on IDrawingDoc"
+    },
+    "api_call_results": {
+      "AddOrdinateDimension(0)": "True",
+      "AddOrdinateDimension(1)": "True",
+      "AddOrdinateDimension2(0)": "0",
+      "AddOrdinateDimension2(1)": "0",
+      "InsertOrdinate": "None",
+      "InsertHorizontalOrdinate": "None",
+      "InsertVerticalOrdinate": "None"
+    },
+    "dim_count_before": 0,
+    "dim_count_after": 0,
+    "dims_added": 0,
+    "dim_type_confirmed": false,
+    "root_cause": "selection_workflow_wall",
+    "selection_attempts": {
+      "SelectByID2_VERTEX": "False",
+      "GetVisibleEntities": "Type mismatch error"
+    },
+    "characterization": "Ordinate dimensions require a datum vertex selection (the 0.0 origin) before AddOrdinateDimension can create actual dims. Out-of-process COM cannot select vertices in drawing views - SelectByID2 returns False, GetVisibleEntities raises type mismatch. APIs marshal without exception and return True, but produce zero effect because the prerequisite selection cannot be performed programmatically."
+  },
+  "baseline": {
+    "verdict": "NO-GO",
+    "error": "APIs exist but require selection workflow not accessible out-of-process",
+    "typelib_confirmed": {
+      "InsertBaseDim": "exists on IDrawingDoc",
+      "InsertChainDim": "exists on IDrawingDoc",
+      "InsertAngularRunningDim": "exists on IDrawingDoc"
+    },
+    "api_call_results": {
+      "InsertBaseDim": "None",
+      "InsertChainDim": "None",
+      "InsertAngularRunningDim": "None"
+    },
+    "dim_count_before": 0,
+    "dim_count_after": 0,
+    "dims_added": 0,
+    "characterization": "Baseline dimensions (InsertBaseDim/InsertChainDim) also require a selection workflow - a dimension must be selected first as the base datum. All methods return None without creating dims. Same selection-workflow wall as ordinate."
+  },
+  "shared_wall_characterization": {
+    "wall_type": "selection_workflow_wall",
+    "pattern": "Same wall as rib/wrap/loft/boundary-boss - APIs exist, marshal without exception, but produce no effect because prerequisite geometry selection cannot be performed out-of-process",
+    "resolution": "Would require Route-C (in-process) or VBA-emit-and-run per the Wave-7 architectural ruling - rejected as it would relax Invariant #3 (zero arbitrary code execution)",
+    "status": "permanently_deferred"
+  },
+  "view_verification": {
+    "part_features": 19,
+    "view_name": "Drawing View1",
+    "annotation_count": 0,
+    "display_dim_count_after_InsertModelAnnotations3": 0,
+    "GetVisibleEntities_error": "Type mismatch",
+    "note": "Even InsertModelAnnotations3 created 0 dims because test part was built without model dimensions in sketch"
+  },
+  "deferred_md_update": "docs/DEFERRED.md Wave-31 row added; drawing-generation row updated with 'ordinate/baseline dim types (W31 NO-GO)' in deferred list"
+}
