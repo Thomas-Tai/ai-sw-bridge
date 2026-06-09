@@ -20,7 +20,7 @@
 **§6.5 rule:** approval-gated **mutations** (propose/dry_run/commit) are **CLI-only,
 never MCP**. **Read-only** interrogation (`observe`) may be both CLI **and** MCP.
 
-## 1. Part features — `feature_add` (19 advertised kinds)
+## 1. Part features — `feature_add` (18 advertised kinds)
 
 The `feature_add` mutation in `mutate.py`; each kind is in `_SUPPORTED_FEATURE_TYPES`
 (propose fails-closed on anything outside it).
@@ -31,7 +31,6 @@ The `feature_add` mutation in `mutate.py`; each kind is in `_SUPPORTED_FEATURE_T
 | `variable_radius_fillet` | IsMultipleRadius + per-edge SetRadius | F2 |
 | `chamfer` | legacy `InsertFeatureChamfer` (8-arg) | W24 |
 | `base_flange` | CreateDefinition(34)→typed_qi | F2 |
-| `edge_flange` | legacy `InsertSheetMetalEdgeFlange2` (13-arg, SAFEARRAY VT_ARRAY\|VT_DISPATCH) | W7 |
 | `wizard_hole` | CreateDefinition(25)→InitializeHole→CreateFeature | F2 |
 | `shell` | `IModelDoc2.InsertFeatureShell` | F2 |
 | `draft` | `InsertMultiFaceDraft` (neutral mark=1 / faces mark=2) | F2 |
@@ -53,6 +52,15 @@ construction + text fidelity — `spec/builder.py`.)*
 **Load-bearing lessons:** instance-count gate = measure **volume/face delta**, not
 count+type+reopen (caught the circular-pattern radians bug); SAFEARRAY args must be
 `VARIANT(VT_ARRAY|VT_DISPATCH, (obj,))` — a bare object silently no-ops.
+
+**⛔ `edge_flange` QUARANTINED 2026-06-09 (W42 ghost finding):** it was advertised
+(W7) but is a **ghost** — `_create_edge_flange` returns `ok=True` + an
+error-code-0 `Edge-Flange1` node yet adds **ZERO** geometry (ΔVol=0, reproduced
+3×). The W7 PAE verified node-**presence**, never the B-rep. De-advertised
+(propose fails-closed); handler kept as characterized code. This exposed a
+**systemic verification gap** — ~6 other kinds (`base_flange`, `shell`, `draft`,
+`sweep`, `sweep_cut`, `dome`) shipped on the same node-presence proof and are
+under B-rep-effect re-verification (W44). See `docs/DEFERRED.md` Wave-44.
 
 ## 2. Assembly — `ai-sw-assembly` (W9–W32)
 

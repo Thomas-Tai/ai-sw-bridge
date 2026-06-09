@@ -975,10 +975,17 @@ class TestCreateEdgeFlangeHandler:
 
 
 class TestProposeEdgeFlange:
-    """edge_flange is advertised (14th kind) after the production PAE — propose
-    accepts a valid edge_ref + height_mm and rejects bad params."""
+    """edge_flange QUARANTINED 2026-06-09 (W42 ghost-feature finding): the
+    handler returns ok=True + an error-code-0 Edge-Flange node but adds ZERO
+    geometry (ΔVol=0, reproduced 3×). De-advertised from _SUPPORTED_FEATURE_TYPES
+    so propose fails-closed (the chamfer DE-ADVERTISED / loft precedent). The
+    handler stays as characterized code (TestCreateEdgeFlangeHandler still
+    exercises it directly) until a ΔVol>0 seat proof re-advertises it."""
 
-    def test_propose_accepts_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_edge_flange_is_not_advertised(self) -> None:
+        assert "edge_flange" not in mutate._SUPPORTED_FEATURE_TYPES
+
+    def test_propose_fails_closed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -987,29 +994,8 @@ class TestProposeEdgeFlange:
             {"type": "edge_flange", "height_mm": 10, "angle_deg": 90, "radius_mm": 2},
             _EF_TARGET,
         )
-        assert r["ok"] is True
-        assert r["proposal_id"] is not None
-        assert r["error"] is None
-
-    def test_propose_rejects_non_positive_height(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc_file = tmp_path / "t.sldprt"
-        doc_file.touch()
-        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
-            str(doc_file), {"type": "edge_flange", "height_mm": 0}, _EF_TARGET
-        )
         assert r["ok"] is False
-        assert "height_mm" in r["error"]
-
-    def test_propose_rejects_missing_edge_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc_file = tmp_path / "t.sldprt"
-        doc_file.touch()
-        _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
-            str(doc_file), {"type": "edge_flange", "height_mm": 10}, {"nope": 1}
-        )
-        assert r["ok"] is False
-        assert "edge_ref" in r["error"]
+        assert "unsupported feature type" in r["error"]
 
 
 class TestCreateSweepCutHandler:

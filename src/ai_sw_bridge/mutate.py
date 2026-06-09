@@ -211,15 +211,20 @@ _SUPPORTED_FEATURE_TYPES = (
     # geometry constraint (path must pierce the solid), not an API wall; verify
     # via GetFeatures(True) delta (CreateFeature may return None on success).
     "sweep_cut",
-    # W7 T6: edge_flange (sheet-metal custom-profile). Production-handler PAE
-    # GREEN (spike 644edf6): on a base_flange body, _create_edge_flange resolves a
-    # durable edge -> normal-to-edge plane + profile line -> legacy
-    # InsertSheetMetalEdgeFlange2 (13 args, typelib-verified) -> Edge-Flange1
-    # (delta-verified). THE marshaling key: FlangeEdges + SketchFeats MUST be
-    # VARIANT(VT_ARRAY|VT_DISPATCH, (obj,)) SAFEARRAYs — a bare object/None
-    # silently no-ops (the same wall behind Wave-4 AddEdges + Wave-6 auto-profile).
-    # Authoring: target.edge_ref + height_mm (+ angle_deg=90, radius_mm=2).
-    "edge_flange",
+    # W7 T6: edge_flange — QUARANTINED 2026-06-09 (W42 ghost-feature finding).
+    # The handler + dispatch + validator remain below as characterized code, but
+    # edge_flange is REMOVED from the advertised surface so propose fails-closed
+    # (the loft/combine precedent). REASON: it is a GHOST. On the live seat
+    # (SW 2024 SP1) _create_edge_flange returns ok=True and creates an
+    # Edge-Flange1 feature node that is NOT suppressed and reports
+    # GetErrorCode2=(0,False) — yet adds ZERO geometry (ΔVol=0, ΔFaces=0,
+    # reproduced 3× via spikes/v0_2x/edgeflange_brep_probe.py on its own W7
+    # canonical fixture). The W7 "production PAE" (644edf6) verified feature-node
+    # + plane + sketch PRESENCE and never measured the B-rep, so it green-lit a
+    # capability that materializes nothing — the internal normal-plane/profile or
+    # SAFEARRAY construction almost certainly collapses to a degenerate flange the
+    # kernel silently accepts. Re-advertise ONLY after a ΔVol>0 seat proof. See
+    # docs/DEFERRED.md (Wave-44) + the systemic verification-gap audit (W44).
     # W21 T1: linear_pattern + circular_pattern + mirror_feature.
     # Production-handler PAE GREEN (spike 5a94b05): FeatureLinearPattern5
     # (22 args, seed mark=4, direction mark=1) → LPattern; FeatureCircularPattern5
