@@ -19,7 +19,11 @@ from pathlib import Path
 from typing import Any
 
 from .formats import DRAWING_FORMATS, resolve_format
-from .spec_schema import DEFAULT_SHEET_SIZE, SHEET_SIZES
+from .spec_schema import (
+    DEFAULT_SHEET_SIZE,
+    SHEET_SIZES,
+    validate_title_block,
+)
 
 
 def _find_drawing_template() -> str | None:
@@ -343,6 +347,11 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
                 "top-level bom is not allowed with sheets[]; "
                 "set bom on each sheet entry"
             )
+        if spec.get("title_block") is not None:
+            raise ValueError(
+                "top-level title_block is not allowed with sheets[]; "
+                "defer per-sheet title-block to a later wave"
+            )
 
         sheets = spec.get("sheets")
         if not isinstance(sheets, list) or not sheets:
@@ -393,6 +402,9 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
             )
 
     _validate_bom_for_model(spec.get("bom"), model, path="bom")
+
+    # W38: title-block fields (drawing-level custom properties)
+    validate_title_block(spec, path="spec")
 
 
 def dry_run_drawing(spec: dict[str, Any]) -> dict[str, Any]:
@@ -539,6 +551,213 @@ def _activate_sheet_by_name(drawing_doc: Any, sheet_name: str) -> None:
 _SW_TOL_SYMMETRIC = 4
 _SW_TOL_BILATERAL = 2
 _SW_TOL_LIMIT = 3
+
+
+# ---- W38: title-block authoring (Route B — drawing-level custom properties)
+#
+# Title blocks on the seat's .DRWDOT template resolve their fields via
+# ``$PRP:"Name"`` / ``$PRPSHEET:"Name"`` field codes. Persisting the field
+# is therefore the same act as persisting a drawing-file custom property —
+# exactly the recipe W29 proved on .sldprt/.sldasm, reused verbatim here on
+# the .slddrw.
+#
+# W29 makepy traps carried across:
+#   * ``Count`` is a PROPERTY on the typed proxy, NOT a method — calling
+#     ``typed_cpm.Count()`` raises "'int' object is not callable".
+#   * ``Get6`` is DEAD at the makepy layer (raises "Type mismatch" on both
+#     typed and raw dispatch) — use ``Get4(name, False)`` for read-back.
+#   * ``Save3`` is DEAD here (its trailing [out] params break early-bind) —
+#     the surrounding commit_drawing uses ``SaveAs3(path, 0, 2)`` which is
+#     the export-epoch-proven route (W33/W34).
+#
+# W28 tolerance-ownership lesson: title-block fields are DRAWING-owned (they
+# live in the .SLDDRW, not the .SLDPRT/.SLDASM), so the drawing SaveAs3 is
+# the save that persists them. The model is not touched by this function.
+
+# swCustomInfoType_e / swCustomPropertyAddOption_e (W29-verified)
+_SW_CUSTOM_INFO_TEXT = 30
+_SW_CUSTOM_PROP_REPLACE = 1
+
+
+def _apply_title_block(
+    drawing_mdoc2: Any,
+    title_block: dict[str, Any],
+    *,
+    mod: Any,
+    typed_qi: Any,
+) -> dict[str, Any]:
+    """Set title-block fields as drawing-level custom properties.
+
+    Returns a result dict with ``props_set``, ``immediate_read_back``, and
+    ``errors``. Fail-closed: any Add3 failure or immediate read-back mismatch
+    is reported and ``errors`` is non-empty.
+
+    Ownership: DRAWING file (.SLDDRW). The caller is responsible for saving
+    the drawing (commit_drawing's SaveAs3 at the tail).
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "props_set": [],
+        "immediate_read_back": [],
+        "errors": [],
+    }
+
+    ext_obj = drawing_mdoc2.Extension
+    cpm_raw = ext_obj.CustomPropertyManager("")
+    if cpm_raw is None:
+        result["errors"].append(
+            "drawing CustomPropertyManager('') returned None"
+        )
+        return result
+    typed_cpm = typed_qi(cpm_raw, "ICustomPropertyManager", module=mod)
+
+    # Count is a property, not a method (W29 makepy trap).
+    try:
+        count_before = typed_cpm.Count
+    except Exception as exc:
+        result["errors"].append(f"cpm.Count raised: {exc!r}")
+        return result
+    result["count_before"] = count_before
+
+    existing_names = set(typed_cpm.GetNames() or ())
+
+    for name, value in title_block.items():
+        try:
+            add_result = typed_cpm.Add3(
+                name, _SW_CUSTOM_INFO_TEXT, value, _SW_CUSTOM_PROP_REPLACE
+            )
+        except Exception as exc:
+            result["errors"].append(f"Add3({name}) raised: {exc!r}")
+            continue
+        if add_result != 0:
+            result["errors"].append(
+                f"Add3({name}) returned {add_result} (expected 0)"
+            )
+            continue
+        result["props_set"].append({"name": name, "value": value})
+
+    if result["errors"]:
+        return result
+
+    # Immediate read-back via Get4 (W29: Get6 is dead at makepy layer).
+    for prop in result["props_set"]:
+        name, expected = prop["name"], prop["value"]
+        try:
+            _resolved, pvalue, _resolved2 = typed_cpm.Get4(name, False)
+        except Exception as exc:
+            result["errors"].append(f"Get4({name}) raised: {exc!r}")
+            continue
+        entry = {
+            "name": name,
+            "expected": expected,
+            "value": pvalue,
+            "match": pvalue == expected,
+        }
+        result["immediate_read_back"].append(entry)
+        if not entry["match"]:
+            result["errors"].append(
+                f"immediate read-back mismatch for '{name}': "
+                f"set {expected!r}, got {pvalue!r}"
+            )
+
+    result["ok"] = not result["errors"]
+    return result
+
+
+def _verify_title_block(
+    sw: Any,
+    drawing_path: str,
+    title_block: dict[str, Any],
+    *,
+    mod: Any,
+    typed: Any,
+    typed_qi: Any,
+) -> dict[str, Any]:
+    """VERIFY THE EFFECT — reopen the saved .SLDDRW and Get4 each field.
+
+    A title block that silently keeps the template placeholder (``-`` or
+    empty string) is the no-op trap. This function proves the custom
+    property survived a save + close + reopen cycle — the same W0 gate the
+    metadata lifecycle (W29) uses.
+
+    Returns a result dict with ``read_back`` (list of per-field dicts) and
+    ``errors``. ``ok`` is True iff every field read back matches what was
+    set.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "drawing_path": drawing_path,
+        "read_back": [],
+        "errors": [],
+    }
+
+    if not os.path.isfile(drawing_path):
+        result["errors"].append(
+            f"saved drawing not found at {drawing_path} — cannot verify"
+        )
+        return result
+
+    tsw = typed(sw, "ISldWorks", module=mod)
+    # swDocDRAWING = 3
+    ret = tsw.OpenDoc6(drawing_path, 3, 1, "", 0, 0)
+    drawing_doc = ret[0] if isinstance(ret, tuple) else ret
+    if drawing_doc is None:
+        result["errors"].append(f"OpenDoc6 failed for {drawing_path}")
+        return result
+
+    try:
+        mdoc2 = typed_qi(drawing_doc, "IModelDoc2", module=mod)
+        ext_obj = mdoc2.Extension
+        cpm_raw = ext_obj.CustomPropertyManager("")
+        if cpm_raw is None:
+            result["errors"].append(
+                "reopen: drawing CustomPropertyManager('') returned None"
+            )
+            return result
+        typed_cpm = typed_qi(cpm_raw, "ICustomPropertyManager", module=mod)
+
+        try:
+            result["count_after"] = typed_cpm.Count
+        except Exception as exc:
+            result["errors"].append(f"reopen cpm.Count raised: {exc!r}")
+
+        reopen_names = set(typed_cpm.GetNames() or ())
+
+        for name, expected in title_block.items():
+            exists = name in reopen_names
+            try:
+                _resolved, pvalue, _resolved2 = typed_cpm.Get4(name, False)
+            except Exception as exc:
+                result["errors"].append(
+                    f"reopen Get4({name}) raised: {exc!r}"
+                )
+                continue
+            entry = {
+                "name": name,
+                "exists": exists,
+                "expected": expected,
+                "value": pvalue,
+                "match": exists and pvalue == expected,
+            }
+            result["read_back"].append(entry)
+            if not entry["match"]:
+                result["errors"].append(
+                    f"reopen read-back mismatch for '{name}': "
+                    f"expected {expected!r}, got {pvalue!r} "
+                    f"(exists={exists})"
+                )
+    finally:
+        try:
+            t = drawing_doc.GetTitle
+            t = t() if callable(t) else t
+            sw.CloseDoc(t)
+        except Exception:
+            pass
+
+    result["ok"] = not result["errors"] and len(result["read_back"]) == len(
+        title_block
+    )
+    return result
 
 
 def _apply_tolerance_to_dims(
@@ -1126,6 +1345,23 @@ def commit_drawing(
                 result["error"] = f"Model SaveAs3 failed (tolerance): {exc!r}"
                 return result
 
+        # W38: title-block fields (Route B — drawing-level custom properties)
+        # Apply BEFORE SaveAs3 so the .SLDDRW on disk carries the props; the
+        # W29 makepy traps (Count property, Get4 not Get6) are handled by the
+        # helper. Fail-closed: any Add3/read-back failure aborts the save.
+        title_block = spec.get("title_block")
+        if title_block:
+            tb_result = _apply_title_block(
+                mdoc2, title_block, mod=mod, typed_qi=typed_qi
+            )
+            result["title_block"] = tb_result
+            if not tb_result.get("ok"):
+                result["error"] = (
+                    f"title-block authoring failed: "
+                    f"{'; '.join(tb_result.get('errors', []))}"
+                )
+                return result
+
         # Save the drawing (only reached when EVERY sheet succeeded)
         try:
             doc_raw.SaveAs3(output_path, 0, 2)
@@ -1133,6 +1369,36 @@ def commit_drawing(
         except Exception as exc:
             result["error"] = f"SaveAs3 failed: {exc!r}"
             return result
+
+        # W38: VERIFY THE EFFECT — reopen the saved .SLDDRW and Get4 each
+        # title-block field. A no-op (template placeholder persisting) is
+        # the trap this gate catches.
+        if title_block:
+            try:
+                t = doc_raw.GetTitle
+                t = t() if callable(t) else t
+                sw.CloseDoc(t)
+            except Exception:
+                pass
+
+            time.sleep(0.3)
+            tb_verify = _verify_title_block(
+                sw,
+                output_path,
+                title_block,
+                mod=mod,
+                typed=typed,
+                typed_qi=typed_qi,
+            )
+            result["title_block_verify"] = tb_verify
+            if not tb_verify.get("ok"):
+                result["ok"] = False
+                result["error"] = (
+                    "title-block verify-the-EFFECT failed (saved .SLDDRW "
+                    f"did not read back as set): "
+                    f"{'; '.join(tb_verify.get('errors', []))}"
+                )
+                return result
 
         result["ok"] = True
         return result
