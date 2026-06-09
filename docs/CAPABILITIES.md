@@ -6,13 +6,14 @@
 > `docs/DEFERRED.md`. Paradigm: **declarative JSON is the only authoring surface;
 > propose→approve→execute; zero arbitrary code exec; out-of-process Python.**
 >
-> Last reconciled: 2026-06-09 (through W37 — DFM draft analysis). Suite:
-> **1964 passed** (serial; xdist unavailable in this env), 58 skipped.
+> Last reconciled: 2026-06-09 (through W39 — sketch relations; W36/W37/W38/W39
+> batch). Suite: **2085 passed** (serial; xdist unavailable in this env), 58 skipped.
 
 ## 0. Surfaces
 
-**13 CLI entry points:** `ai-sw-build` · `ai-sw-mutate` · `ai-sw-assembly` ·
-`ai-sw-drawing` · `ai-sw-properties` · `ai-sw-observe` · `ai-sw-probe` ·
+**15 CLI entry points:** `ai-sw-build` · `ai-sw-mutate` · `ai-sw-assembly` ·
+`ai-sw-drawing` · `ai-sw-properties` · `ai-sw-configurations` ·
+`ai-sw-sketch-relations` · `ai-sw-observe` · `ai-sw-probe` ·
 `ai-sw-checkpoint` · `ai-sw-history` · `ai-sw-codegen` · `ai-sw-apidoc` ·
 `ai-sw-mcp` · `ai-sw-bridge`
 
@@ -96,8 +97,12 @@ multiple views per config, animation.*
 | Model dimensions | `InsertModelAnnotations3` (suppress popup via toggles 9/10/22/23) | W17 |
 | **Dim tolerances** | `IDimension.SetToleranceType/Values` (model-owned, persists in .SLDPRT) | W28 |
 | BOM table | `IView.InsertBomTable4` (dispid 414) | W18 |
+| **Title block** | `title_block:{field:value}` → drawing custom props (W29 `Add3`/`Get4`); fields resolve via `$PRP:`/`$PRPSHEET:`; DRAWING-owned (.SLDDRW) | W38 |
 
 **Tolerance types:** symmetric=4 / bilateral=2 / limit=3.
+**Title-block fields:** DrawingNo · Title · Revision · DrawnBy · CheckedBy ·
+ApprovedBy · Date · Scale · Material · SheetOf · Company · Project (closed vocab,
+unknown field rejected).
 
 ## 5. Observe — read-only perception (CLI **+ MCP**)
 
@@ -128,6 +133,38 @@ is a **property** not a method; `Get6`/`Save3` both **raise "Type mismatch"** on
 early-bind ([out]-param mis-marshaling) → use `Get4`/`SaveAs3`. PAE 7/7 GREEN
 (count 0→3, read-back exact across close+reopen). *Deferred: Number/Date/YesOrNo
 types, configuration-specific props, linked props, deletion.*
+
+## 5c. Sketch relations — `ai-sw-sketch-relations` (W39, **CLI-only mutation**)
+
+Geometric constraints between sketch entities, added to a feature spec's sketch
+block as `relations:[{type, entities:[seg_idx…]}]`. **6 effect-verified relations**
+(each proven to MOVE geometry on the seat, not just "no error"):
+
+| Relation | Token | Arity | Seat proof |
+|---|---|---|---|
+| `horizontal` | `sgHORIZONTAL2D` | 1 | dy→0 |
+| `vertical` | `sgVERTICAL2D` | 1 | dx→0 |
+| `parallel` | `sgPARALLEL` | 2 | cross→0 |
+| `perpendicular` | `sgPERPENDICULAR2D` | 2 | dot→0 |
+| `equal` | `sgSAMELENGTH` | 2 | lengths equalize |
+| `concentric` | `sgCONCENTRIC` | 2 | centers coincide |
+
+**Recipe:** raw `seg.Select2(append,mark)` → **`IModelDoc2.SketchAddConstraints(token)`**
+(NOT `ISketchManager`); `GetSketchSegments` read as a property (no parens). **W39
+seat lessons:** the W21 no-op trap — guessed tokens pass with no error but no effect
+(`sgEQUAL`/`sgPARALLEL2D` were silent no-ops → corrected to `sgSAMELENGTH`/`sgPARALLEL`).
+*Deferred (fail-closed, tokens unproven): `collinear`, `coincident` (endpoint selection),
+`symmetric` (3-ref centerline) — DEFERRED.md Wave-39.*
+
+## 5d. Configurations — `ai-sw-configurations` (W36v, **CLI-only mutation**, multi-file)
+
+Family-of-parts as **N distinct part files** (NOT in-file SW configs — that's an earned
+COM wall, DEFERRED.md Wave-36). A `variants:[{name, overrides}]` spec → one proven
+`.SLDPRT` per variant via `builder.build(no_dim=True, save_as=…)` + `CreateMassProperty`
+volume-discrimination. `propose` (offline validate) + `materialize` (build+measure).
+Overrides: flat string (locals) OR nested dict/list (deep-merged into the spec). Seat-
+proven: 3 variants → 3 distinct volumes (4000/13500/50000 mm³ exact). *Deferred: in-file
+native configs, suppress-state, design tables.*
 
 ## 6. Persistence / infra
 
