@@ -1,6 +1,6 @@
-"""Observation MCP tools (W5.4, §6.1, W30).
+"""Observation MCP tools (W5.4, §6.1, W30, W37).
 
-Thirteen read-only tools that mirror the ``ai-sw-observe`` CLI
+Sixteen read-only tools that mirror the ``ai-sw-observe`` CLI
 subcommands. Each tool is a thin wrapper around a
 :class:`ai_sw_bridge.observe.SolidWorksObserver` method, decorated
 with ``@com_tool`` so the body runs on the ComExecutor's STA
@@ -155,3 +155,24 @@ def register(mcp: Any) -> None:
         (e.g. 'block_20mm-1', 'block_20mm-2'). Assembly docs only.
         """
         return SolidWorksObserver().clearance(comp_a=comp_a, comp_b=comp_b)
+
+    @mcp.tool()
+    @com_tool
+    def sw_draft_analysis(
+        pull_direction: str,
+        min_angle_deg: float = 1.0,
+    ) -> dict[str, Any]:
+        """DFM draft analysis of the active part (W37).
+
+        Classifies every face as positive/negative/vertical draft relative
+        to pull_direction. Uses first-principles face-normal sweep
+        (GetBodies2 → GetFaces → IFace2.Normal vs pull vector). Returns
+        {pull_direction, faces_total, faces_positive, faces_negative,
+        faces_vertical, min_draft_deg, faces_below_threshold}.
+        pull_direction: front, back, top, bottom, right, left, or
+        +x, -x, +y, -y, +z, -z. Part docs only.
+        """
+        return SolidWorksObserver().draft_analysis(
+            pull_direction=pull_direction,
+            min_angle_deg=min_angle_deg,
+        )

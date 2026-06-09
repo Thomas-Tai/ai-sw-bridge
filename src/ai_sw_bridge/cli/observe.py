@@ -12,6 +12,8 @@ Subcommands:
   measure_selection   -> measure_selection()      [W30, pre-selected entities]
   mate_errors         -> sw_get_mate_errors()  [assembly only]
   interference        -> sw_get_interference()  [assembly only, W27/E4]
+  clearance           -> sw_get_clearance()    [assembly only, W35]
+  draft               -> sw_get_draft_analysis() [part only, W37]
   inertia             -> inertia()               [part only, W5 E1]
   custom_props        -> sw_get_custom_props()  [experimental]
   addins              -> sw_get_enabled_addins()  [experimental, W7.1]
@@ -96,6 +98,13 @@ def _run_interference(_args: argparse.Namespace) -> dict[str, Any]:
 
 def _run_clearance(args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().clearance(comp_a=args.comp_a, comp_b=args.comp_b)
+
+
+def _run_draft(args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().draft_analysis(
+        pull_direction=args.pull_direction,
+        min_angle_deg=args.min_angle,
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -264,6 +273,37 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Name of the second component (IComponent2.Name2, e.g. 'block_20mm-2').",
     )
     p.set_defaults(func=_run_clearance)
+
+    p = subs.add_parser(
+        "draft",
+        help="DFM draft analysis of the active part (W37).",
+        description=(
+            "Wave-37 perception axis — classify every face of the active "
+            "part as positive/negative/vertical draft relative to a pull "
+            "direction. Uses first-principles face-normal sweep "
+            "(GetBodies2 → GetFaces → IFace2.Normal vs pull vector). "
+            "Reports {pull_direction, faces_total, faces_positive, "
+            "faces_negative, faces_vertical, min_draft_deg, "
+            "faces_below_threshold}. Part docs only."
+        ),
+    )
+    p.add_argument(
+        "--pull-direction",
+        dest="pull_direction",
+        required=True,
+        help=(
+            "Mould pull direction: front, back, top, bottom, right, left, "
+            "or axis shorthand (+x, -x, +y, -y, +z, -z)."
+        ),
+    )
+    p.add_argument(
+        "--min-angle",
+        dest="min_angle",
+        type=float,
+        default=1.0,
+        help="Threshold in degrees below which a face is flagged as vertical (default 1.0).",
+    )
+    p.set_defaults(func=_run_draft)
 
     p = subs.add_parser(
         "inertia",

@@ -108,6 +108,7 @@ multiple views per config, animation.*
 | Measure (selection) | `sw_measure` / `sw_measure_selection` | `CreateMeasure`→`Calculate(None)` | W30 |
 | Bounding box (part) | `sw_bbox` / `sw_bounding_box` | `IPartDoc.GetPartBox(True)` (part-only) | W30 |
 | **Clearance (min-distance)** | `sw_clearance` | `IComponent2.Select2`×2 → `IMeasure.Distance` (assembly-only) | W35 |
+| **Draft analysis (DFM)** | `sw_draft_analysis` | `GetBodies2` → `GetFaces` → `IFace2.Normal` vs pull vector (part-only) | W37 |
 
 ## 5b. Metadata — `ai-sw-properties` (W29, **CLI-only mutation**)
 
