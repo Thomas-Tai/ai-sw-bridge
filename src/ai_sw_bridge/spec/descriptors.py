@@ -133,6 +133,57 @@ EXPECT_SCHEMA: dict[str, Any] = {
 }
 
 
+# W39 — geometric relations between sketch entities. Optional field on every
+# sketch-type feature. Each entry declares a relation type and the segment
+# indices it operates on. Arity is enforced by the validator per type
+# (coincident=2, symmetric=3, horizontal/vertical=1). The builder applies
+# relations via ISketchManager.SketchAddConstraints after geometry draw.
+_RELATION_TYPE_ENUM = [
+    "horizontal",
+    "vertical",
+    "parallel",
+    "perpendicular",
+    "equal",
+    "concentric",
+]
+
+RELATIONS_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["type", "entities"],
+        "properties": {
+            "type": {
+                "enum": _RELATION_TYPE_ENUM,
+                "description": (
+                    "Geometric relation type. horizontal/vertical take 1 "
+                    "entity; parallel/perpendicular/equal/concentric take 2. "
+                    "collinear/coincident/symmetric are deferred (tokens "
+                    "unproven on seat — see docs/DEFERRED.md)."
+                ),
+            },
+            "entities": {
+                "type": "array",
+                "items": {"type": "integer", "minimum": 0},
+                "minItems": 1,
+                "maxItems": 3,
+                "description": (
+                    "0-based segment indices within the sketch (creation "
+                    "order, including construction segments). Arity must "
+                    "match the relation type."
+                ),
+            },
+        },
+    },
+    "description": (
+        "Geometric relations between sketch entities. Applied after geometry "
+        "draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are "
+        "seat-gated (W21 radians lesson)."
+    ),
+}
+
+
 # Face-direction enum, shared by all face-bound primitives.
 _FACE_ENUM = ["+x", "-x", "+y", "-y", "+z", "-z"]
 
@@ -338,6 +389,7 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         FieldSpec("height", LENGTH_SCHEMA, True),
         FieldSpec("center", _RECT_ON_PLANE_CENTER, False),
         FieldSpec("centerline", CENTERLINE_SCHEMA, False),
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_rectangle_on_face": [
         FieldSpec(
@@ -356,12 +408,14 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         FieldSpec("width", LENGTH_SCHEMA, True),
         FieldSpec("height", LENGTH_SCHEMA, True),
         FieldSpec("center", _UV_CENTER_RECT_FACE, False),
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_circle_on_plane": [
         FieldSpec("plane", {"enum": ["Front", "Top", "Right"]}, True),
         FieldSpec("diameter", LENGTH_SCHEMA, True),
         FieldSpec("center", _CIRCLE_ON_PLANE_CENTER, False),
         FieldSpec("centerline", CENTERLINE_SCHEMA, False),
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_circle_on_face": [
         FieldSpec(
@@ -379,6 +433,7 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec("diameter", LENGTH_SCHEMA, True),
         FieldSpec("center", _UV_CENTER_CIRCLE_FACE, False),
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_circles_on_face": [
         FieldSpec("of_feature", {"type": "string"}, True),
@@ -408,6 +463,7 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "boss_extrude_blind": [
         FieldSpec(
@@ -750,6 +806,7 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             False,
         ),
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_arc": [
         FieldSpec(
@@ -777,6 +834,7 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             {"type": "boolean", "default": False},
             False,
         ),
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_spline": [
         FieldSpec(
@@ -803,6 +861,7 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         # GetIDsOfNames -> DISP_E_UNKNOWNNAME and a full typelib scan), and
         # appending the first point yields a C0 cusp, not a periodic spline.
         # Requesting `closed` therefore fails validation rather than faking it.
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_slot": [
         FieldSpec(
@@ -831,6 +890,7 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         # can not be set` on the seat. Unpacking the macro-feature's underlying
         # segment array to mutate each is COM-index fragile, so construction is
         # rejected for slots rather than faked.
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_polygon": [
         FieldSpec(
@@ -880,6 +940,7 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             {"type": "boolean", "default": False},
             False,
         ),
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_ellipse": [
         FieldSpec(
@@ -907,6 +968,7 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             {"type": "boolean", "default": False},
             False,
         ),
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_text": [
         FieldSpec(
@@ -945,6 +1007,7 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         # baseline rotation has no out-of-process API on this seat; and text is
         # not a sketch segment, so ConstructionGeometry does not apply. Both are
         # rejected at validation rather than silently ignored.
+        FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
 }
 

@@ -1,0 +1,24 @@
+{
+  "wave": "W39v",
+  "test": "S1 — sketch relations constrain geometry (seat-corrected)",
+  "status": "SEAT_CORRECTED_AWAITING_RE_RUN",
+  "date": "2026-06-09",
+  "seat": "SW 2024 SP1 (rev 32.1.0)",
+  "shipped_relations": 6,
+  "deferred_relations": 3,
+  "defects_fixed": 3,
+  "offline_tests": "2082 passed, 0 failed",
+  "seat_pae_status": "HARNESS_READY_TO_DRIVE",
+  "seat_pae_file": "spikes/v0_2x/sketch_relations_pae.py",
+  "relation_types_shipped": {
+    "horizontal":    {"token": "sgHORIZONTAL2D",    "arity": 1, "effect_proof": "dy→0"},
+    "vertical":      {"token": "sgVERTICAL2D",      "arity": 1, "effect_proof": "dx→0"},
+    "parallel":      {"token": "sgPARALLEL",        "arity": 2, "effect_proof": "cross→0"},
+    "perpendicular": {"token": "sgPERPENDICULAR2D", "arity": 2, "effect_proof": "dot→0"},
+    "equal":         {"token": "sgSAMELENGTH",      "arity": 2, "effect_proof": "lengths equalize"},
+    "concentric":    {"token": "sgCONCENTRIC",      "arity": 2, "effect_proof": "centers coincide"}
+  },
+  "relation_types_deferred": ["collinear", "coincident", "symmetric"],
+  "deferred_rationale": "Tokens unproven on seat — fail-closed per edge-flange precedent. See docs/DEFERRED.md Wave-39 section.",
+  "merge_protocol": "MERGE LAST (spine lane)"
+}

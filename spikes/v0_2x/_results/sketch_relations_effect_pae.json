@@ -1,0 +1,172 @@
+{
+  "ok": true,
+  "gates": {
+    "G2_equal_moves_geometry": true,
+    "G1_equal_token_fires": true,
+    "G3_horizontal_moves_geometry": true,
+    "G4_perpendicular_moves_geometry": true,
+    "G5_vertical_moves_geometry": true,
+    "G6_parallel_moves_geometry": true,
+    "G7_concentric_moves_geometry": true,
+    "G1_all_tokens_fire": true
+  },
+  "errors": [],
+  "token_dump": {
+    "equal": true,
+    "horizontal": true,
+    "perpendicular": true,
+    "vertical": true,
+    "parallel": true,
+    "concentric": true
+  },
+  "detail": {
+    "equal_apply": {
+      "ok": true,
+      "relations_applied": 1,
+      "relations_failed": 0,
+      "errors": [],
+      "details": [
+        {
+          "index": 0,
+          "type": "equal",
+          "token": "sgSAMELENGTH",
+          "ok": true,
+          "relation_count_before": 2,
+          "relation_count_after": 3,
+          "constrained": true
+        }
+      ],
+      "segment_count": 2
+    },
+    "equal_lengths": {
+      "before": [
+        30.0,
+        10.0
+      ],
+      "after": [
+        10.0,
+        10.0
+      ]
+    },
+    "horizontal_apply": {
+      "ok": true,
+      "relations_applied": 1,
+      "relations_failed": 0,
+      "errors": [],
+      "details": [
+        {
+          "index": 0,
+          "type": "horizontal",
+          "token": "sgHORIZONTAL2D",
+          "ok": true,
+          "relation_count_before": 0,
+          "relation_count_after": 1,
+          "constrained": true
+        }
+      ],
+      "segment_count": 1
+    },
+    "horizontal_dy": {
+      "before_mm": 2.0,
+      "after_mm": 0.0
+    },
+    "perpendicular_apply": {
+      "ok": true,
+      "relations_applied": 1,
+      "relations_failed": 0,
+      "errors": [],
+      "details": [
+        {
+          "index": 0,
+          "type": "perpendicular",
+          "token": "sgPERPENDICULAR2D",
+          "ok": true,
+          "relation_count_before": 2,
+          "relation_count_after": 2,
+          "constrained": false
+        }
+      ],
+      "segment_count": 2
+    },
+    "perpendicular_dot": 0.0,
+    "vertical_apply": {
+      "ok": true,
+      "relations_applied": 1,
+      "relations_failed": 0,
+      "errors": [],
+      "details": [
+        {
+          "index": 0,
+          "type": "vertical",
+          "token": "sgVERTICAL2D",
+          "ok": true,
+          "relation_count_before": 1,
+          "relation_count_after": 2,
+          "constrained": true
+        }
+      ],
+      "segment_count": 1
+    },
+    "vertical_dx": {
+      "before_mm": 2.0,
+      "after_mm": 0.0
+    },
+    "parallel_apply": {
+      "ok": true,
+      "relations_applied": 1,
+      "relations_failed": 0,
+      "errors": [],
+      "details": [
+        {
+          "index": 0,
+          "type": "parallel",
+          "token": "sgPARALLEL",
+          "ok": true,
+          "relation_count_before": 1,
+          "relation_count_after": 2,
+          "constrained": true
+        }
+      ],
+      "segment_count": 2
+    },
+    "parallel_cross": {
+      "before": 2e-05,
+      "after": -0.0
+    },
+    "concentric_apply": {
+      "ok": true,
+      "relations_applied": 1,
+      "relations_failed": 0,
+      "errors": [],
+      "details": [
+        {
+          "index": 0,
+          "type": "concentric",
+          "token": "sgCONCENTRIC",
+          "ok": true,
+          "relation_count_before": 1,
+          "relation_count_after": 2,
+          "constrained": true
+        }
+      ],
+      "segment_count": 2
+    },
+    "concentric_centers": {
+      "dist_before_mm": 11.1803,
+      "dist_after_mm": 0.0
+    }
+  },
+  "shipped_tokens": {
+    "horizontal": "sgHORIZONTAL2D",
+    "vertical": "sgVERTICAL2D",
+    "parallel": "sgPARALLEL",
+    "perpendicular": "sgPERPENDICULAR2D",
+    "equal": "sgSAMELENGTH",
+    "concentric": "sgCONCENTRIC"
+  },
+  "deferred": [
+    "collinear",
+    "coincident",
+    "symmetric"
+  ]
+}
