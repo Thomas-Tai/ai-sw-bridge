@@ -1,0 +1,36 @@
+{
+  "status": "SEAT_CHARACTERIZED_NO_GO_AS_SHIPPED",
+  "verdict": "W21 no-op trap sprung — production code has THREE seat-caught defects; do NOT merge as-is",
+  "seat": "SOLIDWORKS 2024 SP1",
+  "load_bearing_findings": {
+    "1_wrong_object_for_method": {
+      "shipped": "doc.SketchManager.SketchAddConstraints(token)",
+      "reality": "SketchAddConstraints lives on IModelDoc2, NOT ISketchManager",
+      "proof": "ISketchManager has NO Constraint/Relation members; IModelDoc2 has SketchAddConstraints / SketchAlign / SketchConstraintsDel / SketchConstraintsDelAll",
+      "fix": "call doc.SketchAddConstraints(token) directly"
+    },
+    "2_segment_accessor_double_invoke": {
+      "shipped": "sk.GetSketchSegments()  (in _get_sketch_segments)",
+      "reality": "on the late-bound doc GetSketchSegments AUTO-INVOKES to a tuple; the trailing () raises \"'tuple' object is not callable\"",
+      "effect": "_get_sketch_segments swallows the exception and returns [] -> apply_relations_in_open_sketch raises 'sketch has no segments' -> feature silently no-ops",
+      "fix": "read sk.GetSketchSegments WITHOUT parens (property auto-invoke), same as GetActiveSketch2"
+    },
+    "3_guessed_tokens_wrong": {
+      "trap": "tokens pass SketchAddConstraints with NO error but produce NO geometric effect (the W21 radians no-op, exact replay)",
+      "verified_by_effect": {
+        "equal":        {"shipped": "sgEQUAL",          "correct": "sgSAMELENGTH",      "shipped_effect": "NO-OP (30/10mm stayed 30/10)", "correct_effect": "EQUALIZED"},
+        "parallel":     {"shipped": "sgPARALLEL2D",     "correct": "sgPARALLEL",        "shipped_effect": "NO-OP", "correct_effect": "cross-product -> 0"},
+        "horizontal":   {"shipped": "sgHORIZONTAL2D",   "correct": "sgHORIZONTAL2D",    "shipped_effect": "WORKS (dy 2.0->0.0)"},
+        "vertical":     {"shipped": "sgVERTICAL2D",     "correct": "sgVERTICAL2D",      "shipped_effect": "WORKS (dx->0)"},
+        "perpendicular":{"shipped": "sgPERPENDICULAR2D","correct": "sgPERPENDICULAR2D", "shipped_effect": "WORKS (dot->0)"},
+        "concentric":   {"shipped": "sgCONCENTRIC",     "correct": "sgCONCENTRIC",      "shipped_effect": "WORKS (centers coincide)"},
+        "collinear":    {"shipped": "sgCOLLINEAR2D",    "correct": "UNRESOLVED",        "shipped_effect": "NO-OP (both sgCOLLINEAR2D and sgCOLLINEAR no-op) — token still unknown"},
+        "coincident":   {"shipped": "sgCOINCIDENT",     "correct": "UNTESTED",          "note": "needs endpoint (not segment) selection — separate characterization"},
+        "symmetric":    {"shipped": "sgSYMMETRIC2D",    "correct": "UNTESTED",          "note": "3-ref centerline selection order unproven"}
+      }
+    }
+  },
+  "what_works": "method=IModelDoc2.SketchAddConstraints; raw seg.Select2(append,mark) (typed IEntity.Select2 FAILS 'Invalid number of parameters'); selection survives to the call (selcount 1 and 2 confirmed); horizontal/vertical/perpendicular/concentric tokens correct; equal->sgSAMELENGTH, parallel->sgPARALLEL corrected",
+  "still_open": ["collinear token", "coincident (endpoint selection)", "symmetric 3-ref order"],
+  "recommendation": "HAND BACK to W39 worker: fix object (SketchManager->IModelDoc2), fix segment accessor (drop parens), correct token map (equal/parallel), resolve collinear/coincident/symmetric tokens via the same effect-gated probe, then re-run a full per-token effect PAE. NOT mergeable until every advertised token is effect-proven."
+}
