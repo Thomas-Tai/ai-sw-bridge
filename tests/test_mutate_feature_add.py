@@ -1276,13 +1276,22 @@ class _FakeShellDoc:
 
 
 class _FakeDraftFM:
-    def __init__(self, feature: Any) -> None:
+    def __init__(self, feature: Any, *, adds_feature: bool = True) -> None:
         self._feature = feature
+        self._adds_feature = adds_feature
+        self._features: list[object] = [object()]  # one pre-existing feature
         self.draft_calls: list[tuple] = []
 
     def InsertMultiFaceDraft(self, *args) -> Any:
         self.draft_calls.append(args)
+        # The real API returns None even on success; the handler verifies via a
+        # GetFeatures(True) count delta, so a successful draft grows the tree.
+        if self._adds_feature:
+            self._features.append(object())
         return self._feature
+
+    def GetFeatures(self, _top: bool) -> list[object]:
+        return list(self._features)
 
 
 class _FakeDraftDoc:

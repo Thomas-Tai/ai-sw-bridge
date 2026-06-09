@@ -1571,6 +1571,8 @@ def _create_draft(doc: Any, feature: dict, target: dict) -> tuple[bool, str | No
     face_coords = target["faces"]
     doc.ForceRebuild3(False)
     try:
+        _feats = doc.FeatureManager.GetFeatures(True)
+        before = len(_feats) if _feats else 0
         neutral = _get_face_entity(doc, neutral_coord)
         if neutral is None:
             return False, f"could not resolve neutral face at {neutral_coord}"
@@ -1591,12 +1593,18 @@ def _create_draft(doc: Any, feature: dict, target: dict) -> tuple[bool, str | No
             if not select_entity(ent, append=True, mark=2):
                 return False, f"could not select draft face[{k}]"
         fm = doc.FeatureManager
-        feat = fm.InsertMultiFaceDraft(
+        # InsertMultiFaceDraft returns None EVEN ON SUCCESS (the W6 dome/shell
+        # lesson — W44 audit measured ΔVol +419 while _materialized(feat) was
+        # False). Verify via a feature-count delta, never the return value.
+        fm.InsertMultiFaceDraft(
             math.radians(angle_deg), flip, edge_draft, prop, False, False
         )
-        if _materialized(feat):
+        doc.ForceRebuild3(False)
+        _feats = doc.FeatureManager.GetFeatures(True)
+        after = len(_feats) if _feats else 0
+        if after > before:
             return True, None
-        return False, "InsertMultiFaceDraft did not materialize"
+        return False, f"draft did not add a feature (count {before} -> {after})"
     except Exception as exc:
         return False, f"draft pipeline failed: {exc!r}"
 
