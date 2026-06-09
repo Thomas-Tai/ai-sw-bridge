@@ -23,6 +23,8 @@ MATE_TYPES = frozenset(
         "tangent",
         "angle",
         "width",
+        "gear",
+        "screw",
     }
 )
 
@@ -80,6 +82,18 @@ MATE_SCHEMA = {
         "alignment": {"type": "string", "enum": sorted(MATE_ALIGNMENTS)},
         "value_mm": {"type": "number"},
         "value_deg": {"type": "number"},
+        # gear (W46): ratio numerator/denominator (bound to a/b selection order)
+        "ratio": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["numerator", "denominator"],
+            "properties": {
+                "numerator": {"type": "number", "exclusiveMinimum": 0},
+                "denominator": {"type": "number", "exclusiveMinimum": 0},
+            },
+        },
+        # screw (W46): pitch as distance-per-revolution (mm)
+        "pitch_mm": {"type": "number", "exclusiveMinimum": 0},
         "limit": {
             "type": "object",
             "additionalProperties": False,

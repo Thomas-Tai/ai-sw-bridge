@@ -40,7 +40,16 @@ MATE_TYPE_ENUMS = {
     "distance": 5,         # swMateDISTANCE
     "angle": 6,            # swMateANGLE (not in Phase-2 scope)
     "width": 11,           # swMateWIDTH (two-reference-set, W12)
+    # Mechanical/kinematic mates (W46 Tier-1) — typelib-verified from
+    # swconst.tlb v32 (NOT API-doc guesses: gear was 10 not the doc's 12,
+    # screw 17 not 14; 12=LOCKTOSKETCH, 14=MAXMATES would silently misfire).
+    "gear": 10,            # swMateGEAR
+    "screw": 17,           # swMateSCREW
 }
+
+# swScrewMateDistanceOptions_e (swconst.tlb): governs how RevolutionVal reads.
+_SCREW_REVS_PER_LENGTH = 0   # swRevolutionsPerUnitLength
+_SCREW_DISTANCE_PER_REV = 1  # swDistancePerRevolution (pitch = m per turn)
 
 # Typed interface names per mate type (from typelib dump).
 # Where a typed interface exists, we QI it to set type-specific properties.
@@ -54,6 +63,8 @@ MATE_TYPE_INTERFACES = {
     "distance": "IDistanceMateFeatureData",
     "angle": "IAngleMateFeatureData",
     "width": "IWidthMateFeatureData",
+    "gear": "IGearMateFeatureData",
+    "screw": "IScrewMateFeatureData",
 }
 
 
@@ -394,6 +405,29 @@ def create_mate(
             value_deg = mate_spec.get("value_deg")
             if value_deg is not None:
                 typed_iface.Angle = math.radians(float(value_deg))
+
+        # Gear (W46): ratio is a NUMERATOR/DENOMINATOR pair bound to the
+        # EntitiesToMate ORDER — numerator maps to entity a (faces[0]),
+        # denominator to entity b (faces[1]). The kernel may store the
+        # reciprocal; the round-trip PAE pins the convention. A zero/unset
+        # ratio makes CreateMate return None, so this MUST precede CreateMate.
+        if mate_type_str == "gear":
+            ratio = mate_spec.get("ratio") or {}
+            num = ratio.get("numerator")
+            den = ratio.get("denominator")
+            if num is not None:
+                typed_iface.GearRatioNumerator = float(num)
+            if den is not None:
+                typed_iface.GearRatioDenominator = float(den)
+
+        # Screw (W46): RevolutionType (swScrewMateDistanceOptions_e) gates how
+        # RevolutionVal is read — it MUST be set BEFORE the scalar or the kernel
+        # restores a default (the W46 AMBER catch). pitch_mm is distance-per-rev.
+        if mate_type_str == "screw":
+            pitch_mm = mate_spec.get("pitch_mm")
+            if pitch_mm is not None:
+                typed_iface.RevolutionType = _SCREW_DISTANCE_PER_REV
+                typed_iface.RevolutionVal = float(pitch_mm) / 1000.0
 
         # Limit mates: min/max variation on distance or angle
         limit = mate_spec.get("limit")
