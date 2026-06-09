@@ -188,12 +188,15 @@ count — ΔVol-only proof accepted); `sweep` ΔVol +2,356 / ΔFaces +3; `sweep_
 ΔVol-only). The edge_flange ghost was the **only** ghost in the advertised set;
 all 18 kinds now stand on effect proof (or are legitimately datum-only).
 
-**One handler defect surfaced (verification-method, NOT a ghost):**
-`_create_draft` checks only `_materialized(feat)`, but `InsertMultiFaceDraft`
-returns `None` even on success → the handler reports `ok=False` when the draft
-in fact materializes (ΔVol +419 measured). Fix: a feature-count-delta fallback,
-mirroring `_create_dome` / `_create_shell`. Tracked for W0 (the audit made zero
-production edits by dispatch).
+**One handler defect surfaced (verification-method, NOT a ghost) — FIXED
+2026-06-09 (`40842eb`):** `_create_draft` checked only `_materialized(feat)`,
+but `InsertMultiFaceDraft` returns `None` even on success → the handler reported
+`ok=False` when the draft in fact materialized (ΔVol +419 measured). Fixed with
+the feature-count-delta gate that `_create_dome` / `_create_shell` already use.
+Verification basis = no fresh PAE (W6/T4 sweep-cut precedent): the W44 harness
+`test_draft` already ran this exact `GetFeatures(True)` delta live (lines
+389-398, GREEN ΔVol+419); the fix ports that logic 1:1 into the handler, the
+coordinate face-resolution path unchanged.
 
 ## v0.13+ backlog (no committed dates)
 
