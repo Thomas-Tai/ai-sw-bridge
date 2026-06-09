@@ -40,6 +40,8 @@ _EXPECTED_TOOLS = frozenset(
         "sw_mate_errors",
         "sw_custom_props",
         "sw_enabled_addins",
+        "sw_undercut_faces",
+        "sw_min_wall_thickness",
         "sw_build",
         "sw_apidoc_search",
         "sw_apidoc_detail",

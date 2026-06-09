@@ -79,6 +79,8 @@ def main() -> int:
         "sw_mate_errors": {},
         "sw_custom_props": {},
         "sw_enabled_addins": {},
+        "sw_undercut_faces": {},
+        "sw_min_wall_thickness": {},
         # Observation (with args)
         "sw_screenshot": {"width": 320, "height": 240, "fit_view": False},
         "sw_measure": {},

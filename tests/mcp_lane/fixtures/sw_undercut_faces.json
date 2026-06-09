@@ -1,0 +1,53 @@
+{
+  "tool": "sw_undercut_faces",
+  "args": {},
+  "result": {
+    "ok": false,
+    "doc_path": null,
+    "pull_dir": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "face_count": 0,
+    "undercut_count": 0,
+    "releasable_count": 0,
+    "side_wall_count": 0,
+    "skipped": 0,
+    "undercut_faces": [],
+    "faces": [],
+    "error": "no_active_doc"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
+    "pull_dir": {
+      "__list__": true,
+      "len": "*",
+      "item": "$float"
+    },
+    "face_count": "$int",
+    "undercut_count": "$int",
+    "releasable_count": "$int",
+    "side_wall_count": "$int",
+    "skipped": "$int",
+    "undercut_faces": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "faces": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}

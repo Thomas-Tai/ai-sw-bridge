@@ -18,6 +18,8 @@ Subcommands:
   custom_props        -> sw_get_custom_props()  [experimental]
   addins              -> sw_get_enabled_addins()  [experimental, W7.1]
   selection           -> selection()              [any doc, W43]
+  undercut            -> sw_undercut_faces(pull_x, pull_y, pull_z)  [experimental, DFM]
+  min_wall            -> sw_min_wall_thickness(samples_per_face)  [experimental, DFM]
 
 Each subcommand prints a single JSON object to stdout and exits 0 if the
 underlying tool returned ok=True, else 1. Both --key=value and --key value
@@ -110,6 +112,18 @@ def _run_draft(args: argparse.Namespace) -> dict[str, Any]:
 
 def _run_selection(_args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().selection()
+
+
+def _run_undercut(args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().undercut_faces(
+        pull_x=args.pull_x, pull_y=args.pull_y, pull_z=args.pull_z
+    )
+
+
+def _run_min_wall(args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().min_wall_thickness(
+        samples_per_face=args.samples_per_face
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -361,6 +375,52 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.set_defaults(func=_run_selection)
+
+    p = subs.add_parser(
+        "undercut",
+        help="Report faces that block mold/tool withdrawal along a pull direction (DFM).",
+        description=(
+            "Read-only DFM probe (cousin of draft analysis). Enumerates "
+            "every solid face of the active part via GetBodies2/GetFaces, "
+            "reads each IFace2.Normal, and classifies it as undercut / "
+            "releasable / side-wall vs the pull direction (default +Y). A "
+            "back-facing (negative-dot) face is flagged as an undercut. "
+            "Part docs only."
+        ),
+    )
+    p.add_argument(
+        "--pull-x", dest="pull_x", type=float, default=0.0, help="Pull dir X (default 0)"
+    )
+    p.add_argument(
+        "--pull-y", dest="pull_y", type=float, default=1.0, help="Pull dir Y (default 1)"
+    )
+    p.add_argument(
+        "--pull-z", dest="pull_z", type=float, default=0.0, help="Pull dir Z (default 0)"
+    )
+    add_subcommand_tier(p, "experimental")
+    p.set_defaults(func=_run_undercut)
+
+    p = subs.add_parser(
+        "min_wall",
+        help="Report the minimum wall thickness of the active solid part (DFM).",
+        description=(
+            "Read-only DFM probe -- the thin-region risk metric for "
+            "molding/casting/printing. Samples each solid face and measures "
+            "the through-material distance to the nearest opposite face via "
+            "IFace2.GetClosestPointOn; the smallest is the min wall. Part "
+            "docs only. EXPERIMENTAL: the closest-point estimate is an upper "
+            "bound on the true normal-ray wall for non-planar faces."
+        ),
+    )
+    p.add_argument(
+        "--samples-per-face",
+        dest="samples_per_face",
+        type=int,
+        default=4,
+        help="On-face sample points per face (default 4).",
+    )
+    add_subcommand_tier(p, "experimental")
+    p.set_defaults(func=_run_min_wall)
 
     return parser
 

@@ -1,0 +1,44 @@
+{
+  "tool": "sw_min_wall_thickness",
+  "args": {},
+  "result": {
+    "ok": false,
+    "doc_path": null,
+    "min_wall_mm": null,
+    "min_wall_m": null,
+    "mean_wall_mm": null,
+    "sample_count": 0,
+    "valid_sample_count": 0,
+    "samples_per_face": 4,
+    "method": "closest_point_projection",
+    "error": "no_active_doc"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
+    "min_wall_mm": [
+      "$float",
+      "$none"
+    ],
+    "min_wall_m": [
+      "$float",
+      "$none"
+    ],
+    "mean_wall_mm": [
+      "$float",
+      "$none"
+    ],
+    "sample_count": "$int",
+    "valid_sample_count": "$int",
+    "samples_per_face": "$int",
+    "method": "$str",
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}
