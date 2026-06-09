@@ -23,6 +23,7 @@ from .sw_com import (
 )
 from .observe_bbox import sw_get_bbox_from_doc
 from .observe_clearance import sw_get_clearance
+from .observe_draft import sw_get_draft_analysis
 from .observe_inertia import sw_get_inertia
 from .observe_interference import sw_get_interference
 from .observe_measure import sw_get_measure_from_doc
@@ -1392,3 +1393,22 @@ class SolidWorksObserver:
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
         return sw_get_clearance(doc, comp_a, comp_b)
+
+    def draft_analysis(
+        self,
+        pull_direction: str,
+        min_angle_deg: float = 1.0,
+    ) -> dict[str, Any]:
+        """DFM draft analysis of the active part (Wave-37).
+
+        Classifies every face as positive/negative/vertical draft relative
+        to *pull_direction*.  Reports minimum draft angle and faces below
+        *min_angle_deg*.  Uses first-principles face-normal sweep
+        (``GetBodies2`` → ``GetFaces`` → ``IFace2.Normal`` vs pull vector).
+
+        Part documents only. Assemblies/drawings get a typed error result.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_draft_analysis(doc, pull_direction, min_angle_deg)
