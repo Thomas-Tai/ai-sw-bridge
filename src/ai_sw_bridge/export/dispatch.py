@@ -64,6 +64,9 @@ _SW_SAVE_AS_CURRENT_VERSION = 0
 # swSaveAsOptions_e
 _SW_SAVE_AS_OPTIONS_SILENT = 1
 
+# swDWGExportType_e (IPartDoc.ExportToDWG2)
+_SW_EXPORT_SHEETMETAL = 2
+
 
 @dataclass(frozen=True)
 class ExportRequest:
@@ -194,16 +197,7 @@ def _export_one(doc: Any, req: ExportRequest, part_name: str) -> ExportResult:
     if fmt.save_method == SaveMethod.EXPORT_PDF:
         return _export_pdf(doc, fmt, out_path, req.sheets)
     if fmt.save_method == SaveMethod.FLAT_PATTERN_DXF:
-        return ExportResult(
-            format=fmt.name,
-            path=path_str,
-            ok=False,
-            error=(
-                "Flat-pattern DXF export is SEAT-gated (P1.1) and gated "
-                "by S-SHEETMETAL. Needs the flat-pattern config activated "
-                "before ExportToDWG2."
-            ),
-        )
+        return _flat_pattern_dxf(doc, fmt, out_path)
     return ExportResult(
         format=fmt.name,
         path=path_str,
@@ -507,6 +501,176 @@ def _saveas3_direct(
             path=path_str,
             ok=False,
             error="SaveAs3 returned NoError but file is missing or empty",
+        )
+
+    return ExportResult(format=fmt.name, path=path_str, ok=True)
+
+
+def _flat_pattern_dxf(
+    doc: Any, fmt: ExportFormat, out_path: Path
+) -> ExportResult:
+    """Export a sheet-metal part's flat pattern to DXF via ExportToDWG2.
+
+    Requires a Part document (``.SLDPRT``) that contains a Flat-Pattern
+    feature (auto-generated when sheet-metal features like Base-Flange are
+    added). The Flat-Pattern feature ships suppressed by default — this
+    function unsuppresses it before calling ``ExportToDWG2``.
+
+    Fail-closed:
+      - Non-Part documents -> typed error, no file written.
+      - No Flat-Pattern feature found -> typed error, no file written.
+
+    COM route (W42 S1 characterization):
+      ``IPartDoc.ExportToDWG2(path, source, exportType, sheetMetalOpt,
+      alignment, bends, exportLayers, geoms, version)``
+    with ``exportType=2`` (swExportToDWG_ExportSheetMetal) and
+    ``sheetMetalOpt=True``. Falls back to ``InvokeTypes`` if the late-bound
+    call raises (ExportToDWG2 is not always makepy-exposed).
+    """
+    path_str = str(out_path)
+
+    try:
+        doc_type = _get_doc_type(doc)
+    except Exception as exc:
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error=f"Cannot determine document type: {exc}",
+        )
+
+    if doc_type != _SW_DOC_PART:
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error=(
+                f"format:'dxf_flat' requires a Part (.SLDPRT) document, "
+                f"but doc type is {doc_type} "
+                f"(1=Part, 2=Assembly, 3=Drawing)"
+            ),
+        )
+
+    # --- Save the part so ExportToDWG2 has a valid SourceFile ---
+    try:
+        source_path = doc.GetPathName
+        if callable(source_path):
+            source_path = source_path()
+        source_path = str(source_path) if source_path else ""
+    except Exception:
+        source_path = ""
+
+    if not source_path:
+        tmp_dir = out_path.parent
+        tmp_part = tmp_dir / f"_flat_tmp_{out_path.stem}.sldprt"
+        try:
+            err = doc.SaveAs3(str(tmp_part), 0, 0)
+            err_code = int(err) if err is not None else 0
+            if err_code != 0:
+                return ExportResult(
+                    format=fmt.name,
+                    path=path_str,
+                    ok=False,
+                    error=f"Cannot save part for flat-pattern export: SaveAs3 error {err_code}",
+                )
+            source_path = str(tmp_part)
+        except Exception as exc:
+            return ExportResult(
+                format=fmt.name,
+                path=path_str,
+                ok=False,
+                error=f"Cannot save part for flat-pattern export: {exc}",
+            )
+
+    # --- Find and unsuppress the Flat-Pattern feature ---
+    flat_found = False
+    try:
+        raw_count = doc.GetFeatureCount
+        count = raw_count(True) if callable(raw_count) else int(raw_count)
+
+        for i in range(count):
+            try:
+                feat = doc.FeatureByPositionReverse(i)
+            except Exception:
+                break
+            if feat is None:
+                break
+            try:
+                type_name_raw = feat.GetTypeName
+                type_name = (
+                    type_name_raw() if callable(type_name_raw) else str(type_name_raw)
+                )
+            except Exception:
+                type_name = ""
+
+            if "FlatPattern" in type_name or "Flat-Pattern" in type_name:
+                flat_found = True
+                try:
+                    feat.SetSuppression(1)
+                except Exception as exc:
+                    logger.warning("Flat-Pattern unsuppress failed: %s", exc)
+                break
+    except Exception as exc:
+        logger.warning("Feature tree walk for Flat-Pattern failed: %s", exc)
+
+    if not flat_found:
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error=(
+                "No Flat-Pattern feature found in this part. "
+                "format:'dxf_flat' requires a sheet-metal part with a "
+                "Flat-Pattern feature (auto-generated from Base-Flange / "
+                "Edge-Flange features)."
+            ),
+        )
+
+    doc.ForceRebuild3(False)
+
+    # --- Export flat-pattern DXF ---
+    # Primary route: ExportFlatPatternView (W42 S1 proven — 2 args, reliable).
+    # Fallback: ExportToDWG2 with 9 bool args (COM-accepted but may return
+    # False without writing a file on some SW builds).
+    try:
+        success = doc.ExportFlatPatternView(path_str, 0)
+    except Exception as exc:
+        logger.info(
+            "ExportFlatPatternView failed (%r); trying ExportToDWG2 fallback",
+            exc,
+        )
+        try:
+            success = doc.ExportToDWG2(
+                path_str, source_path,
+                _SW_EXPORT_SHEETMETAL,
+                True, False, False, False, False, 0,
+            )
+        except Exception as exc2:
+            return ExportResult(
+                format=fmt.name,
+                path=path_str,
+                ok=False,
+                error=(
+                    f"Flat-pattern export failed: "
+                    f"ExportFlatPatternView={exc!r}, "
+                    f"ExportToDWG2={exc2!r}"
+                ),
+            )
+
+    if success is None or not bool(success):
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error="Flat-pattern export returned False (DXF not written)",
+        )
+
+    if not out_path.exists() or out_path.stat().st_size == 0:
+        return ExportResult(
+            format=fmt.name,
+            path=path_str,
+            ok=False,
+            error="Flat-pattern export returned True but DXF is missing or empty on disk",
         )
 
     return ExportResult(format=fmt.name, path=path_str, ok=True)

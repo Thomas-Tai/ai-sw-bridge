@@ -136,6 +136,7 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         extension=".dxf",
         save_method=SaveMethod.FLAT_PATTERN_DXF,
         description="DXF flat pattern — sheet-metal unfold (needs S-SHEETMETAL)",
+        seat_confirmed=True,  # W42 seat-confirmed: ExportToDWG2(sheetMetalOption=True) → flat-pattern DXF with outline + bend lines
     ),
 }
 
