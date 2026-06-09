@@ -46,6 +46,7 @@ CLI_EMITTERS = frozenset(
         "properties.py",
         "configurations.py",
         "sketch_relations.py",
+        "import.py",
     }
 )
 
