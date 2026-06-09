@@ -5,7 +5,7 @@ End-to-end ``propose -> dry_run -> commit`` for ``kind: "properties"`` specs.
   - **propose**: validate offline (jsonschema + semantic).
   - **dry_run**: confirm model file exists and is openable.
   - **commit**: open -> Get CustomPropertyManager -> Add3 each prop -> Save3
-    -> reopen -> Get6 read-back verification -> close.
+    -> reopen -> Get4 read-back verification -> close.
 
 Fail-closed: if any Add3 fails or read-back doesn't match, the operation
 is considered failed and no partial state is persisted.
@@ -147,23 +147,30 @@ def commit_properties(
 
         typed_cpm = typed_qi(cpm_raw, "ICustomPropertyManager", module=mod)
 
-        # Count before
-        count_before = typed_cpm.Count()
+        # Count before — Count is a PROPERTY on the typed proxy, not a method
+        # (typed_cpm.Count() throws "'int' object is not callable").
+        count_before = typed_cpm.Count
         result["count_before"] = count_before
+
+        # Existence is determined by GetNames() membership, NOT by a Get*
+        # "exists" flag: Get4/Get6's first return is a RESOLVED flag, not an
+        # existence flag (a missing prop returns (True, '', '')). GetNames()
+        # returns a tuple of property names, or None when there are none.
+        existing_names = set(typed_cpm.GetNames() or ())
 
         # Set each property
         for name, value in properties.items():
-            # Check if exists (for overwrite logic)
-            try:
-                exists, ptype, pvalue, resolved = typed_cpm.Get6(name)
-            except Exception:
-                exists = False
-
-            if exists and not overwrite:
+            if name in existing_names and not overwrite:
+                # Read the existing value via Get4 (Get6 is dead at the makepy
+                # layer — raises "Type mismatch" on typed AND raw dispatch).
+                try:
+                    _resolved, pvalue, _resolved2 = typed_cpm.Get4(name, False)
+                except Exception:
+                    pvalue = None
                 result["props_skipped"].append({
                     "name": name,
                     "reason": "exists and overwrite=false",
-                    "existing_value": pvalue if exists else None,
+                    "existing_value": pvalue,
                 })
                 continue
 
@@ -188,14 +195,14 @@ def commit_properties(
             sw.CloseDoc(title)
             return result
 
-        # Immediate read-back before save
+        # Immediate read-back before save — Get4(name, useCached=False) returns
+        # a 3-tuple (resolved_flag, value, resolved2). Get6 is dead (Type
+        # mismatch at the makepy layer on both typed and raw dispatch).
         for prop_info in result["props_set"]:
             name = prop_info["name"]
             try:
-                exists, ptype, pvalue, resolved = typed_cpm.Get6(name)
+                _resolved, pvalue, _resolved2 = typed_cpm.Get4(name, False)
                 prop_info["immediate_read_back"] = {
-                    "exists": exists,
-                    "type": ptype,
                     "value": pvalue,
                     "match": pvalue == prop_info["value"],
                 }
@@ -205,7 +212,7 @@ def commit_properties(
                         f"set {prop_info['value']!r}, got {pvalue!r}"
                     )
             except Exception as exc:
-                result["errors"].append(f"Get6({name}) raised: {exc!r}")
+                result["errors"].append(f"Get4({name}) raised: {exc!r}")
 
         if result["errors"]:
             title = mdoc2.GetTitle
@@ -213,12 +220,21 @@ def commit_properties(
             sw.CloseDoc(title)
             return result
 
-        # Save
+        # Save via SaveAs3 in-place (the export-epoch-proven route — W33/W34).
+        # Save3 is DEAD here: its trailing [out] Errors/Warnings params break
+        # early-bind and it RAISES "Type mismatch" (so the old `if not save_ok`
+        # SaveAs3 fallback never ran). SaveAs3(path, version=0, options=0)
+        # returns swFileSaveError_e (0=success, non-zero=failure → no file).
         try:
-            save_ok = mdoc2.Save3(False)
-            if not save_ok:
-                # Try SaveAs3
-                mdoc2.SaveAs3(model_path, 0, 2)
+            save_err = mdoc2.SaveAs3(model_path, 0, 0)
+            if save_err != 0:
+                result["errors"].append(
+                    f"SaveAs3 returned swFileSaveError={save_err} (expected 0)"
+                )
+                title = mdoc2.GetTitle
+                title = title() if callable(title) else title
+                sw.CloseDoc(title)
+                return result
             result["saved"] = True
         except Exception as exc:
             result["errors"].append(f"Save failed: {exc!r}")
@@ -245,34 +261,36 @@ def commit_properties(
         cpm_raw2 = ext_obj2.CustomPropertyManager("")
         typed_cpm2 = typed_qi(cpm_raw2, "ICustomPropertyManager", module=mod)
 
-        # Count after
-        count_after = typed_cpm2.Count()
+        # Count after — property, not method (see count_before note)
+        count_after = typed_cpm2.Count
         result["count_after"] = count_after
 
-        # Get6 read-back on reopen
+        # Get4 read-back on reopen (verify-the-EFFECT: the props survived a
+        # close + reopen cycle). Existence comes from GetNames(); Get4 reads the
+        # value (Get6 is dead — see immediate-read-back note).
+        reopen_names = set(typed_cpm2.GetNames() or ())
         for prop_info in result["props_set"]:
             name = prop_info["name"]
             expected = prop_info["value"]
             try:
-                exists, ptype, pvalue, resolved = typed_cpm2.Get6(name)
+                exists = name in reopen_names
+                _resolved, pvalue, _resolved2 = typed_cpm2.Get4(name, False)
                 read_back_entry = {
                     "name": name,
                     "exists": exists,
-                    "type": ptype,
                     "value": pvalue,
-                    "resolved": resolved,
                     "expected": expected,
-                    "match": pvalue == expected,
+                    "match": exists and pvalue == expected,
                 }
                 result["read_back"].append(read_back_entry)
                 prop_info["reopen_read_back"] = read_back_entry
                 if not read_back_entry["match"]:
                     result["errors"].append(
                         f"reopen read-back mismatch for '{name}': "
-                        f"expected {expected!r}, got {pvalue!r}"
+                        f"expected {expected!r}, got {pvalue!r} (exists={exists})"
                     )
             except Exception as exc:
-                result["errors"].append(f"reopen Get6({name}) raised: {exc!r}")
+                result["errors"].append(f"reopen Get4({name}) raised: {exc!r}")
 
         # Close
         title2 = mdoc2b.GetTitle

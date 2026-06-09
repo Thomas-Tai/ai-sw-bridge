@@ -43,6 +43,7 @@ CLI_EMITTERS = frozenset(
         "history.py",
         "apidoc.py",
         "checkpoint.py",
+        "properties.py",
     }
 )
 
