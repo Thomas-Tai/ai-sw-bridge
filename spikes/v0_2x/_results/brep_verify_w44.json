@@ -1,0 +1,131 @@
+{
+  "spike_id": "W44_brep_verify",
+  "timestamp": 1781000223.75568,
+  "results": {
+    "base_flange": {
+      "kind": "base_flange",
+      "status": "GREEN",
+      "before": {
+        "body_count": 0,
+        "volume_mm3": 0.0,
+        "face_count": 0
+      },
+      "handler_ok": true,
+      "handler_error": null,
+      "after": {
+        "body_count": 1,
+        "volume_mm3": 3200.0,
+        "face_count": 6
+      },
+      "delta": {
+        "vol": 3200.0,
+        "faces": 6
+      }
+    },
+    "shell": {
+      "kind": "shell",
+      "status": "GREEN",
+      "before": {
+        "body_count": 1,
+        "volume_mm3": 32000.0,
+        "face_count": 6
+      },
+      "handler_ok": true,
+      "handler_error": null,
+      "after": {
+        "body_count": 1,
+        "volume_mm3": 4564.0,
+        "face_count": 11
+      },
+      "delta": {
+        "vol": -27436.0,
+        "faces": 5
+      }
+    },
+    "draft": {
+      "kind": "draft",
+      "status": "GREEN",
+      "before": {
+        "body_count": 1,
+        "volume_mm3": 32000.0,
+        "face_count": 6
+      },
+      "neutral_found": true,
+      "side_found": true,
+      "sel_neutral": true,
+      "sel_face": true,
+      "handler_ok": true,
+      "handler_error": null,
+      "after": {
+        "body_count": 1,
+        "volume_mm3": 32419.2622,
+        "face_count": 6
+      },
+      "delta": {
+        "vol": 419.2622,
+        "faces": 0
+      }
+    },
+    "sweep": {
+      "kind": "sweep",
+      "status": "GREEN",
+      "before": {
+        "body_count": 0,
+        "volume_mm3": 0.0,
+        "face_count": 0
+      },
+      "handler_ok": true,
+      "handler_error": null,
+      "after": {
+        "body_count": 1,
+        "volume_mm3": 2356.1945,
+        "face_count": 3
+      },
+      "delta": {
+        "vol": 2356.1945,
+        "faces": 3
+      }
+    },
+    "sweep_cut": {
+      "kind": "sweep_cut",
+      "status": "GREEN",
+      "before": {
+        "body_count": 1,
+        "volume_mm3": 32000.0,
+        "face_count": 6
+      },
+      "handler_ok": true,
+      "handler_error": null,
+      "after": {
+        "body_count": 1,
+        "volume_mm3": 31717.2567,
+        "face_count": 8
+      },
+      "delta": {
+        "vol": -282.7433,
+        "faces": 2
+      }
+    },
+    "dome": {
+      "kind": "dome",
+      "status": "GREEN",
+      "before": {
+        "body_count": 1,
+        "volume_mm3": 32000.0,
+        "face_count": 6
+      },
+      "handler_ok": true,
+      "handler_error": null,
+      "after": {
+        "body_count": 1,
+        "volume_mm3": 35555.5532,
+        "face_count": 6
+      },
+      "delta": {
+        "vol": 3555.5532,
+        "faces": 0
+      }
+    }
+  },
+  "summary": "6/6 GREEN, 0 GHOST"
+}

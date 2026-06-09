@@ -118,6 +118,28 @@ edge-flange / loft precedent. First raised + deferred 2026-06-09 (W41 seat).
 | **`combine` (boolean add/subtract/common)** | Two un-cleared blockers, each its own S1. **(1) Raw-`GetBodies2` binding:** `_create_combine` still calls `doc.GetBodies2` on the raw (un-QI'd) doc — needs the same typed-`IPartDoc` QI the `delete_body` path uses. **(2) `IBody2`-array marshaling (the real wall):** `InsertCombineFeature(type, mainBody, toolBodies)` requires the main body as an `IBody2` dispatch AND the tool bodies as an `IBody2` SAFEARRAY marshaled out-of-process — exactly the un-arrayed-dispatch class that walled edge-flange for two waves until the `VARIANT(VT_ARRAY \| VT_DISPATCH, (…))` breakthrough (Wave-7). The fix is likely the same SAFEARRAY-of-dispatch wrap, but it needs its own seat de-risk (build 2 overlapping bodies → subtract → assert single body, volume == A − overlap; a no-op that leaves 2 bodies = FAIL). Until proven, `combine` stays fail-closed. `_COMBINE_OP_MAP = {add:0, subtract:1, common:2}` already characterized. |
 | **`split` (one body → N by a trim plane/surface)** | Solver-deep + needs a cutting entity, and the W41 S1 fixtures only ever built ONE body so the increase-to-N gate was never exercised (`PRECONDITION_FAILED`, not a COM verdict). Owns the highest wall-risk of the three (loft/rib solver-deep family). Needs a dedicated S1: build a single body + a ref plane through it → split → assert body count 1→N with volumes summing to the original. `_create_split` characterized (selects body[0], expects a `cutting_plane`/`cutting_surface` ref) but unproven end-to-end. |
 
+## Wave-42 (`dxf_flat` — Developed Boundary Pass; inner bend lines deferred)
+
+**`dxf_flat` SHIPPED 2026-06-09 as a Developed Boundary Pass** — it exports the
+sheet-metal **developed (unrolled) OUTLINE** to DXF, proven by physical span
+(L-bracket: vol=6902.655 mm³, 14 faces, one 90° bend → developed outline
+**86.28 × 40.0 mm**, strictly > the 60 mm folded face and < the 90 mm naive
+segment sum = an authentic topological unfold; the test pins that span directly,
+not layer names / entity counts). **Deferred sub-scope: inner bend lines.**
+`IModelDoc2.ExportFlatPatternView(path, options)` emits only the developed
+boundary — across **every option 0–7** the DXF contains the outline LINEs on
+layer `0` and **no bend-line layer** (`has_bend_layer=false`, reproduced on the
+seat). The brake/bend annotation is therefore NOT available through the
+flat-pattern-view export API.
+
+**Architectural pathway for bend lines (when needed):** route through a
+**drawing-space flat-pattern view** built on the established **W33 drawing
+framework** — insert a Flat-Pattern drawing view of the sheet-metal part into a
+`.SLDDRW`, where the bend lines render as first-class drawing entities, then
+export that view. This is a `kind:"drawing"` composition, not an export-API flag,
+and is its own S1 (view creation + bend-line entity extraction). First raised +
+deferred 2026-06-09 (W42 seat).
+
 ## Wave-44 (the "ghost feature" finding — B-rep-effect verification gap)
 
 **`edge_flange` is a GHOST — QUARANTINED 2026-06-09.** While building a bent
@@ -154,9 +176,24 @@ EFFECT-PROVEN (sound, no re-verify needed): `fillet`, `chamfer` (face 6→7),
 `linear`/`circular`/`mirror_pattern` (volume/face delta), `wizard_hole` (caught a
 real no-op), `delete_body` (W41 ΔVol). Ref-geom kinds (`ref_plane`/`ref_axis`/
 `coordinate_system`/`ref_point`) legitimately have no body delta (datum-only). The
-**W44 verification-gap audit** (dispatched 2026-06-09) authors a ΔVol/ΔFace
-re-verification harness per at-risk kind; W0 drives them on the seat. Any kind
-that shows ΔVol=0 follows `edge_flange` into quarantine.
+**W44 verification-gap audit** (dispatched 2026-06-09) authored a ΔVol/ΔFace
+re-verification harness (`spikes/v0_2x/brep_verify_w44.py`,
+`_results/brep_verify_w44.json`) per at-risk kind; W0 drove it on the seat.
+
+**RESULT — 6/6 GREEN, 0 GHOSTS (2026-06-09):** every at-risk kind is
+effect-proven. `base_flange` ΔVol +3,200 / ΔFaces +6; `shell` ΔVol −27,436 /
+ΔFaces +5; `draft` ΔVol +419 / ΔFaces 0 (re-angles faces without changing
+count — ΔVol-only proof accepted); `sweep` ΔVol +2,356 / ΔFaces +3; `sweep_cut`
+ΔVol −283 / ΔFaces +2; `dome` ΔVol +3,556 / ΔFaces 0 (modifies a face in place —
+ΔVol-only). The edge_flange ghost was the **only** ghost in the advertised set;
+all 18 kinds now stand on effect proof (or are legitimately datum-only).
+
+**One handler defect surfaced (verification-method, NOT a ghost):**
+`_create_draft` checks only `_materialized(feat)`, but `InsertMultiFaceDraft`
+returns `None` even on success → the handler reports `ok=False` when the draft
+in fact materializes (ΔVol +419 measured). Fix: a feature-count-delta fallback,
+mirroring `_create_dome` / `_create_shell`. Tracked for W0 (the audit made zero
+production edits by dispatch).
 
 ## v0.13+ backlog (no committed dates)
 

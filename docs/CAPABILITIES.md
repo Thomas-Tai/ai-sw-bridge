@@ -93,7 +93,7 @@ multiple views per config, animation.*
 | `step203` | ⚠️ | same SaveAs3_DIRECT path as step214 (save_version=1); not independently byte-verified |
 | `parasolid` | ⚠️ | same SaveAs3_DIRECT path; not independently byte-verified |
 | `3mf` | ⚠️ | same SaveAs3_DIRECT path; not independently byte-verified |
-| `dxf_flat` | ⬜ | deferred (sheet-metal flat pattern) |
+| `dxf_flat` | ✅ | **W42** — developed flat-pattern OUTLINE; L-bracket unrolls to 86.28×40.0 mm (> 60 mm folded face, < 90 mm naive sum). Inner bend lines deferred (drawing flat-pattern view / W33; see DEFERRED Wave-42) |
 
 ## 4. Drawing — `ai-sw-drawing` (W4, W16–W28)
 
