@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "stage": "validation",
+  "errors": [],
+  "warnings": [],
+  "variants": [
+    {
+      "variant": "Small",
+      "ok": true,
+      "path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\.claude\\worktrees\\W36-configurations\\spikes\\v0_2x\\_results\\variants\\Small.SLDPRT",
+      "volume_mm3": 4000.0000000000005
+    },
+    {
+      "variant": "Medium",
+      "ok": true,
+      "path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\.claude\\worktrees\\W36-configurations\\spikes\\v0_2x\\_results\\variants\\Medium.SLDPRT",
+      "volume_mm3": 13500.000000000002
+    },
+    {
+      "variant": "Large",
+      "ok": true,
+      "path": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\.claude\\worktrees\\W36-configurations\\spikes\\v0_2x\\_results\\variants\\Large.SLDPRT",
+      "volume_mm3": 50000.00000000001
+    }
+  ],
+  "volumes": {
+    "Small": 4000.0000000000005,
+    "Medium": 13500.000000000002,
+    "Large": 50000.00000000001
+  },
+  "variant_count": 3,
+  "variant_names": [
+    "Small",
+    "Medium",
+    "Large"
+  ],
+  "distinct_volumes_mm3": [
+    4000.0,
+    13500.0,
+    50000.0
+  ],
+  "summary": "VERIFIED: 3/3 variants built, 3 distinct volumes: [4000.0, 13500.0, 50000.0] mm\u00b3. Expected: [4000.0, 13500.0, 50000.0]"
+}

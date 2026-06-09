@@ -17,6 +17,7 @@ from ai_sw_bridge.config import (
     ConfigVariant,
     VariantOverride,
     apply_overrides,
+    deep_merge,
     parse_variants,
     validate_overrides,
 )
@@ -72,10 +73,13 @@ def test_parse_variants_rejects_missing_name() -> None:
         parse_variants(block)
 
 
-def test_parse_variants_rejects_non_string_expression() -> None:
-    block = [{"name": "Bad", "overrides": {"X": 42}}]
-    with pytest.raises(ValueError, match="must be a string"):
-        parse_variants(block)
+def test_parse_variants_non_string_expression_becomes_nested() -> None:
+    """Non-string override values trigger the nested (multifile) path."""
+    block = [{"name": "Mixed", "overrides": {"X": 42}}]
+    variants = parse_variants(block)
+    assert len(variants) == 1
+    assert variants[0].spec_overrides == {"X": 42}
+    assert variants[0].overrides == []
 
 
 def test_parse_variants_rejects_non_dict_overrides() -> None:
@@ -217,6 +221,21 @@ def test_config_result_to_dict_ok() -> None:
     d = r.to_dict()
     assert d == {"variant": "Small", "ok": True}
     assert "error" not in d
+    assert "path" not in d
+    assert "volume_mm3" not in d
+
+
+def test_config_result_to_dict_with_path_and_volume() -> None:
+    r = ConfigResult(
+        variant="Small", ok=True, path="/tmp/Small.sldprt", volume_mm3=125000.0
+    )
+    d = r.to_dict()
+    assert d == {
+        "variant": "Small",
+        "ok": True,
+        "path": "/tmp/Small.sldprt",
+        "volume_mm3": 125000.0,
+    }
 
 
 def test_config_result_to_dict_error() -> None:
@@ -242,3 +261,99 @@ def test_variant_entry_schema_requires_name() -> None:
 def test_variant_override_schema_is_string_map() -> None:
     assert VARIANT_OVERRIDE_SCHEMA["type"] == "object"
     assert VARIANT_OVERRIDE_SCHEMA["additionalProperties"] == {"type": "string"}
+
+
+# ---------------------------------------------------------------------------
+# deep_merge()
+# ---------------------------------------------------------------------------
+
+
+def test_deep_merge_basic_replace() -> None:
+    base = {"name": "Box", "features": [{"width": 20.0}]}
+    overrides = {"name": "BigBox"}
+    result = deep_merge(base, overrides)
+    assert result["name"] == "BigBox"
+    assert result["features"] == [{"width": 20.0}]
+
+
+def test_deep_merge_nested_dict() -> None:
+    base = {
+        "name": "Box",
+        "features": [
+            {"type": "sketch_rectangle_on_plane", "name": "SK_Box", "width": 20.0}
+        ],
+    }
+    # Lists are replaced entirely by deep_merge (not element-merged)
+    overrides = {
+        "features": [
+            {"type": "sketch_rectangle_on_plane", "name": "SK_Box", "width": 50.0}
+        ]
+    }
+    result = deep_merge(base, overrides)
+    assert result["features"][0]["width"] == 50.0
+    assert result["features"][0]["type"] == "sketch_rectangle_on_plane"
+    assert result["name"] == "Box"  # non-overridden keys preserved
+
+
+def test_deep_merge_does_not_mutate_base() -> None:
+    base = {"a": {"b": 1}, "c": 2}
+    overrides = {"a": {"b": 99}}
+    result = deep_merge(base, overrides)
+    assert result["a"]["b"] == 99
+    assert base["a"]["b"] == 1  # base unchanged
+
+
+def test_deep_merge_list_replace() -> None:
+    base = {"features": [{"name": "A"}, {"name": "B"}]}
+    overrides = {"features": [{"name": "C"}]}
+    result = deep_merge(base, overrides)
+    assert result["features"] == [{"name": "C"}]
+
+
+def test_deep_merge_empty_overrides_is_identity() -> None:
+    base = {"x": 1, "y": {"z": 2}}
+    result = deep_merge(base, {})
+    assert result == base
+    assert result is not base  # fresh copy
+
+
+def test_deep_merge_adds_new_keys() -> None:
+    base = {"a": 1}
+    overrides = {"b": 2, "c": {"d": 3}}
+    result = deep_merge(base, overrides)
+    assert result == {"a": 1, "b": 2, "c": {"d": 3}}
+
+
+# ---------------------------------------------------------------------------
+# parse_variants() — nested dict overrides (multifile)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_variants_nested_dict_overrides() -> None:
+    block = [
+        {
+            "name": "Large",
+            "overrides": {
+                "features": [
+                    {"type": "sketch_rectangle_on_plane", "width": 50.0}
+                ]
+            },
+        }
+    ]
+    variants = parse_variants(block)
+    assert len(variants) == 1
+    assert variants[0].name == "Large"
+    assert variants[0].spec_overrides == {
+        "features": [{"type": "sketch_rectangle_on_plane", "width": 50.0}]
+    }
+    assert variants[0].overrides == []  # no locals overrides
+
+
+def test_parse_variants_flat_string_overrides_unchanged() -> None:
+    block = [
+        {"name": "Small", "overrides": {"WIDTH": "20.0", "HEIGHT": "30.0"}}
+    ]
+    variants = parse_variants(block)
+    assert len(variants) == 1
+    assert len(variants[0].overrides) == 2
+    assert variants[0].spec_overrides == {}  # no nested overrides
