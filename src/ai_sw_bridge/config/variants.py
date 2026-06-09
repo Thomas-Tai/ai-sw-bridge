@@ -143,8 +143,15 @@ def parse_variants(block: list[dict[str, Any]]) -> list[ConfigVariant]:
             )
 
         # Detect nested (multifile) vs flat (locals) overrides.
-        # Flat mode: every value is a string.  Anything else is nested.
-        is_nested = any(not isinstance(v, str) for v in raw_overrides.values())
+        # Nested mode requires a CONTAINER value — a dict (deep-merged) or a
+        # list (replaces the base list wholesale, per deep_merge). A bare
+        # scalar (e.g. 42) is malformed in BOTH modes — not a flat string
+        # expression and not a mergeable sub-tree — so it must fall through
+        # to the flat branch and hit the "must be a string expression" raise
+        # (the P4.1s contract), NOT be silently accepted as a nested override.
+        is_nested = any(
+            isinstance(v, (dict, list)) for v in raw_overrides.values()
+        )
 
         overrides: list[VariantOverride] = []
         spec_overrides: dict[str, Any] = {}

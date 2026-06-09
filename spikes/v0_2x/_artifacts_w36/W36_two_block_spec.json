@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "name": "TwoBlockConfigTest",
+  "features": [
+    {
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_BlockA",
+      "plane": "Front",
+      "width": 50.0,
+      "height": 50.0
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "Block_A",
+      "sketch": "SK_BlockA",
+      "depth": 50.0
+    },
+    {
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_BlockB",
+      "plane": "Right",
+      "width": 100.0,
+      "height": 100.0
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "Block_B",
+      "sketch": "SK_BlockB",
+      "depth": 100.0
+    }
+  ]
+}

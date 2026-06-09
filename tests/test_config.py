@@ -73,12 +73,25 @@ def test_parse_variants_rejects_missing_name() -> None:
         parse_variants(block)
 
 
-def test_parse_variants_non_string_expression_becomes_nested() -> None:
-    """Non-string override values trigger the nested (multifile) path."""
+def test_parse_variants_bare_scalar_rejected() -> None:
+    """A bare scalar override is malformed in BOTH modes and is rejected.
+
+    It is not a flat string expression and not a deep-mergeable sub-tree,
+    so it falls through to the flat branch and hits the P4.1s
+    "must be a string expression" contract (preserved alongside the
+    multifile nested-dict feature).
+    """
     block = [{"name": "Mixed", "overrides": {"X": 42}}]
+    with pytest.raises(ValueError, match="must be a string expression"):
+        parse_variants(block)
+
+
+def test_parse_variants_dict_value_triggers_nested() -> None:
+    """A DICT override value triggers the nested (multifile) path."""
+    block = [{"name": "Nested", "overrides": {"features": {"depth": 20}}}]
     variants = parse_variants(block)
     assert len(variants) == 1
-    assert variants[0].spec_overrides == {"X": 42}
+    assert variants[0].spec_overrides == {"features": {"depth": 20}}
     assert variants[0].overrides == []
 
 

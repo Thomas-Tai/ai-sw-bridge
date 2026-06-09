@@ -1,0 +1,2 @@
+"PART_DIAMETER"          = 25.0
+"PART_LENGTH"            = 80.0
