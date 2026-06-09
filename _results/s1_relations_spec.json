@@ -1,0 +1,9 @@
+{
+  "sketch": "SK_Rect",
+  "relations": [
+    {"type": "equal", "entities": [0, 1]},
+    {"type": "horizontal", "entities": [0]},
+    {"type": "vertical", "entities": [1]}
+  ],
+  "_comment": "S1 CLI mutation spec: 3 relation types from the 6-relation shipped set (equal=2-ref, horizontal=1-ref, vertical=1-ref). Applied to a 20x10mm rectangle. symmetric/coincident/collinear are deferred (tokens unproven — see docs/DEFERRED.md Wave-39)."
+}

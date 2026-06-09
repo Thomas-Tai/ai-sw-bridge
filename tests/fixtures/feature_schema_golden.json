@@ -132,6 +132,41 @@
           }
         },
         "description": "Construction line embedded in the sketch. Consumed by `revolve_boss` as the axis of revolution (SW auto-detects). No driving dim; coordinates are literal mm."
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -223,6 +258,41 @@
           }
         },
         "description": "In-face center offset (mm) from the FACE SKETCH ORIGIN, which empirically is the projection of the part origin onto the face (NOT the face's geometric center). For a feature whose base sketch was a center-rectangle on origin these happen to coincide; for one shifted off origin (e.g. TensionBracket cap with Y span [0,15]) they don't, and child sketches need a u/v offset to land on the bracket centroid instead of the part origin. Default (0, 0)."
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -337,6 +407,41 @@
           }
         },
         "description": "Construction line embedded in the sketch. Consumed by `revolve_boss` as the axis of revolution (SW auto-detects). No driving dim; coordinates are literal mm."
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -406,6 +511,41 @@
           }
         },
         "description": "In-face center offset (mm) from the face SKETCH ORIGIN, which is the projection of the part origin onto the face (NOT the face's geometric center -- see SKETCH_RECTANGLE_ON_FACE). Default (0, 0)."
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -482,6 +622,41 @@
             }
           }
         }
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -1292,6 +1467,41 @@
         "type": "boolean",
         "default": false,
         "description": "If true, mark the segment as a construction (centerline) entity."
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -1387,6 +1597,41 @@
       "construction": {
         "type": "boolean",
         "default": false
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -1447,6 +1692,41 @@
         "type": "boolean",
         "default": false,
         "description": "If true, mark the spline as a construction entity."
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -1548,6 +1828,41 @@
         "type": "number",
         "default": 0.0,
         "description": "Rotation of the slot's major axis from the sketch X axis (degrees)."
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -1636,6 +1951,41 @@
       "construction": {
         "type": "boolean",
         "default": false
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -1734,6 +2084,41 @@
       "construction": {
         "type": "boolean",
         "default": false
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   },
@@ -1811,6 +2196,41 @@
       "font": {
         "type": "string",
         "description": "Font family name (e.g. 'Arial'). Applied via the inserted ISketchText's text format (GetTextFormat -> TypeFaceName -> SetTextFormat); `height` sets CharHeight in the same call."
+      },
+      "relations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "entities"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "horizontal",
+                "vertical",
+                "parallel",
+                "perpendicular",
+                "equal",
+                "concentric"
+              ],
+              "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+            }
+          }
+        },
+        "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
       }
     }
   }

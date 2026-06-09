@@ -38,6 +38,7 @@ from .descriptors import (  # noqa: F401
     EXPECT_SCHEMA,
     LENGTH_SCHEMA,
     NAME_PATTERN,
+    RELATIONS_SCHEMA,
     assemble_all,
 )
 

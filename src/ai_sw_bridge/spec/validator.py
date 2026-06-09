@@ -430,6 +430,68 @@ def compute_referenced_face_roles(spec: dict[str, Any]) -> set[tuple[str, str]]:
     return refs
 
 
+def _check_relations(spec: dict[str, Any]) -> None:
+    """Sixth validation layer (W39): sketch relation type/arity/ref checks.
+
+    Validates any ``relations`` blocks on sketch features: known relation
+    types only, correct entity arity per type, entity refs are non-negative
+    integers, no duplicate refs within a single relation. Schema-level
+    checks (JSON Schema enum/int constraints) catch most malformation; this
+    layer adds the cross-field arity enforcement that JSON Schema can't
+    express cleanly with ``additionalProperties: false``.
+    """
+    from ._sketch_relations import RELATION_ARITY, SUPPORTED_RELATION_TYPES
+
+    for i, feat in enumerate(spec.get("features", [])):
+        relations = feat.get("relations")
+        if relations is None:
+            continue
+        if not isinstance(relations, list):
+            raise ValidationError(
+                message="relations must be an array",
+                path=f"features/{i}/relations",
+            )
+        for j, rel in enumerate(relations):
+            if not isinstance(rel, dict):
+                raise ValidationError(
+                    message="each relation must be an object",
+                    path=f"features/{i}/relations/{j}",
+                )
+            rtype = rel.get("type")
+            if rtype not in SUPPORTED_RELATION_TYPES:
+                raise ValidationError(
+                    message=(
+                        f"unknown relation type {rtype!r}; supported: "
+                        f"{sorted(SUPPORTED_RELATION_TYPES)}"
+                    ),
+                    path=f"features/{i}/relations/{j}/type",
+                )
+            entities = rel.get("entities", [])
+            expected = RELATION_ARITY.get(rtype, 0)
+            if len(entities) != expected:
+                raise ValidationError(
+                    message=(
+                        f"relation type {rtype!r} requires {expected} "
+                        f"entities, got {len(entities)}"
+                    ),
+                    path=f"features/{i}/relations/{j}/entities",
+                )
+            for k, ref in enumerate(entities):
+                if not isinstance(ref, int) or ref < 0:
+                    raise ValidationError(
+                        message=(
+                            f"entity ref must be a non-negative integer "
+                            f"segment index, got {ref!r}"
+                        ),
+                        path=f"features/{i}/relations/{j}/entities/{k}",
+                    )
+            if len(set(entities)) != len(entities):
+                raise ValidationError(
+                    message=f"duplicate entity references in {entities}",
+                    path=f"features/{i}/relations/{j}/entities",
+                )
+
+
 def validate(spec: dict[str, Any], spec_path: Path | None = None) -> None:
     """Run all checks. Raises ValidationError on first failure.
 
@@ -441,4 +503,5 @@ def validate(spec: dict[str, Any], spec_path: Path | None = None) -> None:
     _check_expect_blocks(spec)
     _check_references(spec)
     _check_face_role_shapes(spec)
+    _check_relations(spec)
     _check_locals(spec, spec_path=spec_path)

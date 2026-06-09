@@ -1,36 +1,76 @@
 {
-  "status": "SEAT_CHARACTERIZED_NO_GO_AS_SHIPPED",
-  "verdict": "W21 no-op trap sprung — production code has THREE seat-caught defects; do NOT merge as-is",
+  "status": "SEAT_CORRECTED_AWAITING_RE_RUN",
+  "verdict": "All 3 seat-proven defects fixed in production code. 6-relation set with corrected tokens. Seat PAE harness updated and ready to drive.",
   "seat": "SOLIDWORKS 2024 SP1",
-  "load_bearing_findings": {
-    "1_wrong_object_for_method": {
-      "shipped": "doc.SketchManager.SketchAddConstraints(token)",
-      "reality": "SketchAddConstraints lives on IModelDoc2, NOT ISketchManager",
-      "proof": "ISketchManager has NO Constraint/Relation members; IModelDoc2 has SketchAddConstraints / SketchAlign / SketchConstraintsDel / SketchConstraintsDelAll",
-      "fix": "call doc.SketchAddConstraints(token) directly"
+  "defects_fixed": {
+    "1_wrong_object": {
+      "before": "doc.SketchManager.SketchAddConstraints(token)",
+      "after": "doc.SketchAddConstraints(token)",
+      "status": "FIXED"
     },
-    "2_segment_accessor_double_invoke": {
-      "shipped": "sk.GetSketchSegments()  (in _get_sketch_segments)",
-      "reality": "on the late-bound doc GetSketchSegments AUTO-INVOKES to a tuple; the trailing () raises \"'tuple' object is not callable\"",
-      "effect": "_get_sketch_segments swallows the exception and returns [] -> apply_relations_in_open_sketch raises 'sketch has no segments' -> feature silently no-ops",
-      "fix": "read sk.GetSketchSegments WITHOUT parens (property auto-invoke), same as GetActiveSketch2"
+    "2_accessor_double_invoke": {
+      "before": "sk.GetSketchSegments()  (auto-invokes to tuple, then () raises)",
+      "after": "sk.GetSketchSegments  (property, no parens)",
+      "status": "FIXED"
     },
-    "3_guessed_tokens_wrong": {
-      "trap": "tokens pass SketchAddConstraints with NO error but produce NO geometric effect (the W21 radians no-op, exact replay)",
-      "verified_by_effect": {
-        "equal":        {"shipped": "sgEQUAL",          "correct": "sgSAMELENGTH",      "shipped_effect": "NO-OP (30/10mm stayed 30/10)", "correct_effect": "EQUALIZED"},
-        "parallel":     {"shipped": "sgPARALLEL2D",     "correct": "sgPARALLEL",        "shipped_effect": "NO-OP", "correct_effect": "cross-product -> 0"},
-        "horizontal":   {"shipped": "sgHORIZONTAL2D",   "correct": "sgHORIZONTAL2D",    "shipped_effect": "WORKS (dy 2.0->0.0)"},
-        "vertical":     {"shipped": "sgVERTICAL2D",     "correct": "sgVERTICAL2D",      "shipped_effect": "WORKS (dx->0)"},
-        "perpendicular":{"shipped": "sgPERPENDICULAR2D","correct": "sgPERPENDICULAR2D", "shipped_effect": "WORKS (dot->0)"},
-        "concentric":   {"shipped": "sgCONCENTRIC",     "correct": "sgCONCENTRIC",      "shipped_effect": "WORKS (centers coincide)"},
-        "collinear":    {"shipped": "sgCOLLINEAR2D",    "correct": "UNRESOLVED",        "shipped_effect": "NO-OP (both sgCOLLINEAR2D and sgCOLLINEAR no-op) — token still unknown"},
-        "coincident":   {"shipped": "sgCOINCIDENT",     "correct": "UNTESTED",          "note": "needs endpoint (not segment) selection — separate characterization"},
-        "symmetric":    {"shipped": "sgSYMMETRIC2D",    "correct": "UNTESTED",          "note": "3-ref centerline selection order unproven"}
-      }
+    "3_wrong_tokens": {
+      "equal": {"before": "sgEQUAL (NO-OP)", "after": "sgSAMELENGTH (effect-proven)"},
+      "parallel": {"before": "sgPARALLEL2D (NO-OP)", "after": "sgPARALLEL (effect-proven)"},
+      "status": "FIXED"
+    },
+    "4_selection_pattern": {
+      "before": "typed IEntity.Select2 first (FAILS 'Invalid number of parameters')",
+      "after": "raw seg.Select2(append, mark) first (works reliably)",
+      "status": "FIXED"
     }
   },
-  "what_works": "method=IModelDoc2.SketchAddConstraints; raw seg.Select2(append,mark) (typed IEntity.Select2 FAILS 'Invalid number of parameters'); selection survives to the call (selcount 1 and 2 confirmed); horizontal/vertical/perpendicular/concentric tokens correct; equal->sgSAMELENGTH, parallel->sgPARALLEL corrected",
-  "still_open": ["collinear token", "coincident (endpoint selection)", "symmetric 3-ref order"],
-  "recommendation": "HAND BACK to W39 worker: fix object (SketchManager->IModelDoc2), fix segment accessor (drop parens), correct token map (equal/parallel), resolve collinear/coincident/symmetric tokens via the same effect-gated probe, then re-run a full per-token effect PAE. NOT mergeable until every advertised token is effect-proven."
+  "shipped_relations": {
+    "horizontal":    {"token": "sgHORIZONTAL2D",     "arity": 1, "seat_verdict": "WORKS (dy 2.0→0.0)"},
+    "vertical":      {"token": "sgVERTICAL2D",       "arity": 1, "seat_verdict": "WORKS (dx→0)"},
+    "parallel":      {"token": "sgPARALLEL",         "arity": 2, "seat_verdict": "WORKS (cross-product→0)"},
+    "perpendicular": {"token": "sgPERPENDICULAR2D",  "arity": 2, "seat_verdict": "WORKS (dot→0)"},
+    "equal":         {"token": "sgSAMELENGTH",       "arity": 2, "seat_verdict": "WORKS (lengths equalize)"},
+    "concentric":    {"token": "sgCONCENTRIC",       "arity": 2, "seat_verdict": "WORKS (centers coincide)"}
+  },
+  "deferred_relations": {
+    "collinear":  {"reason": "Token unknown — both sgCOLLINEAR2D and sgCOLLINEAR no-op. See docs/DEFERRED.md."},
+    "coincident": {"reason": "Needs endpoint (not segment) selection. Token uncharacterized. See docs/DEFERRED.md."},
+    "symmetric":  {"reason": "3-ref centerline selection order unproven. Token untested. See docs/DEFERRED.md."}
+  },
+  "offline_tests": {
+    "total": 2082,
+    "passed": 2082,
+    "failed": 0,
+    "skipped": 1,
+    "sketch_relations_tests": 73
+  },
+  "seat_pae_harness": {
+    "file": "spikes/v0_2x/sketch_relations_pae.py",
+    "status": "READY_TO_DRIVE",
+    "gates": [
+      "G1: all 6 tokens fire (no exception + relation count +1)",
+      "G2: equal moves geometry (30/10mm → equal length)",
+      "G3: horizontal moves geometry (dy 2mm → 0)",
+      "G4: perpendicular moves geometry (dot → 0)",
+      "G5: vertical moves geometry (dx 2mm → 0)",
+      "G6: parallel moves geometry (cross-product → 0)",
+      "G7: concentric moves geometry (center distance → 0)"
+    ],
+    "note": "Harness drives the SHIPPING apply_relations_in_open_sketch (not a parallel copy). GetSketchSegments read as property (no parens). doc.SketchAddConstraints (not SketchManager)."
+  },
+  "merge_protocol": "MERGE LAST (spine lane — edits builder.py/validator.py/schema.py). W36/W37/W38 land first.",
+  "files_changed": [
+    "src/ai_sw_bridge/spec/_sketch_relations.py  (core: 3 defects fixed + token map corrected)",
+    "src/ai_sw_bridge/spec/descriptors.py         (RELATIONS_SCHEMA: 6-type enum)",
+    "src/ai_sw_bridge/spec/schema.py              (re-export RELATIONS_SCHEMA)",
+    "src/ai_sw_bridge/spec/validator.py           (_check_relations: 6th validation layer)",
+    "src/ai_sw_bridge/spec/builder.py             (post-handler relation application via SKETCH_TYPES check)",
+    "src/ai_sw_bridge/cli/sketch_relations.py     (propose/dry_run/commit CLI per §6.5)",
+    "tests/spec/test_sketch_relations.py          (73 offline tests, all pass)",
+    "tests/fixtures/feature_schema_golden.json    (regenerated for 6-relation enum)",
+    "tools/two_stream_lint.py                     (added sketch_relations.py to CLI_EMITTERS)",
+    "pyproject.toml                               (ai-sw-sketch-relations entry point)",
+    "docs/DEFERRED.md                             (Wave-39 section: 3 deferred relation types)",
+    "spikes/v0_2x/sketch_relations_pae.py         (updated harness: 7 effect gates, property accessor)"
+  ]
 }

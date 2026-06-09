@@ -84,6 +84,7 @@ from .sketches import (
     RectangleOnFaceHandler,
     RectangleOnPlaneHandler,
 )
+from .schema import SKETCH_TYPES
 
 # swUserPreferenceToggle.swInputDimValOnCreate -- the toggle ID is NOT
 # documented in the CHM enum (descriptions just say "see System Options").
@@ -2372,6 +2373,24 @@ def run_feature_step(
         # this feature in build()'s ``features_built`` list (the failed
         # BuildResult reports it). Matches the pre-extraction loop exactly.
         built.append(bf.name)
+
+        # W39 — sketch relations: if the feature spec declares relations
+        # and this is a sketch-type feature, apply them by re-opening the
+        # sketch (EditSketch), selecting segments, and calling
+        # SketchAddConstraints. Fail-closed: a relation error raises so
+        # the build fails rather than shipping a broken sketch.
+        if feat.get("relations") and bf.type in SKETCH_TYPES:
+            from ._sketch_relations import apply_relations_to_sketch
+
+            rel_result = apply_relations_to_sketch(
+                ctx.doc, bf.name, feat["relations"]
+            )
+            if not rel_result.get("ok"):
+                errors = rel_result.get("errors", [])
+                raise RuntimeError(
+                    f"sketch relations failed for '{bf.name}': "
+                    f"{'; '.join(errors)}"
+                )
 
         # B-rep interrogation (E2.6): walk the feature's faces and
         # accumulate into the manifest. Flag-gated; fail-soft.

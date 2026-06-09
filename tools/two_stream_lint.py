@@ -44,6 +44,7 @@ CLI_EMITTERS = frozenset(
         "apidoc.py",
         "checkpoint.py",
         "properties.py",
+        "sketch_relations.py",
     }
 )
 
