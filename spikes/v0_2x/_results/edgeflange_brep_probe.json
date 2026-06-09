@@ -1,0 +1,38 @@
+{
+  "wave": "W42",
+  "step": "edgeflange_brep_disambiguation",
+  "base_flange": "PASS",
+  "before": {
+    "vol_mm3": 4800.0,
+    "faces": 6,
+    "bodies": 1
+  },
+  "edge_diag": {
+    "edge_count": 12,
+    "best_len_mm": 60.0
+  },
+  "edge_flange_ok": true,
+  "edge_flange_err": null,
+  "edit_rebuild3_exc": "TypeError: 'bool' object is not callable",
+  "after": {
+    "vol_mm3": 4800.0,
+    "faces": 6,
+    "bodies": 1
+  },
+  "delta": {
+    "vol_mm3": 0.0,
+    "faces": 0
+  },
+  "bend_in_3d": false,
+  "edgeflange_feature": {
+    "present": true,
+    "name": "Edge-Flange1",
+    "GetErrorCode2": [
+      0,
+      false
+    ],
+    "GetErrorCode": 0,
+    "is_suppressed": false
+  },
+  "verdict": "GHOST_FEATURE_SHIPPED_NOOP"
+}

@@ -193,13 +193,15 @@ class TestExportOne:
         # Should NOT contain "Drawing" doc-type error
         assert "Drawing (.SLDDRW)" not in result.error
 
-    def test_dxf_flat_is_seat_gated(self, tmp_path: Path) -> None:
+    def test_dxf_flat_requires_flat_pattern_feature(self, tmp_path: Path) -> None:
+        """W42 SHIPPED: dxf_flat is seat-confirmed, so it no longer fails-closed
+        at a seat gate. On a plain (non-sheet-metal) mock it now reaches the
+        real export path and fails because there is no Flat-Pattern feature."""
         doc = _MockDoc()
         req = ExportRequest(format="dxf_flat", output_dir=tmp_path)
         result = _export_one(doc, req, "TestPart")
         assert result.ok is False
-        assert "SEAT-gated" in result.error
-        assert "S-SHEETMETAL" in result.error
+        assert "Flat-Pattern" in result.error
 
     def test_step203_uses_nonzero_version(self, tmp_path: Path) -> None:
         doc = _MockDoc()
