@@ -6,8 +6,8 @@
 > `docs/DEFERRED.md`. Paradigm: **declarative JSON is the only authoring surface;
 > propose→approve→execute; zero arbitrary code exec; out-of-process Python.**
 >
-> Last reconciled: 2026-06-09 (through W29 — custom file properties). Suite:
-> **1944 passed** (serial; xdist unavailable in this env), 58 skipped.
+> Last reconciled: 2026-06-09 (through W37 — DFM draft analysis). Suite:
+> **1964 passed** (serial; xdist unavailable in this env), 58 skipped.
 
 ## 0. Surfaces
 
@@ -108,7 +108,7 @@ multiple views per config, animation.*
 | Measure (selection) | `sw_measure` / `sw_measure_selection` | `CreateMeasure`→`Calculate(None)` | W30 |
 | Bounding box (part) | `sw_bbox` / `sw_bounding_box` | `IPartDoc.GetPartBox(True)` (part-only) | W30 |
 | **Clearance (min-distance)** | `sw_clearance` | `IComponent2.Select2`×2 → `IMeasure.Distance` (assembly-only) | W35 |
-| **Draft analysis (DFM)** | `sw_draft_analysis` | `GetBodies2` → `GetFaces` → `IFace2.Normal` vs pull vector (part-only) | W37 |
+| **Draft analysis (DFM)** | `sw_draft_analysis` | `IPartDoc.GetBodies2` (QI from IModelDoc2) → `GetFaces` → `IFace2.Normal` vs pull (part-only) | W37 |
 
 ## 5b. Metadata — `ai-sw-properties` (W29, **CLI-only mutation**)
 
