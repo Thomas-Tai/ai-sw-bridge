@@ -1,6 +1,6 @@
 """Observation MCP tools (W5.4, §6.1, W30, W37, W43).
 
-Seventeen read-only tools that mirror the ``ai-sw-observe`` CLI
+Nineteen read-only tools that mirror the ``ai-sw-observe`` CLI
 subcommands. Each tool is a thin wrapper around a
 :class:`ai_sw_bridge.observe.SolidWorksObserver` method, decorated
 with ``@com_tool`` so the body runs on the ComExecutor's STA
@@ -179,6 +179,18 @@ def register(mcp: Any) -> None:
 
     @mcp.tool()
     @com_tool
+    def sw_undercut_faces(
+        pull_x: float = 0.0,
+        pull_y: float = 1.0,
+        pull_z: float = 0.0,
+    ) -> dict[str, Any]:
+        """Report part faces that block mold/tool withdrawal along a pull direction (DFM)."""
+        return SolidWorksObserver().undercut_faces(
+            pull_x=pull_x, pull_y=pull_y, pull_z=pull_z
+        )
+
+    @mcp.tool()
+    @com_tool
     def sw_current_selection() -> dict[str, Any]:
         """Read the active document's current selection (W43).
 
@@ -190,3 +202,11 @@ def register(mcp: Any) -> None:
         obtainable, null otherwise.
         """
         return SolidWorksObserver().selection()
+
+    @mcp.tool()
+    @com_tool
+    def sw_min_wall_thickness(samples_per_face: int = 4) -> dict[str, Any]:
+        """Report the minimum wall thickness of the active solid part (DFM)."""
+        return SolidWorksObserver().min_wall_thickness(
+            samples_per_face=samples_per_face
+        )

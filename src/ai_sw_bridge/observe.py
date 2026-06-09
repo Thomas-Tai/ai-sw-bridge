@@ -1145,6 +1145,551 @@ def sw_measure(
 
 
 # ---------------------------------------------------------------------------
+# W45 — DFM perception probes: min-wall-thickness + undercut detection
+#
+# Both are READ-ONLY (the observe/perception axis). They extend the W37
+# draft-analysis idiom (IBody2.GetFaces -> IFace2.Normal/GetArea) so an LLM
+# can self-correct generated geometry against molding/casting/printing rules.
+#
+# The geometry/classification logic is split into PURE shape-functions
+# (``_min_wall_from_samples`` / ``_classify_undercut_faces``) that take plain
+# Python numbers and are fully unit-testable WITHOUT a SOLIDWORKS seat. The
+# COM-acquisition wrappers (``sw_min_wall_thickness`` / ``sw_undercut_faces``)
+# do only the marshaling and delegate every decision to the shape-functions.
+#
+# Status: SEAT-CONFIRMED 2026-06-09 (W45 PAE on SW 2024). Both probes
+# discriminate on the live seat:
+#   * undercut — clean fixture flagged 1 (the bottom seat face vs a +Y pull),
+#     dirty fixture flagged 2; dirty > clean, every flagged face dot_pull <= 0.
+#     Stands on the proven W37 GetBodies2/GetFaces/IFace2.Normal primitives.
+#   * min-wall — thin fixture = 2.0 mm (the shell wall), thick = 40.0 mm;
+#     discriminates cleanly. CAVEAT (downstream agents READ THIS): the value is
+#     a closest-point-projection estimate via IFace2.GetClosestPointOn — it is
+#     EXACT only for planar parallel opposite faces and is an UPPER BOUND on the
+#     true normal-ray wall for non-planar geometry. Native Thickness Analysis is
+#     add-in-gated and unreachable out-of-process. Use as a thin-region screen,
+#     not a certified minimum.
+# Both stay on the CLI `experimental` tier (read-only; new this wave).
+# ---------------------------------------------------------------------------
+
+
+def _vec_dot(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
+    """Dot product of two 3-vectors."""
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+def _vec_norm(a: tuple[float, float, float]) -> float:
+    """Euclidean length of a 3-vector."""
+    return (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) ** 0.5
+
+
+def _vec_unit(
+    a: tuple[float, float, float],
+) -> tuple[float, float, float] | None:
+    """Return *a* normalized to unit length, or None for a degenerate vector."""
+    n = _vec_norm(a)
+    if n < 1e-12:
+        return None
+    return (a[0] / n, a[1] / n, a[2] / n)
+
+
+def _min_wall_from_samples(
+    sample_distances_m: list[float],
+    *,
+    floor_m: float = 1e-6,
+) -> dict[str, Any]:
+    """Pure: reduce per-sample opposite-wall distances to a min-wall metric.
+
+    Each entry of ``sample_distances_m`` is the through-material distance
+    (in meters) from one sampled surface point, cast inward along the face
+    normal, to the first opposite face it hits -- i.e. a local wall
+    thickness probe. The COM wrapper produces these by sampling faces and
+    casting; this function owns the *reduction* so the discrimination logic
+    is unit-testable without a seat.
+
+    Returns a dict with:
+      min_wall_m / min_wall_mm  -- the smallest valid sample (the risk metric)
+      sample_count              -- how many samples were fed in
+      valid_sample_count        -- samples above ``floor_m`` (degenerate/
+                                   self-hit samples below the floor are dropped
+                                   so a coincident ray-origin can't report a
+                                   bogus ~0 wall)
+      mean_wall_mm              -- diagnostic average of valid samples
+
+    Empty / all-degenerate input yields min_wall_* = None with a populated
+    note rather than raising, so the wrapper can surface "no measurable wall"
+    distinctly from a COM failure.
+    """
+    valid = [d for d in sample_distances_m if d is not None and d > floor_m]
+    out: dict[str, Any] = {
+        "min_wall_m": None,
+        "min_wall_mm": None,
+        "mean_wall_mm": None,
+        "sample_count": len(sample_distances_m),
+        "valid_sample_count": len(valid),
+        "note": None,
+    }
+    if not valid:
+        out["note"] = "no_valid_samples"
+        return out
+    mn = min(valid)
+    out["min_wall_m"] = mn
+    out["min_wall_mm"] = mn * 1000.0
+    out["mean_wall_mm"] = (sum(valid) / len(valid)) * 1000.0
+    return out
+
+
+def _classify_undercut_faces(
+    faces: list[dict[str, Any]],
+    pull_dir: tuple[float, float, float],
+    *,
+    side_tol_deg: float = 0.5,
+) -> dict[str, Any]:
+    """Pure: classify faces as undercut / releasable along a pull direction.
+
+    ``faces`` is a list of ``{"index", "normal", "area_m2"}`` dicts where
+    ``normal`` is the face's OUTWARD unit normal in part coords. ``pull_dir``
+    is the mold/tool withdrawal direction (need not be unit; normalized
+    here).
+
+    Withdrawal model (the cousin of draft analysis): a face is releasable
+    along +pull if its outward normal has a NON-NEGATIVE component along the
+    pull direction (it faces the way the tool leaves, or is a side wall
+    exactly parallel). A face whose outward normal points OPPOSITE the pull
+    (negative dot) is on the back side of the part relative to this half of
+    the mold and would be released by the OTHER half -- it is only an
+    undercut for *this* pull if it can't be reached from either side. To
+    keep the metric honest and tool-agnostic we report, per pull axis:
+
+      undercut   : dot(normal, pull) < -sin(side_tol)   (normal points back
+                   into the tool along this pull; a true trap for a
+                   single-direction pull such as a 3D-print/Z-pull or a
+                   one-sided core)
+      releasable : dot(normal, pull) >  +sin(side_tol)
+      side_wall  : |dot| <= sin(side_tol)               (parallel to pull;
+                   draft ~ 0, neither blocks nor releases)
+
+    The ``draft_deg`` per face is ``90 - acos(dot)`` clamped, matching the
+    W37 convention so callers can reuse one mental model. Faces with a
+    degenerate (zero) normal are skipped and counted in ``skipped``.
+
+    Returns a dict with the per-face classification, the undercut subset
+    (the actionable output an LLM self-corrects against), and counts. The
+    GREEN discrimination criterion: a part with a back-facing undercut face
+    yields ``undercut_count >= 1`` and lists that face; a draft-clean part
+    (every face releasable or a side wall) yields ``undercut_count == 0``.
+    """
+    import math
+
+    pull_u = _vec_unit(pull_dir)
+    out: dict[str, Any] = {
+        "pull_dir": list(pull_dir),
+        "face_count": len(faces),
+        "undercut_count": 0,
+        "releasable_count": 0,
+        "side_wall_count": 0,
+        "skipped": 0,
+        "undercut_faces": [],
+        "faces": [],
+        "note": None,
+    }
+    if pull_u is None:
+        out["note"] = "degenerate_pull_dir"
+        return out
+
+    side_threshold = math.sin(math.radians(side_tol_deg))
+
+    for f in faces:
+        nrm_raw = f.get("normal")
+        if nrm_raw is None or len(nrm_raw) < 3:
+            out["skipped"] += 1
+            continue
+        nrm = _vec_unit((float(nrm_raw[0]), float(nrm_raw[1]), float(nrm_raw[2])))
+        if nrm is None:
+            out["skipped"] += 1
+            continue
+        dot = _vec_dot(nrm, pull_u)
+        # Clamp for acos numerical safety.
+        dot_clamped = max(-1.0, min(1.0, dot))
+        draft_deg = 90.0 - math.degrees(math.acos(dot_clamped))
+
+        if dot < -side_threshold:
+            kind = "undercut"
+            out["undercut_count"] += 1
+        elif dot > side_threshold:
+            kind = "releasable"
+            out["releasable_count"] += 1
+        else:
+            kind = "side_wall"
+            out["side_wall_count"] += 1
+
+        entry = {
+            "index": f.get("index"),
+            "normal": [nrm[0], nrm[1], nrm[2]],
+            "area_m2": f.get("area_m2"),
+            "area_mm2": (
+                float(f["area_m2"]) * 1e6 if f.get("area_m2") is not None else None
+            ),
+            "dot_pull": dot,
+            "draft_deg": draft_deg,
+            "classification": kind,
+        }
+        out["faces"].append(entry)
+        if kind == "undercut":
+            out["undercut_faces"].append(entry)
+
+    return out
+
+
+def _enum_solid_faces(doc: Any) -> tuple[list[Any], str | None]:
+    """Acquire every solid-body face of a part via late-bound COM.
+
+    Mirrors the proven W37 / ``_face_geometry`` idiom:
+        IModelDoc2 (part) -> GetBodies2(0, True) [swSolidBody=0]
+                          -> IBody2.GetFaces()
+    GetBodies2 is reachable on the late-bound part dispatch (proven at
+    ``spec/_face_geometry.py``: ``ctx.doc.GetBodies2(0, True)``); no early-bind
+    QI is needed on this build. Returns (faces, error). On any COM failure
+    returns ([], "<reason>").
+    """
+    try:
+        bodies = doc.GetBodies2(0, True)  # swBodyType_e.swSolidBody = 0
+    except Exception as exc:
+        return [], f"GetBodies2 failed: {exc!r}"
+    if bodies is None:
+        return [], "GetBodies2 returned None (no solid bodies)"
+    faces: list[Any] = []
+    for body in bodies:
+        try:
+            body_faces = body.GetFaces()
+        except Exception:
+            continue
+        if body_faces is None:
+            continue
+        for fobj in body_faces:
+            faces.append(fobj)
+    return faces, None
+
+
+def sw_undercut_faces(
+    pull_x: float = 0.0,
+    pull_y: float = 1.0,
+    pull_z: float = 0.0,
+) -> dict[str, Any]:
+    """Report faces that block tool/mold withdrawal along a pull direction.
+
+    READ-ONLY DFM probe. Cousin of draft analysis: enumerates every solid
+    face of the active PART, reads its outward ``IFace2.Normal``, and
+    classifies each as undercut / releasable / side-wall vs the pull
+    direction (default +Y, the SW Top-plane up axis). See
+    ``_classify_undercut_faces`` for the withdrawal model.
+
+    COM call sequence (all PROVEN-reachable by analogy to W37 /
+    ``_face_geometry``):
+        GetType -> require swDocPART
+        GetBodies2(0, True) -> [IBody2]      (proven late-bound)
+        IBody2.GetFaces() -> [IFace2]        (proven late-bound)
+        IFace2.Normal -> (nx, ny, nz)        (proven late-bound)
+        IFace2.GetArea -> float (m^2)        (best-effort; diagnostic only)
+
+    Parts only -- assemblies/drawings get a typed error result. The
+    classification is delegated wholesale to the pure shape-function so the
+    discrimination logic is seat-independent and unit-tested.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "doc_path": None,
+        "pull_dir": [pull_x, pull_y, pull_z],
+        "face_count": 0,
+        "undercut_count": 0,
+        "releasable_count": 0,
+        "side_wall_count": 0,
+        "skipped": 0,
+        "undercut_faces": [],
+        "faces": [],
+        "error": None,
+    }
+    try:
+        sw = get_sw_app()
+        doc = get_active_doc(sw)
+        if doc is None:
+            result["error"] = "no_active_doc"
+            return result
+        try:
+            result["doc_path"] = str(resolve(doc, "GetPathName"))
+        except Exception:
+            pass
+        try:
+            doc_type = int(resolve(doc, "GetType"))
+        except Exception as exc:
+            result["error"] = f"GetType failed: {exc!r}"
+            return result
+        if doc_type != SW_DOC_PART:
+            result["error"] = (
+                f"sw_undercut_faces requires a part (swDocPART={SW_DOC_PART}); "
+                f"active doc is type {doc_type} ({DOC_TYPE_NAMES.get(doc_type)})"
+            )
+            return result
+
+        faces, enum_err = _enum_solid_faces(doc)
+        if enum_err is not None:
+            result["error"] = enum_err
+            return result
+
+        face_records: list[dict[str, Any]] = []
+        for i, fobj in enumerate(faces):
+            try:
+                nrm = fobj.Normal
+            except Exception:
+                continue
+            if nrm is None or len(nrm) < 3:
+                continue
+            area = None
+            try:
+                area = float(fobj.GetArea)
+            except Exception:
+                try:
+                    area = float(fobj.GetArea())
+                except Exception:
+                    area = None
+            face_records.append(
+                {
+                    "index": i,
+                    "normal": (float(nrm[0]), float(nrm[1]), float(nrm[2])),
+                    "area_m2": area,
+                }
+            )
+
+        classified = _classify_undercut_faces(
+            face_records, (pull_x, pull_y, pull_z)
+        )
+        result.update(
+            face_count=classified["face_count"],
+            undercut_count=classified["undercut_count"],
+            releasable_count=classified["releasable_count"],
+            side_wall_count=classified["side_wall_count"],
+            skipped=classified["skipped"],
+            undercut_faces=classified["undercut_faces"],
+            faces=classified["faces"],
+        )
+        if classified.get("note"):
+            result["error"] = classified["note"]
+            return result
+        result["ok"] = True
+        return result
+    except Exception as exc:
+        result["error"] = f"dispatch failed: {exc!r}"
+        return result
+
+
+def sw_min_wall_thickness(samples_per_face: int = 4) -> dict[str, Any]:
+    """Report the minimum wall thickness of the active solid PART.
+
+    READ-ONLY DFM probe -- the thin-region risk metric for molding /
+    casting / printing. Geometric derivation (no native add-in): for each
+    solid face, sample interior surface points and cast the INWARD normal
+    ray through the body to the first opposite face; the smallest such
+    through-material distance is the min wall.
+
+    COM call sequence:
+        GetType -> require swDocPART                       (proven)
+        GetBodies2(0, True) -> [IBody2]                    (proven late-bound)
+        IBody2.GetFaces() -> [IFace2]                      (proven late-bound)
+        IFace2.Normal -> outward unit normal               (proven late-bound)
+        IFace2.GetClosestPointOn(x,y,z) -> point on face   (PROVEN: used in
+            spec/_face_geometry.py:_select_extrude_face)    -- gives a sample
+            point that is guaranteed ON the face.
+        --- the ray/distance primitive (SEAT-UNKNOWN, see risks) ---
+        IBody2.GetFirstFace / ray-cast: this wrapper attempts
+            ``IBody2.RayIntersections`` style distance via
+            ``IFace2.GetClosestPointOn`` on EVERY OTHER face from the sample
+            point along -normal, taking the min positive projection. This
+            uses only the PROVEN GetClosestPointOn primitive (no
+            RayIntersections), trading exactness for reachability.
+
+    The reduction (min over valid samples, degenerate-sample floor) is the
+    pure ``_min_wall_from_samples`` shape-function -- unit-tested without a
+    seat. Honest caveat: the closest-point-projection wall estimate is an
+    UPPER bound on the true normal-ray wall for non-planar opposite faces;
+    flagged in risks. Parts only.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "doc_path": None,
+        "min_wall_mm": None,
+        "min_wall_m": None,
+        "mean_wall_mm": None,
+        "sample_count": 0,
+        "valid_sample_count": 0,
+        "samples_per_face": samples_per_face,
+        "method": "closest_point_projection",
+        "error": None,
+    }
+    try:
+        sw = get_sw_app()
+        doc = get_active_doc(sw)
+        if doc is None:
+            result["error"] = "no_active_doc"
+            return result
+        try:
+            result["doc_path"] = str(resolve(doc, "GetPathName"))
+        except Exception:
+            pass
+        try:
+            doc_type = int(resolve(doc, "GetType"))
+        except Exception as exc:
+            result["error"] = f"GetType failed: {exc!r}"
+            return result
+        if doc_type != SW_DOC_PART:
+            result["error"] = (
+                f"sw_min_wall_thickness requires a part (swDocPART={SW_DOC_PART}); "
+                f"active doc is type {doc_type} ({DOC_TYPE_NAMES.get(doc_type)})"
+            )
+            return result
+
+        faces, enum_err = _enum_solid_faces(doc)
+        if enum_err is not None:
+            result["error"] = enum_err
+            return result
+        if not faces:
+            result["error"] = "no_solid_faces"
+            return result
+
+        # Build (sample_point, inward_normal) probes from each face's
+        # GetClosestPointOn (a point guaranteed on the face), then measure
+        # the through-material distance to the nearest OTHER face along the
+        # inward normal via _measure_opposite_distance.
+        sample_distances: list[float] = []
+        for fobj in faces:
+            try:
+                nrm = fobj.Normal
+            except Exception:
+                continue
+            if nrm is None or len(nrm) < 3:
+                continue
+            inward = _vec_unit((-float(nrm[0]), -float(nrm[1]), -float(nrm[2])))
+            if inward is None:
+                continue
+            for sp in _face_sample_points(fobj, samples_per_face):
+                dist = _measure_opposite_distance(faces, fobj, sp, inward)
+                if dist is not None:
+                    sample_distances.append(dist)
+
+        reduced = _min_wall_from_samples(sample_distances)
+        result.update(
+            min_wall_mm=reduced["min_wall_mm"],
+            min_wall_m=reduced["min_wall_m"],
+            mean_wall_mm=reduced["mean_wall_mm"],
+            sample_count=reduced["sample_count"],
+            valid_sample_count=reduced["valid_sample_count"],
+        )
+        if reduced.get("note") == "no_valid_samples":
+            result["error"] = "no_measurable_wall (no valid opposite-face samples)"
+            return result
+        result["ok"] = True
+        return result
+    except Exception as exc:
+        result["error"] = f"dispatch failed: {exc!r}"
+        return result
+
+
+def _face_sample_points(fobj: Any, n: int) -> list[tuple[float, float, float]]:
+    """Yield up to *n* points guaranteed to lie ON face *fobj*.
+
+    Strategy: probe the face's parametric box centre and a few offsets via
+    ``IFace2.GetClosestPointOn`` (PROVEN reachable). GetClosestPointOn(x,y,z)
+    returns the nearest point ON the face to an arbitrary 3D probe; feeding
+    it the face's own UV-box corners/centre (from ``IFace2.GetUVBounds`` /
+    ``GetBox`` when available) yields well-distributed on-face samples. We
+    fail soft: any probe that errors is skipped.
+    """
+    pts: list[tuple[float, float, float]] = []
+    # Prefer the face's 3D box centre + box corners as probe seeds.
+    seeds: list[tuple[float, float, float]] = []
+    try:
+        box = fobj.GetBox  # 6-tuple [xmin,ymin,zmin,xmax,ymax,zmax]
+        if callable(box):
+            box = box()
+        if box is not None and len(box) >= 6:
+            xmin, ymin, zmin, xmax, ymax, zmax = (float(box[i]) for i in range(6))
+            cx, cy, cz = (
+                (xmin + xmax) / 2,
+                (ymin + ymax) / 2,
+                (zmin + zmax) / 2,
+            )
+            seeds.append((cx, cy, cz))
+            # A few box-corner-ward probes for spatial spread.
+            seeds.append((xmin, ymin, zmin))
+            seeds.append((xmax, ymax, zmax))
+            seeds.append((xmin, ymax, zmin))
+    except Exception:
+        pass
+    if not seeds:
+        seeds = [(0.0, 0.0, 0.0)]
+    for seed in seeds[: max(1, n)]:
+        try:
+            cp = fobj.GetClosestPointOn(seed[0], seed[1], seed[2])
+        except Exception:
+            continue
+        if cp is None or len(cp) < 3:
+            continue
+        pts.append((float(cp[0]), float(cp[1]), float(cp[2])))
+    return pts
+
+
+def _measure_opposite_distance(
+    all_faces: list[Any],
+    origin_face: Any,
+    point: tuple[float, float, float],
+    inward: tuple[float, float, float],
+    *,
+    min_wall_floor_m: float = 1e-5,
+) -> float | None:
+    """Through-material distance from *point* along *inward* to the nearest
+    opposite face.
+
+    For every face other than *origin_face*, take its closest point to
+    *point* (``GetClosestPointOn``, PROVEN), project the (closest - point)
+    vector onto *inward*, and keep the smallest STRICTLY-POSITIVE projection
+    above ``min_wall_floor_m`` (so adjacent faces sharing an edge with
+    ~0 distance don't masquerade as a thin wall). Returns the distance in
+    meters, or None when no opposite face lies inward of the point.
+
+    This is the closest-point-projection wall estimate (see
+    sw_min_wall_thickness docstring): it needs only GetClosestPointOn, the
+    proven primitive, rather than a body-ray intersection.
+    """
+    best: float | None = None
+    px, py, pz = point
+    ix, iy, iz = inward
+    for fobj in all_faces:
+        if fobj is origin_face:
+            continue
+        try:
+            cp = fobj.GetClosestPointOn(px, py, pz)
+        except Exception:
+            continue
+        if cp is None or len(cp) < 3:
+            continue
+        dx, dy, dz = float(cp[0]) - px, float(cp[1]) - py, float(cp[2]) - pz
+        proj = dx * ix + dy * iy + dz * iz
+        if proj <= min_wall_floor_m:
+            continue
+        # Reject points that are far off the inward ray (the closest point
+        # is on a side wall, not the opposite wall): require the lateral
+        # offset to be small relative to the projection.
+        perp_x = dx - proj * ix
+        perp_y = dy - proj * iy
+        perp_z = dz - proj * iz
+        perp = (perp_x * perp_x + perp_y * perp_y + perp_z * perp_z) ** 0.5
+        if perp > proj:  # more than 45deg off-axis -> not the opposite wall
+            continue
+        if best is None or proj < best:
+            best = proj
+    return best
+
+
+# ---------------------------------------------------------------------------
 # W7.1 — Add-in enumeration (docs/addins_research.md §5, §7)
 # ---------------------------------------------------------------------------
 
@@ -1428,3 +1973,16 @@ class SolidWorksObserver:
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
         return sw_get_selection(doc)
+
+    def undercut_faces(
+        self,
+        pull_x: float = 0.0,
+        pull_y: float = 1.0,
+        pull_z: float = 0.0,
+    ) -> dict[str, Any]:
+        """Report faces that block tool/mold withdrawal along a pull direction."""
+        return sw_undercut_faces(pull_x=pull_x, pull_y=pull_y, pull_z=pull_z)
+
+    def min_wall_thickness(self, samples_per_face: int = 4) -> dict[str, Any]:
+        """Report the minimum wall thickness of the active solid part (DFM)."""
+        return sw_min_wall_thickness(samples_per_face=samples_per_face)

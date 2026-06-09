@@ -59,7 +59,7 @@ class TestToolRegistration:
 
     EXPECTED_TOOLS = frozenset(
         {
-            # Observation (15)
+            # Observation (17)
             "sw_active_doc",
             "sw_feature_errors",
             "sw_equations",
@@ -79,6 +79,9 @@ class TestToolRegistration:
             "sw_inertia",
             # W35 — clearance
             "sw_clearance",
+            # W45 — DFM probes
+            "sw_undercut_faces",
+            "sw_min_wall_thickness",
             # Build (1)
             "sw_build",
             # API doc (5)
