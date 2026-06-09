@@ -164,6 +164,77 @@ _SHEET_SIZE_ENUM: dict[str, Any] = {
     "enum": ["A4", "A3", "A2", "A1", "A0", "A", "B", "C", "D", "E"],
 }
 
+# W38: Canonical title-block field names.
+#
+# These are the well-known field codes that SOLIDWORKS title-block templates
+# surface via ``$PRP:"Name"`` / ``$PRPSHEET:"Name"``. Authoring a field is
+# really authoring a drawing-file custom property — the title-block note
+# resolves at display time. Unknown names are rejected fail-closed (S2 DoD)
+# so a typo doesn't silently become a no-op.
+TITLE_BLOCK_KNOWN_FIELDS: tuple[str, ...] = (
+    "DrawingNo",
+    "Title",
+    "Revision",
+    "DrawnBy",
+    "CheckedBy",
+    "ApprovedBy",
+    "Date",
+    "Scale",
+    "Material",
+    "SheetOf",
+    "Company",
+    "Project",
+)
+
+# W38: title_block JSON-schema fragment (flat string->string map, closed to
+# the known vocabulary). additionalProperties:false means an unknown field
+# name is a schema error — fail-closed per spec.
+_TITLE_BLOCK_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "minProperties": 1,
+    "properties": {
+        name: {"type": "string", "minLength": 1}
+        for name in TITLE_BLOCK_KNOWN_FIELDS
+    },
+    "description": (
+        "Title-block field map. Keys must be from the canonical vocabulary "
+        "(DrawingNo, Title, Revision, DrawnBy, CheckedBy, ApprovedBy, Date, "
+        "Scale, Material, SheetOf, Company, Project). Values are persisted "
+        "as drawing-level custom file properties; title-block notes with "
+        "matching $PRP: / $PRPSHEET: field codes resolve to these values "
+        "at display time."
+    ),
+}
+
+
+def validate_title_block(spec: dict[str, Any], *, path: str) -> None:
+    """Semantic validation of a title_block block (W38).
+
+    Raises ``ValueError`` on the first semantic error. Schema-level checks
+    (unknown field, non-string value) already ran via jsonschema — this
+    function handles the dict-shape invariants jsonschema can't easily
+    express (e.g. the whole block being a non-dict).
+    """
+    tb = spec.get("title_block")
+    if tb is None:
+        return
+    if not isinstance(tb, dict):
+        raise ValueError(f"{path}.title_block must be a dict")
+    if not tb:
+        raise ValueError(f"{path}.title_block must be non-empty")
+    for name, value in tb.items():
+        if name not in TITLE_BLOCK_KNOWN_FIELDS:
+            raise ValueError(
+                f"{path}.title_block.{name}: unknown field; "
+                f"allowed: {sorted(TITLE_BLOCK_KNOWN_FIELDS)}"
+            )
+        if not isinstance(value, str) or not value:
+            raise ValueError(
+                f"{path}.title_block.{name}: value must be a non-empty "
+                f"string; got {type(value).__name__}"
+            )
+
 _SHEET_ENTRY_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["views"],
@@ -208,6 +279,7 @@ DRAWING_SPEC_SCHEMA: dict[str, Any] = {
                 ".sldasm — a .sldprt rejects with a clear error message."
             ),
         },
+        "title_block": _TITLE_BLOCK_SCHEMA,
     },
 }
 
