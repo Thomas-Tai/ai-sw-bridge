@@ -89,6 +89,7 @@ ai-sw-build      = "ai_sw_bridge.cli.build:main"
 ai-sw-history    = "ai_sw_bridge.cli.history:main"
 ai-sw-apidoc     = "ai_sw_bridge.cli.apidoc:main"
 ai-sw-checkpoint = "ai_sw_bridge.cli.checkpoint:main"
+ai-sw-import     = "ai_sw_bridge.cli.import:main"
 ai-sw-mcp        = "ai_sw_bridge.mcp.server:main"
 
 [tool.setuptools.packages.find]
@@ -125,6 +126,7 @@ layers = [
     "ai_sw_bridge.parameterize",
     "ai_sw_bridge.observe",
     "ai_sw_bridge.export",
+    "ai_sw_bridge.import_geom",
     "ai_sw_bridge.drawing",
     "ai_sw_bridge.config",
     "ai_sw_bridge.mutate",
