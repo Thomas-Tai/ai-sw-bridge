@@ -28,12 +28,14 @@ Design:
 
 from __future__ import annotations
 
+import copy
 import logging
 import sys
 from pathlib import Path
 from typing import Any
 
 from ..locals_io import find_entry, parse, replace_rhs
+from .deep_merge import deep_merge
 from .variants import (
     ConfigResult,
     ConfigVariant,
@@ -176,3 +178,178 @@ def _create_one(
         )
 
     return ConfigResult(variant=variant.name, ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Multifile materialization (W36v)
+# ---------------------------------------------------------------------------
+
+
+def materialize_all(
+    base_spec: dict[str, Any],
+    output_dir: str | Path,
+    variants: list[ConfigVariant],
+) -> list[ConfigResult]:
+    """Materialize one .sldprt per variant via the builder.
+
+    Each variant's ``spec_overrides`` are deep-merged into a copy of
+    *base_spec*, then built with ``no_dim=True`` and saved to
+    ``output_dir / "{variant.name}.sldprt"``.  After each build the
+    file is verified on disk and the volume is measured via COM.
+
+    Args:
+        base_spec: The base spec dict.  Never mutated.
+        output_dir: Directory for the output .sldprt files.
+        variants: Parsed from the spec's ``variants:`` block.
+
+    Returns:
+        One ``ConfigResult`` per variant, in the same order.
+    """
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    results: list[ConfigResult] = []
+    for v in variants:
+        result = _materialize_variant(base_spec, out, v)
+        if result.ok:
+            vol_str = (
+                f", volume={result.volume_mm3:.0f} mm³"
+                if result.volume_mm3 is not None
+                else ""
+            )
+            print(
+                f"  variant {v.name!r} -> {result.path}{vol_str}",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"  FAILED variant {v.name!r}: {result.error}",
+                file=sys.stderr,
+            )
+        results.append(result)
+    return results
+
+
+def _materialize_variant(
+    base_spec: dict[str, Any],
+    output_dir: Path,
+    variant: ConfigVariant,
+) -> ConfigResult:
+    """Build one variant as a distinct .sldprt file.
+
+    1. Deep-merge ``variant.spec_overrides`` into a copy of *base_spec*.
+    2. Call ``build(variant_spec, no_dim=True, save_as=path)``.
+    3. Verify the file exists on disk with non-zero size.
+    4. Open the part via COM, measure volume, close.
+    5. Return ``ConfigResult`` with path + volume_mm3.
+    """
+    # 1. Deep-merge overrides
+    variant_spec = deep_merge(base_spec, variant.spec_overrides)
+    variant_spec["name"] = variant.name
+
+    save_path = output_dir / f"{variant.name}.sldprt"
+
+    # 2. Build
+    try:
+        from ..spec.builder import build as sw_build
+
+        build_result = sw_build(
+            variant_spec,
+            no_dim=True,
+            save_as=str(save_path),
+        )
+    except Exception as exc:
+        return ConfigResult(
+            variant=variant.name,
+            ok=False,
+            error=f"build raised {type(exc).__name__}: {exc}",
+        )
+
+    if not build_result.ok:
+        return ConfigResult(
+            variant=variant.name,
+            ok=False,
+            error=f"build failed: {build_result.error}",
+        )
+
+    # 3. Verify file on disk
+    resolved_path = save_path.resolve()
+    if not resolved_path.is_file():
+        # Builder may have appended .sldprt or saved elsewhere
+        if build_result.save_as and Path(build_result.save_as).is_file():
+            resolved_path = Path(build_result.save_as)
+        else:
+            return ConfigResult(
+                variant=variant.name,
+                ok=False,
+                path=str(save_path),
+                error=f"output file not found: {save_path}",
+            )
+
+    if resolved_path.stat().st_size == 0:
+        return ConfigResult(
+            variant=variant.name,
+            ok=False,
+            path=str(resolved_path),
+            error="output file is empty (0 bytes)",
+        )
+
+    # 4. Measure volume via COM
+    volume_mm3 = _measure_part_volume(resolved_path)
+
+    return ConfigResult(
+        variant=variant.name,
+        ok=True,
+        path=str(resolved_path),
+        volume_mm3=volume_mm3,
+    )
+
+
+def _measure_part_volume(part_path: Path) -> float | None:
+    """Open a part, measure volume via CreateMassProperty, close.
+
+    Returns volume in mm³, or None on failure.  Silently catches
+    errors — volume measurement is best-effort and never blocks
+    the materialization result.
+    """
+    try:
+        from ..com.earlybind import typed, typed_qi
+        from ..com.sw_type_info import wrapper_module
+        from ..sw_com import get_sw_app
+
+        sw = get_sw_app()
+        mod = wrapper_module()
+        tsw = typed(sw, "ISldWorks", module=mod)
+
+        ret = tsw.OpenDoc6(str(part_path), 1, 1, "", 0, 0)
+        model_doc = ret[0] if isinstance(ret, tuple) else ret
+        if model_doc is None:
+            return None
+
+        mdoc2 = typed_qi(model_doc, "IModelDoc2", module=mod)
+
+        ext = mdoc2.Extension
+        if callable(ext):
+            ext = ext()
+        mp = ext.CreateMassProperty
+        if callable(mp):
+            mp = mp()
+        if mp is None:
+            title = mdoc2.GetTitle
+            title = title() if callable(title) else title
+            sw.CloseDoc(title)
+            return None
+
+        vol = mp.Volume
+        if callable(vol):
+            vol = vol()
+        vol_mm3 = float(vol) * 1e9
+
+        title = mdoc2.GetTitle
+        title = title() if callable(title) else title
+        sw.CloseDoc(title)
+
+        return vol_mm3
+
+    except Exception:
+        return None

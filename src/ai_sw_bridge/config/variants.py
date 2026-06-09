@@ -54,39 +54,50 @@ class ConfigVariant:
     """One configuration variant.
 
     Attributes:
-        name: Configuration name — becomes the SW configuration name
-            verbatim.  Must be unique within the spec.
-        overrides: The set of variable overrides to apply on top of the
-            base locals file.  An empty list means the variant uses the
-            base values unchanged (useful for a "default" or
-            "as-designed" configuration).
-        description: Optional human-readable description stored in the
-            SW configuration's description field.
+        name: Variant name — used as the output filename stem and
+            as the configuration name.
+        overrides: Locals-text overrides (list of variable/expression
+            pairs).  Used by apply_overrides for the in-file
+            configuration approach.  Empty for the multifile approach.
+        description: Optional human-readable description.
+        spec_overrides: Deep-merge overrides for the multifile
+            approach.  A nested dict that is merged into the base
+            spec before building.  Empty for the in-file approach.
     """
 
     name: str
     overrides: list[VariantOverride] = field(default_factory=list)
     description: str = ""
+    spec_overrides: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class ConfigResult:
-    """Outcome of creating one configuration.
+    """Outcome of materializing one variant.
 
     Attributes:
         variant: The variant name that was attempted.
-        ok: True if the configuration was created and the overrides
-            were applied.
+        ok: True if the variant was built and verified.
+        path: Absolute path to the materialized .sldprt file (None on
+            failure).
+        volume_mm3: Measured volume in mm³ (None on failure or if
+            measurement was skipped).
         error: Human-readable error string on failure; None on
             success.
     """
 
     variant: str
     ok: bool
+    path: str | None = None
+    volume_mm3: float | None = None
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {"variant": self.variant, "ok": self.ok}
+        if self.path is not None:
+            out["path"] = self.path
+        if self.volume_mm3 is not None:
+            out["volume_mm3"] = self.volume_mm3
         if self.error is not None:
             out["error"] = self.error
         return out
@@ -96,10 +107,17 @@ def parse_variants(block: list[dict[str, Any]]) -> list[ConfigVariant]:
     """Parse the variants: array from a schema-v2 spec.
 
     Each entry must have a name string and an optional overrides
-    object mapping variable names to expression strings.
+    object.  Two override formats are supported:
+
+    1. **Flat string overrides** (locals approach): every value is a
+       string expression.  Stored in ``overrides`` as
+       ``VariantOverride`` pairs.
+    2. **Nested dict overrides** (multifile approach): at least one
+       value is a dict or non-string type.  Stored verbatim in
+       ``spec_overrides`` for deep-merge into the spec.
 
     Raises ValueError on structural problems (missing name, duplicate
-    names, non-string expressions).
+    names, non-string expressions in flat mode).
     """
     if not isinstance(block, list):
         raise ValueError("variants block must be an array")
@@ -124,13 +142,30 @@ def parse_variants(block: list[dict[str, Any]]) -> list[ConfigVariant]:
                 f"variant {name!r}: 'overrides' must be an object"
             )
 
+        # Detect nested (multifile) vs flat (locals) overrides.
+        # Nested mode requires a CONTAINER value — a dict (deep-merged) or a
+        # list (replaces the base list wholesale, per deep_merge). A bare
+        # scalar (e.g. 42) is malformed in BOTH modes — not a flat string
+        # expression and not a mergeable sub-tree — so it must fall through
+        # to the flat branch and hit the "must be a string expression" raise
+        # (the P4.1s contract), NOT be silently accepted as a nested override.
+        is_nested = any(
+            isinstance(v, (dict, list)) for v in raw_overrides.values()
+        )
+
         overrides: list[VariantOverride] = []
-        for var, expr in raw_overrides.items():
-            if not isinstance(expr, str):
-                raise ValueError(
-                    f"variant {name!r}: override for {var!r} must be a string expression"
-                )
-            overrides.append(VariantOverride(variable=var, expression=expr))
+        spec_overrides: dict[str, Any] = {}
+
+        if is_nested:
+            spec_overrides = raw_overrides
+        else:
+            for var, expr in raw_overrides.items():
+                if not isinstance(expr, str):
+                    raise ValueError(
+                        f"variant {name!r}: override for {var!r} must be a "
+                        "string expression (flat mode) or use nested dicts"
+                    )
+                overrides.append(VariantOverride(variable=var, expression=expr))
 
         description = entry.get("description", "")
         if not isinstance(description, str):
@@ -143,6 +178,7 @@ def parse_variants(block: list[dict[str, Any]]) -> list[ConfigVariant]:
                 name=name,
                 overrides=overrides,
                 description=description,
+                spec_overrides=spec_overrides,
             )
         )
 

@@ -3,17 +3,20 @@
 Public API for configuration variant management.
 
 - ConfigVariant / VariantOverride — the variant data model.
-- ConfigResult — dispatch outcome envelope.
+- ConfigResult — dispatch outcome envelope (path + volume_mm3).
 - parse_variants — parse the variants: block from a spec.
 - apply_overrides — pure locals-override computation.
 - validate_overrides — check variable existence before dispatch.
-- create_all — the dispatch entry point (SEAT-gated COM call).
+- create_all — the in-file dispatch entry point (SEAT-gated COM call).
+- materialize_all — the multifile dispatch entry point (build per variant).
+- deep_merge — recursive dict merge for spec overrides.
 - VARIANTS_BLOCK_SCHEMA — the variants: block JSON-Schema fragment.
 """
 
 from __future__ import annotations
 
-from .dispatch import apply_overrides, create_all, validate_overrides
+from .deep_merge import deep_merge
+from .dispatch import apply_overrides, create_all, materialize_all, validate_overrides
 from .schema import (
     VARIANTS_BLOCK_SCHEMA,
     VARIANT_ENTRY_SCHEMA,
@@ -35,6 +38,8 @@ __all__ = [
     "VariantOverride",
     "apply_overrides",
     "create_all",
+    "deep_merge",
+    "materialize_all",
     "parse_variants",
     "validate_overrides",
 ]

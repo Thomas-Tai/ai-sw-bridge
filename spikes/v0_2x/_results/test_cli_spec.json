@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "name": "TestBox",
+  "features": [
+    {
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_Box",
+      "plane": "Front",
+      "width": 30.0,
+      "height": 30.0
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "EX_Box",
+      "sketch": "SK_Box",
+      "depth": 15.0
+    }
+  ],
+  "variants": [
+    {
+      "name": "Small",
+      "overrides": {
+        "features": [
+          {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Box",
+            "plane": "Front",
+            "width": 20.0,
+            "height": 20.0
+          },
+          {
+            "type": "boss_extrude_blind",
+            "name": "EX_Box",
+            "sketch": "SK_Box",
+            "depth": 10.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "Large",
+      "overrides": {
+        "features": [
+          {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Box",
+            "plane": "Front",
+            "width": 50.0,
+            "height": 50.0
+          },
+          {
+            "type": "boss_extrude_blind",
+            "name": "EX_Box",
+            "sketch": "SK_Box",
+            "depth": 20.0
+          }
+        ]
+      }
+    }
+  ]
+}

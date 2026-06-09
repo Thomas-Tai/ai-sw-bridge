@@ -1,0 +1,106 @@
+{
+  "ok": false,
+  "status": "NO-GO",
+  "wave": "W36",
+  "spike": "S2",
+  "summary": "Per-config feature suppression is NOT accessible via COM API on SOLIDWORKS 2024 SP1. SetSuppression2(state, 0, '') — 'active config only' — is a SILENT NO-OP (returns True but IsSuppressed stays False). opt=1 (all configs) and opt=2 (specific configs) DO suppress, but the suppression leaks to ALL configurations. No COM API found to change the suppression scope.",
+
+  "suppression_investigation": {
+    "SetSuppression2(state=0, opt=0, names='')": {
+      "result": "True (success)",
+      "IsSuppressed_after": false,
+      "volume_changed": false,
+      "verdict": "SILENT NO-OP — returns success but feature stays unsuppressed"
+    },
+    "SetSuppression2(state=0, opt=1, names='')": {
+      "result": "True (success)",
+      "IsSuppressed_after": true,
+      "volume_changed": false,
+      "verdict": "Suppresses on ALL configs — leaks to every configuration"
+    },
+    "SetSuppression2(state=0, opt=2, names=('Config_A',))": {
+      "result": "True (success)",
+      "IsSuppressed_after": true,
+      "volume_changed": false,
+      "verdict": "Suppresses on ALL configs despite specifying Config_A — leaks"
+    },
+    "SetSuppression(True)": {
+      "result": "True (success)",
+      "IsSuppressed_after": false,
+      "verdict": "SILENT NO-OP (same as opt=0)"
+    },
+    "RunCommand(575, 'Suppress')": {
+      "result": "True",
+      "IsSuppressed_after": false,
+      "volume_changed": false,
+      "verdict": "SILENT NO-OP via command interface"
+    }
+  },
+
+  "scope_change_attempts": {
+    "EditConfiguration2(SuppressByDefault=True, InheritProperties=False)": {
+      "result": "True",
+      "effect": "No change — suppression still leaks to all configs"
+    },
+    "AddOrEditConfiguration with $DESCRIPTION": {
+      "result": "Error: 'Unable to write read-only property'"
+    },
+    "ToolsConfiguration()": {
+      "signature": "() -> opens dialog (no args)",
+      "effect": "Cannot set suppression scope programmatically"
+    },
+    "User preference toggles (IDs 400-450)": {
+      "effect": "No config-suppression-related preference found"
+    }
+  },
+
+  "characterized_api_additions": {
+    "IModelDoc2.FeatureExtrusion2": {
+      "arg_count": 23,
+      "signature": "(Sd, Flip, Dir, T1, T2, D1, D2, Dchk1, Dchk2, Ddir1, Ddir2, Dang1, Dang2, OffsetReverse1, OffsetReverse2, TranslateSurface1, TranslateSurface2, Merge, UseFeatScope, UseAutoSelect, T0, StartOffset, FlipStartOffset)"
+    },
+    "ISketchManager.CreateCornerRectangle": {
+      "signature": "(X1, Y1, Z1, X2, Y2, Z2)",
+      "verified": true
+    },
+    "IModelDoc2.EditConfiguration2": {
+      "signature": "(Name, NewName, Comment, AltName, SuppressByDefault, HideByDefault, MinFeatureManager, InheritProperties, Flags)",
+      "verified": true
+    },
+    "ISldWorks.GetUserPreferenceStringValue(8)": {
+      "value": "C:\\ProgramData\\SolidWorks\\SOLIDWORKS 2024\\templates\\Part.prtdot"
+    }
+  },
+
+  "volumes_measured": {
+    "manual_part_creation": {
+      "Block_A_only": 125000,
+      "Block_B_only": 1000000,
+      "Both_blocks": 1125000,
+      "note": "Manual COM creation (not --no-dim builder) produces correct distinct volumes"
+    },
+    "after_suppression_attempts": {
+      "Default": 1125000,
+      "Config_A": 1125000,
+      "Config_B": 1125000,
+      "note": "All identical — suppression had no effect on any config"
+    }
+  },
+
+  "conclusion": "COM API limitation: per-config feature suppression is not programmable on SW 2024 SP1. The UI likely supports it, but the COM layer silently rejects per-config requests. This blocks Option C (topological suppression) as originally specified.",
+
+  "remaining_options": [
+    "A: Investigate swconst.tlb for swFeatureSuppressionByDefault or similar constant that might enable per-config scope",
+    "B: Use a SOLIDWORKS macro (.swp) to toggle per-config suppression, then invoke via RunMacro",
+    "C: Defer distinct-volume verification; ship the offline scaffold + API characterization without the VERIFY step",
+    "D: Investigate whether design tables (IDesignTable) can control per-config feature suppression"
+  ],
+
+  "offline_scaffold_status": {
+    "total_tests": "24/24 pass",
+    "apply_overrides": "GREEN",
+    "validate_overrides": "GREEN",
+    "parse_variants": "GREEN",
+    "create_all": "SEAT-gated (COM structure proven, per-config override blocked)"
+  }
+}

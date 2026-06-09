@@ -1,0 +1,127 @@
+{
+  "ok": false,
+  "status": "PARTIAL",
+  "stage": "per-config override blocked",
+  "wave": "W36",
+  "spike": "S1",
+  "summary": "ConfigurationManager.AddConfiguration2 fully characterized (7-arg signature proven, configs created and persisted). Per-config equation/dimension route BLOCKED: --no-dim build mode creates all features with 'All Configurations' scope. IsAppliedToAllConfigurations=True on all dimensions. SetSuppression2 leaks to all configs. VERIFY THE EFFECT not achievable with current build mode.",
+
+  "characterized_api": {
+    "IConfigurationManager.AddConfiguration2": {
+      "signature": "(Name, Comment, AlternateName, Options, ParentConfigName, Description, Rebuild)",
+      "arg_count": 7,
+      "returns": "IConfiguration",
+      "verified": true
+    },
+    "IModelDoc2.AddConfiguration2": {
+      "signature": "(Name, Comment, AlternateName, SuppressByDefault, HideByDefault, MinFeatureManager, InheritProperties, Flags)",
+      "arg_count": 8,
+      "note": "DIFFERENT signature from IConfigurationManager.AddConfiguration2"
+    },
+    "IModelDoc2.GetConfigurationNames": {
+      "signature": "() -> array of strings",
+      "verified": true
+    },
+    "IModelDoc2.GetConfigurationByName": {
+      "signature": "(Name) -> IConfiguration",
+      "verified": true
+    },
+    "IModelDoc2.ShowConfiguration2": {
+      "signature": "(ConfigurationName) -> activates config",
+      "verified": true
+    },
+    "IModelDoc2.DeleteConfiguration2": {
+      "signature": "(ConfigurationName)",
+      "verified": true
+    },
+    "IEquationMgr.Add2": {
+      "signature": "(Index, Equation, Solve) -> int (index)",
+      "verified": true
+    },
+    "IEquationMgr.Add3": {
+      "signature": "(Index, Equation, Solve, WhichConfigurations, ConfigNames)",
+      "verified": true,
+      "note": "Config-specific equation support confirmed"
+    },
+    "IEquationMgr.SetEquationAndConfigurationOption": {
+      "signature": "(Index, Equation, WhichConfigurations, ConfigNames)",
+      "verified": true
+    },
+    "IConfiguration.GetParameterCount": {
+      "signature": "() -> int",
+      "verified": true,
+      "note": "Returns config properties ($DESCRIPTION, $COLOR), NOT equation variables"
+    },
+    "IConfiguration.GetParameters": {
+      "signature": "([out] Params, [out] Values) -> tuple",
+      "verified": true,
+      "note": "Returns config properties, NOT equations"
+    },
+    "IFeature.SetSuppression2": {
+      "signature": "(SuppressionState, Config_opt, Config_names) -> bool",
+      "verified": true,
+      "note": "Config_opt: 0=all, 1=this, 2=specific. Config_names: tuple when opt=2"
+    },
+    "IDimension.SetSystemValue3": {
+      "signature": "(NewValue, WhichConfigurations, Config_names)",
+      "verified": true
+    }
+  },
+
+  "makepy_traps_found": [
+    {
+      "trap": "AddConfiguration2 on IConfigurationManager has 7 args, NOT 3",
+      "symptom": "Type mismatch at arg 4",
+      "fix": "Pass all 7 args: (Name, Comment, AltName, Options, ParentConfigName, Description, Rebuild)"
+    },
+    {
+      "trap": "GetConfigurationNames is on IModelDoc2, NOT IConfigurationManager",
+      "symptom": "AttributeError on IConfigurationManager",
+      "fix": "Use mdoc2.GetConfigurationNames()"
+    },
+    {
+      "trap": "SetSuppression2 has 3 args, NOT 1",
+      "symptom": "Type mismatch at arg 2",
+      "fix": "Pass (SuppressionState, Config_opt, Config_names)"
+    },
+    {
+      "trap": "IConfiguration.GetParameters returns config properties, not equations",
+      "symptom": "Returns ($DESCRIPTION, $COLOR) instead of equation variables",
+      "fix": "Use IEquationMgr for equation access"
+    }
+  ],
+
+  "blocker": {
+    "issue": "IsAppliedToAllConfigurations=True on all dimensions in --no-dim build",
+    "impact": "Per-config dimension values and feature suppression leak to ALL configs",
+    "root_cause": "--no-dim build creates features with global scope; dimensions are not scoped per-configuration",
+    "options": [
+      "A: Build in parametric mode (currently blocked by AddDimension2 popup — needs popup suppression research)",
+      "B: Post-build: set per-config scope on dimensions/features before applying overrides (requires discovering the API to change config scope)",
+      "C: Use configuration-specific features instead of dimension overrides (e.g., add/remove features per config)",
+      "D: Defer per-config volume verification to a follow-up spike that resolves the scope issue"
+    ]
+  },
+
+  "offline_scaffold_status": {
+    "apply_overrides": "GREEN (pure function, 6/6 tests pass)",
+    "validate_overrides": "GREEN (pure function, 4/4 tests pass)",
+    "parse_variants": "GREEN (9/9 tests pass)",
+    "create_all": "SEAT-gated (structure complete, _create_one needs live-seat per-config route)",
+    "schema": "GREEN (3/3 tests pass)",
+    "total_tests": "24/24 pass"
+  },
+
+  "configs_verified": {
+    "creation": "GREEN — AddConfiguration2 creates configs that persist through save/close/reopen",
+    "naming": "GREEN — GetConfigurationNames returns correct list after creation",
+    "activation": "GREEN — ShowConfiguration2 switches configs successfully",
+    "deletion": "GREEN — DeleteConfiguration2 removes configs",
+    "distinct_volumes": "RED — per-config overrides do not produce distinct volumes"
+  },
+
+  "files_changed": [
+    "spikes/v0_2x/configurations_pae.py (S1 spike, seat-runnable)",
+    "tests/test_config.py (24 offline unit tests, all GREEN)"
+  ]
+}
