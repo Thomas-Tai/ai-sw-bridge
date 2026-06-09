@@ -1,0 +1,93 @@
+{
+  "spike_id": "W41_body_ops_s1",
+  "timestamp": 1780987730.730214,
+  "results": {
+    "delete_body": {
+      "kind": "delete_body",
+      "status": "GREEN",
+      "before": {
+        "body_count": 2,
+        "volumes_mm3": [
+          1800.0000000000002,
+          4000.0000000000005
+        ],
+        "body_names": [
+          "Boss-Extrude2",
+          "Boss-Extrude1"
+        ]
+      },
+      "api_probe": {
+        "method_found": true,
+        "method_name": "InsertDeleteBody2",
+        "callable": true
+      },
+      "handler_ok": true,
+      "handler_error": null,
+      "after": {
+        "body_count": 1,
+        "volumes_mm3": [
+          1800.0000000000002
+        ],
+        "body_names": [
+          "Boss-Extrude2"
+        ]
+      },
+      "volume_delta_mm3": -4000.000000000001
+    },
+    "combine_subtract": {
+      "kind": "combine_subtract",
+      "status": "PRECONDITION_FAILED",
+      "before": {
+        "body_count": 1,
+        "volumes_mm3": [
+          5999.999999999999
+        ],
+        "body_names": [
+          "Boss-Extrude2"
+        ]
+      },
+      "api_probe": {
+        "method_found": true,
+        "method_name": "InsertCombineFeature",
+        "callable": true
+      },
+      "error": "expected 2 bodies, got 1"
+    },
+    "combine_add": {
+      "kind": "combine_add",
+      "status": "RED",
+      "before": {
+        "body_count": 2,
+        "volumes_mm3": [
+          1800.0000000000002,
+          4000.0000000000005
+        ]
+      },
+      "handler_ok": false,
+      "handler_error": "could not select main body",
+      "after": {
+        "body_count": 2,
+        "volumes_mm3": [
+          1800.0000000000002,
+          4000.0000000000005
+        ]
+      }
+    },
+    "split": {
+      "kind": "split",
+      "status": "PRECONDITION_FAILED",
+      "before": {
+        "body_count": 1,
+        "volumes_mm3": [
+          4000.0000000000005
+        ]
+      },
+      "has_refplane": false,
+      "api_probe": {
+        "method_found": false
+      },
+      "error": "could not find ref plane by any known name"
+    }
+  },
+  "summary": "1/4 GREEN"
+}
