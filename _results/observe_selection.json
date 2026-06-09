@@ -1,0 +1,50 @@
+{
+  "verdict": "GREEN",
+  "test_1_face": {
+    "ok": true,
+    "count": 1,
+    "type": 2,
+    "type_name": "face",
+    "has_durable_ref": true,
+    "error": null
+  },
+  "test_0_empty": {
+    "ok": true,
+    "count": 0,
+    "error": null
+  },
+  "test_2_mixed": {
+    "ok": true,
+    "count": 2,
+    "types": [
+      2,
+      1
+    ],
+    "type_names": [
+      "face",
+      "edge"
+    ],
+    "durable_refs": [
+      true,
+      true
+    ],
+    "error": null
+  },
+  "test_no_doc": {
+    "ok": false,
+    "error": "no_active_doc"
+  },
+  "test_persist_roundtrip": {
+    "captured": true,
+    "resolved": true,
+    "error": null
+  },
+  "errors": [],
+  "checks": {
+    "1_face": "PASS",
+    "0_empty": "PASS",
+    "2_mixed": "PASS",
+    "no_doc": "PASS",
+    "persist_rt": "PASS"
+  }
+}

@@ -27,6 +27,7 @@ from .observe_draft import sw_get_draft_analysis
 from .observe_inertia import sw_get_inertia
 from .observe_interference import sw_get_interference
 from .observe_measure import sw_get_measure_from_doc
+from .observe_selection import sw_get_selection
 
 
 def _captures_dir() -> Path:
@@ -1412,3 +1413,18 @@ class SolidWorksObserver:
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
         return sw_get_draft_analysis(doc, pull_direction, min_angle_deg)
+
+    def selection(self) -> dict[str, Any]:
+        """Read the active document's current selection (Wave-43).
+
+        Reports what the engineer has clicked: count, per-entity type
+        (``swSelectType_e``), and a durable persist-reference token
+        (``GetPersistReference3``, base64url-encoded) when obtainable.
+
+        Works on any document type (part, assembly, drawing).
+        Empty selection is valid: ``{count: 0, selections: []}``.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_selection(doc)

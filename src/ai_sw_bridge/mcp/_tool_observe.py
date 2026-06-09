@@ -1,6 +1,6 @@
-"""Observation MCP tools (W5.4, §6.1, W30, W37).
+"""Observation MCP tools (W5.4, §6.1, W30, W37, W43).
 
-Sixteen read-only tools that mirror the ``ai-sw-observe`` CLI
+Seventeen read-only tools that mirror the ``ai-sw-observe`` CLI
 subcommands. Each tool is a thin wrapper around a
 :class:`ai_sw_bridge.observe.SolidWorksObserver` method, decorated
 with ``@com_tool`` so the body runs on the ComExecutor's STA
@@ -176,3 +176,17 @@ def register(mcp: Any) -> None:
             pull_direction=pull_direction,
             min_angle_deg=min_angle_deg,
         )
+
+    @mcp.tool()
+    @com_tool
+    def sw_current_selection() -> dict[str, Any]:
+        """Read the active document's current selection (W43).
+
+        Reports whatever entities are currently selected in SW via
+        SelectionManager. Returns {count, selections: [{index, type,
+        type_name, durable_ref, entity_info}]}. Works on any document
+        type. Empty selection is valid (count=0). durable_ref is a
+        base64url-encoded persist token from GetPersistReference3 when
+        obtainable, null otherwise.
+        """
+        return SolidWorksObserver().selection()
