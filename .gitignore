@@ -66,6 +66,7 @@ tools/snapshots-e2e/
 
 
 docs/central_idea/
+docs/central_idea_vs_implementation_audit.md
 docs/regression_checks/
 
 # Upstream reference repo clones — see docs/reference_repos.md
