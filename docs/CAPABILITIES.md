@@ -20,7 +20,7 @@
 **§6.5 rule:** approval-gated **mutations** (propose/dry_run/commit) are **CLI-only,
 never MCP**. **Read-only** interrogation (`observe`) may be both CLI **and** MCP.
 
-## 1. Part features — `feature_add` (22 advertised kinds)
+## 1. Part features — `feature_add` (19 advertised kinds)
 
 The `feature_add` mutation in `mutate.py`; each kind is in `_SUPPORTED_FEATURE_TYPES`
 (propose fails-closed on anything outside it).
@@ -45,6 +45,7 @@ The `feature_add` mutation in `mutate.py`; each kind is in `_SUPPORTED_FEATURE_T
 | `linear_pattern` | `FeatureLinearPattern5` (22-arg, seed mark=4/dir mark=1) | W21 |
 | `circular_pattern` | `FeatureCircularPattern5` (14-arg; spacing in RADIANS) | W21 |
 | `mirror_feature` | `InsertMirrorFeature2` (5-arg, seed mark=1/plane mark=2) | W21 |
+| `delete_body` | `InsertDeleteBody2(False)` (1-arg) on a `SelectByID2(…,"SOLIDBODY")` body | W41 |
 
 *(Plus the pre-W1 core: extrude / cut / revolve / 7 sketch primitives with
 construction + text fidelity — `spec/builder.py`.)*
@@ -114,6 +115,7 @@ unknown field rejected).
 | Bounding box (part) | `sw_bbox` / `sw_bounding_box` | `IPartDoc.GetPartBox(True)` (part-only) | W30 |
 | **Clearance (min-distance)** | `sw_clearance` | `IComponent2.Select2`×2 → `IMeasure.Distance` (assembly-only) | W35 |
 | **Draft analysis (DFM)** | `sw_draft_analysis` | `IPartDoc.GetBodies2` (QI from IModelDoc2) → `GetFaces` → `IFace2.Normal` vs pull (part-only) | W37 |
+| **Current selection** | `sw_current_selection` | `SelectionManager` (memid 65537 prop-get) → `GetSelectedObjectCount2`/`GetSelectedObjectType3`/`GetSelectedObject6` → durable persist-ref; `swSelectType_e` table (edge=1/face=2/…/solid_body=76) | W43 |
 
 ## 5b. Metadata — `ai-sw-properties` (W29, **CLI-only mutation**)
 
