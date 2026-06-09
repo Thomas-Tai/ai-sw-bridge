@@ -17,6 +17,7 @@ Subcommands:
   inertia             -> inertia()               [part only, W5 E1]
   custom_props        -> sw_get_custom_props()  [experimental]
   addins              -> sw_get_enabled_addins()  [experimental, W7.1]
+  selection           -> selection()              [any doc, W43]
 
 Each subcommand prints a single JSON object to stdout and exits 0 if the
 underlying tool returned ok=True, else 1. Both --key=value and --key value
@@ -105,6 +106,10 @@ def _run_draft(args: argparse.Namespace) -> dict[str, Any]:
         pull_direction=args.pull_direction,
         min_angle_deg=args.min_angle,
     )
+
+
+def _run_selection(_args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().selection()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -342,6 +347,20 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     add_subcommand_tier(p, "experimental")
     p.set_defaults(func=_run_addins)
+
+    p = subs.add_parser(
+        "selection",
+        help="Report the active document's current selection (W43).",
+        description=(
+            "Wave-43 perception axis — read whatever entities are currently "
+            "selected in SW via SelectionManager.GetSelectedObjectCount2 / "
+            "GetSelectedObjectType3 / GetSelectedObject6. Reports per-entity "
+            "type (swSelectType_e), name, and a durable persist-reference "
+            "token (GetPersistReference3, base64url-encoded) when obtainable. "
+            "Works on any document type. Empty selection is valid (count=0)."
+        ),
+    )
+    p.set_defaults(func=_run_selection)
 
     return parser
 
