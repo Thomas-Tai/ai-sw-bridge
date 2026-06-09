@@ -95,6 +95,29 @@ git log) and reference the implementing commit in `CHANGELOG.md`.
 | **Sketch relation: coincident** | Needs endpoint (sketch point) selection, not whole-segment selection. `seg.GetStartPoint2` / vertex selection required. Token likely `sgCOINCIDENT` or `sgMERGE` — untested. Effect-probe recipe: two endpoints apart → select points → apply token → assert they coincide. Fail-closed: removed from `RELATION_TOKENS` until proven. First raised W39 seat session (2026-06-09). |
 | **Sketch relation: symmetric** | 3-ref constraint (2 entities + centerline). Selection order and mark convention unproven (W12 width-mate precedent: the centerline may need a distinct mark). Token likely `sgSYMMETRIC2D` — untested. Effect-probe recipe: 2 lines + a construction centerline → select in order → apply token → assert mirror symmetry about the line. Fail-closed: removed from `RELATION_TOKENS` until proven. First raised W39 seat session (2026-06-09). |
 
+## Wave-41 (body-ops sub-scope — `combine` / `split` deferred)
+
+Wave-41 scoped three multi-body `feature_add` kinds ranked by wall-risk:
+`delete_body` (low), `combine` (medium), `split` (high). **`delete_body`
+SHIPPED** (S1 GREEN on SW 2024 SP1: 2 disjoint bodies 1800+4000 mm³ → delete
+body[1] → 1 body 1800 mm³, the W21 volume-delta gate). The seat cracked four
+binding bugs that masked viability — all W37-class: (1) `GetBodies2` is
+`IPartDoc`-only (QI from the typed `IModelDoc2`); (2) per-body volume is
+`IBody2.GetMassProperties(1.0)[3]`, NOT `IModelDocExtension.CreateMassProperty`
+(which a body lacks → was silently 0.0); (3) body selection is
+`Extension.SelectByID2(name, "SOLIDBODY", …)` (swSelType 76), NOT
+`select_entity(body)` / face-select / `BODYFEATURE` (all leave
+`InsertDeleteBody2` a no-op); (4) `InsertDeleteBody2(False)` is ONE arg (the
+2-arg form raises "Invalid number of parameters"). `combine`/`split` handlers
+remain as characterized dead code (dispatch + validator wired) but are held
+OUT of `_SUPPORTED_FEATURE_TYPES` so propose fails-closed — the
+edge-flange / loft precedent. First raised + deferred 2026-06-09 (W41 seat).
+
+| Item | Rationale |
+|---|---|
+| **`combine` (boolean add/subtract/common)** | Two un-cleared blockers, each its own S1. **(1) Raw-`GetBodies2` binding:** `_create_combine` still calls `doc.GetBodies2` on the raw (un-QI'd) doc — needs the same typed-`IPartDoc` QI the `delete_body` path uses. **(2) `IBody2`-array marshaling (the real wall):** `InsertCombineFeature(type, mainBody, toolBodies)` requires the main body as an `IBody2` dispatch AND the tool bodies as an `IBody2` SAFEARRAY marshaled out-of-process — exactly the un-arrayed-dispatch class that walled edge-flange for two waves until the `VARIANT(VT_ARRAY \| VT_DISPATCH, (…))` breakthrough (Wave-7). The fix is likely the same SAFEARRAY-of-dispatch wrap, but it needs its own seat de-risk (build 2 overlapping bodies → subtract → assert single body, volume == A − overlap; a no-op that leaves 2 bodies = FAIL). Until proven, `combine` stays fail-closed. `_COMBINE_OP_MAP = {add:0, subtract:1, common:2}` already characterized. |
+| **`split` (one body → N by a trim plane/surface)** | Solver-deep + needs a cutting entity, and the W41 S1 fixtures only ever built ONE body so the increase-to-N gate was never exercised (`PRECONDITION_FAILED`, not a COM verdict). Owns the highest wall-risk of the three (loft/rib solver-deep family). Needs a dedicated S1: build a single body + a ref plane through it → split → assert body count 1→N with volumes summing to the original. `_create_split` characterized (selects body[0], expects a `cutting_plane`/`cutting_surface` ref) but unproven end-to-end. |
+
 ## v0.13+ backlog (no committed dates)
 
 Future capability lanes — each is a multi-week project with its own
