@@ -6,13 +6,15 @@
 > `docs/DEFERRED.md`. Paradigm: **declarative JSON is the only authoring surface;
 > propose→approve→execute; zero arbitrary code exec; out-of-process Python.**
 >
-> Last reconciled: 2026-06-06 (through W35). Suite: **2011 passed**, 34 skipped.
+> Last reconciled: 2026-06-09 (through W29 — custom file properties). Suite:
+> **1944 passed** (serial; xdist unavailable in this env), 58 skipped.
 
 ## 0. Surfaces
 
-**12 CLI entry points:** `ai-sw-build` · `ai-sw-mutate` · `ai-sw-assembly` ·
-`ai-sw-drawing` · `ai-sw-observe` · `ai-sw-probe` · `ai-sw-checkpoint` ·
-`ai-sw-history` · `ai-sw-codegen` · `ai-sw-apidoc` · `ai-sw-mcp` · `ai-sw-bridge`
+**13 CLI entry points:** `ai-sw-build` · `ai-sw-mutate` · `ai-sw-assembly` ·
+`ai-sw-drawing` · `ai-sw-properties` · `ai-sw-observe` · `ai-sw-probe` ·
+`ai-sw-checkpoint` · `ai-sw-history` · `ai-sw-codegen` · `ai-sw-apidoc` ·
+`ai-sw-mcp` · `ai-sw-bridge`
 
 **§6.5 rule:** approval-gated **mutations** (propose/dry_run/commit) are **CLI-only,
 never MCP**. **Read-only** interrogation (`observe`) may be both CLI **and** MCP.
@@ -106,9 +108,25 @@ multiple views per config, animation.*
 | Measure (selection) | `sw_measure` / `sw_measure_selection` | `CreateMeasure`→`Calculate(None)` | W30 |
 | Bounding box (part) | `sw_bbox` / `sw_bounding_box` | `IPartDoc.GetPartBox(True)` (part-only) | W30 |
 | **Clearance (min-distance)** | `sw_clearance` | `IComponent2.Select2`×2 → `IMeasure.Distance` (assembly-only) | W35 |
-| Custom properties | `sw_custom_props` | (read side) | W29* |
 
-*W29 properties write-side parked offline; seat PAE unrun.*
+## 5b. Metadata — `ai-sw-properties` (W29, **CLI-only mutation**)
+
+Custom **file** properties (TEXT, file-level) via a `kind:"properties"` spec
+through the `metadata/` module + `ai-sw-properties` CLI (propose→dry_run→commit;
+**CLI-only per §6.5 — properties is a MUTATION, never MCP**).
+
+| Capability | COM recipe (abbrev.) | Origin |
+|---|---|---|
+| Set custom props (TEXT) | `CustomPropertyManager("")` → `Add3(name, 30, value, 1)` | W29 |
+| Read-back verify | `Get4(name, False)` 3-tuple (Get6 dead) + `GetNames()` existence | W29 |
+| Save | `SaveAs3(path, 0, 0)` → `swFileSaveError_e` (Save3 dead) | W29 |
+| `overwrite:false` skip | `name in GetNames()` → preserve existing | W29 |
+
+**W29 seat lessons (three makepy out-param traps, offline-test-blind):** `Count`
+is a **property** not a method; `Get6`/`Save3` both **raise "Type mismatch"** on
+early-bind ([out]-param mis-marshaling) → use `Get4`/`SaveAs3`. PAE 7/7 GREEN
+(count 0→3, read-back exact across close+reopen). *Deferred: Number/Date/YesOrNo
+types, configuration-specific props, linked props, deletion.*
 
 ## 6. Persistence / infra
 
