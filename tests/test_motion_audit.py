@@ -15,6 +15,7 @@ from ai_sw_bridge.motion_audit import (
     _from_si,
     _positions,
     _to_si,
+    choose_clearance_pair,
     summarize_motion,
 )
 
@@ -114,3 +115,41 @@ class TestSummarizeMotion:
         s = summarize_motion(prof)
         assert s["tightest_clearance_mm"] is None
         assert s["collision_free"] is True
+
+
+class TestChooseClearancePair:
+    def test_empty_distances_returns_none(self) -> None:
+        assert choose_clearance_pair(["a", "b"], {}) is None
+
+    def test_single_pair(self) -> None:
+        dists = {("a", "b"): 5.0}
+        assert choose_clearance_pair(["a", "b"], dists) == ("a", "b")
+
+    def test_picks_nearest(self) -> None:
+        dists = {("a", "b"): 10.0, ("a", "c"): 2.0, ("b", "c"): 7.0}
+        assert choose_clearance_pair(["a", "b", "c"], dists) == ("a", "c")
+
+    def test_all_none_returns_none(self) -> None:
+        dists = {("a", "b"): None, ("a", "c"): None}
+        assert choose_clearance_pair(["a", "b", "c"], dists) is None
+
+    def test_skips_none_picks_positive(self) -> None:
+        dists = {("a", "b"): None, ("a", "c"): 3.0, ("b", "c"): 8.0}
+        assert choose_clearance_pair(["a", "b", "c"], dists) == ("a", "c")
+
+    def test_skips_negative(self) -> None:
+        dists = {("a", "b"): -1.0, ("a", "c"): 4.0}
+        assert choose_clearance_pair(["a", "b", "c"], dists) == ("a", "c")
+
+    def test_zero_touching_selected(self) -> None:
+        dists = {("a", "b"): 0.0, ("a", "c"): 5.0}
+        assert choose_clearance_pair(["a", "b", "c"], dists) == ("a", "b")
+
+    def test_all_negative_returns_none(self) -> None:
+        dists = {("a", "b"): -1.0, ("a", "c"): -2.0}
+        assert choose_clearance_pair(["a", "b", "c"], dists) is None
+
+    def test_tie_returns_first(self) -> None:
+        dists = {("a", "b"): 3.0, ("a", "c"): 3.0}
+        result = choose_clearance_pair(["a", "b", "c"], dists)
+        assert result == ("a", "b")

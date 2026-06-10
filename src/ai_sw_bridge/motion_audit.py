@@ -157,6 +157,80 @@ def summarize_motion(profile: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def choose_clearance_pair(
+    component_names: list[str],
+    pair_distances: dict[tuple[str, str], float | None],
+) -> tuple[str, str] | None:
+    """Select the component pair with the smallest non-negative clearance. PURE.
+
+    ``pair_distances`` maps ``(name_a, name_b)`` to min-distance in mm, or
+    ``None`` when unmeasured or in error. Negative values are skipped (invalid
+    measurement). Returns the nearest pair (0.0 = touching, >0 = gap), or
+    ``None`` if no pair has a non-negative distance.
+    """
+    best_pair: tuple[str, str] | None = None
+    best_dist: float = float("inf")
+    for pair, dist in pair_distances.items():
+        if dist is None:
+            continue
+        if dist < 0:
+            continue
+        if dist < best_dist:
+            best_dist = dist
+            best_pair = pair
+    return best_pair
+
+
+def list_component_names(asm_doc: Any, mod: Any | None = None) -> list[str]:
+    """Return the display names of all components in the assembly. Seat-bound."""
+    if mod is None:
+        mod = wrapper_module()
+    try:
+        asm_typed = typed(asm_doc, "IAssemblyDoc", module=mod)
+        comps = asm_typed.GetComponents(True)
+    except Exception:  # noqa: BLE001
+        return []
+    if comps is None:
+        return []
+    if not isinstance(comps, (list, tuple)):
+        comps = (comps,)
+    names: list[str] = []
+    for comp in comps:
+        try:
+            nm = comp.Name2
+            if callable(nm):
+                nm = nm()
+            names.append(str(nm))
+        except Exception:  # noqa: BLE001
+            continue
+    return names
+
+
+def read_all_clearances(
+    asm_doc: Any,
+    component_names: list[str],
+    mod: Any | None = None,
+) -> dict[tuple[str, str], float | None]:
+    """Measure pairwise clearance between all named components. Seat-bound.
+
+    Returns ``{(name_a, name_b): min_distance_mm | None}`` for every unordered
+    pair. ``None`` when touching/overlapping (Distance == -1.0).
+    """
+    if mod is None:
+        mod = wrapper_module()
+    distances: dict[tuple[str, str], float | None] = {}
+    for i, a in enumerate(component_names):
+        for b in component_names[i + 1 :]:
+            clr = read_clearance(asm_doc, a, b, mod)
+            if clr.get("touching"):
+                distances[(a, b)] = 0.0
+            elif not clr.get("errors") and clr.get("min_distance_mm") is not None:
+                distances[(a, b)] = clr["min_distance_mm"]
+            else:
+                distances[(a, b)] = None
+    return distances
+
+
 def motion_sweep(
     asm_doc: Any,
     *,

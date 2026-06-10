@@ -16,7 +16,7 @@ Spec (kind: "motion_audit"):
     "kind": "motion_audit",
     "assembly": "C:/path/mech.SLDASM",
     "driver": {"mate": "DriveArm", "type": "distance", "from": 0, "to": 50, "steps": 6},
-    "clearance_pair": ["armA-1", "postB-1"]      // optional
+    "clearance_pair": ["armA-1", "postB-1"]      // optional, or "auto"
   }
 """
 
@@ -92,7 +92,30 @@ def _run_audit(args: argparse.Namespace) -> dict[str, Any]:
 
     drv = spec["driver"]
     pair = spec.get("clearance_pair")
-    clearance_pair = tuple(pair) if isinstance(pair, list) and len(pair) == 2 else None
+    clearance_pair: tuple[str, str] | None = None
+    if isinstance(pair, list) and len(pair) == 2:
+        clearance_pair = tuple(pair)
+    elif pair == "auto":
+        from ..motion_audit import (
+            choose_clearance_pair,
+            list_component_names,
+            read_all_clearances,
+        )
+
+        names = list_component_names(doc, mod=mod)
+        if len(names) >= 2:
+            dists = read_all_clearances(doc, names, mod=mod)
+            chosen = choose_clearance_pair(names, dists)
+            if chosen is not None:
+                clearance_pair = chosen
+            else:
+                result["warnings"] = result.get("warnings", []) + [
+                    "auto clearance_pair: no pair with positive clearance found"
+                ]
+        else:
+            result["warnings"] = result.get("warnings", []) + [
+                f"auto clearance_pair: need >= 2 components, found {len(names)}"
+            ]
 
     try:
         sweep = motion_sweep(
