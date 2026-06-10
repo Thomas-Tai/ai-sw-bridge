@@ -1,0 +1,66 @@
+{
+  "spike_id": "kinematic_motion_derisk",
+  "legs": {
+    "drag_probe": {
+      "leg": "drag_probe",
+      "status": "DUMPED",
+      "assembly_drive_members": [
+        "GetDragOperator",
+        "IGetDragOperator"
+      ]
+    },
+    "parametric_sweep": {
+      "leg": "parametric_sweep",
+      "status": "GREEN",
+      "create_mate_error": null,
+      "sweep": [
+        {
+          "distance_mm": 0.0,
+          "drive_route": "parameter",
+          "interference_count": 1,
+          "interference_volume_mm3": 64000.0,
+          "expected_overlap_mm3": 64000.0
+        },
+        {
+          "distance_mm": 10.0,
+          "drive_route": "parameter",
+          "interference_count": 1,
+          "interference_volume_mm3": 48000.0,
+          "expected_overlap_mm3": 48000.0
+        },
+        {
+          "distance_mm": 20.0,
+          "drive_route": "parameter",
+          "interference_count": 1,
+          "interference_volume_mm3": 32000.0,
+          "expected_overlap_mm3": 32000.0
+        },
+        {
+          "distance_mm": 30.0,
+          "drive_route": "parameter",
+          "interference_count": 1,
+          "interference_volume_mm3": 16000.0,
+          "expected_overlap_mm3": 16000.0
+        },
+        {
+          "distance_mm": 40.0,
+          "drive_route": "parameter",
+          "interference_count": 0,
+          "interference_volume_mm3": 0.0,
+          "expected_overlap_mm3": 0.0
+        },
+        {
+          "distance_mm": 50.0,
+          "drive_route": "parameter",
+          "interference_count": 0,
+          "interference_volume_mm3": 0.0,
+          "expected_overlap_mm3": 0.0
+        }
+      ],
+      "drive_routes_used": [
+        "parameter"
+      ],
+      "volume_responds_to_position": true
+    }
+  }
+}
