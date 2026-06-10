@@ -352,6 +352,110 @@ class TestMmToMHelper:
         assert builder._mm_to_m({"rhs": '"S1B_W"'}) == 0.0
 
 
+def _stash_plane_normal(bf: builder.BuiltFeature, feat: dict[str, Any]) -> None:
+    """Replicate build()'s plane-normal stash branch verbatim.
+
+    build() stashes the parent plane's outward normal on plane-based sketches
+    so the downstream extrude can inherit it as its axis. The handlers run
+    isolated in these tests (no build() loop), so this mirrors the exact
+    ``if bf.type in (...)`` decision from build() to keep the regression check
+    honest: if a plane-sketch type is dropped from that tuple, this helper
+    leaves ``parent_plane_normal`` None and the extrude below raises.
+    """
+    if bf.type in (
+        "sketch_rectangle_on_plane",
+        "sketch_circle_on_plane",
+        "sketch_ellipse",
+    ):
+        bf.parent_plane_normal = builder.PLANE_NORMALS[feat["plane"]]
+
+
+class _FakeExtrudeFeature:
+    """An IFeature stand-in for the new extrusion (settable Name)."""
+
+    def __init__(self) -> None:
+        self.Name: str | None = None
+
+
+class _FakeFeatureManager:
+    def FeatureExtrusion2(self, *args: Any) -> _FakeExtrudeFeature:
+        return _FakeExtrudeFeature()
+
+
+class _FakeExtrudeDoc(_FakeDoc):
+    """_FakeDoc + the extra COM seam _build_boss_extrude_blind touches:
+    ClearSelection2, SelectByID-for-SKETCH, and FeatureManager.FeatureExtrusion2."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._fm = _FakeFeatureManager()
+
+    def ClearSelection2(self, flag: bool) -> None:
+        self.log.append(("ClearSelection2", (flag,)))
+
+    @property
+    def FeatureManager(self) -> _FakeFeatureManager:
+        return self._fm
+
+
+class _ExtrudeCtx:
+    def __init__(self) -> None:
+        self.doc = _FakeExtrudeDoc()
+        self.features_by_name: dict[str, builder.BuiltFeature] = {}
+
+
+class TestEllipseExtrudeChainStash:
+    """sketch_ellipse must carry parent_plane_normal like the rectangle/circle
+    on-plane primitives so a child boss_extrude_blind inherits the plane axis
+    instead of raising "no parent_plane_normal stashed".
+
+    The CreateEllipse + FeatureExtrusion2 COM behaviour is already seat-proven;
+    the bug was purely the build-graph metadata stash, which is offline-testable:
+    _build_boss_extrude_blind raises BEFORE consuming the extrude geometry when
+    the normal is missing.
+    """
+
+    def test_ellipse_sketch_is_stashed_as_plane_based(self) -> None:
+        # The handler returns a bare BuiltFeature (no normal yet); build()'s
+        # stash branch is what sets it for plane-based sketches.
+        ctx = _Ctx()
+        bf = builder._build_sketch_ellipse(ctx, {
+            "type": "sketch_ellipse", "name": "El1", "plane": "Front",
+            "center": {"x": 0.0, "y": 0.0}, "major_radius": 10.0, "minor_radius": 5.0,
+        })
+        assert bf.parent_plane_normal is None  # handler leaves it for build()
+        _stash_plane_normal(bf, {"type": "sketch_ellipse", "plane": "Front"})
+        assert bf.parent_plane_normal == builder.PLANE_NORMALS["Front"]
+
+    def test_boss_extrude_on_ellipse_inherits_plane_normal(self) -> None:
+        # Build the ellipse sketch, stash exactly as build() does, then run
+        # the child extrude. It must NOT raise and must inherit the Front-plane
+        # +Z axis. (Without the sketch_ellipse stash this raised RuntimeError.)
+        ctx = _ExtrudeCtx()
+        sk = builder.BuiltFeature(name="El1", type="sketch_ellipse")
+        _stash_plane_normal(sk, {"type": "sketch_ellipse", "plane": "Front"})
+        ctx.features_by_name["El1"] = sk
+
+        ext = builder._build_boss_extrude_blind(ctx, {  # type: ignore[arg-type]
+            "type": "boss_extrude_blind", "name": "Boss1",
+            "sketch": "El1", "depth": 10.0,
+        })
+        assert ext.extrude_axis == builder.PLANE_NORMALS["Front"]
+        assert (ext.name, ext.type) == ("Boss1", "boss_extrude_blind")
+
+    def test_missing_stash_still_raises_guard(self) -> None:
+        # Regression sentinel: if a sketch is NOT stashed (the pre-fix state),
+        # the extrude guard fires. Proves the test would have caught the bug.
+        ctx = _ExtrudeCtx()
+        sk = builder.BuiltFeature(name="El1", type="sketch_ellipse")  # not stashed
+        ctx.features_by_name["El1"] = sk
+        with pytest.raises(RuntimeError, match="no parent_plane_normal stashed"):
+            builder._build_boss_extrude_blind(ctx, {  # type: ignore[arg-type]
+                "type": "boss_extrude_blind", "name": "Boss1",
+                "sketch": "El1", "depth": 10.0,
+            })
+
+
 class TestDescriptorRegistryCoversP17s:
     """Each P1.7s primitive is fully wired in the live DESCRIPTORS dict."""
 
