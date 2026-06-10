@@ -1,0 +1,116 @@
+{
+  "spike_id": "mech_mate_tier3_slot_hinge",
+  "stages": {
+    "A_introspect": {
+      "stage": "A_introspect",
+      "enums": {
+        "swMateSLOT": 21,
+        "swMateHINGE": 22
+      },
+      "slot": {
+        "enum": 21,
+        "base_members": [],
+        "typed_iface": "ISlotMateFeatureData",
+        "members": [
+          "CLSID",
+          "Constraint",
+          "Distance",
+          "EntitiesToMate",
+          "FlipDirection",
+          "MateAlignment",
+          "Percent",
+          "coclass_clsid"
+        ],
+        "status": "DUMPED"
+      },
+      "hinge": {
+        "enum": 22,
+        "base_members": [],
+        "typed_iface": "IHingeMateFeatureData",
+        "members": [
+          "Angle",
+          "AngleSelection",
+          "CLSID",
+          "EntitiesToMate",
+          "MateAlignment",
+          "MaxVal",
+          "MinVal",
+          "SetEntitiesToMate",
+          "coclass_clsid"
+        ],
+        "status": "DUMPED"
+      },
+      "status": "DONE"
+    },
+    "B_hinge": {
+      "leg": "hinge",
+      "status": "SOLVED_PERSISTED",
+      "enum_resolved": 22,
+      "entities_found": {
+        "a_cyl": true,
+        "b_cyl": true,
+        "a_cap": true,
+        "b_cap": true
+      },
+      "matrix": [
+        {
+          "align": "closest",
+          "ok": true,
+          "error": null,
+          "error_status": null
+        }
+      ],
+      "winning_align": "closest",
+      "feature_type": "MateHinge",
+      "error_code2": [
+        0,
+        false
+      ],
+      "persist": {
+        "mate_feature_type": "MateHinge",
+        "read_back": {
+          "Angle": 0.0,
+          "MaxVal": 0.0,
+          "MinVal": 0.0,
+          "MateAlignment": 1
+        }
+      }
+    },
+    "C_slot": {
+      "leg": "slot",
+      "status": "SOLVED_CONSTRAINT_PERSISTED",
+      "enum_resolved": 21,
+      "entities_found": {
+        "slot_cyl_face": true,
+        "pin_cyl_face": true
+      },
+      "typed_iface": "ISlotMateFeatureData",
+      "iface_members": [
+        "CLSID",
+        "Constraint",
+        "Distance",
+        "EntitiesToMate",
+        "FlipDirection",
+        "MateAlignment",
+        "Percent",
+        "coclass_clsid"
+      ],
+      "entities_set_via": "property_array",
+      "constraint_set": {
+        "Constraint": 1
+      },
+      "feature_type": "MateSlot",
+      "error_code2": [
+        0,
+        false
+      ],
+      "persist": {
+        "mate_feature_type": "MateSlot",
+        "read_back": {
+          "Constraint": 1,
+          "MateAlignment": 0
+        }
+      }
+    }
+  }
+}

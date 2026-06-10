@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .schema import MATE_ALIGNMENTS, MATE_TYPES
+from .schema import MATE_ALIGNMENTS, MATE_TYPES, SLOT_CONSTRAINTS
 
 
 class AssemblyValidationError(Exception):
@@ -210,6 +210,56 @@ def _check_mates(
                         )
             continue
 
+        # Hinge (W48 Tier-3): compound concentric+coincident, TWO role pairs
+        # (concentric_faces/coincident_faces) — never the symmetric a/b path.
+        if mtype == "hinge":
+            for scalar in ("value_mm", "value_deg", "limit", "a", "b"):
+                if mate.get(scalar) is not None:
+                    raise AssemblyValidationError(
+                        f"hinge mate does not accept {scalar!r} (uses "
+                        f"concentric_faces/coincident_faces only)",
+                        path,
+                    )
+            hinge_align = mate.get("alignment")
+            if hinge_align is not None and hinge_align not in MATE_ALIGNMENTS:
+                raise AssemblyValidationError(
+                    f"mate alignment {hinge_align!r} not in "
+                    f"{sorted(MATE_ALIGNMENTS)}",
+                    path,
+                )
+            for set_key in ("concentric_faces", "coincident_faces"):
+                face_set = mate.get(set_key)
+                if not isinstance(face_set, list) or len(face_set) != 2:
+                    raise AssemblyValidationError(
+                        f"hinge mate requires {set_key} with exactly 2 refs",
+                        path,
+                    )
+                for j, ref in enumerate(face_set):
+                    ref_path = f"{path}/{set_key}/{j}"
+                    if not isinstance(ref, dict):
+                        raise AssemblyValidationError(
+                            f"{set_key}[{j}] must be a dict", ref_path
+                        )
+                    ref_comp = ref.get("component")
+                    if not isinstance(ref_comp, str) or not ref_comp:
+                        raise AssemblyValidationError(
+                            f"{set_key}[{j}].component must be a non-empty string",
+                            ref_path,
+                        )
+                    if ref_comp not in component_ids:
+                        raise AssemblyValidationError(
+                            f"{set_key}[{j}].component {ref_comp!r} not found in "
+                            f"component ids {sorted(component_ids)}",
+                            ref_path,
+                        )
+                    face_ref = ref.get("face_ref")
+                    if not isinstance(face_ref, dict) or not face_ref:
+                        raise AssemblyValidationError(
+                            f"{set_key}[{j}].face_ref must be a non-empty dict",
+                            ref_path,
+                        )
+            continue
+
         alignment = mate.get("alignment")
         if alignment is not None and alignment not in MATE_ALIGNMENTS:
             raise AssemblyValidationError(
@@ -302,6 +352,34 @@ def _check_mates(
                 )
         # camfollower: no coupling scalar — type + a + b (already required) is
         # sufficient; the cam (a) and follower (b) entity refs drive resolution.
+
+        # Slot (W48 Tier-3): a/b = slot face + pin face (validated by the a/b loop
+        # below). constraint selects the positional mode; distance/percent modes
+        # require their scalar.
+        if mtype == "slot":
+            constraint = mate.get("constraint", "free")
+            if constraint not in SLOT_CONSTRAINTS:
+                raise AssemblyValidationError(
+                    f"slot constraint {constraint!r} not in "
+                    f"{sorted(SLOT_CONSTRAINTS)}",
+                    path,
+                )
+            if constraint == "distance":
+                dval = mate.get("distance_mm")
+                if not isinstance(dval, (int, float)) or dval <= 0:
+                    raise AssemblyValidationError(
+                        "slot 'distance' constraint requires a positive "
+                        "'distance_mm'",
+                        path,
+                    )
+            elif constraint == "percent":
+                pval = mate.get("percent")
+                if not isinstance(pval, (int, float)) or not (0 <= pval <= 100):
+                    raise AssemblyValidationError(
+                        "slot 'percent' constraint requires 'percent' in "
+                        "[0, 100]",
+                        path,
+                    )
 
         limit = mate.get("limit")
         if limit is not None:

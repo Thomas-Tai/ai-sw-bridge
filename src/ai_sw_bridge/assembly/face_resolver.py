@@ -128,8 +128,16 @@ def _resolve_via_fingerprint(
     #   non_planar  — the first non-planar face (cam-follower's cam profile).
     linear_edge = face_ref.get("linear_edge", False)
     non_planar = face_ref.get("non_planar", False)
+    # W48 hinge: planar_normal = the planar face whose OUTWARD normal best aligns
+    # (SIGNED dot, not abs) with the given vector — distinguishes a +Z cap from a
+    # -Z cap, which the unsigned normal-fingerprint below cannot (it scores by
+    # abs(dot), so opposite-facing faces tie). Used for the hinge's coincident
+    # (touching) face pair.
+    planar_normal = face_ref.get("planar_normal")
 
-    if target_normal is None and not (is_cylinder or linear_edge or non_planar):
+    if target_normal is None and not (
+        is_cylinder or linear_edge or non_planar or planar_normal is not None
+    ):
         return ComponentFaceResolution(
             None, "unresolved", "no persist_id and no normal for fingerprint"
         )
@@ -196,6 +204,37 @@ def _resolve_via_fingerprint(
                 continue
         return ComponentFaceResolution(
             None, "unresolved", "no non-planar face found on component"
+        )
+
+    # Planar face by SIGNED normal (hinge coincident pair): pick the planar face
+    # whose outward normal best aligns with planar_normal. Signed dot — so a +Z
+    # cap and a -Z cap are distinguished (the unsigned fingerprint below ties
+    # them). Threshold 0.5 ~ within 60deg of the requested direction.
+    if planar_normal is not None:
+        best_planar = None
+        best_dot = -2.0
+        for face in faces:
+            try:
+                if mod is not None:
+                    iface = typed(face, "IFace2", module=mod)
+                    isurf = typed(iface.GetSurface(), "ISurface", module=mod)
+                    normal = list(iface.Normal)
+                else:
+                    isurf = face.GetSurface()
+                    normal = list(face.Normal)
+                if not isurf.IsPlane():
+                    continue
+                dot = sum(a * b for a, b in zip(planar_normal, normal))
+                if dot > best_dot:
+                    best_dot = dot
+                    best_planar = face
+            except Exception:  # noqa: BLE001
+                continue
+        if best_planar is not None and best_dot > 0.5:
+            return ComponentFaceResolution(best_planar, "fingerprint")
+        return ComponentFaceResolution(
+            None, "unresolved",
+            f"no planar face aligned with planar_normal (best dot={best_dot:.3f})",
         )
 
     # Cylindrical face matching: find the first cylindrical face on the body

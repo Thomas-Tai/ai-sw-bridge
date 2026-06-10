@@ -1,0 +1,40 @@
+{
+  "spike_id": "mech_mate_tier3_pae",
+  "legs": {
+    "slot": {
+      "leg": "slot",
+      "ok": true,
+      "create_mate_error": null,
+      "feature_type": "MateSlot",
+      "persist": {
+        "mate_feature_type": "MateSlot",
+        "read_back": {
+          "Constraint": 1,
+          "MateAlignment": 0
+        }
+      },
+      "verdict": "GREEN"
+    },
+    "hinge": {
+      "leg": "hinge",
+      "ok": true,
+      "create_mate_error": null,
+      "feature_type": "MateHinge",
+      "error_code2": [
+        0,
+        false
+      ],
+      "persist": {
+        "mate_feature_type": "MateHinge",
+        "read_back": {
+          "Angle": 0.0,
+          "MaxVal": 0.0,
+          "MinVal": 0.0,
+          "MateAlignment": 1
+        }
+      },
+      "verdict": "GREEN"
+    }
+  },
+  "overall": "PASS"
+}
