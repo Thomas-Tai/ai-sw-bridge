@@ -44,6 +44,12 @@ class SaveMethod(Enum):
     SAVEAS3_DIRECT = "saveas3_direct"
     EXPORT_PDF = "export_pdf"
     FLAT_PATTERN_DXF = "flat_pattern_dxf"
+    # W48: the bend-line variant routes through a DRAWING flat-pattern view
+    # (CreateFlatPatternViewFromModelView3, HideBendLines=False) so SW renders
+    # interior fold lines as real entities, then the geometric classifier
+    # re-assigns them to a dedicated BEND layer. The part-space FLAT_PATTERN_DXF
+    # route above emits the developed OUTLINE only (no bend layer).
+    FLAT_PATTERN_DXF_DRAWING = "flat_pattern_dxf_drawing"
 
 
 @dataclass(frozen=True)
@@ -135,8 +141,15 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         name="dxf_flat",
         extension=".dxf",
         save_method=SaveMethod.FLAT_PATTERN_DXF,
-        description="DXF flat pattern — sheet-metal unfold (needs S-SHEETMETAL)",
-        seat_confirmed=True,  # W42 seat-confirmed: ExportToDWG2(sheetMetalOption=True) → flat-pattern DXF with outline + bend lines
+        description="DXF flat pattern — sheet-metal unfold OUTLINE (developed boundary; no bend layer)",
+        seat_confirmed=True,  # W42 seat-confirmed: ExportFlatPatternView → developed outline (part-space, outline-only)
+    ),
+    "dxf_flat_bends": ExportFormat(
+        name="dxf_flat_bends",
+        extension=".dxf",
+        save_method=SaveMethod.FLAT_PATTERN_DXF_DRAWING,
+        description="DXF flat pattern with BEND layer — outline on '0' + interior fold lines on 'BEND' (CAM-ready)",
+        seat_confirmed=True,  # W48: drawing-view route (CreateFlatPatternViewFromModelView3, HideBendLines=False) + geometric classifier → BEND layer
     ),
 }
 

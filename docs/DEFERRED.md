@@ -155,7 +155,33 @@ remaining deferred work) needs a GEOMETRIC classifier** (interior fold line vs.
 bounding-rectangle perimeter), proven viable here — NOT a COM wall. Spike:
 `spikes/v0_2x/dxf_flat_bendlines_drwview.py`.
 
-## Wave-46 (Mechanical mates Tier-1 — `gear` SHIPPED; `screw` FROZEN COM wall)
+**SHIPPED 2026-06-10 (W48) — `dxf_flat_bends` export format.** The deferred
+sub-scope is closed. The drawing-view route + geometric classifier are
+productionized in `export/dispatch.py::_flat_pattern_dxf_drawing` (new
+`SaveMethod.FLAT_PATTERN_DXF_DRAWING`), with the classifier + a new in-place
+layer rewriter (`rewrite_dxf_with_bend_layer`) in `export/dxf_bend_layers.py`.
+The `dxf_flat_bends` format emits a CAM-ready DXF: developed-boundary perimeter on
+layer `0` + interior fold lines re-assigned to a dedicated `BEND` layer. Seat
+PAE GREEN (one-bend L-bracket → 1 BEND-layer LINE + 4 outline LINEs, bbox
+40×86.28 mm). The part-space outline-only `dxf_flat` is retained unchanged.
+
+## Wave-48 (Mechanical mates Tier-3 — hinge ANGLE LIMIT deferred)
+
+**`slot` + `hinge` SHIPPED 2026-06-10** (merge `2dbe711`); the mechanical-mate
+epoch is complete (5 kinematic mates). **Deferred sub-scope: the hinge ANGLE
+LIMIT.** A hinge mate's optional min/max angular travel is set via
+`IHingeMateFeatureData.AngleSelection` (enable) + `MaxVal` / `MinVal` (radians) —
+all three are characterized and present on the typed interface. What's missing is
+the **angle REFERENCE**: `swHingeMateEntityType_e` includes `Angle=2`, so the
+angle is measured between two reference entities supplied as
+`SetEntitiesToMate(2, <array>)`. Plain coaxial cylinders (the shipped hinge
+fixture) have **no flat reference faces** that define an angular zero, so the
+limit cannot be demonstrated on them. **This is a characterized sub-scope, NOT a
+wall** — it needs a richer fixture (two flat-faced brackets with aligned holes)
+to de-risk the angle-reference role + verify the limit round-trips through
+save/reopen. Officially out of bounds for this wave; the basic 1-DOF hinge
+(concentric+coincident, the load-bearing capability) ships fully. First raised +
+deferred 2026-06-10 (W48 seat).
 
 **`gear` mate SHIPPED 2026-06-10** (`feature kind` on the assembly `mate` spec:
 `{type:"gear", a, b, ratio:{numerator, denominator}}`). Created + solved + ratio
