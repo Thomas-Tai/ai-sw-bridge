@@ -1,0 +1,31 @@
+{
+  "spike_id": "pierce_constraint_spike",
+  "status": "GREEN",
+  "path_sketch": "Sketch1",
+  "center_before_mm": [
+    20.0,
+    0.0
+  ],
+  "attempts": [
+    {
+      "token": "sgATPIERCE",
+      "sel_point": true,
+      "sel_path": true,
+      "add_error": null,
+      "relation_delta": 0,
+      "center_after_mm": [
+        0.0,
+        0.0
+      ],
+      "snapped_this_attempt": true,
+      "center_at_origin": true
+    }
+  ],
+  "winning_token": "sgATPIERCE",
+  "profile_sketch": "Sketch2",
+  "sweep": {
+    "feature_delta": 1,
+    "bodies": 1,
+    "volume_mm3": 392.7
+  }
+}
