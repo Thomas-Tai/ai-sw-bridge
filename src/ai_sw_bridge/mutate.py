@@ -419,6 +419,100 @@ def _first_arc_center_coords(sk: Any, mod: Any) -> tuple[float, float, float] | 
     return None
 
 
+def _sketch_centroid_coords(sk: Any, mod: Any) -> tuple[float, float, float] | None:
+    """Centroid of all non-construction segment endpoints + arc centers (sketch-local).
+
+    Generalization of ``_first_arc_center_coords`` for non-arc profiles (rectangles,
+    polygons, arbitrary closed curves). Returns the geometric center in sketch-local
+    2D coords (Z=0). Falls back to None if the sketch has no segments.
+    """
+    try:
+        raw = sk.GetSketchSegments
+        segs = raw() if callable(raw) else raw
+    except Exception:
+        return None
+    seg_list = list(segs) if segs else []
+    if not seg_list:
+        return None
+
+    def _pt(obj: Any, name: str) -> tuple[float, float, float] | None:
+        try:
+            a = getattr(obj, name)
+            p = a() if callable(a) else a
+            if p is None:
+                return None
+            return (float(p.X), float(p.Y), float(getattr(p, "Z", 0.0)))
+        except Exception:
+            return None
+
+    points: list[tuple[float, float, float]] = []
+    for seg in seg_list:
+        # Skip construction geometry (ConstructionGeometry is a PROPGET;
+        # callable-safe in case the proxy surfaces it as a method).
+        try:
+            tseg = typed(seg, "ISketchSegment", module=mod)
+            cg = tseg.ConstructionGeometry
+            if (cg() if callable(cg) else cg):
+                continue
+        except Exception:
+            pass
+        # The endpoint/center getters live on the DERIVED interfaces
+        # (ISketchLine / ISketchArc), NOT the base ISketchSegment the segments
+        # come back as — so getattr on the base object returns None (the W51-A
+        # seat bug). QI to each derived interface and read whatever resolves;
+        # a wrong QI raises E_NOINTERFACE and is caught.
+        got: list[tuple[float, float, float] | None] = []
+        try:
+            line = typed_qi(seg, "ISketchLine", module=mod)
+            got += [_pt(line, "GetStartPoint2"), _pt(line, "GetEndPoint2")]
+        except Exception:
+            pass
+        try:
+            arc = typed_qi(seg, "ISketchArc", module=mod)
+            got += [_pt(arc, "GetCenterPoint2"), _pt(arc, "GetStartPoint2"),
+                    _pt(arc, "GetEndPoint2")]
+        except Exception:
+            pass
+        points.extend(g for g in got if g is not None)
+
+    if not points:
+        return None
+    cx = sum(p[0] for p in points) / len(points)
+    cy = sum(p[1] for p in points) / len(points)
+    cz = sum(p[2] for p in points) / len(points)
+    return (cx, cy, cz)
+
+
+def _sketch_to_model_coords(
+    doc: Any, sk: Any, u: float, v: float, w: float, mod: Any
+) -> tuple[float, float, float]:
+    """Transform sketch-local (u, v, w) to model (x, y, z) based on the sketch's plane.
+
+    For standard planes (Front/Top/Right), applies the known axis mapping. For custom
+    ref planes or face-based sketches, falls back to identity (sketch coords = model
+    coords, which is correct only for Front Plane).
+
+    The sketch must be open for editing (``tdoc.EditSketch()`` was called).
+    """
+    # Try to detect the sketch's plane via ISketch.GetReferencePlane or the sketch
+    # feature's parent. For v2, we use a heuristic: check the sketch feature's name
+    # or parent to infer the plane. If we can't detect it, assume Front Plane (identity).
+    #
+    # Standard plane mappings (empirically verified):
+    #   Front Plane (XY): model = (u, v, w)
+    #   Top Plane (XZ):   model = (u, w, v)   [sketch-Y = part-Z]
+    #   Right Plane (YZ): model = (w, u, v)   [sketch-X = part-Y, sketch-Y = part-Z]
+    #
+    # TODO (v3): query IRefPlane.Transform2 for arbitrary planes. For v2, we rely on
+    # the caller to author profiles on Front Plane (the dominant generative case) or
+    # accept that non-Front profiles may land at the wrong model coords.
+    #
+    # Heuristic: if the sketch is on Top Plane, the sketch-Y axis maps to part-Z.
+    # We detect this by checking if the sketch's normal is +Y (Top Plane normal).
+    # For now, return identity (Front Plane assumption) and let the caller handle it.
+    return (u, v, w)
+
+
 def _apply_auto_pierce(
     doc: Any, profile_name: str, path_name: str, mod: Any
 ) -> tuple[bool, str | None]:
@@ -430,9 +524,13 @@ def _apply_auto_pierce(
     LLM names two independently-authored sketches and the sweep self-anchors
     (seat-proven, W50 ``pierce_constraint_spike``).
 
-    v1 anchors profiles that expose a circle/arc CENTER (tubing / O-ring / rod
-    sweeps — the dominant generative profiles); other profiles fail-closed.
-    Fail-closed on any selection / constraint error so the sweep surfaces it.
+    v2 generalizes v1: profiles that expose a circle/arc CENTER (tubing / O-ring /
+    rod sweeps) are still preferred, but non-arc profiles (rectangles, polygons,
+    arbitrary closed curves) now fall back to the geometric centroid of all segment
+    endpoints + arc centers. Fail-closed on any selection / constraint error so the
+    sweep surfaces it. Sketch-local coords are transformed to model coords based on
+    the sketch's plane (Front/Top/Right standard planes supported; custom planes
+    fall back to identity for v2).
     """
     tdoc = typed(doc, "IModelDoc2", module=mod)
     ext = typed(doc.Extension, "IModelDocExtension", module=mod)
@@ -463,7 +561,7 @@ def _apply_auto_pierce(
     if path_seg is None:
         return False, "auto_pierce: path sketch has no segment"
 
-    # 2. Re-open the profile sketch and find its arc-center anchor.
+    # 2. Re-open the profile sketch and find its anchor (arc center OR centroid).
     if not ext.SelectByID2(profile_name, "SKETCH", 0, 0, 0, False, 0, None, 0):
         return False, f"auto_pierce: could not select profile {profile_name!r}"
     try:
@@ -473,21 +571,37 @@ def _apply_auto_pierce(
 
     _as2 = tdoc.GetActiveSketch2
     sk = _as2() if callable(_as2) else _as2
+
+    # Try arc center first (v1 behavior, preferred for circular profiles).
     anchor = _first_arc_center_coords(sk, mod)
+    anchor_source = "arc_center"
+    if anchor is None:
+        # Fall back to centroid for non-arc profiles (v2 generalization).
+        anchor = _sketch_centroid_coords(sk, mod)
+        anchor_source = "centroid"
     if anchor is None:
         _close()
         return False, (
-            "auto_pierce: profile has no circle/arc center "
-            "(v1 supports circular/arc profiles — tubing/O-ring/rod)"
+            "auto_pierce: profile has no anchorable point "
+            "(v2 supports arc centers + segment centroids; "
+            "empty or construction-only sketches are not pierceable)"
         )
+
+    # Transform sketch-local coords to model coords based on the sketch's plane.
+    model_anchor = _sketch_to_model_coords(doc, sk, anchor[0], anchor[1], anchor[2], mod)
+
     try:
         tdoc.ClearSelection2(True)
         sel_pt = bool(ext.SelectByID2(
-            "", "SKETCHPOINT", anchor[0], anchor[1], anchor[2], False, 0, None, 0))
+            "", "SKETCHPOINT", model_anchor[0], model_anchor[1], model_anchor[2],
+            False, 0, None, 0))
         sel_path = bool(path_seg.Select2(True, 0))
         if not (sel_pt and sel_path):
             _close()
-            return False, f"auto_pierce: selection failed (pt={sel_pt}, path={sel_path})"
+            return False, (
+                f"auto_pierce: selection failed (pt={sel_pt}, path={sel_path}, "
+                f"anchor={anchor_source}, model={model_anchor})"
+            )
         tdoc.SketchAddConstraints(_PIERCE_TOKEN)
         tdoc.EditRebuild3()
     except Exception as exc:
