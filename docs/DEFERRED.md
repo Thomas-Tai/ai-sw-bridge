@@ -183,6 +183,34 @@ save/reopen. Officially out of bounds for this wave; the basic 1-DOF hinge
 (concentric+coincident, the load-bearing capability) ships fully. First raised +
 deferred 2026-06-10 (W48 seat).
 
+**W51 Lane B UPDATE — angle-reference role GREEN, but limit VALUES reparametrize
+(re-deferred, branch `feat/w51-hinge-limit` left UNMERGED).** A richer fixture
+(two 40×30×20 mm flat-faced blocks, dia-10 through-holes, coaxial) was authored +
+fired at the seat (`spikes/v0_2x/mech_mate_hinge_anglelimit_derisk.py`). Findings:
+1. **The angle-reference role marshaling is NOT a wall.** `SetEntitiesToMate(2,
+   <VT_ARRAY|VT_DISPATCH>)` (the `swHingeMateEntityType_Angle=2` role) binds two
+   planar +Y faces cleanly; `create_mate` (production handler with optional
+   `angle_faces`+`angle_limit`) returns a `MateHinge`, `GetErrorCode2=(0,False)`,
+   and **`AngleSelection=True` persists through save/reopen.**
+2. **But the limit VALUES do not round-trip — SW reparametrizes the storage.**
+   Requested `MinVal=−30°, MaxVal=+30°` → reads back `MinVal=0°, MaxVal=−60°,
+   Angle=+30°`. The tell: the read-back `Angle` equals the **input `MaxVal`** to 13
+   sig figs (0.5235987755983 vs 0.5235987755982988) — SW is **not** measuring
+   geometry; it redefines the zero to the input max and stores the range running
+   `[0, −span]`. The handler is a clean 1:1 setter (`MinVal=radians(min_deg)`, no
+   transpose), so the transform is SW-internal, downstream of `CreateMate`.
+3. **Alignment-independent.** Forcing `MateAlignment="aligned"` (0) vs the default
+   `"closest"` (2) produced the **byte-identical** transform — so it is NOT a
+   reference-normal flip; it is intrinsic angle-limit storage semantics.
+
+Per the W51 contract this is the defer trigger (we do not reverse-engineer a moving
+angular coordinate system out-of-process — quadrant-sensitive, would invert on a
+different topology). The `angle_faces`/`angle_limit` schema+validator+handler code
+remains on the unmerged branch for a future scoped wave; a viable v-next route is a
+feature-tree equation driving the limit, or teaching the declarative layer to issue
+limits **relative to the SW-reparametrized zero**. Re-deferred 2026-06-10 (W51-B
+seat).
+
 **`gear` mate SHIPPED 2026-06-10** (`feature kind` on the assembly `mate` spec:
 `{type:"gear", a, b, ratio:{numerator, denominator}}`). Created + solved + ratio
 round-trips through save/reopen, proven end-to-end via the **production**
