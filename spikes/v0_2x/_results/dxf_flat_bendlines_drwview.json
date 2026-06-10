@@ -1,0 +1,51 @@
+{
+  "wave": "W42",
+  "step": "bendlines_drwview",
+  "format": "dxf_flat_bends",
+  "physical_bend_count": 1,
+  "ok": false,
+  "verdict": "NO-GO",
+  "sketch": "Sketch1",
+  "base_flange_materialized": true,
+  "brep": {
+    "vol_mm3": 6902.655,
+    "faces": 14,
+    "bodies": 1,
+    "cyl_faces": 0
+  },
+  "bend_exists_in_3d": true,
+  "part_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\w42_bendlines_uw3uho19\\W42_L_bracket.SLDPRT",
+  "part_config": "Default",
+  "flat_config": {
+    "flat_found": true,
+    "unsuppressed": true
+  },
+  "drawing_template": "C:\\ProgramData\\SOLIDWORKS\\SOLIDWORKS 2024\\templates\\Drawing.DRWDOT",
+  "view_route": "A:CreateFlatPatternViewFromModelView3(HideBendLines=False)",
+  "view_errors": {},
+  "view_name": "Drawing View1",
+  "view_type": 7,
+  "is_flat_pattern_view": true,
+  "dxf_bend_lines": {
+    "bend_layers": [],
+    "bend_linetypes": [],
+    "bend_lines": [],
+    "bend_line_count": 0,
+    "matched_by_layer": 0,
+    "matched_by_linetype": 0
+  },
+  "dxf_entities": {
+    "entity_count": 6,
+    "entity_types": {
+      "LINE": 5,
+      "MTEXT": 1
+    },
+    "layers": [
+      "0"
+    ]
+  },
+  "dxf_file_size_bytes": 20862,
+  "golden_dxf": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\.claude\\worktrees\\agent-aa485840976632743\\spikes\\v0_2x\\_results\\W42_L_bracket_flat_bends.dxf",
+  "bend_line_count": 0,
+  "note": "GREEN \u21d4 bend-line entity count == physical bend count (1 for this single-90\u00b0-bend L-bracket), with coordinates. Layer/linetype names are corroborating only. If bend_line_count==0 the flat-pattern view did NOT emit bend lines via the attempted route \u2014 record which route produced the IView and whether is_flat_pattern_view is True."
+}
