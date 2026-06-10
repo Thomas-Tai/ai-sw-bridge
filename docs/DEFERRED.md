@@ -140,6 +140,55 @@ export that view. This is a `kind:"drawing"` composition, not an export-API flag
 and is its own S1 (view creation + bend-line entity extraction). First raised +
 deferred 2026-06-09 (W42 seat).
 
+**UPDATE 2026-06-10 (W46 seat) — bend-line drawing-view route PROVEN GREEN.**
+The architectural pathway above is no longer hypothetical. Typelib dump pinned
+the signature `IDrawingDoc.CreateFlatPatternViewFromModelView3(ModelName,
+ConfigName, LocX, LocY, LocZ, HideBendLines, FlipView)`; calling it with
+`HideBendLines=False` on the seat created a genuine flat-pattern drawing view
+(`is_flat_pattern_view=True`, `view_type=7`) whose DXF export carries the bend
+line as an interior LINE entity (L-bracket: 4 perimeter lines + 1 interior fold
+line `(130,165)→(170,165)` at the 60/30 mm flange boundary, bbox span the exact
+W42 developed 40.0 × 86.283 mm). **Caveat — the bend line is NOT layer-tagged:**
+SW's drawing→DXF export collapses every entity to layer `0`, so the W42
+layer-name parser can't see it (`matched_by_layer=0`). **Productionization (the
+remaining deferred work) needs a GEOMETRIC classifier** (interior fold line vs.
+bounding-rectangle perimeter), proven viable here — NOT a COM wall. Spike:
+`spikes/v0_2x/dxf_flat_bendlines_drwview.py`.
+
+## Wave-46 (Mechanical mates Tier-1 — `gear` SHIPPED; `screw` FROZEN COM wall)
+
+**`gear` mate SHIPPED 2026-06-10** (`feature kind` on the assembly `mate` spec:
+`{type:"gear", a, b, ratio:{numerator, denominator}}`). Created + solved + ratio
+round-trips through save/reopen, proven end-to-end via the **production**
+`create_mate` (`spikes/v0_2x/mech_mate_gear_pae.py` → `MateGearDim`, reopened
+ratio == requested (2,1)). **Load-bearing finding — SW's `GearRatio*` COM setters
+are TRANSPOSED** (`mech_mate_gear_transform.py`): assigning `.GearRatioNumerator`
+writes the *denominator* slot and vice versa — deterministic, geometry-independent
+(set(2,1)→persist(1,2); set(1,2)→(2,1); set(3,2)→(2,3); identical under both
+EntitiesToMate orders, so it is NOT a selection-order effect). The handler
+compensates by swapping the assignment. This is the `reference_makepy_wrong_argtype`
+family at the property level.
+
+**`screw` mate FROZEN 2026-06-10 — pitch not controllable out-of-process (COM
+wall).** The screw mate creates and solves cleanly (`MateScrew`,
+`GetErrorCode2=(0,False)`), but the pitch (`RevolutionVal` under
+`RevolutionType=swDistancePerRevolution`) **clamps to the 1 mm kernel default**
+regardless of the requested value. Three paths characterized + exhausted on the
+seat:
+
+| Path | Result |
+|---|---|
+| Pre-create setter on `IScrewMateFeatureData` | T₀ (post-set) holds the value, but `CreateMate` discards it → 1 mm. Matrix: set {0.002, 0.004, 0.010} all persist 0.001 (`mech_mate_screw_calibration.py`). Rules out a unit transform — it is a hard clamp, not a ×2 factor. |
+| `GetDefinition` + `ModifyDefinition` post-create | `ModifyDefinition` returns True yet the value still reads 0.001 (same spike, inline probe). |
+| Concentric-first precondition (establish the rotation axis) | The concentric mate solves clean, but the screw mate then **refuses to instantiate** — `CreateMate` → None, `ErrorStatus=1` (`mech_mate_screw_calibration_v2.py`). |
+
+`screw` is removed from `MATE_TYPES` / `MATE_SCHEMA` / validator and from the
+handler `MATE_TYPE_ENUMS` / `MATE_TYPE_INTERFACES` (propose fails-closed on an
+unknown mate type). Re-evaluate only with a new route (e.g. a feature-tree
+equation driving the pitch, or a SW-version with a working `RevolutionVal`
+marshal). Enum truth retained: `swMateSCREW=17` (typelib-verified, NOT the
+API-doc's 14=MAXMATES).
+
 ## Wave-44 (the "ghost feature" finding — B-rep-effect verification gap)
 
 **`edge_flange` is a GHOST — QUARANTINED 2026-06-09.** While building a bent

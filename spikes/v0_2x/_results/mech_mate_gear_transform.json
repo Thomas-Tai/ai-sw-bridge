@@ -1,0 +1,38 @@
+{
+  "spike_id": "mech_mate_gear_transform",
+  "legs": [
+    {
+      "set_num": 2.0,
+      "set_den": 1.0,
+      "reopened": {
+        "GearRatioNumerator": 1.0,
+        "GearRatioDenominator": 2.0
+      },
+      "h1_transposed": true,
+      "h2_canonical": false
+    },
+    {
+      "set_num": 1.0,
+      "set_den": 2.0,
+      "reopened": {
+        "GearRatioNumerator": 2.0,
+        "GearRatioDenominator": 1.0
+      },
+      "h1_transposed": true,
+      "h2_canonical": false
+    },
+    {
+      "set_num": 3.0,
+      "set_den": 2.0,
+      "reopened": {
+        "GearRatioNumerator": 2.0,
+        "GearRatioDenominator": 3.0
+      },
+      "h1_transposed": true,
+      "h2_canonical": false
+    }
+  ],
+  "gear_enum": 10,
+  "verdict": "H1_TRANSPOSED_SETTER",
+  "fix": "value-swap: assign GearRatioNumerator=requested_den, GearRatioDenominator=requested_num"
+}

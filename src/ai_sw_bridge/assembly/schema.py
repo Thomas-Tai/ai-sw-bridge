@@ -24,7 +24,6 @@ MATE_TYPES = frozenset(
         "angle",
         "width",
         "gear",
-        "screw",
     }
 )
 
@@ -82,7 +81,8 @@ MATE_SCHEMA = {
         "alignment": {"type": "string", "enum": sorted(MATE_ALIGNMENTS)},
         "value_mm": {"type": "number"},
         "value_deg": {"type": "number"},
-        # gear (W46): ratio numerator/denominator (bound to a/b selection order)
+        # gear (W46): ratio numerator/denominator. The handler compensates for
+        # SW's transposed COM setter so the persisted ratio == requested.
         "ratio": {
             "type": "object",
             "additionalProperties": False,
@@ -92,8 +92,6 @@ MATE_SCHEMA = {
                 "denominator": {"type": "number", "exclusiveMinimum": 0},
             },
         },
-        # screw (W46): pitch as distance-per-revolution (mm)
-        "pitch_mm": {"type": "number", "exclusiveMinimum": 0},
         "limit": {
             "type": "object",
             "additionalProperties": False,

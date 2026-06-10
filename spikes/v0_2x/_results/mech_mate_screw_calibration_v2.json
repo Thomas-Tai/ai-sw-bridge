@@ -1,0 +1,54 @@
+{
+  "spike_id": "mech_mate_screw_calibration_v2",
+  "precondition": "concentric_mate_first",
+  "matrix": [
+    {
+      "pitch_set": 0.002,
+      "concentric": {
+        "created": true,
+        "feature_type": "MateConcentric",
+        "error_code2": [
+          0,
+          false
+        ]
+      },
+      "T0_post_set": 0.002,
+      "screw_error_status": 1,
+      "error": "CREATEMATE_NONE"
+    },
+    {
+      "pitch_set": 0.004,
+      "concentric": {
+        "created": true,
+        "feature_type": "MateConcentric",
+        "error_code2": [
+          0,
+          false
+        ]
+      },
+      "T0_post_set": 0.004,
+      "screw_error_status": 1,
+      "error": "CREATEMATE_NONE"
+    },
+    {
+      "pitch_set": 0.01,
+      "concentric": {
+        "created": true,
+        "feature_type": "MateConcentric",
+        "error_code2": [
+          0,
+          false
+        ]
+      },
+      "T0_post_set": 0.01,
+      "screw_error_status": 1,
+      "error": "CREATEMATE_NONE"
+    }
+  ],
+  "screw_enum": 17,
+  "concentric_enum": 1,
+  "verdict": {
+    "class": "INCONCLUSIVE",
+    "note": "fewer than 2 numeric T2 reads"
+  }
+}
