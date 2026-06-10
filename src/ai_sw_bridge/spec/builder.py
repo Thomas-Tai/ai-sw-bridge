@@ -2364,7 +2364,13 @@ def run_feature_step(
 
         # Stash plane info for plane-based sketches so child extrudes
         # can inherit the parent plane's outward normal as their axis.
-        if bf.type in ("sketch_rectangle_on_plane", "sketch_circle_on_plane"):
+        # sketch_ellipse rides the same `plane`+`center` mechanism as the
+        # rectangle/circle on-plane primitives, so it stashes identically.
+        if bf.type in (
+            "sketch_rectangle_on_plane",
+            "sketch_circle_on_plane",
+            "sketch_ellipse",
+        ):
             bf.parent_plane_normal = PLANE_NORMALS[feat["plane"]]
 
         ctx.features_by_name[bf.name] = bf
