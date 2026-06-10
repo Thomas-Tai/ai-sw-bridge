@@ -223,13 +223,13 @@ profile+path sketches and the sweep self-anchors (cures the "dummy wrapper"). v1
 covers the dominant generative profiles (circular/arc — tubing / O-ring / rod).
 **Two deferred sub-scopes (characterized, NOT walls — Wave-51 Lane A):**
 
-| Item | Rationale |
+| Item | Status |
 |---|---|
-| **Arbitrary-profile anchor** | `_apply_auto_pierce` v1 anchors via the first circle/arc CENTER (`ISketchArc.GetCenterPoint2`). A bare rectangle / non-arc profile has no center point → fail-closed with a clear message. Generalization = compute the profile centroid (bbox center of segment endpoints) and select the nearest sketch point as the pierce anchor. Pure-geometry, low risk. |
-| **Non-Front-plane coord mapping** | The anchor is selected by `SelectByID2("SKETCHPOINT", x,y,z)` in MODEL coords; a profile sketch point's X/Y are sketch-local. v1 works for Front-plane profiles (sketch≈model). Generalization = map sketch→model via the active sketch's `ModelToSketchTransform` inverse so Top/Right/ref-plane profiles anchor correctly. |
+| **Arbitrary-profile anchor** | ✅ **SHIPPED (W51-A, merge `0c0a891`).** `_apply_auto_pierce` v2: arc-center fast path, else `_sketch_centroid_coords` (centroid of non-construction segment endpoints + arc centers). Rectangle/polygon/arbitrary profiles self-anchor. PAE GREEN (rectangle 240 mm³, triangle 850 mm³). **Seat bug fixed:** endpoint getters live on DERIVED `ISketchLine`/`ISketchArc`, not base `ISketchSegment` → `typed_qi` each segment to its derived interface. |
+| **Non-Front-plane coord mapping** | ⏸ **STILL DEFERRED (v3).** `SelectByID2("SKETCHPOINT", x,y,z)` needs MODEL coords; profile sketch X/Y are sketch-local. v2 `_sketch_to_model_coords` is an IDENTITY stub (Front-plane only). PAE Leg 3 (circle on Top plane) WALLs here (`sel_pt=False`, anchor un-mapped). v3 = `IRefPlane.Transform2` / `ModelToSketchTransform` inverse so Top/Right/ref-plane profiles map. |
 
-Both authored offline in Wave-51 Lane A (`feat/w51-pierce-general`), fired by W0.
-Recipe + proxy-shape lessons recorded in memory `project_pierce_autosweep`.
+W51-A authored offline (Lane A), fired + bug-fixed + merged by W0. v3 coord-mapping
+remains. Recipe + proxy-shape lessons in memory `project_pierce_autosweep`.
 
 ## Wave-44 (the "ghost feature" finding — B-rep-effect verification gap)
 
