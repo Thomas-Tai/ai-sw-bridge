@@ -259,6 +259,36 @@ covers the dominant generative profiles (circular/arc — tubing / O-ring / rod)
 W51-A authored offline (Lane A), fired + bug-fixed + merged by W0. v3 coord-mapping
 remains. Recipe + proxy-shape lessons in memory `project_pierce_autosweep`.
 
+## Wave-51 Lane C2 (free-DOF drag via `GetDragOperator` — UI-only, deferred)
+
+**`IDragOperator` free-DOF drag is REACHABLE but does NOT commit headless — EARNED
+UI-ONLY WALL 2026-06-10** (branch `feat/w51-motion-ext`, characterization spike
+`spikes/v0_2x/motion_dragop_derisk.py`; Lane C1 `choose_clearance_pair` already
+SHIPPED to par/integration, merge `d9a829e`). The W49 motion audit drives a mate
+through its DOF via `Parameter().SystemValue`; this lane probed the ALTERNATIVE —
+free-DOF dragging of an under-constrained component (motion envelopes with no
+driving mate). **Every marshaling layer was cracked and the full protocol
+executes** (`AddComponent`→`BeginDrag`→`Drag(IMathTransform)`→`EndDrag`, all return
+`True`):
+
+| Layer | Finding |
+|---|---|
+| `GetDragOperator` | Reachable on `IAssemblyDoc`; returns a real `IDragOperator` (52 members, full dump in spike `_results`). |
+| Fixed-component | The lone/first inserted component is auto-FIXED → `AddComponent` returns **False**. Must `UnfixComponent` (select + float) first → then returns True. |
+| `GetMathUtility` | Must be captured **RAW + EARLY** (in `main`, pre-doc-ops). Calling it after build/place yields `DISP_E_MEMBERNOTFOUND` — intervening doc ops perturb the late-bound name-lookup. The typed proxy does NOT resolve it. |
+| `IMathUtility.CreateTransform` | Resolves ONLY on the **typed** `IMathUtility` (raw CDispatch → member-not-found — the inverse of `GetMathUtility`). |
+| `DragMode` | `swMouseDragMode_e.swTranslateAssemblyComponent = 1` (set before drag). |
+
+**Yet the component never moves** — `Drag()` returns True but `Transform2` reads
+identical before/after, even with `DragMode=1` + `EditRebuild3` + `GraphicsRedraw2`.
+**Root cause: `IDragOperator` emulates interactive MOUSE dragging** — the enum is
+literally `swMouseDragMode_e` and the operator has a `DragAsUI` sibling; it requires
+a graphics/mouse context that does not exist out-of-process headless, so a
+programmatic `Drag` computes-but-does-not-commit. **This is authoritative (every
+layer introspected + driven), not guessed.** Free-DOF dragging is NOT a viable
+headless motion route; the **W49 parametric sweep stays the only programmatic
+motion driver**. Re-evaluate only with an in-process add-in (real UI context).
+
 ## Wave-44 (the "ghost feature" finding — B-rep-effect verification gap)
 
 **`edge_flange` is a GHOST — QUARANTINED 2026-06-09.** While building a bent
