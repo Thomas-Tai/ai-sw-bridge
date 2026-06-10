@@ -397,6 +397,107 @@ def _create_base_flange(
         return False, f"base-flange pipeline failed: {exc!r}"
 
 
+# swSketchAddConstraints pierce token — seat-proven (W50 pierce_constraint_spike:
+# the offset circle center snapped onto the path; RelationManager.GetRelations(0)
+# is a TYPE filter so it reports 0, the geometric snap is the truth).
+_PIERCE_TOKEN = "sgATPIERCE"
+
+
+def _first_arc_center_coords(sk: Any, mod: Any) -> tuple[float, float, float] | None:
+    """(x,y,z) of the first circle/arc center in a sketch (the sweep anchor)."""
+    try:
+        raw = sk.GetSketchSegments
+        segs = raw() if callable(raw) else raw
+    except Exception:
+        return None
+    for seg in (list(segs) if segs else []):
+        try:
+            cp = typed_qi(seg, "ISketchArc", module=mod).GetCenterPoint2()
+            return (float(cp.X), float(cp.Y), float(cp.Z))
+        except Exception:
+            continue
+    return None
+
+
+def _apply_auto_pierce(
+    doc: Any, profile_name: str, path_name: str, mod: Any
+) -> tuple[bool, str | None]:
+    """Auto-anchor a sweep profile to its path via an ``sgATPIERCE`` relation.
+
+    The shipped sweep assumed the caller pre-aligned profile + path in 3D — an
+    impossible expectation for a linguistic agent. This binds the profile's
+    anchor point to the point where the path pierces the profile plane, so the
+    LLM names two independently-authored sketches and the sweep self-anchors
+    (seat-proven, W50 ``pierce_constraint_spike``).
+
+    v1 anchors profiles that expose a circle/arc CENTER (tubing / O-ring / rod
+    sweeps — the dominant generative profiles); other profiles fail-closed.
+    Fail-closed on any selection / constraint error so the sweep surfaces it.
+    """
+    tdoc = typed(doc, "IModelDoc2", module=mod)
+    ext = typed(doc.Extension, "IModelDocExtension", module=mod)
+    sm = typed(doc.SketchManager, "ISketchManager", module=mod)
+
+    def _close() -> None:
+        try:
+            sm.InsertSketch(True)
+        except Exception:
+            pass
+
+    # 1. Capture the path segment by RE-OPENING the path sketch (a segment grabbed
+    # from an open sketch stays valid + selectable after close — the W50 de-risk
+    # pattern; the named-feature GetSpecificFeature2 path was unreliable).
+    if not ext.SelectByID2(path_name, "SKETCH", 0, 0, 0, False, 0, None, 0):
+        return False, f"auto_pierce: could not select path {path_name!r}"
+    try:
+        tdoc.EditSketch()
+        _as = tdoc.GetActiveSketch2
+        path_sk = _as() if callable(_as) else _as
+        _ps = path_sk.GetSketchSegments
+        psegs = (_ps() if callable(_ps) else _ps)
+        path_seg = (list(psegs) if psegs else [None])[0]
+    except Exception as exc:
+        _close()
+        return False, f"auto_pierce: reading path segment failed: {exc!r}"
+    _close()
+    if path_seg is None:
+        return False, "auto_pierce: path sketch has no segment"
+
+    # 2. Re-open the profile sketch and find its arc-center anchor.
+    if not ext.SelectByID2(profile_name, "SKETCH", 0, 0, 0, False, 0, None, 0):
+        return False, f"auto_pierce: could not select profile {profile_name!r}"
+    try:
+        tdoc.EditSketch()
+    except Exception as exc:
+        return False, f"auto_pierce: EditSketch failed: {exc!r}"
+
+    _as2 = tdoc.GetActiveSketch2
+    sk = _as2() if callable(_as2) else _as2
+    anchor = _first_arc_center_coords(sk, mod)
+    if anchor is None:
+        _close()
+        return False, (
+            "auto_pierce: profile has no circle/arc center "
+            "(v1 supports circular/arc profiles — tubing/O-ring/rod)"
+        )
+    try:
+        tdoc.ClearSelection2(True)
+        sel_pt = bool(ext.SelectByID2(
+            "", "SKETCHPOINT", anchor[0], anchor[1], anchor[2], False, 0, None, 0))
+        sel_path = bool(path_seg.Select2(True, 0))
+        if not (sel_pt and sel_path):
+            _close()
+            return False, f"auto_pierce: selection failed (pt={sel_pt}, path={sel_path})"
+        tdoc.SketchAddConstraints(_PIERCE_TOKEN)
+        tdoc.EditRebuild3()
+    except Exception as exc:
+        _close()
+        return False, f"auto_pierce: pierce failed: {exc!r}"
+    _close()
+    doc.ForceRebuild3(False)
+    return True, None
+
+
 def _create_sweep(
     doc: Any, feature: dict, target: dict
 ) -> tuple[bool, str | None]:
@@ -419,10 +520,21 @@ def _create_sweep(
     if not profile or not path:
         return False, "target must contain non-empty 'profile' and 'path' sketch names"
     doc.ForceRebuild3(False)
+    mod = wrapper_module()
+
+    # Auto-pierce (W50): anchor the profile to the path so the LLM can author
+    # the two sketches independently (any offset/plane) — the sweep self-aligns.
+    # On by default; fail-closed (an un-pierceable profile is surfaced, not
+    # silently swept from the wrong place). Disable with auto_pierce:false for a
+    # profile the caller has already constrained onto the path.
+    if isinstance(feature, dict) and feature.get("auto_pierce", True):
+        ok_pierce, err_pierce = _apply_auto_pierce(doc, profile, path, mod)
+        if not ok_pierce:
+            return False, err_pierce
+
     try:
         fm = doc.FeatureManager
         data = fm.CreateDefinition(_SW_FM_SWEEP)
-        mod = wrapper_module()
         fd = typed_qi(data, "ISweepFeatureData", module=mod)
         ext = typed(doc.Extension, "IModelDocExtension", module=mod)
         try:

@@ -1476,7 +1476,11 @@ class _FakeSweepDoc:
         return self._path
 
 
-_SWEEP_FEATURE = {"type": "sweep"}
+# auto_pierce:False isolates the CORE sweep marshaling (CreateDefinition(17) +
+# profile/path marks 1/4) in these offline mock tests. The W50 auto-pierce
+# pre-step is COM-bound (re-opens sketches, SketchAddConstraints) and is proven
+# on the live seat (spikes/v0_2x/sweep_autopierce_pae.py), not against mocks.
+_SWEEP_FEATURE = {"type": "sweep", "auto_pierce": False}
 _SWEEP_TARGET = {"profile": "Sketch1", "path": "Sketch2"}
 
 

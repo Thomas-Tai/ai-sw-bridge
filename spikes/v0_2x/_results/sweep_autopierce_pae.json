@@ -1,0 +1,27 @@
+{
+  "spike_id": "sweep_autopierce_pae",
+  "legs": {
+    "happy": {
+      "leg": "happy_circular_offset",
+      "ok": true,
+      "path": "PathSk",
+      "profile": "ProfSk",
+      "sweep_ok": true,
+      "sweep_err": null,
+      "bodies": 1,
+      "volume_mm3": 392.7,
+      "verdict": "GREEN"
+    },
+    "guardrail": {
+      "leg": "guardrail_rectangle",
+      "ok": true,
+      "path": "PathSk",
+      "profile": "RectProfSk",
+      "sweep_ok": false,
+      "sweep_err": "auto_pierce: profile has no circle/arc center (v1 supports circular/arc profiles \u2014 tubing/O-ring/rod)",
+      "bodies": 0,
+      "verdict": "GREEN"
+    }
+  },
+  "overall": "PASS"
+}
