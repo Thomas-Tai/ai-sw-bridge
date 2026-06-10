@@ -240,135 +240,21 @@ def parse_dxf_outline_bbox(dxf_text: str) -> dict[str, Any]:
     }
 
 
-def _parse_dxf_line_segments(dxf_text: str) -> list[tuple[float, float, float, float]]:
-    """Return every LINE entity as an ``(x1, y1, x2, y2)`` segment.
+# The geometric classifier + segment parser live in the export module (their
+# canonical home, W48); re-exported here for back-compat with the W46 offline
+# tests and the drawing-view spike that import them from this CLI namespace.
+from ..export.dxf_bend_layers import (  # noqa: E402
+    _parse_dxf_line_segments,
+    classify_bend_lines_geometric,
+    rewrite_dxf_with_bend_layer,
+)
 
-    A DXF LINE is the group-code run ``0/LINE`` then ``10``=x1, ``20``=y1,
-    ``11``=x2, ``21``=y2 (the ``30``/``31`` Z codes are ignored — flat-pattern
-    exports are planar). Non-LINE entities (MTEXT/ARC/…) are skipped. Group
-    codes for a given LINE may arrive in any order, so we collect them per
-    entity and only emit a segment once all four planar coordinates are present.
-    """
-    lines = dxf_text.splitlines()
-    segments: list[tuple[float, float, float, float]] = []
-    in_line = False
-    pending: dict[str, float] = {}
-
-    def _flush() -> None:
-        if {"10", "20", "11", "21"} <= pending.keys():
-            segments.append(
-                (pending["10"], pending["20"], pending["11"], pending["21"])
-            )
-
-    i = 0
-    while i < len(lines) - 1:
-        code = lines[i].strip()
-        val = lines[i + 1].strip()
-        if code == "0":
-            # Entity boundary: close out the LINE we were collecting.
-            if in_line:
-                _flush()
-            in_line = val == "LINE"
-            pending = {}
-        elif in_line and code in ("10", "20", "11", "21"):
-            try:
-                pending[code] = float(val)
-            except ValueError:
-                pass
-        i += 2
-    # Tail LINE (no trailing 0/ENDSEC was consumed inside the loop body).
-    if in_line:
-        _flush()
-    return segments
-
-
-def classify_bend_lines_geometric(dxf_text: str) -> dict[str, Any]:
-    """Classify flat-pattern LINE entities into OUTLINE perimeter vs. BEND lines.
-
-    The W46 wall: SOLIDWORKS collapses every flat-pattern DXF entity onto layer
-    ``"0"``, so a layer-NAME parser cannot tell a bend line from the part
-    outline. This GEOMETRIC classifier instead exploits the flat-pattern
-    topology — the developed outline forms the bounding-rectangle PERIMETER,
-    while every bend (fold) line is an INTERIOR segment that does not lie on a
-    bbox side.
-
-    Algorithm:
-      1. Parse all LINE entities into ``(x1, y1, x2, y2)`` segments.
-      2. Compute the bbox (xmin/xmax/ymin/ymax) over every line endpoint.
-      3. A segment is PERIMETER iff BOTH endpoints lie on the SAME bbox side
-         (both x≈xmin, both x≈xmax, both y≈ymin, or both y≈ymax) within EPS.
-      4. Every remaining (non-perimeter) LINE is an INTERIOR bend line.
-
-    EPS choice: an ABSOLUTE epsilon scaled to the coordinate magnitude. SW
-    flat-pattern DXF coords are document units (~130–193 here, but mm-or-inch
-    and offset-from-origin vary by part), so a fixed ``1e-4`` would be too tight
-    on large parts and a fixed ``1.0`` too loose on small ones. We use
-    ``EPS = max(1e-6, 1e-6 * max_coord_magnitude)`` — i.e. 1 part-per-million of
-    the largest absolute coordinate, floored so an all-zero/degenerate file
-    still gets a finite tolerance. On the golden L-bracket (max |coord| ≈ 193)
-    that is ≈ 1.9e-4 mm — far below the ~0.001 mm SW round-off yet vastly below
-    the 40 mm part span, so it cleanly separates the y=165 interior fold from the
-    four perimeter edges without false positives.
-
-    Returns::
-
-        {
-          "bend_line_count": int,
-          "bend_lines": [{"start": [x, y], "end": [x, y]}, ...],
-          "outline_line_count": int,
-          "bbox": {"x_min", "x_max", "y_min", "y_max"} | None,
-        }
-
-    Robust to an empty / no-LINE input: returns ``bend_line_count=0`` with an
-    empty ``bend_lines`` list and ``bbox=None`` (never divides by zero or
-    indexes an empty bbox).
-    """
-    segments = _parse_dxf_line_segments(dxf_text)
-    if not segments:
-        return {
-            "bend_line_count": 0,
-            "bend_lines": [],
-            "outline_line_count": 0,
-            "bbox": None,
-        }
-
-    xs = [c for (x1, _y1, x2, _y2) in segments for c in (x1, x2)]
-    ys = [c for (_x1, y1, _x2, y2) in segments for c in (y1, y2)]
-    x_min, x_max = min(xs), max(xs)
-    y_min, y_max = min(ys), max(ys)
-
-    # Absolute epsilon = 1 ppm of the largest coordinate magnitude (floored).
-    max_mag = max(abs(v) for v in (*xs, *ys))
-    eps = max(1e-6, 1e-6 * max_mag)
-
-    def _on(a: float, b: float) -> bool:
-        return abs(a - b) <= eps
-
-    bend_lines: list[dict[str, Any]] = []
-    outline_count = 0
-    for (x1, y1, x2, y2) in segments:
-        on_perimeter = (
-            (_on(x1, x_min) and _on(x2, x_min))
-            or (_on(x1, x_max) and _on(x2, x_max))
-            or (_on(y1, y_min) and _on(y2, y_min))
-            or (_on(y1, y_max) and _on(y2, y_max))
-        )
-        if on_perimeter:
-            outline_count += 1
-        else:
-            bend_lines.append({"start": [x1, y1], "end": [x2, y2]})
-
-    return {
-        "bend_line_count": len(bend_lines),
-        "bend_lines": bend_lines,
-        "outline_line_count": outline_count,
-        "bbox": {
-            "x_min": x_min,
-            "x_max": x_max,
-            "y_min": y_min,
-            "y_max": y_max,
-        },
-    }
+__all__ = [
+    "_parse_dxf_line_segments",
+    "classify_bend_lines_geometric",
+    "rewrite_dxf_with_bend_layer",
+    "parse_dxf_outline_bbox",
+]
 
 
 def _run_export(args: argparse.Namespace) -> dict[str, Any]:

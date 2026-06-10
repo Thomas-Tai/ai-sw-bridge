@@ -198,6 +198,8 @@ def _export_one(doc: Any, req: ExportRequest, part_name: str) -> ExportResult:
         return _export_pdf(doc, fmt, out_path, req.sheets)
     if fmt.save_method == SaveMethod.FLAT_PATTERN_DXF:
         return _flat_pattern_dxf(doc, fmt, out_path)
+    if fmt.save_method == SaveMethod.FLAT_PATTERN_DXF_DRAWING:
+        return _flat_pattern_dxf_drawing(doc, fmt, out_path)
     return ExportResult(
         format=fmt.name,
         path=path_str,
@@ -673,4 +675,204 @@ def _flat_pattern_dxf(
             error="Flat-pattern export returned True but DXF is missing or empty on disk",
         )
 
+    return ExportResult(format=fmt.name, path=path_str, ok=True)
+
+
+def _find_flat_pattern_and_config(doc: Any) -> tuple[bool, str]:
+    """Find + unsuppress the Flat-Pattern feature and read the active config.
+
+    Returns ``(flat_found, config_name)``. ``config_name`` falls back to
+    ``"Default"`` if the active configuration cannot be read.
+    """
+    flat_found = False
+    try:
+        raw_count = doc.GetFeatureCount
+        count = raw_count(True) if callable(raw_count) else int(raw_count)
+        for i in range(count):
+            try:
+                feat = doc.FeatureByPositionReverse(i)
+            except Exception:
+                break
+            if feat is None:
+                break
+            try:
+                tn_raw = feat.GetTypeName
+                tn = tn_raw() if callable(tn_raw) else str(tn_raw)
+            except Exception:
+                tn = ""
+            if "FlatPattern" in tn or "Flat-Pattern" in tn:
+                flat_found = True
+                try:
+                    feat.SetSuppression(1)  # unsuppress
+                except Exception as exc:
+                    logger.warning("Flat-Pattern unsuppress failed: %s", exc)
+                break
+    except Exception as exc:
+        logger.warning("Feature walk for Flat-Pattern failed: %s", exc)
+
+    config_name = "Default"
+    try:
+        cfgmgr = doc.ConfigurationManager
+        active = cfgmgr.ActiveConfiguration
+        if active is not None:
+            nm = active.Name
+            config_name = nm() if callable(nm) else str(nm)
+    except Exception:
+        pass
+    return flat_found, config_name
+
+
+def _flat_pattern_dxf_drawing(
+    doc: Any, fmt: ExportFormat, out_path: Path
+) -> ExportResult:
+    """Export a sheet-metal flat pattern to DXF WITH a dedicated BEND layer (W48).
+
+    The part-space ``_flat_pattern_dxf`` route emits the developed OUTLINE only —
+    SOLIDWORKS exposes no bend-line switch there. This route instead renders the
+    flat pattern as a DRAWING view (``CreateFlatPatternViewFromModelView3`` with
+    ``HideBendLines=False``), where SW draws the interior fold lines as real
+    entities, exports the drawing to DXF (the W33-proven Drawing-only DXF path),
+    then re-assigns those interior bend LINEs to the ``BEND`` layer via the
+    geometric classifier (SW collapses everything to layer ``0``, so the split is
+    topological, not by layer name).
+
+    Fail-closed: non-Part doc, no Flat-Pattern feature, no drawing template, or a
+    null flat-pattern view → typed error, no file written.
+    """
+    import tempfile
+
+    path_str = str(out_path)
+
+    try:
+        doc_type = _get_doc_type(doc)
+    except Exception as exc:
+        return ExportResult(
+            format=fmt.name, path=path_str, ok=False,
+            error=f"Cannot determine document type: {exc}",
+        )
+    if doc_type != _SW_DOC_PART:
+        return ExportResult(
+            format=fmt.name, path=path_str, ok=False,
+            error=(
+                f"format:'dxf_flat_bends' requires a Part (.SLDPRT) document, "
+                f"but doc type is {doc_type} (1=Part, 2=Assembly, 3=Drawing)"
+            ),
+        )
+
+    # --- The drawing view needs the part on disk as its source model ---
+    try:
+        source_path = doc.GetPathName
+        source_path = source_path() if callable(source_path) else source_path
+        source_path = str(source_path) if source_path else ""
+    except Exception:
+        source_path = ""
+    if not source_path:
+        tmp_part = out_path.parent / f"_flatbends_tmp_{out_path.stem}.sldprt"
+        try:
+            err = doc.SaveAs3(str(tmp_part), 0, 0)
+            if (int(err) if err is not None else 0) != 0:
+                return ExportResult(
+                    format=fmt.name, path=path_str, ok=False,
+                    error=f"Cannot save part for flat-pattern export: SaveAs3 error {err}",
+                )
+            source_path = str(tmp_part)
+        except Exception as exc:
+            return ExportResult(
+                format=fmt.name, path=path_str, ok=False,
+                error=f"Cannot save part for flat-pattern export: {exc}",
+            )
+
+    # --- GATE: a Flat-Pattern feature must exist (this is a sheet-metal part) ---
+    flat_found, config_name = _find_flat_pattern_and_config(doc)
+    if not flat_found:
+        return ExportResult(
+            format=fmt.name, path=path_str, ok=False,
+            error=(
+                "No Flat-Pattern feature found in this part. "
+                "format:'dxf_flat_bends' requires a sheet-metal part with a "
+                "Flat-Pattern feature (auto-generated from Base-Flange features)."
+            ),
+        )
+    doc.ForceRebuild3(False)
+    try:
+        doc.SaveAs3(source_path, 0, 0)  # persist the unsuppressed flat pattern
+    except Exception:
+        pass
+
+    # --- Seat helpers (lazy: the dispatch module is partly SW-free) ---
+    from ..com.earlybind import typed_qi
+    from ..com.sw_type_info import wrapper_module
+    from ..drawing.lifecycle import _find_drawing_template
+    from ..sw_com import get_sw_app
+    from .dxf_bend_layers import rewrite_dxf_with_bend_layer
+
+    drw_template = _find_drawing_template()
+    if not drw_template:
+        return ExportResult(
+            format=fmt.name, path=path_str, ok=False,
+            error="No .DRWDOT drawing template found for the bend-line route.",
+        )
+
+    try:
+        sw = get_sw_app()
+        mod = wrapper_module()
+        drw_raw = sw.NewDocument(drw_template, 0, 0.420, 0.297)
+        if drw_raw is None or isinstance(drw_raw, int):
+            return ExportResult(
+                format=fmt.name, path=path_str, ok=False,
+                error="NewDocument(.DRWDOT) returned None for the bend-line route.",
+            )
+        drawing_doc = typed_qi(drw_raw, "IDrawingDoc", module=mod)
+        # CreateFlatPatternViewFromModelView3(ModelName, ConfigName, x, y, z,
+        #   HideBendLines, FlipView) -> IView. HideBendLines=False is load-
+        # bearing: it renders the fold lines as real entities (W48 seat-proven).
+        view = drawing_doc.CreateFlatPatternViewFromModelView3(
+            source_path, config_name, 0.15, 0.15, 0.0, False, False
+        )
+        if view is None or isinstance(view, int):
+            return ExportResult(
+                format=fmt.name, path=path_str, ok=False,
+                error=(
+                    "CreateFlatPatternViewFromModelView3 returned no view "
+                    f"(config={config_name!r})"
+                ),
+            )
+        typed_qi(drw_raw, "IModelDoc2", module=mod).ForceRebuild3(False)
+
+        # Export the DRAWING to a raw DXF (W33-proven Drawing-only DXF route).
+        tmp_dxf = (
+            Path(tempfile.mkdtemp(prefix="w48_flatbends_"))
+            / f"{out_path.stem}_raw.dxf"
+        )
+        derr = drw_raw.SaveAs3(str(tmp_dxf), 0, 0)
+        if (int(derr) if derr is not None else 0) != 0:
+            return ExportResult(
+                format=fmt.name, path=path_str, ok=False,
+                error=f"Drawing SaveAs3(.dxf) returned {derr}",
+            )
+        if not tmp_dxf.exists() or tmp_dxf.stat().st_size == 0:
+            return ExportResult(
+                format=fmt.name, path=path_str, ok=False,
+                error="Drawing->DXF produced no file for the bend-line route.",
+            )
+    except Exception as exc:
+        return ExportResult(
+            format=fmt.name, path=path_str, ok=False,
+            error=f"Bend-line drawing-view route failed: {exc!r}",
+        )
+
+    # --- Re-assign interior bend LINEs to the BEND layer, write final DXF ---
+    raw_text = tmp_dxf.read_text(encoding="utf-8", errors="replace")
+    rewritten, classified = rewrite_dxf_with_bend_layer(raw_text, "BEND")
+    out_path.write_text(rewritten, encoding="utf-8")
+    if not out_path.exists() or out_path.stat().st_size == 0:
+        return ExportResult(
+            format=fmt.name, path=path_str, ok=False,
+            error="Bend-layer DXF write produced no file.",
+        )
+    logger.info(
+        "dxf_flat_bends: %d bend line(s) re-assigned to BEND layer (%d outline)",
+        classified.get("bend_line_count", 0),
+        classified.get("outline_line_count", 0),
+    )
     return ExportResult(format=fmt.name, path=path_str, ok=True)

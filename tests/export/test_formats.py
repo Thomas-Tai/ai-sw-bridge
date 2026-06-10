@@ -27,6 +27,7 @@ class TestExportFormats:
             "pdf",
             "dxf",
             "dxf_flat",
+            "dxf_flat_bends",
         }
         assert EXPORT_FORMAT_NAMES == expected
 
@@ -67,7 +68,7 @@ class TestExportFormats:
         """P1.1-seat 7 SAVEAS3_DIRECT + PDF + DXF, plus W42 dxf_flat (developed
         flat-pattern outline, seat-confirmed 2026-06-09 on the L-bracket)."""
         expected = {"step214", "step203", "iges", "parasolid", "stl", "3mf",
-                    "pdf", "dxf", "dxf_flat"}
+                    "pdf", "dxf", "dxf_flat", "dxf_flat_bends"}
         confirmed = {n for n, f in EXPORT_FORMATS.items() if f.seat_confirmed}
         assert confirmed == expected
 
