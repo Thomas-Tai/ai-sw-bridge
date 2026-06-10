@@ -1,0 +1,40 @@
+{
+  "spike_id": "pierce_general_pae",
+  "legs": {
+    "centroid_rect": {
+      "leg": "centroid_rectangle",
+      "ok": true,
+      "path": "PathSk",
+      "profile": "RectProfSk",
+      "sweep_ok": true,
+      "sweep_err": null,
+      "bodies": 1,
+      "volume_mm3": 240.0,
+      "verdict": "GREEN"
+    },
+    "centroid_polygon": {
+      "leg": "centroid_polygon",
+      "ok": true,
+      "path": "PathSk",
+      "profile": "PolyProfSk",
+      "sweep_ok": true,
+      "sweep_err": null,
+      "bodies": 1,
+      "volume_mm3": 850.0,
+      "verdict": "GREEN"
+    },
+    "non_front_plane": {
+      "leg": "non_front_plane",
+      "ok": false,
+      "path": "PathTopSk",
+      "profile": "TopProfSk",
+      "sweep_ok": false,
+      "sweep_err": "auto_pierce: selection failed (pt=False, path=True, anchor=arc_center, model=(0.01, 0.005, 0.0))",
+      "bodies": 0,
+      "volume_mm3": 0.0,
+      "verdict": "WALL",
+      "note": "non-Front plane: v2 uses identity transform fallback. GREEN = transform correct; WALL = need IRefPlane.Transform2 (v3)."
+    }
+  },
+  "overall": "PASS"
+}
