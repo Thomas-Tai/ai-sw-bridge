@@ -40,6 +40,13 @@ MATE_TYPE_ENUMS = {
     "distance": 5,         # swMateDISTANCE
     "angle": 6,            # swMateANGLE (not in Phase-2 scope)
     "width": 11,           # swMateWIDTH (two-reference-set, W12)
+    # Mechanical/kinematic mates (W46 Tier-1) — typelib-verified from
+    # swconst.tlb v32 (NOT API-doc guesses: gear was 10 not the doc's 12;
+    # 12=LOCKTOSKETCH would silently misfire).
+    "gear": 10,            # swMateGEAR
+    # NOTE: screw (swMateSCREW=17) is FROZEN — the pitch parameter is not
+    # controllable out-of-process (clamps to the 1 mm kernel default via all
+    # three characterized paths). See docs/DEFERRED.md "W46 screw mate".
 }
 
 # Typed interface names per mate type (from typelib dump).
@@ -54,6 +61,8 @@ MATE_TYPE_INTERFACES = {
     "distance": "IDistanceMateFeatureData",
     "angle": "IAngleMateFeatureData",
     "width": "IWidthMateFeatureData",
+    "gear": "IGearMateFeatureData",
+    # screw FROZEN (W46) — see MATE_TYPE_ENUMS note + docs/DEFERRED.md.
 }
 
 
@@ -394,6 +403,28 @@ def create_mate(
             value_deg = mate_spec.get("value_deg")
             if value_deg is not None:
                 typed_iface.Angle = math.radians(float(value_deg))
+
+        # Gear (W46): ratio is a NUMERATOR/DENOMINATOR pair. A zero/unset ratio
+        # makes CreateMate return None, so this MUST precede CreateMate.
+        #
+        # TRANSPOSED SETTER (seat-proven, spikes/v0_2x/mech_mate_gear_transform):
+        # SW's COM property setters are crossed — assigning .GearRatioNumerator
+        # writes the DENOMINATOR slot and vice versa (the makepy-mistype family).
+        # The transform is deterministic and geometry-independent: set(2,1)
+        # persisted (1,2), set(1,2)->(2,1), set(3,2)->(2,3) — always the
+        # transpose, identical under both EntitiesToMate orders. So we swap the
+        # assignment to compensate: the user's numerator is fed through the
+        # .GearRatioDenominator setter (which writes the numerator slot), and
+        # vice versa, making the PERSISTED ratio == the requested numerator:
+        # denominator. Verified end-to-end by spikes/v0_2x/mech_mate_gear_pae.
+        if mate_type_str == "gear":
+            ratio = mate_spec.get("ratio") or {}
+            num = ratio.get("numerator")
+            den = ratio.get("denominator")
+            if num is not None:
+                typed_iface.GearRatioDenominator = float(num)
+            if den is not None:
+                typed_iface.GearRatioNumerator = float(den)
 
         # Limit mates: min/max variation on distance or angle
         limit = mate_spec.get("limit")

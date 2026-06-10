@@ -1,0 +1,32 @@
+{
+  "spike_id": "mech_mate_gear_orientation",
+  "legs": [
+    {
+      "order": "A",
+      "requested": {
+        "num": 2.0,
+        "den": 1.0
+      },
+      "reopened": {
+        "GearRatioNumerator": 1.0,
+        "GearRatioDenominator": 2.0
+      },
+      "matches_requested": false
+    },
+    {
+      "order": "B",
+      "requested": {
+        "num": 2.0,
+        "den": 1.0
+      },
+      "reopened": {
+        "GearRatioNumerator": 1.0,
+        "GearRatioDenominator": 2.0
+      },
+      "matches_requested": false
+    }
+  ],
+  "gear_enum": 10,
+  "winning_order": null,
+  "verdict": "AMBIGUOUS"
+}

@@ -1,0 +1,40 @@
+{
+  "spike_id": "mech_mate_screw_calibration",
+  "matrix": [
+    {
+      "pitch_set": 0.002,
+      "T0_post_set": 0.002,
+      "T1_post_solve": 0.001,
+      "T2_post_reopen": 0.001
+    },
+    {
+      "pitch_set": 0.004,
+      "T0_post_set": 0.004,
+      "T1_post_solve": 0.001,
+      "T2_post_reopen": 0.001
+    },
+    {
+      "pitch_set": 0.01,
+      "T0_post_set": 0.01,
+      "T1_post_solve": 0.001,
+      "T2_post_reopen": 0.001
+    }
+  ],
+  "enum_resolved": 17,
+  "verdict": {
+    "class": "DEFAULT_CLAMP_1MM",
+    "ratios": [
+      0.5,
+      0.25,
+      0.1
+    ],
+    "note": "T2==0.001 regardless of input; pre-create setter ignored -> use ModifyDefinition"
+  },
+  "modify_probe": {
+    "probe": "ModifyDefinition",
+    "pitch_set": 0.004,
+    "modify_returned": true,
+    "T1b_post_modify": 0.001,
+    "T2_post_reopen": 0.001
+  }
+}

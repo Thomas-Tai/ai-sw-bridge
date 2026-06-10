@@ -262,6 +262,25 @@ def _check_mates(
                     path,
                 )
 
+        # Mechanical mates (W46 Tier-1) — gear only; screw FROZEN (COM wall,
+        # see docs/DEFERRED.md "W46 screw mate").
+        if mtype == "gear":
+            ratio = mate.get("ratio")
+            if not isinstance(ratio, dict):
+                raise AssemblyValidationError(
+                    "gear mate requires 'ratio' with 'numerator' and "
+                    "'denominator'",
+                    path,
+                )
+            for key in ("numerator", "denominator"):
+                v = ratio.get(key)
+                if not isinstance(v, (int, float)) or v <= 0:
+                    raise AssemblyValidationError(
+                        f"gear ratio {key!r} must be a positive number, "
+                        f"got {v!r}",
+                        f"{path}/ratio",
+                    )
+
         limit = mate.get("limit")
         if limit is not None:
             if mtype not in ("distance", "angle"):
