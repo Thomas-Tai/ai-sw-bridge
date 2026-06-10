@@ -11,6 +11,7 @@ import pytest
 
 from ai_sw_bridge.assembly.schema import (
     ASSEMBLY_SCHEMA,
+    HINGE_MATE_SCHEMA,
     MATE_ALIGNMENTS,
     MATE_TYPES,
     WIDTH_MATE_SCHEMA,
@@ -984,3 +985,122 @@ class TestExplodedViewsSchema:
                 {"components": ["b"], "distance_mm": 50.0, "direction": d},
             ])
             validate_assembly(spec)
+
+
+# ---- W48 Tier-3: slot + hinge ----------------------------------------------
+
+
+def _slot_mate(**ov: object) -> dict:
+    m: dict = {
+        "type": "slot",
+        "a": {"component": "a", "face_ref": {"is_cylinder": True}},
+        "b": {"component": "b", "face_ref": {"is_cylinder": True}},
+    }
+    m.update(ov)
+    return m
+
+
+def _hinge_mate(**ov: object) -> dict:
+    m: dict = {
+        "type": "hinge",
+        "concentric_faces": [
+            {"component": "a", "face_ref": {"is_cylinder": True}},
+            {"component": "b", "face_ref": {"is_cylinder": True}},
+        ],
+        "coincident_faces": [
+            {"component": "a", "face_ref": {"planar_normal": [0, 0, 1]}},
+            {"component": "b", "face_ref": {"planar_normal": [0, 0, -1]}},
+        ],
+    }
+    m.update(ov)
+    return m
+
+
+def _assembly_with(mate: dict) -> dict:
+    spec = _minimal_assembly()
+    spec["mates"] = [mate]
+    return spec
+
+
+class TestTier3MateTypes:
+    def test_slot_and_hinge_in_mate_types(self) -> None:
+        assert "slot" in MATE_TYPES
+        assert "hinge" in MATE_TYPES
+
+
+class TestSlotMateValidation:
+    def test_accepts_default_free(self) -> None:
+        validate_assembly(_assembly_with(_slot_mate()))
+
+    def test_accepts_centered(self) -> None:
+        validate_assembly(_assembly_with(_slot_mate(constraint="centered")))
+
+    def test_accepts_distance_with_scalar(self) -> None:
+        validate_assembly(
+            _assembly_with(_slot_mate(constraint="distance", distance_mm=5.0))
+        )
+
+    def test_rejects_distance_without_scalar(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="distance_mm"):
+            validate_assembly(_assembly_with(_slot_mate(constraint="distance")))
+
+    def test_accepts_percent_with_scalar(self) -> None:
+        validate_assembly(
+            _assembly_with(_slot_mate(constraint="percent", percent=40.0))
+        )
+
+    def test_rejects_percent_out_of_range(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="percent"):
+            validate_assembly(
+                _assembly_with(_slot_mate(constraint="percent", percent=140.0))
+            )
+
+    def test_rejects_unknown_constraint(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="not in"):
+            validate_assembly(_assembly_with(_slot_mate(constraint="bogus")))
+
+
+class TestHingeMateSchemaValidation:
+    def test_schema_accepts_well_formed(self) -> None:
+        import jsonschema
+        jsonschema.validate(_hinge_mate(), HINGE_MATE_SCHEMA)
+
+    def test_schema_rejects_one_concentric_face(self) -> None:
+        import jsonschema
+        m = _hinge_mate(concentric_faces=[
+            {"component": "a", "face_ref": {"is_cylinder": True}},
+        ])
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(m, HINGE_MATE_SCHEMA)
+
+    def test_assembly_schema_accepts_hinge(self) -> None:
+        import jsonschema
+        jsonschema.validate(_assembly_with(_hinge_mate()), ASSEMBLY_SCHEMA)
+
+
+class TestHingeMateValidation:
+    def test_accepts_well_formed(self) -> None:
+        validate_assembly(_assembly_with(_hinge_mate()))
+
+    def test_accepts_alignment(self) -> None:
+        validate_assembly(_assembly_with(_hinge_mate(alignment="closest")))
+
+    def test_rejects_wrong_count_concentric(self) -> None:
+        m = _hinge_mate(concentric_faces=[
+            {"component": "a", "face_ref": {"is_cylinder": True}},
+        ])
+        with pytest.raises(AssemblyValidationError, match="exactly 2"):
+            validate_assembly(_assembly_with(m))
+
+    def test_rejects_stray_a(self) -> None:
+        m = _hinge_mate(a={"component": "a", "face_ref": {"normal": [0, 0, 1]}})
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(_assembly_with(m))
+
+    def test_rejects_unknown_component(self) -> None:
+        m = _hinge_mate(concentric_faces=[
+            {"component": "ghost", "face_ref": {"is_cylinder": True}},
+            {"component": "b", "face_ref": {"is_cylinder": True}},
+        ])
+        with pytest.raises(AssemblyValidationError, match="not found"):
+            validate_assembly(_assembly_with(m))

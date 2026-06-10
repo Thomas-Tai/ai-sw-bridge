@@ -50,11 +50,30 @@ MATE_TYPE_ENUMS = {
     # Mechanical mates (W47 Tier-2) — asymmetric reference sets, typelib-verified.
     "rackpinion": 13,      # swMateRACKPINION
     "camfollower": 9,      # swMateCAMFOLLOWER
+    # Mechanical mates (W48 Tier-3) — limit/compound, typelib-verified (v32).
+    "slot": 21,            # swMateSLOT
+    "hinge": 22,           # swMateHINGE
 }
 
 # swRackPinionMateDistanceOptions_e (swconst.tlb): gates how DiameterVal reads.
 _RP_PINION_PITCH_DIA = 0     # swPinionPitchDiameter
 _RP_RACK_TRAVEL_PER_REV = 1  # swRackTravelPerRevolution
+
+# swSlotMateConstraintOptions_e (swconst.tlb v32) — the slot's positional mode.
+_SLOT_CONSTRAINT_ENUMS = {
+    "free": 0,       # swSlotMateConstraintOption_Free
+    "centered": 1,   # swSlotMateConstraintOption_Centered
+    "distance": 2,   # swSlotMateConstraintOption_Distance
+    "percent": 3,    # swSlotMateConstraintOption_Percent
+}
+
+# swHingeMateEntityType_e (swconst.tlb v32) — the hinge's EntitiesToMate PROPPUT
+# is ROLE-keyed (FUNCDESC: nargs=2 [EntityType:I4, value:VARIANT]); the value is
+# the ENTITY ARRAY for that role. makepy surfaces it as the method
+# SetEntitiesToMate(EntityType, <array>). A flat single-entity-per-index list
+# (the W48-run2 trap) yields CreateMate->None — SW sees an undifferentiated bag.
+_HINGE_CONCENTRIC = 0  # swHingeMateEntityType_Concentric
+_HINGE_COINCIDENT = 1  # swHingeMateEntityType_Coincident
 
 # Typed interface names per mate type (from typelib dump).
 # Where a typed interface exists, we QI it to set type-specific properties.
@@ -72,6 +91,10 @@ MATE_TYPE_INTERFACES = {
     # screw FROZEN (W46) — see MATE_TYPE_ENUMS note + docs/DEFERRED.md.
     "rackpinion": "IRackPinionMateFeatureData",
     "camfollower": "ICamFollowerMateFeatureData",
+    # W48 Tier-3. slot rides the symmetric a/b path (EntitiesToMate is a plain
+    # array PROPPUT); hinge is dispatched to _create_hinge_mate (role-keyed).
+    "slot": "ISlotMateFeatureData",
+    "hinge": "IHingeMateFeatureData",
 }
 
 
@@ -304,6 +327,104 @@ def _create_width_mate(
     return mate_ret, None
 
 
+def _create_hinge_mate(
+    asm_doc: Any,
+    typed_asm: Any,
+    placed: dict[str, Any],
+    mate_spec: dict[str, Any],
+    mod: Any,
+) -> tuple[Any | None, str | None]:
+    """Hinge mate handler (W48 Tier-3) — a concentric+coincident COMPOUND, 1-DOF
+    rotation. Like width, it departs from the symmetric a/b path: it carries TWO
+    role pairs (``concentric_faces`` = two coaxial cyl faces/axes,
+    ``coincident_faces`` = two planar faces) fed through the ROLE-keyed
+    EntitiesToMate PROPPUT — ``SetEntitiesToMate(swHingeMateEntityType, <array>)``
+    (seat-proven, spikes/v0_2x/mech_mate_tier3_slot_hinge: ``MateHinge``,
+    GetErrorCode2==(0,False), persisted through reopen).
+
+    ``MateAlignment`` defaults to ``closest`` here (the touching coincident pair's
+    sense is geometry-dependent — SW resolves it) unless the spec overrides it.
+    """
+    conc_refs = mate_spec.get("concentric_faces", [])
+    coin_refs = mate_spec.get("coincident_faces", [])
+
+    def _resolve_set(
+        refs: list[dict[str, Any]], label: str
+    ) -> tuple[list[Any], str | None]:
+        entities: list[Any] = []
+        for j, ref in enumerate(refs):
+            cid = ref["component"]
+            comp = placed.get(cid)
+            if comp is None:
+                return [], f"{label}[{j}]: component {cid!r} not placed"
+            resolution = resolve_component_face(
+                asm_doc, comp, ref["face_ref"], mod=mod
+            )
+            if not resolution.ok:
+                return [], (
+                    f"{label}[{j}]: face unresolved on {cid!r} "
+                    f"(method={resolution.method}, error={resolution.error})"
+                )
+            entities.append(resolution.entity)
+        return entities, None
+
+    conc_entities, c_err = _resolve_set(conc_refs, "concentric_faces")
+    if c_err:
+        return None, c_err
+    coin_entities, n_err = _resolve_set(coin_refs, "coincident_faces")
+    if n_err:
+        return None, n_err
+
+    alignment_map = {"aligned": 0, "anti_aligned": 1, "closest": 2}
+    alignment = alignment_map.get(mate_spec.get("alignment", "closest"), 2)
+
+    try:
+        mate_data = typed_asm.CreateMateData(22)
+        if mate_data is None:
+            return None, "CreateMateData(22) returned None"
+
+        h_iface = typed_qi(mate_data, "IHingeMateFeatureData", module=mod)
+
+        h_iface.SetEntitiesToMate(
+            _HINGE_CONCENTRIC,
+            w32.VARIANT(
+                pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(conc_entities)
+            ),
+        )
+        h_iface.SetEntitiesToMate(
+            _HINGE_COINCIDENT,
+            w32.VARIANT(
+                pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(coin_entities)
+            ),
+        )
+        try:
+            h_iface.MateAlignment = alignment
+        except Exception:
+            pass
+
+        mate_ret = typed_asm.CreateMate(mate_data)
+    except Exception as exc:
+        return None, f"hinge mate pipeline failed: {exc!r}"
+
+    if mate_ret is None or isinstance(mate_ret, int):
+        try:
+            mfd = typed_qi(mate_data, "IMateFeatureData", module=mod)
+            es = mfd.ErrorStatus
+        except Exception:
+            es = "?"
+        return None, f"CreateMate returned None (ErrorStatus={es})"
+
+    try:
+        ifeat = typed(mate_ret, "IFeature", module=mod)
+        feat_type = ifeat.GetTypeName2()
+        if "Mate" not in feat_type and "mate" not in feat_type.lower():
+            return None, f"unexpected feature type: {feat_type}"
+    except Exception as exc:
+        return None, f"hinge mate verification failed: {exc!r}"
+
+    return mate_ret, None
+
+
 def create_mate(
     asm_doc: Any,
     placed: dict[str, Any],
@@ -353,6 +474,11 @@ def create_mate(
     # tab_faces → TabSelection). Never touches the symmetric a/b path.
     if mate_type_str == "width":
         return _create_width_mate(asm_doc, typed_asm, placed, mate_spec, mod)
+
+    # Hinge mate (W48 Tier-3): compound concentric+coincident with TWO role-keyed
+    # face pairs — never touches the symmetric a/b path (like width).
+    if mate_type_str == "hinge":
+        return _create_hinge_mate(asm_doc, typed_asm, placed, mate_spec, mod)
 
     # Resolve both face entities
     faces = []
@@ -477,6 +603,19 @@ def create_mate(
                     typed_iface.MinimumAngle = math.radians(float(limit["min_deg"]))
                 if "max_deg" in limit:
                     typed_iface.MaximumAngle = math.radians(float(limit["max_deg"]))
+
+        # Slot (W48 Tier-3): symmetric a/b entity pair (slot face + pin face) +
+        # a positional Constraint (swSlotMateConstraintOptions_e). Set BEFORE
+        # CreateMate (the screw-toggle lesson). Constraint round-trips faithfully
+        # (seat-proven: Centered persisted through reopen). distance_mm/percent
+        # supply the scalar for the Distance/Percent constraint modes.
+        if mate_type_str == "slot":
+            constraint = mate_spec.get("constraint", "free")
+            typed_iface.Constraint = _SLOT_CONSTRAINT_ENUMS[constraint]
+            if constraint == "distance" and mate_spec.get("distance_mm") is not None:
+                typed_iface.Distance = float(mate_spec["distance_mm"]) / 1000.0
+            elif constraint == "percent" and mate_spec.get("percent") is not None:
+                typed_iface.Percent = float(mate_spec["percent"])
 
         mate_ret = typed_asm.CreateMate(mate_data)
     except Exception as exc:

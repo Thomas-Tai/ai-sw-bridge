@@ -26,10 +26,15 @@ MATE_TYPES = frozenset(
         "gear",
         "rackpinion",
         "camfollower",
+        "slot",
+        "hinge",
     }
 )
 
 MATE_ALIGNMENTS = frozenset({"aligned", "anti_aligned", "closest"})
+
+# W48 Tier-3: swSlotMateConstraintOptions_e modes for the slot mate.
+SLOT_CONSTRAINTS = frozenset({"free", "centered", "distance", "percent"})
 
 XYZ_MM_SCHEMA = {
     "type": "array",
@@ -99,6 +104,12 @@ MATE_SCHEMA = {
         # swRackTravelPerRevolution). Validator enforces exactly-one.
         "pitch_diameter_mm": {"type": "number", "exclusiveMinimum": 0},
         "rack_travel_per_rev_mm": {"type": "number", "exclusiveMinimum": 0},
+        # slot (W48 Tier-3): a/b = slot face + pin face. constraint selects the
+        # positional mode; distance_mm/percent supply the scalar for the
+        # distance/percent modes (validator enforces the pairing).
+        "constraint": {"type": "string", "enum": sorted(SLOT_CONSTRAINTS)},
+        "distance_mm": {"type": "number", "exclusiveMinimum": 0},
+        "percent": {"type": "number", "minimum": 0, "maximum": 100},
         "limit": {
             "type": "object",
             "additionalProperties": False,
@@ -127,6 +138,31 @@ WIDTH_MATE_SCHEMA = {
             "maxItems": 2,
         },
         "tab_faces": {
+            "type": "array",
+            "items": MATE_REF_SCHEMA,
+            "minItems": 2,
+            "maxItems": 2,
+        },
+    },
+}
+
+HINGE_MATE_SCHEMA = {
+    # W48 Tier-3: a compound concentric+coincident 1-DOF mate. TWO role pairs,
+    # not a symmetric a/b pair — concentric_faces (two coaxial cyl faces/axes)
+    # and coincident_faces (two planar faces). Mirrors the width-mate shape.
+    "type": "object",
+    "required": ["type", "concentric_faces", "coincident_faces"],
+    "additionalProperties": False,
+    "properties": {
+        "type": {"const": "hinge"},
+        "alignment": {"type": "string", "enum": sorted(MATE_ALIGNMENTS)},
+        "concentric_faces": {
+            "type": "array",
+            "items": MATE_REF_SCHEMA,
+            "minItems": 2,
+            "maxItems": 2,
+        },
+        "coincident_faces": {
             "type": "array",
             "items": MATE_REF_SCHEMA,
             "minItems": 2,
@@ -251,7 +287,7 @@ ASSEMBLY_SCHEMA = {
         "mates": {
             "type": "array",
             "items": {
-                "oneOf": [MATE_SCHEMA, WIDTH_MATE_SCHEMA],
+                "oneOf": [MATE_SCHEMA, WIDTH_MATE_SCHEMA, HINGE_MATE_SCHEMA],
             },
         },
         "component_patterns": COMPONENT_PATTERNS_SCHEMA,
