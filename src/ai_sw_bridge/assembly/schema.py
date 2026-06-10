@@ -24,6 +24,8 @@ MATE_TYPES = frozenset(
         "angle",
         "width",
         "gear",
+        "rackpinion",
+        "camfollower",
     }
 )
 
@@ -92,6 +94,11 @@ MATE_SCHEMA = {
                 "denominator": {"type": "number", "exclusiveMinimum": 0},
             },
         },
+        # rackpinion (W47): exactly one of these selects the DiameterType toggle
+        # (pitch_diameter_mm -> swPinionPitchDiameter; rack_travel_per_rev_mm ->
+        # swRackTravelPerRevolution). Validator enforces exactly-one.
+        "pitch_diameter_mm": {"type": "number", "exclusiveMinimum": 0},
+        "rack_travel_per_rev_mm": {"type": "number", "exclusiveMinimum": 0},
         "limit": {
             "type": "object",
             "additionalProperties": False,

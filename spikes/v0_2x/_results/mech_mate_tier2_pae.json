@@ -1,0 +1,33 @@
+{
+  "spike_id": "mech_mate_tier2_pae",
+  "legs": {
+    "rackpinion": {
+      "leg": "rackpinion",
+      "ok": true,
+      "create_mate_error": null,
+      "feature_type": "MateRackPinionDim",
+      "persist": {
+        "mate_feature_type": "MateRackPinionDim",
+        "read_back": {
+          "DiameterType": 0,
+          "DiameterVal": 0.02
+        }
+      },
+      "verdict": "GREEN"
+    },
+    "camfollower": {
+      "leg": "camfollower",
+      "ok": true,
+      "create_mate_error": null,
+      "feature_type": "MateCamTangent",
+      "persist": {
+        "mate_feature_type": "MateCamTangent",
+        "read_back": {
+          "MateAlignment": 0
+        }
+      },
+      "verdict": "GREEN"
+    }
+  },
+  "overall": "PASS"
+}

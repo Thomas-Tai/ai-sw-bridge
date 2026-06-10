@@ -281,6 +281,28 @@ def _check_mates(
                         f"{path}/ratio",
                     )
 
+        # Mechanical mates (W47 Tier-2) — rack-pinion + cam-follower.
+        if mtype == "rackpinion":
+            pitch_dia = mate.get("pitch_diameter_mm")
+            travel = mate.get("rack_travel_per_rev_mm")
+            provided = [
+                v for v in (pitch_dia, travel) if v is not None
+            ]
+            if len(provided) != 1:
+                raise AssemblyValidationError(
+                    "rackpinion mate requires EXACTLY ONE of "
+                    "'pitch_diameter_mm' or 'rack_travel_per_rev_mm'",
+                    path,
+                )
+            if not isinstance(provided[0], (int, float)) or provided[0] <= 0:
+                raise AssemblyValidationError(
+                    f"rackpinion scalar must be a positive number, "
+                    f"got {provided[0]!r}",
+                    path,
+                )
+        # camfollower: no coupling scalar — type + a + b (already required) is
+        # sufficient; the cam (a) and follower (b) entity refs drive resolution.
+
         limit = mate.get("limit")
         if limit is not None:
             if mtype not in ("distance", "angle"):

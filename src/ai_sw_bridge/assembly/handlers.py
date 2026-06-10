@@ -47,7 +47,14 @@ MATE_TYPE_ENUMS = {
     # NOTE: screw (swMateSCREW=17) is FROZEN — the pitch parameter is not
     # controllable out-of-process (clamps to the 1 mm kernel default via all
     # three characterized paths). See docs/DEFERRED.md "W46 screw mate".
+    # Mechanical mates (W47 Tier-2) — asymmetric reference sets, typelib-verified.
+    "rackpinion": 13,      # swMateRACKPINION
+    "camfollower": 9,      # swMateCAMFOLLOWER
 }
+
+# swRackPinionMateDistanceOptions_e (swconst.tlb): gates how DiameterVal reads.
+_RP_PINION_PITCH_DIA = 0     # swPinionPitchDiameter
+_RP_RACK_TRAVEL_PER_REV = 1  # swRackTravelPerRevolution
 
 # Typed interface names per mate type (from typelib dump).
 # Where a typed interface exists, we QI it to set type-specific properties.
@@ -63,6 +70,8 @@ MATE_TYPE_INTERFACES = {
     "width": "IWidthMateFeatureData",
     "gear": "IGearMateFeatureData",
     # screw FROZEN (W46) — see MATE_TYPE_ENUMS note + docs/DEFERRED.md.
+    "rackpinion": "IRackPinionMateFeatureData",
+    "camfollower": "ICamFollowerMateFeatureData",
 }
 
 
@@ -380,10 +389,18 @@ def create_mate(
             return None, f"no typed interface for mate type {mate_type_str!r}"
 
         typed_iface = typed_qi(mate_data, typed_iface_name, module=mod)
-        face_arr = w32.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
-        )
-        typed_iface.EntitiesToMate = face_arr
+        # Symmetric mates expose a settable EntitiesToMate ARRAY property; the
+        # asymmetric mechanical mates (rack-pinion, cam-follower) expose only the
+        # indexed PROPPUT, which makepy surfaces as the method
+        # SetEntitiesToMate(index, entity) — assigning the array raises
+        # AttributeError there. Try the array form, fall back per-index (W47).
+        try:
+            typed_iface.EntitiesToMate = w32.VARIANT(
+                pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, tuple(faces)
+            )
+        except AttributeError:
+            for _i, _ent in enumerate(faces):
+                typed_iface.SetEntitiesToMate(_i, _ent)
 
         # MateAlignment: not all typed interfaces support it (e.g. perpendicular
         # mates have no alignment concept). Set only when available.
@@ -425,6 +442,27 @@ def create_mate(
                 typed_iface.GearRatioDenominator = float(num)
             if den is not None:
                 typed_iface.GearRatioNumerator = float(den)
+
+        # Rack-pinion (W47): DiameterType (swRackPinionMateDistanceOptions_e)
+        # gates how DiameterVal reads — it MUST be set BEFORE the scalar or the
+        # kernel reverts it (the screw-toggle lesson). Exactly one of
+        # pitch_diameter_mm / rack_travel_per_rev_mm is provided (validator-
+        # enforced); it selects the DiameterType. The scalar round-trips
+        # faithfully (seat-proven, spikes/v0_2x/mech_mate_tier2_rack_cam) — no
+        # transpose, unlike gear. Entities go in via SetEntitiesToMate above:
+        # rack (linear_edge) at index 0, pinion (cylinder) at index 1.
+        if mate_type_str == "rackpinion":
+            pitch_dia_mm = mate_spec.get("pitch_diameter_mm")
+            travel_mm = mate_spec.get("rack_travel_per_rev_mm")
+            if pitch_dia_mm is not None:
+                typed_iface.DiameterType = _RP_PINION_PITCH_DIA
+                typed_iface.DiameterVal = float(pitch_dia_mm) / 1000.0
+            elif travel_mm is not None:
+                typed_iface.DiameterType = _RP_RACK_TRAVEL_PER_REV
+                typed_iface.DiameterVal = float(travel_mm) / 1000.0
+
+        # Cam-follower (W47): no coupling scalar — EntitiesToMate (cam non-planar
+        # face at index 0, follower cylinder at index 1) + MateAlignment only.
 
         # Limit mates: min/max variation on distance or angle
         limit = mate_spec.get("limit")

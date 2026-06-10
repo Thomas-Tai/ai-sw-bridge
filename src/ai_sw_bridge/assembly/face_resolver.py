@@ -123,8 +123,13 @@ def _resolve_via_fingerprint(
     target_normal = face_ref.get("normal")
     target_centroid = face_ref.get("centroid")
     is_cylinder = face_ref.get("is_cylinder", False)
+    # W47 asymmetric mechanical-mate entity kinds:
+    #   linear_edge — the first linear edge on the body (rack-pinion's rack).
+    #   non_planar  — the first non-planar face (cam-follower's cam profile).
+    linear_edge = face_ref.get("linear_edge", False)
+    non_planar = face_ref.get("non_planar", False)
 
-    if target_normal is None and not is_cylinder:
+    if target_normal is None and not (is_cylinder or linear_edge or non_planar):
         return ComponentFaceResolution(
             None, "unresolved", "no persist_id and no normal for fingerprint"
         )
@@ -136,6 +141,35 @@ def _resolve_via_fingerprint(
                 None, "unresolved", "no bodies on component"
             )
         body = bodies[0] if isinstance(bodies, (list, tuple)) else bodies
+    except Exception as exc:
+        return ComponentFaceResolution(
+            None, "unresolved", f"body access failed: {type(exc).__name__}"
+        )
+
+    # Linear-edge matching (rack-pinion rack): first linear edge on the body.
+    # The edge/curve must be typed-wrapped before IsLine() — a raw-dispatch
+    # GetCurve().IsLine() silently fails out-of-process (the cyl-face lesson).
+    if linear_edge:
+        try:
+            edges = body.GetEdges() or ()
+        except Exception as exc:
+            return ComponentFaceResolution(
+                None, "unresolved", f"edge access failed: {type(exc).__name__}"
+            )
+        for edge in edges:
+            try:
+                iedge = typed(edge, "IEdge", module=mod) if mod is not None else edge
+                curve = iedge.GetCurve()
+                icurve = typed(curve, "ICurve", module=mod) if mod is not None else curve
+                if icurve.IsLine():
+                    return ComponentFaceResolution(edge, "fingerprint")
+            except Exception:
+                continue
+        return ComponentFaceResolution(
+            None, "unresolved", "no linear edge found on component"
+        )
+
+    try:
         faces = body.GetFaces()
         if not faces:
             return ComponentFaceResolution(
@@ -143,7 +177,25 @@ def _resolve_via_fingerprint(
             )
     except Exception as exc:
         return ComponentFaceResolution(
-            None, "unresolved", f"body access failed: {type(exc).__name__}"
+            None, "unresolved", f"face access failed: {type(exc).__name__}"
+        )
+
+    # Non-planar face matching (cam-follower cam): first non-planar face — the
+    # lateral profile of an extruded cam (skip the flat caps).
+    if non_planar:
+        for face in faces:
+            try:
+                if mod is not None:
+                    iface = typed(face, "IFace2", module=mod)
+                    isurf = typed(iface.GetSurface(), "ISurface", module=mod)
+                else:
+                    isurf = face.GetSurface()
+                if not isurf.IsPlane():
+                    return ComponentFaceResolution(face, "fingerprint")
+            except Exception:
+                continue
+        return ComponentFaceResolution(
+            None, "unresolved", "no non-planar face found on component"
         )
 
     # Cylindrical face matching: find the first cylindrical face on the body
