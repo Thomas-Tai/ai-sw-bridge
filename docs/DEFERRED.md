@@ -215,6 +215,22 @@ equation driving the pitch, or a SW-version with a working `RevolutionVal`
 marshal). Enum truth retained: `swMateSCREW=17` (typelib-verified, NOT the
 API-doc's 14=MAXMATES).
 
+## Wave-50 (auto-pierce sweep — generalization deferred)
+
+**Auto-pierce SHIPPED 2026-06-10** (merge `961f9e8`): `_create_sweep` establishes
+a programmatic `sgATPIERCE` relation so an LLM names two independently-authored
+profile+path sketches and the sweep self-anchors (cures the "dummy wrapper"). v1
+covers the dominant generative profiles (circular/arc — tubing / O-ring / rod).
+**Two deferred sub-scopes (characterized, NOT walls — Wave-51 Lane A):**
+
+| Item | Rationale |
+|---|---|
+| **Arbitrary-profile anchor** | `_apply_auto_pierce` v1 anchors via the first circle/arc CENTER (`ISketchArc.GetCenterPoint2`). A bare rectangle / non-arc profile has no center point → fail-closed with a clear message. Generalization = compute the profile centroid (bbox center of segment endpoints) and select the nearest sketch point as the pierce anchor. Pure-geometry, low risk. |
+| **Non-Front-plane coord mapping** | The anchor is selected by `SelectByID2("SKETCHPOINT", x,y,z)` in MODEL coords; a profile sketch point's X/Y are sketch-local. v1 works for Front-plane profiles (sketch≈model). Generalization = map sketch→model via the active sketch's `ModelToSketchTransform` inverse so Top/Right/ref-plane profiles anchor correctly. |
+
+Both authored offline in Wave-51 Lane A (`feat/w51-pierce-general`), fired by W0.
+Recipe + proxy-shape lessons recorded in memory `project_pierce_autosweep`.
+
 ## Wave-44 (the "ghost feature" finding — B-rep-effect verification gap)
 
 **`edge_flange` is a GHOST — QUARANTINED 2026-06-09.** While building a bent
