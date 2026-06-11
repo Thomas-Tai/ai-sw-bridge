@@ -239,8 +239,11 @@ def validate_title_block(spec: dict[str, Any], *, path: str) -> None:
 #
 # Surface-finish symbols are the first annotation kind. Each entry
 # targets a named view and places the symbol at a sheet-frame position.
-# The API path is IModelDocExtension.InsertSurfaceFinishSymbol2(X, Y, Z,
-# Text) which returns an ISurfaceFinishSymbol (or None on failure).
+# The API path is IModelDoc2.InsertSurfaceFinishSymbol2 (14 args:
+# SymType, LeaderType, X, Y, Z, LaySymbol, ArrowType, MachAllowance,
+# OtherVals, ProdMethod, SampleLen, MaxRoughness, MinRoughness,
+# RoughnessSpacing). Returns bool True on success.
+# Verify by annotation type swSFSymbol = 7.
 #
 # GD&T (feature-control-frames), weld symbols, and hole tables are
 # deferred — each needs its own O1 FUNCDESC de-risk before authoring.
@@ -299,9 +302,9 @@ _ANNOTATIONS_SCHEMA: dict[str, Any] = {
     },
     "description": (
         "Drawing-annotation block. v1 supports surface-finish symbols "
-        "via IModelDocExtension.InsertSurfaceFinishSymbol2. GD&T "
-        "(feature-control-frames), weld symbols, and hole tables are "
-        "deferred."
+        "via IModelDoc2.InsertSurfaceFinishSymbol2 (14-arg, seat-proven). "
+        "GD&T (feature-control-frames), weld symbols, and hole tables "
+        "are deferred."
     ),
 }
 

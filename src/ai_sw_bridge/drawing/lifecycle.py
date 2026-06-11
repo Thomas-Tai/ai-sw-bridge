@@ -832,23 +832,21 @@ def _verify_title_block(
 
 # ---- W53: surface-finish annotation authoring
 #
-# API path: IModelDocExtension.InsertSurfaceFinishSymbol2(X, Y, Z, Text)
-# Returns ISurfaceFinishSymbol (or None on failure).
+# API path: IModelDoc2.InsertSurfaceFinishSymbol2 (14 args) — NOT the
+# 4-arg call on IModelDocExtension that the initial lane guessed.
+# Seat-proven signature (W53 spike GREEN):
+#   mdoc2.InsertSurfaceFinishSymbol2(
+#     SymType, LeaderType, LocX, LocY, LocZ,
+#     LaySymbol, ArrowType, MachAllowance, OtherVals,
+#     ProdMethod, SampleLen, MaxRoughness, MinRoughness,
+#     RoughnessSpacing)
+# Returns bool True on success.
 #
-# The W31v2 trap (ordinate dims): Insert* methods that are interactive-mode
-# starters return None and create zero annotations. Surface-finish is a
-# different pattern — it takes explicit X/Y/Z position + text, which
-# suggests a one-shot creator (same shape as the proven InsertBomTable4).
-#
-# If the seat proves this is an interactive-mode wall, the spike will
-# FUNCDESC it and characterize the zero-effect proof. In that case, the
-# next candidate in the W53 priority list is GD&T (InsertGTOL), then
-# weld symbol, then hole table (InsertHoleTable2).
-#
-# swAnnotationType_e values (from swconst typelib):
-#   swDisplayDimension = 1, swNote = 4, swSurfaceFinishSymbol = 9,
-#   swGTol = 10, swDatumTag = 11, swWeldSymbol = 12
-_SW_ANNOTATION_SURFACE_FINISH = 9
+# swAnnotationType_e values (seat-verified from swconst.tlb):
+#   swDisplayDimension = 4, swGTol = 5, swNote = 6,
+#   swSFSymbol = 7 (surface finish), swWeldSymbol = 8,
+#   swCustomSymbol = 9
+_SW_ANNOTATION_SURFACE_FINISH = 7
 
 
 def _apply_surface_finish_annotations(
@@ -858,11 +856,14 @@ def _apply_surface_finish_annotations(
     placed_by_name: dict[str, Any],
     sheet_index: int,
 ) -> dict[str, Any]:
-    """Insert surface-finish symbols via IModelDocExtension.InsertSurfaceFinishSymbol2.
+    """Insert surface-finish symbols via IModelDoc2.InsertSurfaceFinishSymbol2.
+
+    Seat-proven 14-arg signature (W53 spike GREEN on IModelDoc2, NOT the
+    4-arg IModelDocExtension call the lane initially guessed).
 
     Args:
         drawing_doc: IDrawingDoc dispatch.
-        mdoc2: IModelDoc2 dispatch (for Extension).
+        mdoc2: IModelDoc2 dispatch (carries InsertSurfaceFinishSymbol2).
         annotations_spec: The ``annotations`` dict from the sheet spec.
         placed_by_name: Map of view name -> IView for resolving targets.
         sheet_index: For error messages.
@@ -880,14 +881,6 @@ def _apply_surface_finish_annotations(
     sf_array = annotations_spec.get("surface_finish")
     if not sf_array:
         result["ok"] = True
-        return result
-
-    ext_obj = mdoc2.Extension
-    if ext_obj is None:
-        result["errors"].append(
-            f"sheet[{sheet_index}].annotations: "
-            "IModelDoc2.Extension returned None"
-        )
         return result
 
     for i, entry in enumerate(sf_array):
@@ -912,8 +905,21 @@ def _apply_surface_finish_annotations(
             pass
 
         try:
-            sf = ext_obj.InsertSurfaceFinishSymbol2(
-                float(x), float(y), 0.0, text
+            insert_ok = mdoc2.InsertSurfaceFinishSymbol2(
+                1,              # SymType: swSFMachining_Req
+                0,              # LeaderType: swNO_LEADER
+                float(x),       # LocX
+                float(y),       # LocY
+                0.0,            # LocZ
+                0,              # LaySymbol: swSFNone
+                0,              # ArrowType
+                "",             # MachAllowance
+                "",             # OtherVals
+                "",             # ProdMethod
+                "",             # SampleLen
+                text,           # MaxRoughness (the spec's finish value)
+                "",             # MinRoughness
+                "",             # RoughnessSpacing
             )
         except Exception as exc:
             result["errors"].append(
@@ -923,11 +929,10 @@ def _apply_surface_finish_annotations(
             )
             continue
 
-        if sf is None or isinstance(sf, int):
+        if not insert_ok:
             result["errors"].append(
                 f"sheet[{sheet_index}].annotations.surface_finish[{i}]: "
-                f"InsertSurfaceFinishSymbol2 returned {sf!r} "
-                f"(interactive-mode wall? see W31v2 trap)"
+                f"InsertSurfaceFinishSymbol2 returned {insert_ok!r}"
             )
             continue
 
