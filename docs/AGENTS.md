@@ -21,12 +21,12 @@ You never call the SOLIDWORKS COM API directly. You write JSON specs or invoke C
 5. **Build a part**: `ai-sw-build examples/filleted_box/spec.json --no-dim` (creates a fresh part in SW)
 6. **Observe the result**: `ai-sw-observe features` / `ai-sw-observe bbox` / `ai-sw-observe volume`
 
-The feature types available (16 shipped primitives + 2 cut end-condition variants + 7 sketch primitives):
+The feature types available (16 shipped primitives + 2 cut end-condition variants + 8 sketch primitives):
 
 | Category | Types |
 |---|---|
 | Sketch | `sketch_rectangle_on_plane`, `sketch_rectangle_on_face`, `sketch_circle_on_plane`, `sketch_circle_on_face`, `sketch_circles_on_face` |
-| Sketch primitives | `sketch_line`, `sketch_arc`, `sketch_spline`, `sketch_slot`, `sketch_polygon`, `sketch_ellipse`, `sketch_text` |
+| Sketch primitives | `sketch_line`, `sketch_arc`, `sketch_spline`, `sketch_slot`, `sketch_polygon`, `sketch_ellipse`, `sketch_text`, `sketch_3d_sketch` |
 | Extrude | `boss_extrude_blind`, `cut_extrude_through_all`, `cut_extrude_blind`, `cut_extrude_midplane`, `cut_extrude_two_direction`, `revolve_boss`, `revolve_cut` |
 | Modify | `fillet_constant_radius`, `chamfer_edge`, `simple_hole` |
 | Pattern | `linear_pattern`, `circular_pattern`, `mirror_feature` |

@@ -408,6 +408,31 @@ A plain-text annotation sketch.
 
 > **✅ Seat-proven (2026-05-31):** Text is a document-level op — `IModelDoc2.InsertSketchText(Ptx, Pty, Ptz, Text, Alignment, FlipDirection, HorizontalMirror, WidthFactor, SpaceBetweenChars)` (NOT on `ISketchManager`; the trailing args are ints and there is **no angle parameter**). `height` (CharHeight, metres) and `font` (TypeFaceName) are applied through the returned `ISketchText` via the early-bind hatch: `typed(raw, "ISketchText").GetTextFormat()` → mutate → `SetTextFormat(0, tf)` (late binding alone hits "Member not found" on `GetTextFormat`). There is **no `angle_deg` or `construction` field**: text baseline rotation has no out-of-process API on this seat (`InsertSketchText`/`ITextFormat` expose no angle), and text is not a sketch segment — both are rejected at validation rather than faked.
 
+### `sketch_3d_sketch`
+
+A 3D polyline sketch through a sequence of 3D points. Unlike on-plane sketch primitives, a 3D sketch is **not** constrained to a reference plane — it uses `ISketchManager.Insert3DSketch(True)` (one BOOL `UpdateEditRebuild` arg; parameterless raises 'Parameter not optional') to enter/exit sketch mode, and `CreateLine` carries real X/Y/Z coordinates. This is the Phase-5 prerequisite that unblocks weldments (FR-5-06) and swept/lofted surfaces (FR-5-02).
+
+```json
+{
+  "type": "sketch_3d_sketch",
+  "name": "SK3D_NonPlanarPath",
+  "points": [
+    {"x": 0.0,   "y": 0.0,  "z": 0.0},
+    {"x": 100.0, "y": 0.0,  "z": 0.0},
+    {"x": 100.0, "y": 50.0, "z": 30.0},
+    {"x": 0.0,   "y": 50.0, "z": 60.0}
+  ]
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"sketch_3d_sketch"` | |
+| `name` | yes | string | Unique feature name |
+| `points` | yes | array (min 2) | Ordered 3D control points `{x, y, z}` (mm, part frame). Consecutive points are connected by line segments. All three axes are required — use non-zero `z` extent to create a non-planar path. |
+
+> **✅ Seat-proven (W53):** `Insert3DSketch(True)` + `CreateLine(x1,y1,z1, x2,y2,z2)` — spike v0.21 S2 GREEN (3 segments, 0.06 m Z-extent). Same toggle opens and closes the 3D sketch.
+
 ## Extrude primitives
 
 ### `boss_extrude_blind`

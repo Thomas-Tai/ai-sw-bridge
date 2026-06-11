@@ -1009,6 +1009,45 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         # rejected at validation rather than silently ignored.
         FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
+    # W53 — 3D-sketch primitive.  No `plane` field (3D sketches are not
+    # constrained to a reference plane).  Points carry real X/Y/Z coordinates
+    # (mm, all three required).  The polyline connects consecutive points via
+    # ISketchManager.CreateLine inside a 3D sketch (Insert3DSketch).
+    "sketch_3d_sketch": [
+        FieldSpec(
+            "points",
+            {
+                "type": "array",
+                "minItems": 2,
+                "description": (
+                    "Ordered 3D control points of the polyline.  Consecutive "
+                    "points are connected by line segments.  All three axes "
+                    "(x, y, z) are required — use a non-zero z extent to "
+                    "create a non-planar path (weldment / sweep prerequisite)."
+                ),
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["x", "y", "z"],
+                    "properties": {
+                        "x": {
+                            "type": "number",
+                            "description": "X coordinate (mm) in the part frame.",
+                        },
+                        "y": {
+                            "type": "number",
+                            "description": "Y coordinate (mm) in the part frame.",
+                        },
+                        "z": {
+                            "type": "number",
+                            "description": "Z coordinate (mm) in the part frame.",
+                        },
+                    },
+                },
+            },
+            True,
+        ),
+    ],
 }
 
 
@@ -1202,6 +1241,15 @@ FEATURE_META: dict[str, dict[str, Any]] = {
         "sw_min": "2024 SP1",
         "spike_id": "P1.7s (stub, font bitfield 🔴 SEAT)",
     },
+    # W53 — 3D-sketch primitive (Phase-5 prerequisite: weldments FR-5-06,
+    # swept/lofted surfaces FR-5-02).
+    "sketch_3d_sketch": {
+        "doc": "3D polyline sketch through a sequence of 3D points (non-planar path).",
+        "example_ref": "sketch_3d_primitives",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": "W53 (sketch_3d)",
+    },
 }
 
 
@@ -1234,6 +1282,8 @@ FEATURE_ORDER: list[str] = [
     "sketch_polygon",
     "sketch_ellipse",
     "sketch_text",
+    # W53 — 3D-sketch primitive (Phase-5 prerequisite).
+    "sketch_3d_sketch",
 ]
 
 
