@@ -481,6 +481,20 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             False,
         ),
+        FieldSpec(
+            "merge",
+            {
+                "type": "boolean",
+                "default": True,
+                "description": (
+                    "true (default) = fuse this boss into the existing solid body "
+                    "it overlaps (modeling-time boolean UNION). false = keep it as a "
+                    "separate solid body (multi-body). Express unions HERE, at the "
+                    "extrusion phase: there is no post-hoc 'combine' feature."
+                ),
+            },
+            False,
+        ),
     ],
     "cut_extrude_through_all": [
         FieldSpec(

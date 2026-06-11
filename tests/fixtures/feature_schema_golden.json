@@ -706,6 +706,11 @@
         "type": "boolean",
         "default": false,
         "description": "Extrude in -normal instead of +normal direction."
+      },
+      "merge": {
+        "type": "boolean",
+        "default": true,
+        "description": "true (default) = fuse this boss into the existing solid body it overlaps (modeling-time boolean UNION). false = keep it as a separate solid body (multi-body). Express unions HERE, at the extrusion phase: there is no post-hoc 'combine' feature."
       }
     }
   },

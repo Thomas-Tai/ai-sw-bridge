@@ -339,8 +339,14 @@ def _call_feature_extrusion(
     end_cond: int,
     depth_m: float,
     flip: bool,
+    merge: bool = True,
 ) -> Any:
     """Boss-only extrusion. For cuts use _call_feature_cut (FeatureCut4).
+
+    ``merge`` is the modeling-time boolean: True (default) fuses this boss into
+    any solid body it overlaps (UNION); False keeps it as a separate body
+    (multi-body). This is the invariant-clean stand-in for the walled post-hoc
+    ``combine`` — see docs/decisions.md (no in-process macro/add-in).
 
     SW 2017+ signature (23 args; verified via decompiled sldworksapi.chm):
       Sd, Flip, Dir, T1, T2, D1, D2,
@@ -371,7 +377,7 @@ def _call_feature_extrusion(
         False,  # 15 OffsetReverse2
         False,  # 16 TranslateSurface1
         False,  # 17 TranslateSurface2
-        True,  # 18 Merge
+        merge,  # 18 Merge (True=union into existing body, False=separate body)
         True,  # 19 UseFeatScope
         True,  # 20 UseAutoSelect
         SW_START_SKETCH_PLANE,  # 21 T0
@@ -534,9 +540,10 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
     _select_sketch(ctx, sketch_name)
     depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["extrude_depth"])
     flip = bool(feat.get("flip", False))
+    merge = bool(feat.get("merge", True))
 
     f = _call_feature_extrusion(
-        ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip
+        ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip, merge=merge
     )
     f.Name = feat["name"]
 
