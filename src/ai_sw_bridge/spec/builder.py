@@ -1701,6 +1701,60 @@ def _build_sketch_text(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     return _close_plane_sketch_and_build(ctx, feat)
 
 
+# ---------------------------------------------------------------------------
+# W53 — 3D-sketch primitive.  A 3D sketch is NOT on a reference plane; it
+# uses Insert3DSketch (parameterless toggle) instead of InsertSketch(True)
+# to enter/exit sketch mode.  Line segments carry real X/Y/Z coordinates
+# (millimetres in the spec, converted to metres for COM).  This primitive
+# unblocks weldments (FR-5-06) and swept/lofted surfaces (FR-5-02).
+# ---------------------------------------------------------------------------
+
+
+def _enter_3d_sketch(ctx: BuildContext) -> Any:
+    """Open a 3D sketch; return SketchManager.
+
+    No plane selection — 3D sketches are not constrained to a reference plane.
+    ``ISketchManager.Insert3DSketch`` is a parameterless toggle on SW 2024;
+    the typelib arity is probed by ``spikes/v0_21/spike_sketch_3d.py``.
+    """
+    sm = ctx.doc.SketchManager
+    sm.Insert3DSketch()
+    return sm
+
+
+def _close_3d_sketch_and_build(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
+    """Close the open 3D sketch, rename the new sketch feature, return BuiltFeature."""
+    ctx.doc.SketchManager.Insert3DSketch()
+    sketch_feat = ctx.doc.FeatureByPositionReverse(0)
+    if sketch_feat is None:
+        raise RuntimeError(f"no sketch feature produced for '{feat['name']}'")
+    sketch_feat.Name = feat["name"]
+    return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
+
+
+def _build_sketch_3d_sketch(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
+    """Sketch a 3D polyline through a sequence of 3D points.
+
+    Opens a 3D sketch (no plane), draws line segments between consecutive
+    points with real X/Y/Z coordinates, then closes.  The handler is a SW-free
+    stub that assembles the arg tuple; the live ``ISketchManager.Insert3DSketch``
+    + ``CreateLine`` call is flagged SEAT for the W53 seat pass.
+    """
+    points = feat["points"]
+    sm = _enter_3d_sketch(ctx)
+    for i in range(len(points) - 1):
+        a, b = points[i], points[i + 1]
+        sm.CreateLine(
+            _mm_to_m(a["x"]), _mm_to_m(a["y"]), _mm_to_m(a["z"]),
+            _mm_to_m(b["x"]), _mm_to_m(b["y"]), _mm_to_m(b["z"]),
+        )
+    return _close_3d_sketch_and_build(ctx, feat)
+
+
 # THE registry of feature descriptors (X3, FR-X-03): the single source of
 # truth per primitive. To add a new feature type, append one descriptor here
 # and a handler function; its JSON-Schema fragment is assembled from the
@@ -1846,6 +1900,12 @@ DESCRIPTORS: dict[str, FeatureDescriptor] = {
     "sketch_polygon": FeatureType(name="sketch_polygon", handler=None, dim_fields={}),
     "sketch_ellipse": FeatureType(name="sketch_ellipse", handler=None, dim_fields={}),
     "sketch_text": FeatureType(name="sketch_text", handler=None, dim_fields={}),
+    # W53 — 3D-sketch primitive. Not on a reference plane; uses Insert3DSketch
+    # (parameterless toggle) and carries real X/Y/Z. Unblocks weldments (FR-5-06)
+    # and swept/lofted surfaces (FR-5-02).
+    "sketch_3d_sketch": FeatureType(
+        name="sketch_3d_sketch", handler=None, dim_fields={},
+    ),
 }
 
 
@@ -1881,6 +1941,8 @@ def _wire_handlers() -> None:
         "sketch_polygon": _build_sketch_polygon,
         "sketch_ellipse": _build_sketch_ellipse,
         "sketch_text": _build_sketch_text,
+        # W53 — 3D-sketch primitive (Insert3DSketch + CreateLine with real Z).
+        "sketch_3d_sketch": _build_sketch_3d_sketch,
     }
     from .descriptors import FEATURE_FIELDS, FEATURE_META
 

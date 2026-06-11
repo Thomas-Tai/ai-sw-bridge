@@ -271,6 +271,8 @@ SKETCH_TYPES = frozenset(
         "sketch_polygon",
         "sketch_ellipse",
         "sketch_text",
+        # W53 — 3D-sketch primitive (Phase-5 prerequisite).
+        "sketch_3d_sketch",
     }
 )
 EXTRUDE_TYPES = frozenset(

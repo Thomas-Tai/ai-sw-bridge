@@ -1,0 +1,67 @@
+{
+  "sw_revision": "32.1.0",
+  "S1_funcdesc": {
+    "step": "S1_funcdesc",
+    "module_info": {
+      "tlb_path": "C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\sldworks.tlb",
+      "libid": "{83A33D31-27C5-11CE-BFD4-00400513BB57}",
+      "lcid": 0,
+      "major": 32,
+      "minor": 0,
+      "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0"
+    },
+    "status": "ERROR",
+    "error": "AttributeError(\"type object 'ISketchManager' has no attribute '_typelib_'\")"
+  },
+  "S2_materialize": {
+    "step": "S2_materialize",
+    "call": "Insert3DSketch(True)",
+    "sketch_type": "CDispatch",
+    "is_3d_sketch": "<unreadable>",
+    "seg_before": 0,
+    "segments_created": [
+      {
+        "idx": 0,
+        "result_type": "CDispatch",
+        "is_none": false
+      },
+      {
+        "idx": 1,
+        "result_type": "CDispatch",
+        "is_none": false
+      },
+      {
+        "idx": 2,
+        "result_type": "CDispatch",
+        "is_none": false
+      }
+    ],
+    "seg_after": 3,
+    "seg_delta": 3,
+    "materialized": true,
+    "z_extent_m": 0.06,
+    "z_extent_nonzero": true,
+    "sketch_feature_name": "3DSketch1",
+    "renamed_to": "Sketch3D_Spike",
+    "status": "GREEN"
+  },
+  "S3_save_reopen": {
+    "step": "S3_save_reopen",
+    "save_result": "0",
+    "save_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\spike_sketch3d_1781165280.SLDPRT",
+    "file_exists": true,
+    "status": "ERROR",
+    "error": "com_error(-2147352561, 'Parameter not optional.', None, None)"
+  },
+  "S4_sweep_stretch": {
+    "step": "S4_sweep_stretch",
+    "path_sketch": "Path3D",
+    "profile_sketch": "Profile",
+    "sweep_error": "com_error(-2147352561, 'Parameter not optional.', None, None)",
+    "status": "WALL",
+    "fail_closed": true,
+    "note": "InsertProtrusionSwept3 raised.  Sweep-on-3D-path may need a different API (InsertProtrusionSwept4, FeatureExtrusion2 with sweep flag, or the modern CreateDefinition path).  Characterize in a dedicated sweep spike."
+  },
+  "overall": "PARTIAL",
+  "gate_note": "S2 GREEN but S3 not GREEN (save/reopen issue)"
+}

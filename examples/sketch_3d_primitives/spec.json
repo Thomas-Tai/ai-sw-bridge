@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "name": "Sketch3DPrimitivesGallery",
+  "_comment": "Gallery of the W53 sketch_3d_sketch primitive: a non-planar 3D polyline (4 points spanning all three axes). Prerequisite for weldments (FR-5-06) and swept/lofted surfaces (FR-5-02).",
+  "features": [
+    {
+      "type": "sketch_3d_sketch",
+      "name": "SK3D_NonPlanarPath",
+      "_comment": "Non-planar 3D polyline: (0,0,0) -> (100,0,0) -> (100,50,30) -> (0,50,60). Z extent = 60 mm, spanning all three axes.",
+      "points": [
+        {"x": 0.0,   "y": 0.0,  "z": 0.0},
+        {"x": 100.0, "y": 0.0,  "z": 0.0},
+        {"x": 100.0, "y": 50.0, "z": 30.0},
+        {"x": 0.0,   "y": 50.0, "z": 60.0}
+      ]
+    }
+  ]
+}
