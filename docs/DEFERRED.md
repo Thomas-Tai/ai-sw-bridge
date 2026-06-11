@@ -118,6 +118,44 @@ edge-flange / loft precedent. First raised + deferred 2026-06-09 (W41 seat).
 | **`combine` (boolean add/subtract/common)** | Two un-cleared blockers, each its own S1. **(1) Raw-`GetBodies2` binding:** `_create_combine` still calls `doc.GetBodies2` on the raw (un-QI'd) doc — needs the same typed-`IPartDoc` QI the `delete_body` path uses. **(2) `IBody2`-array marshaling (the real wall):** `InsertCombineFeature(type, mainBody, toolBodies)` requires the main body as an `IBody2` dispatch AND the tool bodies as an `IBody2` SAFEARRAY marshaled out-of-process — exactly the un-arrayed-dispatch class that walled edge-flange for two waves until the `VARIANT(VT_ARRAY \| VT_DISPATCH, (…))` breakthrough (Wave-7). The fix is likely the same SAFEARRAY-of-dispatch wrap, but it needs its own seat de-risk (build 2 overlapping bodies → subtract → assert single body, volume == A − overlap; a no-op that leaves 2 bodies = FAIL). Until proven, `combine` stays fail-closed. `_COMBINE_OP_MAP = {add:0, subtract:1, common:2}` already characterized. |
 | **`split` (one body → N by a trim plane/surface)** | Solver-deep + needs a cutting entity, and the W41 S1 fixtures only ever built ONE body so the increase-to-N gate was never exercised (`PRECONDITION_FAILED`, not a COM verdict). Owns the highest wall-risk of the three (loft/rib solver-deep family). Needs a dedicated S1: build a single body + a ref plane through it → split → assert body count 1→N with volumes summing to the original. `_create_split` characterized (selects body[0], expects a `cutting_plane`/`cutting_surface` ref) but unproven end-to-end. |
 
+### Wave-52 update (2026-06-11 seat) — the one-shot API is the wrong shape; both need FeatureData rewrites
+
+W52 Lane A fired the combine/split handlers at the seat with corrected fixtures
+(verify-the-effect gates). **Both are NO-GO on the one-shot `InsertXxxFeature`
+API** — the out-of-process COM channel drops the implicit UI selection stack the
+"Insert" macros rely on. The cycle produced the authoritative `FUNCDESC` map and
+the real (FeatureData) paths, so the next worker starts from the answer, not a guess.
+
+- **combine — `InsertCombineFeature` is a uniform no-op.** Five call variants all
+  fail on a valid 2-body overlapping fixture (subtract): typed bodies, raw
+  `_oleobj_`, `VARIANT(VT_DISPATCH)`-wrapped main, late-bound raw bodies, AND the
+  separate `IPartDoc.InsertCombineFeature` overload. Ruled OUT by the seat: arg
+  order (Leg-0 FUNCDESC = `InsertCombineFeature(OperationType:I4, MainBody:VT_PTR,
+  ToolVar:VARIANT) -> VT_PTR`, matches the handler), enum (`add=0/subtract=1/common=2`
+  = real `swBodyOperationType_e`), and marshaling. `IFeatureManager.InsertCombineFeature`
+  → **None**; `IPartDoc.InsertCombineFeature` → **False**. **Real path =
+  `ICombineBodiesFeatureData`:** `CreateDefinition(swFmCombineBodies)` → `typed_qi`
+  → set `MainBody` + `BodiesToCombine` (strict `IBody2` SAFEARRAY; may need
+  `_oleobj_.InvokeTypes` to force the VT_DISPATCH array if pythoncom strips types)
+  + `OperationType` → `CreateFeature`. Same typed_qi FeatureData pattern as fillet/sweep.
+- **split — the handler's `InsertSplitBody` does not exist.** A broad all-interface
+  FUNCDESC sweep found **no `InsertSplitBody` on any interface** — it was a guessed
+  name (O1 violation in the W41 handler), which is why the call would have died even
+  past the plane-selection fix. **Real path = the two-step `IFeatureManager.PreSplitBody()`
+  → `PostSplitBody(BodiesToMark, ConsumeCut, Origins, SavePaths)`:** PreSplitBody
+  computes intersections from the active selection (so the cutting tool must be
+  pre-selected); harvest the returned temp bodies, build parallel `BodiesToMark`
+  (bool keep/consume), `Origins` (result coords), `SavePaths` (empty strings if not
+  saving to new files) arrays, commit via PostSplitBody. This route is more reliable
+  out-of-process than `ISplitBodyFeatureData` (which chokes on origin mapping). The
+  cutting plane must select as **`"PLANE"`**, NOT `"REFPLANE"` (that handler bug is
+  fixed on the branch but dormant).
+
+**Artifacts on `feat/w52-bodyops` (author-only, UNMERGED):** the corrected de-risk
+spike + `bodyops_combine_marshal_diag.py` (the 5-variant sweep + all-interface
+combine/split FUNCDESC dump) + the `_create_split` `REFPLANE`→`PLANE` fix. Both
+kinds STAY out of `_SUPPORTED_FEATURE_TYPES`. Re-scope as a dedicated FeatureData wave.
+
 ## Wave-42 (`dxf_flat` — Developed Boundary Pass; inner bend lines deferred)
 
 **`dxf_flat` SHIPPED 2026-06-09 as a Developed Boundary Pass** — it exports the
