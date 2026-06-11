@@ -101,13 +101,15 @@ where = ["src"]
 ai_sw_bridge = ["py.typed"]
 
 # W4.4 — import-linter lane-boundary contracts.
-# Layer model (bottom → top):
-#   telemetry, errors (foundations — no upward imports)
-#   brep, rag, checkpoint (lanes — may use telemetry/errors only)
-#   com, sw_com (COM interop — may use the lanes above)
-#   mutate, observe, parameterize, spec (consumers of COM + lanes)
-#   mcp (alternate entry point — imports observe/spec/checkpoint/rag)
-#   cli (topmost entry point — may import anything below, including mcp)
+# Layer order updated 2026-06-11: the original W4.4 list predated the
+# assembly/drawing/configuration epochs and was never re-run (lint-imports
+# was in neither CI nor the local gate), so it drifted from the shipped
+# architecture. Post-epoch reality:
+#   - mutate hosts the propose→dry-run→commit flows for feature_add AND
+#     assembly/drawing/properties, so it orchestrates (sits above) spec,
+#     drawing, and config; new feature_add kinds dispatch via features/.
+#   - config.dispatch drives spec.builder (W36 multi-file variants).
+#   - brep interrogation uses com.earlybind/sw_type_info (Wave-4 true-curve).
 #
 # cli and mcp are both entry points; the contract permits cli → mcp but
 # not mcp → cli. In practice neither imports the other today — the MCP
@@ -124,19 +126,19 @@ type = "layers"
 layers = [
     "ai_sw_bridge.cli",
     "ai_sw_bridge.mcp",
+    "ai_sw_bridge.mutate",
+    "ai_sw_bridge.config",
     "ai_sw_bridge.spec",
     "ai_sw_bridge.parameterize",
     "ai_sw_bridge.observe",
     "ai_sw_bridge.export",
     "ai_sw_bridge.import_geom",
     "ai_sw_bridge.drawing",
-    "ai_sw_bridge.config",
-    "ai_sw_bridge.mutate",
     "ai_sw_bridge.features",
+    "ai_sw_bridge.brep",
     "ai_sw_bridge.com",
     "ai_sw_bridge.checkpoint",
     "ai_sw_bridge.rag",
-    "ai_sw_bridge.brep",
     "ai_sw_bridge.sw_com",
     "ai_sw_bridge.sw_types",
     "ai_sw_bridge.flags",

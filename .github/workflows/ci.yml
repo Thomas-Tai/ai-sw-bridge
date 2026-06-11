@@ -54,6 +54,12 @@ jobs:
         # contract (UIUX.md §2.3).
         run: python tools/two_stream_lint.py src/
 
+      - name: Import-linter lane-boundary contracts
+        # Layer contract lives in pyproject [tool.importlinter]. It silently
+        # drifted from W9–W36 because nothing enforced it (caught 2026-06-11);
+        # this step keeps it honest.
+        run: lint-imports
+
       - name: Run tests
         run: pytest -v
 
