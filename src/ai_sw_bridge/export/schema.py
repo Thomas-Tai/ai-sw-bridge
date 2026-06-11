@@ -67,6 +67,14 @@ EXPORT_ENTRY_SCHEMA: dict[str, Any] = {
                 "formats. Unknown sheet names are rejected at dispatch."
             ),
         },
+        "binary": {
+            "type": "boolean",
+            "description": (
+                "STL binary/ASCII toggle (STL only). "
+                "true (default) produces binary STL; false produces "
+                "ASCII STL. Ignored for non-STL formats."
+            ),
+        },
     },
 }
 

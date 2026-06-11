@@ -137,6 +137,13 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         description="DXF — general 2D/3D exchange (Drawing docs only; Part→DXF needs Drawing pipeline)",
         seat_confirmed=True,  # W33 seat-confirmed: SaveAs3(path, 0, 0) with .dxf extension
     ),
+    "dwg": ExportFormat(
+        name="dwg",
+        extension=".dwg",
+        save_method=SaveMethod.SAVEAS3_DIRECT,
+        description="DWG — AutoCAD native 2D/3D exchange (Drawing docs only; AC10xx binary header)",
+        seat_confirmed=False,  # W52: registered offline; byte-verify AC10xx magic at seat
+    ),
     "dxf_flat": ExportFormat(
         name="dxf_flat",
         extension=".dxf",

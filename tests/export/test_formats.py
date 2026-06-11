@@ -26,6 +26,7 @@ class TestExportFormats:
             "3mf",
             "pdf",
             "dxf",
+            "dwg",
             "dxf_flat",
             "dxf_flat_bends",
         }
@@ -50,7 +51,7 @@ class TestExportFormats:
 
     @pytest.mark.parametrize(
         "name",
-        ["step214", "iges", "parasolid", "stl", "3mf", "dxf"],
+        ["step214", "iges", "parasolid", "stl", "3mf", "dxf", "dwg"],
     )
     def test_saveas3_direct_formats(self, name: str) -> None:
         assert EXPORT_FORMATS[name].save_method == SaveMethod.SAVEAS3_DIRECT
@@ -71,6 +72,10 @@ class TestExportFormats:
                     "pdf", "dxf", "dxf_flat", "dxf_flat_bends"}
         confirmed = {n for n, f in EXPORT_FORMATS.items() if f.seat_confirmed}
         assert confirmed == expected
+
+    def test_dwg_not_seat_confirmed(self) -> None:
+        """W52: DWG registered offline; seat_confirmed=False until W0 verifies."""
+        assert EXPORT_FORMATS["dwg"].seat_confirmed is False
 
 
 class TestResolveFormat:

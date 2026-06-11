@@ -67,6 +67,16 @@ _SW_SAVE_AS_OPTIONS_SILENT = 1
 # swDWGExportType_e (IPartDoc.ExportToDWG2)
 _SW_EXPORT_SHEETMETAL = 2
 
+# --- Export user-preference IDs (W52) ---
+# W0 MUST confirm these from swconst.tlb (dump, don't guess — O1/W21/W25 lesson).
+# swUserPreferenceToggle_e.swSTLBinaryFormat — True=binary, False=ASCII
+_SW_STL_BINARY_TOGGLE: int | None = None  # seat-pending: dump swconst.tlb
+# swUserPreferenceIntegerValue_e.swStepExportAP
+_SW_STEP_AP_INTEGER: int | None = None  # seat-pending: dump swconst.tlb
+# STEP AP selection values (swStepAP_e or similar)
+_SW_STEP_AP203: int = 1   # seat-pending: confirm from swconst.tlb
+_SW_STEP_AP214: int = 2   # seat-pending: confirm from swconst.tlb
+
 
 @dataclass(frozen=True)
 class ExportRequest:
@@ -80,12 +90,17 @@ class ExportRequest:
         sheets: PDF-only sheet selection. ``"all"`` (default) exports
             every sheet; a list of sheet name strings exports only
             those. Ignored for non-PDF formats.
+        binary: STL-only binary toggle. ``True`` (default) produces
+            binary STL; ``False`` produces ASCII STL. Requires the
+            ``swSTLBinaryFormat`` toggle ID confirmed at the seat.
+            Ignored for non-STL formats.
     """
 
     format: str
     output_dir: Path
     filename: str | None = None
     sheets: str | list[str] = "all"
+    binary: bool | None = None
 
 
 @dataclass
@@ -193,7 +208,7 @@ def _export_one(doc: Any, req: ExportRequest, part_name: str) -> ExportResult:
     path_str = str(out_path)
 
     if fmt.save_method == SaveMethod.SAVEAS3_DIRECT:
-        return _saveas3_direct(doc, fmt, out_path)
+        return _saveas3_direct(doc, fmt, out_path, binary=req.binary)
     if fmt.save_method == SaveMethod.EXPORT_PDF:
         return _export_pdf(doc, fmt, out_path, req.sheets)
     if fmt.save_method == SaveMethod.FLAT_PATTERN_DXF:
@@ -408,8 +423,65 @@ def _export_pdf(
     return ExportResult(format=fmt.name, path=path_str, ok=True)
 
 
+def _apply_export_preferences(
+    doc: Any, fmt: ExportFormat, *, binary: bool | None = None,
+) -> None:
+    """Set export user-preferences on the doc BEFORE SaveAs3 (W52).
+
+    The W33 set-before-save lesson: preferences like STL binary mode
+    and STEP AP must be applied to the document extension before the
+    SaveAs3 call, not after.
+
+    Silently skips when the enum ID is ``None`` (seat-pending) — the
+    spike dumps the real value from swconst.tlb.
+    """
+    ext = None
+    try:
+        ext = doc.Extension
+    except Exception:
+        return
+
+    # STL binary/ASCII toggle
+    if fmt.name == "stl" and binary is not None:
+        if _SW_STL_BINARY_TOGGLE is None:
+            logger.warning(
+                "STL binary toggle not confirmed at seat "
+                "(swSTLBinaryFormat ID is None); skipping preference set"
+            )
+        else:
+            try:
+                ext.SetUserPreferenceToggle(
+                    _SW_STL_BINARY_TOGGLE, bool(binary),
+                )
+            except Exception as exc:
+                logger.warning(
+                    "SetUserPreferenceToggle(STL binary, %s) raised %s",
+                    binary, exc,
+                )
+
+    # STEP AP selection (format name determines the AP)
+    if fmt.name in ("step203", "step214"):
+        if _SW_STEP_AP_INTEGER is None:
+            logger.warning(
+                "STEP AP integer pref not confirmed at seat "
+                "(swStepExportAP ID is None); skipping preference set"
+            )
+        else:
+            ap_val = _SW_STEP_AP203 if fmt.name == "step203" else _SW_STEP_AP214
+            try:
+                ext.SetUserPreferenceIntegerValue(
+                    _SW_STEP_AP_INTEGER, ap_val,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "SetUserPreferenceIntegerValue(STEP AP, %s) raised %s",
+                    ap_val, exc,
+                )
+
+
 def _saveas3_direct(
-    doc: Any, fmt: ExportFormat, out_path: Path
+    doc: Any, fmt: ExportFormat, out_path: Path,
+    *, binary: bool | None = None,
 ) -> ExportResult:
     """SaveAs3-direct export path.
 
@@ -418,20 +490,20 @@ def _saveas3_direct(
     selects the exporter. Post-condition: file exists with non-zero
     size.
 
-    The per-format extension string is 🔴 SEAT — confirmed on a live
-    seat per the spike-first law. This skeleton implements the call
-    shape; the format strings are not yet confirmed.
+    Pre-save user preferences (W52 — the W33 set-before-save lesson):
+      - STL: ``SetUserPreferenceToggle(swSTLBinaryFormat, binary)``
+        before SaveAs3. ``binary=None`` skips (uses SW default = binary).
+      - STEP: ``SetUserPreferenceInteger(swStepExportAP, AP203|AP214)``
+        before SaveAs3. The format name (step203/step214) selects the AP.
 
-    Doc-type fail-closed (W33 + W34):
-      - DXF requires a Drawing document (.SLDDRW). A part or assembly
-        passed to format:'dxf' raises a clear ValueError.
-      - STEP/IGES/STL/Parasolid/3MF require a Part or Assembly document.
-        A drawing (.SLDDRW) passed to these formats raises ValueError.
+    Doc-type fail-closed (W33 + W34 + W52):
+      - DXF/DWG require a Drawing document (.SLDDRW).
+      - STEP/IGES/STL/Parasolid/3MF require Part or Assembly.
     """
     path_str = str(out_path)
 
-    # --- Fail-closed: DXF requires a Drawing doc (W33) ---
-    if fmt.name == "dxf":
+    # --- Fail-closed: DXF/DWG require a Drawing doc (W33 + W52) ---
+    if fmt.name in ("dxf", "dwg"):
         try:
             doc_type = _get_doc_type(doc)
         except Exception as exc:
@@ -477,6 +549,9 @@ def _saveas3_direct(
                     f"(1=Part, 2=Assembly, 3=Drawing)"
                 ),
             )
+
+    # --- Pre-save user preferences (W52: the W33 set-before-save lesson) ---
+    _apply_export_preferences(doc, fmt, binary=binary)
 
     try:
         err = doc.SaveAs3(path_str, 0, fmt.save_version)
