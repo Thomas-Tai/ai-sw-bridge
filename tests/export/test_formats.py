@@ -67,15 +67,15 @@ class TestExportFormats:
 
     def test_seat_confirmed_formats(self) -> None:
         """P1.1-seat 7 SAVEAS3_DIRECT + PDF + DXF, plus W42 dxf_flat (developed
-        flat-pattern outline, seat-confirmed 2026-06-09 on the L-bracket)."""
+        flat-pattern outline) and W52-E dwg (AC10 magic byte-verified)."""
         expected = {"step214", "step203", "iges", "parasolid", "stl", "3mf",
-                    "pdf", "dxf", "dxf_flat", "dxf_flat_bends"}
+                    "pdf", "dxf", "dxf_flat", "dxf_flat_bends", "dwg"}
         confirmed = {n for n, f in EXPORT_FORMATS.items() if f.seat_confirmed}
         assert confirmed == expected
 
-    def test_dwg_not_seat_confirmed(self) -> None:
-        """W52: DWG registered offline; seat_confirmed=False until W0 verifies."""
-        assert EXPORT_FORMATS["dwg"].seat_confirmed is False
+    def test_dwg_seat_confirmed(self) -> None:
+        """W52-E: DWG byte-verified at the seat (AC10 magic) → seat_confirmed=True."""
+        assert EXPORT_FORMATS["dwg"].seat_confirmed is True
 
 
 class TestResolveFormat:

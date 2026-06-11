@@ -67,15 +67,19 @@ _SW_SAVE_AS_OPTIONS_SILENT = 1
 # swDWGExportType_e (IPartDoc.ExportToDWG2)
 _SW_EXPORT_SHEETMETAL = 2
 
-# --- Export user-preference IDs (W52) ---
-# W0 MUST confirm these from swconst.tlb (dump, don't guess — O1/W21/W25 lesson).
+# --- Export user-preference IDs (W52-E, seat-confirmed) ---
+# Dumped from swconst.tlb + byte-verified via spikes/v0_2x/export_options_derisk.py
+# (O1/W21/W25 lesson: dump, don't guess — the originally-guessed swStepExportAP /
+# swStepAP203 / swStepAP214 names did NOT exist in the typelib).
 # swUserPreferenceToggle_e.swSTLBinaryFormat — True=binary, False=ASCII
-_SW_STL_BINARY_TOGGLE: int | None = None  # seat-pending: dump swconst.tlb
-# swUserPreferenceIntegerValue_e.swStepExportAP
-_SW_STEP_AP_INTEGER: int | None = None  # seat-pending: dump swconst.tlb
-# STEP AP selection values (swStepAP_e or similar)
-_SW_STEP_AP203: int = 1   # seat-pending: confirm from swconst.tlb
-_SW_STEP_AP214: int = 2   # seat-pending: confirm from swconst.tlb
+_SW_STL_BINARY_TOGGLE: int | None = 69
+# swUserPreferenceIntegerValue_e.swStepAP
+_SW_STEP_AP_INTEGER: int | None = 75
+# swStepAP takes the LITERAL AP number — 203 byte-verified → CONFIG_CONTROL_DESIGN,
+# 214 → AUTOMOTIVE_DESIGN. (swconst also exposes swAP_203=1/swAP_214=2, but those
+# belong to a different API and did not control the STEP schema in testing.)
+_SW_STEP_AP203: int = 203
+_SW_STEP_AP214: int = 214
 
 
 @dataclass(frozen=True)
@@ -441,6 +445,27 @@ def _apply_export_preferences(
     except Exception:
         return
 
+    def _set_pref(method: str, pref_id: int, value: Any) -> None:
+        """Set an export preference — mock-safe AND seat-proven.
+
+        Try the doc Extension first (offline mocks set ``doc.Extension``; a RAW
+        doc Extension also marshals fine). On the makepy Type-mismatch that an
+        EARLY-BOUND typed Extension throws (W52-E seat), fall back to the raw
+        ``sw_app`` app-level setter — the byte-verified path. Fail-soft.
+        """
+        try:
+            getattr(ext, method)(pref_id, value)
+            return
+        except Exception as first:
+            try:
+                from ..sw_com import get_sw_app
+
+                getattr(get_sw_app(), method)(pref_id, value)
+            except Exception:
+                logger.warning(
+                    "%s(%s, %s) failed: %s", method, pref_id, value, first,
+                )
+
     # STL binary/ASCII toggle
     if fmt.name == "stl" and binary is not None:
         if _SW_STL_BINARY_TOGGLE is None:
@@ -449,34 +474,22 @@ def _apply_export_preferences(
                 "(swSTLBinaryFormat ID is None); skipping preference set"
             )
         else:
-            try:
-                ext.SetUserPreferenceToggle(
-                    _SW_STL_BINARY_TOGGLE, bool(binary),
-                )
-            except Exception as exc:
-                logger.warning(
-                    "SetUserPreferenceToggle(STL binary, %s) raised %s",
-                    binary, exc,
-                )
+            _set_pref(
+                "SetUserPreferenceToggle", _SW_STL_BINARY_TOGGLE, bool(binary),
+            )
 
     # STEP AP selection (format name determines the AP)
     if fmt.name in ("step203", "step214"):
         if _SW_STEP_AP_INTEGER is None:
             logger.warning(
                 "STEP AP integer pref not confirmed at seat "
-                "(swStepExportAP ID is None); skipping preference set"
+                "(swStepAP ID is None); skipping preference set"
             )
         else:
             ap_val = _SW_STEP_AP203 if fmt.name == "step203" else _SW_STEP_AP214
-            try:
-                ext.SetUserPreferenceIntegerValue(
-                    _SW_STEP_AP_INTEGER, ap_val,
-                )
-            except Exception as exc:
-                logger.warning(
-                    "SetUserPreferenceIntegerValue(STEP AP, %s) raised %s",
-                    ap_val, exc,
-                )
+            _set_pref(
+                "SetUserPreferenceIntegerValue", _SW_STEP_AP_INTEGER, ap_val,
+            )
 
 
 def _saveas3_direct(
