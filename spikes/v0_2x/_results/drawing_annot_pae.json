@@ -1,0 +1,58 @@
+{
+  "pae": "w53_drawing_annotation",
+  "timestamp": "2026-06-11T19:04:26",
+  "candidates": [
+    {
+      "name": "InsertSurfaceFinishSymbol2",
+      "verdict": "GREEN",
+      "funcdesc": {
+        "method": "InsertSurfaceFinishSymbol2",
+        "error": "com_error: (-2147352565, 'Invalid index.', None, None)"
+      },
+      "insert_return": "True",
+      "dims_immediate": {
+        "7": 1
+      },
+      "dims_reopen": {
+        "ok": true,
+        "per_view": [
+          {
+            "view": "Drawing View1",
+            "annotation_types": {
+              "7": 1
+            },
+            "surface_finish": 1,
+            "gtol": 0,
+            "weld": 0
+          }
+        ],
+        "total_sf": 1,
+        "total_gtol": 0,
+        "total_weld": 0,
+        "errors": []
+      },
+      "dims_before": {},
+      "insert_return_type": "bool",
+      "detail": "surface-finish count: before=0, immediate=1, reopen=1"
+    }
+  ],
+  "green_candidate": "InsertSurfaceFinishSymbol2",
+  "gates": {
+    "build_part": {
+      "ok": true,
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w53_annot_tei8cv3f\\W53_Box.sldprt"
+    },
+    "create_drawing": {
+      "ok": true,
+      "detail": "views=1"
+    },
+    "reopen_drawing": {
+      "ok": true,
+      "detail": "first view: Drawing View1"
+    },
+    "surface_finish_GREEN": {
+      "ok": true,
+      "detail": "surface-finish count: before=0, immediate=1, reopen=1"
+    }
+  }
+}

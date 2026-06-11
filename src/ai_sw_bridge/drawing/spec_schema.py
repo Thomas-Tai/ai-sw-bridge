@@ -235,6 +235,79 @@ def validate_title_block(spec: dict[str, Any], *, path: str) -> None:
                 f"string; got {type(value).__name__}"
             )
 
+# ---- W53: annotations (drawing-annotation block)
+#
+# Surface-finish symbols are the first annotation kind. Each entry
+# targets a named view and places the symbol at a sheet-frame position.
+# The API path is IModelDoc2.InsertSurfaceFinishSymbol2 (14 args:
+# SymType, LeaderType, X, Y, Z, LaySymbol, ArrowType, MachAllowance,
+# OtherVals, ProdMethod, SampleLen, MaxRoughness, MinRoughness,
+# RoughnessSpacing). Returns bool True on success.
+# Verify by annotation type swSFSymbol = 7.
+#
+# GD&T (feature-control-frames), weld symbols, and hole tables are
+# deferred — each needs its own O1 FUNCDESC de-risk before authoring.
+
+_SURFACE_FINISH_ENTRY_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["view", "x", "y"],
+    "additionalProperties": False,
+    "properties": {
+        "view": {
+            "type": "string",
+            "minLength": 1,
+            "description": (
+                "View identifier. Must match a view placed on this sheet "
+                "(ortho/iso string name or derived-view placed name)."
+            ),
+        },
+        "x": {
+            "type": "number",
+            "description": (
+                "X position on the sheet (metres, drawing frame). "
+                "Should be within or near the target view outline."
+            ),
+        },
+        "y": {
+            "type": "number",
+            "description": (
+                "Y position on the sheet (metres, drawing frame). "
+                "Should be within or near the target view outline."
+            ),
+        },
+        "text": {
+            "type": "string",
+            "default": "",
+            "description": (
+                "Surface-finish text value (e.g. '3.2', '1.6'). "
+                "Empty string uses the SW default."
+            ),
+        },
+    },
+}
+
+_ANNOTATIONS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "surface_finish": {
+            "type": "array",
+            "items": _SURFACE_FINISH_ENTRY_SCHEMA,
+            "minItems": 1,
+            "description": (
+                "Surface-finish symbol annotations. Each entry places a "
+                "symbol at the given sheet-frame position on the named view."
+            ),
+        },
+    },
+    "description": (
+        "Drawing-annotation block. v1 supports surface-finish symbols "
+        "via IModelDoc2.InsertSurfaceFinishSymbol2 (14-arg, seat-proven). "
+        "GD&T (feature-control-frames), weld symbols, and hole tables "
+        "are deferred."
+    ),
+}
+
 _SHEET_ENTRY_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["views"],
@@ -245,6 +318,7 @@ _SHEET_ENTRY_SCHEMA: dict[str, Any] = {
         "views": _VIEWS_ARRAY_SCHEMA,
         "dimensions": _DIMENSIONS_SCHEMA,
         "bom": {"type": "boolean", "default": False},
+        "annotations": _ANNOTATIONS_SCHEMA,
     },
 }
 
@@ -280,6 +354,7 @@ DRAWING_SPEC_SCHEMA: dict[str, Any] = {
             ),
         },
         "title_block": _TITLE_BLOCK_SCHEMA,
+        "annotations": _ANNOTATIONS_SCHEMA,
     },
 }
 
