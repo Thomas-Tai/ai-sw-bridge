@@ -249,6 +249,30 @@ feature-tree equation driving the limit, or teaching the declarative layer to is
 limits **relative to the SW-reparametrized zero**. Re-deferred 2026-06-10 (W51-B
 seat).
 
+**W52-C UPDATE — the v-next correction is EPHEMERAL; the kernel overrides COM
+values with geometry-derived datums on save (re-deferred again, branch
+`feat/w51-hinge-limit` @ `3be4f42` UNMERGED).** The W51-B v-next was implemented and
+seat-fired: read SW's reparametrized zero post-`CreateMate`, then re-issue the
+desired limits. Two genuine bugs were fixed in the process — (a) the handler called
+`IFeature.ModifyFeature`, which **does not exist** (an O1 slip; corrected to the
+in-repo-proven early-bound `ModifyDefinition(defn, raw_doc, None)` — the
+`variable_radius_fillet` pattern); (b) the shift formula was disproven —
+`ModifyDefinition` stores `MinVal`/`MaxVal` **verbatim** on an existing mate
+(diagnostic `H_direct`: set `[−30,+30]` → reads `[−30,+30]` in-process), so the
+correction is a straight no-shift re-issue. **But it does not survive save.**
+Instrumentation proved the in-process correction SUCCEEDS (`ModifyDefinition`
+returns True, reads back `[−30,+30]`) yet the persisted state after reopen is the
+kernel's geometry-derived `[0,−60]`: **SW re-solves the mate on save and re-derives
+the angle limit from the reference-face geometry, blowing away the COM-issued
+values.** This is an architectural boundary, NOT a marshaling wall. (The spike's
+`H_direct` GREEN was a FALSE POSITIVE — it read in-process, never through
+save+reopen; the leg-1 persisted gate is the honest arbiter.) **The only durable
+route is reference-geometry: generate angle-reference faces whose NATURAL resting
+state is the desired zero-datum (SW's zero = the swing midpoint)** — a
+fixture/selection design problem, not a value correction. That is the future epic.
+The `ModifyDefinition` fix hardens the baseline and stays on the branch; angle-limit
+VALUES remain deferred. Re-deferred 2026-06-11 (W52-C seat).
+
 **`gear` mate SHIPPED 2026-06-10** (`feature kind` on the assembly `mate` spec:
 `{type:"gear", a, b, ratio:{numerator, denominator}}`). Created + solved + ratio
 round-trips through save/reopen, proven end-to-end via the **production**
