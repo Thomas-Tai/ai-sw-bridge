@@ -1,0 +1,131 @@
+{
+  "wave": "W52",
+  "route": "SaveAs3_DIRECT + pre-save preferences",
+  "temp_dir": "C:\\Users\\sky\\AppData\\Local\\Temp\\W52_export_rojs25rs",
+  "enum_dump": {
+    "swSTLBinaryFormat": 69,
+    "swStepAP": 75,
+    "_step_candidates": {
+      "swSelEXPLSTEPS": 44,
+      "swImportStepConfigData": 183,
+      "swStepExportSplitPeriodic": 396,
+      "swStepExportFaceEdgeProps": 397,
+      "swStepExportConfigurationData": 403,
+      "swStepExport3DCurveFeatures": 497,
+      "swStepExportAtomicSave": 786,
+      "swStepExportAppearances": 787,
+      "swStepAP": 75,
+      "swStepExportPreference": 142,
+      "swUndoStepsMaximum": 298,
+      "swDraftTaperedStep": 3,
+      "swStepDraft": 3,
+      "swSimulationMotorMotion_Step": 1,
+      "swSimulationForceFunction_Step": 1,
+      "swPresentationOpts_CreateAttachSTEP242": 262144,
+      "swFileFormatType_STEP": 0,
+      "swPublishStep242_Success": 0,
+      "swPublishStep242_InvalidPath": 1,
+      "swPublishStep242_UnknownError": 3,
+      "swPublishStep242_MBDLicenseNotAvailable": 4,
+      "swAssemblyExplodeStepType_Translate": 0,
+      "swAssemblyExplodeStepType_Radial": 1,
+      "swAssemblyExplodeStepType_SubAssembly": 2,
+      "swCreateExplodeStepError_Successful": 0,
+      "swCreateExplodeStepError_Generic": 1,
+      "swCreateExplodeStepError_NoExplodeView": 2,
+      "swCreateExplodeStepError_NoComponents": 3,
+      "swCreateExplodeStepError_InvalidRadialAxis": 4,
+      "swCreateExplodeStepError_OpenExplodePMP": 5,
+      "swCreateExplodeStepError_EditingComponentInContext": 6,
+      "swAP_203": 1,
+      "swAP_214": 2,
+      "swCreatePartExplodeStepError_Successful": 0,
+      "swCreatePartExplodeStepError_Generic": 1,
+      "swCreatePartExplodeStepError_NoBodies": 2,
+      "swCreatePartExplodeStepError_OpenExplodePMP": 3,
+      "swCreatePartExplodeStepError_InactiveConfiguration": 4
+    }
+  },
+  "legs": {
+    "DWG": {
+      "leg": "DWG",
+      "verdict": "GREEN",
+      "error": null,
+      "verify": {
+        "format": "DWG",
+        "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\W52_export_rojs25rs\\W52_Box.dwg",
+        "verdict": "GREEN",
+        "size_bytes": 27588,
+        "error": null,
+        "header_magic": "AC10",
+        "dwg_version": "AC1015"
+      }
+    },
+    "STL_binary": {
+      "leg": "STL_binary",
+      "verdict": "GREEN",
+      "error": null,
+      "verify": {
+        "format": "STL",
+        "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\W52_export_rojs25rs\\W52_Box_bin.stl",
+        "verdict": "GREEN",
+        "size_bytes": 684,
+        "expected_mode": "binary",
+        "actual_mode": "binary",
+        "error": null,
+        "triangle_count": 12
+      }
+    },
+    "STL_ascii": {
+      "leg": "STL_ascii",
+      "verdict": "GREEN",
+      "error": null,
+      "verify": {
+        "format": "STL",
+        "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\W52_export_rojs25rs\\W52_Box_ascii.stl",
+        "verdict": "GREEN",
+        "size_bytes": 3293,
+        "expected_mode": "ascii",
+        "actual_mode": "ascii",
+        "error": null,
+        "facet_count": 12
+      }
+    },
+    "STEP_AP203": {
+      "leg": "STEP_AP203",
+      "verdict": "GREEN",
+      "error": null,
+      "verify": {
+        "format": "STEP",
+        "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\W52_export_rojs25rs\\W52_Box_ap203.step",
+        "verdict": "GREEN",
+        "size_bytes": 15871,
+        "expected_ap": "AP203",
+        "actual_schema": "CONFIG_CONTROL_DESIGN",
+        "error": null
+      }
+    },
+    "STEP_AP214": {
+      "leg": "STEP_AP214",
+      "verdict": "GREEN",
+      "error": null,
+      "verify": {
+        "format": "STEP",
+        "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\W52_export_rojs25rs\\W52_Box_ap214.step",
+        "verdict": "GREEN",
+        "size_bytes": 13410,
+        "expected_ap": "AP214",
+        "actual_schema": "AUTOMOTIVE_DESIGN",
+        "error": null
+      }
+    }
+  },
+  "summary": {
+    "DWG": "GREEN",
+    "STL_binary": "GREEN",
+    "STL_ascii": "GREEN",
+    "STEP_AP203": "GREEN",
+    "STEP_AP214": "GREEN"
+  },
+  "errors": []
+}

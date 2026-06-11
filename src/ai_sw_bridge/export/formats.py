@@ -85,7 +85,7 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         extension=".step",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="STEP AP-214 (AutoMotive) — the default STEP flavor",
-        seat_confirmed=True,  # W34 seat-confirmed: 27 CARTESIAN_POINTs, 6 ADVANCED_FACEs, 1 CLOSED_SHELL (box)
+        seat_confirmed=True,  # W34: 27 CARTESIAN_POINTs/6 ADVANCED_FACEs (box). W52-E: AP214 selection (swStepAP=75→214) byte-verified → AUTOMOTIVE_DESIGN
     ),
     "step203": ExportFormat(
         name="step203",
@@ -93,7 +93,7 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         save_method=SaveMethod.SAVEAS3_DIRECT,
         save_version=1,
         description="STEP AP-203 — older STEP, limited PMIs",
-        seat_confirmed=True,  # W34: SaveAs3 path proven; AP203/214 selection deferred
+        seat_confirmed=True,  # W34: SaveAs3 path proven. W52-E: AP203 selection (swStepAP=75→203) byte-verified → CONFIG_CONTROL_DESIGN
     ),
     "iges": ExportFormat(
         name="iges",
@@ -114,7 +114,7 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         extension=".stl",
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="STL — tessellated mesh for 3D printing",
-        seat_confirmed=True,  # W34 seat-confirmed: binary mode, 12 triangles (box = 6 faces × 2); ASCII/binary/resolution deferred
+        seat_confirmed=True,  # W34: binary, 12 triangles (box). W52-E: ASCII/binary toggle (swSTLBinaryFormat=69) byte-verified both modes
     ),
     "3mf": ExportFormat(
         name="3mf",
@@ -136,6 +136,13 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         save_method=SaveMethod.SAVEAS3_DIRECT,
         description="DXF — general 2D/3D exchange (Drawing docs only; Part→DXF needs Drawing pipeline)",
         seat_confirmed=True,  # W33 seat-confirmed: SaveAs3(path, 0, 0) with .dxf extension
+    ),
+    "dwg": ExportFormat(
+        name="dwg",
+        extension=".dwg",
+        save_method=SaveMethod.SAVEAS3_DIRECT,
+        description="DWG — AutoCAD native 2D/3D exchange (Drawing docs only; AC10xx binary header)",
+        seat_confirmed=True,  # W52-E seat: AC10 magic byte-verified (export_options_derisk DWG leg GREEN)
     ),
     "dxf_flat": ExportFormat(
         name="dxf_flat",

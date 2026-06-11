@@ -84,3 +84,31 @@ class TestExportBlockSchema:
         """Schema allows 'sheets' on any format; dispatch validates."""
         block = [{"format": "step214", "sheets": "all"}]
         jsonschema.validate(block, EXPORT_BLOCK_SCHEMA)
+
+    def test_binary_true_valid(self) -> None:
+        """binary:true accepted on STL format."""
+        block = [{"format": "stl", "binary": True}]
+        jsonschema.validate(block, EXPORT_BLOCK_SCHEMA)
+
+    def test_binary_false_valid(self) -> None:
+        """binary:false accepted on STL format."""
+        block = [{"format": "stl", "binary": False}]
+        jsonschema.validate(block, EXPORT_BLOCK_SCHEMA)
+
+    def test_binary_non_boolean_rejected(self) -> None:
+        """binary must be a boolean."""
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                [{"format": "stl", "binary": "yes"}],
+                EXPORT_BLOCK_SCHEMA,
+            )
+
+    def test_binary_on_non_stl_ignored_by_schema(self) -> None:
+        """Schema allows 'binary' on any format; dispatch ignores it."""
+        block = [{"format": "step214", "binary": True}]
+        jsonschema.validate(block, EXPORT_BLOCK_SCHEMA)
+
+    def test_dwg_format_valid(self) -> None:
+        """W52: DWG format accepted in schema."""
+        block = [{"format": "dwg"}]
+        jsonschema.validate(block, EXPORT_BLOCK_SCHEMA)

@@ -26,7 +26,7 @@ class _MockDoc:
     IExportPdfData (the PDF path is tested with _MockDrawingDoc).
     """
 
-    SUPPORTED_EXTENSIONS = {".step", ".igs", ".x_t", ".stl", ".3mf", ".dxf"}
+    SUPPORTED_EXTENSIONS = {".step", ".igs", ".x_t", ".stl", ".3mf", ".dxf", ".dwg"}
 
     def __init__(self, fail_on: str | None = None, return_error: int = 0) -> None:
         self._fail_on = fail_on
@@ -314,3 +314,243 @@ class TestExportAll:
         ]
         results = export_all(doc, requests, "TestPart")
         assert [r.format for r in results] == formats
+
+
+class TestDWGDocTypeGuard:
+    """W52: DWG requires Drawing doc (mirror DXF fail-closed)."""
+
+    def test_dwg_succeeds_on_drawing_doc(self, tmp_path: Path) -> None:
+        doc = _MockDrawingDoc()
+        req = ExportRequest(format="dwg", output_dir=tmp_path)
+        result = _export_one(doc, req, "TestDrawing")
+        assert result.ok is True, f"dwg on drawing: {result.error}"
+
+    def test_dwg_fails_on_part_doc(self, tmp_path: Path) -> None:
+        doc = _MockDoc()  # GetType() = 1 (Part)
+        req = ExportRequest(format="dwg", output_dir=tmp_path)
+        result = _export_one(doc, req, "TestPart")
+        assert result.ok is False
+        assert "Drawing (.SLDDRW)" in result.error
+        assert "doc type is 1" in result.error
+
+    def test_dwg_fails_on_assembly_doc(self, tmp_path: Path) -> None:
+        class _MockAssemblyDoc(_MockDoc):
+            def GetType(self) -> int:
+                return 2
+
+        doc = _MockAssemblyDoc()
+        req = ExportRequest(format="dwg", output_dir=tmp_path)
+        result = _export_one(doc, req, "TestAssembly")
+        assert result.ok is False
+        assert "Drawing (.SLDDRW)" in result.error
+
+
+class TestExportRequestBinary:
+    """W52: ExportRequest.binary field."""
+
+    def test_binary_default_none(self) -> None:
+        req = ExportRequest(format="stl", output_dir=Path("/tmp"))
+        assert req.binary is None
+
+    def test_binary_true(self) -> None:
+        req = ExportRequest(format="stl", output_dir=Path("/tmp"), binary=True)
+        assert req.binary is True
+
+    def test_binary_false(self) -> None:
+        req = ExportRequest(format="stl", output_dir=Path("/tmp"), binary=False)
+        assert req.binary is False
+
+
+class TestSTLBinaryOption:
+    """W52: STL binary/ASCII toggle dispatch."""
+
+    def test_stl_default_no_preference_set(self, tmp_path: Path) -> None:
+        """binary=None → no preference set, SaveAs3 proceeds normally."""
+        doc = _MockDoc()
+        req = ExportRequest(format="stl", output_dir=tmp_path)
+        result = _export_one(doc, req, "TestPart")
+        assert result.ok is True
+
+    def test_stl_binary_true(self, tmp_path: Path) -> None:
+        """binary=True → preference set before SaveAs3 (if enum ID known)."""
+        doc = _MockDoc()
+        req = ExportRequest(format="stl", output_dir=tmp_path, binary=True)
+        result = _export_one(doc, req, "TestPart")
+        assert result.ok is True
+
+    def test_stl_binary_false(self, tmp_path: Path) -> None:
+        """binary=False → preference set before SaveAs3 (if enum ID known)."""
+        doc = _MockDoc()
+        req = ExportRequest(format="stl", output_dir=tmp_path, binary=False)
+        result = _export_one(doc, req, "TestPart")
+        assert result.ok is True
+
+
+class TestApplyExportPreferences:
+    """W52: _apply_export_preferences helper."""
+
+    def test_skips_when_no_extension(self) -> None:
+        """Doc without Extension attr → silently skips."""
+        from ai_sw_bridge.export.dispatch import (
+            _apply_export_preferences,
+        )
+        from ai_sw_bridge.export.formats import resolve_format
+
+        class _NoExtDoc:
+            pass
+
+        fmt = resolve_format("stl")
+        _apply_export_preferences(_NoExtDoc(), fmt, binary=True)
+
+    def test_stl_toggle_calls_extension(self) -> None:
+        """STL with binary=True calls SetUserPreferenceToggle when ID known."""
+        from ai_sw_bridge.export import dispatch as disp
+        from ai_sw_bridge.export.dispatch import (
+            _apply_export_preferences,
+        )
+        from ai_sw_bridge.export.formats import resolve_format
+
+        class _MockExt:
+            calls: list[tuple[int, bool]] = []
+
+            def SetUserPreferenceToggle(self, toggle_id: int, value: bool) -> None:
+                self.calls.append((toggle_id, value))
+
+        class _MockDocWithExt:
+            Extension = _MockExt()
+
+        fmt = resolve_format("stl")
+        old_val = disp._SW_STL_BINARY_TOGGLE
+        try:
+            disp._SW_STL_BINARY_TOGGLE = 999
+            _apply_export_preferences(_MockDocWithExt(), fmt, binary=True)
+            assert len(_MockExt.calls) == 1
+            assert _MockExt.calls[0] == (999, True)
+        finally:
+            disp._SW_STL_BINARY_TOGGLE = old_val
+
+    def test_stl_toggle_skipped_when_id_none(self) -> None:
+        """STL toggle skipped when enum ID is None (seat-pending)."""
+        from ai_sw_bridge.export import dispatch as disp
+        from ai_sw_bridge.export.dispatch import (
+            _apply_export_preferences,
+        )
+        from ai_sw_bridge.export.formats import resolve_format
+
+        class _MockExt:
+            calls: list = []
+
+            def SetUserPreferenceToggle(self, toggle_id: int, value: bool) -> None:
+                self.calls.append((toggle_id, value))
+
+        class _MockDocWithExt:
+            Extension = _MockExt()
+
+        fmt = resolve_format("stl")
+        old_val = disp._SW_STL_BINARY_TOGGLE
+        try:
+            disp._SW_STL_BINARY_TOGGLE = None
+            _apply_export_preferences(_MockDocWithExt(), fmt, binary=True)
+            assert len(_MockExt.calls) == 0
+        finally:
+            disp._SW_STL_BINARY_TOGGLE = old_val
+
+    def test_step_ap_calls_extension(self) -> None:
+        """STEP format calls SetUserPreferenceIntegerValue for AP selection."""
+        from ai_sw_bridge.export import dispatch as disp
+        from ai_sw_bridge.export.dispatch import (
+            _apply_export_preferences,
+        )
+        from ai_sw_bridge.export.formats import resolve_format
+
+        class _MockExt:
+            calls: list[tuple[int, int]] = []
+
+            def SetUserPreferenceIntegerValue(self, pref_id: int, value: int) -> None:
+                self.calls.append((pref_id, value))
+
+        class _MockDocWithExt:
+            Extension = _MockExt()
+
+        fmt = resolve_format("step203")
+        old_int = disp._SW_STEP_AP_INTEGER
+        old_203 = disp._SW_STEP_AP203
+        old_214 = disp._SW_STEP_AP214
+        try:
+            disp._SW_STEP_AP_INTEGER = 888
+            disp._SW_STEP_AP203 = 1
+            disp._SW_STEP_AP214 = 2
+            _apply_export_preferences(_MockDocWithExt(), fmt)
+            assert len(_MockExt.calls) == 1
+            assert _MockExt.calls[0] == (888, 1)
+        finally:
+            disp._SW_STEP_AP_INTEGER = old_int
+            disp._SW_STEP_AP203 = old_203
+            disp._SW_STEP_AP214 = old_214
+
+    def test_step214_ap_value(self) -> None:
+        """STEP214 format sets AP214 value."""
+        from ai_sw_bridge.export import dispatch as disp
+        from ai_sw_bridge.export.dispatch import (
+            _apply_export_preferences,
+        )
+        from ai_sw_bridge.export.formats import resolve_format
+
+        class _MockExt:
+            calls: list[tuple[int, int]] = []
+
+            def SetUserPreferenceIntegerValue(self, pref_id: int, value: int) -> None:
+                self.calls.append((pref_id, value))
+
+        class _MockDocWithExt:
+            Extension = _MockExt()
+
+        fmt = resolve_format("step214")
+        old_int = disp._SW_STEP_AP_INTEGER
+        old_203 = disp._SW_STEP_AP203
+        old_214 = disp._SW_STEP_AP214
+        try:
+            disp._SW_STEP_AP_INTEGER = 888
+            disp._SW_STEP_AP203 = 1
+            disp._SW_STEP_AP214 = 2
+            _apply_export_preferences(_MockDocWithExt(), fmt)
+            assert len(_MockExt.calls) == 1
+            assert _MockExt.calls[0] == (888, 2)
+        finally:
+            disp._SW_STEP_AP_INTEGER = old_int
+            disp._SW_STEP_AP203 = old_203
+            disp._SW_STEP_AP214 = old_214
+
+    def test_non_stl_step_ignored(self) -> None:
+        """Non-STL/STEP formats don't trigger any preference calls."""
+        from ai_sw_bridge.export import dispatch as disp
+        from ai_sw_bridge.export.dispatch import (
+            _apply_export_preferences,
+        )
+        from ai_sw_bridge.export.formats import resolve_format
+
+        class _MockExt:
+            toggle_calls: list = []
+            int_calls: list = []
+
+            def SetUserPreferenceToggle(self, *args: Any) -> None:
+                self.toggle_calls.append(args)
+
+            def SetUserPreferenceIntegerValue(self, *args: Any) -> None:
+                self.int_calls.append(args)
+
+        class _MockDocWithExt:
+            Extension = _MockExt()
+
+        fmt = resolve_format("iges")
+        old_val = disp._SW_STL_BINARY_TOGGLE
+        old_int = disp._SW_STEP_AP_INTEGER
+        try:
+            disp._SW_STL_BINARY_TOGGLE = 999
+            disp._SW_STEP_AP_INTEGER = 888
+            _apply_export_preferences(_MockDocWithExt(), fmt, binary=True)
+            assert len(_MockExt.toggle_calls) == 0
+            assert len(_MockExt.int_calls) == 0
+        finally:
+            disp._SW_STL_BINARY_TOGGLE = old_val
+            disp._SW_STEP_AP_INTEGER = old_int
