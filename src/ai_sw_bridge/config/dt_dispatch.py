@@ -1,4 +1,4 @@
-"""Design table dispatch (W53, Phase-4 design tables).
+"""Design table dispatch (W53 → W54-B, seat-proven EditTable2 recipe).
 
 Inserts a design table into a SOLIDWORKS part file from a parameter
 grid specification, then verifies that the generated configurations
@@ -8,29 +8,36 @@ The SW-free layer lives in ``design_table.py`` (parse/format).  This
 module owns the COM-touching boundary:
 
 - ``insert_design_table`` — the SEAT-gated entry point.
-- ``_write_grid_file`` — write the CSV to a temp path (SW-free).
-- ``_insert_via_family_table`` — SEAT-gated: InsertFamilyTableNew.
+- ``write_grid_file`` — write the CSV to a temp path (SW-free).
+- ``_populate_design_table`` — SEAT-gated: InsertFamilyTableNew blank
+  → GetDesignTable → Attach → EditTable2 → Excel cells → UpdateModel.
 - ``_read_configs`` — SEAT-gated: enumerate generated configurations.
 - ``_measure_config_volumes`` — SEAT-gated: CreateMassProperty per config.
 
-Architecture note (W36 → W53):
-    W36 found that in-file per-config scope (SetSuppression2, per-config
-    equations/dimensions) is walled at the COM boundary.  Design tables
-    are a *separate* path: the table itself is the config source, so SW
-    generates the configs from the grid rather than the bridge trying to
-    modify individual configs post-creation.
+Seat-proven recipe (W53, _probe_dt_excel.py, GREEN — 3 distinct volumes
+persisting through reopen):
 
-    If InsertFamilyTableNew hits the same Excel-OLE / SetSuppression-class
-    wall as W36, the spike will characterize it precisely (FUNCDESC +
-    the exact no-op/leak) and fail-closed — a clean NO-GO with the wall
-    named is a valid deliverable.
+    ``InsertFamilyTableNew()``  (blank, NO path arg — path raises
+    TypeError: takes 1 positional argument but 2 were given)
+    → ``GetDesignTable()`` → ``typed_qi(IDesignTable)``
+    → ``Attach()``
+    → ``ws = EditTable2(False)``  (returns embedded Excel.Worksheet OLE;
+      **requires Excel installed**)
+    → write cells ``ws.Cells(row, col).Value`` (1-indexed):
+      row 2 = parameter headers (B2 = ``"D1@Block_A"``),
+      column A from row 3 = config names (A3 pre-filled),
+      values B3+
+    → ``UpdateTable(2, True)`` + ``UpdateModel()``
+    → ``Detach()``
+
+    SetEntryText alone CANNOT build a blank table — EditTable2 /
+    worksheet is mandatory.
 """
 
 from __future__ import annotations
 
 import logging
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -47,8 +54,9 @@ def write_grid_file(
 ) -> Path:
     """Write the design table grid to a CSV file.
 
-    SW-free — pure file I/O.  The file is consumed by
-    ``InsertFamilyTableNew`` on the seat.
+    SW-free — pure file I/O.  Useful for offline inspection or archival;
+    the production insertion path writes cells directly via Excel OLE
+    (EditTable2) and does not consume this file.
 
     Returns the absolute path to the written file.
     """
@@ -65,23 +73,22 @@ def write_grid_file(
 def insert_design_table(
     doc: Any,
     dt_spec: DesignTableSpec,
-    grid_file_path: str | Path,
 ) -> list[ConfigResult]:
     """Insert a design table and verify N distinct configurations.
 
     SEAT-gated entry point.  Orchestrates:
 
-    1. Insert the design table from the grid file
-       (``IModelDoc2.InsertFamilyTableNew``).
-    2. Enumerate the generated configurations.
-    3. Measure volume per configuration via ``CreateMassProperty``.
-    4. Assert volume discrimination (≥ 2 distinct volumes).
+    1. Create a blank design table
+       (``IModelDoc2.InsertFamilyTableNew()`` — no args).
+    2. Populate it via the Excel-OLE worksheet
+       (``IDesignTable.EditTable2(False)`` → cells → UpdateModel).
+    3. Enumerate the generated configurations.
+    4. Measure volume per configuration via ``CreateMassProperty``.
+    5. Assert volume discrimination (≥ 2 distinct volumes).
 
     Args:
         doc: An ``IModelDoc2``-like dispatch (live or mock).
         dt_spec: The parsed design table specification.
-        grid_file_path: Path to the CSV grid file (from
-            ``write_grid_file``).
 
     Returns:
         One ``ConfigResult`` per expected configuration, in the same
@@ -89,17 +96,14 @@ def insert_design_table(
         exists and has a measured volume distinct from at least one
         other config.
     """
-    grid_path = str(Path(grid_file_path).resolve())
-
-    # Step 1: Insert the design table
-    insert_result = _insert_via_family_table(doc, grid_path)
-    if not insert_result["ok"]:
-        # All configs fail — the insertion itself walled
+    # Step 1: Create blank DT + populate via EditTable2 recipe
+    populate_result = _populate_design_table(doc, dt_spec)
+    if not populate_result["ok"]:
         return [
             ConfigResult(
                 variant=r.config_name,
                 ok=False,
-                error=insert_result["error"],
+                error=populate_result["error"],
             )
             for r in dt_spec.rows
         ]
@@ -160,38 +164,56 @@ def insert_design_table(
     return results
 
 
-def _insert_via_family_table(
+def _populate_design_table(
     doc: Any,
-    grid_file_path: str,
+    dt_spec: DesignTableSpec,
 ) -> dict[str, Any]:
-    """SEAT-gated: insert design table via InsertFamilyTableNew.
+    """SEAT-gated: create blank DT + populate via EditTable2 Excel OLE.
 
-    The SW API call is ``IModelDoc2.InsertFamilyTableNew(FilePath)``.
-    The exact FUNCDESC (arg types, return type, invoke kind) must be
-    confirmed by the typelib probe
-    (``spikes/v0_2x/designtable_typelib_probe.py``) before the seat
-    fires this path.
+    Seat-proven recipe (W53 _probe_dt_excel.py, GREEN):
+
+    1. ``InsertFamilyTableNew()`` — BLANK (no path arg).
+    2. ``GetDesignTable()`` → ``typed_qi(IDesignTable)``.
+    3. ``Attach()``.
+    4. ``EditTable2(False)`` → embedded Excel.Worksheet (1-indexed).
+    5. Row 2 = parameter headers (B2, C2, …).
+    6. Column A row 3+ = config names; B3+ = values.
+    7. ``UpdateTable(2, True)`` + ``UpdateModel()`` + ``Detach()``.
+
+    Requires Microsoft Excel installed (EditTable2 returns the OLE
+    Excel.Worksheet object; without Excel it returns None).
 
     Returns a dict with ``ok`` and optional ``error``.
     """
     try:
-        result = doc.InsertFamilyTableNew(grid_file_path)
-        if result is None:
-            return {
-                "ok": False,
-                "error": (
-                    "InsertFamilyTableNew returned None — "
-                    "design table insertion failed"
-                ),
-            }
-        return {"ok": True, "raw_result": str(type(result).__name__)}
+        from ai_sw_bridge.com.earlybind import typed_qi
+        from ai_sw_bridge.com.sw_type_info import wrapper_module
+
+        mod = wrapper_module()
+    except ImportError:
+        return {
+            "ok": False,
+            "error": (
+                "earlybind / sw_type_info not available — "
+                "typed COM wrappers required for IDesignTable.EditTable2"
+            ),
+        }
+
+    try:
+        doc.InsertFamilyTableNew()
+    except TypeError as exc:
+        return {
+            "ok": False,
+            "error": (
+                f"InsertFamilyTableNew arg-count mismatch: {exc} — "
+                f"expected 0-arg (blank); SW version may not support it"
+            ),
+        }
     except AttributeError:
         return {
             "ok": False,
             "error": (
-                "InsertFamilyTableNew not found on IModelDoc2 — "
-                "method may not exist on this SW version.  "
-                "Check designtable_typelib_probe.py output."
+                "InsertFamilyTableNew not found on IModelDoc2"
             ),
         }
     except Exception as exc:
@@ -202,6 +224,85 @@ def _insert_via_family_table(
             ),
         }
 
+    try:
+        raw_dt = doc.GetDesignTable()
+        if raw_dt is None:
+            return {
+                "ok": False,
+                "error": "GetDesignTable returned None",
+            }
+        dt = typed_qi(raw_dt, "IDesignTable", module=mod)
+
+        attach_result = dt.Attach()
+        if attach_result is None or attach_result == 0:
+            logger.warning("IDesignTable.Attach returned %s", attach_result)
+
+        try:
+            ws = dt.EditTable2(False)
+        except Exception as exc:
+            return {
+                "ok": False,
+                "error": (
+                    f"EditTable2 raised {type(exc).__name__}: {exc} — "
+                    f"Excel OLE may not be available out-of-process"
+                ),
+            }
+
+        if ws is None:
+            return {
+                "ok": False,
+                "error": (
+                    "EditTable2 returned None — "
+                    "Excel worksheet OLE not available (requires "
+                    "Microsoft Excel installed)"
+                ),
+            }
+
+        col_names = dt_spec.column_names
+        for j, header in enumerate(col_names):
+            ws.Cells(2, 2 + j).Value = header
+
+        for i, row in enumerate(dt_spec.rows):
+            ws.Cells(3 + i, 1).Value = row.config_name
+            for j, col in enumerate(dt_spec.columns):
+                ws.Cells(3 + i, 2 + j).Value = row.values.get(
+                    col.name, ""
+                )
+
+        try:
+            dt.UpdateTable(2, True)
+        except Exception as exc:
+            return {
+                "ok": False,
+                "error": (
+                    f"UpdateTable raised {type(exc).__name__}: {exc}"
+                ),
+            }
+        try:
+            dt.UpdateModel()
+        except Exception as exc:
+            return {
+                "ok": False,
+                "error": (
+                    f"UpdateModel raised {type(exc).__name__}: {exc}"
+                ),
+            }
+        try:
+            dt.Detach()
+        except Exception:
+            pass
+
+        return {"ok": True}
+
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": (
+                f"design table population raised "
+                f"{type(exc).__name__}: {exc}"
+            ),
+        }
+
 
 def _read_configs(
     doc: Any,
@@ -209,8 +310,7 @@ def _read_configs(
 ) -> dict[str, bool]:
     """SEAT-gated: check which expected configs exist on the doc.
 
-    Uses ``IModelDoc2.GetConfigurationNames`` to enumerate and
-    ``GetConfigurationByName`` to verify each.
+    Uses ``IModelDoc2.GetConfigurationNames`` to enumerate.
 
     Returns a dict of ``{config_name: exists}``.
     """
