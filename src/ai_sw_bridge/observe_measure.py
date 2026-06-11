@@ -86,6 +86,44 @@ def create_measure(doc: Any) -> Any | None:
         return None
 
 
+def _create_measure(doc: Any) -> tuple[Any | None, str | None]:
+    """Create an ``IMeasure``, robust to the late-bound / early-bound boundary.
+
+    ``CreateMeasure`` is an ``IModelDocExtension`` member that does NOT resolve
+    on a RAW late-bound Extension (W52-B seat: ``'Member not found'``). We try
+    the late-bound ``doc.Extension`` FIRST — so the offline mocks, which set
+    ``doc.Extension.CreateMeasure``, are preserved byte-for-byte and a measure
+    (or a deliberate ``None``) is returned without ever touching the typed path
+    — and only when that access RAISES do we retry through the early-bound typed
+    Extension (the live-seat fix).
+
+    Returns ``(measure_or_None, error_or_None)``. ``(None, None)`` means
+    CreateMeasure ran and returned None (the caller reports that distinctly).
+    """
+    raise_err: str | None = None
+    try:
+        ext = doc.Extension
+    except AttributeError:
+        ext = None
+    if ext is not None:
+        try:
+            m = ext.CreateMeasure
+            if callable(m):
+                m = m()
+            return m, None
+        except Exception as exc:
+            raise_err = f"CreateMeasure failed: {exc!r}"
+    # Late-bound raised (live seat) — retry via the early-bound typed Extension.
+    try:
+        typed_ext = typed_extension(doc, module=wrapper_module())
+        m = typed_ext.CreateMeasure
+        if callable(m):
+            m = m()
+        return m, None
+    except Exception as exc:
+        return None, raise_err or f"CreateMeasure failed: {exc!r}"
+
+
 def sw_get_measure_from_doc(doc: Any) -> dict[str, Any]:
     """Top-level observer: measure currently selected entities.
 
@@ -507,27 +545,10 @@ def sw_get_measure_angle_from_doc(doc: Any) -> dict[str, Any]:
         result["error"] = "no entities selected — select entities before measuring"
         return result
 
-    try:
-        ext = doc.Extension
-    except AttributeError:
-        try:
-            ext = resolve(doc, "Extension")
-        except Exception as exc:
-            result["error"] = f"Extension failed: {exc!r}"
-            return result
-
-    if ext is None:
-        result["error"] = "Extension returned None"
+    measure, cm_err = _create_measure(doc)
+    if cm_err is not None:
+        result["error"] = cm_err
         return result
-
-    try:
-        measure = ext.CreateMeasure
-        if callable(measure):
-            measure = measure()
-    except Exception as exc:
-        result["error"] = f"CreateMeasure failed: {exc!r}"
-        return result
-
     if measure is None:
         result["error"] = "CreateMeasure returned None"
         return result
@@ -583,27 +604,10 @@ def sw_get_measure_area_from_doc(doc: Any) -> dict[str, Any]:
         result["error"] = "no entities selected — select entities before measuring"
         return result
 
-    try:
-        ext = doc.Extension
-    except AttributeError:
-        try:
-            ext = resolve(doc, "Extension")
-        except Exception as exc:
-            result["error"] = f"Extension failed: {exc!r}"
-            return result
-
-    if ext is None:
-        result["error"] = "Extension returned None"
+    measure, cm_err = _create_measure(doc)
+    if cm_err is not None:
+        result["error"] = cm_err
         return result
-
-    try:
-        measure = ext.CreateMeasure
-        if callable(measure):
-            measure = measure()
-    except Exception as exc:
-        result["error"] = f"CreateMeasure failed: {exc!r}"
-        return result
-
     if measure is None:
         result["error"] = "CreateMeasure returned None"
         return result

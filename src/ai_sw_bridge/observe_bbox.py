@@ -172,16 +172,57 @@ def _transform_point(m: list[float], x: float, y: float, z: float) -> tuple[floa
     return tx, ty, tz
 
 
-def _read_component_transform(comp: Any) -> list[float] | None:
-    """Read ``IComponent2.Transform2`` — 16-element row-major 4×4 matrix."""
+def _read_component_transform(comp: Any, mod: Any = None) -> list[float] | None:
+    """Read the component placement as a 16-element ROW-MAJOR 4×4 matrix
+    (translation at indices 3/7/11 — the layout :func:`_transform_point` expects).
+
+    W52-B seat: ``IComponent2.Transform2`` returns an ``IMathTransform`` whose
+    ``.ArrayData`` is 16 doubles laid out ``[0-8]=3×3 rotation, [9-11]=translation,
+    [12]=scale, [13-15]=0`` — NOT a row-major 4×4. We convert that to row-major.
+    The offline mocks set ``Transform2`` to an already-row-major list, so a
+    list/tuple is returned verbatim. Raw component first (mock-friendly); typed
+    ``IComponent2`` fallback (Transform2 may not resolve on a raw component).
+    """
+    def _as_rowmajor(t: Any) -> list[float] | None:
+        if t is None:
+            return None
+        if isinstance(t, (list, tuple)):
+            return [float(v) for v in t[:16]] if len(t) >= 16 else None
+        # IMathTransform — read ArrayData and convert SW layout → row-major.
+        try:
+            ad = t.ArrayData
+            if callable(ad):
+                ad = ad()
+            ad = [float(v) for v in ad]
+        except Exception:
+            return None
+        if len(ad) < 12:
+            return None
+        return [
+            ad[0], ad[1], ad[2], ad[9],
+            ad[3], ad[4], ad[5], ad[10],
+            ad[6], ad[7], ad[8], ad[11],
+            0.0, 0.0, 0.0, 1.0,
+        ]
+
     try:
         t = comp.Transform2
         if callable(t):
             t = t()
-        if t is not None and len(t) >= 16:
-            return [float(v) for v in t[:16]]
+        res = _as_rowmajor(t)
+        if res is not None:
+            return res
     except Exception:
         pass
+    if mod is not None:
+        try:
+            ct = typed(comp, "IComponent2", module=mod)
+            t = ct.Transform2
+            if callable(t):
+                t = t()
+            return _as_rowmajor(t)
+        except Exception:
+            pass
     return None
 
 
@@ -238,25 +279,35 @@ def read_assembly_bbox(asm_doc: Any, mod: Any = None) -> dict[str, Any]:
     found_any = False
 
     for comp in comps:
-        transform = _read_component_transform(comp)
+        transform = _read_component_transform(comp, mod)
         if transform is None:
             transform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
 
+        # GetModelDoc2 does not resolve on a RAW late-bound IComponent2 at the
+        # live seat (W52-B 'Member not found'). Try late-bound FIRST — preserves
+        # the offline mocks, which set comp.GetModelDoc2 and rely on identity —
+        # and on a raise retry through the typed IComponent2. Each skip records
+        # its reason so a seat failure is loud, not a silent drop.
         part_doc = None
         try:
             part_doc = comp.GetModelDoc2()
         except Exception:
-            pass
+            try:
+                part_doc = typed(comp, "IComponent2", module=mod).GetModelDoc2()
+            except Exception as exc:
+                result["errors"].append(f"GetModelDoc2 failed: {exc!r}")
         if part_doc is None:
             continue
 
         try:
             pdoc_typed = typed(part_doc, "IPartDoc", module=mod)
             box = pdoc_typed.GetPartBox(True)
-        except Exception:
+        except Exception as exc:
+            result["errors"].append(f"GetPartBox failed: {exc!r}")
             continue
 
         if box is None or len(box) < 6:
+            result["errors"].append(f"GetPartBox returned bad box: {box!r}")
             continue
 
         try:
