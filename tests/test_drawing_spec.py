@@ -578,3 +578,149 @@ class TestSectionDetailPropose:
         )
         assert result["ok"] is False
         assert "earlier" in result["error"]
+
+
+# ---- W53: annotations (surface-finish symbols) ----
+
+_SURFACE_FINISH = {
+    "surface_finish": [
+        {"view": "front", "x": 0.15, "y": 0.15, "text": "3.2"},
+    ]
+}
+
+
+class TestAnnotationsSchema:
+    def test_accepts_annotations(self) -> None:
+        import jsonschema
+        jsonschema.validate(
+            _drawing_spec(annotations=_SURFACE_FINISH),
+            DRAWING_SPEC_SCHEMA,
+        )
+
+    def test_accepts_annotations_multi_entry(self) -> None:
+        import jsonschema
+        multi = {
+            "surface_finish": [
+                {"view": "front", "x": 0.1, "y": 0.1},
+                {"view": "top", "x": 0.2, "y": 0.2, "text": "1.6"},
+            ]
+        }
+        jsonschema.validate(
+            _drawing_spec(
+                views=["front", "top"],
+                annotations=multi,
+            ),
+            DRAWING_SPEC_SCHEMA,
+        )
+
+    def test_rejects_annotations_missing_view(self) -> None:
+        import jsonschema
+        bad = {"surface_finish": [{"x": 0.1, "y": 0.1}]}
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(annotations=bad),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+    def test_rejects_annotations_missing_x(self) -> None:
+        import jsonschema
+        bad = {"surface_finish": [{"view": "front", "y": 0.1}]}
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(annotations=bad),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+    def test_rejects_annotations_unknown_key(self) -> None:
+        import jsonschema
+        bad = {
+            "surface_finish": [
+                {"view": "front", "x": 0.1, "y": 0.1, "color": "red"},
+            ]
+        }
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(annotations=bad),
+                DRAWING_SPEC_SCHEMA,
+            )
+
+    def test_annotations_optional(self) -> None:
+        import jsonschema
+        jsonschema.validate(_drawing_spec(), DRAWING_SPEC_SCHEMA)
+
+
+class TestAnnotationsSemanticValidation:
+    def test_accepts_known_view(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(
+            _drawing_spec(annotations=_SURFACE_FINISH)
+        )
+
+    def test_rejects_unknown_view(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        bad = {
+            "surface_finish": [
+                {"view": "xray", "x": 0.1, "y": 0.1},
+            ]
+        }
+        with pytest.raises(ValueError, match="no matching view"):
+            validate_drawing_spec(
+                _drawing_spec(annotations=bad)
+            )
+
+    def test_accepts_derived_view_name(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        annot = {
+            "surface_finish": [
+                {"view": "A", "x": 0.1, "y": 0.1},
+            ]
+        }
+        validate_drawing_spec(
+            _drawing_spec(
+                views=["front", _SECTION_VIEW],
+                annotations=annot,
+            )
+        )
+
+    def test_rejects_non_dict_annotations(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        with pytest.raises(ValueError, match="must be a dict"):
+            validate_drawing_spec(
+                _drawing_spec(annotations="surface_finish")
+            )
+
+    def test_rejects_empty_surface_finish(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        bad = {"surface_finish": []}
+        with pytest.raises(ValueError, match="non-empty"):
+            validate_drawing_spec(
+                _drawing_spec(annotations=bad)
+            )
+
+
+class TestAnnotationsPropose:
+    def test_propose_with_annotations(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(
+            _drawing_spec(annotations=_SURFACE_FINISH)
+        )
+        assert result["ok"] is True
+        assert result["kind"] == "drawing"
+
+    def test_propose_rejects_unknown_view(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        bad = {
+            "surface_finish": [
+                {"view": "xray", "x": 0.1, "y": 0.1},
+            ]
+        }
+        result = sw_propose_drawing(
+            _drawing_spec(annotations=bad)
+        )
+        assert result["ok"] is False
+        assert "no matching view" in result["error"]
+

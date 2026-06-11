@@ -290,6 +290,59 @@ def _validate_bom_for_model(bom: Any, model: str, *, path: str) -> None:
             )
 
 
+def _validate_annotations(
+    annotations: Any,
+    views: list[Any],
+    *,
+    path: str,
+) -> None:
+    """Validate annotations block against placed views (W53).
+
+    Each ``surface_finish[].view`` must match a view name that will be
+    placed on the same sheet. String views are checked against the known
+    format names; derived-view names are collected from object entries.
+
+    Raises ``ValueError`` on the first semantic error found.
+    """
+    if annotations is None:
+        return
+    if not isinstance(annotations, dict):
+        raise ValueError(f"{path} must be a dict")
+
+    known_views: set[str] = set()
+    for v in views:
+        if isinstance(v, str):
+            known_views.add(v)
+        elif isinstance(v, dict):
+            vname = v.get("name")
+            if isinstance(vname, str) and vname:
+                known_views.add(vname)
+
+    sf_array = annotations.get("surface_finish")
+    if sf_array is not None:
+        if not isinstance(sf_array, list) or not sf_array:
+            raise ValueError(
+                f"{path}.surface_finish must be a non-empty array"
+            )
+        for i, entry in enumerate(sf_array):
+            if not isinstance(entry, dict):
+                raise ValueError(
+                    f"{path}.surface_finish[{i}] must be a dict"
+                )
+            view_name = entry.get("view")
+            if not isinstance(view_name, str) or not view_name:
+                raise ValueError(
+                    f"{path}.surface_finish[{i}].view must be a "
+                    f"non-empty string"
+                )
+            if view_name not in known_views:
+                raise ValueError(
+                    f"{path}.surface_finish[{i}].view {view_name!r}: "
+                    f"no matching view on this sheet; "
+                    f"known: {sorted(known_views)}"
+                )
+
+
 def validate_drawing_spec(spec: dict[str, Any]) -> None:
     """Semantic validation beyond the structural JSON-schema check.
 
@@ -352,6 +405,11 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
                 "top-level title_block is not allowed with sheets[]; "
                 "defer per-sheet title-block to a later wave"
             )
+        if spec.get("annotations") is not None:
+            raise ValueError(
+                "top-level annotations is not allowed with sheets[]; "
+                "set annotations on each sheet entry"
+            )
 
         sheets = spec.get("sheets")
         if not isinstance(sheets, list) or not sheets:
@@ -385,6 +443,11 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
             _validate_bom_for_model(
                 sh.get("bom"), model, path=f"sheets[{k}].bom"
             )
+            _validate_annotations(
+                sh.get("annotations"),
+                sh.get("views", []),
+                path=f"sheets[{k}].annotations",
+            )
         return
 
     # --- legacy single-sheet mode ---
@@ -405,6 +468,11 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
 
     # W38: title-block fields (drawing-level custom properties)
     validate_title_block(spec, path="spec")
+
+    # W53: annotations (surface-finish symbols)
+    _validate_annotations(
+        spec.get("annotations"), views, path="spec.annotations"
+    )
 
 
 def dry_run_drawing(spec: dict[str, Any]) -> dict[str, Any]:
@@ -457,6 +525,7 @@ def _normalize_sheets(spec: dict[str, Any]) -> list[dict[str, Any]]:
                     "views": sh.get("views", []),
                     "dimensions": dims_raw,  # Preserve bool OR object (W28)
                     "bom": bool(sh.get("bom", False)),
+                    "annotations": sh.get("annotations"),  # W53
                 }
             )
         return out
@@ -470,6 +539,7 @@ def _normalize_sheets(spec: dict[str, Any]) -> list[dict[str, Any]]:
             "views": spec.get("views", []),
             "dimensions": dims_raw,  # Preserve bool OR object (W28)
             "bom": bool(spec.get("bom", False)),
+            "annotations": spec.get("annotations"),  # W53
         }
     ]
 
@@ -757,6 +827,230 @@ def _verify_title_block(
     result["ok"] = not result["errors"] and len(result["read_back"]) == len(
         title_block
     )
+    return result
+
+
+# ---- W53: surface-finish annotation authoring
+#
+# API path: IModelDocExtension.InsertSurfaceFinishSymbol2(X, Y, Z, Text)
+# Returns ISurfaceFinishSymbol (or None on failure).
+#
+# The W31v2 trap (ordinate dims): Insert* methods that are interactive-mode
+# starters return None and create zero annotations. Surface-finish is a
+# different pattern — it takes explicit X/Y/Z position + text, which
+# suggests a one-shot creator (same shape as the proven InsertBomTable4).
+#
+# If the seat proves this is an interactive-mode wall, the spike will
+# FUNCDESC it and characterize the zero-effect proof. In that case, the
+# next candidate in the W53 priority list is GD&T (InsertGTOL), then
+# weld symbol, then hole table (InsertHoleTable2).
+#
+# swAnnotationType_e values (from swconst typelib):
+#   swDisplayDimension = 1, swNote = 4, swSurfaceFinishSymbol = 9,
+#   swGTol = 10, swDatumTag = 11, swWeldSymbol = 12
+_SW_ANNOTATION_SURFACE_FINISH = 9
+
+
+def _apply_surface_finish_annotations(
+    drawing_doc: Any,
+    mdoc2: Any,
+    annotations_spec: dict[str, Any],
+    placed_by_name: dict[str, Any],
+    sheet_index: int,
+) -> dict[str, Any]:
+    """Insert surface-finish symbols via IModelDocExtension.InsertSurfaceFinishSymbol2.
+
+    Args:
+        drawing_doc: IDrawingDoc dispatch.
+        mdoc2: IModelDoc2 dispatch (for Extension).
+        annotations_spec: The ``annotations`` dict from the sheet spec.
+        placed_by_name: Map of view name -> IView for resolving targets.
+        sheet_index: For error messages.
+
+    Returns:
+        Result dict with ``inserted``, ``errors``, ``count``.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "inserted": [],
+        "errors": [],
+        "count": 0,
+    }
+
+    sf_array = annotations_spec.get("surface_finish")
+    if not sf_array:
+        result["ok"] = True
+        return result
+
+    ext_obj = mdoc2.Extension
+    if ext_obj is None:
+        result["errors"].append(
+            f"sheet[{sheet_index}].annotations: "
+            "IModelDoc2.Extension returned None"
+        )
+        return result
+
+    for i, entry in enumerate(sf_array):
+        view_name = entry.get("view", "")
+        x = entry.get("x", 0.0)
+        y = entry.get("y", 0.0)
+        text = entry.get("text", "")
+
+        target_view = placed_by_name.get(view_name)
+        if target_view is None:
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.surface_finish[{i}]: "
+                f"view {view_name!r} was not placed"
+            )
+            continue
+
+        try:
+            vn = target_view.GetName2() or ""
+            if vn:
+                drawing_doc.ActivateView(vn)
+        except Exception:
+            pass
+
+        try:
+            sf = ext_obj.InsertSurfaceFinishSymbol2(
+                float(x), float(y), 0.0, text
+            )
+        except Exception as exc:
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.surface_finish[{i}]: "
+                f"InsertSurfaceFinishSymbol2 raised {type(exc).__name__}: "
+                f"{exc}"
+            )
+            continue
+
+        if sf is None or isinstance(sf, int):
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.surface_finish[{i}]: "
+                f"InsertSurfaceFinishSymbol2 returned {sf!r} "
+                f"(interactive-mode wall? see W31v2 trap)"
+            )
+            continue
+
+        result["inserted"].append({
+            "view": view_name,
+            "x": x,
+            "y": y,
+            "text": text,
+        })
+        result["count"] += 1
+
+    result["ok"] = not result["errors"]
+    return result
+
+
+def _verify_surface_finish_annotations(
+    sw: Any,
+    drawing_path: str,
+    expected_counts: dict[str, int],
+    *,
+    mod: Any,
+    typed: Any,
+    typed_qi: Any,
+) -> dict[str, Any]:
+    """VERIFY THE EFFECT — reopen .SLDDRW and count surface-finish annotations.
+
+    Args:
+        sw: ISldWorks dispatch.
+        drawing_path: Path to the saved .SLDDRW.
+        expected_counts: Map of view name -> expected surface-finish count.
+        mod: gen_py wrapper module.
+        typed: typed() function.
+        typed_qi: typed_qi() function.
+
+    Returns:
+        Result dict with ``per_view`` counts and ``errors``.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "drawing_path": drawing_path,
+        "per_view": [],
+        "errors": [],
+    }
+
+    if not os.path.isfile(drawing_path):
+        result["errors"].append(
+            f"saved drawing not found at {drawing_path} — cannot verify"
+        )
+        return result
+
+    tsw = typed(sw, "ISldWorks", module=mod)
+    ret = tsw.OpenDoc6(drawing_path, 3, 1, "", 0, 0)
+    drawing_doc = ret[0] if isinstance(ret, tuple) else ret
+    if drawing_doc is None:
+        result["errors"].append(f"OpenDoc6 failed for {drawing_path}")
+        return result
+
+    try:
+        ddoc = typed_qi(drawing_doc, "IDrawingDoc", module=mod)
+        sheet_raw = ddoc.GetCurrentSheet()
+        sheet = (
+            typed_qi(sheet_raw, "ISheet", module=mod)
+            if sheet_raw is not None and not isinstance(sheet_raw, int)
+            else None
+        )
+
+        total_sf_count = 0
+        if sheet is not None:
+            try:
+                views_raw = sheet.GetViews()
+                if views_raw:
+                    for v_raw in views_raw:
+                        if v_raw is None:
+                            continue
+                        try:
+                            v = typed_qi(v_raw, "IView", module=mod)
+                            vname = v.GetName2() or ""
+                            annotations = v.GetAnnotations()
+                            sf_count = 0
+                            if annotations:
+                                for ann_raw in annotations:
+                                    if ann_raw is None:
+                                        continue
+                                    try:
+                                        ann = typed_qi(
+                                            ann_raw, "IAnnotation",
+                                            module=mod,
+                                        )
+                                        ann_type = ann.GetType()
+                                        if ann_type == _SW_ANNOTATION_SURFACE_FINISH:
+                                            sf_count += 1
+                                    except Exception:
+                                        continue
+                            total_sf_count += sf_count
+                            result["per_view"].append({
+                                "view": vname,
+                                "surface_finish_count": sf_count,
+                            })
+                        except Exception:
+                            continue
+            except Exception as exc:
+                result["errors"].append(
+                    f"GetViews/GetAnnotations enumeration failed: {exc!r}"
+                )
+
+        result["total_surface_finish_count"] = total_sf_count
+        expected_total = sum(expected_counts.values())
+        if total_sf_count != expected_total:
+            result["errors"].append(
+                f"surface-finish count mismatch: "
+                f"expected {expected_total}, found {total_sf_count}"
+            )
+        else:
+            result["ok"] = True
+
+    finally:
+        try:
+            t = drawing_doc.GetTitle
+            t = t() if callable(t) else t
+            sw.CloseDoc(t)
+        except Exception:
+            pass
+
     return result
 
 
@@ -1092,6 +1386,23 @@ def _build_sheet_views(
             return result
         result["bom_inserted"] = True
 
+    # ------------------------------------------------------------------
+    # W53: Annotations (surface-finish symbols)
+    # ------------------------------------------------------------------
+    annot_spec = sheet_spec.get("annotations")
+    if annot_spec and views_placed and placed_by_name:
+        sf_result = _apply_surface_finish_annotations(
+            drawing_doc,
+            mdoc2,
+            annot_spec,
+            placed_by_name,
+            sheet_index,
+        )
+        result["annotations"] = sf_result
+        if sf_result.get("errors"):
+            result["view_errors"].extend(sf_result["errors"])
+            return result
+
     return result
 
 
@@ -1397,6 +1708,48 @@ def commit_drawing(
                     "title-block verify-the-EFFECT failed (saved .SLDDRW "
                     f"did not read back as set): "
                     f"{'; '.join(tb_verify.get('errors', []))}"
+                )
+                return result
+
+        # W53: VERIFY THE EFFECT — reopen the saved .SLDDRW and count
+        # surface-finish annotations per view. A zero-count (the W31v2
+        # interactive-mode wall) is the trap this gate catches.
+        any_annotations = any(
+            sr.get("annotations", {}).get("count", 0) > 0
+            for sr in per_sheet_results
+        )
+        if any_annotations:
+            try:
+                t = doc_raw.GetTitle
+                t = t() if callable(t) else t
+                sw.CloseDoc(t)
+            except Exception:
+                pass
+
+            time.sleep(0.3)
+            expected_counts: dict[str, int] = {}
+            for sr in per_sheet_results:
+                annot_result = sr.get("annotations", {})
+                for ins in annot_result.get("inserted", []):
+                    vname = ins.get("view", "")
+                    expected_counts[vname] = (
+                        expected_counts.get(vname, 0) + 1
+                    )
+
+            sf_verify = _verify_surface_finish_annotations(
+                sw,
+                output_path,
+                expected_counts,
+                mod=mod,
+                typed=typed,
+                typed_qi=typed_qi,
+            )
+            result["annotations_verify"] = sf_verify
+            if not sf_verify.get("ok"):
+                result["ok"] = False
+                result["error"] = (
+                    "surface-finish verify-the-EFFECT failed: "
+                    f"{'; '.join(sf_verify.get('errors', []))}"
                 )
                 return result
 
