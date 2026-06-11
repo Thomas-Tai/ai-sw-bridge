@@ -1703,7 +1703,7 @@ def _build_sketch_text(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
 
 # ---------------------------------------------------------------------------
 # W53 — 3D-sketch primitive.  A 3D sketch is NOT on a reference plane; it
-# uses Insert3DSketch (parameterless toggle) instead of InsertSketch(True)
+# uses Insert3DSketch(True) (one BOOL UpdateEditRebuild arg, NOT parameterless)
 # to enter/exit sketch mode.  Line segments carry real X/Y/Z coordinates
 # (millimetres in the spec, converted to metres for COM).  This primitive
 # unblocks weldments (FR-5-06) and swept/lofted surfaces (FR-5-02).
@@ -1714,11 +1714,11 @@ def _enter_3d_sketch(ctx: BuildContext) -> Any:
     """Open a 3D sketch; return SketchManager.
 
     No plane selection — 3D sketches are not constrained to a reference plane.
-    ``ISketchManager.Insert3DSketch`` is a parameterless toggle on SW 2024;
-    the typelib arity is probed by ``spikes/v0_21/spike_sketch_3d.py``.
+    ``ISketchManager.Insert3DSketch`` takes one BOOL ``UpdateEditRebuild`` arg
+    (seat-proven: parameterless raises 'Parameter not optional').
     """
     sm = ctx.doc.SketchManager
-    sm.Insert3DSketch()
+    sm.Insert3DSketch(True)
     return sm
 
 
@@ -1726,7 +1726,7 @@ def _close_3d_sketch_and_build(
     ctx: BuildContext, feat: dict[str, Any]
 ) -> BuiltFeature:
     """Close the open 3D sketch, rename the new sketch feature, return BuiltFeature."""
-    ctx.doc.SketchManager.Insert3DSketch()
+    ctx.doc.SketchManager.Insert3DSketch(True)
     sketch_feat = ctx.doc.FeatureByPositionReverse(0)
     if sketch_feat is None:
         raise RuntimeError(f"no sketch feature produced for '{feat['name']}'")
@@ -1740,9 +1740,8 @@ def _build_sketch_3d_sketch(
     """Sketch a 3D polyline through a sequence of 3D points.
 
     Opens a 3D sketch (no plane), draws line segments between consecutive
-    points with real X/Y/Z coordinates, then closes.  The handler is a SW-free
-    stub that assembles the arg tuple; the live ``ISketchManager.Insert3DSketch``
-    + ``CreateLine`` call is flagged SEAT for the W53 seat pass.
+    points with real X/Y/Z coordinates, then closes.  Seat-proven recipe:
+    ``Insert3DSketch(True)`` + ``CreateLine`` (spike v0.21 S2 GREEN).
     """
     points = feat["points"]
     sm = _enter_3d_sketch(ctx)
@@ -1900,8 +1899,8 @@ DESCRIPTORS: dict[str, FeatureDescriptor] = {
     "sketch_polygon": FeatureType(name="sketch_polygon", handler=None, dim_fields={}),
     "sketch_ellipse": FeatureType(name="sketch_ellipse", handler=None, dim_fields={}),
     "sketch_text": FeatureType(name="sketch_text", handler=None, dim_fields={}),
-    # W53 — 3D-sketch primitive. Not on a reference plane; uses Insert3DSketch
-    # (parameterless toggle) and carries real X/Y/Z. Unblocks weldments (FR-5-06)
+    # W53 — 3D-sketch primitive. Not on a reference plane; uses Insert3DSketch(True)
+    # (BOOL UpdateEditRebuild) and carries real X/Y/Z. Unblocks weldments (FR-5-06)
     # and swept/lofted surfaces (FR-5-02).
     "sketch_3d_sketch": FeatureType(
         name="sketch_3d_sketch", handler=None, dim_fields={},

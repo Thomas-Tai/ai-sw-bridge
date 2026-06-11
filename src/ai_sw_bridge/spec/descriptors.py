@@ -1246,7 +1246,7 @@ FEATURE_META: dict[str, dict[str, Any]] = {
     "sketch_3d_sketch": {
         "doc": "3D polyline sketch through a sequence of 3D points (non-planar path).",
         "example_ref": "sketch_3d_primitives",
-        "risk_tier": "seat_stub",
+        "risk_tier": "safe",
         "sw_min": "2024 SP1",
         "spike_id": "W53 (sketch_3d)",
     },

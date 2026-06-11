@@ -1,9 +1,10 @@
 """Tests for the W53 3D-sketch primitive handler.
 
 The handler (``builder._build_sketch_3d_sketch``) runs the literal-size
-life-cycle: open a 3D sketch via ``Insert3DSketch`` (no plane selection) ->
+life-cycle: open a 3D sketch via ``Insert3DSketch(True)`` (BOOL
+UpdateEditRebuild, no plane selection) ->
 call ``CreateLine`` for each consecutive point pair with real X/Y/Z -> close
-via ``Insert3DSketch`` -> rename -> return ``BuiltFeature``.
+via ``Insert3DSketch(True)`` -> rename -> return ``BuiltFeature``.
 
 These tests drive the handler against a fake COM seam (no pywin32, no
 SOLIDWORKS): they assert the 3D sketch is opened and closed (via
@@ -36,8 +37,8 @@ class _FakeSketchManager:
     def __init__(self, log: list[tuple[str, tuple]]) -> None:
         self._log = log
 
-    def Insert3DSketch(self) -> None:
-        self._log.append(("Insert3DSketch", ()))
+    def Insert3DSketch(self, update: bool = False) -> None:
+        self._log.append(("Insert3DSketch", (update,)))
 
     def __getattr__(self, name: str) -> Any:
         def _recorder(*args: Any) -> Any:
@@ -113,7 +114,7 @@ class TestSketch3DHandler:
         })
         toggles = _calls(ctx, "Insert3DSketch")
         assert len(toggles) == 2, f"expected open+close toggles, got {toggles}"
-        assert toggles == [(), ()]
+        assert toggles == [(True,), (True,)]
 
     def test_no_plane_selection(self) -> None:
         ctx = _Ctx()

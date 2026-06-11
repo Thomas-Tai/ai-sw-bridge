@@ -24,6 +24,7 @@ import os
 import sys
 import tempfile
 import time
+import traceback
 import winreg
 from pathlib import Path
 from typing import Any, Callable
@@ -41,6 +42,7 @@ from spike_earlybind_persist import (  # noqa: E402
     SW_LIBID,
     connect_running_sw,
     ensure_sw_module,
+    typed,
 )
 
 SW_DEFAULT_TEMPLATE_PART = 8
@@ -303,8 +305,6 @@ def _probe_save_reopen(sw: Any) -> dict[str, Any]:
             sketch_feat.Name = "Sketch3D_Persist"
 
         # Save
-        errors = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
-        warnings = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
         try:
             saved = doc.SaveAs3(save_path, 0, 0)
             rec["save_result"] = str(saved) if saved is not None else "None"
@@ -324,16 +324,16 @@ def _probe_save_reopen(sw: Any) -> dict[str, Any]:
         # Close
         sw.CloseDoc(title)
 
-        # Reopen
+        # Reopen — use typed ISldWorks (proven pattern; late-bound OpenDoc6
+        # with VARIANT byref raises 'Parameter not optional' on this seat).
+        mod, _mod_info = ensure_sw_module()
+        tsw = typed(mod, "ISldWorks", sw)
         try:
-            reopen_doc = sw.OpenDoc6(
-                save_path, 1, 0, "",  # swDocPART=1, swOpenDocOptions_e=0
-                win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0),
-                win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0),
-            )
+            reopen_doc = tsw.OpenDoc6(save_path, 1, 1, "", 0, 0)
         except Exception as e_reopen:  # noqa: BLE001
             rec["status"] = "FAIL"
             rec["reopen_error"] = repr(e_reopen)
+            rec["reopen_traceback"] = traceback.format_exc()
             return rec
 
         if reopen_doc is None:
@@ -341,19 +341,15 @@ def _probe_save_reopen(sw: Any) -> dict[str, Any]:
             rec["reason"] = "OpenDoc6 returned None"
             return rec
 
-        # Verify the 3D sketch survived
-        feat_mgr = reopen_doc.FeatureManager
-        feat_count = feat_mgr.GetFeatureCount
-        feat_count = feat_count() if callable(feat_count) else feat_count
-        rec["reopen_feature_count"] = feat_count
-
-        # Walk features looking for our 3D sketch
+        # Verify the 3D sketch survived — use FeatureByPositionReverse
+        # (proven; GetFeatureByPosition iteration was part of the failing path).
         found_3d = False
-        for i in range(feat_count if isinstance(feat_count, int) else 0):
+        idx = 0
+        while True:
+            f = reopen_doc.FeatureByPositionReverse(idx)
+            if f is None:
+                break
             try:
-                f = feat_mgr.GetFeatureByPosition(i)
-                if f is None:
-                    continue
                 fn = f.Name
                 fn = fn() if callable(fn) else fn
                 if str(fn) == "Sketch3D_Persist":
@@ -364,7 +360,8 @@ def _probe_save_reopen(sw: Any) -> dict[str, Any]:
                     rec["found_sketch_type"] = str(ft)
                     break
             except Exception:  # noqa: BLE001
-                continue
+                pass
+            idx += 1
 
         rec["sketch_survived"] = found_3d
         if found_3d:
@@ -382,6 +379,7 @@ def _probe_save_reopen(sw: Any) -> dict[str, Any]:
     except Exception as e:  # noqa: BLE001
         rec["status"] = "ERROR"
         rec["error"] = repr(e)
+        rec["traceback"] = traceback.format_exc()
     finally:
         # Clean up the temp file
         try:
