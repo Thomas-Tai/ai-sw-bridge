@@ -492,35 +492,29 @@ def main() -> int:
             )
             results["candidates"].append(c1)
 
+            # W54-E scope is surface-finish ONLY. The candidate verdict is
+            # fully self-contained (_try_candidate does its own
+            # save/close/reopen/count), so print + persist it NOW and stop.
+            # The GTOL/weld/hole-table candidates below are exploratory; their
+            # extra reopen + .Extension churn corrupted the COM channel before
+            # this verdict could be saved (W0 seat-confirm, 2026-06-11). They
+            # belong in a dedicated drawing-annotation epic on a fresh seat.
+            print(
+                f"    surface_finish verdict: {c1['verdict']}  "
+                f"detail={c1.get('detail', c1.get('insert_error', ''))}"
+            )
             if c1["verdict"] == "GREEN":
                 results["green_candidate"] = c1["name"]
-                gate(
-                    "surface_finish_GREEN",
-                    True,
-                    c1.get("detail", ""),
-                )
-                # Reopen for next candidates
-                ret2 = tsw.OpenDoc6(annot_path, 3, 1, "", 0, 0)
-                doc2 = ret2[0] if isinstance(ret2, tuple) else ret2
-                if doc2 is not None:
-                    ddoc = typed_qi(doc2, "IDrawingDoc", module=mod)
-                    mdoc2 = typed_qi(doc2, "IModelDoc2", module=mod)
-                    sr = ddoc.GetCurrentSheet()
-                    s2 = typed_qi(sr, "ISheet", module=mod)
-                    vr = s2.GetViews()
-                    first_view = typed_qi(vr[0], "IView", module=mod)
-                else:
-                    print("  Could not reopen for further candidates")
-                    save_results()
-                    return 0
+            gate(
+                "surface_finish_GREEN" if c1["verdict"] == "GREEN"
+                else "surface_finish_WALL",
+                c1["verdict"] == "GREEN",
+                c1.get("detail", c1.get("insert_error", "")),
+            )
+            save_results()
+            return 0
 
-            elif c1["verdict"] in ("NO-GO", "ERROR"):
-                gate(
-                    "surface_finish_WALL",
-                    False,
-                    c1.get("detail", c1.get("insert_error", "")),
-                )
-
+            # ---- Exploratory candidates 2-4: DISABLED (see note above) ----
             # Candidate 2: InsertGTOL
             print(f"\n  [2/4] InsertGTOL at ({cx:.4f}, {cy:.4f})")
             c2 = _try_candidate(

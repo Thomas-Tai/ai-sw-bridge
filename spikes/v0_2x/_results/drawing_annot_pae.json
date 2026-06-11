@@ -1,10 +1,10 @@
 {
   "pae": "w53_drawing_annotation",
-  "timestamp": "2026-06-11T16:24:13",
+  "timestamp": "2026-06-11T19:04:26",
   "candidates": [
     {
       "name": "InsertSurfaceFinishSymbol2",
-      "verdict": "SAVE_FAILED",
+      "verdict": "GREEN",
       "funcdesc": {
         "method": "InsertSurfaceFinishSymbol2",
         "error": "com_error: (-2147352565, 'Invalid index.', None, None)"
@@ -13,64 +13,34 @@
       "dims_immediate": {
         "7": 1
       },
-      "dims_reopen": {},
+      "dims_reopen": {
+        "ok": true,
+        "per_view": [
+          {
+            "view": "Drawing View1",
+            "annotation_types": {
+              "7": 1
+            },
+            "surface_finish": 1,
+            "gtol": 0,
+            "weld": 0
+          }
+        ],
+        "total_sf": 1,
+        "total_gtol": 0,
+        "total_weld": 0,
+        "errors": []
+      },
       "dims_before": {},
       "insert_return_type": "bool",
-      "save_error": "AttributeError: '<win32com.gen_py.SldWorks 2024 Type Library.IDrawingDoc instance at 0x2020464540976>' object has no attribute 'GetTitle'"
-    },
-    {
-      "name": "InsertGTOL",
-      "verdict": "ERROR",
-      "funcdesc": {
-        "method": "InsertGTOL",
-        "error": "com_error: (-2147352565, 'Invalid index.', None, None)"
-      },
-      "insert_return": null,
-      "dims_immediate": {},
-      "dims_reopen": {},
-      "dims_before": {
-        "7": 1
-      },
-      "insert_error": "AttributeError: '<win32com.gen_py.SldWorks 2024 Type Library.IModelDocExtension instance at 0x2020464538192>' object has no attribute 'InsertGTOL'"
-    },
-    {
-      "name": "InsertWeldSymbol2",
-      "verdict": "ERROR",
-      "funcdesc": {
-        "method": "InsertWeldSymbol2",
-        "error": "com_error: (-2147352565, 'Invalid index.', None, None)"
-      },
-      "insert_return": null,
-      "dims_immediate": {},
-      "dims_reopen": {},
-      "dims_before": {
-        "7": 1
-      },
-      "insert_error": "AttributeError: '<win32com.gen_py.SldWorks 2024 Type Library.IModelDocExtension instance at 0x2020770476816>' object has no attribute 'InsertWeldSymbol2'"
-    },
-    {
-      "name": "InsertHoleTable2",
-      "verdict": "NO-GO",
-      "funcdesc": {
-        "method": "InsertHoleTable2",
-        "error": "com_error: (-2147352565, 'Invalid index.', None, None)"
-      },
-      "insert_return": "None",
-      "insert_return_type": "NoneType",
-      "dims_before": {
-        "7": 1
-      },
-      "dims_immediate": {
-        "7": 1
-      },
-      "detail": "returned None (no HoleWizard holes?)"
+      "detail": "surface-finish count: before=0, immediate=1, reopen=1"
     }
   ],
-  "green_candidate": null,
+  "green_candidate": "InsertSurfaceFinishSymbol2",
   "gates": {
     "build_part": {
       "ok": true,
-      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w53_annot_s46eo81v\\W53_Box.sldprt"
+      "detail": "path=C:\\Users\\sky\\AppData\\Local\\Temp\\w53_annot_tei8cv3f\\W53_Box.sldprt"
     },
     "create_drawing": {
       "ok": true,
@@ -80,9 +50,9 @@
       "ok": true,
       "detail": "first view: Drawing View1"
     },
-    "any_candidate_GREEN": {
-      "ok": false,
-      "detail": "green=None"
+    "surface_finish_GREEN": {
+      "ok": true,
+      "detail": "surface-finish count: before=0, immediate=1, reopen=1"
     }
   }
 }
