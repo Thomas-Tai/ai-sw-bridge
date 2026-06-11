@@ -28,6 +28,7 @@ from .spec_schema import (
     SW_CUSTOM_PROP_ADD,
     SW_CUSTOM_PROP_REPLACE,
     resolve_prop_type_and_value,
+    semantic_prop_match,
     validate_properties_spec,
 )
 
@@ -89,7 +90,7 @@ def commit_properties(
 
     W53: each property's type is resolved from the spec entry. Plain
     string values use TEXT (30); typed-object entries use their declared
-    type (NUMBER=31, DATE=32, YES_NO=33).
+    type (NUMBER/Double=5, DATE=64, YES_NO=11).
 
     Args:
         sw: the ``SldWorks.Application`` COM object.
@@ -208,7 +209,9 @@ def commit_properties(
                 _resolved, pvalue, _resolved2 = typed_cpm.Get4(name, False)
                 prop_info["immediate_read_back"] = {
                     "value": pvalue,
-                    "match": pvalue == prop_info["value"],
+                    "match": semantic_prop_match(
+                        prop_info["type"], prop_info["value"], pvalue
+                    ),
                 }
                 if not prop_info["immediate_read_back"]["match"]:
                     result["errors"].append(
@@ -278,7 +281,9 @@ def commit_properties(
                     "exists": exists,
                     "value": pvalue,
                     "expected": expected,
-                    "match": exists and pvalue == expected,
+                    "match": exists and semantic_prop_match(
+                        prop_info["type"], expected, pvalue
+                    ),
                 }
                 result["read_back"].append(read_back_entry)
                 prop_info["reopen_read_back"] = read_back_entry

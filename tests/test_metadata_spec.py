@@ -18,6 +18,7 @@ from ai_sw_bridge.metadata.spec_schema import (
     SW_CUSTOM_INFO_TYPE_MAP,
     SW_CUSTOM_INFO_YES_OR_NO,
     resolve_prop_type_and_value,
+    semantic_prop_match,
     validate_properties_spec,
 )
 from ai_sw_bridge.metadata.lifecycle import propose_properties, dry_run_properties
@@ -290,9 +291,9 @@ class TestResolvePropTypeAndValue:
 
     def test_type_map_values(self) -> None:
         assert SW_CUSTOM_INFO_TYPE_MAP["text"] == 30
-        assert SW_CUSTOM_INFO_TYPE_MAP["number"] == 31
-        assert SW_CUSTOM_INFO_TYPE_MAP["date"] == 32
-        assert SW_CUSTOM_INFO_TYPE_MAP["yes_no"] == 33
+        assert SW_CUSTOM_INFO_TYPE_MAP["number"] == 5
+        assert SW_CUSTOM_INFO_TYPE_MAP["date"] == 64
+        assert SW_CUSTOM_INFO_TYPE_MAP["yes_no"] == 11
 
 
 # ---- semantic validation with typed properties --------------------------------
@@ -532,3 +533,49 @@ class TestDryRunProperties:
         assert result["ok"] is True
         assert result["properties_count"] == 2
         assert result["model_path"] == str(fake_part)
+
+
+# ---- semantic_prop_match tests -----------------------------------------------
+
+
+class TestSemanticPropMatch:
+    """Unit tests for SW-normalized read-back comparison."""
+
+    def test_text_exact_match(self) -> None:
+        assert semantic_prop_match("text", "BRK-001", "BRK-001") is True
+
+    def test_text_mismatch(self) -> None:
+        assert semantic_prop_match("text", "BRK-001", "BRK-002") is False
+
+    def test_number_exact_match(self) -> None:
+        assert semantic_prop_match("number", "42.5", "42.5") is True
+
+    def test_number_sw_normalized_six_decimal(self) -> None:
+        assert semantic_prop_match("number", "42.5", "42.500000") is True
+
+    def test_number_integer_normalized(self) -> None:
+        assert semantic_prop_match("number", "100", "100.000000") is True
+
+    def test_number_mismatch(self) -> None:
+        assert semantic_prop_match("number", "42.5", "43.0") is False
+
+    def test_number_non_numeric_got(self) -> None:
+        assert semantic_prop_match("number", "42.5", "not-a-number") is False
+
+    def test_date_exact_iso(self) -> None:
+        assert semantic_prop_match("date", "2024-06-15", "2024-06-15") is True
+
+    def test_date_iso_vs_us_locale(self) -> None:
+        assert semantic_prop_match("date", "2024-06-15", "6/15/2024") is True
+
+    def test_date_mismatch(self) -> None:
+        assert semantic_prop_match("date", "2024-06-15", "2024-06-16") is False
+
+    def test_date_unparseable_got(self) -> None:
+        assert semantic_prop_match("date", "2024-06-15", "June 15th") is False
+
+    def test_yes_no_exact_match(self) -> None:
+        assert semantic_prop_match("yes_no", "Yes", "Yes") is True
+
+    def test_yes_no_mismatch(self) -> None:
+        assert semantic_prop_match("yes_no", "Yes", "No") is False

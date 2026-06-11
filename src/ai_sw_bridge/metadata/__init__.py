@@ -23,6 +23,7 @@ from .spec_schema import (
     SW_CUSTOM_PROP_ADD,
     SW_CUSTOM_PROP_REPLACE,
     resolve_prop_type_and_value,
+    semantic_prop_match,
     validate_properties_spec,
 )
 
@@ -39,5 +40,6 @@ __all__ = [
     "dry_run_properties",
     "propose_properties",
     "resolve_prop_type_and_value",
+    "semantic_prop_match",
     "validate_properties_spec",
 ]

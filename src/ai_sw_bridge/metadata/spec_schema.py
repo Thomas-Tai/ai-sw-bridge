@@ -107,6 +107,37 @@ def resolve_prop_type_and_value(
     return type_id, value, prop_type
 
 
+def semantic_prop_match(prop_type: str, expected: str, got: str) -> bool:
+    """Compare a read-back value to the input, allowing SW normalization.
+
+    SW stores a Double as a 6-decimal string ('42.5' -> '42.500000') and a
+    Date in locale format ('2024-06-15' -> '6/15/2024'); both are the SAME
+    value. Text and yes_no compare verbatim.
+    """
+    if got == expected:
+        return True
+    if prop_type == "number":
+        try:
+            return float(got) == float(expected)
+        except (TypeError, ValueError):
+            return False
+    if prop_type == "date":
+        from datetime import datetime
+        fmts = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%d/%m/%Y")
+
+        def _parse(s: str) -> object | None:
+            for f in fmts:
+                try:
+                    return datetime.strptime(str(s).strip(), f).date()
+                except ValueError:
+                    continue
+            return None
+
+        de, dg = _parse(expected), _parse(got)
+        return de is not None and de == dg
+    return False
+
+
 PROPERTIES_SPEC_SCHEMA: dict[str, Any] = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "ai-sw-bridge properties spec v2",
