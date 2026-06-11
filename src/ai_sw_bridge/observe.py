@@ -21,12 +21,17 @@ from .sw_com import (
     get_sw_app,
     resolve,
 )
-from .observe_bbox import sw_get_bbox_from_doc
-from .observe_clearance import sw_get_clearance
+from .observe_bbox import sw_get_assembly_bbox_from_doc, sw_get_bbox_from_doc
+from .observe_clearance import sw_get_clearance, sw_get_face_clearance
 from .observe_draft import sw_get_draft_analysis
 from .observe_inertia import sw_get_inertia
 from .observe_interference import sw_get_interference
-from .observe_measure import sw_get_measure_from_doc
+from .observe_measure import (
+    sw_get_measure_angle_from_doc,
+    sw_get_measure_area_from_doc,
+    sw_get_measure_durable_pair,
+    sw_get_measure_from_doc,
+)
 from .observe_selection import sw_get_selection
 
 
@@ -1973,6 +1978,62 @@ class SolidWorksObserver:
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
         return sw_get_selection(doc)
+
+    def assembly_bounding_box(self) -> dict[str, Any]:
+        """Read the combined bounding-box of all assembly components (W52).
+
+        Walks every component's part box, transforms through placement
+        matrices, and unions into a single AABB. Assembly docs only.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_assembly_bbox_from_doc(doc)
+
+    def measure_durable_pair(
+        self, durable_ref_a: str, durable_ref_b: str
+    ) -> dict[str, Any]:
+        """Measure between two durable-reference entities (W52).
+
+        Resolves each persist token via ``GetObjectByPersistReference3``,
+        selects both, then measures via ``IMeasure.Calculate(None)``.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_measure_durable_pair(doc, durable_ref_a, durable_ref_b)
+
+    def measure_angle(self) -> dict[str, Any]:
+        """Measure the angle of currently selected entities (W52).
+
+        Pre-select two edges or faces, then reads ``IMeasure.Angle``
+        in degrees.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_measure_angle_from_doc(doc)
+
+    def measure_area(self) -> dict[str, Any]:
+        """Measure the area of the currently selected face (W52).
+
+        Pre-select a face, then reads ``IMeasure.Area`` in mm².
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_measure_area_from_doc(doc)
+
+    def face_clearance(self, face_a: str, face_b: str) -> dict[str, Any]:
+        """Measure min distance between two named faces (W52).
+
+        Selects faces via ``SelectByID2`` by name, then measures
+        via ``IMeasure.Distance``. Works on any doc type.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_get_face_clearance(doc, face_a, face_b)
 
     def undercut_faces(
         self,

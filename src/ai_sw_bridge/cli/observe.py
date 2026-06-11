@@ -6,13 +6,18 @@ Subcommands:
   equations           -> sw_get_equations()
   bbox                -> sw_get_bbox()             [part only, legacy]
   bounding_box        -> bounding_box()            [part only, W30]
+  assembly_bbox       -> assembly_bounding_box()   [assembly only, W52]
   volume              -> sw_get_volume()           [part only]
   screenshot          -> sw_screenshot(width, height, fit_view, filename)
   measure             -> sw_measure(entity_a, entity_b)  [legacy]
   measure_selection   -> measure_selection()      [W30, pre-selected entities]
+  measure_durable_pair -> measure_durable_pair(ref_a, ref_b)  [W52, durable refs]
+  measure_angle       -> measure_angle()           [W52, pre-selected]
+  measure_area        -> measure_area()            [W52, pre-selected]
   mate_errors         -> sw_get_mate_errors()  [assembly only]
   interference        -> sw_get_interference()  [assembly only, W27/E4]
   clearance           -> sw_get_clearance()    [assembly only, W35]
+  face_clearance      -> face_clearance(face_a, face_b)  [W52, named faces]
   draft               -> sw_get_draft_analysis() [part only, W37]
   inertia             -> inertia()               [part only, W5 E1]
   custom_props        -> sw_get_custom_props()  [experimental]
@@ -123,6 +128,30 @@ def _run_undercut(args: argparse.Namespace) -> dict[str, Any]:
 def _run_min_wall(args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().min_wall_thickness(
         samples_per_face=args.samples_per_face
+    )
+
+
+def _run_assembly_bbox(_args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().assembly_bounding_box()
+
+
+def _run_measure_durable_pair(args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().measure_durable_pair(
+        durable_ref_a=args.ref_a, durable_ref_b=args.ref_b
+    )
+
+
+def _run_measure_angle(_args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().measure_angle()
+
+
+def _run_measure_area(_args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().measure_area()
+
+
+def _run_face_clearance(args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().face_clearance(
+        face_a=args.face_a, face_b=args.face_b
     )
 
 
@@ -421,6 +450,77 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     add_subcommand_tier(p, "experimental")
     p.set_defaults(func=_run_min_wall)
+
+    p = subs.add_parser(
+        "assembly_bbox",
+        help="Report the combined bounding-box of all assembly components (W52).",
+        description=(
+            "Wave-52 — walk every component in the assembly, read each "
+            "part box via IPartDoc.GetPartBox, transform corners through "
+            "the component placement matrix (IComponent2.Transform2), and "
+            "union into a single AABB. Reports mm values. Assembly docs only."
+        ),
+    )
+    p.set_defaults(func=_run_assembly_bbox)
+
+    p = subs.add_parser(
+        "measure_durable_pair",
+        help="Measure between two durable-reference entities (W52).",
+        description=(
+            "Wave-52 — resolve two base64url-encoded persist tokens via "
+            "GetObjectByPersistReference3, select both entities, then "
+            "measure via IMeasure.Calculate(None). Returns "
+            "{distance_mm, delta_x_mm, delta_y_mm, delta_z_mm}."
+        ),
+    )
+    p.add_argument(
+        "--ref-a", dest="ref_a", required=True,
+        help="Base64url-encoded persist reference for the first entity.",
+    )
+    p.add_argument(
+        "--ref-b", dest="ref_b", required=True,
+        help="Base64url-encoded persist reference for the second entity.",
+    )
+    p.set_defaults(func=_run_measure_durable_pair)
+
+    p = subs.add_parser(
+        "measure_angle",
+        help="Measure the angle of currently selected entities (W52).",
+        description=(
+            "Wave-52 — pre-select two edges or faces, then measure via "
+            "IMeasure.Angle. Returns angle in degrees."
+        ),
+    )
+    p.set_defaults(func=_run_measure_angle)
+
+    p = subs.add_parser(
+        "measure_area",
+        help="Measure the area of the currently selected face (W52).",
+        description=(
+            "Wave-52 — pre-select a face, then measure via IMeasure.Area. "
+            "Returns area in mm²."
+        ),
+    )
+    p.set_defaults(func=_run_measure_area)
+
+    p = subs.add_parser(
+        "face_clearance",
+        help="Measure min distance between two named faces (W52).",
+        description=(
+            "Wave-52 — select two faces by name via SelectByID2, then "
+            "measure the minimum distance via IMeasure.Distance. Reports "
+            "{min_distance_mm, faces: [a, b], touching: bool}."
+        ),
+    )
+    p.add_argument(
+        "--face-a", dest="face_a", required=True,
+        help="Name of the first face (e.g. 'Face<1>').",
+    )
+    p.add_argument(
+        "--face-b", dest="face_b", required=True,
+        help="Name of the second face (e.g. 'Face<2>').",
+    )
+    p.set_defaults(func=_run_face_clearance)
 
     return parser
 
