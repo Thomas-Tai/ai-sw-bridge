@@ -6,8 +6,9 @@
 > `docs/DEFERRED.md`. Paradigm: **declarative JSON is the only authoring surface;
 > propose→approve→execute; zero arbitrary code exec; out-of-process Python.**
 >
-> Last reconciled: 2026-06-09 (through W39 — sketch relations; W36/W37/W38/W39
-> batch). Suite: **2085 passed** (serial; xdist unavailable in this env), 58 skipped.
+> Last reconciled: 2026-06-10 (through W51 — motion audit, mechanical-mate
+> epoch W46–W48, auto-pierce v2, dxf_flat_bends, DFM observe). Suite:
+> **2085 passed** (serial; xdist unavailable in this env), 58 skipped.
 
 ## 0. Surfaces
 
@@ -35,7 +36,7 @@ The `feature_add` mutation in `mutate.py`; each kind is in `_SUPPORTED_FEATURE_T
 | `shell` | `IModelDoc2.InsertFeatureShell` | F2 |
 | `draft` | `InsertMultiFaceDraft` (neutral mark=1 / faces mark=2) | F2 |
 | `dome` | `InsertDome` (via durable face_ref) | W6 |
-| `sweep` | CreateDefinition(17)→ISweepFeatureData (path must leave profile plane) | D4 |
+| `sweep` | CreateDefinition(17)→ISweepFeatureData; **auto-pierce** (W50/W51-A): `sgATPIERCE` self-anchors profile↔path for generative use | D4, W50 |
 | `sweep_cut` | CreateDefinition(18) (path must pierce solid) | W6 |
 | `ref_plane` | `InsertRefPlane` — offset OR normal-to-edge (edge_ref) | W3/W6 |
 | `ref_axis` | `IModelDoc2.InsertAxis2(True)` | W3 |
@@ -59,29 +60,39 @@ error-code-0 `Edge-Flange1` node yet adds **ZERO** geometry (ΔVol=0, reproduced
 3×). The W7 PAE verified node-**presence**, never the B-rep. De-advertised
 (propose fails-closed); handler kept as characterized code. This exposed a
 **systemic verification gap** — ~6 other kinds (`base_flange`, `shell`, `draft`,
-`sweep`, `sweep_cut`, `dome`) shipped on the same node-presence proof and are
-under B-rep-effect re-verification (W44). See `docs/DEFERRED.md` Wave-44.
+`sweep`, `sweep_cut`, `dome`) shipped on the same node-presence proof. **W44
+CLOSED 2026-06-09:** B-rep-effect re-verification 6/6 GREEN (ΔVol>0 or face-angle
+proof for each); `_create_draft` handler defect (`InsertMultiFaceDraft` returns
+None on success) fixed `40842eb`. `edge_flange` remains the sole ghost; re-advertise
+only after a ΔVol>0 seat proof. See `docs/DEFERRED.md` Wave-44.
 
-## 2. Assembly — `ai-sw-assembly` (W9–W32)
+## 2. Assembly — `ai-sw-assembly` (W9–W49)
 
 | Capability | Detail |
 |---|---|
 | Multi-part placement | W8 `OpenDoc6` pre-open → `AddComponent4` (real B-rep) |
 | Rotated placement | `rpy_deg` via CreateTransform→`SetTransformAndSolve` |
-| **8 mate types** | coincident · distance · concentric · parallel · perpendicular · tangent · angle · **width** |
-| Limit modifier | distance/angle limit mates |
+| **13 mate types** | coincident · distance · concentric · parallel · perpendicular · tangent · angle · **width** · **gear** (W46, transposed-setter fix) · **rack-pinion** (W47) · **cam-follower** (W47) · **slot** (W48) · **hinge** (W48) |
+| Limit modifier | distance/angle limit mates (hinge angle-limit re-deferred W51-B: angle-ref role GREEN, limit values SW-reparametrize; branch `feat/w51-hinge-limit` preserved) |
+| **Motion audit** (W49) | parametric DOF sweep — `Parameter().SystemValue` drives a mate through its travel; collision-in-motion verification |
+| **`choose_clearance_pair`** (W51-C1) | nearest-pair auto-selection for motion audit (assembly clearance min-distance) |
 | **component_arrays** | linear + circular via **placement expansion** (zero new COM) |
 | **mirror component** | `IAssemblyDoc.MirrorComponents` v1 (9-arg, raw Plane + VT_ARRAY\|VT_DISPATCH) |
 | **Exploded views** | `CreateExplodedView` → `AddExplodeStep` with 2-entity selection (component + direction ref plane); Transform delta verified (W32) |
 | Interactive edit | declarative add/remove component+mate → re-commit |
 | L4 persistence | manifest v2 (verbatim spec + runtime overlay, lossless `to_spec()`) |
 
+**`screw` mate FROZEN (W46):** pitch (`RevolutionVal`) clamps to 1 mm kernel
+default regardless of setter — three paths characterized and exhausted (COM wall).
+
 **Walls:** linear/circular **component** patterns (assembly-level) = no `IAssemblyDoc`
 creation method → Route-C/VBA. `ShowExploded2` VARIANT dispatch fails (but transform
-proves effect). *Deferred: rotational steps, radial patterns, explode-line sketches,
-multiple views per config, animation.*
+proves effect). `IDragOperator` free-DOF drag is UI-only (W51-C2: marshaling cracked
+but headless `Drag()` computes-without-committing — needs real UI context).
+*Deferred: hinge angle-limit v-next, rotational steps, radial patterns,
+explode-line sketches, multiple views per config, animation.*
 
-## 3. Export — `ai-sw-` export (W25v + W33 + W34)
+## 3. Export — `ai-sw-` export (W25v + W33 + W34 + W48)
 
 | Format | Flag | verify-the-bytes proof |
 |---|---|---|
@@ -93,7 +104,8 @@ multiple views per config, animation.*
 | `step203` | ⚠️ | same SaveAs3_DIRECT path as step214 (save_version=1); not independently byte-verified |
 | `parasolid` | ⚠️ | same SaveAs3_DIRECT path; not independently byte-verified |
 | `3mf` | ⚠️ | same SaveAs3_DIRECT path; not independently byte-verified |
-| `dxf_flat` | ✅ | **W42** — developed flat-pattern OUTLINE; L-bracket unrolls to 86.28×40.0 mm (> 60 mm folded face, < 90 mm naive sum). Inner bend lines deferred (drawing flat-pattern view / W33; see DEFERRED Wave-42) |
+| `dxf_flat` | ✅ | **W42** — developed flat-pattern OUTLINE (part-space); L-bracket 86.28×40.0 mm |
+| `dxf_flat_bends` | ✅ | **W48** — CAM-ready flat pattern via drawing-space `CreateFlatPatternViewFromModelView3` + geometric classifier (`dxf_bend_layers.py`); interior fold lines on `BEND` layer; PAE GREEN (1-bend L-bracket → 1 BEND LINE + 4 outline LINEs, bbox 40×86.28 mm) |
 
 ## 4. Drawing — `ai-sw-drawing` (W4, W16–W28)
 
@@ -123,6 +135,8 @@ unknown field rejected).
 | Bounding box (part) | `sw_bbox` / `sw_bounding_box` | `IPartDoc.GetPartBox(True)` (part-only) | W30 |
 | **Clearance (min-distance)** | `sw_clearance` | `IComponent2.Select2`×2 → `IMeasure.Distance` (assembly-only) | W35 |
 | **Draft analysis (DFM)** | `sw_draft_analysis` | `IPartDoc.GetBodies2` (QI from IModelDoc2) → `GetFaces` → `IFace2.Normal` vs pull (part-only) | W37 |
+| **Undercut (DFM)** | `sw_undercut` | draft-analysis faces classified by undercut angle threshold (part-only) | W45 |
+| **Min wall thickness (DFM)** | `sw_min_wall` | body voxel / nearest-opposite-face probe (part-only) | W45 |
 | **Current selection** | `sw_current_selection` | `SelectionManager` (memid 65537 prop-get) → `GetSelectedObjectCount2`/`GetSelectedObjectType3`/`GetSelectedObject6` → durable persist-ref; `swSelectType_e` table (edge=1/face=2/…/solid_body=76) | W43 |
 
 ## 5b. Metadata — `ai-sw-properties` (W29, **CLI-only mutation**)
@@ -190,6 +204,9 @@ retrieval (`ai-sw-apidoc`) · codegen (`ai-sw-codegen`) · MCP lane (`ai-sw-mcp`
 | `loft` | CreateDefinition(9)→None with 2 profiles pre-selected; legacy paths None too (W20 re-confirmed) |
 | `rib` / `wrap` / `boundary-boss` | solver-deep, out-of-process COM wall |
 | `miter flange` | no SW2024 interface |
+| `edge_flange` | **ghost** — node-presence proof (error-code 0) but ΔVol=0; de-advertised W42/W44; handler kept as characterized code |
+| `screw` mate | pitch (`RevolutionVal`) clamps to 1 mm kernel default — three setter paths characterized and exhausted (W46 COM wall) |
+| `IDragOperator` free-DOF drag | marshaling cracked but `Drag()` computes-without-committing headless — requires real UI/mouse context (W51-C2 UI-only wall) |
 | linear/circular **component** patterns | no `IAssemblyDoc` creation method |
 | drawing **ordinate / baseline** dims | all 6 Insert*/Add*/baseline methods produce zero dims with confirmed datum; interactive-mode starters, not one-shot creators (W31v2 earned NO-GO) |
 
