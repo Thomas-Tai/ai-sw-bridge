@@ -35,6 +35,8 @@ src_path = Path(__file__).resolve().parents[2] / "src"
 if src_path.exists():
     sys.path.insert(0, str(src_path))
 
+import pythoncom
+
 from ai_sw_bridge.sw_com import get_sw_app
 from ai_sw_bridge.com.earlybind import typed
 from ai_sw_bridge.com.sw_type_info import wrapper_module
@@ -49,48 +51,65 @@ def _dump_export_enums(sw_app: object) -> dict:
     """
     result: dict = {
         "swSTLBinaryFormat": None,
-        "swStepExportAP": None,
-        "swStepAP203": None,
-        "swStepAP214": None,
+        "swStepAP": None,
     }
+    targets = {k for k in result}
+    # Project-native enum read: pythoncom.LoadTypeLib + iterate TKIND_ENUM
+    # members. (gencache.EnsureModule regenerates makepy and fails 'CreateMutex'
+    # in this seat env — and corrupts the gen_py state for later COM calls.)
+    tlb_path = Path(r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\swconst.tlb")
+    if not tlb_path.exists():
+        for candidate in Path(r"C:\Program Files").rglob("swconst.tlb"):
+            tlb_path = candidate
+            break
+    if not tlb_path.exists():
+        result["error"] = "swconst.tlb not found"
+        return result
     try:
-        import win32com.client
-
-        tlb_path = Path(
-            r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\swconst.tlb"
-        )
-        if not tlb_path.exists():
-            for candidate in Path(r"C:\Program Files").rglob("swconst.tlb"):
-                tlb_path = candidate
-                break
-
-        if not tlb_path.exists():
-            result["error"] = "swconst.tlb not found"
-            return result
-
-        swconst = win32com.client.gencache.EnsureModule(
-            str(tlb_path), 0, 0, 0
-        )
-        consts = swconst.constants
-
-        for name in result:
-            if name == "error":
-                continue
-            try:
-                result[name] = consts.__dict__[name]
-            except KeyError:
-                try:
-                    result[name] = getattr(consts, name, None)
-                except Exception:
-                    pass
+        tlb = pythoncom.LoadTypeLib(str(tlb_path))
     except Exception as exc:
-        result["error"] = f"Enum dump failed: {type(exc).__name__}: {exc}"
+        result["error"] = f"LoadTypeLib failed: {type(exc).__name__}: {exc}"
+        return result
 
+    remaining = set(targets)
+    candidates: dict = {}
+    for i in range(tlb.GetTypeInfoCount()):
+        try:
+            info = tlb.GetTypeInfo(i)
+            ta = info.GetTypeAttr()
+        except Exception:
+            continue
+        if ta.typekind != pythoncom.TKIND_ENUM:
+            continue
+        for v in range(ta.cVars):
+            try:
+                vd = info.GetVarDesc(v)
+                names = info.GetNames(vd.memid)
+                nm = names[0] if names else None
+                if not nm:
+                    continue
+                if nm in remaining:
+                    result[nm] = vd.value
+                    remaining.discard(nm)
+                low = nm.lower()
+                if "step" in low or "203" in low or "214" in low:
+                    candidates[nm] = vd.value
+            except Exception:
+                continue
+    result["_step_candidates"] = candidates
+    if remaining:
+        result["error"] = f"enums not found: {sorted(remaining)}"
     return result
 
 
+_PART_SEQ = 0
+
+
 def _create_box_part(sw_app: object, temp_dir: Path) -> tuple:
-    """Create a simple box part. Returns (doc, part_path)."""
+    """Create a simple box part. Returns (typed_doc, part_path)."""
+    global _PART_SEQ
+    _PART_SEQ += 1
+    mod = wrapper_module()
     template = sw_app.GetUserPreferenceStringValue(8)
     if not template:
         raise RuntimeError("No part template found")
@@ -121,12 +140,20 @@ def _create_box_part(sw_app: object, temp_dir: Path) -> tuple:
     if feat is None:
         raise RuntimeError("Box extrusion failed")
 
-    part_path = temp_dir / "W52_Box.SLDPRT"
-    err = doc.SaveAs3(str(part_path), 0, 0)
-    if int(err) if err is not None else 0 != 0:
+    # SaveAs3 / Extension members must go through the EARLY-BOUND typed doc —
+    # the raw late-bound doc returned save-error 1 at the seat (the W52-B
+    # late-binding rhyme). Return the typed doc so the legs' SaveAs3/Extension
+    # calls inherit the fix. Note the fixed parenthesization of the err check.
+    tdoc = typed(doc, "IModelDoc2", module=mod)
+    # Unique filename per call — each leg builds a fresh part; reusing one name
+    # collided with the still-open part from the previous leg (SaveAs3 error 1;
+    # docs are intentionally left open per the CloseDoc-corrupts-COM lesson).
+    part_path = temp_dir / f"W52_Box_{_PART_SEQ}.SLDPRT"
+    err = tdoc.SaveAs3(str(part_path), 0, 0)
+    if (int(err) if err is not None else 0) != 0:
         raise RuntimeError(f"SaveAs3 part: error {err}")
 
-    return doc, part_path
+    return tdoc, part_path
 
 
 def _create_drawing(sw_app: object, part_path: Path, temp_dir: Path) -> tuple:
@@ -160,8 +187,8 @@ def _create_drawing(sw_app: object, part_path: Path, temp_dir: Path) -> tuple:
     drawing_doc = typed_qi(drw_raw, "IDrawingDoc", module=mod)
     model_doc = typed_qi(drw_raw, "IModelDoc2", module=mod)
 
-    view = drawing_doc.CreateDrawView2(
-        str(part_path), "*Isometric", 0.15, 0.15, None
+    view = drawing_doc.CreateDrawViewFromModelView3(
+        str(part_path), "*Isometric", 0.15, 0.15, 0.0
     )
 
     drw_path = temp_dir / "W52_Box.SLDDRW"
@@ -370,8 +397,9 @@ def leg_stl_ascii(sw_app: object, temp_dir: Path) -> dict:
 
         toggle_id = _find_enum("swSTLBinaryFormat")
         if toggle_id is not None:
-            ext = doc.Extension
-            ext.SetUserPreferenceToggle(toggle_id, False)
+            # App-level + late-bound: SetUserPreferenceToggle Type-mismatches on
+            # the early-bound typed Extension (makepy mistypes the bool arg).
+            sw_app.SetUserPreferenceToggle(toggle_id, False)
         else:
             result["warning"] = (
                 "swSTLBinaryFormat ID unknown; ASCII mode not guaranteed"
@@ -389,7 +417,7 @@ def leg_stl_ascii(sw_app: object, temp_dir: Path) -> dict:
         result["verdict"] = verify["verdict"]
 
         if toggle_id is not None:
-            ext.SetUserPreferenceToggle(toggle_id, True)
+            sw_app.SetUserPreferenceToggle(toggle_id, True)
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
     return result
@@ -401,15 +429,12 @@ def leg_step_ap203(sw_app: object, temp_dir: Path) -> dict:
     try:
         doc, part_path = _create_box_part(sw_app, temp_dir)
 
-        ap_id = _find_enum("swStepExportAP")
-        ap203_val = _find_enum("swStepAP203")
-        if ap_id is not None and ap203_val is not None:
-            ext = doc.Extension
-            ext.SetUserPreferenceIntegerValue(ap_id, ap203_val)
+        ap_id = _find_enum("swStepAP")
+        ap203_val = 203  # swStepAP takes the literal AP number
+        if ap_id is not None:
+            sw_app.SetUserPreferenceIntegerValue(ap_id, ap203_val)
         else:
-            result["warning"] = (
-                "swStepExportAP/swStepAP203 ID unknown; AP203 not guaranteed"
-            )
+            result["warning"] = "swStepAP ID unknown; AP203 not guaranteed"
 
         step_path = temp_dir / "W52_Box_ap203.step"
         err = doc.SaveAs3(str(step_path), 0, 0)
@@ -432,15 +457,12 @@ def leg_step_ap214(sw_app: object, temp_dir: Path) -> dict:
     try:
         doc, part_path = _create_box_part(sw_app, temp_dir)
 
-        ap_id = _find_enum("swStepExportAP")
-        ap214_val = _find_enum("swStepAP214")
-        if ap_id is not None and ap214_val is not None:
-            ext = doc.Extension
-            ext.SetUserPreferenceIntegerValue(ap_id, ap214_val)
+        ap_id = _find_enum("swStepAP")
+        ap214_val = 214  # swStepAP takes the literal AP number
+        if ap_id is not None:
+            sw_app.SetUserPreferenceIntegerValue(ap_id, ap214_val)
         else:
-            result["warning"] = (
-                "swStepExportAP/swStepAP214 ID unknown; AP214 not guaranteed"
-            )
+            result["warning"] = "swStepAP ID unknown; AP214 not guaranteed"
 
         step_path = temp_dir / "W52_Box_ap214.step"
         err = doc.SaveAs3(str(step_path), 0, 0)
