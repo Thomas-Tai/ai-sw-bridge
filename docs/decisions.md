@@ -484,6 +484,99 @@ the out-of-process, `pip`-installable, JSON-only-agent design.
 
 ---
 
+## 2026-06-11
+
+### 2026-06-11 — Multi-body booleans are terminal out-of-process walls; ship merge-on-create (W54-A), park an OPTIONAL in-process add-in (Route-D)
+
+**Context:** The W52/W53 seat batches proved `combine` and `split` cannot
+**commit** out-of-process. `PreSplitBody` computes the temp bodies but
+`PostSplitBody` will not commit (all `BodiesToMark` forms no-op);
+`InsertCombineFeature` no-ops across 8 variants; no `swFmCombineBodies`
+enum exists; and the `IInsertCombineFeature` array path cannot marshal a
+body SAFEARRAY ("The Python instance can not be converted to a COM
+object"). This is the **same VT_DISPATCH-SAFEARRAY finalize wall as
+edge-flange** — a *commit-time marshaler* wall, distinct from the
+2026-05-30 `[out]`-param wall. **Early binding does not clear it:** the
+2026-05-30 fix marshals an `[out]` scalar back; here the failure is
+committing a SAFEARRAY of *live body objects* across the o-o-p boundary at
+finalize. Tested both bindings; the bodies drop regardless.
+
+The wall is a **class, not a one-off**: combine, split, edge-flange
+(normal-to-edge profile automation), loft (`CreateDefinition(9)` → None),
+in-file native configs (`SetSuppression2` no-op/leak), and free-DOF
+interactive drag (`Transform2` never commits headless) all need
+in-process execution to commit.
+
+**Decision:**
+
+1. **Execute the tactical stand-in (W54-A, `feat/w54-merge-on-create`).**
+   Modeling-time boolean **UNION** via `FeatureExtrusion2` arg 18 `Merge`
+   — `boss_extrude_blind` gains `merge: bool` (default `true`): `true`
+   fuses the boss into the solid it overlaps, `false` keeps it a separate
+   body. **Subtraction already ships** via `cut_extrude_*`. The LLM
+   declares unions at the extrusion phase; there is no post-hoc combine.
+   Invariant-clean: no add-in, no macro, `pip`-only, agent emits JSON
+   only. Seat-proven (`spikes/_probe_merge_effect.py`): `merge=true` → 1
+   body, `merge=false` → 2 bodies. This **removes the urgency** from the
+   add-in.
+
+2. **Open Route-D — an OPTIONAL in-process C# add-in — as a backlog item,
+   NOT scheduled.** It would drain the whole commit-time wall class by
+   executing the walled FeatureData / body-boolean / `SetSuppression`
+   calls in-process, where the SAFEARRAY-of-bodies finalize succeeds.
+
+   *IPC shape (proposed):* a thin SOLIDWORKS add-in registers a local IPC
+   endpoint (named pipe / localhost socket); Python sends the **same
+   declarative JSON** spec; the add-in deserializes and executes **only**
+   the commit-time-walled operations in-process. It is **not** a general
+   code-exec channel — it accepts the same closed JSON vocabulary,
+   preserving invariants #2 (declarative-JSON-only) and #3
+   (zero-arbitrary-code). The Python out-of-process path stays the default
+   for everything that already marshals; the add-in is invoked only for
+   the walled kinds, and only if installed.
+
+   *Invariant #4 carve-out Route-D requires (must be written FIRST):*
+   #4 (post-2026-05-30) = "out-of-process from Python, agent never touches
+   COM" + "`pip`-installable, no .NET SDK in the **base** install."
+   Route-D is admissible ONLY as an **optional, separately-installed
+   power-user component**: the pip-only core stays the default and fully
+   functional (merge-on-create + cut cover the common boolean need); the
+   add-in is an opt-in that unlocks the walled kinds. The base install
+   must **never depend on it**. This carve-out must be added to invariant
+   #4 before Route-D is scheduled.
+
+**Alternatives considered:**
+
+- *Early-bind the combine/split FeatureData (the 2026-05-30 fix).*
+  Rejected for this wall: it clears `[out]` scalars, not
+  SAFEARRAY-of-dispatch commits; W52/W53 confirmed the bodies drop at
+  finalize under both bindings.
+- *Route-B — VBA emit-and-run.* Rejected again: violates invariant #3
+  (`run_macro` removed v0.14, a security-model reversal). Re-affirms
+  2026-05-30.
+- *Do nothing.* Rejected: the union need is the most common multi-body
+  intent and merge-on-create covers it cleanly. **`split` (one body → many)
+  stays genuinely unsupported until Route-D — accepted as a logged gap.**
+- *Ship Route-D now.* Rejected as premature: merge-on-create + cut covers
+  the high-frequency boolean need; Route-D is a multi-week effort (C#
+  add-in + IPC protocol + the #4 carve-out + an installer story) for the
+  long tail. Park until the uncovered kinds accumulate demand.
+
+**Consequences:**
+
+- `merge: bool` ships on `boss_extrude_blind` (W54-A); offline-guarded
+  (`tests/spec/test_boss_merge_threading.py`, 4 tests) + seat-proven.
+- Route-D logged as the strategic drain for the commit-time wall class
+  (combine / split / edge-flange / loft / in-file-configs / drag), each of
+  which already carries its own NO-GO/DEFER record; this entry names them
+  as **one class with one answer**. Gated on the invariant-#4
+  optional-component carve-out being written first.
+
+**Owner:** W0 (orchestrator) + strategy lead.
+**Status:** Active (Option A shipped; Route-D parked, unscheduled).
+
+---
+
 ## Reversed / superseded decisions
 
 - 2026-05-23 "Demote Lane M to adoption-driven" — **superseded
