@@ -171,10 +171,9 @@ def _independent_reopen_verify(
 ) -> dict[str, Any]:
     """Independent verify — reopen .SLDDRW and count surface-finish annotations.
 
-    swAnnotationType_e values:
-      1 = swDisplayDimension, 4 = swNote,
-      9 = swSurfaceFinishSymbol, 10 = swGTol,
-      11 = swDatumTag, 12 = swWeldSymbol
+    swAnnotationType_e values (seat-verified from swconst.tlb):
+      4 = swDisplayDimension, 5 = swGTol, 6 = swNote,
+      7 = swSFSymbol (surface finish), 8 = swWeldSymbol, 9 = swCustomSymbol
     """
     from ai_sw_bridge.com.earlybind import typed, typed_qi
     from ai_sw_bridge.com.sw_type_info import wrapper_module
@@ -225,9 +224,9 @@ def _independent_reopen_verify(
                 v = typed_qi(v_raw, "IView", module=mod)
                 vname = v.GetName2() or ""
                 counts = _count_annotations_by_type(v, mod, typed_qi)
-                sf = counts.get(9, 0)
-                gtol = counts.get(10, 0)
-                weld = counts.get(12, 0)
+                sf = counts.get(7, 0)    # swSFSymbol (surface finish)
+                gtol = counts.get(5, 0)  # swGTol
+                weld = counts.get(8, 0)  # swWeldSymbol
                 result["total_sf"] += sf
                 result["total_gtol"] += gtol
                 result["total_weld"] += weld
@@ -325,11 +324,13 @@ def _try_candidate(
 
     # Step 4: Save → Close → Reopen → Count
     try:
-        doc_title = drawing_doc.GetTitle
+        # GetTitle / SaveAs3 are IModelDoc2 members — NOT on the typed
+        # IDrawingDoc wrapper (AttributeError). Use mdoc2.
+        doc_title = mdoc2.GetTitle
         doc_title = doc_title() if callable(doc_title) else doc_title
         from ai_sw_bridge.sw_com import get_sw_app
         sw = get_sw_app()
-        drawing_doc.SaveAs3(drawing_path, 0, 2)
+        mdoc2.SaveAs3(drawing_path, 0, 2)
         sw.CloseDoc(doc_title)
         time.sleep(0.5)
     except Exception as exc:
@@ -341,8 +342,8 @@ def _try_candidate(
     candidate["dims_reopen"] = reopen_result
 
     # Step 5: Verdict
-    sf_after = after_counts.get(9, 0)
-    sf_before = before_counts.get(9, 0)
+    sf_after = after_counts.get(7, 0)   # swSFSymbol
+    sf_before = before_counts.get(7, 0)
     sf_reopen = reopen_result.get("total_sf", 0)
 
     if sf_reopen > sf_before:
@@ -473,8 +474,12 @@ def main() -> int:
             print(f"\n  [1/4] InsertSurfaceFinishSymbol2 at ({cx:.4f}, {cy:.4f})")
             c1 = _try_candidate(
                 "InsertSurfaceFinishSymbol2",
-                lambda ext: ext.InsertSurfaceFinishSymbol2(
-                    cx, cy, 0.0, "3.2"
+                # Real signature: IModelDoc2 (NOT IModelDocExtension), 14 args.
+                # SymType=swSFMachining_Req(1), LeaderType=swNO_LEADER(0),
+                # LocX/Y/Z, LaySymbol=swSFNone(0), ArrowType=0, then 7 BSTR text
+                # fields with roughness "3.2" in the MaxRoughness slot.
+                lambda ext: mdoc2.InsertSurfaceFinishSymbol2(
+                    1, 0, cx, cy, 0.0, 0, 0, "", "", "", "", "3.2", "", ""
                 ),
                 drawing_doc=ddoc,
                 mdoc2=mdoc2,
