@@ -329,7 +329,10 @@ def _probe_save_reopen(sw: Any) -> dict[str, Any]:
         mod, _mod_info = ensure_sw_module()
         tsw = typed(mod, "ISldWorks", sw)
         try:
-            reopen_doc = tsw.OpenDoc6(save_path, 1, 1, "", 0, 0)
+            _ret = tsw.OpenDoc6(save_path, 1, 1, "", 0, 0)
+            # typed OpenDoc6 marshals the doc plus [out] params as a tuple;
+            # the IModelDoc2 handle is the first element.
+            reopen_doc = _ret[0] if isinstance(_ret, tuple) else _ret
         except Exception as e_reopen:  # noqa: BLE001
             rec["status"] = "FAIL"
             rec["reopen_error"] = repr(e_reopen)

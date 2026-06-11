@@ -48,10 +48,12 @@
   "S3_save_reopen": {
     "step": "S3_save_reopen",
     "save_result": "0",
-    "save_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\spike_sketch3d_1781165280.SLDPRT",
+    "save_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\spike_sketch3d_1781175851.SLDPRT",
     "file_exists": true,
-    "status": "ERROR",
-    "error": "com_error(-2147352561, 'Parameter not optional.', None, None)"
+    "found_sketch_name": "Sketch3D_Persist",
+    "found_sketch_type": "3DProfileFeature",
+    "sketch_survived": true,
+    "status": "GREEN"
   },
   "S4_sweep_stretch": {
     "step": "S4_sweep_stretch",
@@ -62,6 +64,5 @@
     "fail_closed": true,
     "note": "InsertProtrusionSwept3 raised.  Sweep-on-3D-path may need a different API (InsertProtrusionSwept4, FeatureExtrusion2 with sweep flag, or the modern CreateDefinition path).  Characterize in a dedicated sweep spike."
   },
-  "overall": "PARTIAL",
-  "gate_note": "S2 GREEN but S3 not GREEN (save/reopen issue)"
+  "overall": "PASS"
 }
