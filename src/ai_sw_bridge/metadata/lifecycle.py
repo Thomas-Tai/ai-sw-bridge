@@ -1,10 +1,11 @@
-"""Metadata lifecycle — propose/dry_run/commit (Wave-29).
+"""Metadata lifecycle — propose/dry_run/commit (Wave-29, extended Wave-53).
 
 End-to-end ``propose -> dry_run -> commit`` for ``kind: "properties"`` specs.
 
   - **propose**: validate offline (jsonschema + semantic).
   - **dry_run**: confirm model file exists and is openable.
-  - **commit**: open -> Get CustomPropertyManager -> Add3 each prop -> Save3
+  - **commit**: open -> Get CustomPropertyManager -> Add3 each prop
+    (with resolved type: TEXT/NUMBER/DATE/YES_NO) -> SaveAs3
     -> reopen -> Get4 read-back verification -> close.
 
 Fail-closed: if any Add3 fails or read-back doesn't match, the operation
@@ -20,14 +21,14 @@ import jsonschema
 import logging
 import os
 import time
-from pathlib import Path
 from typing import Any
 
 from .spec_schema import (
     PROPERTIES_SPEC_SCHEMA,
-    SW_CUSTOM_INFO_TEXT,
     SW_CUSTOM_PROP_ADD,
     SW_CUSTOM_PROP_REPLACE,
+    resolve_prop_type_and_value,
+    semantic_prop_match,
     validate_properties_spec,
 )
 
@@ -87,6 +88,10 @@ def commit_properties(
 
     Fail-closed on any Add3 failure or read-back mismatch.
 
+    W53: each property's type is resolved from the spec entry. Plain
+    string values use TEXT (30); typed-object entries use their declared
+    type (NUMBER/Double=5, DATE=64, YES_NO=11).
+
     Args:
         sw: the ``SldWorks.Application`` COM object.
         spec: the validated properties spec dict.
@@ -126,7 +131,6 @@ def commit_properties(
         ext = os.path.splitext(model_path)[1].lower()
         doc_type = 2 if ext == ".sldasm" else 1
 
-        # Open the model
         ret = tsw.OpenDoc6(model_path, doc_type, 1, "", 0, 0)
         model_doc = ret[0] if isinstance(ret, tuple) else ret
         if model_doc is None:
@@ -135,7 +139,6 @@ def commit_properties(
 
         mdoc2 = typed_qi(model_doc, "IModelDoc2", module=mod)
 
-        # Get CustomPropertyManager (file-level, empty config)
         ext_obj = model_doc.Extension
         cpm_raw = ext_obj.CustomPropertyManager("")
         if cpm_raw is None:
@@ -147,68 +150,73 @@ def commit_properties(
 
         typed_cpm = typed_qi(cpm_raw, "ICustomPropertyManager", module=mod)
 
-        # Count before — Count is a PROPERTY on the typed proxy, not a method
-        # (typed_cpm.Count() throws "'int' object is not callable").
+        # Count is a PROPERTY on the typed proxy, not a method.
         count_before = typed_cpm.Count
         result["count_before"] = count_before
 
-        # Existence is determined by GetNames() membership, NOT by a Get*
-        # "exists" flag: Get4/Get6's first return is a RESOLVED flag, not an
-        # existence flag (a missing prop returns (True, '', '')). GetNames()
-        # returns a tuple of property names, or None when there are none.
+        # GetNames() membership determines existence; Get4's first return
+        # is a RESOLVED flag, not an existence flag.
         existing_names = set(typed_cpm.GetNames() or ())
 
-        # Set each property
-        for name, value in properties.items():
+        for name, entry in properties.items():
+            type_id, value, type_name = resolve_prop_type_and_value(name, entry)
+
             if name in existing_names and not overwrite:
-                # Read the existing value via Get4 (Get6 is dead at the makepy
-                # layer — raises "Type mismatch" on typed AND raw dispatch).
                 try:
                     _resolved, pvalue, _resolved2 = typed_cpm.Get4(name, False)
                 except Exception:
                     pvalue = None
                 result["props_skipped"].append({
                     "name": name,
+                    "type": type_name,
                     "reason": "exists and overwrite=false",
                     "existing_value": pvalue,
                 })
                 continue
 
-            # Add3(name, type, value, options)
             options = SW_CUSTOM_PROP_REPLACE if overwrite else SW_CUSTOM_PROP_ADD
             try:
-                add_result = typed_cpm.Add3(name, SW_CUSTOM_INFO_TEXT, value, options)
+                add_result = typed_cpm.Add3(name, type_id, value, options)
             except Exception as exc:
                 result["errors"].append(f"Add3({name}) raised: {exc!r}")
                 continue
 
             if add_result != 0:
-                result["errors"].append(f"Add3({name}) returned {add_result} (expected 0)")
+                result["errors"].append(
+                    f"Add3({name}, type={type_id}/{type_name}) "
+                    f"returned {add_result} (expected 0)"
+                )
                 continue
 
-            result["props_set"].append({"name": name, "value": value})
+            result["props_set"].append({
+                "name": name,
+                "type": type_name,
+                "type_id": type_id,
+                "value": value,
+            })
 
-        # If any errors during set, abort before save
         if result["errors"]:
             title = mdoc2.GetTitle
             title = title() if callable(title) else title
             sw.CloseDoc(title)
             return result
 
-        # Immediate read-back before save — Get4(name, useCached=False) returns
-        # a 3-tuple (resolved_flag, value, resolved2). Get6 is dead (Type
-        # mismatch at the makepy layer on both typed and raw dispatch).
+        # Immediate read-back — Get4(name, useCached=False) returns
+        # (resolved_flag, value, resolved2).
         for prop_info in result["props_set"]:
             name = prop_info["name"]
             try:
                 _resolved, pvalue, _resolved2 = typed_cpm.Get4(name, False)
                 prop_info["immediate_read_back"] = {
                     "value": pvalue,
-                    "match": pvalue == prop_info["value"],
+                    "match": semantic_prop_match(
+                        prop_info["type"], prop_info["value"], pvalue
+                    ),
                 }
                 if not prop_info["immediate_read_back"]["match"]:
                     result["errors"].append(
-                        f"immediate read-back mismatch for '{name}': "
+                        f"immediate read-back mismatch for '{name}' "
+                        f"(type={prop_info['type']}): "
                         f"set {prop_info['value']!r}, got {pvalue!r}"
                     )
             except Exception as exc:
@@ -220,11 +228,8 @@ def commit_properties(
             sw.CloseDoc(title)
             return result
 
-        # Save via SaveAs3 in-place (the export-epoch-proven route — W33/W34).
-        # Save3 is DEAD here: its trailing [out] Errors/Warnings params break
-        # early-bind and it RAISES "Type mismatch" (so the old `if not save_ok`
-        # SaveAs3 fallback never ran). SaveAs3(path, version=0, options=0)
-        # returns swFileSaveError_e (0=success, non-zero=failure → no file).
+        # SaveAs3 in-place (W33/W34 proven route).
+        # Save3 is DEAD: trailing [out] params break early-bind.
         try:
             save_err = mdoc2.SaveAs3(model_path, 0, 0)
             if save_err != 0:
@@ -243,13 +248,12 @@ def commit_properties(
             sw.CloseDoc(title)
             return result
 
-        # Close
         title = mdoc2.GetTitle
         title = title() if callable(title) else title
         sw.CloseDoc(title)
 
-        # Reopen for verification (W0 requirement: VERIFY THE EFFECT)
-        time.sleep(0.3)  # Small delay for file system
+        # Reopen for verification (VERIFY THE EFFECT).
+        time.sleep(0.3)
         ret = tsw.OpenDoc6(model_path, doc_type, 1, "", 0, 0)
         model_doc2 = ret[0] if isinstance(ret, tuple) else ret
         if model_doc2 is None:
@@ -261,13 +265,9 @@ def commit_properties(
         cpm_raw2 = ext_obj2.CustomPropertyManager("")
         typed_cpm2 = typed_qi(cpm_raw2, "ICustomPropertyManager", module=mod)
 
-        # Count after — property, not method (see count_before note)
         count_after = typed_cpm2.Count
         result["count_after"] = count_after
 
-        # Get4 read-back on reopen (verify-the-EFFECT: the props survived a
-        # close + reopen cycle). Existence comes from GetNames(); Get4 reads the
-        # value (Get6 is dead — see immediate-read-back note).
         reopen_names = set(typed_cpm2.GetNames() or ())
         for prop_info in result["props_set"]:
             name = prop_info["name"]
@@ -277,27 +277,29 @@ def commit_properties(
                 _resolved, pvalue, _resolved2 = typed_cpm2.Get4(name, False)
                 read_back_entry = {
                     "name": name,
+                    "type": prop_info["type"],
                     "exists": exists,
                     "value": pvalue,
                     "expected": expected,
-                    "match": exists and pvalue == expected,
+                    "match": exists and semantic_prop_match(
+                        prop_info["type"], expected, pvalue
+                    ),
                 }
                 result["read_back"].append(read_back_entry)
                 prop_info["reopen_read_back"] = read_back_entry
                 if not read_back_entry["match"]:
                     result["errors"].append(
-                        f"reopen read-back mismatch for '{name}': "
+                        f"reopen read-back mismatch for '{name}' "
+                        f"(type={prop_info['type']}): "
                         f"expected {expected!r}, got {pvalue!r} (exists={exists})"
                     )
             except Exception as exc:
                 result["errors"].append(f"reopen Get4({name}) raised: {exc!r}")
 
-        # Close
         title2 = mdoc2b.GetTitle
         title2 = title2() if callable(title2) else title2
         sw.CloseDoc(title2)
 
-        # Final validation
         all_match = all(rb["match"] for rb in result["read_back"])
         count_delta_ok = count_after >= count_before + len(result["props_set"])
 
