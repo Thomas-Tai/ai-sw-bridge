@@ -132,6 +132,7 @@ layers = [
     "ai_sw_bridge.drawing",
     "ai_sw_bridge.config",
     "ai_sw_bridge.mutate",
+    "ai_sw_bridge.features",
     "ai_sw_bridge.com",
     "ai_sw_bridge.checkpoint",
     "ai_sw_bridge.rag",

@@ -41,6 +41,7 @@ from win32com.client import VARIANT
 
 from .com.earlybind import typed, typed_qi, read_persist_reference
 from .com.sw_type_info import wrapper_module
+from .features import HANDLER_REGISTRY
 from .selection import (
     DurableEdgeRef,
     resolve_edge_ref,
@@ -2488,6 +2489,11 @@ def _apply_feature(
         return _create_combine(doc, feature, target)
     if ftype == "split":
         return _create_split(doc, feature, target)
+    # W56 seam: kinds wired as per-lane modules under features/ dispatch
+    # here; built-in kinds above win on a (disallowed) name collision.
+    handler = HANDLER_REGISTRY.get(ftype)
+    if handler is not None:
+        return handler(doc, feature, target)
     return False, f"unsupported feature type {ftype!r}"
 
 
@@ -2921,10 +2927,13 @@ def sw_propose_feature_add(
     }
     try:
         feat_type = feature.get("type") if isinstance(feature, dict) else None
-        if feat_type not in _SUPPORTED_FEATURE_TYPES:
+        if (
+            feat_type not in _SUPPORTED_FEATURE_TYPES
+            and feat_type not in HANDLER_REGISTRY
+        ):
             result["error"] = (
                 f"unsupported feature type {feat_type!r}; "
-                f"supported: {', '.join(_SUPPORTED_FEATURE_TYPES)}"
+                f"supported: {', '.join((*_SUPPORTED_FEATURE_TYPES, *HANDLER_REGISTRY))}"
             )
             return result
 
