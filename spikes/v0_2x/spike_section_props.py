@@ -218,7 +218,7 @@ def main() -> None:
         print("[S1] Calling GetSectionProperties2(None) …")
         raw = None
         try:
-            ext = doc.Extension
+            ext = typed(doc, "IModelDoc2", module=mod).Extension
             raw = ext.GetSectionProperties2(None)
         except Exception as exc_none:
             print(f"[S1]   GetSectionProperties2(None) raised: {exc_none!r}")
@@ -230,12 +230,12 @@ def main() -> None:
                 ok_sel2, _ = _select_top_face(doc, mod)
                 if ok_sel2:
                     time.sleep(0.3)
-                    raw = doc.Extension.GetSectionProperties2([])
+                    raw = typed(doc, "IModelDoc2", module=mod).Extension.GetSectionProperties2([])
                     print("[S1]   [] form succeeded.")
             except Exception as exc_empty:
                 result["errors"].append(
                     f"GetSectionProperties2 both forms failed: "
-                    f"None→{exc_none!r}; []→{exc_empty!r}"
+                    f"None->{exc_none!r}; []->{exc_empty!r}"
                 )
                 result["verdict"] = "NO-GO"
                 _write_result(result)
@@ -314,7 +314,7 @@ def main() -> None:
         result["verdict"] = "GREEN" if all_pass else "PARTIAL"
 
         for name, status in checks.items():
-            icon = "✓" if checks[name] else "✗"
+            icon = "[OK]" if checks[name] else "[FAIL]"
             print(f"[S1]   {icon}  {name}: {'PASS' if checks[name] else 'FAIL'}")
 
         if not all_pass:
