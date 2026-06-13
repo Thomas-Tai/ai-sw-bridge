@@ -25,6 +25,7 @@ Subcommands:
   selection           -> selection()              [any doc, W43]
   undercut            -> sw_undercut_faces(pull_x, pull_y, pull_z)  [experimental, DFM]
   min_wall            -> sw_min_wall_thickness(samples_per_face)  [experimental, DFM]
+  section_props       -> sw_get_section_props()  [W58, pre-selected face, experimental]
 
 Each subcommand prints a single JSON object to stdout and exits 0 if the
 underlying tool returned ok=True, else 1. Both --key=value and --key value
@@ -39,6 +40,8 @@ import sys
 from typing import Any
 
 from ..observe import SolidWorksObserver
+from ..observe_section import sw_get_section_props
+from ..sw_com import get_active_doc, get_sw_app
 from .stability import add_subcommand_tier, add_tier, cli_stability
 from .streams import add_quiet_flag, apply_quiet
 
@@ -153,6 +156,13 @@ def _run_face_clearance(args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().face_clearance(
         face_a=args.face_a, face_b=args.face_b
     )
+
+
+def _run_section_props(_args: argparse.Namespace) -> dict[str, Any]:
+    doc = get_active_doc(get_sw_app())
+    if doc is None:
+        return {"ok": False, "error": "no_active_doc"}
+    return sw_get_section_props(doc)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -521,6 +531,20 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Name of the second face (e.g. 'Face<2>').",
     )
     p.set_defaults(func=_run_face_clearance)
+
+    # section_props (W58) — cross-section properties of a pre-selected face.
+    p = subparsers.add_parser(
+        "section_props",
+        description=(
+            "Return cross-section properties of the currently selected planar "
+            "face via IModelDocExtension.GetSectionProperties2.  Caller must "
+            "pre-select a planar face.  Returns area, centroid, moments of "
+            "inertia (Ixx, Iyy, Izz), products (Ixy, Izx, Iyz), polar moment "
+            "(Jp), and principal axes."
+        ),
+    )
+    add_subcommand_tier(p, "experimental")
+    p.set_defaults(func=_run_section_props)
 
     return parser
 
