@@ -92,7 +92,7 @@ async def test_initialize_handshake() -> None:
 
 @pytest.mark.asyncio
 async def test_list_tools_matches_inventory() -> None:
-    """``tools/list`` returns the design-doc §6 inventory (23 tools)."""
+    """``tools/list`` returns the design-doc §6 inventory (30 tools)."""
     runtime = ServerRuntime.create(adapter_type="mock")
     runtime.adapter.connect()
     runtime.executor.start()

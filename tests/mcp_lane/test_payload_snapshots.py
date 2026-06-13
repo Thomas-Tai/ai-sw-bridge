@@ -1,6 +1,6 @@
 """Payload pass-through snapshot tests for the MCP tool surface (W5.5).
 
-For each of the 21 registered tools, this module:
+For each of the 30 registered tools, this module:
 
 1. Spins up a :class:`ServerRuntime` backed by :class:`MockAdapter`.
 2. Calls the tool's wrapped ``.fn`` with the args recorded in
