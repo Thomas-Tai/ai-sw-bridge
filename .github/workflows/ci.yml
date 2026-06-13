@@ -33,7 +33,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          # [dev] = formatter/linter/test harness; [ci] = optional runtime
+          # deps (mcp, keyring) that gate importorskip'd tests. Splitting
+          # them keeps local `pip install -e .[dev]` lean while letting the
+          # full-suite CI job collect every MCP-lane + keyring-crypto test.
+          pip install -e ".[dev,ci]"
           # Pin black to the same version listed in pyproject.toml dev extras.
           # Without a pin, `pip install black` here would get whichever is
           # latest at CI runtime, and black's formatting rules change

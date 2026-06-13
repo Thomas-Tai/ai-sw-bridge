@@ -38,6 +38,13 @@ dependencies = [
 [project.optional-dependencies]
 crypto = ["cryptography>=41.0"]
 mcp = ["mcp>=1.0.0"]
+# Extras needed only by the CI full-suite job. Adding them here (rather than
+# to `dev`) lets local dev installs stay lean while CI collects every test
+# that uses `pytest.importorskip("mcp", ...)` or `importorskip("keyring", ...)`.
+ci = [
+    "mcp>=1.0.0",
+    "keyring>=25.0",
+]
 dev = [
     "pytest>=7",
     "pytest-cov",
