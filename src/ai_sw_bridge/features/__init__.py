@@ -41,3 +41,9 @@ Handler = Callable[[Any, dict, dict], "tuple[bool, str | None]"]
 # kind -> handler. Populated by per-lane modules; ships empty until W56
 # wires the first proven W55 recipe in.
 HANDLER_REGISTRY: dict[str, Handler] = {}
+
+# W59 — sheet-metal hem via legacy InsertSheetMetalHem (CreateDefinition
+# is E_NOINTERFACE for hem; W55-C proved the wall).
+from .hem import create_hem  # noqa: E402
+
+HANDLER_REGISTRY["hem"] = create_hem
