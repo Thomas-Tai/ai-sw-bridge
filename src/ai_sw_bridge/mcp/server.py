@@ -58,11 +58,12 @@ def create_server(runtime: ServerRuntime) -> Any:
 
     Registers every tool from the §6 inventory:
 
-    * Observation (15 tools): sw_active_doc, sw_feature_errors,
+    * Observation (19 tools): sw_active_doc, sw_feature_errors,
       sw_equations, sw_bbox, sw_volume, sw_screenshot, sw_measure,
       sw_mate_errors, sw_custom_props, sw_enabled_addins,
       sw_interference, sw_bounding_box, sw_measure_selection,
-      sw_inertia, sw_clearance.
+      sw_inertia, sw_clearance, sw_draft_analysis, sw_undercut_faces,
+      sw_current_selection, sw_min_wall_thickness.
     * Build (1 tool): sw_build.
     * API doc (5 tools): sw_apidoc_search, sw_apidoc_detail,
       sw_apidoc_members, sw_apidoc_examples, sw_apidoc_enum.
@@ -70,7 +71,7 @@ def create_server(runtime: ServerRuntime) -> Any:
       sw_history_diff, sw_checkpoint_info.
     * Reconnect (1 tool): sw_reconnect.
 
-    Total: 26 tools.
+    Total: 30 tools.
 
     Tools NOT registered (per §6.5): the four mutate operations
     (sw_propose_local_change, sw_dry_run, sw_commit,

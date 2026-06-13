@@ -1,0 +1,19 @@
+{
+  "tool": "sw_clearance",
+  "args": {
+    "comp_a": "block_20mm-1",
+    "comp_b": "block_20mm-2"
+  },
+  "result": {
+    "ok": false,
+    "error": "no_active_doc"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}

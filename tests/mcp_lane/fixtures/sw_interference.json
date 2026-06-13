@@ -1,0 +1,16 @@
+{
+  "tool": "sw_interference",
+  "args": {},
+  "result": {
+    "ok": false,
+    "error": "no_active_doc"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}
