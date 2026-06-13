@@ -32,6 +32,12 @@ centroid's signed projection along the normal against the bbox midpoint along
 the dominant axis. For a centered 20x20x10 mm box built on Front Plane, the
 six faces map to the six axis-aligned roles above.
 
+> **Note:** side is judged independently of the normal's sign, so the mixed
+> pairings (`+x_inboard`, `-x_outboard`, `+y_inboard`, …) are also valid outputs
+> whenever a face's centroid sits on the far side of the bbox midpoint (e.g. an
+> inward-facing pocket wall). The six rows above are the common case for a
+> roughly centered part — not the exhaustive value space.
+
 ### Using face_role in a spec
 
 A face-bound feature can reference a parent feature's face by its role hint
