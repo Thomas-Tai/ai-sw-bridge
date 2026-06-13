@@ -156,6 +156,47 @@ spike + `bodyops_combine_marshal_diag.py` (the 5-variant sweep + all-interface
 combine/split FUNCDESC dump) + the `_create_split` `REFPLANE`→`PLANE` fix. Both
 kinds STAY out of `_SUPPORTED_FEATURE_TYPES`. Re-scope as a dedicated FeatureData wave.
 
+## Wave-58 / Wave-59 (two more out-of-process FeatureData walls + the doctrine)
+
+Two characterization lanes this batch each hit the *same* runtime wall and, taken
+with the W55-C hem/jog/miter finding, make the pattern systematic enough to write
+down. **Neither ships a handler; both preserve a diagnostic baseline.**
+
+| Item | Rationale |
+|---|---|
+| **`move_copy_body` (W58 Lane C, `feat/w58-move-copy-body`)** | **DEFERRED — both routes walled on SW 2024.** FUNCDESC-confirmed sig is the 12-**scalar** `IFeatureManager.InsertMoveCopyBody2(TransX,TransY,TransZ,TransDist, RotPtX/Y/Z, RotAngX/Y/Z:R8, BCopy:BOOL, NumCopies:I4) -> PTR` (invalidates the earlier assumed 4-arg `body:DISPATCH,transform:DISPATCH,…` form — R4 AMBER legitimately cleared). **(1) One-shot `InsertMoveCopyBody2` is an unroutable no-op** out-of-process (returns None, zero B-rep effect, across all selection paradigms / parameter matrices / dispatch layers — gen_py, CDispatch, raw `_oleobj_.Invoke`). **(2) `CreateDefinition(69)` + `IMoveCopyBodyFeatureData` also fails** — gen_py cannot marshal the property setters (Type-mismatch on all setters despite correct FUNCDESC VTs). Handler authored with a centroid-shift ΔVol-class verify-the-EFFECT gate that **fails LOUD** (`(False, "no body found at expected centroid…")`, never a ghost), but it is the registry seam's first customer and is a known wall: **when revisited, DROP the `HANDLER_REGISTRY["move_copy_body"]` advertisement line (walls are not advertised — the combine/split precedent) or gate it behind a DEFERRED flag, and reconcile the seam's "ships empty" docstring.** Escape hatches: **(a) sketch-level offsets** (shift the driving sketch/plane pre-extrude — no body-pointer boundary crossed); **(b) `InsertMoveFace3`** (marshals topological face IDs as string fingerprints, not raw `IBody2` pointers). |
+| **Control-point variable fillet (W59 Lane K, `feat/w59-varfil-ctrlpts`, backlog #33)** | **WALL-ACQUIRE.** `sldworks.tlb` declares the full control-point API on `IVariableFilletFeatureData2` (`GetControlPointsCount`, `SetControlPointRadiusAtIndex(Index,Location,Radius)`, `Get…AtIndex`, conic/distance/transition variants) — but the interface is **runtime-unreachable out-of-process: `CreateDefinition(swFmFillet)` returns an object that QI-rejects `IVariableFilletFeatureData2` with `E_NOINTERFACE`, even after `Initialize(1)`** (MORPH-FALSE proven in prior spikes). NB the SHIPPED per-edge variable fillet (`mutate._create_variable_fillet`, `IsMultipleRadius=True` on the base fillet data) is unaffected — **only the intermediate control-point granularity is walled.** Unprobed escape hatches: legacy `InsertFeatureFillet`, or `GetDefinition` on a manually-created variable fillet (edit-existing rather than create-from-scratch). 20 mocked-COM recipe tests + parked ΔVol PAE on the branch. |
+
+### Doctrine — the `CreateDefinition → E_NOINTERFACE` wall class (and its mirror)
+
+Out-of-process, SOLIDWORKS feature creation has **two opposite, mutually
+exclusive failure modes**, and which one applies is per-feature and empirical —
+**probe BOTH; neither route is universally correct.** Reasoning from one to the
+other is the trap.
+
+- **Mode A — one-shot `Insert*` is a no-op → the FeatureData route is the fix.**
+  The "Insert" macro relies on the implicit UI selection stack, which the OOP COM
+  channel drops, so it silently returns None/False. Here `CreateDefinition(swFm…)`
+  → `typed_qi` → set fields → `CreateFeature` is the WORKING path. Proven/working:
+  **fillet, sweep**; the characterized real path for **combine**
+  (`ICombineBodiesFeatureData`).
+- **Mode B — `CreateDefinition` QI-rejects the specialized sub-interface
+  (`E_NOINTERFACE`, even after `Initialize`) → fall back to legacy `Insert*`.**
+  The factory hands back a bare/base `FeatureData` proxy whose specialized
+  sub-interface won't resolve across the process boundary. Here the FeatureData
+  route is walled and the legacy `Insert*` macro (which passes raw parameters
+  straight to the geometric kernel, bypassing the specialized marshaling layer)
+  is the escape. Proven walls: **hem/jog/miter** (W55-C), **move_copy_body**
+  (`IMoveCopyBodyFeatureData`, W58), **control-point varfil**
+  (`IVariableFilletFeatureData2`, W59).
+
+**Rule of engagement for a new feature lane:** try the route the precedent class
+suggests, but if it dead-ends, immediately probe the *other* mode rather than
+declaring a terminal wall — a feature is only WALLED once BOTH the one-shot
+`Insert*` and the `CreateDefinition`+QI routes are seat-proven to fail. Record the
+FUNCDESC + the exact failure (no-op vs `E_NOINTERFACE`) so the next worker starts
+from the answer.
+
 ## Wave-42 (`dxf_flat` — Developed Boundary Pass; inner bend lines deferred)
 
 **`dxf_flat` SHIPPED 2026-06-09 as a Developed Boundary Pass** — it exports the
