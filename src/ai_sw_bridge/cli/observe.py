@@ -533,7 +533,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=_run_face_clearance)
 
     # section_props (W58) — cross-section properties of a pre-selected face.
-    p = subparsers.add_parser(
+    p = subs.add_parser(
         "section_props",
         description=(
             "Return cross-section properties of the currently selected planar "
