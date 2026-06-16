@@ -41,3 +41,8 @@ Handler = Callable[[Any, dict, dict], "tuple[bool, str | None]"]
 # kind -> handler. Populated by per-lane modules; ships empty until W56
 # wires the first proven W55 recipe in.
 HANDLER_REGISTRY: dict[str, Handler] = {}
+
+# W59 lane: move_copy_body. Imports dormant while SPIKE_STATUS != "GREEN"
+# — registers move_body/copy_body atomically once W0's seat fire proves
+# the InsertMoveCopyBody2 arg shape and flips SPIKE_STATUS to "GREEN".
+from . import move_copy_body as _move_copy_body  # noqa: E402,F401

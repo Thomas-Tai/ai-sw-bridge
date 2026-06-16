@@ -14,8 +14,28 @@ from ai_sw_bridge import features, mutate
 
 
 def test_registry_ships_empty_until_w56():
-    # No lane module is wired yet; first consumer is a proven W55 recipe.
+    # W59 move_copy_body imports dormant (SPIKE_STATUS != "GREEN") so
+    # nothing registers until the seat spike proves the arg shape.
+    # When W0 flips SPIKE_STATUS to GREEN, this assertion flips to
+    # assert "move_body"/"copy_body" present + callable.
     assert features.HANDLER_REGISTRY == {}
+
+
+def test_w59_dormant_module_registers_when_spike_green(monkeypatch):
+    # Pin the dormant-gate: flipping SPIKE_STATUS to GREEN and re-calling
+    # _register() must register both kinds. No exec/eval (Invariant #3/R1).
+    from ai_sw_bridge.features import move_copy_body as mcb
+
+    monkeypatch.setattr(mcb, "SPIKE_STATUS", "GREEN")
+    mcb._register()
+    try:
+        assert "move_body" in features.HANDLER_REGISTRY
+        assert "copy_body" in features.HANDLER_REGISTRY
+        assert callable(features.HANDLER_REGISTRY["move_body"])
+        assert callable(features.HANDLER_REGISTRY["copy_body"])
+    finally:
+        features.HANDLER_REGISTRY.pop("move_body", None)
+        features.HANDLER_REGISTRY.pop("copy_body", None)
 
 
 def test_registry_keys_disjoint_from_builtin_chain():

@@ -1,0 +1,389 @@
+{
+  "spike": "W59_move_face_translate",
+  "timestamp": "2026-06-16T14:34:56",
+  "route": "InsertMoveFace3 (surface topology)",
+  "overall": "DEFORM",
+  "sldworks_tlb": {
+    "loadable": true,
+    "path": "C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\sldworks.tlb"
+  },
+  "funcdesc": {
+    "interfaces": {
+      "IFeatureManager": [
+        {
+          "name": "InsertMoveFace",
+          "memid": 102,
+          "invkind": "FUNCTION",
+          "cParams": 4,
+          "return_type": "VT_LPSTR",
+          "params": [
+            {
+              "name": "MoveType",
+              "type": "3",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "ReverseDir",
+              "type": "11",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "Angle",
+              "type": "5",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "Distance",
+              "type": "5",
+              "flags": "IN",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "InsertMoveFace2",
+          "memid": 184,
+          "invkind": "FUNCTION",
+          "cParams": 6,
+          "return_type": "VT_LPSTR",
+          "params": [
+            {
+              "name": "MoveType",
+              "type": "3",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "ReverseDir",
+              "type": "11",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "Angle",
+              "type": "5",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "Distance",
+              "type": "5",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "TranslationParams",
+              "type": "12",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "RotationParams",
+              "type": "12",
+              "flags": "IN",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "IInsertMoveFace2",
+          "memid": 185,
+          "invkind": "FUNCTION",
+          "cParams": 6,
+          "return_type": "VT_LPSTR",
+          "params": [
+            {
+              "name": "MoveType",
+              "type": "3",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "ReverseDir",
+              "type": "11",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "Angle",
+              "type": "5",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "Distance",
+              "type": "5",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "TranslationParams",
+              "type": "VT_LPSTR",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "RotationParams",
+              "type": "VT_LPSTR",
+              "flags": "IN",
+              "default": null
+            }
+          ]
+        },
+        {
+          "name": "InsertMoveFace3",
+          "memid": 247,
+          "invkind": "FUNCTION",
+          "cParams": 8,
+          "return_type": "VT_LPSTR",
+          "params": [
+            {
+              "name": "MoveType",
+              "type": "3",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "ReverseDir",
+              "type": "11",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "Angle",
+              "type": "5",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "Distance",
+              "type": "5",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "TranslationParams",
+              "type": "12",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "RotationParams",
+              "type": "12",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "EndConditionType",
+              "type": "3",
+              "flags": "IN",
+              "default": null
+            },
+            {
+              "name": "OffsetDistance",
+              "type": "5",
+              "flags": "IN",
+              "default": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "insert_move_face3_sig": {
+    "name": "InsertMoveFace3",
+    "memid": 247,
+    "invkind": "FUNCTION",
+    "cParams": 8,
+    "return_type": "VT_LPSTR",
+    "params": [
+      {
+        "name": "MoveType",
+        "type": "3",
+        "flags": "IN",
+        "default": null
+      },
+      {
+        "name": "ReverseDir",
+        "type": "11",
+        "flags": "IN",
+        "default": null
+      },
+      {
+        "name": "Angle",
+        "type": "5",
+        "flags": "IN",
+        "default": null
+      },
+      {
+        "name": "Distance",
+        "type": "5",
+        "flags": "IN",
+        "default": null
+      },
+      {
+        "name": "TranslationParams",
+        "type": "12",
+        "flags": "IN",
+        "default": null
+      },
+      {
+        "name": "RotationParams",
+        "type": "12",
+        "flags": "IN",
+        "default": null
+      },
+      {
+        "name": "EndConditionType",
+        "type": "3",
+        "flags": "IN",
+        "default": null
+      },
+      {
+        "name": "OffsetDistance",
+        "type": "5",
+        "flags": "IN",
+        "default": null
+      }
+    ],
+    "interface": "IFeatureManager"
+  },
+  "swconst_move_face_type": {
+    "path": "C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\swconst.tlb",
+    "loadable": true,
+    "swMoveFaceTypeOffset": 0,
+    "swMoveFaceTypeTranslate": 1,
+    "swMoveFaceTypeRotate": 2
+  },
+  "move_type_translate_value": 1,
+  "sw_revision": "32.1.0",
+  "fixture": {
+    "built": true
+  },
+  "before": {
+    "bbox": [
+      -0.025,
+      -0.025,
+      0.0,
+      0.025,
+      0.025,
+      0.05
+    ],
+    "volume_mm3": 0.00012500000000000003
+  },
+  "face_selection": {
+    "selected_count": 1,
+    "face_count": 6,
+    "target": "+X face",
+    "detail": [
+      {
+        "face_idx": 0,
+        "box_x": [
+          -0.025,
+          -0.025
+        ],
+        "is_plus_x": false
+      },
+      {
+        "face_idx": 1,
+        "box_x": [
+          -0.025,
+          0.025
+        ],
+        "is_plus_x": false
+      },
+      {
+        "face_idx": 2,
+        "box_x": [
+          0.025,
+          0.025
+        ],
+        "is_plus_x": true
+      },
+      {
+        "face_idx": 3,
+        "box_x": [
+          -0.025,
+          0.025
+        ],
+        "is_plus_x": false
+      },
+      {
+        "face_idx": 4,
+        "box_x": [
+          -0.025,
+          0.025
+        ],
+        "is_plus_x": false
+      },
+      {
+        "face_idx": 5,
+        "box_x": [
+          -0.025,
+          0.025
+        ],
+        "is_plus_x": false
+      }
+    ]
+  },
+  "move_face_probe": {
+    "args": [
+      1,
+      false,
+      0.0,
+      0.0,
+      "<VARIANT>",
+      "<VARIANT>",
+      0,
+      0.0
+    ],
+    "arg_count": 8,
+    "expected_cParams": 8,
+    "call_ok": true,
+    "return": null,
+    "return_type": "NoneType",
+    "elapsed_ms": 20.2
+  },
+  "after": {
+    "bbox": [
+      -0.025,
+      -0.025,
+      0.0,
+      0.025,
+      0.025,
+      0.05
+    ],
+    "volume_mm3": 0.00012500000000000003
+  },
+  "bbox_delta": {
+    "dx_min_m": 0.0,
+    "dy_min_m": 0.0,
+    "dz_min_m": 0.0,
+    "dx_max_m": 0.0,
+    "dy_max_m": 0.0,
+    "dz_max_m": 0.0
+  },
+  "bbox_vol_before": 0.00012500000000000003,
+  "bbox_vol_after": 0.00012500000000000003,
+  "delta_vol_mm3": 0.0,
+  "save_reopen": {
+    "save_ok": true,
+    "path": "C:\\Users\\sky\\AppData\\Local\\Temp\\ai-sw-bridge\\spike_move_face_translate.sldprt",
+    "reopen_ok": false,
+    "reopen_error": "com_error: com_error(-2147352571, 'Type mismatch.', None, 5)"
+  },
+  "verdict": "DEFORM",
+  "deform_detail": {
+    "x_shift_ok": false,
+    "off_axis_ok": true,
+    "vol_ok": true,
+    "off_axis_max_mm": 0.0
+  },
+  "fallback_sketch_offset": {
+    "error": "bbox unreadable"
+  },
+  "persistence": "N/A_DEFORM"
+}
