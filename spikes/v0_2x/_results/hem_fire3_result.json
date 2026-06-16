@@ -1,0 +1,79 @@
+{
+  "binding": "hybrid early (com.earlybind)",
+  "module_source": "com.sw_type_info.wrapper_module",
+  "module": "win32com.gen_py.83A33D31-27C5-11CE-BFD4-00400513BB57x0x32x0",
+  "sw_revision": "32.1.0",
+  "profile": {
+    "built": true,
+    "sketch": "Sketch1"
+  },
+  "base_flange": {
+    "create_definition": {
+      "status": "OK",
+      "type": "CDispatch",
+      "elapsed_ms": 21.870499998840387
+    },
+    "typed_qi": {
+      "status": "OK",
+      "type": "IBaseFlangeFeatureData",
+      "elapsed_ms": 7.478099998479593
+    },
+    "set_Thickness": "OK",
+    "set_BendRadius": "OK",
+    "create_feature": {
+      "status": "OK",
+      "type": "CDispatch",
+      "elapsed_ms": 692.3606000000291,
+      "materialized": true,
+      "feature_name": "Base-Flange1"
+    },
+    "overall": "PASS"
+  },
+  "live_edges": 12,
+  "edge_select": {
+    "Select2": true
+  },
+  "hem_v1": {
+    "method": "InsertSheetMetalHem",
+    "arity": 9,
+    "faces_before": 6,
+    "attempts": [
+      {
+        "status": "EXCEPTION",
+        "exception_type": "com_error",
+        "message": "(-2147352571, 'Type mismatch.', None, 9)",
+        "hresult": "-0x7ffdfffb",
+        "elapsed_ms": 19.5371999998315,
+        "combo": "closed-null-pcba",
+        "materialized": false
+      },
+      {
+        "status": "EXCEPTION",
+        "exception_type": "com_error",
+        "message": "(-2147352571, 'Type mismatch.', None, 9)",
+        "hresult": "-0x7ffdfffb",
+        "elapsed_ms": 7.682999999815365,
+        "combo": "open-null-pcba",
+        "materialized": false
+      }
+    ],
+    "overall": "FAIL"
+  },
+  "hem_v2": {
+    "method": "InsertSheetMetalHem2",
+    "arity": 16,
+    "faces_before": 6,
+    "call": {
+      "status": "EXCEPTION",
+      "exception_type": "com_error",
+      "message": "(-2147352571, 'Type mismatch.', None, 9)",
+      "hresult": "-0x7ffdfffb",
+      "elapsed_ms": 15.660099999877275,
+      "materialized": false
+    },
+    "overall": "FAIL"
+  },
+  "cleanup": "CloseAllDocuments(True)",
+  "overall": "FAIL",
+  "interpretation": "Both v1 and v2 FAIL \u2192 hem unreachable."
+}

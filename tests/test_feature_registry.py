@@ -13,9 +13,9 @@ from __future__ import annotations
 from ai_sw_bridge import features, mutate
 
 
-def test_registry_ships_empty_until_w56():
-    # No lane module is wired yet; first consumer is a proven W55 recipe.
-    assert features.HANDLER_REGISTRY == {}
+def test_registry_contains_wired_lanes():
+    # W59 wired hem; registry is no longer empty.
+    assert "hem" in features.HANDLER_REGISTRY
 
 
 def test_registry_keys_disjoint_from_builtin_chain():
