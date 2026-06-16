@@ -461,7 +461,11 @@ def main() -> int:
     try:
         mod = wrapper_module()
         sw = connect_running_sw()
-        out["sw_revision"] = sw.RevisionNumber()
+        # RevisionNumber is a METHOD on the typed/makepy proxy but a str
+        # PROPERTY on a dynamic.Dispatch (which connect_running_sw returns).
+        # Guard both flavors (the GetSaveFlag typed-proxy class of footgun).
+        rev = sw.RevisionNumber
+        out["sw_revision"] = rev() if callable(rev) else rev
 
         tactics = [
             ("tactic_1_vt_dispatch", _tactic_1_makepy_vt_dispatch),
