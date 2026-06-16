@@ -1,13 +1,277 @@
 {
-  "_comment": "APIs the bridge actually calls. Used by chm_extract.py batch to produce docs/api_reference.json.",
+  "_comment": "APIs the bridge actually calls. Used by chm_extract.py batch to produce docs/api_reference.json. Scope: superset of the shipped COM call surface (harvested from src/ai_sw_bridge 2026-06-16) + the original curated core. Methods/enums absent from this SW build's CHM land in the 'Not found in CHM' section of api_reference.md and document real walls.",
   "methods": [
     [
+      "IAnnotation",
+      "GetType"
+    ],
+    [
       "IAssemblyDoc",
-      "AddMate5"
+      "AddComponent4"
+    ],
+    [
+      "IAssemblyDoc",
+      "CreateExplodedView"
+    ],
+    [
+      "IAssemblyDoc",
+      "CreateMate"
+    ],
+    [
+      "IAssemblyDoc",
+      "CreateMateData"
+    ],
+    [
+      "IAssemblyDoc",
+      "GetComponents"
+    ],
+    [
+      "IAssemblyDoc",
+      "MirrorComponents"
+    ],
+    [
+      "IBody",
+      "GetMassProperties"
+    ],
+    [
+      "IBody2",
+      "GetEdges"
+    ],
+    [
+      "IBody2",
+      "GetFaces"
+    ],
+    [
+      "IBody2",
+      "GetMassProperties"
+    ],
+    [
+      "IBomTableAnnotation",
+      "GetComponentsCount2"
+    ],
+    [
+      "IComponent2",
+      "GetBodies"
+    ],
+    [
+      "IComponent2",
+      "GetModelDoc2"
+    ],
+    [
+      "IComponent2",
+      "GetSelectByIDString"
+    ],
+    [
+      "IComponent2",
+      "GetSuppression2"
+    ],
+    [
+      "IComponent2",
+      "Select2"
+    ],
+    [
+      "IComponent2",
+      "SetTransformAndSolve"
+    ],
+    [
+      "IConfiguration",
+      "AddExplodeStep"
+    ],
+    [
+      "IConfigurationManager",
+      "AddConfiguration2"
+    ],
+    [
+      "ICurve",
+      "Evaluate"
+    ],
+    [
+      "ICurve",
+      "GetEndParams"
+    ],
+    [
+      "ICurve",
+      "GetLength"
+    ],
+    [
+      "ICurve",
+      "IsLine"
+    ],
+    [
+      "ICustomPropertyManager",
+      "Add3"
+    ],
+    [
+      "ICustomPropertyManager",
+      "Count"
+    ],
+    [
+      "ICustomPropertyManager",
+      "Get4"
+    ],
+    [
+      "ICustomPropertyManager",
+      "GetNames"
+    ],
+    [
+      "IDesignTable",
+      "Attach"
+    ],
+    [
+      "IDesignTable",
+      "Detach"
+    ],
+    [
+      "IDesignTable",
+      "EditTable2"
+    ],
+    [
+      "IDesignTable",
+      "UpdateModel"
+    ],
+    [
+      "IDesignTable",
+      "UpdateTable"
+    ],
+    [
+      "IDesignTable",
+      "Worksheet"
+    ],
+    [
+      "IDimension",
+      "SetToleranceType"
+    ],
+    [
+      "IDimension",
+      "SetToleranceValues"
+    ],
+    [
+      "IDisplayDimension",
+      "GetDimension2"
+    ],
+    [
+      "IDrawingDoc",
+      "ActivateSheet"
+    ],
+    [
+      "IDrawingDoc",
+      "ActivateView"
+    ],
+    [
+      "IDrawingDoc",
+      "CreateDetailViewAt4"
+    ],
+    [
+      "IDrawingDoc",
+      "CreateDrawViewFromModelView3"
+    ],
+    [
+      "IDrawingDoc",
+      "CreateFlatPatternViewFromModelView3"
+    ],
+    [
+      "IDrawingDoc",
+      "CreateSectionViewAt5"
+    ],
+    [
+      "IDrawingDoc",
+      "GetCurrentSheet"
+    ],
+    [
+      "IDrawingDoc",
+      "GetSheetNames"
+    ],
+    [
+      "IDrawingDoc",
+      "InsertModelAnnotations3"
+    ],
+    [
+      "IDrawingDoc",
+      "NewSheet3"
+    ],
+    [
+      "IEdge",
+      "GetClosestPointOn"
+    ],
+    [
+      "IEdge",
+      "GetCurve"
+    ],
+    [
+      "IEdge",
+      "GetStartVertex"
+    ],
+    [
+      "IEntity",
+      "Select2"
+    ],
+    [
+      "IEntity",
+      "Select4"
     ],
     [
       "IEquationMgr",
       "Add2"
+    ],
+    [
+      "IEquationMgr",
+      "Equation"
+    ],
+    [
+      "IEquationMgr",
+      "GlobalVariable"
+    ],
+    [
+      "IEquationMgr",
+      "Suppression"
+    ],
+    [
+      "IEquationMgr",
+      "Value"
+    ],
+    [
+      "IExportPdfData",
+      "SetSheets"
+    ],
+    [
+      "IFace",
+      "GetClosestPointOn"
+    ],
+    [
+      "IFace",
+      "GetSurface"
+    ],
+    [
+      "IFace2",
+      "GetArea"
+    ],
+    [
+      "IFace2",
+      "GetClosestPointOn"
+    ],
+    [
+      "IFace2",
+      "GetSurface"
+    ],
+    [
+      "IFeature",
+      "GetBody"
+    ],
+    [
+      "IFeature",
+      "GetDefinition"
+    ],
+    [
+      "IFeature",
+      "GetErrorCode"
+    ],
+    [
+      "IFeature",
+      "GetErrorCode2"
+    ],
+    [
+      "IFeature",
+      "GetFaces"
     ],
     [
       "IFeature",
@@ -16,6 +280,26 @@
     [
       "IFeature",
       "GetTypeName"
+    ],
+    [
+      "IFeature",
+      "GetTypeName2"
+    ],
+    [
+      "IFeature",
+      "IsSuppressed"
+    ],
+    [
+      "IFeature",
+      "IsSuppressed2"
+    ],
+    [
+      "IFeature",
+      "Select2"
+    ],
+    [
+      "IFeature",
+      "SetSuppression"
     ],
     [
       "IFeatureManager",
@@ -35,10 +319,6 @@
     ],
     [
       "IFeatureManager",
-      "FeatureCut5"
-    ],
-    [
-      "IFeatureManager",
       "FeatureExtrusion2"
     ],
     [
@@ -55,6 +335,22 @@
     ],
     [
       "IFeatureManager",
+      "GetFeatures"
+    ],
+    [
+      "IFeatureManager",
+      "InsertCombineFeature"
+    ],
+    [
+      "IFeatureManager",
+      "InsertCoordinateSystem"
+    ],
+    [
+      "IFeatureManager",
+      "InsertDeleteBody2"
+    ],
+    [
+      "IFeatureManager",
       "InsertFeatureChamfer"
     ],
     [
@@ -63,23 +359,95 @@
     ],
     [
       "IFeatureManager",
+      "InsertMultiFaceDraft"
+    ],
+    [
+      "IFeatureManager",
+      "InsertRefPlane"
+    ],
+    [
+      "IFeatureManager",
+      "InsertReferencePoint"
+    ],
+    [
+      "IFeatureManager",
+      "InsertRib"
+    ],
+    [
+      "IFeatureManager",
+      "InsertSheetMetalEdgeFlange2"
+    ],
+    [
+      "IFeatureManager",
+      "InsertSplitBody"
+    ],
+    [
+      "IFeatureManager",
+      "InsertWrapFeature2"
+    ],
+    [
+      "IFeatureManager",
       "SimpleHole2"
     ],
     [
-      "IGearMateFeatureData",
-      "EntitiesToMate"
+      "IHoleDataTable",
+      "GetCellData"
     ],
     [
-      "IGearMateFeatureData",
-      "GearRatioDenominator"
+      "IHoleDataTable",
+      "GetColumnNames"
     ],
     [
-      "IGearMateFeatureData",
-      "GearRatioNumerator"
+      "IHoleStandardsData",
+      "GetFastenerTable"
     ],
     [
-      "IGearMateFeatureData",
-      "Reverse"
+      "IHoleStandardsData",
+      "GetFastenerTableTypes"
+    ],
+    [
+      "IHoleStandardsData",
+      "GetFastenerTypes"
+    ],
+    [
+      "IHoleStandardsData",
+      "GetHoleStandards"
+    ],
+    [
+      "IInterferenceDetectionMgr",
+      "Done"
+    ],
+    [
+      "IInterferenceDetectionMgr",
+      "GetInterferenceCount"
+    ],
+    [
+      "IInterferenceDetectionMgr",
+      "GetInterferences"
+    ],
+    [
+      "IMassProperty",
+      "GetMomentOfInertia"
+    ],
+    [
+      "IMassProperty2",
+      "GetMomentOfInertia"
+    ],
+    [
+      "IMathUtility",
+      "CreatePoint"
+    ],
+    [
+      "IMathUtility",
+      "CreateTransform"
+    ],
+    [
+      "IMathUtility",
+      "CreateVector"
+    ],
+    [
+      "IMeasure",
+      "Calculate"
     ],
     [
       "IModelDoc2",
@@ -95,6 +463,10 @@
     ],
     [
       "IModelDoc2",
+      "EditSketch"
+    ],
+    [
+      "IModelDoc2",
       "EditUndo2"
     ],
     [
@@ -103,11 +475,79 @@
     ],
     [
       "IModelDoc2",
+      "FeatureCut5"
+    ],
+    [
+      "IModelDoc2",
+      "ForceRebuild3"
+    ],
+    [
+      "IModelDoc2",
+      "GetActiveConfiguration"
+    ],
+    [
+      "IModelDoc2",
+      "GetConfigurationNames"
+    ],
+    [
+      "IModelDoc2",
+      "GetCustomInfoValue2"
+    ],
+    [
+      "IModelDoc2",
+      "GetDesignTable"
+    ],
+    [
+      "IModelDoc2",
       "GetFeatureCount"
     ],
     [
       "IModelDoc2",
+      "GetTitle"
+    ],
+    [
+      "IModelDoc2",
+      "GetType"
+    ],
+    [
+      "IModelDoc2",
+      "InsertAxis2"
+    ],
+    [
+      "IModelDoc2",
+      "InsertDome"
+    ],
+    [
+      "IModelDoc2",
+      "InsertFamilyTableNew"
+    ],
+    [
+      "IModelDoc2",
+      "InsertFeatureShell"
+    ],
+    [
+      "IModelDoc2",
+      "InsertSketch2"
+    ],
+    [
+      "IModelDoc2",
+      "InsertSketchText"
+    ],
+    [
+      "IModelDoc2",
+      "InsertSurfaceFinishSymbol2"
+    ],
+    [
+      "IModelDoc2",
       "Parameter"
+    ],
+    [
+      "IModelDoc2",
+      "Save"
+    ],
+    [
+      "IModelDoc2",
+      "SaveAs3"
     ],
     [
       "IModelDoc2",
@@ -118,8 +558,116 @@
       "SelectByID"
     ],
     [
+      "IModelDoc2",
+      "ShowConfiguration2"
+    ],
+    [
+      "IModelDoc2",
+      "SketchAddConstraints"
+    ],
+    [
+      "IModelDocExtension",
+      "CreateMassProperty"
+    ],
+    [
+      "IModelDocExtension",
+      "CreateMeasure"
+    ],
+    [
+      "IModelDocExtension",
+      "CustomPropertyManager"
+    ],
+    [
+      "IModelDocExtension",
+      "GetObjectByPersistReference3"
+    ],
+    [
+      "IModelDocExtension",
+      "GetPersistReference3"
+    ],
+    [
+      "IModelDocExtension",
+      "SaveAs"
+    ],
+    [
       "IModelDocExtension",
       "SelectByID2"
+    ],
+    [
+      "IPartDoc",
+      "ExportFlatPatternView"
+    ],
+    [
+      "IPartDoc",
+      "ExportToDWG2"
+    ],
+    [
+      "IPartDoc",
+      "GetBodies2"
+    ],
+    [
+      "IPartDoc",
+      "GetMaterialPropertyName2"
+    ],
+    [
+      "IPartDoc",
+      "GetPartBox"
+    ],
+    [
+      "IPartDoc",
+      "SetMaterialPropertyName2"
+    ],
+    [
+      "ISelectionMgr",
+      "GetSelectedObject6"
+    ],
+    [
+      "ISelectionMgr",
+      "GetSelectedObjectCount2"
+    ],
+    [
+      "ISelectionMgr",
+      "GetSelectedObjectType3"
+    ],
+    [
+      "ISelectionMgr",
+      "GetSelectedObjectsComponent4"
+    ],
+    [
+      "ISelectionMgr",
+      "SetSelectedObjectMark"
+    ],
+    [
+      "ISheet",
+      "GetName"
+    ],
+    [
+      "ISheet",
+      "GetViews"
+    ],
+    [
+      "ISheet",
+      "SetName"
+    ],
+    [
+      "ISheet",
+      "SetProperties2"
+    ],
+    [
+      "ISimpleFilletFeatureData2",
+      "Initialize"
+    ],
+    [
+      "ISketch",
+      "GetSketchSegments"
+    ],
+    [
+      "ISketch",
+      "ModelToSketchTransform"
+    ],
+    [
+      "ISketchManager",
+      "CreateArc"
     ],
     [
       "ISketchManager",
@@ -135,11 +683,87 @@
     ],
     [
       "ISketchManager",
+      "CreateCircleByRadius"
+    ],
+    [
+      "ISketchManager",
       "CreateCornerRectangle"
     ],
     [
       "ISketchManager",
+      "CreateEllipse"
+    ],
+    [
+      "ISketchManager",
+      "CreateLine"
+    ],
+    [
+      "ISketchManager",
+      "CreateParabola"
+    ],
+    [
+      "ISketchManager",
+      "CreatePoint"
+    ],
+    [
+      "ISketchManager",
+      "CreatePolygon"
+    ],
+    [
+      "ISketchManager",
+      "CreateSketchSlot"
+    ],
+    [
+      "ISketchManager",
+      "CreateSpline2"
+    ],
+    [
+      "ISketchManager",
+      "Insert3DSketch"
+    ],
+    [
+      "ISketchManager",
       "InsertSketch"
+    ],
+    [
+      "ISketchRelationManager",
+      "DeleteRelation"
+    ],
+    [
+      "ISketchRelationManager",
+      "GetRelations"
+    ],
+    [
+      "ISketchSegment",
+      "ConstructionGeometry"
+    ],
+    [
+      "ISketchText",
+      "GetTextFormat"
+    ],
+    [
+      "ISketchText",
+      "SetTextFormat"
+    ],
+    [
+      "ISldWorks",
+      "CloseDoc"
+    ],
+    [
+      "ISldWorks",
+      "GetExportFileData"
+    ],
+    [
+      "ISldWorks",
+      "GetHoleStandardsData"
+    ],
+    [
+      "ISldWorks",
+      "GetImportFileData"
+    ],
+    [
+      "ISldWorks",
+      "GetMathUtility"
     ],
     [
       "ISldWorks",
@@ -151,7 +775,15 @@
     ],
     [
       "ISldWorks",
+      "LoadFile4"
+    ],
+    [
+      "ISldWorks",
       "NewDocument"
+    ],
+    [
+      "ISldWorks",
+      "OpenDoc6"
     ],
     [
       "ISldWorks",
@@ -162,399 +794,95 @@
       "SetUserPreferenceToggle"
     ],
     [
-      "ISweepFeatureData",
-      "AccessSelections"
+      "ISurface",
+      "Evaluate"
     ],
     [
-      "ISweepFeatureData",
-      "AdvancedSmoothing"
+      "ISurface",
+      "IsCylinder"
     ],
     [
-      "ISweepFeatureData",
-      "AlignWithEndFaces"
+      "ISurface",
+      "IsPlane"
     ],
     [
-      "ISweepFeatureData",
-      "AssemblyFeatureScope"
+      "ISurface",
+      "Parameterization"
     ],
     [
-      "ISweepFeatureData",
-      "AutoSelect"
+      "IView",
+      "GetAnnotationCount"
     ],
     [
-      "ISweepFeatureData",
-      "AutoSelectComponents"
+      "IView",
+      "GetAnnotations"
     ],
     [
-      "ISweepFeatureData",
-      "CircularProfile"
+      "IView",
+      "GetDisplayDimensions"
     ],
     [
-      "ISweepFeatureData",
-      "CircularProfileDiameter"
+      "IView",
+      "GetName2"
     ],
     [
-      "ISweepFeatureData",
-      "D1ReverseTwistDir"
+      "IView",
+      "GetOutline"
     ],
     [
-      "ISweepFeatureData",
-      "D2ReverseTwistDir"
+      "IView",
+      "GetTableAnnotationCount"
     ],
     [
-      "ISweepFeatureData",
-      "Direction"
+      "IView",
+      "IGetBomTable"
     ],
     [
-      "ISweepFeatureData",
-      "EndDirectionVector"
+      "IView",
+      "InsertBomTable4"
     ],
     [
-      "ISweepFeatureData",
-      "EndTangencyType"
-    ],
-    [
-      "ISweepFeatureData",
-      "FeatureScope"
-    ],
-    [
-      "ISweepFeatureData",
-      "FeatureScopeBodies"
-    ],
-    [
-      "ISweepFeatureData",
-      "GetCutSweepOption"
-    ],
-    [
-      "ISweepFeatureData",
-      "GetD2TwistAngle"
-    ],
-    [
-      "ISweepFeatureData",
-      "GetFeatureScopeBodiesCount"
-    ],
-    [
-      "ISweepFeatureData",
-      "GetGuideCurvesCount"
-    ],
-    [
-      "ISweepFeatureData",
-      "GetGuideCurvesType"
-    ],
-    [
-      "ISweepFeatureData",
-      "GetPathAlignmentDirectionVector"
-    ],
-    [
-      "ISweepFeatureData",
-      "GetPathType"
-    ],
-    [
-      "ISweepFeatureData",
-      "GetProfileType"
-    ],
-    [
-      "ISweepFeatureData",
-      "GetTwistAngle"
-    ],
-    [
-      "ISweepFeatureData",
-      "GetWallThickness"
-    ],
-    [
-      "ISweepFeatureData",
-      "GuideCurves"
-    ],
-    [
-      "ISweepFeatureData",
-      "IAccessSelections"
-    ],
-    [
-      "ISweepFeatureData",
-      "IGetFeatureScopeBodies"
-    ],
-    [
-      "ISweepFeatureData",
-      "IGetGuideCurves"
-    ],
-    [
-      "ISweepFeatureData",
-      "IGetGuideCurvesType"
-    ],
-    [
-      "ISweepFeatureData",
-      "IsBossFeature"
-    ],
-    [
-      "ISweepFeatureData",
-      "IsThinFeature"
-    ],
-    [
-      "ISweepFeatureData",
-      "MaintainTangency"
-    ],
-    [
-      "ISweepFeatureData",
-      "Merge"
-    ],
-    [
-      "ISweepFeatureData",
-      "MergeSmoothFaces"
-    ],
-    [
-      "ISweepFeatureData",
-      "Path"
-    ],
-    [
-      "ISweepFeatureData",
-      "PathAlignmentType"
-    ],
-    [
-      "ISweepFeatureData",
-      "Profile"
-    ],
-    [
-      "ISweepFeatureData",
-      "PropagateFeatureToParts"
-    ],
-    [
-      "ISweepFeatureData",
-      "ReleaseSelectionAccess"
-    ],
-    [
-      "ISweepFeatureData",
-      "SetD2TwistAngle"
-    ],
-    [
-      "ISweepFeatureData",
-      "SetPathAlignmentDirectionVector"
-    ],
-    [
-      "ISweepFeatureData",
-      "SetTwistAngle"
-    ],
-    [
-      "ISweepFeatureData",
-      "SetWallThickness"
-    ],
-    [
-      "ISweepFeatureData",
-      "StartDirectionVector"
-    ],
-    [
-      "ISweepFeatureData",
-      "StartTangencyType"
-    ],
-    [
-      "ISweepFeatureData",
-      "SweepType"
-    ],
-    [
-      "ISweepFeatureData",
-      "TangentPropagation"
-    ],
-    [
-      "ISweepFeatureData",
-      "ThinFeature"
-    ],
-    [
-      "ISweepFeatureData",
-      "ThinWallType"
-    ],
-    [
-      "ISweepFeatureData",
-      "TwistControlType"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "AccessSelections"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "AsymmetricFillet"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "ConicTypeForCrossSectionProfile"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "CurvatureContinuous"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "DefaultConicRhoOrRadius"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "DefaultDistance"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "DefaultRadius"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "FilletEdgeCount"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetConicRhoOrRadius"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetConicRhoOrRadius2"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetControlPointConicRhoOrRadiusAtIndex"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetControlPointDistanceAtIndex"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetControlPointRadiusAtIndex"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetControlPointsCount"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetDistance"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetFilletEdgeAtIndex"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetRadius"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetRadius2"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetSetbackDistanceCount"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetSetbackVertexDistance"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetSetbackVertices"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "GetSetbackVerticesCount"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "IAccessSelections"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "IGetConicRhoOrRadius"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "IGetFilletEdgeAtIndex"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "IGetRadius"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "IGetSetbackVertexDistance"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "IGetSetbackVertices"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "ISetConicRhoOrRadius"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "ISetRadius"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "ISetSetbackVertexDistance"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "ISetSetbackVertices"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "OverflowType"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "PropagateFeatureToParts"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "PropagateToTangentFaces"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "ReleaseSelectionAccess"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "SetConicRhoOrRadius"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "SetControlPointConicRhoOrRadiusAtIndex"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "SetControlPointDistanceAtIndex"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "SetControlPointRadiusAtIndex"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "SetDistance"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "SetRadius"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "SetSetbackVertexDistance"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "SetSetbackVertices"
-    ],
-    [
-      "IVariableFilletFeatureData2",
-      "TransitionType"
+      "IWizardHoleFeatureData2",
+      "InitializeHole"
     ]
   ],
   "enums": [
-    "swEndConditions_e",
-    "swStartConditions_e",
-    "swDocumentTypes_e",
-    "swDimensionType_e",
-    "swSelectType_e",
+    "swAnnotationType_e",
+    "swBodyOperationType_e",
+    "swBodyType_e",
     "swChamferType_e",
+    "swConstraintType_e",
+    "swCustomInfoType_e",
+    "swCustomPropertyAddOption_e",
+    "swDimensionType_e",
+    "swDocumentTypes_e",
+    "swDraftFacePropagationType_e",
+    "swDwgPaperSizes_e",
+    "swDwgTemplates_e",
+    "swEndConditions_e",
+    "swExportDataFileType_e",
+    "swExportDataSheetsToExport_e",
+    "swExportToDWG_e",
     "swFeatureChamferOption_e",
+    "swFeatureNameID_e",
     "swFeatureScope_e",
-    "swThinWallType_e"
+    "swFileSaveError_e",
+    "swHingeMateEntityType_e",
+    "swMateType_e",
+    "swPersistReferencedObjectStates_e",
+    "swRackPinionMateDistanceOptions_e",
+    "swRefPlaneReferenceConstraints_e",
+    "swSaveAsOptions_e",
+    "swSaveAsVersion_e",
+    "swSelectType_e",
+    "swSelectionMarkAction_e",
+    "swSimpleFilletType_e",
+    "swSlotMateConstraintOptions_e",
+    "swStartConditions_e",
+    "swThinWallType_e",
+    "swTolType_e",
+    "swUserPreferenceIntegerValue_e",
+    "swUserPreferenceToggle_e",
+    "swWzdGeneralHoleTypes_e"
   ]
 }

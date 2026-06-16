@@ -84,6 +84,12 @@ def main() -> int:
         "call fails `PARAMNOTOPTIONAL` or `Invalid number of parameters`, the first check",
         "is whether the arg count here matches what's being passed. ([builder.py FeatureCut4 was 27 args, not 24](src/ai_sw_bridge/spec/builder.py))",
         "",
+        "**Scope:** the COM methods/enums the bridge actually calls — the input list",
+        "(`tools/_api_extract_input.json`) is a superset of the shipped call surface",
+        "harvested from `src/ai_sw_bridge/`, *not* the entire SOLIDWORKS API. Entries under",
+        "**Not found in CHM** are real walls: methods/enums the bridge references that are",
+        "absent from this build's help files (e.g. the unsupported split, deprecated calls).",
+        "",
         "## Methods",
         "",
     ]

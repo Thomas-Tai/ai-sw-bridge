@@ -85,3 +85,16 @@ references/
 spikes/v0_2x/route_c/*.dll
 spikes/v0_2x/route_c/bin/
 spikes/v0_2x/route_c/obj/
+
+# Generated SOLIDWORKS API references — regenerable build outputs, not sources.
+# Committed sources: tools/_api_extract_input.json (curated input) + the
+# generators/guard (tools/gen_api_markdown.py, tools/export_full_sw_api.ps1,
+# tools/verify_api_reference_against_dll.ps1). Regenerate the outputs locally
+# (needs a SW install + decompiled CHM):
+#   api_reference.*  : chm_extract.py batch _api_extract_input.json + gen_api_markdown.py
+#   sw_api_full.*    : export_full_sw_api.ps1   (3MB+; all redist assemblies)
+docs/api_reference.json
+docs/api_reference.md
+docs/sw_api_full.json
+docs/sw_api_full.md
+docs/ribbon_api_progress_relation_audit.md
