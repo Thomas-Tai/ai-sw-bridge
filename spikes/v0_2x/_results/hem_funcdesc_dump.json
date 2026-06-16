@@ -1,0 +1,167 @@
+{
+  "sldworks_funcdesc": {
+    "tlb_path": "C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\sldworks.tlb",
+    "iface": "IFeatureManager",
+    "methods": {
+      "InsertSheetMetalHem": {
+        "arity": 9,
+        "return_type": "PTR",
+        "params": [
+          {
+            "name": "Type",
+            "vt": "I4",
+            "raw_vt": 3
+          },
+          {
+            "name": "Position",
+            "vt": "I4",
+            "raw_vt": 3
+          },
+          {
+            "name": "Reverse",
+            "vt": "BOOL",
+            "raw_vt": 11
+          },
+          {
+            "name": "DLength",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "DGap",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "DAngle",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "DRad",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "DMiterGap",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "PCBA",
+            "vt": "PTR",
+            "raw_vt": 26
+          }
+        ],
+        "invkind": 1,
+        "flags": 0,
+        "memid": 91
+      },
+      "InsertSheetMetalHem2": {
+        "arity": 16,
+        "return_type": "PTR",
+        "params": [
+          {
+            "name": "Type",
+            "vt": "I4",
+            "raw_vt": 3
+          },
+          {
+            "name": "Position",
+            "vt": "I4",
+            "raw_vt": 3
+          },
+          {
+            "name": "Reverse",
+            "vt": "BOOL",
+            "raw_vt": 11
+          },
+          {
+            "name": "DLength",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "DGap",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "DAngle",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "DRad",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "DMiterGap",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "PCBA",
+            "vt": "PTR",
+            "raw_vt": 26
+          },
+          {
+            "name": "UseDefaultRelief",
+            "vt": "BOOL",
+            "raw_vt": 11
+          },
+          {
+            "name": "ReliefType",
+            "vt": "I4",
+            "raw_vt": 3
+          },
+          {
+            "name": "ReliefTearTypes",
+            "vt": "I4",
+            "raw_vt": 3
+          },
+          {
+            "name": "UseReliefRatio",
+            "vt": "BOOL",
+            "raw_vt": 11
+          },
+          {
+            "name": "ReliefRatio",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "ReliefWidth",
+            "vt": "R8",
+            "raw_vt": 5
+          },
+          {
+            "name": "ReliefDepth",
+            "vt": "R8",
+            "raw_vt": 5
+          }
+        ],
+        "invkind": 1,
+        "flags": 0,
+        "memid": 201
+      }
+    }
+  },
+  "swconst_enums": {
+    "tlb_path": "C:\\Program Files\\SOLIDWORKS Corp\\SOLIDWORKS\\swconst.tlb",
+    "enums": {
+      "swHemPositionTypes_e": {
+        "swHemPositionTypeInside": 0,
+        "swHemPositionTypeOutside": 1
+      },
+      "swHemTypes_e": {
+        "swHemTypeOpen": 0,
+        "swHemTypeClosed": 1,
+        "swHemTypeTearDrop": 2,
+        "swHemTypeRolled": 3,
+        "swHemTypeDouble": 4
+      }
+    }
+  }
+}
