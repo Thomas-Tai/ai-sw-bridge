@@ -49,3 +49,12 @@ HANDLER_REGISTRY: dict[str, Handler] = {}
 from .hem import create_hem  # noqa: E402
 
 HANDLER_REGISTRY["hem"] = create_hem
+
+# W59 — move_copy_body. Imports DORMANT and stays that way: both OOP routes
+# are characterized walls (W58 InsertMoveCopyBody2 + CreateDefinition,
+# W59 InsertMoveFace3 — all silent no-ops). The module's _register() gate
+# never fires (SPIKE_STATUS != "GREEN"), so the registry advertises nothing;
+# the move/copy intent is covered by the sketch-offset workaround (author
+# geometry at the target coords via boss_extrude). Kept for fail-loud + the
+# wall provenance.
+from . import move_copy_body as _move_copy_body  # noqa: E402,F401
