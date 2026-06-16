@@ -66,6 +66,11 @@ SW_DEFAULT_TEMPLATE_PART = 8
 
 BOX_SIZE_M = 0.050
 TRANSLATE_DX_M = 0.030
+# Sketch-offset substitute: the copy is authored a CLEAR box-width+gap away in
+# +X (60 mm > 50 mm box) so it lands as a DISTINCT body with the merge-default
+# extrude (a disjoint solid cannot fuse). An overlapping offset (<50 mm) would
+# let merge=True union the two into one body and break the count delta.
+COPY_OFFSET_X_M = 0.060
 
 VT_MAP = {
     0: "VT_EMPTY", 2: "VT_I2", 3: "VT_I4", 4: "VT_R4", 5: "VT_R8",
@@ -231,6 +236,20 @@ def _sketch_rect(doc: Any, w: float, h: float) -> None:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     sk.CreateCornerRectangle(-w / 2, -h / 2, 0.0, w / 2, h / 2, 0.0)
+    sk.InsertSketch(True)
+
+
+def _sketch_rect_at(doc: Any, w: float, h: float, cx: float, cy: float) -> None:
+    """Sketch a w×h rectangle CENTRED at (cx, cy) on Front Plane.
+
+    The whole point of the sketch-offset substitute: the body lands wherever
+    the sketch is drawn — no post-hoc move op. Authoring the rectangle at
+    (cx, cy) places the extruded body there directly.
+    """
+    doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
+    sk = doc.SketchManager
+    sk.InsertSketch(True)
+    sk.CreateCornerRectangle(cx - w / 2, cy - h / 2, 0.0, cx + w / 2, cy + h / 2, 0.0)
     sk.InsertSketch(True)
 
 
@@ -540,66 +559,67 @@ def _save_reopen(sw: Any, doc: Any) -> dict[str, Any]:
     return out
 
 
-def _fallback_sketch_offset(doc: Any) -> dict[str, Any]:
-    """Sketch-offset transform escape hatch.
+def _solid_body_count(doc: Any) -> int:
+    """Count visible solid bodies via GetBodies2(0, True)."""
+    try:
+        bodies = doc.GetBodies2(0, True)
+        if bodies is None:
+            return 0
+        return len(bodies) if isinstance(bodies, (list, tuple)) else 1
+    except Exception:
+        return 0
 
-    1. Read bbox to locate the +X face centre.
-    2. Select that face, open sketch, draw an offset rectangle
-       (inset 5 mm from the face edges).
-    3. Close sketch → blind extrude the offset region by +30 mm.
-    4. Re-measure bbox + volume → report deltas.
 
-    This is a SEPARATE characterization route: it proves body-shape
-    modification via the sketch-offset → extrude pathway, not via
-    InsertMoveFace3.
+def _fallback_sketch_offset(sw: Any) -> dict[str, Any]:
+    """Sketch-offset substitute escape hatch for the move_copy_body wall.
+
+    InsertMoveCopyBody2 (W58) and InsertMoveFace3 (W59) both silently no-op
+    out-of-process, so a body cannot be translated/copied AFTER creation.
+    The substitute is to author the geometry at the TARGET location in the
+    first place — the body lands where the sketch is drawn, no move op
+    needed. This proves the copy_body intent specifically:
+
+    1. Build a fresh 50 mm cube fixture (centred at X=0) — NOT the
+       post-save-reopen doc, which is closed (the earlier bug: a stale
+       handle → GetPartBox throws → "bbox unreadable").
+    2. Author a SECOND identical cube whose sketch is centred at
+       X=+60 mm (a clear box-width+gap away), then blind-extrude it.
+    3. Verify the offset body materialised as a DISTINCT body: body
+       count 1→2, combined-bbox xMax grows by exactly the offset, and
+       total volume doubles.
+
+    PASS = the offset body is real and lands at the commanded X — the
+    sketch-offset path is a viable substitute for copy_body/move_body.
     """
     out: dict[str, Any] = {}
-    bb = _get_bbox(doc)
-    if bb is None:
-        out["error"] = "bbox unreadable"
+    fx = _build_fixture(sw)
+    if not fx.get("built"):
+        out["error"] = f"fixture build failed: {fx.get('error')}"
         return out
+    doc = fx["doc"]
+    out["doc"] = doc
 
+    before_bb = _get_bbox(doc)
     before_vol = _get_volume(doc)
-    out["before"] = {"bbox": bb, "volume_mm3": before_vol}
-
-    x0, y0, z0, x1, y1, z1 = bb
-    xm, ym, zm = (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2
-    inset = 0.005
-
-    doc.ClearSelection2(True)
-    try:
-        ok = doc.SelectByID2("", "FACE", x1, ym, zm, False, 0, None, 0)
-        out["face_select"] = ok
-    except Exception as exc:
-        out["face_select_error"] = f"{type(exc).__name__}: {exc!r}"
+    before_n = _solid_body_count(doc)
+    if before_bb is None:
+        out["error"] = "bbox unreadable on fresh fixture"
         return out
+    out["before"] = {"bbox": before_bb, "volume_mm3": before_vol,
+                     "body_count": before_n}
 
-    sk = doc.SketchManager
+    # Author the offset copy: rectangle centred at X=+OFFSET on Front Plane,
+    # extruded in +Z by the box depth → an identical cube shifted +X.
     try:
-        sk.InsertSketch(True)
-        hw = (y1 - y0) / 2 - inset
-        hh = (z1 - z0) / 2 - inset
-        sk.CreateCornerRectangle(-hw, -hh, 0.0, hw, hh, 0.0)
-        sk.InsertSketch(True)
-    except Exception as exc:
-        out["sketch_error"] = f"{type(exc).__name__}: {exc!r}"
-        return out
-
-    try:
-        feat = doc.FeatureManager.FeatureExtrusion3(
-            True, False, False,
-            0, 0,
-            TRANSLATE_DX_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0,
-            False,
-        )
+        _sketch_rect_at(doc, BOX_SIZE_M, BOX_SIZE_M, COPY_OFFSET_X_M, 0.0)
+        feat = _extrude(doc, BOX_SIZE_M)
         out["extrude_return"] = type(feat).__name__
+        if feat is None or isinstance(feat, int):
+            out["error"] = "offset extrude did not materialize"
+            return out
     except Exception as exc:
-        out["extrude_error"] = f"{type(exc).__name__}: {exc!r}"
+        out["sketch_or_extrude_error"] = f"{type(exc).__name__}: {exc!r}"
+        return out
 
     try:
         doc.ForceRebuild3(False)
@@ -608,12 +628,27 @@ def _fallback_sketch_offset(doc: Any) -> dict[str, Any]:
 
     after_bb = _get_bbox(doc)
     after_vol = _get_volume(doc)
-    out["after"] = {"bbox": after_bb, "volume_mm3": after_vol}
-    if bb and after_bb:
-        out["bbox_delta"] = _bbox_deltas(bb, after_bb)
+    after_n = _solid_body_count(doc)
+    out["after"] = {"bbox": after_bb, "volume_mm3": after_vol,
+                    "body_count": after_n}
+    if before_bb and after_bb:
+        out["bbox_delta"] = _bbox_deltas(before_bb, after_bb)
     if before_vol is not None and after_vol is not None:
         out["delta_vol_mm3"] = after_vol - before_vol
-    out["offset_inset_mm"] = inset * 1000
+    out["copy_offset_x_mm"] = COPY_OFFSET_X_M * 1000
+
+    # Verdict: a distinct body landed at the commanded +X offset.
+    count_ok = after_n == before_n + 1
+    xmax_delta = (after_bb[3] - before_bb[3]) if (before_bb and after_bb) else None
+    xmax_ok = xmax_delta is not None and abs(xmax_delta - COPY_OFFSET_X_M) < 0.001
+    vol_ratio = (after_vol / before_vol) if (before_vol and after_vol) else None
+    vol_ok = vol_ratio is not None and abs(vol_ratio - 2.0) < 0.02
+    out["checks"] = {
+        "count_ok": count_ok, "xmax_ok": xmax_ok, "vol_ok": vol_ok,
+        "xmax_delta_mm": round(xmax_delta * 1000, 3) if xmax_delta is not None else None,
+        "vol_ratio": round(vol_ratio, 4) if vol_ratio is not None else None,
+    }
+    out["verdict"] = "GREEN" if (count_ok and xmax_ok and vol_ok) else "RED"
     return out
 
 
@@ -826,10 +861,15 @@ def run() -> dict[str, Any]:
                 "  → running sketch-offset fallback …",
                 file=sys.stderr,
             )
-            fb = _fallback_sketch_offset(doc)
+            fb = _fallback_sketch_offset(sw)
             output["fallback_sketch_offset"] = {
                 k: v for k, v in fb.items() if k != "doc"
             }
+            print(
+                f"  sketch-offset fallback: {fb.get('verdict')} "
+                f"(checks={fb.get('checks')})",
+                file=sys.stderr,
+            )
     else:
         output["verdict"] = "MEASURE_FAIL"
         output["overall"] = "FAIL"

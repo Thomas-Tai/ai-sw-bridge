@@ -1,6 +1,6 @@
 {
   "spike": "W59_move_face_translate",
-  "timestamp": "2026-06-16T14:34:56",
+  "timestamp": "2026-06-16T14:56:54",
   "route": "InsertMoveFace3 (surface topology)",
   "overall": "DEFORM",
   "sldworks_tlb": {
@@ -345,7 +345,7 @@
     "call_ok": true,
     "return": null,
     "return_type": "NoneType",
-    "elapsed_ms": 20.2
+    "elapsed_ms": 30.3
   },
   "after": {
     "bbox": [
@@ -383,7 +383,49 @@
     "off_axis_max_mm": 0.0
   },
   "fallback_sketch_offset": {
-    "error": "bbox unreadable"
+    "before": {
+      "bbox": [
+        -0.025,
+        -0.025,
+        0.0,
+        0.025,
+        0.025,
+        0.05
+      ],
+      "volume_mm3": 0.00012500000000000003,
+      "body_count": 1
+    },
+    "extrude_return": "CDispatch",
+    "after": {
+      "bbox": [
+        -0.025,
+        -0.025,
+        0.0,
+        0.08499999999999999,
+        0.025,
+        0.05
+      ],
+      "volume_mm3": 0.00025,
+      "body_count": 2
+    },
+    "bbox_delta": {
+      "dx_min_m": 0.0,
+      "dy_min_m": 0.0,
+      "dz_min_m": 0.0,
+      "dx_max_m": 0.05999999999999999,
+      "dy_max_m": 0.0,
+      "dz_max_m": 0.0
+    },
+    "delta_vol_mm3": 0.00012499999999999998,
+    "copy_offset_x_mm": 60.0,
+    "checks": {
+      "count_ok": true,
+      "xmax_ok": true,
+      "vol_ok": true,
+      "xmax_delta_mm": 60.0,
+      "vol_ratio": 2.0
+    },
+    "verdict": "GREEN"
   },
   "persistence": "N/A_DEFORM"
 }
