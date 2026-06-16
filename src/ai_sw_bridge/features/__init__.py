@@ -42,8 +42,10 @@ Handler = Callable[[Any, dict, dict], "tuple[bool, str | None]"]
 # wires the first proven W55 recipe in.
 HANDLER_REGISTRY: dict[str, Handler] = {}
 
-# W59 — sheet-metal hem via legacy InsertSheetMetalHem (CreateDefinition
-# is E_NOINTERFACE for hem; W55-C proved the wall).
+# W59 — sheet-metal hem via legacy InsertSheetMetalHem. CreateDefinition is
+# E_NOINTERFACE for hem (W55-C), but the legacy route is GENERATIVE: seat-
+# proven 2026-06-16 (spike_hem_v5, faces +8 / vol +1103.84 mm³ / survives
+# reopen) via VARIANT(VT_DISPATCH,None) PCBA-null + a boundary edge_ref.
 from .hem import create_hem  # noqa: E402
 
 HANDLER_REGISTRY["hem"] = create_hem

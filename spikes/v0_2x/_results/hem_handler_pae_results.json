@@ -1,0 +1,68 @@
+{
+  "spike": "hem_handler_pae",
+  "purpose": "production create_hem via durable edge_ref, across save->reopen",
+  "fixture": {
+    "create_definition": {
+      "status": "OK",
+      "type": "CDispatch",
+      "elapsed_ms": 25.993299999754527
+    },
+    "typed_qi": {
+      "status": "OK",
+      "type": "IBaseFlangeFeatureData",
+      "elapsed_ms": 3.430599999774131
+    },
+    "create_feature": {
+      "status": "OK",
+      "type": "CDispatch",
+      "elapsed_ms": 847.7419000009832
+    },
+    "edge_count": 12,
+    "edge_lengths_mm": [
+      60.0,
+      60.0,
+      60.0,
+      60.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0
+    ],
+    "chosen_edge": {
+      "idx": 4,
+      "len_mm": 60.0,
+      "mid_mm": [
+        0.0,
+        20.0,
+        -2.0
+      ]
+    },
+    "select2": true
+  },
+  "persist_captured": true,
+  "edge_ref": {
+    "len_mm": 60.0,
+    "persist_id_present": true
+  },
+  "faces_before": 6,
+  "vol_before_mm3": 4800.0,
+  "handler_ok": true,
+  "handler_err": null,
+  "faces_after": 14,
+  "vol_after_mm3": 5903.840674352313,
+  "delta_faces": 8,
+  "delta_vol_mm3": 1103.841,
+  "faces_after_reopen": 14,
+  "vol_after_reopen_mm3": 5903.840674352313,
+  "hem_feature": {
+    "found": true,
+    "name": "Hem1",
+    "type": "Hem"
+  },
+  "persist_survived": true,
+  "verdict": "PASS"
+}

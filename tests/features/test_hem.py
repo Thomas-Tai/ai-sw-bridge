@@ -1,311 +1,214 @@
-"""W59 offline tests — ``hem`` handler + registry dispatch.
+"""W59 offline tests — ``hem`` handler + registry dispatch (PROVEN contract).
 
-Every COM seam is faked.  No SW process is involved.
+Supersedes the bc5c849 stale-draft suite, which pinned the WALLED-draft
+contract (``edge_name``/``SelectByID2``, integer ``hem_type`` with
+negative-rejection, ``d_length_m``, face-count-only effect gate). The live
+seat overturned that draft (spike_hem_v5 / the handler PAE): hem is
+generative via ``InsertSheetMetalHem`` + ``VARIANT(VT_DISPATCH, None)`` PCBA
+null + a durable boundary ``edge_ref``. These tests pin that real contract.
 
-What is tested
---------------
-* Parameter validation (missing / bad edge_name, bad hem_type, bad d_length).
-* Effect gate: face count must increase after InsertSheetMetalHem; a no-op
-  that leaves face count unchanged must FAIL (W21 doctrine).
-* Registry dispatch: ``hem`` is auto-advertised by ``sw_propose_feature_add``
-  (via HANDLER_REGISTRY).
-* Fail-soft: exceptions in InsertSheetMetalHem produce (False, reason),
-  never propagate.
-
-COM seams patched on ``features.hem`` (lane protocol W56+):
-  ``typed``, ``wrapper_module``
+COM seams are patched on the lane module itself (``features.hem``) per the
+registry lane protocol — never on ``mutate``. No SW process is involved; the
+live fold + save→reopen is proven by the seat PAE.
 """
 
 from __future__ import annotations
 
-from typing import Any
+import math
 
+import pythoncom
 import pytest
 
-import ai_sw_bridge.features.hem as _mod
 from ai_sw_bridge.features import HANDLER_REGISTRY
+from ai_sw_bridge.features import hem
 from ai_sw_bridge.features.hem import create_hem
 
 
-# ---------------------------------------------------------------------------
-# Fake COM layer
-# ---------------------------------------------------------------------------
-
-class _FakeFace:
-    pass
-
-
-class _FakeEdge:
-    def __init__(self, name: str) -> None:
-        self.Name = name
+def _edge_ref(length: float = 0.06) -> dict:
+    """A minimal valid serialized DurableEdgeRef (no persist token needed —
+    ``resolve_edge_ref`` is patched in the wired tests)."""
+    return {
+        "start": [0.0, 0.0, 0.0],
+        "end": [length, 0.0, 0.0],
+        "length": length,
+        "role_hint": "edge",
+    }
 
 
-class _FakeBody:
-    def __init__(self, faces: list[_FakeFace], add_faces_on_hem: int = 3) -> None:
-        self._faces = list(faces)
-        self._add_faces = add_faces_on_hem
+class _FakeFM:
+    def __init__(self) -> None:
+        self.calls: list[tuple] = []
 
-    def GetFaces(self) -> list[_FakeFace]:
-        return list(self._faces)
-
-    def simulate_hem(self) -> None:
-        for _ in range(self._add_faces):
-            self._faces.append(_FakeFace())
-
-
-class _FakeExtension:
-    def __init__(self, doc: "_FakeDoc") -> None:
-        self._doc = doc
-
-    def SelectByID2(self, name: str, kind: str, *_: Any) -> bool:
-        if kind != "EDGE":
-            return False
-        if name not in {e.Name for e in self._doc._edges}:
-            return False
-        self._doc._selected_edge = name
-        return True
-
-
-class _FakeOleObj:
-    def __init__(self, fm: "_FakeFeatureManager") -> None:
-        self._fm = fm
-
-    def InvokeTypes(
-        self, memid: int, lcid: int, invkind: int,
-        rettype: tuple, argtypes: tuple, *args: Any,
-    ) -> Any:
-        if memid == 91:
-            return self._fm.InsertSheetMetalHem(*args)
-        raise NotImplementedError(f"fake memid {memid}")
-
-
-class _FakeFeatureManager:
-    def __init__(self, doc: "_FakeDoc", will_hem: bool = True) -> None:
-        self._doc = doc
-        self._will_hem = will_hem
-        self._oleobj_ = _FakeOleObj(self)
-
-    def InsertSheetMetalHem(
-        self,
-        hem_type: int,
-        position: int,
-        reverse: bool,
-        d_length: float,
-        d_gap: float,
-        d_angle: float,
-        d_rad: float,
-        d_miter_gap: float,
-        pcba: Any,
-    ) -> object | None:
-        if not self._will_hem:
-            return None
-        for b in self._doc._bodies:
-            b.simulate_hem()
-        return object()
+    def InsertSheetMetalHem(self, *args):
+        self.calls.append(args)
+        return object()  # non-None handle (the EFFECT, not the return, decides)
 
 
 class _FakeDoc:
-    def __init__(
-        self,
-        bodies: list[_FakeBody],
-        edges: list[_FakeEdge],
-        will_hem: bool = True,
-    ) -> None:
-        self._bodies = list(bodies)
-        self._edges = list(edges)
-        self._selected_edge: str | None = None
-        self.FeatureManager = _FakeFeatureManager(self, will_hem)
-        self.Extension = _FakeExtension(self)
+    def __init__(self) -> None:
+        self.FeatureManager = _FakeFM()
+        self.cleared = False
+        self.rebuilt = False
 
-    def GetBodies2(self, body_type: int, visible_only: bool) -> list[_FakeBody]:
-        return list(self._bodies)
+    def ClearSelection2(self, flag):
+        self.cleared = True
 
-    def ForceRebuild3(self, top_only: bool) -> bool:
-        return True
-
-    def ClearSelection2(self, all_sel: bool) -> bool:
-        self._selected_edge = None
-        return True
+    def ForceRebuild3(self, flag):
+        self.rebuilt = True
 
 
-# ---------------------------------------------------------------------------
-# Fixtures / patch helpers
-# ---------------------------------------------------------------------------
-
-@pytest.fixture(autouse=True)
-def _patch_com(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(_mod, "typed", lambda obj, iface, **kw: obj)
-    monkeypatch.setattr(_mod, "wrapper_module", lambda: object())
-
-
-def _one_body_doc(
-    face_count: int = 6,
-    edges: list[str] | None = None,
-    will_hem: bool = True,
-    add_faces: int = 3,
-) -> _FakeDoc:
-    if edges is None:
-        edges = ["Edge1"]
-    body = _FakeBody([_FakeFace() for _ in range(face_count)], add_faces_on_hem=add_faces)
-    return _FakeDoc(
-        bodies=[body],
-        edges=[_FakeEdge(n) for n in edges],
-        will_hem=will_hem,
+def _wire(monkeypatch, *, entity: object = None, select_ok: bool = True,
+          metrics=((6, 4800.0), (14, 5903.84))) -> None:
+    """Patch resolve/select/metrics seams on the hem lane module."""
+    ent = object() if entity is None else entity
+    if entity is False:  # explicit "unresolved" sentinel
+        ent = None
+    monkeypatch.setattr(
+        hem, "resolve_edge_ref",
+        lambda doc, ref: type("R", (), {"entity": ent, "note": "test"})(),
     )
+    monkeypatch.setattr(hem, "select_entity", lambda e, mark=0: select_ok)
+    seq = list(metrics)
+    state = {"n": 0}
+
+    def fake_metrics(doc):
+        v = seq[min(state["n"], len(seq) - 1)]
+        state["n"] += 1
+        return v
+
+    monkeypatch.setattr(hem, "_metrics", fake_metrics)
 
 
-# ---------------------------------------------------------------------------
-# Parameter validation
-# ---------------------------------------------------------------------------
+# --- enum mapper -----------------------------------------------------------
 
-class TestValidation:
-    def test_missing_edge_name_rejected(self) -> None:
-        ok, err = create_hem(_one_body_doc(), {"type": "hem"}, {})
-        assert ok is False
-        assert "edge_name" in err
-
-    def test_empty_edge_name_rejected(self) -> None:
-        ok, err = create_hem(_one_body_doc(), {"type": "hem"}, {"edge_name": ""})
-        assert ok is False
-        assert "edge_name" in err
-
-    def test_negative_hem_type_rejected(self) -> None:
-        ok, err = create_hem(
-            _one_body_doc(),
-            {"type": "hem", "hem_type": -1},
-            {"edge_name": "Edge1"},
-        )
-        assert ok is False
-        assert "hem_type" in err
-
-    def test_negative_hem_position_rejected(self) -> None:
-        ok, err = create_hem(
-            _one_body_doc(),
-            {"type": "hem", "hem_position": -1},
-            {"edge_name": "Edge1"},
-        )
-        assert ok is False
-        assert "hem_position" in err
-
-    def test_zero_d_length_rejected(self) -> None:
-        ok, err = create_hem(
-            _one_body_doc(),
-            {"type": "hem", "d_length_m": 0},
-            {"edge_name": "Edge1"},
-        )
-        assert ok is False
-        assert "d_length_m" in err
-
-    def test_negative_d_length_rejected(self) -> None:
-        ok, err = create_hem(
-            _one_body_doc(),
-            {"type": "hem", "d_length_m": -0.01},
-            {"edge_name": "Edge1"},
-        )
-        assert ok is False
-        assert "d_length_m" in err
-
-    def test_unknown_edge_name_rejected(self) -> None:
-        ok, err = create_hem(
-            _one_body_doc(edges=["Edge1"]),
-            {"type": "hem"},
-            {"edge_name": "NoSuchEdge"},
-        )
-        assert ok is False
-        assert "NoSuchEdge" in err
+class TestEnumMapping:
+    def test_maps_strings_ints_and_rejects_garbage(self):
+        assert hem._enum("closed", hem._HEM_TYPES, "hem_type") == (1, None)
+        assert hem._enum("TearDrop", hem._HEM_TYPES, "hem_type") == (2, None)
+        assert hem._enum(3, hem._HEM_TYPES, "hem_type") == (3, None)
+        val, err = hem._enum("bogus", hem._HEM_TYPES, "hem_type")
+        assert val is None and "bogus" in err
+        val, err = hem._enum(True, hem._HEM_TYPES, "hem_type")  # bool is int subclass
+        assert val is None and "bool" in err
 
 
-# ---------------------------------------------------------------------------
-# Effect gate — face-count delta is the success criterion (W21 doctrine)
-# ---------------------------------------------------------------------------
+# --- happy path + recipe pin ----------------------------------------------
 
 class TestEffectGate:
-    def test_green_hem_closed(self) -> None:
-        doc = _one_body_doc(face_count=6, add_faces=3)
+    def test_green_hem_closed(self, monkeypatch):
+        _wire(monkeypatch)
+        doc = _FakeDoc()
         ok, err = create_hem(
-            doc,
-            {"type": "hem"},
-            {"edge_name": "Edge1"},
+            doc, {"hem_type": "closed", "position": "inside", "length_mm": 10},
+            {"edge_ref": _edge_ref()},
         )
-        assert ok is True
-        assert err is None
+        assert (ok, err) == (True, None)
+        assert doc.cleared and doc.rebuilt
 
-    def test_green_hem_open(self) -> None:
-        doc = _one_body_doc(face_count=6, add_faces=4)
+    def test_recipe_pins_pcba_null_and_unit_conversion(self, monkeypatch):
+        _wire(monkeypatch)
+        doc = _FakeDoc()
         ok, err = create_hem(
             doc,
-            {"type": "hem", "hem_type": 0, "d_length_m": 0.015, "d_gap_m": 0.002},
-            {"edge_name": "Edge1"},
+            {"hem_type": "closed", "position": "inside", "length_mm": 10,
+             "angle_deg": 90, "radius_mm": 2, "miter_gap_mm": 1},
+            {"edge_ref": _edge_ref()},
         )
-        assert ok is True
+        assert ok, err
+        args = doc.FeatureManager.calls[0]
+        assert len(args) == 9
+        assert args[0] == 1            # hem_type closed
+        assert args[1] == 0            # position inside
+        assert args[2] is False        # reverse default
+        assert args[3] == pytest.approx(0.010)              # 10 mm -> m
+        assert args[5] == pytest.approx(math.radians(90))   # 90 deg -> rad
+        assert args[6] == pytest.approx(0.002)              # radius 2 mm -> m
+        assert args[7] == pytest.approx(0.001)              # miter 1 mm -> m
+        pcba = args[8]
+        assert pcba.varianttype == pythoncom.VT_DISPATCH    # Tactic-1 null coercion
+        assert pcba.value is None
 
-    def test_noop_fails_soft(self) -> None:
-        """InsertSheetMetalHem that adds no faces → (False, reason)."""
-        doc = _one_body_doc(face_count=6, will_hem=False)
+    def test_int_enums_pass_through(self, monkeypatch):
+        _wire(monkeypatch)
+        doc = _FakeDoc()
         ok, err = create_hem(
-            doc,
-            {"type": "hem"},
-            {"edge_name": "Edge1"},
+            doc, {"hem_type": 2, "position": 1, "length_mm": 5},
+            {"edge_ref": _edge_ref()},
         )
+        assert ok, err
+        args = doc.FeatureManager.calls[0]
+        assert args[0] == 2 and args[1] == 1
+
+    def test_ghost_zero_volume_rejected(self, monkeypatch):
+        # Faces go up but volume is unchanged -> W42-class ghost -> NOT success.
+        _wire(monkeypatch, metrics=((6, 4800.0), (8, 4800.0)))
+        ok, err = create_hem(_FakeDoc(), {"length_mm": 10}, {"edge_ref": _edge_ref()})
         assert ok is False
-        assert "returned None" in err
+        assert "did not fold" in err
 
-    def test_zero_face_delta_fails_soft(self) -> None:
-        """Hem created but no face delta → ghost feature detected."""
-        doc = _one_body_doc(face_count=6, add_faces=0)
+    def test_no_solid_bodies_fails_closed(self, monkeypatch):
+        _wire(monkeypatch, metrics=((0, 0.0), (0, 0.0)))
+        ok, err = create_hem(_FakeDoc(), {"length_mm": 10}, {"edge_ref": _edge_ref()})
+        assert ok is False and "no solid bodies" in err
+
+
+# --- fail-closed contract --------------------------------------------------
+
+class TestValidation:
+    def test_missing_edge_ref_rejected(self):
+        ok, err = create_hem(_FakeDoc(), {"length_mm": 10}, {})
+        assert ok is False and "edge_ref" in err
+
+    def test_invalid_edge_ref_rejected(self):
+        # missing 'end'/'length' -> DurableEdgeRef.from_dict raises -> fail-closed
         ok, err = create_hem(
-            doc,
-            {"type": "hem"},
-            {"edge_name": "Edge1"},
+            _FakeDoc(), {"length_mm": 10}, {"edge_ref": {"start": [0, 0, 0]}}
         )
-        assert ok is False
-        assert "face count" in err
+        assert ok is False and "edge_ref" in err
 
-    def test_exception_in_insert_fails_soft(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        class _RaisingOleObj:
-            def InvokeTypes(self, *_: Any, **__: Any) -> None:
-                raise RuntimeError("seat error")
+    def test_edge_unresolved_rejected(self, monkeypatch):
+        _wire(monkeypatch, entity=False)  # resolve returns entity=None
+        ok, err = create_hem(_FakeDoc(), {"length_mm": 10}, {"edge_ref": _edge_ref()})
+        assert ok is False and "did not resolve" in err
 
-        class _RaisingFM:
-            _oleobj_ = _RaisingOleObj()
+    def test_select_failure_rejected(self, monkeypatch):
+        _wire(monkeypatch, select_ok=False)
+        ok, err = create_hem(_FakeDoc(), {"length_mm": 10}, {"edge_ref": _edge_ref()})
+        assert ok is False and "select" in err
 
-        doc = _one_body_doc()
-        doc.FeatureManager = _RaisingFM()  # type: ignore[assignment]
+    def test_bad_hem_type_rejected(self):
         ok, err = create_hem(
-            doc,
-            {"type": "hem"},
-            {"edge_name": "Edge1"},
+            _FakeDoc(), {"hem_type": "bogus", "length_mm": 10}, {"edge_ref": _edge_ref()}
         )
-        assert ok is False
-        assert "InsertSheetMetalHem failed" in err
+        assert ok is False and "hem_type" in err
 
-    def test_multi_edge_target(self) -> None:
-        doc = _one_body_doc(face_count=12, edges=["Edge1", "Edge2", "Edge3"], add_faces=5)
+    def test_bad_position_rejected(self):
         ok, err = create_hem(
-            doc,
-            {"type": "hem"},
-            {"edge_name": "Edge2"},
+            _FakeDoc(), {"position": "sideways", "length_mm": 10},
+            {"edge_ref": _edge_ref()},
         )
-        assert ok is True
+        assert ok is False and "position" in err
+
+    def test_nonpositive_length_rejected(self):
+        ok, err = create_hem(
+            _FakeDoc(), {"length_mm": 0}, {"edge_ref": _edge_ref()}
+        )
+        assert ok is False and "length_mm" in err
 
 
-# ---------------------------------------------------------------------------
-# Registry dispatch — hem auto-advertised
-# ---------------------------------------------------------------------------
+# --- registry dispatch — hem auto-advertised -------------------------------
 
 class TestRegistryDispatch:
-    def test_kind_in_handler_registry(self) -> None:
+    def test_kind_in_handler_registry(self):
         assert "hem" in HANDLER_REGISTRY
 
-    def test_registry_handler_is_create_fn(self) -> None:
+    def test_registry_handler_is_create_fn(self):
         assert HANDLER_REGISTRY["hem"] is create_hem
 
-    def test_registry_dispatches_correctly(self) -> None:
-        doc = _one_body_doc(face_count=6, add_faces=3)
-        feature = {"type": "hem"}
-        tgt = {"edge_name": "Edge1"}
-        ok, err = HANDLER_REGISTRY["hem"](doc, feature, tgt)
-        assert ok is True
-        assert err is None
+    def test_registry_dispatches_correctly(self, monkeypatch):
+        _wire(monkeypatch)
+        doc = _FakeDoc()
+        ok, err = HANDLER_REGISTRY["hem"](
+            doc, {"type": "hem", "length_mm": 10}, {"edge_ref": _edge_ref()}
+        )
+        assert (ok, err) == (True, None)

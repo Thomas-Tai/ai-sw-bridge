@@ -1,181 +1,202 @@
 """W59 — ``hem`` feature-add handler (registry seam).
 
-Insert a sheet-metal hem at a selected edge via the legacy
-``IFeatureManager.InsertSheetMetalHem`` method (9-param, v1).
+Sheet-metal hem at a durable boundary edge via the legacy
+``IFeatureManager.InsertSheetMetalHem`` (9-arg, memid 91). The modern
+``CreateDefinition`` path is E_NOINTERFACE for hem (W55-C proved that wall),
+so the legacy route is the only one — and it is GENERATIVE, proven on the
+live seat 2026-06-16 (``spikes/v0_2x/spike_hem_v5.py`` → faces +8, vol
++1103.84 mm³, surviving save→reopen). TWO locks had to clear, both baked in:
 
-FUNCDESC source (sldworks.tlb via pythoncom.LoadTypeLib, seat-confirmed):
-    InsertSheetMetalHem(
-        Type: int,              # swHemTypes_e
-        Position: int,          # swHemPositionTypes_e (Inside=0, Outside=1)
-        Reverse: bool,
-        DLength: double,        # hem length (m); open/closed only
-        DGap: double,           # gap distance (m); open only
-        DAngle: double,         # hem angle (rad); tear-drop/rolled only
-        DRad: double,           # hem radius (m); tear-drop/rolled only
-        DMiterGap: double,      # miter gap (m)
-        PCBA: CustomBendAllowance  # NULL → parent bend allowance
-    ) -> Feature
+  1. **PCBA null marshaling** — the 9th arg (``PCBA``, a CustomBendAllowance
+     pointer, ``VT_PTR``/raw_vt 26) is coerced with
+     ``VARIANT(VT_DISPATCH, None)`` (the edge_flange null recipe), which
+     clears the ``DISP_E_TYPEMISMATCH`` that the bare-``None`` path hit.
+     *(Supersedes the ``bc5c849`` "mode-B wall" draft, which pushed a raw
+     ``VT_UNKNOWN`` ``InvokeTypes`` that the server silently no-op'd.)*
+  2. **Topological precondition** — the target must be a valid linear
+     sheet-metal BOUNDARY edge. A 2mm thickness edge → silent NO_OP. The
+     caller passes a durable ``edge_ref`` (selected upstream as the
+     major-face perimeter), resolved here via the proven persist→fingerprint
+     tier hierarchy (``selection.live.resolve_edge_ref``).
 
-CreateDefinition is E_NOINTERFACE for hem/jog/miter (W55-C proved the
-wall); this handler uses the legacy Insert route exclusively.
-
-MODE-B WALL (seat-confirmed W59):
-    The legacy ``InsertSheetMetalHem`` is a mode-B wall — the call accepts
-    parameters but silently returns None for all edges when PCBA is null.
-    makepy mis-assigns PCBA as VT_DISPATCH (type 9) but the tlb says
-    VT_PTR→IUnknown (type 26→13), causing a type-mismatch on the typed
-    path. The raw ``InvokeTypes`` bypass (VT_UNKNOWN) clears the marshal
-    wall but the server still no-ops. This matches the rib spike pattern
-    (W53, 108 probes all None). CustomBendAllowance is a user-defined COM
-    coclass that cannot be constructed from Python COM without a CLSID.
-    DEFERRED until a PCBA construction route is found.
-
-Effect verification follows W21 doctrine: face-count delta on the body
-is the success gate — never report success from a non-None feature
-return alone.
+Verify-the-EFFECT (W21/W42 doctrine): success = face count UP **and** volume
+delta ≠ 0. A non-None feature return, or a face-count delta alone, is a ghost
+trap and is NOT reported as success.
 """
 
 from __future__ import annotations
 
+import math
 from typing import Any
+
+import pythoncom
+from win32com.client import VARIANT
 
 from ..com.earlybind import typed
 from ..com.sw_type_info import wrapper_module
+from ..selection._edge_ref import DurableEdgeRef
+from ..selection.live import resolve_edge_ref, select_entity
+
+# Spike gate: GREEN since spike_hem_v5 (2026-06-16, feat/w59-hem). The
+# registry import in features/__init__.py is unconditional now that the
+# recipe is seat-proven (faces +8 / vol +1103.84 mm³ / survives reopen).
+SPIKE_STATUS = "GREEN"
 
 _SW_SOLID_BODY = 0
-_HEM_V1_MEMID = 91
-_HEM_V1_ARGTYPES = (
-    (3, 1), (3, 1), (11, 1), (5, 1), (5, 1), (5, 1), (5, 1), (5, 1), (13, 1),
-)
-_IFEATURE_IID = "{83A33D38-27C5-11CE-BFD4-00400513BB57}"
+
+# swHemTypes_e / swHemPositionTypes_e — O1-sourced (W55 swconst.tlb dump).
+_HEM_TYPES: dict[str, int] = {
+    "open": 0, "closed": 1, "teardrop": 2, "rolled": 3, "double": 4,
+}
+_HEM_POSITIONS: dict[str, int] = {"inside": 0, "outside": 1}
+
+# Below this, a volume delta is FP noise, not a fold (the v5 NO_OP showed
+# ~1e-21 mm³ jitter; the real fold was +1103.84 mm³).
+_VOL_EPS_MM3 = 1e-6
 
 
-def _get_bodies(doc: Any) -> list[Any] | None:
+def _solid_bodies(doc: Any) -> list[Any] | None:
+    """Solid bodies of *doc*; ``None`` on COM failure, ``[]`` when there are none.
+
+    Robust to doc flavor: a dynamic dispatch resolves ``GetBodies2`` directly;
+    a typed ``IModelDoc2`` proxy does not expose it, so fall back to a typed
+    ``IPartDoc`` QI (the bc5c849 draft's one sound idea).
+    """
     try:
-        pdoc = (
+        src = (
             doc if hasattr(doc, "GetBodies2")
             else typed(doc, "IPartDoc", module=wrapper_module())
         )
-        bodies = pdoc.GetBodies2(_SW_SOLID_BODY, True)
-        return list(bodies) if bodies is not None else []
+        bodies = src.GetBodies2(_SW_SOLID_BODY, True)
     except Exception:
         return None
+    if not bodies:
+        return []
+    return list(bodies) if isinstance(bodies, (list, tuple)) else [bodies]
 
 
-def _count_faces(bodies: list[Any]) -> int:
-    total = 0
+def _metrics(doc: Any) -> tuple[int, float]:
+    """(face_count, volume_mm³) over the doc's solid bodies; (0, 0.0) on failure."""
+    bodies = _solid_bodies(doc)
+    if not bodies:
+        return 0, 0.0
+    faces = 0
+    vol_mm3 = 0.0
     for b in bodies:
         try:
-            faces = b.GetFaces()
-            total += len(list(faces)) if faces is not None else 0
+            f = b.GetFaces()
+            faces += len(f) if f else 0
         except Exception:
             pass
-    return total
+        try:
+            mp = b.GetMassProperties(1.0)
+            if mp and len(mp) > 3:
+                vol_mm3 += float(mp[3]) * 1e9
+        except Exception:
+            pass
+    return faces, vol_mm3
 
 
-def _select_edge(doc: Any, edge_name: str) -> bool:
-    try:
-        ext = doc.Extension
-        return bool(ext.SelectByID2(edge_name, "EDGE", 0, 0, 0, False, 0, None, 0))
-    except Exception:
-        return False
+def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str | None]:
+    """Map a string token (or accept a raw int) to its enum value, fail-closed."""
+    if isinstance(value, bool):  # bool is an int subclass — reject explicitly
+        return None, f"{name} must be a string or int, got bool"
+    if isinstance(value, int):
+        return value, None
+    if isinstance(value, str):
+        key = value.strip().lower()
+        if key in table:
+            return table[key], None
+        return None, f"{name} {value!r} not one of {sorted(table)}"
+    return None, f"{name} must be a string or int, got {type(value).__name__}"
 
 
-def create_hem(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
-    """Insert a sheet-metal hem at a selected edge.
-
-    Verifies the geometric effect: face count on the body increases
-    after the hem is inserted (W21 doctrine).
+def create_hem(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
+    """Insert a sheet-metal hem at a durable boundary edge. Fail-closed.
 
     ``feature`` keys
-    ----------------
-    hem_type : int, optional (default 1 = swHemTypeClosed)
-    hem_position : int, optional (default 1 = swHemPositionTypeOutside;
-        swHemPositionTypeInside=0 per sldworks.tlb FUNCDESC dump)
-    reverse : bool, optional (default False)
-    d_length_m : float, optional (default 0.010)
-    d_gap_m : float, optional (default 0.0)
-    d_angle_rad : float, optional (default 0.0)
-    d_rad_m : float, optional (default 0.0)
-    d_miter_gap_m : float, optional (default 0.001)
+        hem_type : str|int  — open|closed|teardrop|rolled|double (default closed)
+        position : str|int  — inside|outside (default inside)
+        reverse  : bool     — default False
+        length_mm    : float (>0)  — hem length (open/closed); default 10
+        gap_mm       : float        — gap (open only); default 0
+        angle_deg    : float        — hem angle (teardrop/rolled); default 0
+        radius_mm    : float        — hem radius (teardrop/rolled); default 0
+        miter_gap_mm : float        — miter gap; default 1.0
 
     ``target`` keys
-    ---------------
-    edge_name : str
-        Name of the edge to hem (selected via SelectByID2 "EDGE").
+        edge_ref : dict  — a serialized ``DurableEdgeRef`` (from an observe
+            call) naming the linear sheet-metal boundary edge to fold.
     """
-    hem_type = feature.get("hem_type", 1)
-    hem_position = feature.get("hem_position", 1)
+    if not isinstance(feature, dict):
+        return False, "feature must be a dict"
+    if not isinstance(target, dict):
+        return False, "target must be a dict"
+
+    hem_type, err = _enum(feature.get("hem_type", "closed"), _HEM_TYPES, "hem_type")
+    if err:
+        return False, err
+    position, err = _enum(feature.get("position", "inside"), _HEM_POSITIONS, "position")
+    if err:
+        return False, err
     reverse = bool(feature.get("reverse", False))
-    d_length = float(feature.get("d_length_m", 0.010))
-    d_gap = float(feature.get("d_gap_m", 0.0))
-    d_angle = float(feature.get("d_angle_rad", 0.0))
-    d_rad = float(feature.get("d_rad_m", 0.0))
-    d_miter_gap = float(feature.get("d_miter_gap_m", 0.001))
 
-    if not isinstance(hem_type, int) or hem_type < 0:
-        return False, f"hem_type must be a non-negative int, got {hem_type!r}"
-    if not isinstance(hem_position, int) or hem_position < 0:
-        return False, f"hem_position must be a non-negative int, got {hem_position!r}"
-    if d_length <= 0:
-        return False, f"d_length_m must be positive, got {d_length!r}"
+    try:
+        length_m = float(feature.get("length_mm", 10.0)) / 1000.0
+        gap_m = float(feature.get("gap_mm", 0.0)) / 1000.0
+        angle_rad = math.radians(float(feature.get("angle_deg", 0.0)))
+        radius_m = float(feature.get("radius_mm", 0.0)) / 1000.0
+        miter_gap_m = float(feature.get("miter_gap_mm", 1.0)) / 1000.0
+    except (TypeError, ValueError) as exc:
+        return False, f"numeric hem parameter invalid: {exc}"
+    if length_m <= 0:
+        return False, f"length_mm must be positive, got {feature.get('length_mm')!r}"
 
-    edge_name = target.get("edge_name")
-    if not edge_name:
-        return False, "target must contain 'edge_name'"
+    edge_ref_data = target.get("edge_ref")
+    if not isinstance(edge_ref_data, dict):
+        return False, "target must contain an 'edge_ref' dict"
+    try:
+        ref = DurableEdgeRef.from_dict(edge_ref_data)
+    except (TypeError, ValueError) as exc:
+        return False, f"invalid edge_ref: {exc}"
 
-    bodies_before = _get_bodies(doc)
-    if bodies_before is None:
-        return False, "GetBodies2 failed"
-    if not bodies_before:
-        return False, "document has no solid bodies"
+    res = resolve_edge_ref(doc, ref)
+    edge = getattr(res, "entity", None)
+    if edge is None:
+        return False, f"edge_ref did not resolve to a live edge ({getattr(res, 'note', '')})"
 
-    faces_before = _count_faces(bodies_before)
+    faces_before, vol_before = _metrics(doc)
+    if faces_before == 0:
+        return False, "document has no solid bodies to hem"
 
     try:
         doc.ClearSelection2(True)
     except Exception:
         pass
-
-    if not _select_edge(doc, str(edge_name)):
-        return False, f"SelectByID2 EDGE failed for {edge_name!r}"
+    if not select_entity(edge, mark=0):
+        return False, "failed to select the resolved hem edge"
 
     try:
         fm = doc.FeatureManager
-        args = (
-            hem_type, hem_position, reverse,
-            d_length, d_gap, d_angle, d_rad, d_miter_gap,
-            None,
+        pcba_null = VARIANT(pythoncom.VT_DISPATCH, None)  # Tactic 1 (v5-proven)
+        fm.InsertSheetMetalHem(
+            hem_type, position, reverse,
+            length_m, gap_m, angle_rad, radius_m, miter_gap_m,
+            pcba_null,
         )
-        oleobj = fm._oleobj_
-        ret = oleobj.InvokeTypes(
-            _HEM_V1_MEMID, 0, 1, (9, 0), _HEM_V1_ARGTYPES, *args)
-        if ret is not None:
-            try:
-                from win32com.client import Dispatch
-                feat = Dispatch(ret, "InsertSheetMetalHem", _IFEATURE_IID)
-            except Exception:
-                feat = ret
-        else:
-            feat = None
         doc.ForceRebuild3(False)
     except Exception as exc:
-        return False, f"InsertSheetMetalHem failed: {exc!r}"
+        return False, f"InsertSheetMetalHem raised: {exc!r}"
 
-    if feat is None:
-        return False, "InsertSheetMetalHem returned None (feature not created)"
-
-    bodies_after = _get_bodies(doc)
-    if not bodies_after:
-        return False, "GetBodies2 returned nothing after InsertSheetMetalHem"
-
-    faces_after = _count_faces(bodies_after)
-    if faces_after > faces_before:
+    faces_after, vol_after = _metrics(doc)
+    d_faces = faces_after - faces_before
+    d_vol = vol_after - vol_before
+    if d_faces > 0 and abs(d_vol) > _VOL_EPS_MM3:
         return True, None
 
+    # A hem node may exist yet add no geometry (W42 ghost) — NOT success.
     return False, (
-        f"hem: face count did not increase "
-        f"(before={faces_before}, after={faces_after})"
+        f"hem did not fold (delta_faces={d_faces}, delta_vol_mm3={d_vol:.3f}); "
+        f"the edge_ref must name a linear sheet-metal boundary edge, not a "
+        f"thickness or interior edge"
     )
