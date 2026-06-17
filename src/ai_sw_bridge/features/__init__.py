@@ -101,3 +101,45 @@ from .project_curve import create_project_curve  # noqa: E402
 
 if _project_curve_status == "GREEN":
     HANDLER_REGISTRY["project_curve"] = create_project_curve
+
+# W63 — bounding_box (doctrine-asymmetry probe). swFmBoundingBox (114) IS
+# named in CreateDefinition's CHM-listed enumerations — the first W63
+# candidate to potentially break the W62 quarantine streak. Mode-A FIRST
+# (CreateDefinition -> IBoundingBoxFeatureData -> CreateFeature); Mode-B
+# fallback via legacy IFeatureManager.InsertGlobalBoundingBox with the
+# callable-or-property invocation guard (auto-invoked dispid trap).
+# SPIKE_STATUS gate: UNFIRED until W0 fires on the live seat.
+from .bounding_box import SPIKE_STATUS as _bounding_box_status  # noqa: E402
+from .bounding_box import create_bounding_box  # noqa: E402
+
+if _bounding_box_status == "GREEN":
+    HANDLER_REGISTRY["bounding_box"] = create_bounding_box
+
+# W63 — com_point (Center-of-Mass reference point). Mode-A SKIPPED BY DESIGN:
+# InsertCenterOfMass is a no-arg legacy method with no FeatureData interface
+# and no creation enum in swFeatureNameID_e — the W62 quarantine doctrine
+# is asymmetric here (quarantine requires a candidate enum; com_point has
+# none). Mode-B fires via legacy IModelDoc2.InsertCenterOfMass() with the
+# callable-or-property invocation guard. SPIKE_STATUS gate: UNFIRED until
+# W0 fires on the live seat.
+from .com_point import SPIKE_STATUS as _com_point_status  # noqa: E402
+from .com_point import create_com_point  # noqa: E402
+
+if _com_point_status == "GREEN":
+    HANDLER_REGISTRY["com_point"] = create_com_point
+
+# W63 — mate_reference (boss-fight lane, SHIPPED 2026-06-17). Mode-A
+# QUARANTINE: the SW2024 swconst harvest exposes no swFmMateReference enum,
+# so Mode-A is a no-op stub (W62 quarantine doctrine — never speculative-
+# probe random IDs). Mode-B fires PARAMETRIC via IFeatureManager.
+# InsertMateReference2 — a 12-arg call (DLL reflection 32.1.0.123) that
+# passes IEntity references directly, abandoning the brittle SelectByID2
+# selection-mark routing. Absent secondary/tertiary entities are nulled with
+# plain None (NOT VARIANT — the typed proxy can't convert a VARIANT). The
+# kernel materializes a 'MateReferenceGroupFolder' node (verified by
+# case-insensitive 'materef' substring, surviving save->reopen).
+from .mate_reference import SPIKE_STATUS as _mate_reference_status  # noqa: E402
+from .mate_reference import create_mate_reference  # noqa: E402
+
+if _mate_reference_status == "GREEN":
+    HANDLER_REGISTRY["mate_reference"] = create_mate_reference
