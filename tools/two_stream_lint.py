@@ -46,6 +46,7 @@ CLI_EMITTERS = frozenset(
         "properties.py",
         "configurations.py",
         "sketch_relations.py",
+        "sketch_edit.py",
         "import.py",
         "export_dxf_flat.py",
         "motion.py",
