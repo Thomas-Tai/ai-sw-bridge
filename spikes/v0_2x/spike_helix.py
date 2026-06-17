@@ -1,25 +1,21 @@
-"""W62 helix derisk spike — dual-mode probe on the live seat (DO NOT RUN offline).
+"""W62 helix derisk spike — Mode-B probe on the live seat (DO NOT RUN offline).
 
-Probes both helix creation modes on a 40×30×10 mm solid block with a
-Ø10 mm circle sketch (``fx.build_block`` + ``fx.seed_circle_sketch``):
+Mode-A is QUARANTINED: the SW2024 swconst harvest exposes NO swFeatureNameID
+for helix (DLL reflection 2026-06-17). Like composite, IHelixFeatureData is
+edit-only via IFeature.GetDefinition(); no creation enum exists.
 
-  Mode-A: ``CreateDefinition(swFeatureNameID=36)`` →
-    ``typed_qi(data, "IHelixFeatureData")`` → set Pitch / Revolution /
-    Height / StartingAngle / Clockwise / DefinedBy →
-    ``CreateFeature(data)``.  The swFeatureNameID 36 is a PROBE
-    (``swFmHelix``); W0 resolves the exact ID on the seat.
+Probes the operative path:
 
-  Mode-B: ``doc.InsertHelix(ConstantPitch:bool, Reverse:bool,
-    Dimension:bool, Clockwise:bool, DefinedBy:int, Pitch:double,
-    Revolution:double, Height:double, StartAngle:double,
-    Diameter:double)`` — 10 args, returns void.
+  Mode-B: select Sketch2 via Extension.SelectByID2 → ``doc.InsertHelix(
+    ConstantPitch:bool, Reverse:bool, Dimension:bool, Clockwise:bool,
+    DefinedBy:int, Pitch:double, Revolution:double, Height:double,
+    StartAngle:double, Diameter:double)`` — 10 args, returns void.
 
-Verify: a new Helix feature node via FirstFeature walk (no ΔVol — a
-helix is a reference curve).  If PASS, runs save→reopen to confirm
-persistence.
-
-Exit codes: 0 = PASS (materialized + persisted), 2 = NO_OP or
-PASS_BUT_NOT_PERSISTED, 1 = ERROR.
+Verify: a new Helix feature node via ``IFeatureManager.GetFeatures(False)``
+type-name filter (no ΔVol — a helix is a reference curve), with the
+callable-or-property guard on ``GetTypeName``/``GetTypeName2`` (some surface
+forms auto-invoke as a property — same trap class as FirstFeature,
+InsertCompositeCurve).
 
 ** DO NOT RUN OFFLINE — requires a live SOLIDWORKS seat. **
 """
@@ -27,25 +23,24 @@ PASS_BUT_NOT_PERSISTED, 1 = ERROR.
 from __future__ import annotations
 
 import json
+import logging
 import math
-import os
 import sys
 import traceback
 from pathlib import Path
 from typing import Any
 
 import pythoncom
+from win32com.client import VARIANT
 
-# Ensure repo src is on sys.path for ai_sw_bridge imports.
+logging.basicConfig(level=logging.WARNING, format="%(name)s %(levelname)s %(message)s")
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = str(_REPO_ROOT / "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from ai_sw_bridge.com.earlybind import EarlyBindError, typed, typed_qi
-from ai_sw_bridge.com.sw_type_info import wrapper_module
-
-import _feature_spike_fixtures as fx  # noqa: E402  (needs sys.path patch above)
+import _feature_spike_fixtures as fx  # noqa: E402
 
 # -- Helix parameters (W0-tunable on the seat) --------------------------------
 
@@ -53,34 +48,38 @@ HELIX_PITCH_MM = 5.0
 HELIX_REVOLUTIONS = 4.0
 HELIX_START_ANGLE_DEG = 0.0
 HELIX_CLOCKWISE = True
-
-# Probe value — W0 resolves the exact swFeatureNameID for helix on the seat.
-SW_FM_HELIX_PROBE = 36
 SW_HELIX_DEFINED_BY_PITCH_AND_REV = 0
 
 
-def _feature_type_names(doc: Any, mod: Any) -> list[str]:
-    """Walk FirstFeature → GetNextFeature, re-typing each node to IFeature."""
+def _resolve(obj: Any, attr: str) -> Any:
+    v = getattr(obj, attr)
+    return v() if callable(v) else v
+
+
+def _feature_type_names(doc: Any) -> list[str]:
+    """Return all feature type-names via GetFeatures(False) + callable-or-property guard."""
     names: list[str] = []
     try:
-        feat = doc.FirstFeature()
-        while feat is not None:
-            try:
-                typed_feat = typed(feat, "IFeature", module=mod)
-                names.append(typed_feat.GetTypeName())
-            except Exception:
-                try:
-                    names.append(feat.GetTypeName())
-                except Exception:
-                    names.append("<unknown>")
-            feat = feat.GetNextFeature()
+        feats = doc.FeatureManager.GetFeatures(False)
     except Exception:
-        pass
+        return names
+    if feats is None:
+        return names
+    for feat in feats:
+        try:
+            names.append(str(_resolve(feat, "GetTypeName")))
+            continue
+        except Exception:
+            pass
+        try:
+            names.append(str(_resolve(feat, "GetTypeName2")))
+        except Exception:
+            names.append("<unknown>")
     return names
 
 
-def _count_helices(doc: Any, mod: Any) -> int:
-    return sum(1 for n in _feature_type_names(doc, mod) if n == "Helix")
+def _count_helices(doc: Any) -> int:
+    return sum(1 for n in _feature_type_names(doc) if n == "Helix")
 
 
 def _metrics(doc: Any) -> dict[str, Any]:
@@ -123,8 +122,9 @@ def main() -> int:
     out: dict[str, Any] = {
         "spike": "helix",
         "purpose": (
-            "dual-mode helix probe — Mode-A: CreateDefinition(36) → "
-            "IHelixFeatureData → CreateFeature; Mode-B: InsertHelix(10 args)"
+            "Mode-B helix probe — Mode-A QUARANTINED (no swFeatureNameID for "
+            "helix in swconst harvest); Mode-B: SelectByID2 sketch + "
+            "InsertHelix(10 args)"
         ),
         "params": {
             "pitch_mm": HELIX_PITCH_MM,
@@ -132,12 +132,12 @@ def main() -> int:
             "start_angle_deg": HELIX_START_ANGLE_DEG,
             "clockwise": HELIX_CLOCKWISE,
         },
+        "mode_a": {"status": "QUARANTINED", "reason": "no swFeatureNameID for helix in SW2024 swconst"},
     }
     sw = None
     doc = None
     code = 1
     try:
-        mod = wrapper_module()
         sw = fx.connect()
         rev = sw.RevisionNumber
         out["sw_revision"] = rev() if callable(rev) else rev
@@ -149,50 +149,33 @@ def main() -> int:
         before = _metrics(doc)
         out["faces_before"] = before["faces"]
         out["vol_mm3_before"] = before["vol_mm3"]
-        helices_before = _count_helices(doc, mod)
+        helices_before = _count_helices(doc)
         out["helices_before"] = helices_before
+        out["feature_tree_before"] = _feature_type_names(doc)
 
         pitch_m = HELIX_PITCH_MM / 1000.0
         height_m = pitch_m * HELIX_REVOLUTIONS
         start_angle_rad = math.radians(HELIX_START_ANGLE_DEG)
 
-        # -- Mode-A: CreateDefinition → typed_qi(IHelixFeatureData) → CreateFeature
-        mode_a_diag: dict[str, Any] = {}
-        mode_a_ok = False
-        try:
-            fm = doc.FeatureManager
-            data = fm.CreateDefinition(SW_FM_HELIX_PROBE)
-            mode_a_diag["create_definition"] = data is not None
-            if data is not None:
-                fd = typed_qi(data, "IHelixFeatureData", module=mod)
-                mode_a_diag["typed_qi"] = True
-                fd.DefinedBy = SW_HELIX_DEFINED_BY_PITCH_AND_REV
-                fd.Pitch = pitch_m
-                fd.Revolution = HELIX_REVOLUTIONS
-                fd.Height = height_m
-                fd.StartingAngle = start_angle_rad
-                fd.Clockwise = HELIX_CLOCKWISE
-                doc.SelectByID(sketch_name, "SKETCH", 0, 0, 0)
-                feat = fm.CreateFeature(data)
-                mode_a_diag["create_feature"] = feat is not None
-                helices_after_a = _count_helices(doc, mod)
-                if helices_after_a > helices_before:
-                    mode_a_ok = True
-        except EarlyBindError as e:
-            mode_a_diag["early_bind_error"] = str(e)[:200]
-        except Exception as e:
-            mode_a_diag["error"] = f"{type(e).__name__}: {e}"[:200]
-        out["mode_a"] = mode_a_diag
-        out["mode_a_ok"] = mode_a_ok
-
-        # -- Mode-B: doc.InsertHelix(10 args)
+        # Select the sketch (Extension.SelectByID2 with VARIANT-null callout —
+        # W60/W61 proven idiom for named features).
         mode_b_diag: dict[str, Any] = {}
         mode_b_ok = False
-        if not mode_a_ok:
-            try:
-                doc.ClearSelection2(True)
-            except Exception:
-                pass
+        try:
+            doc.ClearSelection2(True)
+        except Exception:
+            pass
+        null_callout = VARIANT(pythoncom.VT_DISPATCH, None)
+        try:
+            sel_ok = doc.Extension.SelectByID2(
+                sketch_name, "SKETCH", 0.0, 0.0, 0.0, False, 0, null_callout, 0,
+            )
+            mode_b_diag["select_sketch"] = bool(sel_ok)
+        except Exception as e:
+            mode_b_diag["select_sketch_error"] = f"{type(e).__name__}: {e}"[:200]
+            sel_ok = False
+
+        if sel_ok:
             try:
                 doc.InsertHelix(
                     True,                               # ConstantPitch
@@ -204,44 +187,40 @@ def main() -> int:
                     HELIX_REVOLUTIONS,                  # Revolution
                     height_m,                           # Height (m)
                     start_angle_rad,                    # StartAngle (rad)
-                    0.0,                                # Diameter (use sketch)
+                    0.0,                                # Diameter (0 = use sketch)
                 )
-                mode_b_diag["called"] = True
-                helices_after_b = _count_helices(doc, mod)
-                if helices_after_b > helices_before:
-                    mode_b_ok = True
+                mode_b_diag["insert_helix_called"] = True
             except Exception as e:
-                mode_b_diag["error"] = f"{type(e).__name__}: {e}"[:200]
+                mode_b_diag["insert_helix_error"] = f"{type(e).__name__}: {e}"[:200]
+
+            try:
+                doc.ForceRebuild3(False)
+            except Exception:
+                pass
+
+            helices_after_b = _count_helices(doc)
+            mode_b_diag["helices_after"] = helices_after_b
+            if helices_after_b > helices_before:
+                mode_b_ok = True
         out["mode_b"] = mode_b_diag
         out["mode_b_ok"] = mode_b_ok
-
-        # -- Verify
-        try:
-            doc.ForceRebuild3(False)
-        except Exception:
-            pass
 
         after = _metrics(doc)
         out["faces_after"] = after["faces"]
         out["vol_mm3_after"] = after["vol_mm3"]
         out["delta_faces"] = after["faces"] - before["faces"]
         out["delta_vol_mm3"] = round(after["vol_mm3"] - before["vol_mm3"], 3)
-        helices_after = _count_helices(doc, mod)
+        helices_after = _count_helices(doc)
         out["helices_after"] = helices_after
-        out["feature_tree"] = _feature_type_names(doc, mod)
+        out["feature_tree_after"] = _feature_type_names(doc)
+        out["mode_fired"] = "B" if mode_b_ok else "NONE"
 
-        any_mode_ok = mode_a_ok or mode_b_ok
-        out["mode_fired"] = (
-            "A" if mode_a_ok else ("B" if mode_b_ok else "NONE")
-        )
-
-        if any_mode_ok:
+        if mode_b_ok:
             out["verdict"] = "PASS"
-            # Save → reopen → verify persistence
             try:
                 doc2 = fx.save_and_reopen(sw, doc)
-                doc = None  # save_and_reopen closed all docs
-                helices_reopen = _count_helices(doc2, mod)
+                doc = None
+                helices_reopen = _count_helices(doc2)
                 out["persist_survived"] = helices_reopen > helices_before
                 out["helices_after_reopen"] = helices_reopen
                 code = 0 if out["persist_survived"] else 2

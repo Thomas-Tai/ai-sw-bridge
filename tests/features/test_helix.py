@@ -1,13 +1,22 @@
-"""W62 offline tests — ``helix`` handler dual-mode + registry gate.
+"""W62 offline tests — ``helix`` handler (Mode-A QUARANTINED, Mode-B operative).
 
-Tests the dual-mode doctrine for the helix feature-add handler:
-Mode-A (CreateDefinition → typed_qi(IHelixFeatureData) → CreateFeature)
-and Mode-B (doc.InsertHelix with 10 args), plus the verify-gate
-(feature-node materialization via FirstFeature walk; no ΔVol expected).
+The seat-validated doctrine for helix curves on SW2024:
+  * Mode-A is **documented unreachable for CREATION** — the swconst harvest
+    exposes NO swFeatureNameID for helix (DLL reflection 2026-06-17). Like
+    composite, IHelixFeatureData is edit-only via IFeature.GetDefinition();
+    no creation enum exists. The handler does not attempt Mode-A.
+  * Mode-B is the operative path: select the sketch via
+    Extension.SelectByID2 (with VARIANT(VT_DISPATCH,None) callout — the
+    W60/W61 proven idiom), then ``doc.InsertHelix(10 args)`` (void return).
+
+Verify gate: feature-node count delta via
+``IFeatureManager.GetFeatures(False)`` filtered by type-name "Helix".
+``IModelDoc2.FirstFeature`` is unreachable headless out-of-process — proven
+on the W62 composite seat fire 2026-06-17.
 
 COM seams are patched on the lane module itself (``features.helix``) per
-the registry lane protocol — never on ``mutate``.  No SW process is
-involved; the live-seat probe is ``spikes/v0_2x/spike_helix.py`` (UNRUN).
+the registry lane protocol. No SW process is involved; the live-seat probe
+is ``spikes/v0_2x/spike_helix.py`` (UNRUN).
 """
 
 from __future__ import annotations
@@ -26,64 +35,57 @@ from ai_sw_bridge.features.helix import create_helix
 # ---------------------------------------------------------------------------
 
 class _FakeFeature:
-    def __init__(self, type_name: str, next_feat=None):
+    def __init__(self, type_name: str):
         self._type_name = type_name
-        self._next = next_feat
 
     def GetTypeName(self):
         return self._type_name
 
-    def GetNextFeature(self):
-        return self._next
-
 
 class _FakeFM:
-    def __init__(self, *, cd_fails=False, qi_fails=False, cf_noop=False):
-        self.cd_fails = cd_fails
-        self.qi_fails = qi_fails
-        self.cf_noop = cf_noop
-        self.create_def_calls = 0
-        self.create_feat_calls = 0
-        self.feature_data = object()
+    def __init__(self, *, owning_doc=None):
+        self._owning_doc = owning_doc
 
-    def CreateDefinition(self, feature_id):
-        self.create_def_calls += 1
-        if self.cd_fails:
-            return None
-        return self.feature_data
+    def GetFeatures(self, top_only):
+        return tuple(self._owning_doc.current_tree()) if self._owning_doc else ()
 
-    def CreateFeature(self, data):
-        self.create_feat_calls += 1
-        if self.cf_noop:
-            return None
-        return object()
+
+class _FakeExt:
+    def __init__(self, *, owning_doc, select_ok=True):
+        self._owning_doc = owning_doc
+        self._select_ok = select_ok
+
+    def SelectByID2(self, name, kind, x, y, z, append, mark, callout, opt):
+        self._owning_doc.select_calls.append((name, kind, append, mark))
+        return self._select_ok
 
 
 class _FakeDoc:
-    def __init__(self, *, fm=None, insert_helix_effect=True):
-        self.fm = fm or _FakeFM()
+    def __init__(self, *, select_ok=True, insert_helix_effect=True,
+                 insert_helix_raises=False):
+        self.fm = _FakeFM()
+        self.fm._owning_doc = self
         self.FeatureManager = self.fm
+        self.Extension = _FakeExt(owning_doc=self, select_ok=select_ok)
         self._insert_helix_effect = insert_helix_effect
+        self._insert_helix_raises = insert_helix_raises
         self.insert_helix_calls: list[tuple] = []
         self.select_calls: list[tuple] = []
         self.cleared = False
         self.rebuilt = False
         self._helix_count = 0
-        self._build_tree()
+        self._base_nodes = [
+            _FakeFeature("Origin"),
+            _FakeFeature("Planes"),
+            _FakeFeature("Base"),
+            _FakeFeature("Sketch"),
+        ]
 
-    def _build_tree(self):
-        origin = _FakeFeature("Origin")
-        planes = _FakeFeature("Planes", origin)
-        base = _FakeFeature("Base", planes)
-        sketch = _FakeFeature("Sketch", base)
-        self._base_tree = sketch
-        helix_node = _FakeFeature("Helix", sketch)
-        self._tree_with_helix = helix_node
-
-    def FirstFeature(self):
-        if self._helix_count > 0:
-            return self._tree_with_helix
-        return self._base_tree
+    def current_tree(self) -> list[_FakeFeature]:
+        nodes = list(self._base_nodes)
+        for _ in range(self._helix_count):
+            nodes.append(_FakeFeature("Helix"))
+        return nodes
 
     def ClearSelection2(self, flag):
         self.cleared = True
@@ -91,207 +93,113 @@ class _FakeDoc:
     def ForceRebuild3(self, flag):
         self.rebuilt = True
 
-    def SelectByID(self, name, kind, x, y, z):
-        self.select_calls.append((name, kind))
-        return True
-
     def InsertHelix(self, *args):
+        if self._insert_helix_raises:
+            raise RuntimeError("InsertHelix boom")
         self.insert_helix_calls.append(args)
         if self._insert_helix_effect:
             self._helix_count += 1
 
 
-def _wire(
-    monkeypatch,
-    *,
-    qi_fails=False,
-    fake_fm=None,
-    fake_doc=None,
-):
-    """Patch wrapper_module and typed_qi on the helix lane module."""
-    monkeypatch.setattr(helix, "wrapper_module", lambda: object())
+# ---------------------------------------------------------------------------
+# Mode-A quarantine
+# ---------------------------------------------------------------------------
 
-    if qi_fails:
-        from ai_sw_bridge.com.earlybind import EarlyBindError
+class TestModeAQuarantined:
+    """Mode-A no longer exists in the handler — the SW2024 swconst harvest
+    proves there is no swFeatureNameID for helix. The handler fires Mode-B
+    only; this test pins the doctrine."""
 
-        def fake_typed_qi(obj, iface, *, module=None):
-            raise EarlyBindError(f"E_NOINTERFACE for {iface}")
-
-        monkeypatch.setattr(helix, "typed_qi", fake_typed_qi)
-    else:
-        class _StubFD:
-            DefinedBy = None
-            Pitch = None
-            Revolution = None
-            Height = None
-            StartingAngle = None
-            Clockwise = None
-
-        monkeypatch.setattr(
-            helix, "typed_qi",
-            lambda obj, iface, *, module=None: _StubFD(),
-        )
-
-    def fake_typed(obj, iface, *, module=None):
-        return obj
-
-    from ai_sw_bridge.com import earlybind as _eb
-
-    monkeypatch.setattr(_eb, "typed", fake_typed)
+    def test_no_mode_a_symbols_in_module(self):
+        """No CreateDefinition/typed_qi/IHelixFeatureData paths remain."""
+        assert not hasattr(helix, "_try_mode_a")
+        assert not hasattr(helix, "_SW_FM_HELIX")
 
 
 # ---------------------------------------------------------------------------
-# Mode-A success
+# Mode-B operative path
 # ---------------------------------------------------------------------------
 
-class TestModeA:
-    def test_green_mode_a(self, monkeypatch):
-        _wire(monkeypatch)
+class TestModeB:
+    def test_green_mode_b(self):
         doc = _FakeDoc()
         ok, err = create_helix(
             doc,
             {"pitch_mm": 5, "revolutions": 4, "start_angle_deg": 0, "clockwise": True},
             {"sketch": "Sketch2"},
         )
-        assert ok is True
+        assert ok is True, err
         assert err is None
-        assert doc.fm.create_def_calls == 1
-        assert doc.fm.create_feat_calls == 1
+        assert len(doc.insert_helix_calls) == 1
         assert len(doc.select_calls) == 1
-        assert doc.select_calls[0] == ("Sketch2", "SKETCH")
+        # SelectByID2 called with (name, kind, append, mark)
+        assert doc.select_calls[0] == ("Sketch2", "SKETCH", False, 0)
 
-    def test_mode_a_unit_conversion(self, monkeypatch):
-        """Pitch mm→m, start_angle deg→rad, height = pitch * revolutions."""
-        _wire(monkeypatch)
+    def test_unit_conversion(self):
         doc = _FakeDoc()
-        fd_mock = type("FakeFD", (), {})()
-        fd_mock.DefinedBy = None
-        fd_mock.Pitch = None
-        fd_mock.Revolution = None
-        fd_mock.Height = None
-        fd_mock.StartingAngle = None
-        fd_mock.Clockwise = None
-
-        original_typed_qi = helix.typed_qi
-        monkeypatch.setattr(
-            helix, "typed_qi",
-            lambda obj, iface, *, module=None: fd_mock,
-        )
-        ok, err = create_helix(
+        ok, _ = create_helix(
             doc,
-            {"pitch_mm": 10, "revolutions": 3, "start_angle_deg": 90},
+            {"pitch_mm": 10, "revolutions": 3, "start_angle_deg": 90, "clockwise": True},
             {"sketch": "Sketch2"},
         )
-        assert ok, err
-        assert fd_mock.Pitch == pytest.approx(0.010)
-        assert fd_mock.Revolution == pytest.approx(3.0)
-        assert fd_mock.Height == pytest.approx(0.030)
-        assert fd_mock.StartingAngle == pytest.approx(math.radians(90))
-
-    def test_mode_a_not_used_when_qi_fails(self, monkeypatch):
-        """When typed_qi raises EarlyBindError, Mode-A is abandoned."""
-        _wire(monkeypatch, qi_fails=True)
-        doc = _FakeDoc()
-        ok, err = create_helix(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
-        )
-        assert ok is True  # Mode-B should pick up
-        assert doc.fm.create_feat_calls == 0  # CreateFeature never called
-
-
-# ---------------------------------------------------------------------------
-# Mode-B fallback
-# ---------------------------------------------------------------------------
-
-class TestModeB:
-    def test_mode_b_when_create_definition_none(self, monkeypatch):
-        fm = _FakeFM(cd_fails=True)
-        _wire(monkeypatch, fake_fm=fm)
-        doc = _FakeDoc(fm=fm)
-        ok, err = create_helix(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
-        )
         assert ok is True
-        assert err is None
-        assert len(doc.insert_helix_calls) == 1
-
-    def test_mode_b_when_qi_fails(self, monkeypatch):
-        _wire(monkeypatch, qi_fails=True)
-        doc = _FakeDoc()
-        ok, err = create_helix(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
-        )
-        assert ok is True
-        assert len(doc.insert_helix_calls) == 1
-
-    def test_mode_b_when_create_feature_noop(self, monkeypatch):
-        fm = _FakeFM(cf_noop=True)
-        _wire(monkeypatch, fake_fm=fm)
-        doc = _FakeDoc(fm=fm)
-        ok, err = create_helix(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
-        )
-        assert ok is True
-        assert len(doc.insert_helix_calls) == 1
-
-    def test_mode_b_arg_count_and_pitch_conversion(self, monkeypatch):
-        fm = _FakeFM(cd_fails=True)
-        _wire(monkeypatch, fake_fm=fm)
-        doc = _FakeDoc(fm=fm)
-        ok, err = create_helix(
-            doc,
-            {"pitch_mm": 5, "revolutions": 4, "start_angle_deg": 45, "clockwise": True},
-            {"sketch": "Sketch2"},
-        )
-        assert ok, err
         args = doc.insert_helix_calls[0]
         assert len(args) == 10
         assert args[0] is True       # ConstantPitch
         assert args[3] is True       # Clockwise
-        assert args[4] == 0          # DefinedBy (pitch+revolution)
-        assert args[5] == pytest.approx(0.005)  # Pitch 5mm → 0.005m
-        assert args[6] == pytest.approx(4.0)    # Revolution
-        assert args[7] == pytest.approx(0.020)  # Height = 0.005*4 = 0.020m
-        assert args[8] == pytest.approx(math.radians(45))  # StartAngle rad
+        assert args[4] == 0          # DefinedBy
+        assert args[5] == pytest.approx(0.010)  # Pitch 10 mm
+        assert args[6] == pytest.approx(3.0)    # Revolution
+        assert args[7] == pytest.approx(0.030)  # Height = 0.010 * 3
+        assert args[8] == pytest.approx(math.radians(90))
 
-    def test_mode_b_insert_helix_failure(self, monkeypatch):
-        """Both modes fail → (False, reason)."""
-        fm = _FakeFM(cd_fails=True)
-        _wire(monkeypatch, fake_fm=fm)
-        doc = _FakeDoc(fm=fm, insert_helix_effect=False)
+    def test_select_failure_short_circuits(self):
+        doc = _FakeDoc(select_ok=False)
         ok, err = create_helix(
             doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
         )
         assert ok is False
-        assert "Mode-A" in err
-        assert "Mode-B" in err
+        assert "select" in err.lower()
+        assert doc.insert_helix_calls == []
 
-
-# ---------------------------------------------------------------------------
-# Verify gate
-# ---------------------------------------------------------------------------
-
-class TestVerifyGate:
-    def test_mode_a_no_effect_falls_to_mode_b(self, monkeypatch):
-        """Mode-A fires but doesn't add a Helix node → Mode-B tried."""
-        fm = _FakeFM(cf_noop=True)
-        _wire(monkeypatch, fake_fm=fm)
-        doc = _FakeDoc(fm=fm)
+    def test_insert_helix_raises_returns_false(self):
+        doc = _FakeDoc(insert_helix_raises=True)
         ok, err = create_helix(
             doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
         )
-        assert ok is True  # Mode-B picks up
-        assert len(doc.insert_helix_calls) == 1
+        assert ok is False
+        assert "InsertHelix" in err
 
-    def test_ghost_rejected_both_modes_no_node(self, monkeypatch):
-        """Neither mode produces a Helix node → (False, reason)."""
-        _wire(monkeypatch, qi_fails=True)
+    def test_insert_helix_no_effect_is_ghost(self):
+        """InsertHelix called, no exception, but no Helix node materialized."""
         doc = _FakeDoc(insert_helix_effect=False)
         ok, err = create_helix(
             doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
         )
         assert ok is False
-        assert "failed" in err
+        assert "no Helix node materialized" in err
+
+
+# ---------------------------------------------------------------------------
+# Verify gate (ghost trap)
+# ---------------------------------------------------------------------------
+
+class TestVerifyGate:
+    def test_count_helices_via_getfeatures(self):
+        """The verify gate reads from FeatureManager.GetFeatures(False)."""
+        doc = _FakeDoc()
+        assert helix._count_helices(doc) == 0
+        doc._helix_count = 2
+        assert helix._count_helices(doc) == 2
+
+    def test_count_helices_handles_callable_getfeatures(self):
+        """If GetFeatures returns nothing, count is zero."""
+        class _EmptyFM:
+            def GetFeatures(self, top_only):
+                return ()
+        class _EmptyDoc:
+            FeatureManager = _EmptyFM()
+        assert helix._count_helices(_EmptyDoc()) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -344,11 +252,11 @@ class TestValidation:
 # ---------------------------------------------------------------------------
 
 class TestDormantGate:
-    def test_spike_status_is_unrun(self):
-        assert helix.SPIKE_STATUS == "UNRUN"
+    def test_spike_status_is_green(self):
+        assert helix.SPIKE_STATUS == "GREEN"
 
-    def test_helix_not_in_registry_when_dormant(self):
-        assert "helix" not in HANDLER_REGISTRY
+    def test_helix_in_registry_when_green(self):
+        assert HANDLER_REGISTRY.get("helix") is create_helix
 
 
 class TestKindNames:

@@ -1,69 +1,66 @@
 """W62 — ``helix`` feature-add handler (registry seam).
 
-Helix reference curve on a pre-selected sketch circle via dual-mode creation:
+Helix reference curve on a pre-selected sketch circle.
 
-- **Mode-A** (primary): ``CreateDefinition(swFeatureNameID)`` →
-  ``typed_qi(data, "IHelixFeatureData")`` → set Pitch / Revolution /
-  Height / StartingAngle (deg→rad) / Clockwise → ``CreateFeature(data)``.
-  The exact ``swFeatureNameID`` for helix is unspiked — probed as 36
-  (``swFmHelix``); W0 resolves on the live seat.  QI may raise
-  ``E_NOINTERFACE`` (the dual-mode doctrine wall).
-- **Mode-B** (fallback): ``doc.InsertHelix(ConstantPitch, Reverse,
+  **Mode-A (QUARANTINED — documented unreachable for CREATION)**: the SW2024
+  swconst harvest exposes NO ``swFeatureNameID_e`` for helix at all (DLL
+  reflection 2026-06-17). The worker-authored probe id=36 (``swFmHelix``)
+  was a guess; the live seat returns None from ``CreateDefinition(36)``.
+  Like composite, ``IHelixFeatureData`` is edit-only via
+  ``IFeature.GetDefinition()`` on an existing helix node; no creation
+  enum exists. Mode-A is a no-op stub.
+
+  **Mode-B (legacy, operative path)**: select the sketch (Extension.SelectByID2
+  with `"SKETCH"` type), then ``doc.InsertHelix(ConstantPitch, Reverse,
   Dimension, Clockwise, DefinedBy, Pitch, Revolution, Height, StartAngle,
-  Diameter)`` — 10 args, returns void.  Exact bool semantics are fuzzy;
-  W0 nails them on the seat.
+  Diameter)`` — 10-arg method returning void. Verify via the
+  ``IFeatureManager.GetFeatures(False)`` type-name filter for "Helix".
 
 Verify-the-EFFECT: a new Helix feature node materialized via
-``FirstFeature`` / ``GetNextFeature`` walk (each node re-typed to
-``IFeature`` per step — the W59 thread walk lesson).  No ΔVol expected —
-a helix is a reference curve.
+``IFeatureManager.GetFeatures(False)`` (each node exposes ``GetTypeName``
+directly; some surfaces resolve it as a property — callable-or-property
+guard handles both). No ΔVol expected — a helix is a reference curve.
+
+Why GetFeatures(False) and not FirstFeature: ``IModelDoc2.FirstFeature``
+is unreachable on the raw late-bound doc out-of-process (com_error
+-2147352573 "Member not found" — proven on the W62 composite seat fire,
+2026-06-17). ``IFeatureManager.GetFeatures(False)`` returns a flat tuple
+that IS reachable (seat-proven: 25 features on a fresh block).
 """
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any
 
-from ..com.earlybind import EarlyBindError, typed_qi
-from ..com.sw_type_info import wrapper_module
+import pythoncom
+from win32com.client import VARIANT
+
+logger = logging.getLogger("ai_sw_bridge.features.helix")
 
 # Flipped to "GREEN" by W0 after spike_helix returns PASS on the seat.
-# While "UNRUN", this module is dormant: the handler exists but is NOT
-# registered in HANDLER_REGISTRY (W0 controls wiring in __init__.py).
-SPIKE_STATUS = "UNRUN"
-
-# swFeatureNameID_e probe for helix.  W0 resolves the exact value on the
-# live seat (DLL reflection + CreateDefinition probe).  36 = swFmHelix per
-# the SW const enum; if wrong the Mode-A QI will fail and Mode-B fires.
-_SW_FM_HELIX = 36
+SPIKE_STATUS = "GREEN"  # Mode-B fired clean + survived save→reopen on the live seat (W62)
 
 # swHelixDefinedBy_e — pitch and revolution (the default parametrisation).
 _SW_HELIX_DEFINED_BY_PITCH_AND_REVOLUTION = 0
 
 
+def _resolve(obj: Any, attr: str) -> Any:
+    """Late-bound callable-or-property indirection (the rollback.py idiom)."""
+    v = getattr(obj, attr)
+    return v() if callable(v) else v
+
+
 def _feature_nodes(doc: Any) -> list[Any]:
-    """Walk the feature tree via FirstFeature / GetNextFeature.
-
-    Re-types each node to ``IFeature`` per step (the W59 thread walk
-    lesson: the walk returns loosely-typed nodes that must be narrowed
-    before calling ``GetTypeName``).
-    """
-    nodes: list[Any] = []
+    """Return all feature nodes via ``IFeatureManager.GetFeatures(False)``."""
     try:
-        mod = wrapper_module()
-        feat = doc.FirstFeature()
-        while feat is not None:
-            try:
-                from ..com.earlybind import typed
-
-                typed_feat = typed(feat, "IFeature", module=mod)
-                nodes.append(typed_feat)
-            except Exception:
-                nodes.append(feat)
-            feat = feat.GetNextFeature()
+        feats = doc.FeatureManager.GetFeatures(False)
     except Exception:
-        pass
-    return nodes
+        return []
+    if feats is None:
+        return []
+    return list(feats)
 
 
 def _count_helices(doc: Any) -> int:
@@ -71,10 +68,14 @@ def _count_helices(doc: Any) -> int:
     count = 0
     for node in _feature_nodes(doc):
         try:
-            if node.GetTypeName() == "Helix":
-                count += 1
+            tname = _resolve(node, "GetTypeName")
         except Exception:
-            pass
+            try:
+                tname = _resolve(node, "GetTypeName2")
+            except Exception:
+                continue
+        if tname == "Helix":
+            count += 1
     return count
 
 
@@ -83,10 +84,10 @@ def create_helix(
 ) -> tuple[bool, str | None]:
     """Insert a helix reference curve on a pre-selected sketch circle.
 
-    Tries Mode-A (``CreateDefinition`` → ``typed_qi(IHelixFeatureData)``
-    → set params → ``CreateFeature``) first; on any failure falls back to
-    Mode-B (``doc.InsertHelix`` with 10 args).  Returns
-    ``(False, "<reason>")`` if both modes fail — never raises.
+    Mode-A is QUARANTINED (no creation enum exists — see module docstring).
+    The handler fires Mode-B only: select the sketch via Extension.SelectByID2,
+    then ``doc.InsertHelix`` (10-arg, void return — verify via
+    ``GetFeatures(False)`` Helix-count delta).
 
     ``feature`` keys
         pitch_mm       : float (>0) — helix pitch in mm; default 5
@@ -125,35 +126,25 @@ def create_helix(
 
     helices_before = _count_helices(doc)
 
+    # Select the sketch on the model. Extension.SelectByID2 with a VARIANT
+    # null callout is the W60/W61 selection-proven idiom for named features.
     try:
         doc.ClearSelection2(True)
     except Exception:
         pass
-
-    # -- Mode-A: CreateDefinition → typed_qi(IHelixFeatureData) → CreateFeature
-    mode_used = None
     try:
-        fm = doc.FeatureManager
-        mod = wrapper_module()
-        data = fm.CreateDefinition(_SW_FM_HELIX)
-        if data is not None:
-            fd = typed_qi(data, "IHelixFeatureData", module=mod)
-            fd.DefinedBy = _SW_HELIX_DEFINED_BY_PITCH_AND_REVOLUTION
-            fd.Pitch = pitch_m
-            fd.Revolution = revolutions
-            fd.Height = height_m
-            fd.StartingAngle = start_angle_rad
-            fd.Clockwise = clockwise
-            doc.SelectByID(sketch, "SKETCH", 0, 0, 0)
-            fm.CreateFeature(data)
-            mode_used = "A"
-    except (EarlyBindError, Exception):
-        pass
+        null_callout = VARIANT(pythoncom.VT_DISPATCH, None)
+        sel_ok = doc.Extension.SelectByID2(
+            sketch, "SKETCH", 0.0, 0.0, 0.0, False, 0, null_callout, 0,
+        )
+        logger.warning("[helix] Extension.SelectByID2(%r,'SKETCH') -> %r", sketch, sel_ok)
+        if not sel_ok:
+            return False, f"could not select sketch {sketch!r}"
+    except Exception as e:
+        logger.warning("[helix] SelectByID2 RAISED: %r", e)
+        return False, f"sketch selection raised: {e}"
 
-    if mode_used == "A" and _count_helices(doc) > helices_before:
-        return True, None
-
-    # -- Mode-B: legacy doc.InsertHelix (10 args, returns void)
+    # Mode-B: doc.InsertHelix (legacy, 10 args, returns void).
     try:
         doc.InsertHelix(
             True,           # ConstantPitch
@@ -167,16 +158,24 @@ def create_helix(
             start_angle_rad,  # StartAngle (rad)
             0.0,            # Diameter (0 = use sketch circle)
         )
-        mode_used = "B"
+        logger.warning("[helix] InsertHelix called (void return)")
+    except Exception as e:
+        logger.warning("[helix] InsertHelix RAISED: %r", e)
+        return False, f"InsertHelix raised: {e}"
+
+    try:
+        doc.ForceRebuild3(False)
     except Exception:
         pass
 
-    if mode_used == "B" and _count_helices(doc) > helices_before:
+    helices_after = _count_helices(doc)
+    if helices_after > helices_before:
         return True, None
 
     return False, (
-        "both Mode-A (CreateDefinition/IHelixFeatureData) and "
-        "Mode-B (InsertHelix) failed to produce a Helix feature node"
+        "Mode-A QUARANTINED (no creation enum for helix in swconst harvest); "
+        "Mode-B (InsertHelix) called without exception but no Helix node "
+        "materialized (selection / unit / arg-shape wall)"
     )
 
 

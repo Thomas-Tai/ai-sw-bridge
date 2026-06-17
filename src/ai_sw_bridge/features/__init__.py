@@ -58,3 +58,17 @@ HANDLER_REGISTRY["hem"] = create_hem
 # geometry at the target coords via boss_extrude). Kept for fail-loud + the
 # wall provenance.
 from . import move_copy_body as _move_copy_body  # noqa: E402,F401
+
+# W62 — helix curve (curves group, lane 2). Mode-A QUARANTINED: the SW2024
+# swconst harvest exposes NO swFeatureNameID for helix (DLL reflection
+# 2026-06-17). Like composite, IHelixFeatureData is edit-only via
+# IFeature.GetDefinition(); no creation enum exists. Mode-B fires
+# generative via legacy InsertHelix (10-arg method) after selecting the
+# sketch with Extension.SelectByID2 + VARIANT(VT_DISPATCH, None) callout.
+# Seat-proven 2026-06-17 (spike_helix Mode-B PASS — helices_before=0,
+# helices_after=1, survives save→reopen).
+from .helix import SPIKE_STATUS as _helix_status  # noqa: E402
+from .helix import create_helix  # noqa: E402
+
+if _helix_status == "GREEN":
+    HANDLER_REGISTRY["helix"] = create_helix
