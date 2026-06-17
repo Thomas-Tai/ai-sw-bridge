@@ -1,13 +1,24 @@
 """W62 — ``split_line`` feature-add handler (registry seam).
 
 Projects a sketch onto a solid-body face, splitting the face topologically
-without removing material.  The dual-mode doctrine is applied:
+without removing material.
 
-  Mode-A:  CreateDefinition → typed_qi(data, "ISplitLineFeatureData")
-           → AccessSelections(doc, None) → set Sketch, SplitType, ISetFaces
-           → ReleaseSelectionAccess() → CreateFeature(data)
-  Mode-B:  select sketch + face, then
-           doc.InsertSplitLineProject(Reverse:bool, SingleDirection:bool)
+  **Mode-A (QUARANTINED — documented unreachable for CREATION)**: the SW2024
+  swconst harvest (DLL reflection 2026-06-17) exposes NO swFeatureNameID
+  for split-line — same class as composite (W62 2a04542) and helix
+  (W62 057789a). The worker probe id=65 (``swFmReferenceCurve``) returned
+  None from CreateDefinition on the live seat. ``ISplitLineFeatureData``
+  is in the typelib but is edit-only via ``IFeature.GetDefinition()`` on
+  an existing split-line node; no creation route exists. Mode-A is a
+  no-op stub. Historical CreateDefinition+ISetSplitTools+ISetFaces+
+  CreateFeature wiring can be reconstructed from git history if a future
+  SW version exposes a creation enum.
+
+  **Mode-B (legacy, operative path)**: select sketch + face (mark=0 for
+  both — macro-recorder default), then ``doc.InsertSplitLineProject(
+  Reverse:bool, SingleDirection:bool)`` (2-arg method, void return).
+  Verify-the-EFFECT must drive (the call never raises and never returns a
+  truthy success — only ΔFace>0 ∧ ΔVol==0 proves a split happened).
 
 Verify-the-EFFECT (DIFFERENT from hem): success = ΔFace > 0 AND ΔVol == 0.
 A split line adds topological faces (the projected curve partitions the
@@ -18,11 +29,17 @@ was a silent no-op (the W21/W42 ghost trap).
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+import pythoncom
+from win32com.client import VARIANT
 
 from ..com.earlybind import EarlyBindError, typed, typed_qi
 from ..com.sw_type_info import wrapper_module
 from ..selection.live import select_entity
+
+logger = logging.getLogger("ai_sw_bridge.features.split_line")
 
 # Flipped to "GREEN" by W0 after the spike fires on the live seat and
 # one of the two modes is proven generative.
@@ -35,6 +52,15 @@ _SPLIT_TYPES: dict[str, int] = {"projection": 0, "silhouette": 1}
 
 # FP-noise threshold for volume comparison (mm³).
 _VOL_EPS_MM3 = 1e-6
+
+# PropertyManager selection marks for split-line "Sketch to project" and
+# "Faces to split" list boxes. The macro-recorder default is mark=0 for
+# both (SW infers list-box routing from entity type); some sources
+# document mark=1/2 differentiation. The handler tries mark=0/0 first
+# (recorder-default) — the first seat fire 2026-06-17 showed marks=1/2
+# accepted the selection but the macro returned no-op.
+_MARK_SKETCH = 0
+_MARK_FACE = 0
 
 
 def _solid_bodies(doc: Any) -> list[Any] | None:
@@ -154,64 +180,88 @@ def create_split_line(
 def _try_mode_a(
     doc: Any, sketch_name: str, face_entity: Any, split_type: int,
 ) -> Any | None:
-    """Mode-A: CreateDefinition → ISplitLineFeatureData → CreateFeature.
+    """Mode-A: QUARANTINED — documented unreachable for CREATION.
 
-    Returns the created feature node, or None on any failure (E_NOINTERFACE,
-    None data, silent drop).
+    The SW2024 swconst harvest exposes NO swFeatureNameID for split-line:
+    the worker probe id=65 (swFmReferenceCurve) returned None from
+    CreateDefinition on the live seat 2026-06-17. Same class as composite
+    (W62 2a04542) and helix (W62 057789a). ISplitLineFeatureData is
+    edit-only via IFeature.GetDefinition() on an existing split-line
+    feature; no creation route exists. Returning None routes the handler
+    to Mode-B without spending a CreateDefinition call every invocation.
+
+    Historical implementation (CreateDefinition(65) +
+    typed_qi(ISplitLineFeatureData) + AccessSelections(doc,
+    VARIANT(VT_DISPATCH,None)) + ISetSplitTools(sketch) + ISetFaces(face)
+    + ReleaseSelectionAccess + CreateFeature) can be reconstructed from
+    git history if a future SW version exposes a creation enum.
     """
-    try:
-        fm = doc.FeatureManager
-        data = fm.CreateDefinition(65)
-        if data is None:
-            return None
-        sd = typed_qi(data, "ISplitLineFeatureData")
-        sd.AccessSelections(doc, None)
-        try:
-            sketch_feat = doc.FeatureByName(sketch_name)
-            if sketch_feat is None:
-                return None
-            sd.Sketch = sketch_feat
-        except Exception:
-            return None
-        sd.SplitType = split_type
-        try:
-            sd.ISetFaces(1, (face_entity,))
-        except Exception:
-            try:
-                sd.ISetFaces((face_entity,))
-            except Exception:
-                return None
-        sd.ReleaseSelectionAccess()
-        return fm.CreateFeature(data)
-    except (EarlyBindError, Exception):
-        return None
+    return None
 
 
 def _try_mode_b(
     doc: Any, sketch_name: str, face_entity: Any,
     reverse: bool, single_direction: bool,
 ) -> Any | None:
-    """Mode-B: select sketch + face, then InsertSplitLineProject.
+    """Mode-B: select sketch (mark=1) + face (mark=2) + InsertSplitLineProject.
 
-    Returns a sentinel on call success (verify-the-effect decides real success).
-    Returns None if selection or the insert call fails.
+    The split-line PropertyManager uses distinct marks for the "Sketch to
+    project" (mark=1) and "Faces to split" (mark=2) list boxes — the
+    macro-recorder corpus is consistent. Selecting both with mark=0 is the
+    classic silent no-op trap (selection enters preselection, never routes
+    to either list box).
+
+    InsertSplitLineProject is a 2-arg method (Reverse, SingleDirection)
+    returning void — verify-the-effect decides real success.
     """
     try:
         doc.ClearSelection2(True)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("[B] ClearSelection2 RAISED: %r", e)
+        return None
+
     try:
         sketch_feat = doc.FeatureByName(sketch_name)
-        if sketch_feat is None:
-            return None
-        if not select_entity(sketch_feat, mark=0):
-            return None
-        if not select_entity(face_entity, append=True, mark=0):
-            return None
-    except Exception:
+    except Exception as e:
+        logger.warning("[B] FeatureByName RAISED: %r", e)
         return None
+    if sketch_feat is None:
+        logger.warning("[B] FeatureByName(%r) -> None", sketch_name)
+        return None
+
     try:
-        doc.InsertSplitLineProject(reverse, single_direction)
-    except Exception:
+        sk_ok = select_entity(sketch_feat, mark=_MARK_SKETCH)
+    except Exception as e:
+        logger.warning("[B] select_entity(sketch) RAISED: %r", e)
+        return None
+    logger.warning(
+        "[B] select_entity(sketch, mark=%d) -> %r", _MARK_SKETCH, sk_ok
+    )
+    if not sk_ok:
+        return None
+
+    try:
+        fc_ok = select_entity(face_entity, append=True, mark=_MARK_FACE)
+    except Exception as e:
+        logger.warning("[B] select_entity(face) RAISED: %r", e)
+        return None
+    logger.warning(
+        "[B] select_entity(face, append=True, mark=%d) -> %r", _MARK_FACE, fc_ok
+    )
+    if not fc_ok:
+        return None
+
+    try:
+        isp = doc.InsertSplitLineProject
+        result = (
+            isp(reverse, single_direction) if callable(isp)
+            else None  # property-bool resolution would already have been auto-invoked
+        )
+        logger.warning(
+            "[B] InsertSplitLineProject(reverse=%r, single=%r) callable=%s -> %r",
+            reverse, single_direction, callable(isp), result,
+        )
+    except Exception as e:
+        logger.warning("[B] InsertSplitLineProject RAISED: %r", e)
         return None
     return object()

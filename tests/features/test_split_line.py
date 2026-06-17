@@ -23,14 +23,21 @@ from ai_sw_bridge.features.split_line import create_split_line
 
 
 class _FakeSD:
-    """Fake ISplitLineFeatureData (Mode-A)."""
+    """Fake ISplitLineFeatureData (Mode-A).
+
+    The W62 seat audit (2026-06-17) proved the iface has NO ``Sketch``
+    property — the sketch is routed via ``ISetSplitTools``, not a setter.
+    ``Sketch`` is kept on the fake purely as a bookkeeping field that the
+    handler does NOT touch.
+    """
 
     def __init__(self) -> None:
         self._accessed = False
         self._released = False
-        self.Sketch = None
+        self.Sketch = None  # vestigial — handler never sets this
         self.SplitType = -1
         self._faces: tuple = ()
+        self._tools: tuple = ()
 
     def AccessSelections(self, doc: object, _extra: object) -> None:
         self._accessed = True
@@ -40,6 +47,12 @@ class _FakeSD:
             self._faces = args[0]  # type: ignore[assignment]
         elif len(args) == 2:
             self._faces = args[1]  # type: ignore[assignment]
+
+    def ISetSplitTools(self, *args: object) -> None:
+        if len(args) == 1:
+            self._tools = args[0]  # type: ignore[assignment]
+        elif len(args) == 2:
+            self._tools = args[1]  # type: ignore[assignment]
 
     def ReleaseSelectionAccess(self) -> None:
         self._released = True
@@ -142,43 +155,21 @@ def _target(**overrides: object) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Happy path — Mode-A
+# Mode-A quarantine (documented unreachable for CREATION — SW2024 harvest)
 # ---------------------------------------------------------------------------
 
 
-class TestModeA:
-    def test_green_split_line_mode_a(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        _patch(monkeypatch)
-        ok, note = create_split_line(_FakeDoc(), {}, _target())
-        assert ok is True
-        assert note is not None and "mode-A" in note
+class TestModeAQuarantined:
+    """Mode-A is a no-op stub on this SW build. The swconst harvest exposes
+    no swFeatureNameID for split-line — the worker probe (id=65) returns
+    None from CreateDefinition on the live seat 2026-06-17. Same class as
+    composite (W62 2a04542) and helix (W62 057789a). The ISplitLineFeatureData
+    interface IS in the typelib but is edit-only via IFeature.GetDefinition()."""
 
-    def test_mode_a_calls_access_and_release(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        sd = _FakeSD()
-        fm = _FakeFM(data=sd)
-        _patch(monkeypatch, data=sd)
-        doc = _FakeDoc(fm=fm)
-        ok, _ = create_split_line(doc, {}, _target())
-        assert ok
-        assert sd._accessed is True
-        assert sd._released is True
-
-    def test_mode_a_sets_sketch_and_split_type(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        sd = _FakeSD()
-        fm = _FakeFM(data=sd)
-        _patch(monkeypatch, data=sd)
-        doc = _FakeDoc(fm=fm)
-        ok, _ = create_split_line(
-            doc, {"split_type": "projection"}, _target(),
-        )
-        assert ok
-        assert sd.SplitType == 0  # projection
-        assert sd.Sketch is not None
-
-    def test_mode_a_select_entity_called(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        _patch(monkeypatch)
-        ok, _ = create_split_line(_FakeDoc(), {}, _target())
-        assert ok
+    def test_mode_a_returns_none_always(self) -> None:
+        from ai_sw_bridge.features import split_line as sl
+        assert sl._try_mode_a(_FakeDoc(), "Sketch2", object(), 0) is None
+        assert sl._try_mode_a(None, "", object(), 1) is None
 
 
 # ---------------------------------------------------------------------------
@@ -332,14 +323,13 @@ class TestValidation:
         assert ok is False and "split_type" in err
 
     def test_int_split_type_passes_through(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        sd = _FakeSD()
-        fm = _FakeFM(data=sd)
-        _patch(monkeypatch, data=sd)
-        ok, _ = create_split_line(
-            _FakeDoc(fm=fm), {"split_type": 0}, _target(),
-        )
-        assert ok
-        assert sd.SplitType == 0
+        """Even with int split_type, validation passes through to Mode-B
+        (Mode-A is quarantined; the int isn't routed anywhere meaningful,
+        but the handler must not raise on the input shape)."""
+        _patch(monkeypatch)  # typed_qi succeeds is irrelevant — A is no-op
+        doc = _FakeDoc()
+        ok, _ = create_split_line(doc, {"split_type": 0}, _target())
+        assert ok  # Mode-B succeeds via the fake
 
 
 # ---------------------------------------------------------------------------
@@ -348,15 +338,14 @@ class TestValidation:
 
 
 class TestDualMode:
-    def test_mode_a_ignores_select_entity_failure(
+    def test_mode_a_quarantined_falls_to_mode_b(
         self, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Mode-A uses ISetFaces (not select_entity), so select_ok=False
-        does not block Mode-A.  Mode-B would fail, but Mode-A fires first."""
-        _patch(monkeypatch, select_ok=False)
+        """Mode-A always returns None (quarantined); Mode-B carries the call."""
+        _patch(monkeypatch)
         ok, note = create_split_line(_FakeDoc(), {}, _target())
         assert ok is True
-        assert note is not None and "mode-A" in note
+        assert note is not None and "mode-B" in note
 
     def test_rebuild_called_on_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch(monkeypatch)

@@ -115,14 +115,84 @@ def seed_circle_sketch(doc: Any) -> str:
 
 
 def seed_line_over_top(doc: Any) -> tuple[str, Any]:
-    """A Front-plane line at y = +5 mm that projects (+Z) onto the top face.
-    Returns ``(sketch_name, live_top_face)`` for split_line / project_curve."""
-    _select_feature(doc, "Front Plane")
+    """Sketch a line on a reference plane 20mm ABOVE the block's top face,
+    parallel to it; its normal projects ``-Z`` straight down onto the top
+    face -> a clean split-line target.
+
+    Returns ``(sketch_name, live_top_face)`` for split_line / project_curve.
+
+    Why a custom offset plane and not a default datum plane:
+    * Front Plane = X-Y plane at z=0, sketch normal = +Y (parallel to top
+      face, never intersects).
+    * Top Plane = X-Z plane at y=0, sketch normal = +Y (same — wrong axis).
+    * The block's own Top face is co-planar with the projection target;
+      InsertSplitLineProject would have zero projection distance.
+    A parallel ref-plane offset by 20mm above the block is the foolproof
+    target geometry: sketch on it, projection direction = -Z = straight
+    down onto the top face at z=+10mm.
+
+    Sketch consumes "Sketch2" (Sketch1 was consumed by Boss-Extrude1).
+    """
+    top_face_obj = top_face(doc)
+    # 1) Select the top face + insert a reference plane parallel to it,
+    #    offset 20mm above (positive Z direction).
+    top_face_obj.Select2(False, 0)
+    # InsertRefPlane args: 3 paired (constraint_n, dist_n) entries; we use
+    # only the first pair to express "Distance" from the selected face.
+    # swRefPlaneReferenceConstraints_Distance = 8 (bit-flag from harvest;
+    # NOT 64 — 64 is swRefPlaneReferenceConstraint_Project).
+    REF_DIST = 8
+    plane_feat = doc.FeatureManager.InsertRefPlane(
+        REF_DIST, 0.020,
+        0, 0.0,
+        0, 0.0,
+    )
+    doc.ClearSelection2(True)
+    if plane_feat is None:
+        raise RuntimeError("InsertRefPlane returned None")
+    plane_name = plane_feat.Name if not callable(plane_feat.Name) else plane_feat.Name()
+    # 2) Open a sketch on the new ref plane, draw a line crossing the
+    #    projection of the top face center, close the sketch (non-empty
+    #    so SW keeps it).
+    _select_feature(doc, plane_name)
     doc.SketchManager.InsertSketch(True)
-    doc.SketchManager.CreateLine(-0.025, 0.005, 0.0, 0.025, 0.005, 0.0)
+    doc.SketchManager.CreateLine(-0.025, 0.0, 0.0, 0.025, 0.0, 0.0)
     doc.SketchManager.InsertSketch(True)  # close
     doc.ClearSelection2(True)
-    return "Sketch2", top_face(doc)
+    # The sketch name follows the same convention; we don't know if SW
+    # counted the ref-plane as a feature affecting Sketch numbering. The
+    # robust path: enumerate the most-recent Sketch via the feature
+    # manager. For now, the sketch is the LAST-created sketch on the
+    # offset ref plane; ask via the active sketch name if exposed.
+    # Fallback name probe — SW reliably names sketches "Sketch{N}":
+    sketch_name = _last_sketch_name(doc)
+    return sketch_name, top_face(doc)
+
+
+def _last_sketch_name(doc: Any) -> str:
+    """Return the name of the most-recent Sketch feature in the tree, or
+    ``"Sketch2"`` as a fallback. Uses GetFeatures(False) — the W62-proven
+    headless-reliable feature walk."""
+    try:
+        feats = doc.FeatureManager.GetFeatures(False)
+    except Exception:
+        return "Sketch2"
+    if not feats:
+        return "Sketch2"
+    last = "Sketch2"
+    for feat in feats:
+        try:
+            tname = feat.GetTypeName if not callable(feat.GetTypeName) else feat.GetTypeName()
+        except Exception:
+            continue
+        if tname in ("ProfileFeature", "Sketch"):
+            try:
+                nm = feat.Name if not callable(feat.Name) else feat.Name()
+                if isinstance(nm, str) and nm.startswith("Sketch"):
+                    last = nm
+            except Exception:
+                pass
+    return last
 
 
 def top_face_edges(doc: Any, n: int = 2) -> list[Any]:

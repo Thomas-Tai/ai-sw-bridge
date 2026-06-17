@@ -210,6 +210,59 @@ declaring a terminal wall — a feature is only WALLED once BOTH the one-shot
 FUNCDESC + the exact failure (no-op vs `E_NOINTERFACE`) so the next worker starts
 from the answer.
 
+## Wave-62 (`split_line` — operative path silent-no-op out-of-process)
+
+**DEFERRED — Mode-A quarantined + Mode-B characterized walled.**
+
+Per the W62 curves group plan, `split_line` was one of four lanes (composite,
+helix, split_line, project_curve). Composite (`2a04542`) and helix
+(`057789a`) shipped; split_line did not.
+
+* **Mode-A** (CreateDefinition + ISplitLineFeatureData QI): QUARANTINED.
+  The SW2024 swconst harvest (`docs/sw_api_full.json` @ 32.1.0.123) exposes
+  NO `swFeatureNameID_e` for split-line — the worker probe id=65
+  (`swFmReferenceCurve`) returned `None` from `CreateDefinition` on the
+  live seat 2026-06-17. Same class as composite (`2a04542`) and helix
+  (`057789a`). `ISplitLineFeatureData` is in the typelib but is edit-only
+  via `IFeature.GetDefinition()` on an existing split-line node; no
+  creation route exists.
+* **Mode-B** (legacy `IModelDoc2.InsertSplitLineProject(Reverse, SingleDirection)`):
+  characterized **silent no-op on the OOP IDispatch path**. Across four
+  fire rounds with full per-step telemetry:
+  - Selections route correctly (`IEntity.Select2(append, mark)` returns
+    True for both sketch and face; tried `mark=0/0` and `mark=1/2`, both
+    accepted).
+  - Geometric reality validated (offset reference plane at z=+20mm
+    parallel to top face, sketch line on that plane → projection -Z onto
+    the 40x30 top face at z=+10mm — passes through the face boundary).
+  - `InsertSplitLineProject` resolves callable=True, called with
+    `(reverse=False, single=False)` AND `(False, True)`, returns `None`
+    (void), no exception, dFace=0, dVol=0.
+  - RefPlane creation in fixture works (`InsertRefPlane` with constraint
+    flag `swRefPlaneReferenceConstraints_Distance=8`).
+* **Class** likely matches the W60 trim wall (`swSketchTrimClosest`):
+  legacy macro requires UI session / cursor context that the late-bound
+  OOP dispatch path doesn't provide. Comparable to `move_copy_body` (W58
+  + W59) where multiple Insert* routes were silent no-ops.
+
+`spike_split_line.py` retains the offset-ref-plane fixture for the next
+attempt; `features/split_line.py` ships Mode-A as a no-op stub and
+Mode-B with full sub-step telemetry; SPIKE_STATUS = "UNRUN" so the
+handler is dormant (registry never advertises). Tests preserve the
+fail-closed contract.
+
+**Unprobed escape hatches** (for a future re-attempt):
+1. `Extension.SelectByID2(sketch_name, "SKETCH", ...)` instead of
+   routing through `IEntity.Select2` — composite-class selection paths
+   sometimes differ.
+2. `ForceRebuild3` between fixture seed and Mode-B call (in case the
+   sketch isn't fully baked when `InsertSplitLineProject` reads it).
+3. Direct `_oleobj_.Invoke` with raw dispid for `InsertSplitLineProject`
+   (the gen_py wrapper may be marshaling args wrong — composite-class
+   trap we walked through for `InsertCompositeCurve`'s property-vs-method
+   resolution).
+4. The Route-D add-in route (already parked for `move_copy_body`).
+
 ## Wave-42 (`dxf_flat` — Developed Boundary Pass; inner bend lines deferred)
 
 **`dxf_flat` SHIPPED 2026-06-09 as a Developed Boundary Pass** — it exports the

@@ -16,10 +16,13 @@ Exit codes: 0 = PASS, 2 = NO_OP (both modes walled), 1 = ERROR.
 
 from __future__ import annotations
 
+import logging
 import sys
 import traceback
 from pathlib import Path
 from typing import Any
+
+logging.basicConfig(level=logging.WARNING, format="%(name)s %(levelname)s %(message)s")
 
 # Spike-only path setup (handler imports need ``src`` on sys.path).
 _SPIKE_DIR = Path(__file__).resolve().parent
@@ -74,7 +77,7 @@ def main() -> int:
     _report("calling create_split_line handler (probes Mode-A then Mode-B) …")
     ok, note = create_split_line(
         doc,
-        {"reverse": False, "single_direction": False, "split_type": "projection"},
+        {"reverse": False, "single_direction": True, "split_type": "projection"},
         {"sketch_name": sketch_name, "face_entity": face_entity},
     )
     _report(f"  handler returned: ok={ok}, note={note!r}")
@@ -83,7 +86,7 @@ def main() -> int:
     d_faces = faces_after - faces_before
     d_vol = vol_after - vol_before
     _report(f"  after:  faces={faces_after}, vol_mm3={vol_after:.4f}")
-    _report(f"  Δface={d_faces}, Δvol_mm3={d_vol:.6f}")
+    _report(f"  d_face={d_faces}, d_vol_mm3={d_vol:.6f}")
 
     if not ok:
         _report(f"NO_OP: handler failed: {note}")
@@ -91,7 +94,7 @@ def main() -> int:
 
     if d_faces <= 0 or abs(d_vol) >= 1e-6:
         _report(
-            f"NO_OP: verify failed (Δface={d_faces}, |Δvol|={abs(d_vol):.6f}); "
+            f"NO_OP: verify failed (d_face={d_faces}, |d_vol|={abs(d_vol):.6f}); "
             f"handler returned ok but topology did not split"
         )
         return 2
@@ -104,23 +107,23 @@ def main() -> int:
         d_vol_reopen = vol_reopen - vol_before
         _report(
             f"  after reopen: faces={faces_reopen}, vol_mm3={vol_reopen:.4f}, "
-            f"Δface={d_faces_reopen}, Δvol_mm3={d_vol_reopen:.6f}"
+            f"d_face={d_faces_reopen}, d_vol_mm3={d_vol_reopen:.6f}"
         )
         if d_faces_reopen > 0 and abs(d_vol_reopen) < 1e-6:
             mode = "A" if (note and "mode-A" in note) else "B"
             _report(
                 f"PASS: split persisted (mode-{mode}, "
-                f"Δface={d_faces_reopen}, Δvol_mm3={d_vol_reopen:.6f})"
+                f"d_face={d_faces_reopen}, d_vol_mm3={d_vol_reopen:.6f})"
             )
             return 0
         else:
             _report(
                 f"NO_OP: split did not survive reopen "
-                f"(Δface_reopen={d_faces_reopen}, Δvol_reopen={d_vol_reopen:.6f})"
+                f"(d_face_reopen={d_faces_reopen}, d_vol_reopen={d_vol_reopen:.6f})"
             )
             return 2
     except Exception as exc:
-        _report(f"ERROR during save→reopen: {exc}")
+        _report(f"ERROR during save->reopen: {exc}")
         traceback.print_exc()
         return 1
 
