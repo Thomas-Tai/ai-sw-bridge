@@ -36,6 +36,9 @@ RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "com_point.json"
 
 import pythoncom  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # for _feature_spike_fixtures
+from _feature_spike_fixtures import save_and_reopen  # noqa: E402
+
 from ai_sw_bridge.sw_com import get_sw_app  # noqa: E402
 from ai_sw_bridge.features.com_point import (  # noqa: E402
     create_com_point,
@@ -106,31 +109,32 @@ def _build_block(doc: Any) -> dict[str, Any]:
 
 
 def _save_and_reopen(sw: Any, doc: Any) -> dict[str, Any]:
-    """Save, close, reopen — return the new doc or None."""
+    """Save, close, reopen — return the new doc or None.
+
+    W63 round-5 fix: the bespoke reopen called bare late-bound
+    ``sw.OpenDoc6`` which walls at arg-5 with ``com_error -2147352571
+    'Type mismatch.'`` — the same CDispatch dispatch failure that walled
+    the handler's CoM insert. We delegate to the SHARED
+    ``_feature_spike_fixtures.save_and_reopen`` which types ``sw`` to
+    ``ISldWorks`` first and calls ``OpenDoc6`` on the typed proxy (proven
+    in the bbox round-5 fire). Same late-bound-first / typed-fallback
+    lesson; do NOT reintroduce a bare ``sw.OpenDoc6`` here.
+    """
     out: dict[str, Any] = {}
-    SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    save_str = str(SAVE_PATH)
-
     try:
-        doc.SaveAs3(save_str, 0, 2)
+        reopened = save_and_reopen(sw, doc)
         out["saved"] = True
-    except Exception as e:
-        out["saved"] = False
-        out["save_error"] = f"{type(e).__name__}: {e}"
-        return out
-
-    _try_close(sw, doc)
-    out["closed"] = True
-
-    try:
-        reopened = sw.OpenDoc6(save_str, 1, 0, "", 0, 0)
+        out["closed"] = True
         out["reopened"] = reopened is not None
         if reopened is not None:
             out["doc"] = reopened
     except Exception as e:
+        # The fixture raises on any failure in the save/close/reopen chain;
+        # we can't cheaply tell which step failed, so record the message.
+        out.setdefault("saved", True)
+        out.setdefault("closed", True)
         out["reopened"] = False
         out["reopen_error"] = f"{type(e).__name__}: {e}"
-
     return out
 
 

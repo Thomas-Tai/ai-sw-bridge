@@ -37,19 +37,51 @@ class _FakeFeatureNode:
 
 
 class _FakeFeatureManager:
+    """W63 round-2 retarget: the CoM-reference-point creator lives here, not on the doc."""
+
     def __init__(self, nodes: list | None = None):
         self._nodes = nodes if nodes is not None else []
-        self._post_nodes: list | None = None
+        self._pending_post_nodes: list | None = None  # activated by the insert call
+        self._insert_com_callable: bool = True
+        self._insert_com_raises: bool = False
+        self._insert_com_present: bool = True
+        self._insert_com_called: bool = False
 
-    def set_post_nodes(self, nodes: list):
-        self._post_nodes = nodes
+    def set_post_nodes(self, nodes: list | None):
+        """Stage the post-insert tree; only swapped in on InsertCenterOfMass*."""
+        self._pending_post_nodes = nodes
 
     def GetFeatures(self, _top_level: bool):
-        if self._post_nodes is not None:
-            result = self._post_nodes
-            self._post_nodes = None
-            return result
         return self._nodes
+
+    def _activate_post_nodes(self):
+        if self._pending_post_nodes is not None:
+            self._nodes = self._pending_post_nodes
+            self._pending_post_nodes = None
+
+    def __getattr__(self, name):
+        # win32com-style: missing typelib members raise AttributeError. We
+        # consult _insert_com_present (default True) to simulate a typelib
+        # that omits InsertCenterOfMassReferencePoint.
+        if name == "InsertCenterOfMassReferencePoint":
+            if not self.__dict__.get("_insert_com_present", True):
+                raise AttributeError(name)
+            # Property-form (callable=False): auto-invoke now, return value.
+            if not self.__dict__.get("_insert_com_callable", True):
+                if self.__dict__.get("_insert_com_raises", False):
+                    raise RuntimeError("COM error: InsertCenterOfMassReferencePoint failed")
+                self._activate_post_nodes()
+                self._insert_com_called = True
+                return True
+            # Callable-form: return a bound function the handler can invoke.
+            def _called():
+                self._insert_com_called = True
+                if self._insert_com_raises:
+                    raise RuntimeError("COM error: InsertCenterOfMassReferencePoint failed")
+                self._activate_post_nodes()
+                return True
+            return _called
+        raise AttributeError(name)
 
 
 class _FakeDoc:
@@ -60,49 +92,51 @@ class _FakeDoc:
         *,
         insert_com_callable: bool = True,
         insert_com_raises: bool = False,
+        insert_com_present: bool = True,
         pre_nodes: list | None = None,
         post_nodes: list | None = None,
     ):
         self._fm = _FakeFeatureManager(pre_nodes)
+        self._fm._insert_com_callable = insert_com_callable
+        self._fm._insert_com_raises = insert_com_raises
+        self._fm._insert_com_present = insert_com_present
+        self._post_nodes = post_nodes
+        # The handler reads post_nodes off the FeatureManager via GetFeatures.
+        # The fm stages the swap; only the insert call activates it.
+        if post_nodes is not None:
+            self._fm.set_post_nodes(post_nodes)
+        self._rebuild_count = 0
+        # Backwards-compat handles for tests that still inspect these.
         self._insert_com_callable = insert_com_callable
         self._insert_com_raises = insert_com_raises
-        self._insert_com_called = False
-        self._post_nodes = post_nodes
-        self._rebuild_count = 0
 
     @property
     def FeatureManager(self):
         return self._fm
 
-    def InsertCenterOfMass(self):
-        self._insert_com_called = True
-        if self._insert_com_raises:
-            raise RuntimeError("COM error: InsertCenterOfMass failed")
-        if self._post_nodes is not None:
-            self._fm._nodes = self._post_nodes
-        return True
+    @property
+    def _insert_com_called(self):
+        return self._fm._insert_com_called
 
     def ForceRebuild3(self, _force: bool):
         self._rebuild_count += 1
 
 
 class _FakeDocPropertyForm:
-    """Fake doc where ``InsertCenterOfMass`` resolves as a property (auto-invoked)."""
+    """Fake doc where ``InsertCenterOfMassReferencePoint`` resolves as a
+    property (auto-invoked on attribute access — the late-bind trap)."""
 
     def __init__(self, *, pre_nodes: list | None = None, post_nodes: list | None = None):
         self._fm = _FakeFeatureManager(pre_nodes)
+        self._fm._insert_com_callable = False
         self._post_nodes = post_nodes
+        if post_nodes is not None:
+            self._fm.set_post_nodes(post_nodes)
         self._rebuild_count = 0
 
     @property
     def FeatureManager(self):
         return self._fm
-
-    @property
-    def InsertCenterOfMass(self):
-        if self._post_nodes is not None:
-            self._fm._nodes = self._post_nodes
-        return True
 
     def ForceRebuild3(self, _force: bool):
         self._rebuild_count += 1
@@ -304,8 +338,8 @@ class TestHandlerContract:
         params = list(sig.parameters)
         assert params == ["doc", "feature", "target"]
 
-    def test_spike_status_is_unfired(self):
-        assert cp.SPIKE_STATUS == "UNFIRED"
+    def test_spike_status_is_green(self):
+        assert cp.SPIKE_STATUS == "GREEN"
 
     def test_target_is_unused(self):
         """target is ignored — CoM requires no entity selection."""
