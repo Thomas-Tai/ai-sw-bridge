@@ -65,11 +65,11 @@ __all__ = [
 # Each is seat-PROVEN (verify-the-effect segment delta survived save->reopen)
 # before being wired here, exactly like features.HANDLER_REGISTRY.
 #
-# Pending lanes (wired as each spike passes on the live seat):
-#   from . import convert as _convert          # noqa: E402
-#   register(_convert.OP)
-#   from . import trim as _trim                # noqa: E402
-#   register(_trim.OP)
+# Shipped W60: offset, pattern, convert — each seat-proven (segment delta
+# survived save->reopen). sketch_trim is WALLED: ray-cast swSketchTrimClosest is
+# a headless UI-state wall (returns False out-of-process, no viewport to
+# ray-cast into); a future entity-preselection trim (swSketchTrimEntities=4)
+# would be a different op schema = a new lane. See DEFERRED.md.
 # ---------------------------------------------------------------------------
 
 from . import offset as _offset  # noqa: E402
@@ -79,3 +79,7 @@ register(_offset.OP)
 from . import pattern as _pattern  # noqa: E402
 
 register(_pattern.OP)
+
+from . import convert as _convert  # noqa: E402
+
+register(_convert.OP)
