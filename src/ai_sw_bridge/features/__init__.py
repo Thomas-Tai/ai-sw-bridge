@@ -127,3 +127,19 @@ from .com_point import create_com_point  # noqa: E402
 
 if _com_point_status == "GREEN":
     HANDLER_REGISTRY["com_point"] = create_com_point
+
+# W63 — mate_reference (boss-fight lane, SHIPPED 2026-06-17). Mode-A
+# QUARANTINE: the SW2024 swconst harvest exposes no swFmMateReference enum,
+# so Mode-A is a no-op stub (W62 quarantine doctrine — never speculative-
+# probe random IDs). Mode-B fires PARAMETRIC via IFeatureManager.
+# InsertMateReference2 — a 12-arg call (DLL reflection 32.1.0.123) that
+# passes IEntity references directly, abandoning the brittle SelectByID2
+# selection-mark routing. Absent secondary/tertiary entities are nulled with
+# plain None (NOT VARIANT — the typed proxy can't convert a VARIANT). The
+# kernel materializes a 'MateReferenceGroupFolder' node (verified by
+# case-insensitive 'materef' substring, surviving save->reopen).
+from .mate_reference import SPIKE_STATUS as _mate_reference_status  # noqa: E402
+from .mate_reference import create_mate_reference  # noqa: E402
+
+if _mate_reference_status == "GREEN":
+    HANDLER_REGISTRY["mate_reference"] = create_mate_reference
