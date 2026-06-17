@@ -54,6 +54,8 @@ class _FakeFeatureData:
     def __init__(self):
         self.include_hidden_bodies = None
         self.include_surfaces = None
+        self.reference_face_or_plane = None
+        self.planar_entity = None
         self.access_calls = []
         self.release_calls = 0
 
@@ -72,6 +74,22 @@ class _FakeFeatureData:
     @IncludeSurfaces.setter
     def IncludeSurfaces(self, v):
         self.include_surfaces = v
+
+    @property
+    def ReferenceFaceOrPlane(self):
+        return self.reference_face_or_plane
+
+    @ReferenceFaceOrPlane.setter
+    def ReferenceFaceOrPlane(self, v):
+        self.reference_face_or_plane = v
+
+    @property
+    def PlanarEntity(self):
+        return self.planar_entity
+
+    @PlanarEntity.setter
+    def PlanarEntity(self, v):
+        self.planar_entity = v
 
     def AccessSelections(self, doc, comp):
         self.access_calls.append((doc, comp))
@@ -114,13 +132,22 @@ class _FakeFeatureManager:
             self._switched = True
         return result
 
-    def InsertGlobalBoundingBox(self, bbox_type, include_hidden, include_surface):
+    def InsertGlobalBoundingBox(self, bbox_type, include_hidden, include_surface, status_placeholder=0):
+        # W63 B1 patch: dispid expects 4 slots (3 inputs + [out] Status placeholder).
         self._insert_bbox_called = True
+        self._insert_bbox_args = (bbox_type, include_hidden, include_surface, status_placeholder)
         if self._insert_bbox_raises:
             raise RuntimeError("COM error: InsertGlobalBoundingBox failed")
         if self._post_nodes is not None:
             self._switched = True
         return self._insert_bbox_result
+
+
+class _FakePlane:
+    """Sentinel returned by _FakeDoc.FeatureByName('Front Plane')."""
+
+    def __init__(self, name="Front Plane"):
+        self.name = name
 
 
 class _FakeDoc:
@@ -135,6 +162,7 @@ class _FakeDoc:
         create_feature_result=None,
         insert_bbox_result=None,
         insert_bbox_raises=False,
+        front_plane=None,
     ):
         self._fm = _FakeFeatureManager(pre_nodes)
         self._fm.set_post_nodes(post_nodes)
@@ -143,10 +171,21 @@ class _FakeDoc:
         self._fm._insert_bbox_result = insert_bbox_result
         self._fm._insert_bbox_raises = insert_bbox_raises
         self._rebuild_count = 0
+        # W63 round-4: handler now looks up the Front Plane via FeatureByName.
+        # Default to a sentinel _FakePlane so existing test setups keep working;
+        # tests can override via `front_plane=...`.
+        self._front_plane = front_plane if front_plane is not None else _FakePlane()
+        self._feature_by_name_calls = []
 
     @property
     def FeatureManager(self):
         return self._fm
+
+    def FeatureByName(self, name):
+        self._feature_by_name_calls.append(name)
+        if name == "Front Plane":
+            return self._front_plane
+        return None
 
     def ForceRebuild3(self, _force):
         self._rebuild_count += 1
@@ -299,6 +338,8 @@ class TestModeASuccess:
         assert "mode_a" in (note or "")
 
     def test_mode_a_sets_properties(self, monkeypatch):
+        """W63 round-4: BBoxType setter dropped (not on v32.1 typelib).
+        IncludeHidden/Surfaces remain (verified present via A3 reflection)."""
         fake_bd = _patch_typed_qi_success(monkeypatch)
         fake_feat = MagicMock()
         doc = _FakeDoc(
@@ -311,7 +352,27 @@ class TestModeASuccess:
         assert fake_bd.include_hidden_bodies is False
         assert fake_bd.include_surfaces is False
 
-    def test_mode_a_access_selections_called(self, monkeypatch):
+    def test_mode_a_sets_reference_face_or_plane(self, monkeypatch):
+        """W63 round-4 A5: ReferenceFaceOrPlane must be set to the Front Plane
+        the handler looked up via FeatureByName."""
+        fake_bd = _patch_typed_qi_success(monkeypatch)
+        fake_feat = MagicMock()
+        plane = _FakePlane()
+        doc = _FakeDoc(
+            pre_nodes=_make_pre_nodes(),
+            post_nodes=_make_post_nodes_success(),
+            create_def_result=_make_fake_data(),
+            create_feature_result=fake_feat,
+            front_plane=plane,
+        )
+        bb.create_bounding_box(doc, {"kind": "bounding_box"}, {})
+        assert fake_bd.reference_face_or_plane is plane
+        assert "Front Plane" in doc._feature_by_name_calls
+
+    def test_mode_a_calls_access_selections(self, monkeypatch):
+        """W63 round-4 (round-2 A2 was self-inflicted regression): the iface
+        DOES expose AccessSelections (A3 reflection confirmed), and the
+        FeatureData must be opened for editing before reference setters bind."""
         fake_bd = _patch_typed_qi_success(monkeypatch)
         fake_feat = MagicMock()
         doc = _FakeDoc(
@@ -323,7 +384,8 @@ class TestModeASuccess:
         bb.create_bounding_box(doc, {"kind": "bounding_box"}, {})
         assert len(fake_bd.access_calls) >= 1
 
-    def test_mode_a_release_selection_access_called(self, monkeypatch):
+    def test_mode_a_calls_release_selection_access(self, monkeypatch):
+        """W63 round-4: paired with AccessSelections; commit edits before CreateFeature."""
         fake_bd = _patch_typed_qi_success(monkeypatch)
         fake_feat = MagicMock()
         doc = _FakeDoc(
@@ -639,8 +701,9 @@ class TestHandlerContract:
         params = list(sig.parameters)
         assert params == ["doc", "feature", "target"]
 
-    def test_spike_status_is_unfired(self):
-        assert bb.SPIKE_STATUS == "UNFIRED"
+    def test_spike_status_is_green(self):
+        """W63 round-5 seat-proven 2026-06-17 — registry now advertises."""
+        assert bb.SPIKE_STATUS == "GREEN"
 
     def test_target_is_unused(self):
         """target is ignored — global bounding box requires no entity selection."""

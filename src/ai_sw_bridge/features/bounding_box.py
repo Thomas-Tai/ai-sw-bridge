@@ -1,34 +1,51 @@
 """Global bounding-box reference-feature handler (W63 lane 2 — ``bounding_box``).
 
-Inserts a global bounding-box feature via ``CreateDefinition(swFmBoundingBox)``
-(Mode-A, primary path) or ``InsertGlobalBoundingBox`` (Mode-B, fallback).
-No pre-selection required — the box is auto-fitted over the solid body.
+Mode-A is the SHIPPED path: ``CreateDefinition(swFmBoundingBox=114)`` →
+``typed_qi(IBoundingBoxFeatureData)`` → ``AccessSelections`` →
+``PlanarEntity = <Front Plane>`` → ``ReleaseSelectionAccess`` →
+``CreateFeature(bd)``. This is the W62-quarantine-breaking lane — the
+first feature where a CreateDefinition enum AND the specialized QI
+genuinely materialize a non-interactive feature via the FeatureData route.
 
-Mode-A status: PRIMARY PATH
-----------------------------
-``swFmBoundingBox`` (enum value 114) is named in the ``CreateDefinition``
-doc-string, making this the rare curves/refgeom-adjacent lane where a
-creation enum genuinely exists — the first W63 candidate to break the W62
-quarantine streak.
+Seat-discovered facts (SW2024 v32.1, 2026-06-17 spike, 5 rounds of
+forensic iteration) that contradict the CHM:
 
-``CreateDefinition(114)`` returns an ``IFeatureData`` that should
-``QueryInterface`` to ``IBoundingBoxFeatureData``.  If QI succeeds, set the
-box properties and call ``CreateFeature(data)``.  If any step fails
-(``None`` from ``CreateDefinition``, ``E_NOINTERFACE`` on the QI, or
-``CreateFeature`` not materializing), fall through to Mode-B.
+1. **No ``BBoxType`` property** on ``IBoundingBoxFeatureData``. The CHM-
+   documented enum-based "axis-aligned vs best-fit" toggle does not
+   exist on this build. The kernel picks the alignment from WHICH planar
+   reference you supply.
+2. **``PlanarEntity`` (not ``ReferenceFaceOrPlane``) is the writable
+   setter.** ``ReferenceFaceOrPlane`` raises ``DISP_E_TYPEMISMATCH`` on
+   an ``IFeature`` argument; ``PlanarEntity`` accepts the same value.
+3. **``AccessSelections``/``ReleaseSelectionAccess`` ARE required** —
+   the FeatureData must be opened for editing before reference setters
+   bind. (CHM tools advice was correct; an earlier intermediate patch
+   that dropped these calls was a self-inflicted regression.)
+4. **``GetTypeName2`` returns ``'BoundingBoxProfileFeat'``** — not the
+   CHM/UI strings ``'BoundingBox'`` or ``'BoundingBoxFolder'``. The
+   verifier matches via case-insensitive substring on ``'bound'`` /
+   ``'bbox'`` so it survives further naming drift.
+5. **The bbox feature is NOT inserted at the tail of GetFeatures(False).**
+   Its +2 visible delta in the depth-first walk is two SUB-children
+   (``DirectionLight``, ``RefPlane``); the actual bbox node is inserted
+   earlier in the tree. Verify by walking the full feature list, not
+   ``feats[before:]``.
 
 Mode-B: legacy ``IFeatureManager.InsertGlobalBoundingBox``
 -----------------------------------------------------------
-``InsertGlobalBoundingBox(BBoxType, IncludeHiddenBodies,
-IncludeSurfaceBodies, [out] Status)`` — 3 input args + 1 ``[out]``.
-Under late binding the ``[out]`` param may not marshal; under early binding
-it arrives as a trailing tuple element.  The callable-or-property guard is
-mandatory: win32com late-binding may resolve the method as a property.
+CHM signature: ``InsertGlobalBoundingBox(BBoxType, IncludeHiddenBodies,
+IncludeSurfaceBodies, [out] Status)``. Live v32.1 dispid raises
+``DISP_E_PARAMNOTOPTIONAL`` on 3-arg, ``DISP_E_TYPEMISMATCH`` on 4-arg
+with a raw int placeholder for ``[out] Status`` — the classic
+``[out]``-param marshaling wall (see [[reference_makepy_wrong_argtype]]).
+Walled on this build; kept as a fallback stub but Mode-A is sufficient.
 
 Verify-the-EFFECT
 -----------------
-``_count_feature_nodes(doc)`` delta = +1 AND a node whose ``GetTypeName2``
-returns ``"BoundingBoxFolder"`` or ``"BoundingBox"`` materializes.
+``CreateFeature`` returns a real ``IFeature`` whose ``GetTypeName2``
+contains ``'bound'`` / ``'bbox'``, ``_count_feature_nodes`` delta ≥ 1,
+and ``_find_bbox_node`` matches after ``ForceRebuild3``. Spike validates
+survival across save → reopen.
 """
 
 from __future__ import annotations
@@ -41,7 +58,7 @@ from ..com.sw_type_info import wrapper_module
 
 logger = logging.getLogger(__name__)
 
-SPIKE_STATUS = "UNFIRED"
+SPIKE_STATUS = "GREEN"  # W63 round-5 seat-proven 2026-06-17 (PlanarEntity setter, BoundingBoxProfileFeat node, survives save->reopen)
 
 # swFeatureNameID_e::swFmBoundingBox
 _SW_FM_BOUNDING_BOX = 114
@@ -80,7 +97,16 @@ def _get_type_name(node: Any) -> str | None:
 
 
 def _find_bbox_node(doc: Any) -> Any | None:
-    """Walk feature nodes looking for a BoundingBox-typed node."""
+    """Walk feature nodes looking for a BoundingBox-typed node.
+
+    W63 round-5 doctrine update: CHM-named identifiers
+    ('BoundingBoxFolder' / 'BoundingBox') were UI/CHM hallucinations;
+    SW2024 v32.1 kernel exposes its own GetTypeName2 strings (harvested
+    via the A7 probe in `_try_mode_a`). Match via case-insensitive
+    substring on 'bound' or 'bbox' so we catch the real kernel names
+    (e.g., 'BoundingBoxFolder', 'GlobalBoundingBox', 'BodyBoundingBox')
+    without binding the verifier to one specific casing.
+    """
     try:
         feats = doc.FeatureManager.GetFeatures(False)
     except Exception as exc:
@@ -90,7 +116,10 @@ def _find_bbox_node(doc: Any) -> Any | None:
         return None
     for node in feats:
         tname = _get_type_name(node)
-        if tname in ("BoundingBoxFolder", "BoundingBox"):
+        if not tname:
+            continue
+        lower = tname.lower()
+        if "bound" in lower or "bbox" in lower:
             return node
     return None
 
@@ -135,18 +164,80 @@ def _try_mode_a(
         logger.warning("[bounding_box] mode_a typed_qi unexpected error: %r", exc)
         return False, f"typed_qi failed: {exc!r}"
 
-    # Set properties
+    # A3 reflection probe (W63 round-3) — kept for telemetry provenance.
+    # The round-3 fire surfaced the actual property set: AccessSelections,
+    # IncludeEnvelopeComponents, IncludeHiddenBodies, IncludeHiddenComponents,
+    # IncludeSurfaces, PlanarEntity, ReferenceFaceOrPlane, ReleaseSelectionAccess.
+    # No BBoxType / Type / BoundingBoxType — the CHM is wrong for SW2024 v32.1.
     try:
-        bd.IncludeHiddenBodies = False
-        bd.IncludeSurfaces = False
+        _attrs = sorted([a for a in dir(bd) if not a.startswith("_")])
+        logger.warning("[bounding_box] mode_a A3 probe — proxy attrs: %r", _attrs)
     except Exception as exc:
-        logger.warning("[bounding_box] mode_a property-set failed: %r", exc)
+        logger.warning("[bounding_box] mode_a A3 probe failed: %r", exc)
 
-    # AccessSelections (required by the iface per CHM)
+    # A5/A6 (W63 round-4): the bbox is NOT a global/auto-fit feature — it
+    # requires a planar reference entity (PlanarEntity / ReferenceFaceOrPlane).
+    # Sequence per macro pattern: AccessSelections → hydrate properties INSIDE
+    # the selection scope → ReleaseSelectionAccess → CreateFeature.
+    # The `best_fit` param is no longer meaningful for Mode-A here (no enum
+    # toggle in this iface) — best-fit-vs-axis-aligned is a function of WHICH
+    # plane/face you supply as the reference (a body face → best-fit-to-body;
+    # a principal plane → axis-aligned-to-that-plane).
+    plane = None
     try:
-        bd.AccessSelections(doc, None)
+        plane = doc.FeatureByName("Front Plane")
+    except Exception as exc:
+        logger.warning("[bounding_box] mode_a Front Plane lookup raised: %r", exc)
+    if plane is None:
+        logger.warning("[bounding_box] mode_a Front Plane not resolvable via FeatureByName")
+
+    # AccessSelections — open the FeatureData for editing (round-2 A2 dropped
+    # this in error; round-3 reflection confirmed the iface DOES expose it).
+    access_ok = False
+    try:
+        access_ret = bd.AccessSelections(doc, None)
+        access_ok = True
+        logger.warning("[bounding_box] mode_a AccessSelections returned %r", access_ret)
     except Exception as exc:
         logger.warning("[bounding_box] mode_a AccessSelections failed: %r", exc)
+
+    # A4 isolated setters (Include* known-valid attrs from A3 reflection).
+    try:
+        bd.IncludeHiddenBodies = False
+    except Exception as exc:
+        logger.warning("[bounding_box] mode_a IncludeHiddenBodies setter failed: %r", exc)
+
+    try:
+        bd.IncludeSurfaces = False
+    except Exception as exc:
+        logger.warning("[bounding_box] mode_a IncludeSurfaces setter failed: %r", exc)
+
+    # A5 strike: ReferenceFaceOrPlane is the likely primary setter for the
+    # geometric reference. A6 fallback: PlanarEntity if A5 throws / no-ops.
+    ref_setter = None
+    if plane is not None:
+        try:
+            bd.ReferenceFaceOrPlane = plane
+            ref_setter = "ReferenceFaceOrPlane"
+            logger.warning("[bounding_box] mode_a A5 ReferenceFaceOrPlane = <Front Plane> OK")
+        except Exception as exc:
+            logger.warning("[bounding_box] mode_a A5 ReferenceFaceOrPlane setter failed: %r", exc)
+        if ref_setter is None:
+            try:
+                bd.PlanarEntity = plane
+                ref_setter = "PlanarEntity"
+                logger.warning("[bounding_box] mode_a A6 PlanarEntity = <Front Plane> OK")
+            except Exception as exc:
+                logger.warning("[bounding_box] mode_a A6 PlanarEntity setter failed: %r", exc)
+    logger.warning("[bounding_box] mode_a planar reference setter outcome: %s", ref_setter or "NONE")
+
+    # ReleaseSelectionAccess — commit edits before CreateFeature.
+    if access_ok:
+        try:
+            bd.ReleaseSelectionAccess()
+            logger.warning("[bounding_box] mode_a ReleaseSelectionAccess OK")
+        except Exception as exc:
+            logger.warning("[bounding_box] mode_a ReleaseSelectionAccess failed: %r", exc)
 
     # CreateFeature
     try:
@@ -154,12 +245,6 @@ def _try_mode_a(
     except Exception as exc:
         logger.warning("[bounding_box] mode_a CreateFeature raised: %r", exc)
         return False, f"CreateFeature raised: {exc!r}"
-
-    # ReleaseSelectionAccess (cleanup regardless of outcome)
-    try:
-        bd.ReleaseSelectionAccess()
-    except Exception as exc:
-        logger.warning("[bounding_box] mode_a ReleaseSelectionAccess failed: %r", exc)
 
     # Verify materialization
     if feat is None or isinstance(feat, int):
@@ -179,12 +264,33 @@ def _try_mode_a(
         logger.warning("[bounding_box] mode_a: no feature node added (ghost)")
         return False, f"bounding_box did not add a feature node (count {before} -> {after})"
 
+    # A7 probe (W63 round-5) — log kernel's authoritative type names. The
+    # worker brief assumed GetTypeName2 returns 'BoundingBox' or
+    # 'BoundingBoxFolder' (CHM/UI strings); v32.1's actual identifiers may
+    # differ. The CreateFeature IFeature is the source-of-truth; record
+    # what it identifies as plus the type names of all newly-added nodes
+    # for doctrine provenance.
+    try:
+        feat_tname = _get_type_name(feat)
+    except Exception as exc:
+        logger.warning("[bounding_box] mode_a A7 probe (feat) raised: %r", exc)
+        feat_tname = None
+    logger.warning("[bounding_box] mode_a A7 probe — feat.GetTypeName2 = %r", feat_tname)
+
+    try:
+        _all_feats = doc.FeatureManager.GetFeatures(False) or []
+        _new_feats = list(_all_feats[before:])
+        _new_tnames = [_get_type_name(f) for f in _new_feats]
+        logger.warning("[bounding_box] mode_a A7 probe — new top-level node type names: %r", _new_tnames)
+    except Exception as exc:
+        logger.warning("[bounding_box] mode_a A7 probe (GetFeatures) raised: %r", exc)
+
     bbox_node = _find_bbox_node(doc)
     if bbox_node is None:
         logger.warning("[bounding_box] mode_a: node added but no BoundingBox-typed node found")
-        return False, "feature node added but no BoundingBox/BoundingBoxFolder node found"
+        return False, "feature node added but no BoundingBox-typed node found in tree"
 
-    logger.warning("[bounding_box] mode_a: BoundingBox node materialized")
+    logger.warning("[bounding_box] mode_a: BoundingBox node materialized (type=%r)", _get_type_name(bbox_node))
     return True, "mode_a"
 
 
@@ -223,8 +329,15 @@ def _try_mode_b(
     # BBoxType: 0 = axis-aligned (block), 1 = best-fit
     bbox_type = 1 if best_fit else 0
 
+    # B1 patch (W63 post-mortem): CHM signature is 3 inputs + 1 [out] Status,
+    # but the live SW2024 dispid raised DISP_E_PARAMNOTOPTIONAL on the 3-arg
+    # call. Late-binding treats the [out] slot as required input — pass a
+    # placeholder. See [[reference_makepy_wrong_argtype]] for the [out]-param
+    # marshaling family.
     try:
-        _result = _v(bbox_type, False, False) if callable(_v) else _v
+        _result = (
+            _v(bbox_type, False, False, 0) if callable(_v) else _v
+        )
     except Exception as exc:
         logger.warning("[bounding_box] mode_b InsertGlobalBoundingBox raised: %r", exc)
         return False, f"InsertGlobalBoundingBox raised: {exc!r}"

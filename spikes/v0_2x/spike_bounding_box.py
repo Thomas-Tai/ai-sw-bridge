@@ -25,8 +25,9 @@ logging.basicConfig(level=logging.WARNING)
 from ai_sw_bridge.features.bounding_box import create_bounding_box
 
 try:
-    from _feature_spike_fixtures import build_block, count_feature_nodes
+    from _feature_spike_fixtures import build_block, count_feature_nodes, save_and_reopen
 except ImportError:
+    save_and_reopen = None  # type: ignore[assignment]
     def build_block(sw: Any) -> Any:
         """Fallback block builder — 40x30x10 mm box (W0 fixture not yet present)."""
         from ai_sw_bridge import mutate
@@ -71,8 +72,26 @@ def main() -> None:
 
     node_count = count_feature_nodes(doc)
     print(f"bounding_box spike: ok={ok}, note={note!r}, nodes={node_count}")
-    if ok:
-        print(f"PASS — {note}")
+
+    survived_reopen = None
+    if ok and save_and_reopen is not None:
+        try:
+            reopened = save_and_reopen(sw, doc)
+            after_count = count_feature_nodes(reopened)
+            from ai_sw_bridge.features.bounding_box import _find_bbox_node
+            survived_reopen = bool(_find_bbox_node(reopened))
+            print(
+                f"save->reopen: nodes_after_reopen={after_count}, "
+                f"bbox_node_survives={survived_reopen}"
+            )
+        except Exception as exc:
+            print(f"save->reopen probe raised: {exc!r}")
+            survived_reopen = False
+
+    if ok and survived_reopen is not False:
+        print(f"PASS — {note}" + (" (survived save->reopen)" if survived_reopen else ""))
+    elif ok and survived_reopen is False:
+        print(f"PARTIAL — {note} but failed save->reopen")
     else:
         print(f"FAIL — {note}")
 
