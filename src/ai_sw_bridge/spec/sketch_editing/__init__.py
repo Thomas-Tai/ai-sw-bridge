@@ -65,11 +65,13 @@ __all__ = [
 # Each is seat-PROVEN (verify-the-effect segment delta survived save->reopen)
 # before being wired here, exactly like features.HANDLER_REGISTRY.
 #
-# Shipped W60: offset, pattern, convert — each seat-proven (segment delta
-# survived save->reopen). sketch_trim is WALLED: ray-cast swSketchTrimClosest is
-# a headless UI-state wall (returns False out-of-process, no viewport to
-# ray-cast into); a future entity-preselection trim (swSketchTrimEntities=4)
-# would be a different op schema = a new lane. See DEFERRED.md.
+# Shipped W60: offset, pattern, convert. Shipped W61: fillet, chamfer,
+# move_copy, mirror — all selection-based (not ray-cast), each seat-proven
+# (segment delta survived save->reopen). sketch_trim is WALLED: ray-cast
+# swSketchTrimClosest is a headless UI-state wall (returns False out-of-process,
+# no viewport to ray-cast into); a future entity-preselection trim
+# (swSketchTrimEntities=4) would be a different op schema = a new lane. See
+# DEFERRED.md.
 # ---------------------------------------------------------------------------
 
 from . import offset as _offset  # noqa: E402
@@ -83,3 +85,19 @@ register(_pattern.OP)
 from . import convert as _convert  # noqa: E402
 
 register(_convert.OP)
+
+from . import fillet as _fillet  # noqa: E402
+
+register(_fillet.OP)
+
+from . import chamfer as _chamfer  # noqa: E402
+
+register(_chamfer.OP)
+
+from . import move_copy as _move_copy  # noqa: E402
+
+register(_move_copy.OP)
+
+from . import mirror as _mirror  # noqa: E402
+
+register(_mirror.OP)
