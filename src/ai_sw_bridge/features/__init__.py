@@ -102,16 +102,16 @@ from .project_curve import create_project_curve  # noqa: E402
 if _project_curve_status == "GREEN":
     HANDLER_REGISTRY["project_curve"] = create_project_curve
 
-# W63 — mate_reference (boss-fight lane). Mode-A QUARANTINE: the SW2024
-# swconst harvest exposes no swFmMateReference enum, so Mode-A is a no-op
-# stub (W62 quarantine doctrine — never speculative-probe random IDs).
-# Mode-B fires generative via legacy IModelDoc2.InsertMateReference() on
-# pre-selected entities with role-specific selection marks (primary=1,
-# secondary=2, tertiary=4 — additive bit-flag marks per PropertyManager
-# list-box convention; macro-recorder confirmation required pre-fire).
-# Callable-or-property invocation guard applied (no-arg method may auto-
-# invoke as property on getattr). SPIKE_STATUS gate: UNFIRED until W0
-# fires on the live seat.
+# W63 — mate_reference (boss-fight lane, SHIPPED 2026-06-17). Mode-A
+# QUARANTINE: the SW2024 swconst harvest exposes no swFmMateReference enum,
+# so Mode-A is a no-op stub (W62 quarantine doctrine — never speculative-
+# probe random IDs). Mode-B fires PARAMETRIC via IFeatureManager.
+# InsertMateReference2 — a 12-arg call (DLL reflection 32.1.0.123) that
+# passes IEntity references directly, abandoning the brittle SelectByID2
+# selection-mark routing. Absent secondary/tertiary entities are nulled with
+# plain None (NOT VARIANT — the typed proxy can't convert a VARIANT). The
+# kernel materializes a 'MateReferenceGroupFolder' node (verified by
+# case-insensitive 'materef' substring, surviving save->reopen).
 from .mate_reference import SPIKE_STATUS as _mate_reference_status  # noqa: E402
 from .mate_reference import create_mate_reference  # noqa: E402
 

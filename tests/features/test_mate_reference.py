@@ -1,10 +1,13 @@
 """Offline tests for the mate_reference feature handler (W63 lane 1).
 
-Tests the Mode-A quarantine stub, Mode-B multi-mark selection pipeline,
-and the verify-gate (feature-node delta + GetTypeName2 == "MateReference").
+Tests the Mode-A quarantine stub, the Mode-B parametric InsertMateReference2
+pipeline (12-arg, entities passed directly — NO selection marks), and the
+verify-gate (feature-node delta + GetTypeName2 containing "materef").
 
-Fake-COM pattern mirrors ``test_wave5_handlers.py`` / ``test_mutate_feature_add.py``:
-each fake patches the COM seam on the lane module itself (not on ``mutate``).
+Fake-COM pattern mirrors ``test_wave5_handlers.py``: each fake patches the COM
+seam on the lane module itself. ``typed`` / ``typed_qi`` / ``wrapper_module``
+are patched to identity so the parametric call dispatches against the fake
+FeatureManager without touching gen_py.
 """
 
 from __future__ import annotations
@@ -22,7 +25,7 @@ from ai_sw_bridge.features import mate_reference as mr
 
 
 class _FakeEntity:
-    """Stand-in for a resolved live entity (face/edge)."""
+    """Stand-in for a resolved live entity (face/edge), typed to IEntity."""
 
     def __init__(self, name: str = "entity") -> None:
         self.name = name
@@ -40,10 +43,14 @@ class _FakeFeatureNode:
 
 
 class _FakeFeatureManager:
-    """Tracks feature nodes; ``CreateFeature`` bumps the count."""
+    """Records InsertMateReference2 calls; can add a node / raise on insert."""
 
     def __init__(self, initial_nodes: list[_FakeFeatureNode] | None = None) -> None:
         self._nodes: list[_FakeFeatureNode] = list(initial_nodes or [])
+        self.insert_calls: list[tuple] = []
+        self._insert_result: Any = True        # truthy IFeature stand-in
+        self._insert_raises: Exception | None = None
+        self._node_to_add: _FakeFeatureNode | None = None
 
     def GetFeatures(self, top_level_only: bool) -> tuple:
         return tuple(self._nodes)
@@ -51,44 +58,45 @@ class _FakeFeatureManager:
     def add_node(self, node: _FakeFeatureNode) -> None:
         self._nodes.append(node)
 
+    def InsertMateReference2(self, *args: Any) -> Any:
+        self.insert_calls.append(args)
+        if self._insert_raises is not None:
+            raise self._insert_raises
+        if self._node_to_add is not None:
+            self._nodes.append(self._node_to_add)
+        return self._insert_result
+
 
 class _FakeDoc:
     """Minimal fake ``IModelDoc2`` for mate_reference handler testing."""
 
     def __init__(self, fm: _FakeFeatureManager | None = None) -> None:
-        self.FeatureManager = fm or _FakeFeatureManager()
-        self._clear_calls: list[bool] = []
+        self._fm = fm or _FakeFeatureManager()
         self._rebuild_calls: list[bool] = []
-        self._insert_mate_ref_called = False
-        self._insert_mate_ref_result: Any = True
-        self._insert_mate_ref_raises: Exception | None = None
 
-    def ClearSelection2(self, top: bool) -> None:
-        self._clear_calls.append(top)
+    @property
+    def FeatureManager(self) -> _FakeFeatureManager:
+        return self._fm
 
     def ForceRebuild3(self, verify: bool) -> None:
         self._rebuild_calls.append(verify)
-
-    def InsertMateReference(self):
-        self._insert_mate_ref_called = True
-        if self._insert_mate_ref_raises is not None:
-            raise self._insert_mate_ref_raises
-        return self._insert_mate_ref_result
 
 
 def _seed_nodes(n: int = 5) -> list[_FakeFeatureNode]:
     return [_FakeFeatureNode(f"Feat{i}", "Extrusion") for i in range(n)]
 
 
-def _patch_selection(
+def _patch_com(
     monkeypatch: pytest.MonkeyPatch,
     *,
     resolve_ok: bool = True,
-    select_ok: bool = True,
 ) -> dict[str, list]:
-    """Patch resolve_manifest_face / resolve_ref / select_entity on the lane module."""
-    calls: dict[str, list] = {"resolve_face": [], "resolve_ref": [], "select": []}
-    entity = _FakeEntity()
+    """Patch the resolver + early-bind seam on the lane module.
+
+    ``typed`` / ``typed_qi`` become identity (no QI, no gen_py); the
+    resolved entity flows straight through to the InsertMateReference2 args.
+    """
+    calls: dict[str, list] = {"resolve_face": [], "resolve_ref": []}
 
     class _FakeRes:
         def __init__(self, ent: Any, method: str) -> None:
@@ -97,20 +105,25 @@ def _patch_selection(
 
     def _fake_resolve_face(doc: Any, ref: Any, **kw: Any) -> _FakeRes:
         calls["resolve_face"].append(ref)
-        return _FakeRes(entity if resolve_ok else None, "persist_id" if resolve_ok else "unresolved")
+        ent = _FakeEntity(str(ref)) if resolve_ok else None
+        return _FakeRes(ent, "persist_id" if resolve_ok else "unresolved")
 
     def _fake_resolve_ref(doc: Any, ref: Any, **kw: Any) -> _FakeRes:
         calls["resolve_ref"].append(ref)
-        return _FakeRes(entity if resolve_ok else None, "persist_id" if resolve_ok else "unresolved")
-
-    def _fake_select(ent: Any, *, append: bool = False, mark: int = 0) -> bool:
-        calls["select"].append({"entity": ent, "append": append, "mark": mark})
-        return select_ok
+        ent = _FakeEntity(str(ref)) if resolve_ok else None
+        return _FakeRes(ent, "persist_id" if resolve_ok else "unresolved")
 
     monkeypatch.setattr(mr, "resolve_manifest_face", _fake_resolve_face)
     monkeypatch.setattr(mr, "resolve_ref", _fake_resolve_ref)
-    monkeypatch.setattr(mr, "select_entity", _fake_select)
+    monkeypatch.setattr(mr, "typed", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(mr, "typed_qi", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(mr, "wrapper_module", lambda: None)
     return calls
+
+
+def _is_real_entity(arg: Any) -> bool:
+    """An InsertMateReference2 positional arg holds a real entity (not a null VARIANT)."""
+    return isinstance(arg, _FakeEntity)
 
 
 # ---------------------------------------------------------------------------
@@ -129,21 +142,20 @@ class TestModeAQuarantined:
     def test_mode_a_does_not_call_any_com(self) -> None:
         doc = _FakeDoc()
         mr._try_mode_a(doc, {"type": "mate_reference", "entities": []}, {})
-        assert not doc._insert_mate_ref_called
+        assert doc.FeatureManager.insert_calls == []
         assert not doc._rebuild_calls
 
 
 # ---------------------------------------------------------------------------
-# Mode-B success path
+# Mode-B success path — parametric 12-arg InsertMateReference2
 # ---------------------------------------------------------------------------
 
 
 class TestModeBSuccess:
     def test_single_entity_primary(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        nodes = _seed_nodes(5)
-        fm = _FakeFeatureManager(nodes)
+        fm = _FakeFeatureManager(_seed_nodes(5))
         doc = _FakeDoc(fm)
-        calls = _patch_selection(monkeypatch)
+        _patch_com(monkeypatch)
 
         feature = {
             "type": "mate_reference",
@@ -151,19 +163,23 @@ class TestModeBSuccess:
         }
         result = mr._try_mode_b(doc, feature, {})
         assert result is True
-        assert doc._insert_mate_ref_called
-        assert len(calls["select"]) == 1
-        assert calls["select"][0]["append"] is False
-        assert calls["select"][0]["mark"] == 1
+        assert len(fm.insert_calls) == 1
+        args = fm.insert_calls[0]
+        assert len(args) == 12
+        assert args[0] == "Default"        # name (none supplied)
+        assert _is_real_entity(args[1])    # primary entity present
+        assert args[2] == 0 and args[3] == 0 and args[4] is False
+        assert not _is_real_entity(args[5])   # secondary nulled
+        assert not _is_real_entity(args[9])   # tertiary nulled
 
-    def test_three_entities_multi_mark(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        nodes = _seed_nodes(5)
-        fm = _FakeFeatureManager(nodes)
+    def test_three_entities_all_slots(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        fm = _FakeFeatureManager(_seed_nodes(5))
         doc = _FakeDoc(fm)
-        calls = _patch_selection(monkeypatch)
+        _patch_com(monkeypatch)
 
         feature = {
             "type": "mate_reference",
+            "name": "Tri",
             "entities": [
                 {"ref": {"face": "F1"}, "role": "primary"},
                 {"ref": {"face": "F2"}, "role": "secondary"},
@@ -172,17 +188,16 @@ class TestModeBSuccess:
         }
         result = mr._try_mode_b(doc, feature, {})
         assert result is True
-        assert doc._insert_mate_ref_called
-        assert len(calls["select"]) == 3
-        assert calls["select"][0] == {"entity": calls["select"][0]["entity"], "append": False, "mark": 1}
-        assert calls["select"][1] == {"entity": calls["select"][1]["entity"], "append": True, "mark": 2}
-        assert calls["select"][2] == {"entity": calls["select"][2]["entity"], "append": True, "mark": 4}
+        args = fm.insert_calls[0]
+        assert args[0] == "Tri"
+        assert _is_real_entity(args[1])   # primary  @ 1
+        assert _is_real_entity(args[5])   # secondary @ 5
+        assert _is_real_entity(args[9])   # tertiary  @ 9
 
     def test_two_entities_primary_secondary(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        nodes = _seed_nodes(3)
-        fm = _FakeFeatureManager(nodes)
+        fm = _FakeFeatureManager(_seed_nodes(3))
         doc = _FakeDoc(fm)
-        calls = _patch_selection(monkeypatch)
+        _patch_com(monkeypatch)
 
         feature = {
             "type": "mate_reference",
@@ -193,9 +208,21 @@ class TestModeBSuccess:
         }
         result = mr._try_mode_b(doc, feature, {})
         assert result is True
-        assert len(calls["select"]) == 2
-        assert calls["select"][0]["mark"] == 1
-        assert calls["select"][1]["mark"] == 2
+        args = fm.insert_calls[0]
+        assert _is_real_entity(args[1])
+        assert _is_real_entity(args[5])
+        assert not _is_real_entity(args[9])  # tertiary nulled
+
+    def test_force_rebuild_called(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        fm = _FakeFeatureManager(_seed_nodes(3))
+        doc = _FakeDoc(fm)
+        _patch_com(monkeypatch)
+        feature = {
+            "type": "mate_reference",
+            "entities": [{"ref": {"face": "F1"}, "role": "primary"}],
+        }
+        mr._try_mode_b(doc, feature, {})
+        assert doc._rebuild_calls == [False]
 
 
 # ---------------------------------------------------------------------------
@@ -205,29 +232,26 @@ class TestModeBSuccess:
 
 class TestModeBFailure:
     def test_no_entities_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        _patch_selection(monkeypatch)
+        _patch_com(monkeypatch)
         doc = _FakeDoc()
         result = mr._try_mode_b(doc, {"type": "mate_reference"}, {})
         assert result is None
 
     def test_empty_entities_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        _patch_selection(monkeypatch)
+        _patch_com(monkeypatch)
         doc = _FakeDoc()
         result = mr._try_mode_b(doc, {"type": "mate_reference", "entities": []}, {})
         assert result is None
 
     def test_entity_without_ref_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        _patch_selection(monkeypatch)
+        _patch_com(monkeypatch)
         doc = _FakeDoc()
-        feature = {
-            "type": "mate_reference",
-            "entities": [{"role": "primary"}],
-        }
+        feature = {"type": "mate_reference", "entities": [{"role": "primary"}]}
         result = mr._try_mode_b(doc, feature, {})
         assert result is None
 
     def test_unresolved_entity_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        _patch_selection(monkeypatch, resolve_ok=False)
+        _patch_com(monkeypatch, resolve_ok=False)
         doc = _FakeDoc()
         feature = {
             "type": "mate_reference",
@@ -236,22 +260,24 @@ class TestModeBFailure:
         result = mr._try_mode_b(doc, feature, {})
         assert result is None
 
-    def test_select_failure_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        _patch_selection(monkeypatch, select_ok=False)
-        doc = _FakeDoc()
-        feature = {
-            "type": "mate_reference",
-            "entities": [{"ref": {"face": "F1"}, "role": "primary"}],
-        }
-        result = mr._try_mode_b(doc, feature, {})
-        assert result is None
-
-    def test_insert_mate_ref_exception_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        _patch_selection(monkeypatch)
-        nodes = _seed_nodes(3)
-        fm = _FakeFeatureManager(nodes)
+    def test_no_primary_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Secondary-only spec (no primary entity) must fail before the call."""
+        fm = _FakeFeatureManager(_seed_nodes(3))
         doc = _FakeDoc(fm)
-        doc._insert_mate_ref_raises = RuntimeError("COM error")
+        _patch_com(monkeypatch)
+        feature = {
+            "type": "mate_reference",
+            "entities": [{"ref": {"face": "F2"}, "role": "secondary"}],
+        }
+        result = mr._try_mode_b(doc, feature, {})
+        assert result is None
+        assert fm.insert_calls == []
+
+    def test_insert_exception_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _patch_com(monkeypatch)
+        fm = _FakeFeatureManager(_seed_nodes(3))
+        fm._insert_raises = RuntimeError("COM error")
+        doc = _FakeDoc(fm)
         feature = {
             "type": "mate_reference",
             "entities": [{"ref": {"face": "F1"}, "role": "primary"}],
@@ -260,17 +286,16 @@ class TestModeBFailure:
         assert result is None
 
     def test_unknown_role_skipped(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        calls = _patch_selection(monkeypatch)
-        nodes = _seed_nodes(3)
-        fm = _FakeFeatureManager(nodes)
+        fm = _FakeFeatureManager(_seed_nodes(3))
         doc = _FakeDoc(fm)
+        _patch_com(monkeypatch)
         feature = {
             "type": "mate_reference",
             "entities": [{"ref": {"face": "F1"}, "role": "quarternary"}],
         }
         result = mr._try_mode_b(doc, feature, {})
         assert result is None
-        assert len(calls["select"]) == 0
+        assert fm.insert_calls == []
 
 
 # ---------------------------------------------------------------------------
@@ -280,9 +305,8 @@ class TestModeBFailure:
 
 class TestEntityResolution:
     def test_dict_ref_uses_resolve_manifest_face(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        calls = _patch_selection(monkeypatch)
-        nodes = _seed_nodes(3)
-        fm = _FakeFeatureManager(nodes)
+        calls = _patch_com(monkeypatch)
+        fm = _FakeFeatureManager(_seed_nodes(3))
         doc = _FakeDoc(fm)
         face_dict = {"feature": "Box", "role": "top"}
         feature = {
@@ -295,9 +319,8 @@ class TestEntityResolution:
         assert len(calls["resolve_ref"]) == 0
 
     def test_object_ref_uses_resolve_ref(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        calls = _patch_selection(monkeypatch)
-        nodes = _seed_nodes(3)
-        fm = _FakeFeatureManager(nodes)
+        calls = _patch_com(monkeypatch)
+        fm = _FakeFeatureManager(_seed_nodes(3))
         doc = _FakeDoc(fm)
 
         class _FakeDurableRef:
@@ -324,8 +347,7 @@ class TestVerifyGate:
     """The W21/W42 ghost trap: call_ok + name + 'no error' is NOT proof."""
 
     def test_no_delta_fails(self) -> None:
-        nodes = _seed_nodes(5)
-        fm = _FakeFeatureManager(nodes)
+        fm = _FakeFeatureManager(_seed_nodes(5))
         doc = _FakeDoc(fm)
         ok, msg = mr._verify(doc, before=5)
         assert ok is False
@@ -334,17 +356,25 @@ class TestVerifyGate:
     def test_delta_with_correct_type_succeeds(self) -> None:
         nodes = _seed_nodes(5)
         nodes.append(_FakeFeatureNode("MateRef1", "MateReference"))
-        fm = _FakeFeatureManager(nodes)
-        doc = _FakeDoc(fm)
+        doc = _FakeDoc(_FakeFeatureManager(nodes))
         ok, msg = mr._verify(doc, before=5)
         assert ok is True
         assert "mode_b" in msg
 
+    def test_delta_with_real_kernel_type_succeeds(self) -> None:
+        """The kernel's ACTUAL GetTypeName2 is 'MateReferenceGroupFolder'
+        (seat-proven W63), not the guessed 'MateReference' — the substring
+        'materef' (case-insensitive) catches it (bbox/com_point doctrine)."""
+        nodes = _seed_nodes(5)
+        nodes.append(_FakeFeatureNode("MR1", "MateReferenceGroupFolder"))
+        doc = _FakeDoc(_FakeFeatureManager(nodes))
+        ok, msg = mr._verify(doc, before=5)
+        assert ok is True
+
     def test_delta_without_correct_type_fails(self) -> None:
         nodes = _seed_nodes(5)
         nodes.append(_FakeFeatureNode("SomethingElse", "Extrusion"))
-        fm = _FakeFeatureManager(nodes)
-        doc = _FakeDoc(fm)
+        doc = _FakeDoc(_FakeFeatureManager(nodes))
         ok, msg = mr._verify(doc, before=5)
         assert ok is False
         assert "no MateReference node found" in msg
@@ -357,10 +387,10 @@ class TestVerifyGate:
 
 class TestCreateMateReference:
     def test_full_pipeline_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        nodes = _seed_nodes(5)
-        fm = _FakeFeatureManager(nodes)
+        fm = _FakeFeatureManager(_seed_nodes(5))
+        fm._node_to_add = _FakeFeatureNode("MateRef1", "MateReference")
         doc = _FakeDoc(fm)
-        _patch_selection(monkeypatch)
+        _patch_com(monkeypatch)
 
         feature = {
             "type": "mate_reference",
@@ -370,22 +400,15 @@ class TestCreateMateReference:
                 {"ref": {"face": "F2"}, "role": "secondary"},
             ],
         }
-
-        def _add_node_on_insert():
-            fm.add_node(_FakeFeatureNode("MateRef1", "MateReference"))
-            return True
-
-        doc.InsertMateReference = _add_node_on_insert
-
         ok, note = mr.create_mate_reference(doc, feature, {})
         assert ok is True
         assert note is not None and "mode_b" in note
 
     def test_full_pipeline_verify_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        nodes = _seed_nodes(5)
-        fm = _FakeFeatureManager(nodes)
+        """Insert call succeeds but no node materializes — ghost trap → False."""
+        fm = _FakeFeatureManager(_seed_nodes(5))  # no _node_to_add
         doc = _FakeDoc(fm)
-        _patch_selection(monkeypatch)
+        _patch_com(monkeypatch)
 
         feature = {
             "type": "mate_reference",
@@ -396,11 +419,9 @@ class TestCreateMateReference:
         assert err is not None
 
     def test_all_modes_fail(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        _patch_selection(monkeypatch, resolve_ok=False)
-        nodes = _seed_nodes(3)
-        fm = _FakeFeatureManager(nodes)
+        _patch_com(monkeypatch, resolve_ok=False)
+        fm = _FakeFeatureManager(_seed_nodes(3))
         doc = _FakeDoc(fm)
-
         feature = {
             "type": "mate_reference",
             "entities": [{"ref": {"face": "F1"}, "role": "primary"}],
@@ -411,29 +432,40 @@ class TestCreateMateReference:
 
 
 # ---------------------------------------------------------------------------
-# Callable-or-property guard
+# CDispatch / typed_qi fallback
 # ---------------------------------------------------------------------------
 
 
-class TestCallableOrPropertyGuard:
-    """InsertMateReference may be a property on late-bound IDispatch."""
+class TestTypedQiFallback:
+    """If typed_qi(IFeatureManager) fails, the raw FeatureManager is used."""
 
-    def test_insert_as_property(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        nodes = _seed_nodes(3)
-        fm = _FakeFeatureManager(nodes)
+    def test_raw_fm_fallback_when_typed_qi_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        fm = _FakeFeatureManager(_seed_nodes(3))
         doc = _FakeDoc(fm)
-        _patch_selection(monkeypatch)
+        _patch_com(monkeypatch)
 
-        class _PropDoc(_FakeDoc):
-            InsertMateReference = True
+        def _boom(obj: Any, iface: str, **kw: Any) -> Any:
+            raise mr.EarlyBindError("E_NOINTERFACE")
 
-        pdoc = _PropDoc(fm)
+        monkeypatch.setattr(mr, "typed_qi", _boom)
         feature = {
             "type": "mate_reference",
             "entities": [{"ref": {"face": "F1"}, "role": "primary"}],
         }
-        result = mr._try_mode_b(pdoc, feature, {})
+        result = mr._try_mode_b(doc, feature, {})
+        # Falls back to the raw fm (the fake), which still records the call.
         assert result is True
+        assert len(fm.insert_calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# SPIKE_STATUS sentinel
+# ---------------------------------------------------------------------------
+
+
+class TestSpikeStatus:
+    def test_spike_status_is_green(self) -> None:
+        assert mr.SPIKE_STATUS == "GREEN"
 
 
 # ---------------------------------------------------------------------------
@@ -445,10 +477,12 @@ class TestNeverRaise:
     """§0: Return (False, reason) on any failure — NEVER raise."""
 
     def test_unexpected_exception_in_count_nodes(self) -> None:
+        class _BrokenFM:
+            def GetFeatures(self, top_level: bool):
+                raise RuntimeError("COM link severed")
+
         class _BrokenDoc:
-            class FeatureManager:
-                def GetFeatures(self, top_level: bool):
-                    raise RuntimeError("COM link severed")
+            FeatureManager = _BrokenFM()
 
         doc = _BrokenDoc()
         ok, err = mr.create_mate_reference(doc, {"type": "mate_reference", "entities": []}, {})
