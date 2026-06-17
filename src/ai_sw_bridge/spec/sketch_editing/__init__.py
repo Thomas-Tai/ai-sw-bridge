@@ -62,11 +62,10 @@ __all__ = [
 
 # ---------------------------------------------------------------------------
 # Lane registrations — ONE line per op, added by W0 as each lane lands.
-# Ships empty (no op tokens advertised) until the first W60 lane is wired,
-# exactly like features.HANDLER_REGISTRY before W56.
+# Each is seat-PROVEN (verify-the-effect segment delta survived save->reopen)
+# before being wired here, exactly like features.HANDLER_REGISTRY.
 #
-#   from . import offset as _offset            # noqa: E402
-#   register(_offset.OP)
+# Pending lanes (wired as each spike passes on the live seat):
 #   from . import convert as _convert          # noqa: E402
 #   register(_convert.OP)
 #   from . import trim as _trim                # noqa: E402
@@ -74,3 +73,7 @@ __all__ = [
 #   from . import pattern as _pattern          # noqa: E402
 #   register(_pattern.OP)
 # ---------------------------------------------------------------------------
+
+from . import offset as _offset  # noqa: E402
+
+register(_offset.OP)
