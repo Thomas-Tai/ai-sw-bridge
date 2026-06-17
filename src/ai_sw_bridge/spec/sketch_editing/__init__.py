@@ -70,10 +70,12 @@ __all__ = [
 #   register(_convert.OP)
 #   from . import trim as _trim                # noqa: E402
 #   register(_trim.OP)
-#   from . import pattern as _pattern          # noqa: E402
-#   register(_pattern.OP)
 # ---------------------------------------------------------------------------
 
 from . import offset as _offset  # noqa: E402
 
 register(_offset.OP)
+
+from . import pattern as _pattern  # noqa: E402
+
+register(_pattern.OP)
