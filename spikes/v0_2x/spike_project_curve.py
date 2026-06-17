@@ -32,8 +32,9 @@ Fixture
 y=+5 mm that projects +Z onto the top face (``fx.seed_line_over_top``).
 
 Verify-the-effect (survives save→reopen):
-    A new reference-curve feature node appears in the FirstFeature walk
-    (type name contains "RefCurve" / "ProjectedCurve"), no ΔVol.
+    A new reference-curve feature node appears in the
+    ``IFeatureManager.GetFeatures(False)`` tuple (type name contains
+    "RefCurve" / "ProjectedCurve"), no ΔVol.
 
 Verdicts
 --------
@@ -230,60 +231,52 @@ def _walk_swconst_enums(tokens: tuple[str, ...]) -> dict[str, Any]:
 # Feature-node detection
 # ---------------------------------------------------------------------------
 
+def _walk_features(doc: Any) -> list[Any]:
+    """Headless-reliable feature-tree walk via ``IFeatureManager.GetFeatures(False)``.
+
+    Replaces FirstFeature/GetNextFeature chains — that walk is unreachable
+    on the raw late-bound doc out-of-process (W62 composite seat fire,
+    2026-06-17 — com_error "Member not found"). ``GetFeatures(False)``
+    returns a flat tuple that IS reachable; each node still exposes
+    ``Name`` / ``GetTypeName2`` directly.
+    """
+    try:
+        feats = doc.FeatureManager.GetFeatures(False)
+    except Exception:
+        return []
+    if feats is None:
+        return []
+    return list(feats)[:_FEATURE_TREE_WALK_LIMIT]
+
+
 def _count_ref_curve_nodes(doc: Any) -> int:
     """Count feature-tree nodes whose type matches a ref-curve token."""
     count = 0
-    try:
-        feat = doc.FirstFeature()
-    except Exception:
-        return 0
-    seen = 0
-    while feat is not None and seen < _FEATURE_TREE_WALK_LIMIT:
-        seen += 1
+    for feat in _walk_features(doc):
         try:
             tname = str(feat.GetTypeName2() or "").lower()
             if any(tok in tname for tok in _NODE_TYPE_TOKENS):
                 count += 1
         except Exception:
             pass
-        try:
-            feat = feat.GetNextFeature()
-        except Exception:
-            break
     return count
 
 
 def _get_feature_names(doc: Any) -> list[str]:
     """Return all feature names in the tree."""
     names: list[str] = []
-    try:
-        feat = doc.FirstFeature()
-    except Exception:
-        return names
-    seen = 0
-    while feat is not None and seen < _FEATURE_TREE_WALK_LIMIT:
-        seen += 1
+    for feat in _walk_features(doc):
         try:
             names.append(str(feat.Name))
         except Exception:
             pass
-        try:
-            feat = feat.GetNextFeature()
-        except Exception:
-            break
     return names
 
 
 def _get_feature_types(doc: Any) -> list[dict[str, str]]:
     """Return list of {name, type} for every feature node."""
     result: list[dict[str, str]] = []
-    try:
-        feat = doc.FirstFeature()
-    except Exception:
-        return result
-    seen = 0
-    while feat is not None and seen < _FEATURE_TREE_WALK_LIMIT:
-        seen += 1
+    for feat in _walk_features(doc):
         entry: dict[str, str] = {}
         try:
             entry["name"] = str(feat.Name)
@@ -294,10 +287,6 @@ def _get_feature_types(doc: Any) -> list[dict[str, str]]:
         except Exception:
             entry["type"] = "<unknown>"
         result.append(entry)
-        try:
-            feat = feat.GetNextFeature()
-        except Exception:
-            break
     return result
 
 

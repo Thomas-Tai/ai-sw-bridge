@@ -165,25 +165,19 @@ def _wire_green(monkeypatch) -> None:
 # Dormant gate — SPIKE_STATUS is UNRUN, kind absent from registry
 # ---------------------------------------------------------------------------
 
-class TestDormantGate:
-    def test_spike_status_is_unrun(self) -> None:
-        assert pc.SPIKE_STATUS == "UNRUN"
+class TestRegistryGreenGate:
+    def test_spike_status_is_green(self) -> None:
+        assert pc.SPIKE_STATUS == "GREEN"
 
-    def test_project_curve_not_in_registry_when_dormant(self) -> None:
-        assert "project_curve" not in HANDLER_REGISTRY
+    def test_project_curve_in_registry_when_green(self) -> None:
+        assert HANDLER_REGISTRY.get("project_curve") is create_project_curve
 
-    def test_returns_seat_pending(self) -> None:
-        ok, err = create_project_curve(object(), _feat(), _tgt())
-        assert ok is False
-        assert err is not None
-        assert "SEAT-PENDING" in err
-        assert "Mode-A" in err
-        assert "Mode-B" in err
-
-    def test_seat_pending_with_none_inputs(self) -> None:
+    def test_validation_runs_even_when_green(self) -> None:
+        """Even with SPIKE_STATUS=GREEN, the handler validates inputs and
+        fails closed on invalid feature/target shapes before touching COM."""
         ok, err = create_project_curve(None, None, None)
         assert ok is False
-        assert "SEAT-PENDING" in err
+        assert err is not None
 
 
 # ---------------------------------------------------------------------------
@@ -230,38 +224,19 @@ class TestValidation:
 # Mode-A green — CreateDefinition + CreateFeature succeed
 # ---------------------------------------------------------------------------
 
-class TestModeA:
-    def test_green_via_createdefinition(self, monkeypatch):
-        _wire_green(monkeypatch)
-        _wire_count(monkeypatch, before=0, after=1)
-        defn = object()
-        feat_obj = object()
-        doc = _FakeDoc(defn=defn, created_feat=feat_obj)
-        ok, note = create_project_curve(doc, _feat(), _tgt())
-        assert ok is True
-        assert "mode-A" in note
-        assert doc.FeatureManager.create_def_calls == [14]
-        assert len(doc.FeatureManager.create_feat_calls) == 1
+class TestModeAQuarantined:
+    """Mode-A is quarantined post-seat: v1 spike proved no QI succeeds on
+    CreateDefinition output, and CreateDefinition(61) returns None.
+    _try_mode_a is a no-op stub on every input. The handler routes to
+    Mode-B-insert (InsertProjectedSketch2) or Mode-B-convert (SketchUseEdge3)."""
 
-    def test_qi_fail_but_createfeature_still_runs(self, monkeypatch):
-        """QI raises for every iface, but CreateFeature with raw data succeeds."""
-        _wire_green(monkeypatch)
-        _wire_count(monkeypatch, before=0, after=1)
-
-        def failing_qi(data, iface, **kw):
-            raise Exception("E_NOINTERFACE")
-
-        monkeypatch.setattr(pc, "typed_qi", failing_qi)
-
-        defn = object()
-        feat_obj = object()
-        doc = _FakeDoc(defn=defn, created_feat=feat_obj)
-        ok, note = create_project_curve(doc, _feat(), _tgt())
-        assert ok is True
-        assert "mode-A" in note
+    def test_mode_a_returns_none_always(self) -> None:
+        assert pc._try_mode_a(_FakeDoc(), _feat()) is None
+        assert pc._try_mode_a(None, {}) is None
 
     def test_createdefinition_returns_none_falls_through(self, monkeypatch):
-        """CreateDefinition(None) → falls through to Mode-B."""
+        """CreateDefinition(None) is irrelevant — Mode-A is quarantined.
+        Mode-B-insert path drives the handler when its fakes are wired."""
         _wire_green(monkeypatch)
         _wire_count(monkeypatch, before=0, after=1)
         doc = _FakeDoc(defn=None, has_insert=True, insert_result=object())
@@ -270,7 +245,7 @@ class TestModeA:
         assert "mode-B" in note
 
     def test_createfeature_returns_none_falls_through(self, monkeypatch):
-        """CreateFeature(None) → falls through to Mode-B."""
+        """CreateFeature(None) is irrelevant — Mode-A is quarantined."""
         _wire_green(monkeypatch)
         _wire_count(monkeypatch, before=0, after=1)
         doc = _FakeDoc(
