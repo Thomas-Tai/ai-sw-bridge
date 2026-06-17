@@ -139,10 +139,11 @@ def count_feature_nodes(doc: Any) -> int:
     """Headless-reliable feature-node count for the W62 verify gate.
 
     ``IModelDoc2.FirstFeature`` is unreachable on the raw late-bound doc
-    (com_error -2147352573 "Member not found" on both raw and typed access).
-    ``IFeatureManager.GetFeatures(False)`` IS reachable on the seat (probe
-    returned 25 features on a fresh block), so it is the verify substrate
-    for every W62 lane that gates on a feature-node delta (composite, helix,
+    out-of-process (com_error -2147352573 "Member not found" on both raw
+    and typed access — proven on the W62 composite seat fire 2026-06-17).
+    ``IFeatureManager.GetFeatures(False)`` IS reachable (seat-proven: 25
+    features on a fresh block), so it is the verify substrate for every
+    W62 lane that gates on a feature-node delta (composite, helix,
     project_curve). split_line gates on ΔFace and does not need this.
     """
     feats = doc.FeatureManager.GetFeatures(False)
