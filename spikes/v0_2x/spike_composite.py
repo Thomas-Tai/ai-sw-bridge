@@ -14,25 +14,19 @@ Fixture: fx.build_block (40×30×10 mm boss-extrude) + fx.top_face_edges
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
+
+logging.basicConfig(level=logging.WARNING, format="%(name)s %(levelname)s %(message)s")
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = str(_REPO_ROOT / "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-import spikes.v0_2x._feature_spike_fixtures as fx  # noqa: E402
+import _feature_spike_fixtures as fx  # noqa: E402  (sibling import — script dir is on sys.path[0])
 from ai_sw_bridge.features.composite import create_composite  # noqa: E402
-
-
-def _count_feature_nodes(doc) -> int:
-    feat = doc.FirstFeature()
-    count = 0
-    while feat is not None:
-        count += 1
-        feat = feat.GetNextFeature()
-    return count
 
 
 def main() -> None:
@@ -41,13 +35,13 @@ def main() -> None:
     edges = fx.top_face_edges(doc, n=2)
 
     print(f"[composite] block built; {len(edges)} top-face edges acquired")
-    nodes_before = _count_feature_nodes(doc)
+    nodes_before = fx.count_feature_nodes(doc)
     print(f"[composite] feature nodes before: {nodes_before}")
 
     ok, note = create_composite(doc, {}, {"edges": edges})
     print(f"[composite] handler returned: ok={ok}, note={note!r}")
 
-    nodes_after = _count_feature_nodes(doc)
+    nodes_after = fx.count_feature_nodes(doc)
     print(f"[composite] feature nodes after: {nodes_after} (delta={nodes_after - nodes_before})")
 
     if not ok:
@@ -56,7 +50,7 @@ def main() -> None:
 
     print("[composite] saving and reopening...")
     doc2 = fx.save_and_reopen(sw, doc)
-    nodes_reopen = _count_feature_nodes(doc2)
+    nodes_reopen = fx.count_feature_nodes(doc2)
     print(f"[composite] feature nodes after reopen: {nodes_reopen}")
 
     if nodes_reopen > nodes_before:
