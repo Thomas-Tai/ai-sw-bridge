@@ -114,3 +114,16 @@ from .bounding_box import create_bounding_box  # noqa: E402
 
 if _bounding_box_status == "GREEN":
     HANDLER_REGISTRY["bounding_box"] = create_bounding_box
+
+# W63 — com_point (Center-of-Mass reference point). Mode-A SKIPPED BY DESIGN:
+# InsertCenterOfMass is a no-arg legacy method with no FeatureData interface
+# and no creation enum in swFeatureNameID_e — the W62 quarantine doctrine
+# is asymmetric here (quarantine requires a candidate enum; com_point has
+# none). Mode-B fires via legacy IModelDoc2.InsertCenterOfMass() with the
+# callable-or-property invocation guard. SPIKE_STATUS gate: UNFIRED until
+# W0 fires on the live seat.
+from .com_point import SPIKE_STATUS as _com_point_status  # noqa: E402
+from .com_point import create_com_point  # noqa: E402
+
+if _com_point_status == "GREEN":
+    HANDLER_REGISTRY["com_point"] = create_com_point
