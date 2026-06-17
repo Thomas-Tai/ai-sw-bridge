@@ -101,3 +101,16 @@ from .project_curve import create_project_curve  # noqa: E402
 
 if _project_curve_status == "GREEN":
     HANDLER_REGISTRY["project_curve"] = create_project_curve
+
+# W63 — bounding_box (doctrine-asymmetry probe). swFmBoundingBox (114) IS
+# named in CreateDefinition's CHM-listed enumerations — the first W63
+# candidate to potentially break the W62 quarantine streak. Mode-A FIRST
+# (CreateDefinition -> IBoundingBoxFeatureData -> CreateFeature); Mode-B
+# fallback via legacy IFeatureManager.InsertGlobalBoundingBox with the
+# callable-or-property invocation guard (auto-invoked dispid trap).
+# SPIKE_STATUS gate: UNFIRED until W0 fires on the live seat.
+from .bounding_box import SPIKE_STATUS as _bounding_box_status  # noqa: E402
+from .bounding_box import create_bounding_box  # noqa: E402
+
+if _bounding_box_status == "GREEN":
+    HANDLER_REGISTRY["bounding_box"] = create_bounding_box
