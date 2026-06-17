@@ -73,11 +73,14 @@ stdlib + project modules at module scope (must import with NO live seat).
 - `_metrics(doc) -> (face_count, volume)` — copy hem's `_metrics` (face count via
   body face iteration; volume via mass-props). Split-line: assert `ΔFace > 0` and
   `ΔVol == 0`.
-- Feature-node materialization — walk `doc.FirstFeature()` → `.GetNextFeature()`,
-  **re-typing each node to `IFeature` per step** (the thread W59 lesson — the walk
-  returns loosely-typed nodes), count nodes (or match the new feature's type
-  name) before vs after. Helix/composite/project: a new node of the expected type
-  must appear.
+- Feature-node materialization — `doc.FeatureManager.GetFeatures(False)` returns
+  a flat tuple of feature nodes (each already exposing `Name` / `GetTypeName2`
+  directly). Count nodes (or match the new feature's type name) before vs after.
+  Helix/composite/project: a new node of the expected type must appear.
+  **DO NOT use `doc.FirstFeature()` / `feat.GetNextFeature()`** — that walk is
+  unreachable on the raw late-bound doc out-of-process (com_error "Member not
+  found"; proven on the W62 composite seat fire 2026-06-17). The previous
+  brief revision mandated FirstFeature; that doctrine has been corrected.
 
 **HARD RULES:**
 - Create/modify ONLY your 3 files (named per lane). NEVER touch
@@ -112,7 +115,7 @@ Files: `features/composite.py`, `tests/features/test_composite.py`, `spikes/v0_2
   `doc.InsertCompositeCurve()` (no args, returns Boolean).
 - **Prereq:** the block's edges — `target` carries the edge refs (W0 fixture
   supplies a connected edge chain on the block).
-- **Verify:** a new feature node materialized (FirstFeature walk; no ΔVol).
+- **Verify:** a new feature node materialized (`GetFeatures(False)` count delta; no ΔVol).
 - Spike: `doc = fx.build_block(sw)`; select 2–3 connected edges; run handler; PASS
   iff a new node appears AND survives save→reopen. Report which mode fired.
 
@@ -136,7 +139,7 @@ Files: `features/helix.py`, `tests/features/test_helix.py`, `spikes/v0_2x/spike_
   semantics are fuzzy; author the documented order, W0 nails them on the seat.)
 - **Prereq:** a sketch with exactly ONE circle, pre-selected
   (`fx.seed_circle_on_face(doc)`).
-- **Verify:** a new Helix feature node (FirstFeature walk; no ΔVol — a helix is a
+- **Verify:** a new Helix feature node (`GetFeatures(False)` type-name filter; no ΔVol — a helix is a
   reference curve).
 - Params: `{"pitch_mm": 5, "revolutions": 4, "start_angle_deg": 0, "clockwise": true}`.
 
@@ -193,7 +196,7 @@ creation entry point is UNKNOWN — this lane includes a **method-discovery step
   seat exhausts every probe.
 - **Prereq:** a solid block + a face + a source sketch
   (`fx.seed_sketch_over_face(doc)`).
-- **Verify:** a new reference-curve feature node (FirstFeature walk; no ΔVol).
+- **Verify:** a new reference-curve feature node (`GetFeatures(False)` type-name filter; no ΔVol).
 
 Commit: `feat(W62): project_curve lane — projected curve (dual-mode + method discovery) + tests + spike`
 
