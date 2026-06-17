@@ -351,6 +351,68 @@ expected count.
 
 ---
 
+## 5. SPIKE HARNESS — use the W0-owned fixture helper (do NOT hand-roll)
+
+A shared helper already sits in your worktree at
+`spikes/v0_2x/_sketch_edit_fixtures.py` (W0-owned — do not edit it). It removes
+the three spike footguns: the connect/template boot, the proven sketch-build
+sequence (a hand-rolled one silently yields a 0-segment sketch and a bogus
+result), and durable-ref capture. **Import from it; keep your spike ~15 lines.**
+
+Surface:
+- `connect()` → live raw SW app · `new_part(sw)` → raw blank-part doc.
+- `build_rect_sketch(doc)` → `("Sketch1", 4)` (offset) · `build_circle_sketch(doc)`
+  → `("Sketch1", 1)` (pattern) · `build_overhang_lines_sketch(doc)` →
+  `("Sketch1", 2, pick_xyz)` (trim) · `build_box_top_sketch(doc)` →
+  `("Sketch2", edge)` (convert).
+- `capture_edge_ref(doc, edge)` → a `DurableEdgeRef` dict for `refs` (convert).
+- `count_named_segments(doc, name)` → int · `save_and_reopen(sw, doc)` → reopened doc.
+
+Each lane's spike (replace `<lane>`/`<op>`/params/direction per your block):
+```python
+import sys, json, traceback
+import _sketch_edit_fixtures as fx
+from ai_sw_bridge.spec.sketch_editing import register, apply_sketch_edit
+from ai_sw_bridge.spec.sketch_editing.<lane> import OP
+
+def main():
+    sw = fx.connect()
+    try:
+        register(OP)
+        doc = fx.new_part(sw)
+        sketch, n0 = fx.build_rect_sketch(doc)          # << your lane's fixture
+        params = { ... }                                # << your lane's params
+        res = apply_sketch_edit(doc, sketch, "sketch_<lane>", params)
+        delta_ok = res["segments_after"] > res["segments_before"]   # << your direction
+        doc2 = fx.save_and_reopen(sw, doc)
+        n_reopen = fx.count_named_segments(doc2, sketch)
+        survived = n_reopen == res["segments_after"]
+        verdict = "PASS" if (res["ok"] and delta_ok and survived) else (
+                  "NO_OP" if res["call_ok"] and res["segment_delta"] == 0 else "FAIL")
+        print(json.dumps({"verdict": verdict, "result": res,
+                          "n_reopen": n_reopen, "survived": survived}, default=str, indent=2))
+        return 0 if verdict == "PASS" else (2 if verdict == "NO_OP" else 1)
+    except Exception as exc:
+        print(json.dumps({"verdict": "ERROR", "error": f"{type(exc).__name__}: {exc}",
+                          "tb": traceback.format_exc()}, default=str)); return 1
+    finally:
+        try: sw.CloseAllDocuments(True)
+        except Exception: pass
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+- **convert** differs: `sketch, edge = fx.build_box_top_sketch(doc)` then
+  `params = {"refs": [fx.capture_edge_ref(doc, edge)]}`; expect `+1`. Your spike
+  MUST classify clean-return-but-`segment_delta == 0` as **NO_OP** (exit 2) —
+  the out-of-process wall signature.
+- **trim** differs: `sketch, n0, pick = fx.build_overhang_lines_sketch(doc)`;
+  `params = {"option": 0, "x_mm": pick[0]*1000, "y_mm": pick[1]*1000}`; verify
+  `res["segments_after"] != res["segments_before"]`.
+- Still **DO NOT RUN** the spike — W0 fires it on the seat.
+
+---
+
 ### W0 integration order (for reference — workers don't do this)
 
 Per lane returning PASS, W0: fires the spike on the seat → confirms ΔSegments +
