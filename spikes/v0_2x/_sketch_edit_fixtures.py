@@ -73,7 +73,13 @@ def new_part(sw: Any) -> Any:
 
 
 def _open_sketch_on_plane(doc: Any, plane: str = "Front Plane") -> None:
-    doc.Extension.SelectByID2(plane, "PLANE", 0, 0, 0, False, 0, None, 0)
+    # Proven path: FeatureByName -> Select2 (mirrors _base.open_sketch_for_edit).
+    # Avoids SelectByID2's ICallout VT_DISPATCH null-marshaling trap (a bare
+    # Python None -> com_error "Type mismatch" -2147352571).
+    feat = doc.FeatureByName(plane)
+    if feat is None:
+        raise RuntimeError(f"FeatureByName({plane!r}) returned None")
+    feat.Select2(False, 0)
     doc.SketchManager.InsertSketch(True)
 
 
