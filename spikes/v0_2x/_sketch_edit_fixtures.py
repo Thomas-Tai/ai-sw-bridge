@@ -144,6 +144,27 @@ def build_overhang_lines_sketch(
     return "Sketch1", 3, pick_xyz
 
 
+def build_mirror_seed_sketch(
+    doc: Any, plane: str = "Front Plane"
+) -> tuple[str, int, list[int], int]:
+    """A vertical construction CENTERLINE on the Y axis + an L of two lines on
+    the +X side -> closed ``Sketch1`` (3 segments). Returns
+    ``(name, seg_count, mirror_entity_indices, centerline_index)``.
+
+    For the MIRROR lane (W61): mirroring the two +X lines about the centerline
+    adds two -X copies -> 3 -> 5 (delta +2). Segment order from
+    GetSketchSegments is creation order: [centerline(0), h-line(1), v-line(2)].
+    CreateCenterLine + IModelDoc2.SketchMirror both DLL-verified (SW2024 v32).
+    """
+    _open_sketch_on_plane(doc, plane)
+    sm = doc.SketchManager
+    sm.CreateCenterLine(0.0, -0.020, 0.0, 0.0, 0.020, 0.0)  # vertical centerline on Y
+    sm.CreateLine(0.005, 0.000, 0.0, 0.015, 0.000, 0.0)     # +X horizontal
+    sm.CreateLine(0.015, 0.000, 0.0, 0.015, 0.010, 0.0)     # +X vertical (forms an L)
+    _close_sketch(doc)
+    return "Sketch1", 3, [1, 2], 0
+
+
 def build_box_top_sketch(doc: Any) -> tuple[str, Any]:
     """Extrude a 40×30×10 mm box (consumes ``Sketch1`` → Boss-Extrude1), then
     open an EMPTY sketch on the top face → ``Sketch2``. Returns
