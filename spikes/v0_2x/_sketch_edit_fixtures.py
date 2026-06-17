@@ -32,6 +32,9 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import pythoncom
+from win32com.client import VARIANT
+
 # Path bootstrap: make `ai_sw_bridge` importable when this is run as a script
 # from spikes/v0_2x (mirrors sketch_relations_pae.py:35-36).
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -120,23 +123,25 @@ def build_circle_sketch(doc: Any, plane: str = "Front Plane") -> tuple[str, int]
 def build_overhang_lines_sketch(
     doc: Any, plane: str = "Front Plane"
 ) -> tuple[str, int, tuple[float, float, float]]:
-    """Horizontal line (y=0) crossed by a vertical line whose top end overhangs
-    above it → closed ``Sketch1`` (2 segments). Returns
-    ``(name, seg_count, pick_xyz)`` where ``pick_xyz`` is a point on the top
-    overhang for ``SketchTrim`` (option 0 = closest).
+    """Horizontal bar crossed by TWO verticals -> closed ``Sketch1`` (3
+    segments). Returns ``(name, seg_count, pick_xyz)`` where ``pick_xyz`` is the
+    MIDPOINT of the horizontal, between the two verticals.
 
-    NOTE (trim lane): the EXACT count delta of a trim is seat-determined (a
-    trim may remove a piece → −1, or split → +1). The op's contract is
-    ``after != before``; the spike asserts the change and W0 confirms the
-    specific direction live.
+    For the TRIM lane: ``swSketchTrimClosest`` at the midpoint deletes the
+    interior piece of the horizontal bounded by the two intersections and SPLITS
+    the bar into two disconnected stubs -> 3 -> 4 segments (delta +1). A dangling
+    overhang would only SHORTEN a line (delta 0) and could never prove the
+    count-delta contract; an interior bounded segment forces the kernel to add a
+    stub. (Name kept for spike-compat; geometry is a cross, not an overhang.)
     """
     _open_sketch_on_plane(doc, plane)
     sm = doc.SketchManager
-    sm.CreateLine(-0.020, 0.000, 0.0, 0.020, 0.000, 0.0)  # horizontal at y=0
-    sm.CreateLine(0.000, -0.010, 0.0, 0.000, 0.015, 0.0)  # vertical, overhang y∈(0,0.015]
+    sm.CreateLine(-0.020, 0.000, 0.0, 0.020, 0.000, 0.0)   # horizontal bar H, y=0
+    sm.CreateLine(-0.010, -0.010, 0.0, -0.010, 0.010, 0.0)  # vertical V1 at x=-10mm
+    sm.CreateLine(0.010, -0.010, 0.0, 0.010, 0.010, 0.0)    # vertical V2 at x=+10mm
     _close_sketch(doc)
-    pick_xyz = (0.000, 0.0125, 0.0)  # on the top overhang (above the h-line)
-    return "Sketch1", 2, pick_xyz
+    pick_xyz = (0.005, 0.000, 0.0)  # on H, between V1(-10) and V2(+10), 5mm clear of origin
+    return "Sketch1", 3, pick_xyz
 
 
 def build_box_top_sketch(doc: Any) -> tuple[str, Any]:
@@ -153,7 +158,8 @@ def build_box_top_sketch(doc: Any) -> tuple[str, Any]:
     doc.SketchManager.CreateCornerRectangle(-0.020, -0.015, 0.0, 0.020, 0.015, 0.0)
     doc.SketchManager.InsertSketch(True)  # close Sketch1
     doc.ClearSelection2(True)
-    doc.Extension.SelectByID2("Sketch1", "SKETCH", 0, 0, 0, False, 0, None, 0)
+    _sk_feat = doc.FeatureByName("Sketch1")  # sketch is a feature -> FeatureByName, not SelectByID2 (None-callout trap)
+    _sk_feat.Select2(False, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion2(
         True, False, False, _SW_END_COND_BLIND, 0,
@@ -165,17 +171,24 @@ def build_box_top_sketch(doc: Any) -> tuple[str, Any]:
 
     # select the top face (z = +10 mm), grab an edge, open Sketch2 on it
     top_z = 0.010
-    doc.Extension.SelectByID2("", "FACE", 0.0, 0.0, top_z, False, 0, None, 0)
+    # a face is NOT a named feature -> SelectByID2, but pass the ICallout as a
+    # null VARIANT(VT_DISPATCH) (hem/edge_flange recipe), never a bare None.
+    null_disp = VARIANT(pythoncom.VT_DISPATCH, None)
+    doc.Extension.SelectByID2("", "FACE", 0.0, 0.0, top_z, False, 0, null_disp, 0)
     swsel = doc.SelectionManager
     face = swsel.GetSelectedObject6(1, -1)
     if face is None:
         raise RuntimeError("could not select the top face of the box fixture")
-    edges = list(face.GetEdges())
+    edges = list(face.GetEdges)  # GetEdges is a late-bound PROPERTY (returns the tuple) -> no parens
     if not edges:
         raise RuntimeError("top face has no edges to convert")
     edge = edges[0]
-    # face is still selected -> open + close an empty sketch on it = Sketch2
+    # open a sketch on the still-selected top face and SEED it with one short
+    # line so the feature PERSISTS as Sketch2 (SW culls an EMPTY sketch on close,
+    # so the orchestrator's reopen-by-name would miss it). Convert then projects
+    # the perimeter edge as a SECOND segment (before=1, after=2).
     doc.SketchManager.InsertSketch(True)
+    doc.SketchManager.CreateLine(-0.018, -0.013, 0.0, -0.014, -0.013, 0.0)  # seed (in-plane z=0)
     _close_sketch(doc)
     return "Sketch2", edge
 
