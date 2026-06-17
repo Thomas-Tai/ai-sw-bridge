@@ -58,3 +58,18 @@ HANDLER_REGISTRY["hem"] = create_hem
 # geometry at the target coords via boss_extrude). Kept for fail-loud + the
 # wall provenance.
 from . import move_copy_body as _move_copy_body  # noqa: E402,F401
+
+# W62 — composite curve (curves group, lane 1). Mode-A QUARANTINED on this
+# SW build: the swconst harvest (docs/sw_api_full.json @ 32.1.0.123) exposes
+# only two curve enums (14/61), neither yields a CreateDefinition object
+# that accepts ICompositeCurveFeatureData (QI E_NOINTERFACE on the live
+# seat). The interface is edit-only via IFeature.GetDefinition. Mode-B
+# fires generative via legacy InsertCompositeCurve with mark=1 selection
+# (the "Edges to join" PropertyManager list-box mark) and the callable-OR-
+# property invocation guard (auto-invoked dispid trap). Seat-proven 2026-06-17
+# (spike_composite, nodes +1 on a 40×30×10 block, survives save→reopen).
+from .composite import SPIKE_STATUS as _composite_status  # noqa: E402
+from .composite import create_composite  # noqa: E402
+
+if _composite_status == "GREEN":
+    HANDLER_REGISTRY["composite"] = create_composite
