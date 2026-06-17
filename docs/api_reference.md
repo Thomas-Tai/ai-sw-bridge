@@ -10,6 +10,34 @@ is whether the arg count here matches what's being passed. ([builder.py FeatureC
 
 ## Methods
 
+### `IAssemblyDoc.AddMate5`
+
+Obsolete. Superseded by IAssemblyDoc::CreateMate.
+
+**Args (15):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `MateTypeFromEnum` | `system.int` | Type of mate as defined in swMateType_e (see Remarks) |
+| 2 | `AlignFromEnum` | `system.int` | Type of alignment as defined in swMateAlign_e |
+| 3 | `Flip` | `system.bool` | True to flip the mate entities, false to not; valid only if MateTypeFromEnum is swMatetype_e.swMateDISTANCE |
+| 4 | `Distance` | `system.double` | Distance value; valid only if MateTypeFromEnum is swMateType_e.swMateDISTANCE |
+| 5 | `DistanceAbsUpperLimit` | `system.double` | Absolute maximum distance value; valid only if MateTypeFromEnum is swMateType_e.swMateDISTANCE (see Remarks) |
+| 6 | `DistanceAbsLowerLimit` | `system.double` | Absolute minimum distance value; valid only if MateTypeFromEnum is swMateType_e.swMateDISTANCE (see Remarks) |
+| 7 | `GearRatioNumerator` | `system.double` | Gear ratio numerator value; valid only if MateTypeFromEnum is swMateType_e.swMateGEAR |
+| 8 | `GearRatioDenominator` | `system.double` | Gear ratio denominator value; valid only if MateTypeFromEnum is swMateType_e.swMateGEAR |
+| 9 | `Angle` | `system.double` | Angle value; valid only if MateTypeFromEnum is swMateType_e.swMateANGLE |
+| 10 | `AngleAbsUpperLimit` | `system.double` | Absolute maximum angle value; valid only if MateTypeFromEnum is swMateType_e.swMateANGLE |
+| 11 | `AngleAbsLowerLimit` | `system.double` | Absolute minimum angle value; valid only if MateTypeFromEnum is swMateType_e.swMateANGLE |
+| 12 | `ForPositioningOnly` | `system.bool` | True to only position the components according to the mating relationship and not return a mate, false to return a mate |
+| 13 | `LockRotation` | `system.bool` | True to lock component rotation, false to not |
+| 14 | `WidthMateOption` | `system.int` | Width mate options as defined in swMateWidthOptions_e; valid only if MateTypeFromEnum is swMateType_e.swMateWIDTH |
+| 15 | `ErrorStatus` | `system.int` | Success or error as defined by swAddMateError_e |
+
+**Returns:** `Mate2`
+
+**Availability:** SOLIDWORKS 2015 FCS, Revision Number 23.0
+
 ### `IEquationMgr.Add2`
 
 Adds an equation at the specified index.
@@ -358,6 +386,50 @@ Inserts a simple hole feature.
 
 **Availability:** SOLIDWORKS 2009 FCS, Revision Number 17.0
 
+### `IGearMateFeatureData.EntitiesToMate`
+
+Gets or sets the entities to mate in this gear mate.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2019 FCS, Revision Number 27.0
+
+### `IGearMateFeatureData.GearRatioDenominator`
+
+Gets or sets the denominator of the gear ratio of this gear mate.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2019 FCS, Revision Number 27.0
+
+### `IGearMateFeatureData.GearRatioNumerator`
+
+Gets or sets the numerator of the gear ratio of this gear mate.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2019 FCS, Revision Number 27.0
+
+### `IGearMateFeatureData.Reverse`
+
+Gets or sets whether to change the direction of rotation of the gears relative to one another in this gear mate.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2019 FCS, Revision Number 27.0
+
 ### `IModelDoc2.AddDimension2`
 
 Creates a display dimension at the specified location for selected entities.
@@ -654,6 +726,1238 @@ Sets system default user preference values.
 
 **Returns:** `void`
 
+### `ISweepFeatureData.AccessSelections`
+
+Accesses the selections that define this sweep feature.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `TopDoc` | `system.object` | Top-level document |
+| 2 | `Component` | `system.object` | Component in which the feature is to be modified |
+
+**Returns:** `System.bool`
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `ISweepFeatureData.AdvancedSmoothing`
+
+Gets or sets whether to apply advanced smoothing to this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.AlignWithEndFaces`
+
+Gets or sets whether to align this sweep with the end faces.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.AssemblyFeatureScope`
+
+Gets and sets whether this swept-cut feature affects only selected components in the assembly.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2011 FCS, Revision Number 19.0
+
+### `ISweepFeatureData.AutoSelect`
+
+Gets or sets whether to automatically select all bodies in a multibody part to be affected by this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `ISweepFeatureData.AutoSelectComponents`
+
+Gets and sets whether to automatically select all assembly components to be affected by this swept-cutfeature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2011 FCS, Revision Number 19.0
+
+### `ISweepFeatureData.CircularProfile`
+
+Gets or sets whether to use a circular profile for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2017 FCS, Revision Number 25.0
+
+### `ISweepFeatureData.CircularProfileDiameter`
+
+Gets or sets the diameter of the circular profile for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2017 FCS, Revision Number 25.0
+
+### `ISweepFeatureData.D1ReverseTwistDir`
+
+Gets or sets whether to reverse the twist of this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2018 FCS, Revision Number 26.0
+
+### `ISweepFeatureData.D2ReverseTwistDir`
+
+Gets or sets whether to reverse the twist in Direction 2 of this bidirectional sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2018 FCS, Revision Number 26.0
+
+### `ISweepFeatureData.Direction`
+
+Gets or sets the direction type of this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2017 FCS, Revision Number 25.0
+
+### `ISweepFeatureData.EndDirectionVector`
+
+Obsolete. Gets or sets the direction vector in which to end this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.EndTangencyType`
+
+Gets or sets tangency at the end of the sweep path of this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.FeatureScope`
+
+Gets or sets whether to use scope in a multibody part for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `ISweepFeatureData.FeatureScopeBodies`
+
+Gets or sets the solid bodies in a multibody part affected by this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `ISweepFeatureData.GetCutSweepOption`
+
+Gets the type of this cut sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.int`
+
+**Availability:** SOLIDWORKS 2011 FCS, Revision Number 19.0
+
+### `ISweepFeatureData.GetD2TwistAngle`
+
+Gets the twist angle in Direction 2 of this bidirectional sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2018 FCS, Revision Number 26.0
+
+### `ISweepFeatureData.GetFeatureScopeBodiesCount`
+
+Gets the number of solid bodies affected by the sweep feature in a multibody part.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.int`
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `ISweepFeatureData.GetGuideCurvesCount`
+
+Gets a number of guide curves for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.short`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.GetGuideCurvesType`
+
+Gets the type of guide curves in this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.object`
+
+**Availability:** SOLIDWORKS 2001Plus SP3, Revision Number 10.3
+
+### `ISweepFeatureData.GetPathAlignmentDirectionVector`
+
+Gets the direction vector of the specified type for this sweep feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Type` | `system.int` | Type of direction vector as defined in swSelectType_e: swSelDATAMAXES (axis) swSelDATUMPLANES (plane) swSelEDGES (edge) swSelFACES (face) |
+
+**Returns:** `System.object`
+
+**Availability:** SOLIDWORKS 2005 FCS, Revision Number 13.0
+
+### `ISweepFeatureData.GetPathType`
+
+Gets the path type for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.int`
+
+**Availability:** SOLIDWORKS 2001Plus SP2, Revision Number 10.2
+
+### `ISweepFeatureData.GetProfileType`
+
+Gets the profile type of this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.int`
+
+**Availability:** SOLIDWORKS 2018 FCS, Revision Number 26.0
+
+### `ISweepFeatureData.GetTwistAngle`
+
+Gets the angle at which to twist this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.1
+
+### `ISweepFeatureData.GetWallThickness`
+
+Gets the wall thickness, forward (Direction 1) or reverse (Direction 2), of this thin-walled sweep feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Forward` | `system.bool` | True for Direction 1, false for Direction 2 |
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.1
+
+### `ISweepFeatureData.GuideCurves`
+
+Gets or sets the guide curves for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.IAccessSelections`
+
+Obsolete. Accesses the selections that define this sweep feature.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `TopDoc` | `modeldoc2` | Top-level document |
+| 2 | `Component` | `component2` | Component in which the feature is to be modified |
+
+**Returns:** `System.bool`
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `ISweepFeatureData.IGetFeatureScopeBodies`
+
+Obsolete. Gets the solid bodies that the sweep feature affects in a multibody part.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Count` | `system.int` | Number of solid bodies to affect |
+
+**Returns:** `Body2`
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `ISweepFeatureData.IGetGuideCurves`
+
+Obsolete. Gets the guide curves for this sweep feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Count` | `system.short` | Number of guide curves |
+
+**Returns:** `System.object`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.1
+
+### `ISweepFeatureData.IGetGuideCurvesType`
+
+Obsolete. Gets the guide curve types for this sweep feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Count` | `system.int` | Number of guide curves |
+
+**Returns:** `System.int`
+
+**Availability:** SOLIDWORKS 2001Plus SP3, Revision Number 10.3
+
+### `ISweepFeatureData.IsBossFeature`
+
+Gets whether the sweep feature is a boss feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.bool`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.IsThinFeature`
+
+Gets whether this is a thin-walled sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.bool`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.MaintainTangency`
+
+Gets or sets whether to merge tangent faces in this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.Merge`
+
+Gets or sets whether to merge the results of this swept-boss feature for a multibody part.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `ISweepFeatureData.MergeSmoothFaces`
+
+Gets or sets whether to merge the smooth faces of this sweep feature that uses guide curves.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `ISweepFeatureData.Path`
+
+Gets or sets the sweep path for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.PathAlignmentType`
+
+Gets or sets the alignment of the sweep path in this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2005 FCS, Revision Number 13.0
+
+### `ISweepFeatureData.Profile`
+
+Gets and sets the sketch profile or tool body for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.PropagateFeatureToParts`
+
+Gets and sets whether to extend the swept-cut feature to all affected parts in the assembly.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2011 FCS, Revision Number 19.0
+
+### `ISweepFeatureData.ReleaseSelectionAccess`
+
+Releases access to the selections for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.SetD2TwistAngle`
+
+Sets the twist angle in Direction 2 of this bidirectional sweep feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Angle` | `system.double` | Angle of twist in radians in Direction 2 |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2018 FCS, Revision Number 26.0
+
+### `ISweepFeatureData.SetPathAlignmentDirectionVector`
+
+Sets the direction vector for path alignment in this sweep feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Dir` | `system.object` | Plane, planar face, line, edge, cylinder, axis, or a pair of vertices that defines the direction |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2005 FCS, Revision Number 13.0
+
+### `ISweepFeatureData.SetTwistAngle`
+
+Sets the angle at which to twist this sweep feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Angle` | `system.double` | Angle of twist in radians |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2005 FCS, Revision Number 13.0
+
+### `ISweepFeatureData.SetWallThickness`
+
+Sets the wall thickness, forward (Direction 1) or reverse (Direction 2), of this thin-walled sweep feature.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Forward` | `system.bool` | True for Direction 1, false for Direction 2 (see Remarks) |
+| 2 | `WallThickness` | `system.double` | Wall thickness |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.StartDirectionVector`
+
+Obsolete. Gets or sets the direction vector in which to start this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.StartTangencyType`
+
+Gets and sets the tangency at the start of the sweep path for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.SweepType`
+
+Gets the type of this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2018 FCS, Revision Number 26.0
+
+### `ISweepFeatureData.TangentPropagation`
+
+Gets or sets whether to propagate the sweep to the next tangent edge for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.ThinFeature`
+
+Gets or sets whether to make this sweep feature a thin-walled feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2018 FCS, Revision Number 26.0
+
+### `ISweepFeatureData.ThinWallType`
+
+Gets or sets the type of this thin-walled sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `ISweepFeatureData.TwistControlType`
+
+Gets or sets the type of twist control for this sweep feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `IVariableFilletFeatureData2.AccessSelections`
+
+Gains access to the selections used to define the variable fillet feature.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `TopDoc` | `system.object` | Top-level document |
+| 2 | `Component` | `system.object` | Component in which the feature is to be modified |
+
+**Returns:** `System.bool`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `IVariableFilletFeatureData2.AsymmetricFillet`
+
+Gets or sets whether this variable radius fillet is asymmetric.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2015 FCS, Revision Number 23.0
+
+### `IVariableFilletFeatureData2.ConicTypeForCrossSectionProfile`
+
+Gets or sets the type of profile for this fillet.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2014 FCS, Revision Number 22.0
+
+### `IVariableFilletFeatureData2.CurvatureContinuous`
+
+Gets or sets whether to create a smoother curvature between adjacent surfaces for this variable radius fillet feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2016 FCS, Revision Number 24.0
+
+### `IVariableFilletFeatureData2.DefaultConicRhoOrRadius`
+
+Gets or sets the default conic rho or conic radius of this fillet.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2014 FCS, Revision Number 22.0
+
+### `IVariableFilletFeatureData2.DefaultDistance`
+
+Gets or sets the default Distance 2 radius of this asymmetric fillet.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2015 FCS, Revision Number 23.0
+
+### `IVariableFilletFeatureData2.DefaultRadius`
+
+Gets or sets the default radius for this symmetric fillet or the default Distance 1 radius for this asymmetric fillet.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `IVariableFilletFeatureData2.FilletEdgeCount`
+
+Gets the number of edges to fillet.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `IVariableFilletFeatureData2.GetConicRhoOrRadius`
+
+Gets the conic rho, conic radius, or circular radius of this fillet.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `system.object` | Fillet edge for which to get a value (see Remarks) |
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2014 FCS, Revision Number 22.0
+
+### `IVariableFilletFeatureData2.GetConicRhoOrRadius2`
+
+Gets the conic rho or radius at the specified vertex.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `vertex` | Vertex for which to get a value (see Remarks) |
+| 2 | `IsAssigned` | `system.bool` | True if the conic value is assigned to each control point, false if not |
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2014 FCS, Revision Number 22.0
+
+### `IVariableFilletFeatureData2.GetControlPointConicRhoOrRadiusAtIndex`
+
+Gets the conic rho or radius at the specified control point.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Index` | `system.int` | Zero-based index of the control point (see Remarks) |
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2014 FCS, Revision Number 22.0
+
+### `IVariableFilletFeatureData2.GetControlPointDistanceAtIndex`
+
+Gets the Distance 2 radius at the specified control point for the asymmetric fillet.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Index` | `system.int` | Zero-based index of control point for which to get the radius |
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2015 FCS, Revision Number 23.0
+
+### `IVariableFilletFeatureData2.GetControlPointRadiusAtIndex`
+
+Gets the radius at the specified control point.
+
+**Args (3):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Index` | `system.int` | Zero-based index of the control point |
+| 2 | `Location` | `system.double` | Location of the control point |
+| 3 | `PEdge` | `edge` | Edge |
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `IVariableFilletFeatureData2.GetControlPointsCount`
+
+Gets the number of intermediate control points on this variable fillet feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.int`
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `IVariableFilletFeatureData2.GetDistance`
+
+Gets the Distance 2 radius for this asymmetric fillet.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `system.object` | Vertex at which to get the radius |
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2015 FCS, Revision Number 23.0
+
+### `IVariableFilletFeatureData2.GetFilletEdgeAtIndex`
+
+Gets the fillet edge at the specified index.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Index` | `system.int` | Zero-based index of the fillet edge |
+
+**Returns:** `System.object`
+
+**Availability:** SOLIDWORKS 2000 FCS, Revision Number 8.0
+
+### `IVariableFilletFeatureData2.GetRadius`
+
+Obsolete. Superseded by IVariableFilletFeatureData2::GetRadius2.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `system.object` |  |
+
+**Returns:** `System.double`
+
+### `IVariableFilletFeatureData2.GetRadius2`
+
+Gets the value of the Distance 1 radius at the specified vertex.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `vertex` | Vertex at which to get the radius |
+| 2 | `IsAssigned` | `system.bool` | True if the radius is assigned to a control point, false if not |
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `IVariableFilletFeatureData2.GetSetbackDistanceCount`
+
+Gets the number of setback distances for the specified vertex on this variable fillet feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Vtx` | `vertex` | Vertex |
+
+**Returns:** `System.int`
+
+**Availability:** SOLIDWORKS 2004 FCS, Revision Number 12.0
+
+### `IVariableFilletFeatureData2.GetSetbackVertexDistance`
+
+Gets the setback distance for the specified vertex on this variable fillet feature.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Vtx` | `system.object` | Vertex for which to get setback distance |
+| 2 | `EdgeVar` | `system.object` | Array of edges at the specified vertex (see Remarks) |
+
+**Returns:** `System.object`
+
+**Availability:** SOLIDWORKS 2004 FCS, Revision Number 12.0
+
+### `IVariableFilletFeatureData2.GetSetbackVertices`
+
+Gets the setback vertices for this variable fillet feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.object`
+
+**Availability:** SOLIDWORKS 2004 FCS, Revision Number 12.0
+
+### `IVariableFilletFeatureData2.GetSetbackVerticesCount`
+
+Gets the number of setback vertices for this variable fillet feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `System.int`
+
+**Availability:** SOLIDWORKS 2004 FCS, Revision Number 12.0
+
+### `IVariableFilletFeatureData2.IAccessSelections`
+
+Gains access to the selections used to define the variable fillet feature.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `TopDoc` | `modeldoc2` | Top-level document |
+| 2 | `Component` | `component2` | Component in which the feature is to be modified |
+
+**Returns:** `System.bool`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `IVariableFilletFeatureData2.IGetConicRhoOrRadius`
+
+Gets the conic rho, conic radius, or circular radius of this fillet.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `vertex` | Fillet edge for which to get a value (see Remarks) |
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2014 FCS, Revision Number 22.0
+
+### `IVariableFilletFeatureData2.IGetFilletEdgeAtIndex`
+
+Gets the fillet edge at the specified index.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Index` | `system.int` | Index at which fillet edge is required |
+
+**Returns:** `Edge`
+
+**Availability:** SOLIDWORKS 2000 FCS, Revision Number 8.0
+
+### `IVariableFilletFeatureData2.IGetRadius`
+
+Obsolete. Superseded by IVariableFilletFeatureData2::Radius2.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `vertex` |  |
+
+**Returns:** `System.double`
+
+### `IVariableFilletFeatureData2.IGetSetbackVertexDistance`
+
+Gets the setback distance for the specified vertex on this variable fillet feature.
+
+**Args (3):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Count` | `system.int` | Number of edges and setback distances for this vertex |
+| 2 | `Vtx` | `vertex` | Vertex for which to get setback distance |
+| 3 | `EdgeArr` | `edge` | in-process, unmanaged C++: Pointer to an array of edges at the specified vertex (see Remarks) VBA, VB.NET, C#, and C++/CLI: Not supported See In-process Methods for details about this type of method. |
+
+**Returns:** `System.double`
+
+**Availability:** SOLIDWORKS 2004 FCS, Revision Number 12.0
+
+### `IVariableFilletFeatureData2.IGetSetbackVertices`
+
+Gets the setback vertices for this variable fillet feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Count` | `system.int` | Number of setback vertices |
+
+**Returns:** `Vertex`
+
+**Availability:** SOLIDWORKS 2004 FCS, Revision Number 12.0
+
+### `IVariableFilletFeatureData2.ISetConicRhoOrRadius`
+
+Sets the conic rho, conic radius, or circular radius of this fillet.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `vertex` | Fillet edge for which to set ConicRhoVal (see Remarks) |
+| 2 | `ConicRhoVal` | `system.double` | Conic rho, conic radius, or circular radius (see Remarks) |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2014 FCS, Revision Number 22.0
+
+### `IVariableFilletFeatureData2.ISetRadius`
+
+Sets the radius value for specified fillet item.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `vertex` | Vertex whose radius to set |
+| 2 | `Radius` | `system.double` | Radius |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `IVariableFilletFeatureData2.ISetSetbackVertexDistance`
+
+Sets the setback distance for the specified vertex and its edges on this variable fillet feature.
+
+**Args (4):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Count` | `system.int` | Number of setback distances |
+| 2 | `Vtx` | `vertex` | Vertex for which to set the setback distance |
+| 3 | `EdgeArr` | `edge` | in-process, unmanaged C++: Pointer to an array of edges at the specified vertex (see Remarks) VBA, VB.NET, C#, and C++/CLI: Not supported See In-process Methods for details about this type of method. |
+| 4 | `DistArr` | `system.double` | in-process, unmanaged C++: Pointer to an array of setback distances at the specified VBA, VB.NET, C#, and C++/CLI: Not supported |
+
+**Returns:** `System.bool`
+
+**Availability:** SOLIDWORKS 2004 FCS, Revision Number 12.0
+
+### `IVariableFilletFeatureData2.ISetSetbackVertices`
+
+Sets the setback vertices for this variable fillet feature.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Count` | `system.int` | Number of vertices |
+| 2 | `VertArr` | `vertex` | in-process, unmanaged C++: Pointer to an array of setback vertices VBA, VB.NET, C#, and C++/CLI: Not supported See In-process Methods for details about this type of method. |
+
+**Returns:** `System.bool`
+
+**Availability:** SOLIDWORKS 2004 FCS, Revision Number 12.0
+
+### `IVariableFilletFeatureData2.OverflowType`
+
+Gets or sets the overflow type for this variable fillet feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `IVariableFilletFeatureData2.PropagateFeatureToParts`
+
+Gets or sets whether to extend the fillet feature to all affected parts in the assembly.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2011 FCS, Revision Number 19.0
+
+### `IVariableFilletFeatureData2.PropagateToTangentFaces`
+
+Gets or sets whether to extend the fillet to all faces tangent to the selected face or edge.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `IVariableFilletFeatureData2.ReleaseSelectionAccess`
+
+Releases access to the selections used to define the variable fillet feature.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `IVariableFilletFeatureData2.SetConicRhoOrRadius`
+
+Sets the conic rho or radius for the specified fillet item.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `system.object` | Fillet item for which to set ConicRhoVal (see Remarks) |
+| 2 | `ConicRhoVal` | `system.double` | Conic rho or radius (see Remarks) |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2014 FCS, Revision Number 22.0
+
+### `IVariableFilletFeatureData2.SetControlPointConicRhoOrRadiusAtIndex`
+
+Sets the conic rho or radius at the specified control point.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Index` | `system.int` | Zero-based index of the control point for which to set ConicRhoVal (see Remarks) |
+| 2 | `ConicRhoVal` | `system.double` | Conic rho or radius (see Remarks) |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2014 FCS, Revision Number 22.0
+
+### `IVariableFilletFeatureData2.SetControlPointDistanceAtIndex`
+
+Sets the Distance 2 radius at the specified control point for the asymmetric fillet.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Index` | `system.int` | Zero-based index of control point whose radius to set |
+| 2 | `Dist2` | `system.double` | Distance 2 radius for the control point of this asymmetric fillet |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2015 FCS, Revision Number 23.0
+
+### `IVariableFilletFeatureData2.SetControlPointRadiusAtIndex`
+
+Sets the radius at the specified control point.
+
+**Args (3):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Index` | `system.int` | Zero-based index of control point whose radius to set |
+| 2 | `Location` | `system.double` | Percent distance between the edge start vertex and the edge end vertex |
+| 3 | `Radius` | `system.double` | Value of the radius for the control point of this symmetric fillet; Distance 1 radius for the control point of this asymmetric fillet |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2003 FCS, Revision Number 11.0
+
+### `IVariableFilletFeatureData2.SetDistance`
+
+Sets the Distance 2 radius for this asymmetric fillet.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `system.object` | Vertex at which to set the Distance 2 radius |
+| 2 | `Dist2` | `system.double` | Distance 2 radius at the vertex specified by PFilletItem |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2015 FCS, Revision Number 23.0
+
+### `IVariableFilletFeatureData2.SetRadius`
+
+Sets the value of the Distance 1 radius at the specified vertex.
+
+**Args (2):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `PFilletItem` | `system.object` | Vertex at which to set the radius |
+| 2 | `Radius` | `system.double` | Radius of the symmetric fillet at the vertex specified by PFilletItem; Distance 1 radius of the asymmetric fillet at the vertex |
+
+**Returns:** `void`
+
+**Availability:** SOLIDWORKS 2001Plus FCS, Revision Number 10.0
+
+### `IVariableFilletFeatureData2.SetSetbackVertexDistance`
+
+Sets the setback distances on fillet edges from the specified fillet corner vertex on this variable fillet feature.
+
+**Args (3):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `Vtx` | `system.object` | Vertex for which to set the setback distance |
+| 2 | `EdgeVar` | `system.object` | Array of edges for this vertex |
+| 3 | `DistVar` | `system.object` | Array of distances |
+
+**Returns:** `System.bool`
+
+**Availability:** SOLIDWORKS 2004 FCS, Revision Number 12.0
+
+### `IVariableFilletFeatureData2.SetSetbackVertices`
+
+Sets the setback vertices for this variable fillet feature.
+
+**Args (1):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+| 1 | `VertVar` | `system.object` | Array of vertices |
+
+**Returns:** `System.bool`
+
+**Availability:** SOLIDWORKS 2004 FCS, Revision Number 12.0
+
+### `IVariableFilletFeatureData2.TransitionType`
+
+Gets or sets the type of transition between this variable fillet and an adjacent fillet.
+
+**Args (0):**
+
+| # | Name | Type | Description |
+|---|------|------|-------------|
+
+**Availability:** SOLIDWORKS 2007 FCS, Revision Number 15.0
+
 ## Enums
 
 ### `swChamferType_e`
@@ -776,5 +2080,5 @@ Thin wall types.
 
 ## Not found in CHM
 
-- `method:ISldWorks.SendKeys`
 - `method:IFeatureManager.FeatureCut5`
+- `method:ISldWorks.SendKeys`
