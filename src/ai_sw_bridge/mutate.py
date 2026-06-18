@@ -18,6 +18,7 @@ single source of truth stays in version control.
 
 from __future__ import annotations
 
+import base64
 import json
 import math
 import os
@@ -46,6 +47,7 @@ from .selection import (
     DurableEdgeRef,
     resolve_edge_ref,
     resolve_manifest_face,
+    resolve_persist_id,
     select_entity,
 )
 
@@ -1019,19 +1021,95 @@ def _create_ref_axis(
         return False, f"ref-axis pipeline failed: {exc!r}"
 
 
+# Coordinate-system PropertyManager selection-mark routing (seat-confirmed
+# W64 2026-06-17, mark-grid probe won on the first distinct-mark permutation):
+# Origin / X-axis / Y-axis boxes consume the marked pre-selection set.
+_CSYS_ROLE_MARKS: tuple[tuple[str, int], ...] = (
+    ("origin_ref", 1),
+    ("x_axis_ref", 2),
+    ("y_axis_ref", 4),
+)
+
+
+def _persist_id_from_ref(ref: Any) -> bytes | None:
+    """Extract raw persist-token bytes from a durable role-ref dict.
+
+    Accepts ``{"persist_id": <base64url, no padding>}`` (the uniform durable
+    shape ``capture_persist_id`` + base64url produces for ANY entity —
+    vertex / edge / face). Returns ``None`` if absent or malformed.
+    """
+    if not isinstance(ref, dict):
+        return None
+    b64 = ref.get("persist_id")
+    if not isinstance(b64, str) or not b64:
+        return None
+    try:
+        pad = "=" * (-len(b64) % 4)
+        return base64.urlsafe_b64decode(b64 + pad)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _create_coordinate_system(
     doc: Any, feature: dict, target: dict
 ) -> tuple[bool, str | None]:
-    """Create a coordinate system.
+    """Create a coordinate system — default-origin OR durable origin/axis placement.
 
-    Seat-proven recipe (spike_refgeom, W3):
-      fm.InsertCoordinateSystem(flip_x, flip_y, flip_z).
+    Two ``target`` shapes:
+
+    * **Default origin (Wave-5, spike_refgeom W3):** no role refs —
+      ``fm.InsertCoordinateSystem(flip_x, flip_y, flip_z)`` places a CS at the
+      model origin with the requested axis flips. Backward-compatible default.
+    * **Durable origin/axis (W64 upgrade, seat-proven 2026-06-18):** optional
+      ``target.origin_ref`` / ``x_axis_ref`` / ``y_axis_ref``, each a durable
+      ``{"persist_id": <base64url>}`` for a vertex (origin) or edge/face (axis).
+      The refs are resolved (tier-1 persist) and pre-selected with the
+      PropertyManager role marks origin=1 / X=2 / Y=4 (``_CSYS_ROLE_MARKS``),
+      so ``InsertCoordinateSystem`` anchors the CS to real geometry rather than
+      the model origin. Absent refs fall through to the default-origin path —
+      so a caller that supplies none gets the exact legacy behavior.
+
+    The flip toggles still come from ``feature`` (``flip_x/y/z``); the 3 args to
+    InsertCoordinateSystem are flip toggles ONLY (DLL reflection 32.1.0.123) —
+    the origin/axes are entirely selection-driven.
     """
     flip_x = bool(feature.get("flip_x", False)) if isinstance(feature, dict) else False
     flip_y = bool(feature.get("flip_y", False)) if isinstance(feature, dict) else False
     flip_z = bool(feature.get("flip_z", False)) if isinstance(feature, dict) else False
+
+    # Collect optional durable role refs in (origin, X, Y) order.
+    role_refs: list[tuple[str, bytes, int]] = []
+    if isinstance(target, dict):
+        for key, mark in _CSYS_ROLE_MARKS:
+            ref = target.get(key)
+            if ref is None:
+                continue
+            pid = _persist_id_from_ref(ref)
+            if pid is None:
+                return False, (
+                    f"coordinate_system: {key} must carry a 'persist_id' "
+                    f"(base64url durable token)"
+                )
+            role_refs.append((key, pid, mark))
+
     try:
         doc.ClearSelection2(True)
+        # Durable origin/axis pre-selection (W64). Rebuild first so the persist
+        # tokens resolve against the current B-rep (the fillet/dome pattern),
+        # then select each with its role mark — origin (mark 1) un-appended,
+        # the axes appended.
+        if role_refs:
+            doc.ForceRebuild3(False)
+            for i, (key, pid, mark) in enumerate(role_refs):
+                pr = resolve_persist_id(doc, pid)
+                if pr.entity is None:
+                    return False, (
+                        f"coordinate_system: {key} unresolved "
+                        f"(status={pr.status_name})"
+                    )
+                if not select_entity(pr.entity, append=(i > 0), mark=mark):
+                    return False, f"coordinate_system: could not select {key}"
+
         fm = doc.FeatureManager
         feat = fm.InsertCoordinateSystem(flip_x, flip_y, flip_z)
         if _materialized(feat):

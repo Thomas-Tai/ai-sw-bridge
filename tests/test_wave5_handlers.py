@@ -494,6 +494,127 @@ class TestCreateRefAxisOOPContract:
         assert callout.value is None
 
 
+class _FakeCsysFm:
+    def __init__(self, *, materializes: bool = True) -> None:
+        self.insert_calls: list[tuple] = []
+        self._materializes = materializes
+
+    def InsertCoordinateSystem(self, fx, fy, fz):  # noqa: N802
+        self.insert_calls.append((fx, fy, fz))
+        return object() if self._materializes else 0
+
+
+class _FakeCsysDoc:
+    def __init__(self, fm: _FakeCsysFm) -> None:
+        self.FeatureManager = fm
+        self.rebuilds = 0
+        self.clears = 0
+
+    def ClearSelection2(self, top: bool) -> None:  # noqa: N802
+        self.clears += 1
+
+    def ForceRebuild3(self, verify: bool) -> None:  # noqa: N802
+        self.rebuilds += 1
+
+
+class TestCreateCoordinateSystemDurable:
+    """W64 upgrade: durable origin/axis placement via persist-id role refs.
+
+    Marks origin=1 / X=2 / Y=4 are seat-confirmed (W64 mark-grid probe). The
+    default-origin path (no refs) must stay byte-for-byte the legacy behavior.
+    """
+
+    @staticmethod
+    def _ref(token: bytes) -> dict:
+        import base64
+        return {"persist_id": base64.urlsafe_b64encode(token).decode().rstrip("=")}
+
+    def _patch_resolve_select(self, monkeypatch, *, resolves=True):
+        import ai_sw_bridge.mutate as m
+
+        calls = {"resolve": [], "select": []}
+
+        class _PR:
+            def __init__(self, ent):
+                self.entity = ent
+                self.ok = ent is not None
+                self.status_name = "OK" if ent is not None else "Deleted"
+
+        def fake_resolve(doc, pid):
+            calls["resolve"].append(pid)
+            return _PR(object() if resolves else None)
+
+        def fake_select(entity, *, append=False, mark=0):
+            calls["select"].append((append, mark))
+            return True
+
+        monkeypatch.setattr(m, "resolve_persist_id", fake_resolve)
+        monkeypatch.setattr(m, "select_entity", fake_select)
+        return calls
+
+    def test_durable_origin_axes_route_correct_marks(self, monkeypatch) -> None:
+        calls = self._patch_resolve_select(monkeypatch)
+        fm = _FakeCsysFm()
+        doc = _FakeCsysDoc(fm)
+        target = {
+            "origin_ref": self._ref(b"ORIGIN"),
+            "x_axis_ref": self._ref(b"XAXIS"),
+            "y_axis_ref": self._ref(b"YAXIS"),
+        }
+        ok, err = mutate._create_coordinate_system(doc, {"flip_x": True}, target)
+        assert ok is True, err
+        # Three durable refs resolved (tier-1 persist) with the decoded tokens.
+        assert calls["resolve"] == [b"ORIGIN", b"XAXIS", b"YAXIS"]
+        # Mark routing: origin un-appended (mark 1), axes appended (2, 4).
+        assert calls["select"] == [(False, 1), (True, 2), (True, 4)]
+        # Flips forwarded; rebuild ran before selection.
+        assert fm.insert_calls == [(True, False, False)]
+        assert doc.rebuilds == 1
+
+    def test_default_origin_path_unchanged_no_refs(self, monkeypatch) -> None:
+        calls = self._patch_resolve_select(monkeypatch)
+        fm = _FakeCsysFm()
+        doc = _FakeCsysDoc(fm)
+        ok, err = mutate._create_coordinate_system(doc, {}, {})
+        assert ok is True, err
+        # No durable refs -> no resolve/select, no rebuild (legacy behavior).
+        assert calls["resolve"] == [] and calls["select"] == []
+        assert doc.rebuilds == 0
+        assert fm.insert_calls == [(False, False, False)]
+
+    def test_partial_origin_only(self, monkeypatch) -> None:
+        calls = self._patch_resolve_select(monkeypatch)
+        fm = _FakeCsysFm()
+        doc = _FakeCsysDoc(fm)
+        ok, err = mutate._create_coordinate_system(
+            doc, {}, {"origin_ref": self._ref(b"O")}
+        )
+        assert ok is True, err
+        assert calls["select"] == [(False, 1)]
+
+    def test_malformed_ref_no_persist_id(self, monkeypatch) -> None:
+        self._patch_resolve_select(monkeypatch)
+        fm = _FakeCsysFm()
+        doc = _FakeCsysDoc(fm)
+        ok, err = mutate._create_coordinate_system(
+            doc, {}, {"origin_ref": {"not_a_token": 1}}
+        )
+        assert ok is False
+        assert "persist_id" in err and "origin_ref" in err
+        assert fm.insert_calls == []  # never reached the API
+
+    def test_unresolved_ref_fails_closed(self, monkeypatch) -> None:
+        self._patch_resolve_select(monkeypatch, resolves=False)
+        fm = _FakeCsysFm()
+        doc = _FakeCsysDoc(fm)
+        ok, err = mutate._create_coordinate_system(
+            doc, {}, {"origin_ref": self._ref(b"O")}
+        )
+        assert ok is False
+        assert "unresolved" in err
+        assert fm.insert_calls == []
+
+
 class TestProposeCoordinateSystem:
     def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
