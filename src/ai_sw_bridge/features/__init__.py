@@ -157,3 +157,27 @@ from .sketched_bend import create_sketched_bend  # noqa: E402
 
 if _sketched_bend_status == "GREEN":
     HANDLER_REGISTRY["sketched_bend"] = create_sketched_bend
+
+# W66 — planar_surface (surfaces group, vanguard lane). Planar reference
+# surface via legacy IModelDoc2.InsertPlanarRefSurface (0-arg, Boolean).
+# Pre-select a closed sketch boundary (FeatureByName → select_entity with
+# mark=0), then call. Gate: surface-CREATE (ΔSheetBodies ≥ +1 ∧ ΔArea > 0).
+# No CreateDefinition route — Mode-B only (the §0.5 legacy-Insert probe).
+# SPIKE_STATUS gate: UNFIRED until W0 fires on the live seat.
+from .planar_surface import SPIKE_STATUS as _planar_surface_status  # noqa: E402
+from .planar_surface import create_planar_surface  # noqa: E402
+
+if _planar_surface_status == "GREEN":
+    HANDLER_REGISTRY["planar_surface"] = create_planar_surface
+
+# W66 — offset_surface (surfaces group, vanguard lane). Offset surface via
+# legacy IModelDoc2.InsertOffsetSurface(Thickness, Reverse) (2-arg, Void).
+# Pre-select a face (select_entity with mark=0), then call with thickness
+# in metres. Gate: surface-CREATE (ΔSheetBodies ≥ +1 ∧ ΔArea > 0). No
+# CreateDefinition route — Mode-B only (the §0.5 legacy-Insert probe).
+# SPIKE_STATUS gate: UNFIRED until W0 fires on the live seat.
+from .offset_surface import SPIKE_STATUS as _offset_surface_status  # noqa: E402
+from .offset_surface import create_offset_surface  # noqa: E402
+
+if _offset_surface_status == "GREEN":
+    HANDLER_REGISTRY["offset_surface"] = create_offset_surface
