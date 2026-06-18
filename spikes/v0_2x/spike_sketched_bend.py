@@ -54,6 +54,7 @@ from ai_sw_bridge.com.earlybind import typed, typed_qi  # noqa: E402
 from ai_sw_bridge.com.sw_type_info import wrapper_module  # noqa: E402
 from ai_sw_bridge.features.sketched_bend import create_sketched_bend  # noqa: E402
 from ai_sw_bridge.features.sketched_bend import _metrics  # noqa: E402
+from ai_sw_bridge.features.sketched_bend import _body_bbox, _bbox_changed  # noqa: E402
 
 # Reuse the hem v5 fixture builder (base flange + longest boundary edge).
 # spike_hem_v5 is a sibling in the same directory — on sys.path[0].
@@ -307,8 +308,10 @@ def main() -> int:
 
         # ── 3. Pre-select the sketch + measure before ──────────────────
         faces_before, vol_before = _metrics(doc)
+        bbox_before = _body_bbox(doc)  # FOLD-class substrate (volume-preserving)
         out["faces_before"] = faces_before
         out["vol_mm3_before"] = vol_before
+        out["bbox_before"] = list(bbox_before) if bbox_before else None
 
         try:
             doc.ClearSelection2(True)
@@ -340,13 +343,23 @@ def main() -> int:
             pass
 
         faces_after_a, vol_after_a = _metrics(doc)
+        bbox_after_a = _body_bbox(doc)
         out["faces_after_A"] = faces_after_a
         out["vol_mm3_after_A"] = vol_after_a
         out["delta_faces_A"] = faces_after_a - faces_before
         out["delta_vol_mm3_A"] = round(vol_after_a - vol_before, 3)
+        out["bbox_after_A"] = list(bbox_after_a) if bbox_after_a else None
+        a_bbox_moved = _bbox_changed(bbox_before, bbox_after_a)
+        out["bbox_changed_A"] = a_bbox_moved
 
+        # FOLD-class gate (W65): a bend is volume-preserving, so ΔVol≈0 is
+        # EXPECTED. Success = a feature returned + ΔFaces>0 + bounding-box moved
+        # (material rotated out of plane). The old ΔVol>0 gate false-rejected
+        # the real SM3dBend in round 1.
         a_passed = (
-            out["delta_faces_A"] > 0 and abs(out["delta_vol_mm3_A"]) > 1e-6
+            not a_diag.get("A_is_none", True)
+            and out["delta_faces_A"] > 0
+            and a_bbox_moved
         )
 
         if a_passed:

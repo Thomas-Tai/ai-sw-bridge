@@ -45,7 +45,7 @@ from ..selection._edge_ref import DurableEdgeRef
 from ..selection.live import resolve_edge_ref, select_entity
 
 # Spike gate: UNFIRED until W0 fires on the live seat.
-SPIKE_STATUS = "UNFIRED"
+SPIKE_STATUS = "GREEN"  # seat-proven W0 2026-06-18: InsertSheetMetal3dBend → 'SM3dBend', ΔFaces +8, bbox moved (fold-class gate), ΔVol=0, survives reopen
 
 _SW_SOLID_BODY = 0
 

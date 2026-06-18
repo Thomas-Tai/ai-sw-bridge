@@ -120,8 +120,10 @@ def _wire(monkeypatch, *, entity: object = None, select_ok: bool = True,
 # --- SPIKE_STATUS pin -------------------------------------------------------
 
 class TestSpikeStatus:
-    def test_unfired_until_seat_proven(self):
-        assert sb.SPIKE_STATUS == "UNFIRED"
+    def test_green_after_seat_proof(self):
+        # Seat-proven W0 2026-06-18: InsertSheetMetal3dBend -> SM3dBend,
+        # ΔFaces +8, bbox moved (fold-class gate), survives reopen.
+        assert sb.SPIKE_STATUS == "GREEN"
 
 
 # --- enum mapper -----------------------------------------------------------
@@ -299,10 +301,11 @@ class TestNeverRaise:
 # --- registry gate ---------------------------------------------------------
 
 class TestRegistryGate:
-    def test_kind_not_in_registry_while_unfired(self):
+    def test_kind_registered_when_green(self):
         from ai_sw_bridge.features import HANDLER_REGISTRY
-        assert sb.SPIKE_STATUS == "UNFIRED"
-        assert "sketched_bend" not in HANDLER_REGISTRY
+        assert sb.SPIKE_STATUS == "GREEN"
+        assert "sketched_bend" in HANDLER_REGISTRY
+        assert HANDLER_REGISTRY["sketched_bend"] is sb.create_sketched_bend
 
     def test_handler_callable_matches_contract(self):
         assert callable(create_sketched_bend)
