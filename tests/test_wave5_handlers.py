@@ -429,6 +429,192 @@ class TestProposeRefAxis:
         assert "planes" in r["error"]
 
 
+class _RefAxisCalloutSpyExt:
+    """Records the FULL SelectByID2 arg tuple — crucially the 8th (callout)
+    arg, which the older fakes dropped (that omission is exactly why the
+    latent OOP 'Type mismatch arg 8' bug went uncaught for the bare-None
+    callout)."""
+
+    def __init__(self) -> None:
+        self.select2_calls: list[tuple] = []
+
+    def SelectByID2(self, name, t, x, y, z, append, mark, callout, sd):  # noqa: N802
+        self.select2_calls.append((name, t, append, mark, callout))
+        return True
+
+
+class _RefAxisSpyDoc:
+    def __init__(self) -> None:
+        self.Extension = _RefAxisCalloutSpyExt()
+        self.selectbyid_calls: list[tuple] = []
+
+    def ClearSelection2(self, top: bool) -> None:  # noqa: N802
+        pass
+
+    def SelectByID(self, name, t, x, y, z):  # noqa: N802
+        self.selectbyid_calls.append((name, t))
+        return True
+
+    def InsertAxis2(self, autosize: bool):  # noqa: N802
+        return True
+
+
+class TestCreateRefAxisOOPContract:
+    """OOP-marshaling regression guard for the W64 seat finding.
+
+    The shipped _create_ref_axis was latently broken out-of-process: a bare
+    Python None in the SelectByID2 callout (arg 8) walls
+    'Type mismatch arg 8' (com_error -2147352571) on the late-bound
+    Extension proxy — the production path. The offline tests never saw it
+    because the fakes both (a) accept any callout and (b) dropped the arg
+    before recording it. This test asserts the marshaling contract directly.
+    """
+
+    def test_append_select_callout_is_variant_not_bare_none(self) -> None:
+        from win32com.client import VARIANT  # late import: pywin32 only
+        import pythoncom
+
+        doc = _RefAxisSpyDoc()
+        ok, err = mutate._create_ref_axis(
+            doc, {}, {"planes": ["Front Plane", "Right Plane"]}
+        )
+        assert ok is True, err
+        # The append-select (the 2nd plane, append=True) is the call that
+        # walled OOP. Its callout MUST be VARIANT(VT_DISPATCH, None).
+        append_calls = [c for c in doc.Extension.select2_calls if c[2] is True]
+        assert append_calls, "expected an append SelectByID2 for plane 2"
+        callout = append_calls[-1][4]
+        assert callout is not None, (
+            "callout is a bare None — walls 'Type mismatch arg 8' OOP"
+        )
+        assert isinstance(callout, VARIANT), (
+            f"callout must be a VARIANT null, got {type(callout).__name__}"
+        )
+        assert callout.varianttype == pythoncom.VT_DISPATCH
+        assert callout.value is None
+
+
+class _FakeCsysFm:
+    def __init__(self, *, materializes: bool = True) -> None:
+        self.insert_calls: list[tuple] = []
+        self._materializes = materializes
+
+    def InsertCoordinateSystem(self, fx, fy, fz):  # noqa: N802
+        self.insert_calls.append((fx, fy, fz))
+        return object() if self._materializes else 0
+
+
+class _FakeCsysDoc:
+    def __init__(self, fm: _FakeCsysFm) -> None:
+        self.FeatureManager = fm
+        self.rebuilds = 0
+        self.clears = 0
+
+    def ClearSelection2(self, top: bool) -> None:  # noqa: N802
+        self.clears += 1
+
+    def ForceRebuild3(self, verify: bool) -> None:  # noqa: N802
+        self.rebuilds += 1
+
+
+class TestCreateCoordinateSystemDurable:
+    """W64 upgrade: durable origin/axis placement via persist-id role refs.
+
+    Marks origin=1 / X=2 / Y=4 are seat-confirmed (W64 mark-grid probe). The
+    default-origin path (no refs) must stay byte-for-byte the legacy behavior.
+    """
+
+    @staticmethod
+    def _ref(token: bytes) -> dict:
+        import base64
+        return {"persist_id": base64.urlsafe_b64encode(token).decode().rstrip("=")}
+
+    def _patch_resolve_select(self, monkeypatch, *, resolves=True):
+        import ai_sw_bridge.mutate as m
+
+        calls = {"resolve": [], "select": []}
+
+        class _PR:
+            def __init__(self, ent):
+                self.entity = ent
+                self.ok = ent is not None
+                self.status_name = "OK" if ent is not None else "Deleted"
+
+        def fake_resolve(doc, pid):
+            calls["resolve"].append(pid)
+            return _PR(object() if resolves else None)
+
+        def fake_select(entity, *, append=False, mark=0):
+            calls["select"].append((append, mark))
+            return True
+
+        monkeypatch.setattr(m, "resolve_persist_id", fake_resolve)
+        monkeypatch.setattr(m, "select_entity", fake_select)
+        return calls
+
+    def test_durable_origin_axes_route_correct_marks(self, monkeypatch) -> None:
+        calls = self._patch_resolve_select(monkeypatch)
+        fm = _FakeCsysFm()
+        doc = _FakeCsysDoc(fm)
+        target = {
+            "origin_ref": self._ref(b"ORIGIN"),
+            "x_axis_ref": self._ref(b"XAXIS"),
+            "y_axis_ref": self._ref(b"YAXIS"),
+        }
+        ok, err = mutate._create_coordinate_system(doc, {"flip_x": True}, target)
+        assert ok is True, err
+        # Three durable refs resolved (tier-1 persist) with the decoded tokens.
+        assert calls["resolve"] == [b"ORIGIN", b"XAXIS", b"YAXIS"]
+        # Mark routing: origin un-appended (mark 1), axes appended (2, 4).
+        assert calls["select"] == [(False, 1), (True, 2), (True, 4)]
+        # Flips forwarded; rebuild ran before selection.
+        assert fm.insert_calls == [(True, False, False)]
+        assert doc.rebuilds == 1
+
+    def test_default_origin_path_unchanged_no_refs(self, monkeypatch) -> None:
+        calls = self._patch_resolve_select(monkeypatch)
+        fm = _FakeCsysFm()
+        doc = _FakeCsysDoc(fm)
+        ok, err = mutate._create_coordinate_system(doc, {}, {})
+        assert ok is True, err
+        # No durable refs -> no resolve/select, no rebuild (legacy behavior).
+        assert calls["resolve"] == [] and calls["select"] == []
+        assert doc.rebuilds == 0
+        assert fm.insert_calls == [(False, False, False)]
+
+    def test_partial_origin_only(self, monkeypatch) -> None:
+        calls = self._patch_resolve_select(monkeypatch)
+        fm = _FakeCsysFm()
+        doc = _FakeCsysDoc(fm)
+        ok, err = mutate._create_coordinate_system(
+            doc, {}, {"origin_ref": self._ref(b"O")}
+        )
+        assert ok is True, err
+        assert calls["select"] == [(False, 1)]
+
+    def test_malformed_ref_no_persist_id(self, monkeypatch) -> None:
+        self._patch_resolve_select(monkeypatch)
+        fm = _FakeCsysFm()
+        doc = _FakeCsysDoc(fm)
+        ok, err = mutate._create_coordinate_system(
+            doc, {}, {"origin_ref": {"not_a_token": 1}}
+        )
+        assert ok is False
+        assert "persist_id" in err and "origin_ref" in err
+        assert fm.insert_calls == []  # never reached the API
+
+    def test_unresolved_ref_fails_closed(self, monkeypatch) -> None:
+        self._patch_resolve_select(monkeypatch, resolves=False)
+        fm = _FakeCsysFm()
+        doc = _FakeCsysDoc(fm)
+        ok, err = mutate._create_coordinate_system(
+            doc, {}, {"origin_ref": self._ref(b"O")}
+        )
+        assert ok is False
+        assert "unresolved" in err
+        assert fm.insert_calls == []
+
+
 class TestProposeCoordinateSystem:
     def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
