@@ -24,63 +24,27 @@ import logging
 from typing import Any
 
 from ..selection.live import select_entity
+from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.planar_surface")
 
 SPIKE_STATUS = "GREEN"  # seat-proven W0 2026-06-18: InsertPlanarRefSurface -> 'PlanarSurface', sheet bodies 0->1, area 0->600mm² (surface-CREATE gate), survives reopen
 
-_SW_SHEET_BODY = 1
-
-# Below this, an area delta is FP noise, not a real surface.
-_AREA_EPS_MM2 = 1e-6
-
-
-def _sheet_bodies(doc: Any) -> list[Any] | None:
-    """Sheet bodies of *doc*; ``None`` on COM failure, ``[]`` when empty."""
-    try:
-        bodies = doc.GetBodies2(_SW_SHEET_BODY, False)
-    except Exception:
-        return None
-    if not bodies:
-        return []
-    return list(bodies) if isinstance(bodies, (list, tuple)) else [bodies]
+# Verify class (W67): surface CREATE — new sheet body AND real area (the
+# anti-ghost witness; AREA is to surfaces what VOLUME is to solids).
+VERIFY_CLASS = verify.FeatureClass.SURFACE_CREATE
 
 
 def _sheet_body_count(doc: Any) -> int:
-    bodies = _sheet_bodies(doc)
-    if bodies is None:
-        return 0
-    return len(bodies)
+    """Sheet-body count. Delegates to the W67 verify substrate;
+    ``visible_only=False`` preserves the historical surface-lane arg."""
+    return verify.sheet_body_count(doc, visible_only=False)
 
 
 def _total_sheet_area_mm2(doc: Any) -> float:
-    """Sum of face areas over all sheet bodies (mm²); 0.0 on failure.
-
-    SW returns area in m² per face; converted to mm² (×1e6) to match the
-    handler's mm-domain gate constant.
-    """
-    bodies = _sheet_bodies(doc)
-    if not bodies:
-        return 0.0
-    total = 0.0
-    for b in bodies:
-        try:
-            faces = b.GetFaces
-            if callable(faces):
-                faces = faces()
-            if not faces:
-                continue
-            for f in faces:
-                try:
-                    a = f.GetArea
-                    if callable(a):
-                        a = a()
-                    total += float(a) * 1e6
-                except Exception:
-                    pass
-        except Exception:
-            pass
-    return total
+    """Total sheet-body face area (mm²). Delegates to the W67 verify substrate.
+    SW returns m² per face; ×1e6 → mm² to match the handler's mm-domain gate."""
+    return verify.sheet_area_mm2(doc, visible_only=False)
 
 
 def create_planar_surface(
@@ -137,7 +101,7 @@ def create_planar_surface(
     d_count = count_after - count_before
     d_area = area_after - area_before
 
-    if d_count >= 1 and d_area > _AREA_EPS_MM2:
+    if verify.gate_surface_create(d_count, d_area):
         return True, None
 
     return False, (

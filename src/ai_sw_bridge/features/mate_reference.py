@@ -61,10 +61,14 @@ from ..selection import (
     resolve_manifest_face,
     resolve_ref,
 )
+from . import verify
 
 logger = logging.getLogger(__name__)
 
 SPIKE_STATUS = "GREEN"  # seat-proven: InsertMateReference2 → 'MateReferenceGroupFolder', survives reopen (W63 2026-06-17)
+
+# Verify class (W67): REF_NODE — node count delta + type-name corroboration.
+VERIFY_CLASS = verify.FeatureClass.REF_NODE
 
 # swMateReferenceType_e / swMateReferenceAlignment_e defaults (reflected).
 _REF_TYPE_DEFAULT = 0   # swMateReferenceType_default
@@ -72,18 +76,21 @@ _REF_ALIGN_ANY = 0      # swMateReferenceAlignment_Any
 
 
 def _count_feature_nodes(doc: Any) -> int:
+    """Flat feature-node count via ``GetFeatures(False)``.
+
+    NOT delegated to ``verify.feature_node_count``: this lane's never-raise
+    contract (``TestNeverRaise``) requires a COM failure HERE to PROPAGATE to
+    ``create_mate_reference``'s outer safety net (which returns the "unexpected
+    error" reason), whereas the shared substrate swallows it and returns 0.
+    Kept raising deliberately."""
     feats = doc.FeatureManager.GetFeatures(False)
     return len(feats) if feats else 0
 
 
 def _type_name_of(node: Any) -> str:
-    for attr in ("GetTypeName2", "GetTypeName"):
-        try:
-            _v = getattr(node, attr)
-            return str(_v() if callable(_v) else _v)
-        except Exception:
-            continue
-    return ""
+    """Callable-or-property-guarded type-name (empty string on failure).
+    Delegates to the W67 verify substrate."""
+    return verify.type_name(node) or ""
 
 
 def _resolve_entity_ref(doc: Any, ref: Any) -> Any:

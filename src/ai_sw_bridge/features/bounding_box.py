@@ -55,45 +55,30 @@ from typing import Any
 
 from ..com.earlybind import EarlyBindError, typed_qi
 from ..com.sw_type_info import wrapper_module
+from . import verify
 
 logger = logging.getLogger(__name__)
 
 SPIKE_STATUS = "GREEN"  # W63 round-5 seat-proven 2026-06-17 (PlanarEntity setter, BoundingBoxProfileFeat node, survives save->reopen)
+
+# Verify class (W67): REF_NODE — node count delta + type-name corroboration.
+VERIFY_CLASS = verify.FeatureClass.REF_NODE
 
 # swFeatureNameID_e::swFmBoundingBox
 _SW_FM_BOUNDING_BOX = 114
 
 
 def _count_feature_nodes(doc: Any) -> int:
-    """Flat feature-node count via ``GetFeatures(False)`` (W62 substrate).
-
-    ``GetFeatures(False)`` returns individual nodes (not folders); this is the
-    W62-canonical verify substrate — do NOT substitute ``GetFeatures(True)``
-    or ``GetFeatureCount()``.
-    """
-    try:
-        feats = doc.FeatureManager.GetFeatures(False)
-        return len(feats) if feats else 0
-    except Exception as exc:
-        logger.warning("[bounding_box] count_feature_nodes failed: %r", exc)
-        return 0
+    """Flat feature-node count via ``GetFeatures(False)``. Delegates to the W67
+    verify substrate (the W62-canonical substrate — not ``GetFeatures(True)``
+    or ``GetFeatureCount()``)."""
+    return verify.feature_node_count(doc)
 
 
 def _get_type_name(node: Any) -> str | None:
     """Callable-or-property-guarded ``GetTypeName2`` / ``GetTypeName`` access.
-
-    Uses the VERBATIM §0 guard pattern: win32com IDispatch may resolve
-    ``GetTypeName*`` as a property and auto-invoke on attribute access.
-    """
-    for attr_name in ("GetTypeName2", "GetTypeName"):
-        try:
-            _v = getattr(node, attr_name)
-            _result = _v() if callable(_v) else _v
-            return str(_result)
-        except Exception as exc:
-            logger.warning("[bounding_box] %s access failed: %r", attr_name, exc)
-            continue
-    return None
+    Delegates to the W67 verify substrate."""
+    return verify.type_name(node)
 
 
 def _find_bbox_node(doc: Any) -> Any | None:

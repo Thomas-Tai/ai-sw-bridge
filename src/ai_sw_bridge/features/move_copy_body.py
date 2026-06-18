@@ -69,45 +69,27 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import HANDLER_REGISTRY
+from . import HANDLER_REGISTRY, verify
 
 SPIKE_ID = "spike_move_copy_body"
 SPIKE_STATUS = "UNRUN"
+
+# Verify class (W67): BODY_MOVE — witnessed by a centroid delta matching the
+# commanded translation (move) or a body-count delta (copy).
+VERIFY_CLASS = verify.FeatureClass.BODY_MOVE
 
 _METHOD_NAME = "InsertMoveCopyBody2"
 
 
 def _body_count(doc: Any) -> int:
-    """Count solid bodies via GetBodies2(type=0, visibleOnly=True)."""
-    try:
-        bodies = doc.GetBodies2(0, True)
-        if bodies is None:
-            return 0
-        return len(bodies) if isinstance(bodies, (list, tuple)) else 1
-    except Exception:
-        return 0
+    """Count solid bodies. Delegates to the W67 verify substrate
+    (``visible_only=True``, per the historical move_copy arg)."""
+    return verify.solid_body_count(doc, visible_only=True)
 
 
 def _body_centroid_m(doc: Any) -> tuple[float, float, float] | None:
-    """Read part-level centre of mass via Extension.CreateMassProperty."""
-    try:
-        ext = doc.Extension
-        mp = ext.CreateMassProperty()
-        if mp is None:
-            return None
-        cog = mp.CenterOfMass
-        if cog is None:
-            return None
-        if callable(cog):
-            cog = cog()
-        if cog is None:
-            return None
-        c = list(cog) if isinstance(cog, (tuple, list)) else [cog]
-        if len(c) < 3:
-            return None
-        return (float(c[0]), float(c[1]), float(c[2]))
-    except Exception:
-        return None
+    """Read part-level centre of mass. Delegates to the W67 verify substrate."""
+    return verify.body_centroid_m(doc)
 
 
 def create_move_body(

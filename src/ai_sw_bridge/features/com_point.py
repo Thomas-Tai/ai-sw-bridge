@@ -32,36 +32,27 @@ from typing import Any
 
 from ..com.earlybind import EarlyBindError, typed_qi
 from ..com.sw_type_info import wrapper_module
+from . import verify
 
 logger = logging.getLogger(__name__)
 
 SPIKE_STATUS = "GREEN"
 
+# Verify class (W67): REF_NODE — node count delta + type-name corroboration.
+VERIFY_CLASS = verify.FeatureClass.REF_NODE
+
 
 def _count_feature_nodes(doc: Any) -> int:
-    """Flat feature-node count via ``GetFeatures(False)`` (W62 substrate).
-
-    ``GetFeatures(False)`` returns individual nodes (not folders); this is the
-    W62-canonical verify substrate — do NOT substitute ``GetFeatures(True)``
-    or ``GetFeatureCount()``.
-    """
-    try:
-        feats = doc.FeatureManager.GetFeatures(False)
-        return len(feats) if feats else 0
-    except Exception as exc:
-        logger.warning("[com_point] count_feature_nodes failed: %r", exc)
-        return 0
+    """Flat feature-node count via ``GetFeatures(False)``. Delegates to the W67
+    verify substrate (the W62-canonical substrate — not ``GetFeatures(True)``
+    or ``GetFeatureCount()``)."""
+    return verify.feature_node_count(doc)
 
 
 def _get_type_name(node: Any) -> str | None:
-    """Callable-or-property-guarded ``GetTypeName2`` access."""
-    for attr in ("GetTypeName2", "GetTypeName"):
-        try:
-            m = getattr(node, attr)
-            return str(m() if callable(m) else m)
-        except Exception:
-            continue
-    return None
+    """Callable-or-property-guarded ``GetTypeName2`` / ``GetTypeName`` access.
+    Delegates to the W67 verify substrate."""
+    return verify.type_name(node)
 
 
 def _find_com_node(doc: Any) -> Any | None:
