@@ -143,3 +143,17 @@ from .mate_reference import create_mate_reference  # noqa: E402
 
 if _mate_reference_status == "GREEN":
     HANDLER_REGISTRY["mate_reference"] = create_mate_reference
+
+# W65 — sketched_bend (sheet-metal completion, boss-fight lane).  Mode-A
+# QUARANTINED: CreateDefinition is E_NOINTERFACE for sheet-metal secondary
+# features (W55-C / W56).  Mode-B fires via legacy IFeatureManager.
+# InsertSheetMetal3dBend (6-arg → Feature) — the method-name ambiguity
+# between Candidate A (InsertSheetMetal3dBend) and Candidate B (InsertBends2)
+# is resolved by the seat spike.  PCBA null via VARIANT(VT_DISPATCH, None).
+# Target is a sketch line on a flat sheet-metal face (not a boundary edge).
+# SPIKE_STATUS gate: UNFIRED until W0 fires on the live seat.
+from .sketched_bend import SPIKE_STATUS as _sketched_bend_status  # noqa: E402
+from .sketched_bend import create_sketched_bend  # noqa: E402
+
+if _sketched_bend_status == "GREEN":
+    HANDLER_REGISTRY["sketched_bend"] = create_sketched_bend
