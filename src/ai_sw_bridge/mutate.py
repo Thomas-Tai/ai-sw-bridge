@@ -992,10 +992,20 @@ def _create_ref_axis(
     try:
         doc.ClearSelection2(True)
         # SelectByID has no Append arg; route the append-select via the
-        # IModelDocExtension (where SelectByID2 lives).
+        # IModelDocExtension (where SelectByID2 lives). The 8th arg (ICallout)
+        # MUST be VARIANT(VT_DISPATCH, None): a bare Python None walls
+        # 'Type mismatch arg 8' (com_error -2147352571) on the late-bound
+        # Extension proxy out-of-process — the production path. This handler
+        # was latently OOP-broken until the W64 seat audit caught it
+        # (probe_existing_ref_axis_oop 2026-06-18: bare None walls, VARIANT
+        # null materializes 'RefAxis'). The offline tests never saw it because
+        # they monkeypatch the COM seam.
         ext = doc.Extension
         doc.SelectByID(planes[0], "PLANE", 0, 0, 0)
-        ext.SelectByID2(planes[1], "PLANE", 0, 0, 0, True, 0, None, 0)
+        ext.SelectByID2(
+            planes[1], "PLANE", 0, 0, 0, True, 0,
+            VARIANT(pythoncom.VT_DISPATCH, None), 0,
+        )
         # InsertAxis2 on IModelDoc2 returns a VARIANT_BOOL (True = success)
         # in late-bound COM, not a Feature dispatch. Treat True as materialized;
         # False / None / int as failure.
