@@ -38,10 +38,17 @@ import logging
 from typing import Any
 
 from ..selection.live import select_entity
+from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.composite")
 
 SPIKE_STATUS = "GREEN"  # Mode-B fired clean + survived save→reopen on the live seat (W62)
+
+# Verify class (W67): CURVE — witnessed by a feature-node count delta. NOTE
+# (Phase-3 finding): this is the W42-ghost-trap-prone family — node presence is
+# trusted without a geometric scalar (curve length / edge count). Hardening the
+# CURVE witness is W67 Phase 3.
+VERIFY_CLASS = verify.FeatureClass.CURVE
 
 # Composite-curve PropertyManager selection mark — the macro-recorder corpus
 # uses mark=1 for the "Edges to join" list box. mark=0 (preselection) is
@@ -57,20 +64,10 @@ def _resolve(obj: Any, attr: str) -> Any:
 
 
 def _count_feature_nodes(doc: Any) -> int:
-    """Headless-reliable feature-node count for the verify gate.
-
-    Uses ``IFeatureManager.GetFeatures(False)`` because ``IModelDoc2.FirstFeature``
-    is unreachable on the raw late-bound doc out-of-process (com_error
-    -2147352573 "Member not found"). ``GetFeatures(False)`` returns a flat
-    tuple that IS reachable — seat-proven on a fresh block.
-    """
-    try:
-        feats = doc.FeatureManager.GetFeatures(False)
-    except Exception:
-        return 0
-    if feats is None:
-        return 0
-    return len(feats)
+    """Flat feature-node count via ``GetFeatures(False)``. Delegates to the W67
+    verify substrate (``FirstFeature`` is unreachable out-of-process; the flat
+    tuple from ``GetFeatures(False)`` is the W62-canonical substrate)."""
+    return verify.feature_node_count(doc)
 
 
 def _try_mode_a(doc: Any, edges: list[Any]) -> Any:

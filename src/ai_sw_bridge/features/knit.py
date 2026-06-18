@@ -43,6 +43,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from . import verify
+
 logger = logging.getLogger("ai_sw_bridge.features.knit")
 
 SPIKE_STATUS = "GREEN"  # seat-proven W0 2026-06-18: InsertSewRefSurface merged sheets 2->1 (ΔSheetBodies=-1, aggregation gate), area 1900mm² conserved, survives reopen
@@ -54,92 +56,40 @@ except ImportError:
     pythoncom = None  # type: ignore[assignment]
     VARIANT = None  # type: ignore[assignment,misc]
 
-_SW_SHEET_BODY = 1
-_SW_SOLID_BODY = 0
-
-# Below this, an area delta is FP noise, not a real surface.
-_AREA_EPS_MM2 = 1e-6
-# Below this, a volume delta is FP noise.
-_VOL_EPS_MM3 = 1e-6
+# Verify class (W67): surface AGGREGATION (INVERTED) — sheet-body count goes
+# DOWN as bodies are sewn; the surface-knit path also uses gate_surface_to_solid.
+VERIFY_CLASS = verify.FeatureClass.SURFACE_AGGREGATE
 
 # CHM-sourced knit-tolerance bounds (metres).
 _TOL_LOWER_M = 1e-7   # 0.0001 mm
 _TOL_UPPER_M = 1e-4   # 0.1 mm
 
 
-def _sheet_bodies(doc: Any) -> list[Any] | None:
-    """Sheet bodies of *doc*; ``None`` on COM failure, ``[]`` when empty."""
-    try:
-        bodies = doc.GetBodies2(_SW_SHEET_BODY, False)
-    except Exception:
-        return None
-    if not bodies:
-        return []
-    return list(bodies) if isinstance(bodies, (list, tuple)) else [bodies]
-
-
 def _sheet_body_count(doc: Any) -> int:
-    bodies = _sheet_bodies(doc)
-    if bodies is None:
-        return 0
-    return len(bodies)
+    """Sheet-body count. Delegates to the W67 verify substrate;
+    ``visible_only=False`` preserves the historical surface-lane arg."""
+    return verify.sheet_body_count(doc, visible_only=False)
 
 
 def _total_sheet_area_mm2(doc: Any) -> float:
-    """Sum of face areas over all sheet bodies (mm²); 0.0 on failure."""
-    bodies = _sheet_bodies(doc)
-    if not bodies:
-        return 0.0
-    total = 0.0
-    for b in bodies:
-        try:
-            faces = b.GetFaces
-            if callable(faces):
-                faces = faces()
-            if not faces:
-                continue
-            for f in faces:
-                try:
-                    a = f.GetArea
-                    if callable(a):
-                        a = a()
-                    total += float(a) * 1e6
-                except Exception:
-                    pass
-        except Exception:
-            pass
-    return total
+    """Total sheet-body face area (mm²). Delegates to the W67 verify substrate."""
+    return verify.sheet_area_mm2(doc, visible_only=False)
 
 
 def _solid_body_count(doc: Any) -> int:
-    """Count of solid bodies in *doc*; 0 on failure."""
-    try:
-        bodies = doc.GetBodies2(_SW_SOLID_BODY, False)
-    except Exception:
-        return 0
-    if not bodies:
-        return 0
-    return len(bodies) if isinstance(bodies, (list, tuple)) else 1
+    """Solid-body count. Delegates to the W67 verify substrate.
+
+    NOTE (W67 Phase-3 finding): knit historically read solids with
+    ``visible_only=False`` — UNLIKE the solid lanes (hem/sketched_bend/
+    split_line) which used ``True``. Preserved verbatim here pending the
+    GetBodies2-visibility-drift adjudication."""
+    return verify.solid_body_count(doc, visible_only=False)
 
 
 def _solid_volume_mm3(doc: Any) -> float:
-    """Total volume of solid bodies in mm³; 0.0 on failure."""
-    try:
-        bodies = doc.GetBodies2(_SW_SOLID_BODY, False)
-    except Exception:
-        return 0.0
-    if not bodies:
-        return 0.0
-    body_list = list(bodies) if isinstance(bodies, (list, tuple)) else [bodies]
-    vol = 0.0
-    for b in body_list:
-        try:
-            mp = b.GetMassProperties(1.0)
-            if mp and len(mp) > 3:
-                vol += float(mp[3]) * 1e9
-        except Exception:
-            pass
-    return vol
+    """Total solid volume (mm³). Delegates to the W67 verify substrate
+    (``visible_only=False``, per the historical knit arg)."""
+    return verify.solid_volume_mm3(doc, visible_only=False)
 
 
 def _null_disp() -> Any:
@@ -195,7 +145,7 @@ def _select_all_sheet_bodies(doc: Any) -> tuple[bool, str | None]:
     for InsertSewRefSurface, so we fall back to SelectByID2 with the
     body's ``Name`` property when available.
     """
-    bodies = _sheet_bodies(doc)
+    bodies = verify.sheet_bodies(doc, visible_only=False)
     if not bodies or len(bodies) < 2:
         return False, f"need ≥2 sheet bodies to knit, found {len(bodies) if bodies else 0}"
 
@@ -317,7 +267,7 @@ def create_knit(
 
     if try_to_form_solid:
         # Solid-knit mode: sheets consumed AND solid materialized.
-        if d_sheets < 0 and d_solids >= 1 and d_vol > _VOL_EPS_MM3:
+        if d_sheets < 0 and verify.gate_surface_to_solid(d_vol, d_solids):
             return True, None
         return False, (
             f"knit-to-solid did not materialize "
@@ -327,7 +277,7 @@ def create_knit(
         )
 
     # Surface-knit mode: sheets merged AND knit body has positive area.
-    if d_sheets < 0 and area_after > _AREA_EPS_MM2:
+    if verify.gate_surface_aggregate(d_sheets, area_after):
         return True, None
 
     return False, (

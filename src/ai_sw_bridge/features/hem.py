@@ -32,17 +32,17 @@ from typing import Any
 import pythoncom
 from win32com.client import VARIANT
 
-from ..com.earlybind import typed
-from ..com.sw_type_info import wrapper_module
 from ..selection._edge_ref import DurableEdgeRef
 from ..selection.live import resolve_edge_ref, select_entity
+from . import verify
 
 # Spike gate: GREEN since spike_hem_v5 (2026-06-16, feat/w59-hem). The
 # registry import in features/__init__.py is unconditional now that the
 # recipe is seat-proven (faces +8 / vol +1103.84 mm³ / survives reopen).
 SPIKE_STATUS = "GREEN"
 
-_SW_SOLID_BODY = 0
+# Verify class (W67): additive solid — new faces AND a volume change.
+VERIFY_CLASS = verify.FeatureClass.ADDITIVE_SOLID
 
 # swHemTypes_e / swHemPositionTypes_e — O1-sourced (W55 swconst.tlb dump).
 _HEM_TYPES: dict[str, int] = {
@@ -50,51 +50,11 @@ _HEM_TYPES: dict[str, int] = {
 }
 _HEM_POSITIONS: dict[str, int] = {"inside": 0, "outside": 1}
 
-# Below this, a volume delta is FP noise, not a fold (the v5 NO_OP showed
-# ~1e-21 mm³ jitter; the real fold was +1103.84 mm³).
-_VOL_EPS_MM3 = 1e-6
-
-
-def _solid_bodies(doc: Any) -> list[Any] | None:
-    """Solid bodies of *doc*; ``None`` on COM failure, ``[]`` when there are none.
-
-    Robust to doc flavor: a dynamic dispatch resolves ``GetBodies2`` directly;
-    a typed ``IModelDoc2`` proxy does not expose it, so fall back to a typed
-    ``IPartDoc`` QI (the bc5c849 draft's one sound idea).
-    """
-    try:
-        src = (
-            doc if hasattr(doc, "GetBodies2")
-            else typed(doc, "IPartDoc", module=wrapper_module())
-        )
-        bodies = src.GetBodies2(_SW_SOLID_BODY, True)
-    except Exception:
-        return None
-    if not bodies:
-        return []
-    return list(bodies) if isinstance(bodies, (list, tuple)) else [bodies]
-
 
 def _metrics(doc: Any) -> tuple[int, float]:
-    """(face_count, volume_mm³) over the doc's solid bodies; (0, 0.0) on failure."""
-    bodies = _solid_bodies(doc)
-    if not bodies:
-        return 0, 0.0
-    faces = 0
-    vol_mm3 = 0.0
-    for b in bodies:
-        try:
-            f = b.GetFaces()
-            faces += len(f) if f else 0
-        except Exception:
-            pass
-        try:
-            mp = b.GetMassProperties(1.0)
-            if mp and len(mp) > 3:
-                vol_mm3 += float(mp[3]) * 1e9
-        except Exception:
-            pass
-    return faces, vol_mm3
+    """(face_count, volume_mm³) over solid bodies. Delegates to the W67 verify
+    substrate; ``visible_only=True`` preserves the historical solid-lane arg."""
+    return verify.solid_metrics(doc, visible_only=True)
 
 
 def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str | None]:
@@ -191,7 +151,7 @@ def create_hem(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]
     faces_after, vol_after = _metrics(doc)
     d_faces = faces_after - faces_before
     d_vol = vol_after - vol_before
-    if d_faces > 0 and abs(d_vol) > _VOL_EPS_MM3:
+    if verify.gate_additive_solid(d_faces, d_vol):
         return True, None
 
     # A hem node may exist yet add no geometry (W42 ghost) — NOT success.

@@ -36,20 +36,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..com.earlybind import typed
-from ..com.sw_type_info import wrapper_module
 from ..selection._ref import DurableRef
 from ..selection.live import resolve_manifest_face, select_entity
+from . import verify
 
 # Spike gate: UNFIRED until W0 fires on the live seat.
 SPIKE_STATUS = "UNFIRED"
 
-_SW_SHEET_BODY = 1  # swBodyType_e.swSheetBody (confirmed swconst harvest 32.1.0.123)
-_SW_SOLID_BODY = 0
-
-# Below this, a volume delta is FP noise, not a thicken (the hem v5 NO_OP
-# showed ~1e-21 mm³ jitter; a real thicken produces thousands of mm³).
-_VOL_EPS_MM3 = 1e-6
+# Verify class (W67): surface→solid bridge — volume appears AND a solid body
+# materializes.  WALLED OOP (FeatureBossThicken no-ops across COM even on a
+# standalone surface); see docs/DEFERRED.md.  Handler stays UNFIRED/unregistered.
+VERIFY_CLASS = verify.FeatureClass.SURFACE_TO_SOLID
 
 # swThickenDirectionType_e — harvest-sourced (docs/sw_api_full.json).
 _THICKEN_DIRECTIONS: dict[str, int] = {
@@ -60,23 +57,13 @@ _THICKEN_DIRECTIONS: dict[str, int] = {
 
 
 def _sheet_bodies(doc: Any) -> list[Any] | None:
-    """Sheet bodies of *doc*; ``None`` on COM failure, ``[]`` when there are none.
+    """Sheet bodies of *doc*. Delegates to the W67 verify substrate.
 
-    Robust to doc flavor: a dynamic dispatch resolves ``GetBodies2`` directly;
-    a typed ``IModelDoc2`` proxy does not expose it, so fall back to a typed
-    ``IPartDoc`` QI (the hem.py pattern).
-    """
-    try:
-        src = (
-            doc if hasattr(doc, "GetBodies2")
-            else typed(doc, "IPartDoc", module=wrapper_module())
-        )
-        bodies = src.GetBodies2(_SW_SHEET_BODY, True)
-    except Exception:
-        return None
-    if not bodies:
-        return []
-    return list(bodies) if isinstance(bodies, (list, tuple)) else [bodies]
+    NOTE (W67 Phase-3 finding): thicken historically read SHEET bodies with
+    ``visible_only=True`` — unlike the surface-create lanes (planar/offset/knit)
+    which used ``False``. Preserved verbatim pending the GetBodies2-visibility-
+    drift adjudication."""
+    return verify.sheet_bodies(doc, visible_only=True)
 
 
 def _surface_area(body: Any) -> float:
@@ -96,52 +83,16 @@ def _surface_area(body: Any) -> float:
 
 
 def _solid_body_count(doc: Any) -> int:
-    """Count of solid bodies in *doc*; 0 on failure."""
-    try:
-        src = (
-            doc if hasattr(doc, "GetBodies2")
-            else typed(doc, "IPartDoc", module=wrapper_module())
-        )
-        bodies = src.GetBodies2(_SW_SOLID_BODY, True)
-    except Exception:
-        return 0
-    if not bodies:
-        return 0
-    return len(bodies) if isinstance(bodies, (list, tuple)) else 1
+    """Count of solid bodies in *doc*. Delegates to the W67 verify substrate
+    (``visible_only=True``, per the historical thicken arg)."""
+    return verify.solid_body_count(doc, visible_only=True)
 
 
 def _metrics_solid(doc: Any) -> tuple[int, float]:
-    """(face_count, volume_mm³) over the doc's solid bodies; (0, 0.0) on failure.
-
-    Mirror of ``hem.py::_metrics`` — used for the additive (volume) gate that
-    thicken reverts to after consuming the sheet body.
-    """
-    try:
-        src = (
-            doc if hasattr(doc, "GetBodies2")
-            else typed(doc, "IPartDoc", module=wrapper_module())
-        )
-        bodies = src.GetBodies2(_SW_SOLID_BODY, True)
-    except Exception:
-        return 0, 0.0
-    if not bodies:
-        return 0, 0.0
-    body_list = list(bodies) if isinstance(bodies, (list, tuple)) else [bodies]
-    faces = 0
-    vol_mm3 = 0.0
-    for b in body_list:
-        try:
-            f = b.GetFaces()
-            faces += len(f) if f else 0
-        except Exception:
-            pass
-        try:
-            mp = b.GetMassProperties(1.0)
-            if mp and len(mp) > 3:
-                vol_mm3 += float(mp[3]) * 1e9
-        except Exception:
-            pass
-    return faces, vol_mm3
+    """(face_count, volume_mm³) over solid bodies. Delegates to the W67 verify
+    substrate (``visible_only=True``) — the additive gate thicken reverts to
+    after consuming the sheet body."""
+    return verify.solid_metrics(doc, visible_only=True)
 
 
 def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str | None]:
@@ -244,7 +195,7 @@ def create_thicken(
     d_solids = solids_after - solids_before
     # ADDITIVE gate (surface→solid bridge): the sheet body was consumed into
     # a solid, so ΔVol > 0 AND ΔSolidBodies ≥ +1 (the brief §0.1 table).
-    if d_vol > _VOL_EPS_MM3 and d_solids >= 1:
+    if verify.gate_surface_to_solid(d_vol, d_solids):
         return True, None
 
     return False, (

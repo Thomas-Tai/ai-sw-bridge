@@ -37,6 +37,7 @@ from typing import Any
 
 from ..com.earlybind import typed_qi
 from ..selection.live import select_entity
+from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.project_curve")
 
@@ -44,6 +45,11 @@ logger = logging.getLogger("ai_sw_bridge.features.project_curve")
 # a reference-curve node surviving save->reopen. While "UNRUN", the
 # handler exists but is NOT registered in HANDLER_REGISTRY.
 SPIKE_STATUS = "GREEN"  # Mode-B-insert fired clean + survived save->reopen on live seat (W62)
+
+# Verify class (W67): CURVE — witnessed by a ref-curve-node count delta. NOTE
+# (Phase-3 finding): node presence is trusted without a geometric scalar;
+# hardening the CURVE witness is W67 Phase 3.
+VERIFY_CLASS = verify.FeatureClass.CURVE
 
 _SW_FM_REF_CURVE = 14
 
@@ -59,43 +65,14 @@ _FEATURE_TREE_WALK_LIMIT = 500
 _NODE_TYPE_TOKENS = ("refcurve", "projectedcurve", "projectedsketch", "ref_curve")
 
 
-def _resolve(obj: Any, attr: str) -> Any:
-    """Late-bound callable-or-property indirection (rollback.py idiom)."""
-    v = getattr(obj, attr)
-    return v() if callable(v) else v
-
-
 def _count_feature_nodes(doc: Any) -> int:
-    """Count feature-tree nodes whose type matches a ref-curve token.
-
-    Uses ``IFeatureManager.GetFeatures(False)`` because
-    ``IModelDoc2.FirstFeature`` is unreachable on the raw late-bound doc
-    out-of-process (com_error "Member not found" -- W62 composite seat
-    fire, 2026-06-17). ``GetFeatures(False)`` returns a flat tuple that
-    IS reachable; each node exposes ``GetTypeName2`` directly (with
-    callable-or-property guard for some surface forms).
-    """
-    try:
-        feats = doc.FeatureManager.GetFeatures(False)
-    except Exception:
-        return 0
-    if feats is None:
-        return 0
-    count = 0
-    for feat in list(feats)[:_FEATURE_TREE_WALK_LIMIT]:
-        try:
-            tname = _resolve(feat, "GetTypeName2")
-        except Exception:
-            try:
-                tname = _resolve(feat, "GetTypeName")
-            except Exception:
-                continue
-        if not tname:
-            continue
-        tname_lower = str(tname).lower()
-        if any(tok in tname_lower for tok in _NODE_TYPE_TOKENS):
-            count += 1
-    return count
+    """Count feature-tree nodes whose type matches a ref-curve token. Delegates
+    to the W67 verify substrate (substring match over ``_NODE_TYPE_TOKENS``,
+    walk bounded at ``_FEATURE_TREE_WALK_LIMIT``; ``GetFeatures(False)`` is the
+    W62-canonical substrate — ``FirstFeature`` is unreachable out-of-process)."""
+    return verify.count_nodes_by_type(
+        doc, _NODE_TYPE_TOKENS, match="substring", limit=_FEATURE_TREE_WALK_LIMIT,
+    )
 
 
 def _qi_ref_curve(data: Any) -> Any | None:

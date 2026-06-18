@@ -37,46 +37,26 @@ from typing import Any
 import pythoncom
 from win32com.client import VARIANT
 
+from . import verify
+
 logger = logging.getLogger("ai_sw_bridge.features.helix")
 
 # Flipped to "GREEN" by W0 after spike_helix returns PASS on the seat.
 SPIKE_STATUS = "GREEN"  # Mode-B fired clean + survived save→reopen on the live seat (W62)
 
+# Verify class (W67): CURVE — witnessed by a Helix-node count delta. NOTE
+# (Phase-3 finding): node presence is trusted without a geometric scalar
+# (pitch/length); hardening the CURVE witness is W67 Phase 3.
+VERIFY_CLASS = verify.FeatureClass.CURVE
+
 # swHelixDefinedBy_e — pitch and revolution (the default parametrisation).
 _SW_HELIX_DEFINED_BY_PITCH_AND_REVOLUTION = 0
 
 
-def _resolve(obj: Any, attr: str) -> Any:
-    """Late-bound callable-or-property indirection (the rollback.py idiom)."""
-    v = getattr(obj, attr)
-    return v() if callable(v) else v
-
-
-def _feature_nodes(doc: Any) -> list[Any]:
-    """Return all feature nodes via ``IFeatureManager.GetFeatures(False)``."""
-    try:
-        feats = doc.FeatureManager.GetFeatures(False)
-    except Exception:
-        return []
-    if feats is None:
-        return []
-    return list(feats)
-
-
 def _count_helices(doc: Any) -> int:
-    """Count Helix feature nodes in the tree (type-name match)."""
-    count = 0
-    for node in _feature_nodes(doc):
-        try:
-            tname = _resolve(node, "GetTypeName")
-        except Exception:
-            try:
-                tname = _resolve(node, "GetTypeName2")
-            except Exception:
-                continue
-        if tname == "Helix":
-            count += 1
-    return count
+    """Count Helix feature nodes in the tree (exact type-name match). Delegates
+    to the W67 verify substrate."""
+    return verify.count_nodes_by_type(doc, ("Helix",), match="exact")
 
 
 def create_helix(

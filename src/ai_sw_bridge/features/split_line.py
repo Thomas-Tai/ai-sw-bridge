@@ -35,9 +35,9 @@ from typing import Any
 import pythoncom
 from win32com.client import VARIANT
 
-from ..com.earlybind import EarlyBindError, typed, typed_qi
-from ..com.sw_type_info import wrapper_module
+from ..com.earlybind import EarlyBindError, typed_qi  # noqa: F401 — module surface; test_split_line patches sl.typed_qi (historical Mode-A fixture)
 from ..selection.live import select_entity
+from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.split_line")
 
@@ -45,13 +45,12 @@ logger = logging.getLogger("ai_sw_bridge.features.split_line")
 # one of the two modes is proven generative.
 SPIKE_STATUS = "UNRUN"
 
-_SW_SOLID_BODY = 0
+# Verify class (W67): volume-preserving fold — a split adds faces (the
+# projected curve partitions the target face) but conserves solid volume.
+VERIFY_CLASS = verify.FeatureClass.FOLD_VOL_PRESERVING
 
 # swSplitLineType_e — projection is the lead variant.
 _SPLIT_TYPES: dict[str, int] = {"projection": 0, "silhouette": 1}
-
-# FP-noise threshold for volume comparison (mm³).
-_VOL_EPS_MM3 = 1e-6
 
 # PropertyManager selection marks for split-line "Sketch to project" and
 # "Faces to split" list boxes. The macro-recorder default is mark=0 for
@@ -63,41 +62,10 @@ _MARK_SKETCH = 0
 _MARK_FACE = 0
 
 
-def _solid_bodies(doc: Any) -> list[Any] | None:
-    """Solid bodies of *doc*; ``None`` on COM failure, ``[]`` when there are none."""
-    try:
-        src = (
-            doc if hasattr(doc, "GetBodies2")
-            else typed(doc, "IPartDoc", module=wrapper_module())
-        )
-        bodies = src.GetBodies2(_SW_SOLID_BODY, True)
-    except Exception:
-        return None
-    if not bodies:
-        return []
-    return list(bodies) if isinstance(bodies, (list, tuple)) else [bodies]
-
-
 def _metrics(doc: Any) -> tuple[int, float]:
-    """(face_count, volume_mm³) over the doc's solid bodies; (0, 0.0) on failure."""
-    bodies = _solid_bodies(doc)
-    if not bodies:
-        return 0, 0.0
-    faces = 0
-    vol_mm3 = 0.0
-    for b in bodies:
-        try:
-            f = b.GetFaces()
-            faces += len(f) if f else 0
-        except Exception:
-            pass
-        try:
-            mp = b.GetMassProperties(1.0)
-            if mp and len(mp) > 3:
-                vol_mm3 += float(mp[3]) * 1e9
-        except Exception:
-            pass
-    return faces, vol_mm3
+    """(face_count, volume_mm³) over solid bodies. Delegates to the W67 verify
+    substrate; ``visible_only=True`` preserves the historical solid-lane arg."""
+    return verify.solid_metrics(doc, visible_only=True)
 
 
 def create_split_line(
@@ -167,7 +135,7 @@ def create_split_line(
     faces_after, vol_after = _metrics(doc)
     d_faces = faces_after - faces_before
     d_vol = vol_after - vol_before
-    if d_faces > 0 and abs(d_vol) < _VOL_EPS_MM3:
+    if verify.gate_fold_volume_preserving(d_faces, d_vol):
         return True, f"split_line projected ({d_faces} new faces, mode-{mode})"
 
     return False, (

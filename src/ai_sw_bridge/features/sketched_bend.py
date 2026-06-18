@@ -39,15 +39,15 @@ from typing import Any
 import pythoncom
 from win32com.client import VARIANT
 
-from ..com.earlybind import typed
-from ..com.sw_type_info import wrapper_module
 from ..selection._edge_ref import DurableEdgeRef
 from ..selection.live import resolve_edge_ref, select_entity
+from . import verify
 
 # Spike gate: UNFIRED until W0 fires on the live seat.
 SPIKE_STATUS = "GREEN"  # seat-proven W0 2026-06-18: InsertSheetMetal3dBend → 'SM3dBend', ΔFaces +8, bbox moved (fold-class gate), ΔVol=0, survives reopen
 
-_SW_SOLID_BODY = 0
+# Verify class (W67): fold — volume-preserving, witnessed by ΔFaces + bbox move.
+VERIFY_CLASS = verify.FeatureClass.FOLD
 
 # swFlangePositionTypes_e — harvest-sourced (docs/sw_api_full.json, confirmed
 # W65 brief §2).  Same enum as edge_flange and miter_flange.
@@ -60,88 +60,19 @@ _BEND_POSITIONS: dict[str, int] = {
     "bend_tangent": 6,
 }
 
-# Below this, a volume delta is FP noise, not a fold (the hem v5 NO_OP showed
-# ~1e-21 mm³ jitter; the real fold was +1103.84 mm³).
-_VOL_EPS_MM3 = 1e-6
-
-
-def _solid_bodies(doc: Any) -> list[Any] | None:
-    """Solid bodies of *doc*; ``None`` on COM failure, ``[]`` when there are none.
-
-    Robust to doc flavor: a dynamic dispatch resolves ``GetBodies2`` directly;
-    a typed ``IModelDoc2`` proxy does not expose it, so fall back to a typed
-    ``IPartDoc`` QI.
-    """
-    try:
-        src = (
-            doc if hasattr(doc, "GetBodies2")
-            else typed(doc, "IPartDoc", module=wrapper_module())
-        )
-        bodies = src.GetBodies2(_SW_SOLID_BODY, True)
-    except Exception:
-        return None
-    if not bodies:
-        return []
-    return list(bodies) if isinstance(bodies, (list, tuple)) else [bodies]
-
 
 def _metrics(doc: Any) -> tuple[int, float]:
-    """(face_count, volume_mm³) over the doc's solid bodies; (0, 0.0) on failure."""
-    bodies = _solid_bodies(doc)
-    if not bodies:
-        return 0, 0.0
-    faces = 0
-    vol_mm3 = 0.0
-    for b in bodies:
-        try:
-            f = b.GetFaces()
-            faces += len(f) if f else 0
-        except Exception:
-            pass
-        try:
-            mp = b.GetMassProperties(1.0)
-            if mp and len(mp) > 3:
-                vol_mm3 += float(mp[3]) * 1e9
-        except Exception:
-            pass
-    return faces, vol_mm3
+    """(face_count, volume_mm³) over solid bodies. Delegates to the W67 verify
+    substrate; ``visible_only=True`` preserves the historical solid-lane arg."""
+    return verify.solid_metrics(doc, visible_only=True)
 
 
 def _body_bbox(doc: Any) -> tuple[float, ...] | None:
-    """Aggregate solid-body bounding box [xmin,ymin,zmin,xmax,ymax,zmax] in
-    metres, or None on failure. The fold-class verify substrate: a bend is
-    VOLUME-PRESERVING (folds existing material, adds no volume), so ΔVol≈0 is
-    expected — the EFFECT is a bounding-box change as material rotates out of
-    the original plane. W65 seat finding 2026-06-18 (InsertSheetMetal3dBend
-    returned an 'SM3dBend' node + ΔFaces +8 with ΔVol=0 — a real bend the old
-    ΔVol>0 gate falsely rejected)."""
-    bodies = _solid_bodies(doc)
-    if not bodies:
-        return None
-    lo = [float("inf")] * 3
-    hi = [float("-inf")] * 3
-    found = False
-    for b in bodies:
-        try:
-            box = b.GetBodyBox()
-        except Exception:
-            continue
-        if not box or len(box) < 6:
-            continue
-        found = True
-        for i in range(3):
-            lo[i] = min(lo[i], float(box[i]))
-            hi[i] = max(hi[i], float(box[i + 3]))
-    if not found:
-        return None
-    return (lo[0], lo[1], lo[2], hi[0], hi[1], hi[2])
-
-
-def _bbox_changed(before: tuple | None, after: tuple | None, eps_m: float = 1e-6) -> bool:
-    """True if the bounding box moved by more than eps in any coordinate."""
-    if before is None or after is None or len(before) != 6 or len(after) != 6:
-        return False
-    return any(abs(a - b) > eps_m for a, b in zip(before, after))
+    """Aggregate solid-body bounding box (metres). Delegates to the W67 verify
+    substrate. The fold-class witness: a bend is VOLUME-PRESERVING, so ΔVol≈0
+    is expected — the EFFECT is the bounding box moving as material rotates out
+    of the original plane (W65 seat finding 2026-06-18)."""
+    return verify.body_bbox(doc, visible_only=True)
 
 
 def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str | None]:
@@ -260,7 +191,7 @@ def create_sketched_bend(
     faces_after = _metrics(doc)[0]
     bbox_after = _body_bbox(doc)
     d_faces = faces_after - faces_before
-    moved = _bbox_changed(bbox_before, bbox_after)
+    moved = verify.bbox_changed(bbox_before, bbox_after)
     # FOLD-CLASS gate (W65 2026-06-18): a bend is volume-preserving (ΔVol≈0
     # expected) — gating on ΔVol falsely rejected the real SM3dBend (ΔFaces +8,
     # ΔVol 0) on the seat. Honest effect = ΔFaces>0 AND a bounding-box change.
