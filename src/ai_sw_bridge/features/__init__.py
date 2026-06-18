@@ -181,3 +181,33 @@ from .offset_surface import create_offset_surface  # noqa: E402
 
 if _offset_surface_status == "GREEN":
     HANDLER_REGISTRY["offset_surface"] = create_offset_surface
+
+# W66 — thicken (surfaces group, lane 3 — bridge: surface→solid).  Mode-B
+# only: IThickenFeatureData has no creation enum in the SW2024 swconst
+# harvest (edit-only via IFeature.GetDefinition).  Mode-B fires via legacy
+# IFeatureManager.FeatureBossThicken (7-arg → Feature) — all args are
+# primitives (Double, Int32, Boolean), no VARIANT-null marshaling needed.
+# Additive gate (REVERTS TO VOLUME): ΔVol > 0 ∧ ΔSolidBodies ≥ +1 (the
+# sheet body is consumed into a solid; the surface-create gate is WRONG
+# here — sheet body count may DECREASE).  Chained fixture: the spike
+# creates a surface body first (InsertOffsetSurface), then thickens it.
+# SPIKE_STATUS gate: UNFIRED until W0 fires on the live seat.
+from .thicken import SPIKE_STATUS as _thicken_status  # noqa: E402
+from .thicken import create_thicken  # noqa: E402
+
+if _thicken_status == "GREEN":
+    HANDLER_REGISTRY["thicken"] = create_thicken
+
+# W66 — knit (surfaces group, BOSS FIGHT lane — aggregation).  Mode-B only:
+# InsertSewRefSurface (5-arg → Feature) sews two or more sheet bodies into
+# one.  AGGREGATION gate (INVERTED): ΔSheetBodies < 0 ∧ area > 0 (the sheet
+# body count goes DOWN — gating on "≥1 new body" is WRONG here, the inverse
+# of the W65 sketched_bend false-fail).  Selection requires mark=1 via
+# Extension.SelectByID2 (not IEntity.Select2) — the CHM VB6 recipe.  Target
+# is ≥2 body_refs (feature names) or auto-discovered sheet bodies.
+# SPIKE_STATUS gate: UNFIRED until W0 fires on the live seat.
+from .knit import SPIKE_STATUS as _knit_status  # noqa: E402
+from .knit import create_knit  # noqa: E402
+
+if _knit_status == "GREEN":
+    HANDLER_REGISTRY["knit"] = create_knit
