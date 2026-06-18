@@ -17,7 +17,30 @@ error semantics) at design time rather than impl time.
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import pytest
+
+# Absolute path to the src-layout package root. The CLI subprocess tests below
+# spawn ``python -m ai_sw_bridge.cli.*`` in child processes; the package is NOT
+# pip-installed (src-layout, pytest puts it on sys.path in-process only), so the
+# child needs PYTHONPATH. It MUST be absolute: ``test_build_...`` runs the child
+# with ``cwd=tmp_path``, so a relative ``"src"`` would resolve against the temp
+# dir and miss. parents[2] = repo root (tests/checkpoint/<file> -> repo).
+_SRC_DIR = str(Path(__file__).resolve().parents[2] / "src")
+
+
+def _child_env() -> dict[str, str]:
+    """os.environ with ``src`` prepended to PYTHONPATH (absolute) so a spawned
+    ``python -m ai_sw_bridge.*`` resolves the package regardless of cwd."""
+    env = dict(os.environ)
+    existing = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = (
+        _SRC_DIR + os.pathsep + existing if existing else _SRC_DIR
+    )
+    return env
+
 
 from ai_sw_bridge.checkpoint.crypto import (
     EnvKeySource,
@@ -446,6 +469,7 @@ class TestGenkeyCli:
             [sys.executable, "-m", "ai_sw_bridge.cli.checkpoint", "genkey"],
             capture_output=True,
             text=True,
+            env=_child_env(),
         )
         assert result.returncode == 0
         key_line = result.stdout.strip()
@@ -462,6 +486,7 @@ class TestGenkeyCli:
             [sys.executable, "-m", "ai_sw_bridge.cli.checkpoint", "genkey"],
             capture_output=True,
             text=True,
+            env=_child_env(),
         )
         with pytest.raises(json.JSONDecodeError):
             json.loads(result.stdout)
@@ -505,6 +530,7 @@ class TestInfoCli:
             ],
             capture_output=True,
             text=True,
+            env=_child_env(),
         )
         assert result.returncode == 0
         payload = json.loads(result.stdout)
@@ -591,6 +617,7 @@ class TestBuildIntegration:
             capture_output=True,
             text=True,
             cwd=str(tmp_path),
+            env=_child_env(),
         )
 
         # validate-only doesn't create a DB, so just check the CLI accepted the flag
