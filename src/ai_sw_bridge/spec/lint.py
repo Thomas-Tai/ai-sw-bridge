@@ -77,6 +77,11 @@ def _check_unconsumed_sketches(spec: dict[str, Any]) -> list[LintFinding]:
 _ORTHO_FACE_PARENTS = frozenset(
     {
         "boss_extrude_blind",
+        "boss_extrude_midplane",
+        "boss_extrude_two_direction",
+        # boss_extrude_through_all is intentionally EXCLUDED: its +normal
+        # terminus is geometry-dependent (no fixed extent), so the face-select
+        # heuristic is unreliable on it — keep the advisory firing.
         "cut_extrude_through_all",
         "cut_extrude_blind",
         "cut_extrude_midplane",
@@ -207,6 +212,45 @@ def _check_center_z_thread_through(
     return findings
 
 
+# Features that create a solid body a later through-all BOSS can terminate
+# against. A through-all boss with no prior body has nothing to stop at and
+# SW errors at rebuild (W67 P5).
+_BODY_PRODUCING_TYPES = frozenset(
+    {
+        "boss_extrude_blind",
+        "boss_extrude_midplane",
+        "boss_extrude_two_direction",
+        "revolve_boss",
+    }
+)
+
+
+def _check_through_all_boss_needs_body(spec: dict[str, Any]) -> list[LintFinding]:
+    """Warn if a ``boss_extrude_through_all`` has no prior body-producing
+    feature to terminate against — SW errors on a through-all boss with no
+    existing solid (the user's W67 P5 caveat)."""
+    findings: list[LintFinding] = []
+    seen_body = False
+    for i, feat in enumerate(spec.get("features", [])):
+        ftype = feat.get("type", "")
+        if ftype == "boss_extrude_through_all" and not seen_body:
+            findings.append(
+                LintFinding(
+                    severity="warning",
+                    path=f"features/{i}/type",
+                    message=(
+                        "boss_extrude_through_all has no prior body-producing "
+                        "feature to terminate against; SW errors on a "
+                        "through-all boss with no existing solid. Add a "
+                        "blind/midplane boss (or revolve_boss) first."
+                    ),
+                )
+            )
+        if ftype in _BODY_PRODUCING_TYPES:
+            seen_body = True
+    return findings
+
+
 def lint(spec: dict[str, Any]) -> list[LintFinding]:
     """Run all semantic lint checks. Returns a (possibly empty) list of findings.
 
@@ -218,4 +262,5 @@ def lint(spec: dict[str, Any]) -> list[LintFinding]:
     findings.extend(_check_face_references(spec))
     findings.extend(_check_top_plane_centerline_center_z(spec))
     findings.extend(_check_center_z_thread_through(spec))
+    findings.extend(_check_through_all_boss_needs_body(spec))
     return findings

@@ -496,6 +496,24 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             False,
         ),
     ],
+    "boss_extrude_midplane": [
+        FieldSpec("sketch", {"type": "string"}, True),
+        FieldSpec("depth", LENGTH_SCHEMA, True),
+        FieldSpec("flip", {"type": "boolean", "default": False}, False),
+        FieldSpec("merge", {"type": "boolean", "default": True}, False),
+    ],
+    "boss_extrude_through_all": [
+        FieldSpec("sketch", {"type": "string"}, True),
+        FieldSpec("flip", {"type": "boolean", "default": False}, False),
+        FieldSpec("merge", {"type": "boolean", "default": True}, False),
+    ],
+    "boss_extrude_two_direction": [
+        FieldSpec("sketch", {"type": "string"}, True),
+        FieldSpec("depth", LENGTH_SCHEMA, True),
+        FieldSpec("depth2", LENGTH_SCHEMA, True),
+        FieldSpec("flip", {"type": "boolean", "default": False}, False),
+        FieldSpec("merge", {"type": "boolean", "default": True}, False),
+    ],
     "cut_extrude_through_all": [
         FieldSpec(
             "sketch",
@@ -1114,6 +1132,31 @@ FEATURE_META: dict[str, dict[str, Any]] = {
         "sw_min": "2024 SP1",
         "spike_id": None,
     },
+    "boss_extrude_midplane": {
+        "doc": "Mid-plane boss extrusion: adds `depth` of material centred on "
+        "the sketch plane (depth/2 each side).",
+        "example_ref": "end_condition_bosses",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "boss_extrude_through_all": {
+        "doc": "Through-all boss extrusion: adds material until it terminates "
+        "against existing geometry. Requires a prior solid body (SW errors "
+        "without one).",
+        "example_ref": "end_condition_bosses",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
+    "boss_extrude_two_direction": {
+        "doc": "Two-direction boss: `depth` into +normal and `depth2` into "
+        "-normal from the sketch plane.",
+        "example_ref": "end_condition_bosses",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": None,
+    },
     "cut_extrude_through_all": {
         "doc": "Through-all cut extrusion along a sketch.",
         "example_ref": "drive_roller",
@@ -1276,6 +1319,9 @@ FEATURE_ORDER: list[str] = [
     "sketch_circle_on_face",
     "sketch_circles_on_face",
     "boss_extrude_blind",
+    "boss_extrude_midplane",
+    "boss_extrude_through_all",
+    "boss_extrude_two_direction",
     "cut_extrude_through_all",
     "cut_extrude_blind",
     "cut_extrude_midplane",

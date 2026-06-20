@@ -340,6 +340,8 @@ def _call_feature_extrusion(
     depth_m: float,
     flip: bool,
     merge: bool = True,
+    end_cond2: int | None = None,
+    depth2_m: float = 0.0,
 ) -> Any:
     """Boss-only extrusion. For cuts use _call_feature_cut (FeatureCut4).
 
@@ -347,6 +349,11 @@ def _call_feature_extrusion(
     any solid body it overlaps (UNION); False keeps it as a separate body
     (multi-body). This is the invariant-clean stand-in for the walled post-hoc
     ``combine`` — see docs/decisions.md (no in-process macro/add-in).
+
+    ``end_cond2``/``depth2_m`` opt into a second (reverse) direction
+    (two-direction boss): when given, ``Sd`` flips False and ``T2``/``D2`` carry
+    the second direction. When ``None`` (default) the tuple is byte-for-byte the
+    single-direction shape (W67 P5: additive).
 
     SW 2017+ signature (23 args; verified via decompiled sldworksapi.chm):
       Sd, Flip, Dir, T1, T2, D1, D2,
@@ -359,14 +366,15 @@ def _call_feature_extrusion(
       T0, StartOffset, FlipStartOffset
     """
     fm = ctx.doc.FeatureManager
+    single_dir = end_cond2 is None
     args = (
-        True,  # 1  Sd (single direction)
+        single_dir,  # 1  Sd (single-ended unless a 2nd direction is requested)
         flip,  # 2  Flip
         False,  # 3  Dir (use sketch normal)
         end_cond,  # 4  T1
-        0,  # 5  T2
+        0 if single_dir else end_cond2,  # 5  T2
         depth_m,  # 6  D1
-        0.0,  # 7  D2
+        0.0 if single_dir else depth2_m,  # 7  D2
         False,  # 8  Dchk1
         False,  # 9  Dchk2
         False,  # 10 Ddir1
@@ -546,7 +554,24 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
         ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip, merge=merge
     )
     f.Name = feat["name"]
+    return _boss_built_feature(feat, sketch, sketch_name, f, depth_m, flip)
 
+
+def _boss_built_feature(
+    feat: dict[str, Any],
+    sketch: Any,
+    sketch_name: str,
+    f: Any,
+    depth_m: float | None,
+    flip: bool,
+) -> BuiltFeature:
+    """Build the rich BuiltFeature shared by every boss-extrude variant — the
+    extrude axis/origin derivation downstream face-selects depend on.
+
+    ``depth_m`` is the +normal extent recorded for that derivation: full depth
+    for blind/two-direction, depth/2 for midplane (the +normal half), and
+    ``None`` for through-all (terminus is geometry-dependent — no fixed extent).
+    """
     # Inherit the axis from the parent sketch. For plane-based sketches
     # build() stashes the plane's outward normal; for face-based sketches the
     # handler stashes the face's outward normal directly. Either way the
@@ -604,6 +629,65 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
         extrude_flip=flip,
         sketch_extent_uv=sketch.sketch_extent_uv,
     )
+
+
+def _build_boss_extrude_midplane(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+    """Mid-plane boss: adds ``depth`` of material centred on the sketch plane
+    (depth/2 each side). One arg-shape change vs blind — T1 = mid-plane. The
+    +normal half-extent (depth/2) is recorded for downstream face derivation."""
+    sketch_name = feat["sketch"]
+    sketch = ctx.features_by_name[sketch_name]
+    _select_sketch(ctx, sketch_name)
+    depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["extrude_depth"])
+    flip = bool(feat.get("flip", False))
+    merge = bool(feat.get("merge", True))
+    f = _call_feature_extrusion(
+        ctx, end_cond=SW_END_COND_MID_PLANE, depth_m=depth_m, flip=flip, merge=merge
+    )
+    f.Name = feat["name"]
+    return _boss_built_feature(feat, sketch, sketch_name, f, depth_m / 2.0, flip)
+
+
+def _build_boss_extrude_through_all(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
+    """Through-all boss: extrudes material until it terminates against existing
+    geometry. T1 = through-all, no depth. NOTE: a through-all BOSS requires a
+    pre-existing body to terminate against — SW errors on an empty part; the
+    lint advisory flags a spec that places it without a prior solid. No fixed
+    extent, so the rich metadata records ``None`` for extrude_depth_m."""
+    sketch_name = feat["sketch"]
+    sketch = ctx.features_by_name[sketch_name]
+    _select_sketch(ctx, sketch_name)
+    flip = bool(feat.get("flip", False))
+    merge = bool(feat.get("merge", True))
+    f = _call_feature_extrusion(
+        ctx, end_cond=SW_END_COND_THROUGH_ALL, depth_m=0.0, flip=flip, merge=merge
+    )
+    f.Name = feat["name"]
+    return _boss_built_feature(feat, sketch, sketch_name, f, None, flip)
+
+
+def _build_boss_extrude_two_direction(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
+    """Two-direction boss: ``depth`` into +normal AND ``depth2`` into -normal
+    from the sketch plane. Drives FeatureExtrusion2 with Sd=False and
+    independent T1/D1, T2/D2 (both blind). +normal extent recorded for
+    downstream derivation; the -normal (depth2) face is not in the metadata."""
+    sketch_name = feat["sketch"]
+    sketch = ctx.features_by_name[sketch_name]
+    _select_sketch(ctx, sketch_name)
+    depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["extrude_depth"])
+    depth2_m = _literal_or_default(feat["depth2"], PLACEHOLDER_MM["extrude_depth"])
+    flip = bool(feat.get("flip", False))
+    merge = bool(feat.get("merge", True))
+    f = _call_feature_extrusion(
+        ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip, merge=merge,
+        end_cond2=SW_END_COND_BLIND, depth2_m=depth2_m,
+    )
+    f.Name = feat["name"]
+    return _boss_built_feature(feat, sketch, sketch_name, f, depth_m, flip)
 
 
 def _build_cut_extrude_through_all(
@@ -1797,6 +1881,21 @@ DESCRIPTORS: dict[str, FeatureDescriptor] = {
         handler=None,
         dim_fields={"depth": "D1"},
     ),
+    "boss_extrude_midplane": FeatureType(
+        name="boss_extrude_midplane",
+        handler=None,
+        dim_fields={"depth": "D1"},
+    ),
+    "boss_extrude_through_all": FeatureType(
+        name="boss_extrude_through_all",
+        handler=None,
+        dim_fields={},  # no depth dim on through-all
+    ),
+    "boss_extrude_two_direction": FeatureType(
+        name="boss_extrude_two_direction",
+        handler=None,
+        dim_fields={"depth": "D1", "depth2": "D2"},
+    ),
     "cut_extrude_through_all": FeatureType(
         name="cut_extrude_through_all",
         handler=None,
@@ -1925,6 +2024,9 @@ def _wire_handlers() -> None:
         "sketch_circle_on_face": CircleOnFaceHandler().build,
         "sketch_circles_on_face": CirclesOnFaceHandler().build,
         "boss_extrude_blind": _build_boss_extrude_blind,
+        "boss_extrude_midplane": _build_boss_extrude_midplane,
+        "boss_extrude_through_all": _build_boss_extrude_through_all,
+        "boss_extrude_two_direction": _build_boss_extrude_two_direction,
         "cut_extrude_through_all": _build_cut_extrude_through_all,
         "cut_extrude_blind": _build_cut_extrude_blind,
         "cut_extrude_midplane": _build_cut_extrude_midplane,

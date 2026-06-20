@@ -457,6 +457,76 @@ Adds material by extruding a sketch in the normal direction.
 | `depth` | yes | length | Extrusion depth (mm) |
 | `flip` | no | boolean | Extrude in -normal direction. Default `false`. |
 
+### `boss_extrude_midplane`
+
+Adds material extruded symmetrically about the sketch plane — `depth/2` of
+material each side.
+
+```json
+{
+  "type": "boss_extrude_midplane",
+  "name": "MidBoss",
+  "sketch": "SK_Mid",
+  "depth": 16.0
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"boss_extrude_midplane"` | |
+| `name` | yes | string | Unique feature name |
+| `sketch` | yes | string | Name of an earlier sketch feature |
+| `depth` | yes | length | Total extrusion depth (mm), centred on the plane (`depth/2` each side) |
+| `flip` | no | boolean | Reserved; mid-plane is symmetric so direction is immaterial. Default `false`. |
+
+### `boss_extrude_through_all`
+
+Adds material until it terminates against existing geometry. Requires a prior
+solid body — SW errors on a through-all boss with no existing solid (the lint
+warns if none precedes it).
+
+```json
+{
+  "type": "boss_extrude_through_all",
+  "name": "ThruBoss",
+  "sketch": "SK_Thru",
+  "flip": false
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"boss_extrude_through_all"` | |
+| `name` | yes | string | Unique feature name |
+| `sketch` | yes | string | Name of an earlier sketch feature |
+| `flip` | no | boolean | Extrude in -normal direction. Default `false`. |
+
+No `depth` — the boss runs until it terminates against existing geometry.
+
+### `boss_extrude_two_direction`
+
+Adds material in both normal directions from the sketch plane: `depth` into
++normal and `depth2` into -normal.
+
+```json
+{
+  "type": "boss_extrude_two_direction",
+  "name": "TwoDirBoss",
+  "sketch": "SK_Two",
+  "depth": 12.0,
+  "depth2": 6.0
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"boss_extrude_two_direction"` | |
+| `name` | yes | string | Unique feature name |
+| `sketch` | yes | string | Name of an earlier sketch feature |
+| `depth` | yes | length | Extrusion depth into +normal (mm) |
+| `depth2` | yes | length | Extrusion depth into -normal (mm) |
+| `flip` | no | boolean | Swap the +/-normal directions. Default `false`. |
+
 ### `cut_extrude_through_all`
 
 Removes material through the entire part in both directions.

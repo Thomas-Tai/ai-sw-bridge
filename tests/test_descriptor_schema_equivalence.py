@@ -61,10 +61,11 @@ def test_subschemas_reexported_from_descriptors():
 def test_feature_order_covers_all_descriptors():
     # X3 shipped 16 primitives; P1.7s added 7 sketch-primitive stubs and D3
     # added cut_extrude_midplane + cut_extrude_two_direction (25 total). W53
-    # added sketch_3d_sketch (26 total).
+    # added sketch_3d_sketch (26 total). W67 P5 added boss_extrude_midplane +
+    # boss_extrude_through_all + boss_extrude_two_direction (29 total).
     # The exact count is not the invariant — the invariant is that FEATURE_ORDER,
     # FEATURE_FIELDS, FEATURE_META, and the golden snapshot all agree.
-    assert len(descriptors.FEATURE_ORDER) == 26
+    assert len(descriptors.FEATURE_ORDER) == 29
     assert set(descriptors.FEATURE_ORDER) == set(descriptors.FEATURE_FIELDS)
     assert set(descriptors.FEATURE_ORDER) == set(descriptors.FEATURE_META)
     assert len(GOLDEN) == len(descriptors.FEATURE_ORDER)

@@ -1,0 +1,64 @@
+{
+    "schema_version": 1,
+    "name": "EndConditionBosses",
+    "_comment": "W67 P5 Tier-1 example: a 60x40x15 mm base plate demonstrating the three boss end-condition primitives. MidBoss is a boss_extrude_midplane (Ø10) centred on the +z face plane (depth/2 each side); TwoDirBoss is a boss_extrude_two_direction (Ø10) adding 12 mm into +normal and 6 mm into -normal; ThruBoss is a boss_extrude_through_all (Ø8) flipped to run -normal through the existing plate. Structural example for schema/doc coverage; the base plate satisfies the through-all 'prior body' lint.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Plate",
+            "plane": "Front",
+            "width": 60.0,
+            "height": 40.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Plate",
+            "sketch": "SK_Plate",
+            "depth": 15.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_Mid",
+            "of_feature": "EX_Plate",
+            "face": "+z",
+            "center": {"u": -18.0, "v": 0.0},
+            "diameter": 10.0
+        },
+        {
+            "type": "boss_extrude_midplane",
+            "name": "MidBoss",
+            "sketch": "SK_Mid",
+            "depth": 16.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_Two",
+            "of_feature": "EX_Plate",
+            "face": "+z",
+            "center": {"u": 0.0, "v": 0.0},
+            "diameter": 10.0
+        },
+        {
+            "type": "boss_extrude_two_direction",
+            "name": "TwoDirBoss",
+            "sketch": "SK_Two",
+            "depth": 12.0,
+            "depth2": 6.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_Thru",
+            "of_feature": "EX_Plate",
+            "face": "+z",
+            "center": {"u": 18.0, "v": 0.0},
+            "diameter": 8.0,
+            "_comment": "boss into the plate; flip runs the through-all -normal through existing material."
+        },
+        {
+            "type": "boss_extrude_through_all",
+            "name": "ThruBoss",
+            "sketch": "SK_Thru",
+            "flip": true
+        }
+    ]
+}

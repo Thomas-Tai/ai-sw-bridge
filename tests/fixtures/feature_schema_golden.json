@@ -720,6 +720,159 @@
     "required": [
       "type",
       "name",
+      "sketch",
+      "depth"
+    ],
+    "properties": {
+      "type": {
+        "const": "boss_extrude_midplane"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "sketch": {
+        "type": "string"
+      },
+      "depth": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false
+      },
+      "merge": {
+        "type": "boolean",
+        "default": true
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "sketch"
+    ],
+    "properties": {
+      "type": {
+        "const": "boss_extrude_through_all"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "sketch": {
+        "type": "string"
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false
+      },
+      "merge": {
+        "type": "boolean",
+        "default": true
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "sketch",
+      "depth",
+      "depth2"
+    ],
+    "properties": {
+      "type": {
+        "const": "boss_extrude_two_direction"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "sketch": {
+        "type": "string"
+      },
+      "depth": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "depth2": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ]
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false
+      },
+      "merge": {
+        "type": "boolean",
+        "default": true
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
       "sketch"
     ],
     "properties": {

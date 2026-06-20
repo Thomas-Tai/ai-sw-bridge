@@ -278,6 +278,9 @@ SKETCH_TYPES = frozenset(
 EXTRUDE_TYPES = frozenset(
     {
         "boss_extrude_blind",
+        "boss_extrude_midplane",
+        "boss_extrude_through_all",
+        "boss_extrude_two_direction",
         "cut_extrude_through_all",
         "cut_extrude_blind",
         "cut_extrude_midplane",
