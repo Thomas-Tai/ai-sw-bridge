@@ -1,67 +1,77 @@
 # W68 Handoff Prompt — for the concurrent execution session
 
-**Status:** Kickoff prompt authored by W0 (architectural overwatch), 2026-06-20.
-**Use:** paste the block below as the concurrent session's opening message. It is the literal,
-self-contained handoff. The authoritative constraints live in
-`docs/w0_w68_isolation_and_w58_directive.md`; this prompt operationalizes them.
+**Status:** AUTHORITATIVE handoff, authored by W0 (architectural overwatch), 2026-06-20.
+**Supersedes:** the prior pre-scrub kickoff. The repository history was **rewritten** by W0
+(W68 IP scrub — `RouteCAddin.dll` excised from full history; see `project_w68_ip_scrub`),
+so the state below is the only valid starting point.
+**Use:** paste the block below as the concurrent session's opening message. The authoritative
+constraints live in `docs/w0_w68_isolation_and_w58_directive.md`; this prompt operationalizes
+them against the post-scrub reality.
 
 ---
 
 ```
-You are the W68 execution session for the ai-sw-bridge project (a Python->SOLIDWORKS COM
-bridge). You own the Route-C in-process ISwAddin harness and the API-reference domain.
-W0 (the overwatch session) has just closed W67, synced and cleaned the GitHub remote, and
-handed you the next epoch. Read this fully before touching git.
+W0 OVERWATCH DIRECTIVE: W68 PHASE 1 (TOOLING RECONCILIATION)
 
-== CURRENT STATE (verified) ==
-- Repo: github.com/Thomas-Tai/ai-sw-bridge -- PRIVATE. origin/master = aa78b2e (+ this prompt commit).
-- Main checkout C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\ai-sw-bridge is on branch
-  feat/w67-phase3 and is RESERVED FOR W0 OVERWATCH. Do NOT do your W68 work in it.
-- Parked remote branch feat/w58-doc-trueup holds 2 commits: a2126a5 (unique API-extraction
-  tooling) and 808a192 (a DEFERRED.md hem line that is ALREADY SUPERSEDED on master).
-- Authoritative brief: docs/w0_w68_isolation_and_w58_directive.md (read it -- it governs).
-  Context: docs/w0_route_c_handoff_directive.md, docs/w0_api_tooling_handoff.md.
+Status:       GREEN LIGHT / HISTORY REWRITTEN.
+Target:       Concurrent W68 Session.
+Prerequisite: STOP. Do not use your local `master` branch. The repository history was
+              rewritten by W0 to perform an IP scrub. Your old local `master` (283d0d5)
+              is dead. origin/master is now the clean, scrubbed baseline (22ea48c at the
+              moment of the scrub; fetch for the live tip).
 
-== W68 DEPENDENCY ORDER (ratified) ==
-1. W58 tooling reconciliation  (foundation -- do this FIRST)
-2. Route-C sheet-metal (jog / edge_flange / miter) + `wrap` classification via your ISwAddin
-   harness -- sort each into COM-boundary-wall (shippable) vs true kernel-wall (defer)
-3. net-new `sweep` (has prior art: swFmSweep=17, path must leave the profile plane)
-`wrap` is deliberately in track 2, NOT a net-new feature -- it is a profile<->topology
-projection, a prime boundary-vs-kernel question for the harness. Do not author it blind.
+You are authorized to execute Phase 1 (W58 Tooling Reconciliation) strictly following
+this sequence:
 
-== YOUR IMMEDIATE TASK: STEP 1 (W58 reconciliation), in isolation ==
-A) Isolate FIRST (mandatory -- a rebase/cherry-pick on the shared branch would shatter W0's
-   linear history):
-     git worktree add ../ai-sw-bridge-w68tooling -b feat/w68-tooling-reconciliation master
-   Do all work in that worktree.
-B) Cherry-pick ONE commit, not two:
-     git cherry-pick a2126a5        # export_full_sw_api.ps1, verify_api_reference_against_dll.ps1, .gitignore hygiene
-   DROP 808a192 entirely -- its hem line is already superseded by master line 56 (the
-   "Production-wired...merged here" form). Rebasing it only manufactures a conflict.
-C) Resolve the source-of-truth, explicitly, BEFORE merge-back. a2126a5 deletes
-   docs/api_reference.json/.md and gitignores them; master still TRACKS them; your newer
-   docs/sw_api_full.* is currently UNTRACKED. Rule it:
-     - Which is canonical -- sw_api_full.* or api_reference.*?
-     - Delete the loser.
-     - Manage the winner: committed-as-canonical OR gitignored-as-generated with the harvest
-       script as its declared source. Do not leave it untracked-and-unmanaged.
-D) Verify: re-run the harvest and confirm it regenerates CLEAN against the live SOLIDWORKS
-   redist DLLs. Run the offline test suite (pytest -n auto).
+1. SYNC WITH REALITY
+   - Run `git fetch origin` to pull down the newly secured origin/master.
 
-== DEFINITION OF DONE (W58 lane) ==
-- feat/w68-tooling-reconciliation contains a2126a5's tooling, one SoT ledger only, harvest
-  regenerates clean, tests green.
-- Then PING W0: the merge to master goes through W0's guarded push discipline
-  (verify private -> fast-forward -> no force). W0 owns the master merge. Do not push to
-  master yourself.
+2. ISOLATE THE WORKTREE
+   - Spin up your isolated environment, explicitly branching off the REMOTE master:
+       git worktree add ../ai-sw-bridge-w68tooling -b feat/w68-tooling-reconciliation origin/master
+   - Do ALL W58/W68 work in that worktree. Stay OFF feat/w67-phase3 (W0 overwatch checkout).
 
-== COORDINATION RULES ==
-- Stay OFF feat/w67-phase3 (W0's checkout). All W68 work lives in your worktree.
-- All master merges route through W0. You push your own feature branch freely.
-- REPORT BACK NOW once you have created the isolated worktree and vacated feat/w67-phase3 --
-  W0 is holding the formal W68 charter until you confirm isolation. That confirmation is the
-  gate that lets W0 draft and open the charter.
+3. THE 1-COMMIT CHERRY-PICK
+   - The w58 branch on the remote (feat/w58-doc-trueup, tip a2126a5) was UNTOUCHED by the
+     rewrite — it is pre-DLL, so its SHA is still valid.
+       git cherry-pick a2126a5      # export_full_sw_api.ps1, verify_api_reference_against_dll.ps1, .gitignore hygiene
+   - Do NOT rebase, and do NOT pull in the superseded DEFERRED.md update (808a192). Its hem
+     line is already superseded by master; rebasing it only manufactures a conflict.
 
-Start with Step 1A (isolate), then report isolation before proceeding to 1B.
+4. THE SOURCE-OF-TRUTH (SoT) DECISION
+   - Adjudicate the double-ledger: sw_api_full.* vs api_reference.*.
+   - a2126a5 deletes docs/api_reference.json/.md and gitignores them; master still tracks
+     them; your newer docs/sw_api_full.* is currently untracked. Rule it explicitly:
+       * Retain the canonical winner.
+       * Permanently delete the loser.
+       * Ensure the winner is properly managed — committed-as-canonical, OR gitignored-as-
+         generated with the harvest script as its declared source. Not left untracked.
+
+5. THE COMPLETION GATE
+   - Regenerate the API harvest using the reconciled scripts; confirm it regenerates CLEAN
+     against the live SOLIDWORKS redist DLLs.
+   - Verify all tests pass against the new signatures (pytest -n auto).
+   - Once clean, PING W0 OVERWATCH. W0 will handle the guarded fast-forward merge back to
+     master (verify private -> fast-forward -> no force). Do NOT push to master yourself.
+     You push your own feature branch freely.
 ```
+
+---
+
+## Context retained for after Phase 1
+
+**Ratified W68 dependency order** (W0-governed):
+
+> **W58 tooling reconciliation → Route-C sheet-metal (`jog`/`edge_flange`/`miter`) + `wrap`
+> classification via the ISwAddin harness → net-new `sweep`.**
+
+- `wrap` is deliberately in the Route-C classification track, NOT the net-new track — it is a
+  profile↔topology projection, a prime boundary-vs-kernel question for the harness, not a
+  blind-authorable feature.
+- `sweep` has prior art: `swFmSweep=17`, the path must leave the profile plane.
+
+**Governing brief:** `docs/w0_w68_isolation_and_w58_directive.md` (it governs).
+**Context:** `docs/w0_route_c_handoff_directive.md`, `docs/w0_api_tooling_handoff.md`.
+
+Once Phase 1 reconciliation is merged via the W0 guarded push, W0 drafts and opens the formal
+W68 charter on the dependency order above.
