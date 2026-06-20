@@ -59,6 +59,14 @@ def _count_helices(doc: Any) -> int:
     return verify.count_nodes_by_type(doc, ("Helix",), match="exact")
 
 
+def _curve_length_mm(node: Any) -> float | None:
+    """Arc length (mm) of the new helix curve node, or None if unreadable.
+    Delegates to the W67 verify substrate (seat-proven IReferenceCurve.
+    GetSegments → IEdge.GetCurve → ICurve.GetLength); offline tests patch
+    this shim."""
+    return verify.curve_length_mm(node)
+
+
 def create_helix(
     doc: Any, feature: dict, target: dict,
 ) -> tuple[bool, str | None]:
@@ -149,13 +157,24 @@ def create_helix(
         pass
 
     helices_after = _count_helices(doc)
-    if helices_after > helices_before:
-        return True, None
+    d_nodes = helices_after - helices_before
+    if d_nodes <= 0:
+        return False, (
+            "Mode-A QUARANTINED (no creation enum for helix in swconst harvest); "
+            "Mode-B (InsertHelix) called without exception but no Helix node "
+            "materialized (selection / unit / arg-shape wall)"
+        )
 
+    # CURVE geometric gate (W67 P3b): a node ALONE is the W42 ghost trap — the
+    # helix must carry real arc length (seat-proven IReferenceCurve.GetSegments
+    # → ICurve.GetLength).
+    new_node = verify.newest_node_by_type(doc, ("Helix",), match="exact")
+    length_mm = _curve_length_mm(new_node)
+    if verify.gate_curve(d_nodes, length_mm):
+        return True, None
     return False, (
-        "Mode-A QUARANTINED (no creation enum for helix in swconst harvest); "
-        "Mode-B (InsertHelix) called without exception but no Helix node "
-        "materialized (selection / unit / arg-shape wall)"
+        f"a Helix node materialized but carries no readable arc length "
+        f"(curve_length_mm={length_mm}) — geometric ghost, not a real curve"
     )
 
 

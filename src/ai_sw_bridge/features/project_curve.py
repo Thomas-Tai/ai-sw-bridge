@@ -75,6 +75,15 @@ def _count_feature_nodes(doc: Any) -> int:
     )
 
 
+def _curve_length_mm(node: Any) -> float | None:
+    """Arc length (mm) of the new projected-curve node, or None if unreadable.
+    Delegates to the W67 verify substrate — seat-proven that the projected node
+    is a RefCurve reached via the same IReferenceCurve.GetSegments → IEdge.
+    GetCurve → ICurve.GetLength head as helix/composite (project_curve 40.0 mm).
+    Offline tests patch this shim."""
+    return verify.curve_length_mm(node)
+
+
 def _qi_ref_curve(data: Any) -> Any | None:
     """QI *data* for a ref-curve / projection FeatureData iface.
 
@@ -297,18 +306,30 @@ def create_project_curve(
     count_after = _count_feature_nodes(doc)
     d_nodes = count_after - count_before
 
-    if d_nodes > 0:
-        return True, f"project_curve created via mode-{mode} (+{d_nodes} node)"
-
-    if mode == "none":
+    if d_nodes <= 0:
+        if mode == "none":
+            return False, (
+                "project_curve: Mode-A QUARANTINED (no creation enum); Mode-B "
+                "(InsertProjectedSketch2 + convert-on-face fallback) failed -- "
+                "no ref-curve feature node materialized"
+            )
         return False, (
-            "project_curve: Mode-A QUARANTINED (no creation enum); Mode-B "
-            "(InsertProjectedSketch2 + convert-on-face fallback) failed -- "
-            "no ref-curve feature node materialized"
+            f"project_curve: mode-{mode} ran but no ref-curve feature node "
+            f"materialized (delta_nodes={d_nodes})"
         )
+
+    # CURVE geometric gate (W67 P3b): node-count alone is the W42 ghost trap —
+    # the projected curve must carry real arc length (seat-proven 40.0 mm via
+    # the RefCurve → IReferenceCurve.GetSegments head).
+    new_node = verify.newest_node_by_type(
+        doc, _NODE_TYPE_TOKENS, match="substring", limit=_FEATURE_TREE_WALK_LIMIT,
+    )
+    length_mm = _curve_length_mm(new_node)
+    if verify.gate_curve(d_nodes, length_mm):
+        return True, f"project_curve created via mode-{mode} (+{d_nodes} node)"
     return False, (
-        f"project_curve: mode-{mode} ran but no ref-curve feature node "
-        f"materialized (delta_nodes={d_nodes})"
+        f"a ref-curve node materialized but carries no readable arc length "
+        f"(curve_length_mm={length_mm}) — geometric ghost, not a real curve"
     )
 
 

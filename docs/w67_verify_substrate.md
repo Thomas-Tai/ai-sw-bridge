@@ -98,13 +98,16 @@ positive length; a ghost node has none). Decomposed into a proven tail and a
      "cold makepy gen" theory was a red herring; the real cause was lifetime.)
   - Fallbacks (unprobed): `ISketch.GetSketchSegments` for project_curve (a
     projected *sketch* — likely a different head per lane); defensive `GetCurves`.
-- **GATE — HARD, UNWIRED.** `verify.gate_curve(d_nodes, total_len_mm)` requires
+- **GATE — HARD, WIRED.** `verify.gate_curve(d_nodes, total_len_mm)` requires
   `d_nodes > 0 AND total_len_mm > CURVE_LEN_EPS_MM`; `total_len_mm is None`
   (unreadable) is **failure**, never a fall-back to node-count (adjudication:
-  no graceful degradation in a gate). **NOT yet wired** into composite/helix/
-  project_curve pending the wiring decision: **helix + composite are seat-proven**;
-  **project_curve's `ISketch` head is unprobed**, so it needs its own seat fire
-  before its gate flips off node-count.
+  no graceful degradation in a gate). **WIRED** into all three handlers
+  (W67 P3b unification): each handler, after its node-count delta, locates the
+  new node via `verify.newest_node_by_type(...)`, measures it through a local
+  `_curve_length_mm` shim (patchable in offline tests), and gates on
+  `gate_curve`. All three seat-proven: **helix 80.0 mm, composite 70.0 mm,
+  project_curve 40.0 mm** (project_curve's node is a `RefCurve` → same
+  `IReferenceCurve.GetSegments` head; the `ISketch` fallback was not needed).
 
 **Seat probe:** `spikes/v0_2x/spike_curve_length_witness.py` fires the
 production-candidate `verify.curve_length_mm` on real helix/composite nodes +

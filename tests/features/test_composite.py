@@ -22,8 +22,19 @@ no-op stub.
 
 from __future__ import annotations
 
+import pytest
+
 from ai_sw_bridge.features import composite
 from ai_sw_bridge.features.composite import create_composite
+
+
+@pytest.fixture(autouse=True)
+def _mock_curve_length(monkeypatch):
+    """Offline, the COM-heavy arc-length read is mocked to a positive default;
+    the geometric CURVE gate (W67 P3b) is exercised explicitly in TestCurveGate.
+    A composite fake carries no curve geometry, so without this the hard gate
+    would null every success path."""
+    monkeypatch.setattr(composite, "_curve_length_mm", lambda node: 25.0)
 
 
 # --- fake COM objects -------------------------------------------------------
@@ -185,3 +196,23 @@ class TestValidation:
     def test_target_not_dict_rejected(self):
         ok, err = create_composite(_FakeDoc(), {}, "not_a_dict")
         assert ok is False and "target must be a dict" in err
+
+
+# --- CURVE geometric gate (W67 P3b) -----------------------------------------
+
+
+class TestCurveGate:
+    def test_node_without_arc_length_is_rejected(self, monkeypatch):
+        """A composite node materialized but with no readable arc length is the
+        W42 geometric ghost — the hard gate_curve must reject it."""
+        monkeypatch.setattr(composite, "_curve_length_mm", lambda node: None)
+        _wire(monkeypatch, nodes_before=3, nodes_after=4)
+        ok, err = create_composite(_FakeDoc(), {}, {"edges": [object()]})
+        assert ok is False
+        assert "arc length" in err
+
+    def test_node_with_arc_length_passes(self, monkeypatch):
+        monkeypatch.setattr(composite, "_curve_length_mm", lambda node: 70.0)
+        _wire(monkeypatch, nodes_before=3, nodes_after=4)
+        ok, err = create_composite(_FakeDoc(), {}, {"edges": [object()]})
+        assert ok is True, err

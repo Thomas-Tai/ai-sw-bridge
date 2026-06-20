@@ -30,6 +30,16 @@ from ai_sw_bridge.features import helix
 from ai_sw_bridge.features.helix import create_helix
 
 
+@pytest.fixture(autouse=True)
+def _mock_curve_length(monkeypatch):
+    """Offline, the COM-heavy arc-length read (typed IReferenceCurve.GetSegments
+    → ICurve.GetLength) is mocked to a positive default — the geometric CURVE
+    gate (W67 P3b) is exercised explicitly in TestCurveGate, which overrides
+    this. A Helix fake carries no curve geometry, so without this the gate would
+    null every success path."""
+    monkeypatch.setattr(helix, "_curve_length_mm", lambda node: 25.0)
+
+
 # ---------------------------------------------------------------------------
 # Fake COM objects
 # ---------------------------------------------------------------------------
@@ -268,3 +278,28 @@ class TestKindNames:
             "sweep_cut",
         }
         assert "helix" not in builtin_kinds
+
+
+# ---------------------------------------------------------------------------
+# CURVE geometric gate (W67 P3b) — node-presence alone is NOT success
+# ---------------------------------------------------------------------------
+
+class TestCurveGate:
+    def test_node_without_arc_length_is_rejected(self, monkeypatch):
+        """A Helix node materialized but with NO readable arc length is the W42
+        geometric ghost — the hard gate_curve must reject it."""
+        monkeypatch.setattr(helix, "_curve_length_mm", lambda node: None)
+        doc = _FakeDoc()
+        ok, err = create_helix(
+            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
+        )
+        assert ok is False
+        assert "arc length" in err
+
+    def test_node_with_arc_length_passes(self, monkeypatch):
+        monkeypatch.setattr(helix, "_curve_length_mm", lambda node: 80.0)
+        doc = _FakeDoc()
+        ok, err = create_helix(
+            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
+        )
+        assert ok is True, err

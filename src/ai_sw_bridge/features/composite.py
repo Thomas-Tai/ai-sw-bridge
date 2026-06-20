@@ -70,6 +70,14 @@ def _count_feature_nodes(doc: Any) -> int:
     return verify.feature_node_count(doc)
 
 
+def _curve_length_mm(node: Any) -> float | None:
+    """Arc length (mm) of the new composite-curve node, or None if unreadable.
+    Delegates to the W67 verify substrate (seat-proven IReferenceCurve.
+    GetSegments → IEdge.GetCurve → ICurve.GetLength); offline tests patch
+    this shim."""
+    return verify.curve_length_mm(node)
+
+
 def _try_mode_a(doc: Any, edges: list[Any]) -> Any:
     """Mode-A: QUARANTINED — documented unreachable for CREATION.
 
@@ -183,7 +191,19 @@ def create_composite(doc: Any, feature: dict, target: dict) -> tuple[bool, str |
 
     doc.ForceRebuild3(False)
     nodes_after = _count_feature_nodes(doc)
-    if nodes_after > nodes_before:
-        return True, f"composite curve created via Mode-{mode}"
+    d_nodes = nodes_after - nodes_before
+    if d_nodes <= 0:
+        return False, f"Mode-{mode} returned but no feature node materialized (ghost trap)"
 
-    return False, f"Mode-{mode} returned but no feature node materialized (ghost trap)"
+    # CURVE geometric gate (W67 P3b): node-count alone is the W42 ghost trap —
+    # the composite curve must carry real arc length.
+    new_node = verify.newest_node_by_type(
+        doc, ("compositecurve", "refcurve"), match="substring",
+    )
+    length_mm = _curve_length_mm(new_node)
+    if verify.gate_curve(d_nodes, length_mm):
+        return True, f"composite curve created via Mode-{mode}"
+    return False, (
+        f"a composite-curve node materialized but carries no readable arc length "
+        f"(curve_length_mm={length_mm}) — geometric ghost, not a real curve"
+    )

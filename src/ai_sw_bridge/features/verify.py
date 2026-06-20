@@ -294,6 +294,35 @@ def count_nodes_by_type(
     return count
 
 
+def newest_node_by_type(
+    doc: Any,
+    tokens: tuple[str, ...],
+    *,
+    match: str = "substring",
+    limit: int | None = None,
+) -> Any | None:
+    """The LAST (most-recently-created) feature node whose type-name matches
+    *tokens*, or ``None``.  Same matching semantics as ``count_nodes_by_type`` —
+    used to locate the node a curve handler just created so its arc length can
+    be measured for the CURVE gate."""
+    nodes = feature_nodes(doc)
+    if limit is not None:
+        nodes = nodes[:limit]
+    found = None
+    for n in nodes:
+        tname = type_name(n)
+        if not tname:
+            continue
+        if match == "exact":
+            if tname in tokens:
+                found = n
+        else:
+            low = tname.lower()
+            if any(tok in low for tok in tokens):
+                found = n
+    return found
+
+
 # ===========================================================================
 # CURVE geometric witness (W67 P3b) — arc length as the anti-ghost scalar
 #
@@ -317,8 +346,10 @@ def count_nodes_by_type(
 # 70.0 mm.  LIFETIME: an ICurve is invalidated when its parent edge is released
 # — _node_curves returns the typed edges in a keepalive list the caller holds
 # during measurement (dropping them yields null; this was the W67 P3b bug, NOT
-# the cold-gen theory it was first mistaken for).  Still UNWIRED pending the
-# W67 P3b wiring decision.
+# the cold-gen theory it was first mistaken for).  WIRED (W67 P3b unification)
+# into all three CURVE handlers — composite/helix/project_curve now gate on
+# gate_curve(d_nodes, curve_length_mm(new_node)); node-presence alone is no
+# longer success.
 # ===========================================================================
 def _call0(obj: Any, name: str) -> Any:
     """Callable-or-property-guarded 0-arg accessor; ``None`` on any failure."""

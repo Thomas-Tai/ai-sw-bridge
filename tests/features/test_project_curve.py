@@ -36,6 +36,15 @@ from ai_sw_bridge.features import project_curve as pc
 from ai_sw_bridge.features.project_curve import create_project_curve
 
 
+@pytest.fixture(autouse=True)
+def _mock_curve_length(monkeypatch):
+    """Offline, the COM-heavy arc-length read is mocked to a positive default;
+    the geometric CURVE gate (W67 P3b) is exercised explicitly in TestCurveGate.
+    A projected-curve fake carries no curve geometry, so without this the hard
+    gate would null every success path."""
+    monkeypatch.setattr(pc, "_curve_length_mm", lambda node: 25.0)
+
+
 # ---------------------------------------------------------------------------
 # Fake COM objects
 # ---------------------------------------------------------------------------
@@ -388,3 +397,28 @@ class TestConstants:
     def test_qi_ifaces_tuple_non_empty(self) -> None:
         assert len(pc._REF_CURVE_QI_IFACES) >= 2
         assert "IReferenceCurveFeatureData" in pc._REF_CURVE_QI_IFACES
+
+
+# ---------------------------------------------------------------------------
+# CURVE geometric gate (W67 P3b)
+# ---------------------------------------------------------------------------
+
+class TestCurveGate:
+    def test_node_without_arc_length_is_rejected(self, monkeypatch):
+        """A ref-curve node materialized but with no readable arc length is the
+        W42 geometric ghost — the hard gate_curve must reject it."""
+        _wire_green(monkeypatch)
+        _wire_count(monkeypatch, before=0, after=1)
+        monkeypatch.setattr(pc, "_curve_length_mm", lambda node: None)
+        doc = _FakeDoc(defn=None, has_insert=True, insert_result=object())
+        ok, err = create_project_curve(doc, _feat(), _tgt())
+        assert ok is False
+        assert "arc length" in err
+
+    def test_node_with_arc_length_passes(self, monkeypatch):
+        _wire_green(monkeypatch)
+        _wire_count(monkeypatch, before=0, after=1)
+        monkeypatch.setattr(pc, "_curve_length_mm", lambda node: 40.0)
+        doc = _FakeDoc(defn=None, has_insert=True, insert_result=object())
+        ok, note = create_project_curve(doc, _feat(), _tgt())
+        assert ok is True, note
