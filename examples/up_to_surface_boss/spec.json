@@ -1,0 +1,48 @@
+{
+    "schema_version": 1,
+    "name": "UpToSurfaceBoss",
+    "_comment": "W67 P5 Tier-2 example: a Ø20 boss that extrudes UP TO an earlier body's face instead of a fixed depth. EX_Base is a 100x100x10 plate; EX_Wall is a tall 100x20x60 wall offset in +Y whose top (+z) face sits at z=60. PostBoss sketches a circle on the plate's +z face (z=10) and extrudes up_to_surface, terminating on EX_Wall's +z face -> the boss runs z=10..60. Seat-proven recipe (T1=swEndCondUpToSurface=4, NOT UpToSelection=10) by spikes/v0_2x/spike_extrude_up_to_surface.py.",
+    "features": [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Base",
+            "plane": "Front",
+            "width": 100.0,
+            "height": 100.0
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Base",
+            "sketch": "SK_Base",
+            "depth": 10.0
+        },
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Wall",
+            "plane": "Front",
+            "width": 100.0,
+            "height": 20.0,
+            "center": {"x": 0.0, "y": 40.0}
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Wall",
+            "sketch": "SK_Wall",
+            "depth": 60.0
+        },
+        {
+            "type": "sketch_circle_on_face",
+            "name": "SK_Post",
+            "of_feature": "EX_Base",
+            "face": "+z",
+            "center": {"u": 0.0, "v": -25.0},
+            "diameter": 20.0
+        },
+        {
+            "type": "boss_extrude_up_to_surface",
+            "name": "PostBoss",
+            "sketch": "SK_Post",
+            "target_ref": {"of_feature": "EX_Wall", "face": "+z"}
+        }
+    ]
+}

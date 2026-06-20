@@ -47,6 +47,20 @@ FACE_SKETCH_TYPES = frozenset(
 # that drill directly into a face without a separate sketch step.
 FACE_BOUND_TYPES = FACE_SKETCH_TYPES | frozenset({"simple_hole"})
 
+# Feature types that produce a solid with resolvable orthogonal faces a
+# boss_extrude_up_to_surface can terminate against. These are the fixed-extent
+# boss extrudes whose rich BuiltFeature metadata (extrude_axis/origin/depth)
+# lets _face_frame compute the target face center. through_all/up_to_surface
+# bosses record no fixed +normal extent (depth=None) and cuts carry no face
+# frame, so they are NOT valid up-to targets.
+UP_TO_TARGET_TYPES = frozenset(
+    {
+        "boss_extrude_blind",
+        "boss_extrude_midplane",
+        "boss_extrude_two_direction",
+    }
+)
+
 
 class ValidationError(Exception):
     """One validation failure. Use `path` to locate it in the spec.
@@ -190,6 +204,42 @@ def _check_references(spec: dict[str, Any]) -> None:
                     message=f"{ftype} references seed '{target}', "
                     f"which is not an earlier feature",
                     path=f"features/{i}/seed",
+                )
+
+        # boss_extrude_up_to_surface: require a durable up-to reference
+        # (`target_ref`) naming an EARLIER fixed-extent boss whose face the
+        # boss terminates against. The schema enforces target_ref's shape
+        # (of_feature + face, both required); this adds the topological +
+        # kind check the JSON schema can't express. The boss has no `depth`
+        # (terminus is the target surface), so the reference is mandatory.
+        if ftype == "boss_extrude_up_to_surface":
+            tref = feat.get("target_ref", {})
+            tgt = tref.get("of_feature") if isinstance(tref, dict) else None
+            if tgt is None:
+                raise ValidationError(
+                    message=(
+                        "boss_extrude_up_to_surface requires `target_ref` with "
+                        "an `of_feature` naming the up-to surface"
+                    ),
+                    path=f"features/{i}/target_ref/of_feature",
+                )
+            if tgt not in seen:
+                raise ValidationError(
+                    message=(
+                        f"boss_extrude_up_to_surface target_ref references "
+                        f"'{tgt}', which is not an earlier feature"
+                    ),
+                    path=f"features/{i}/target_ref/of_feature",
+                )
+            if seen[tgt] not in UP_TO_TARGET_TYPES:
+                raise ValidationError(
+                    message=(
+                        f"boss_extrude_up_to_surface requires target_ref "
+                        f"'{tgt}' to be a fixed-extent boss extrude with "
+                        f"resolvable faces (one of "
+                        f"{sorted(UP_TO_TARGET_TYPES)}); got '{seen[tgt]}'"
+                    ),
+                    path=f"features/{i}/target_ref/of_feature",
                 )
 
         # simple_hole: `depth` is required when end_condition='blind' (the

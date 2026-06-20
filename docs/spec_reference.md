@@ -527,6 +527,36 @@ Adds material in both normal directions from the sketch plane: `depth` into
 | `depth2` | yes | length | Extrusion depth into -normal (mm) |
 | `flip` | no | boolean | Swap the +/-normal directions. Default `false`. |
 
+### `boss_extrude_up_to_surface`
+
+Adds material until the boss terminates on a **durable reference surface** (a
+face of an earlier extrusion) — no fixed depth.
+
+```json
+{
+  "type": "boss_extrude_up_to_surface",
+  "name": "PostBoss",
+  "sketch": "SK_Post",
+  "target_ref": { "of_feature": "EX_Wall", "face": "+z" }
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"boss_extrude_up_to_surface"` | |
+| `name` | yes | string | Unique feature name |
+| `sketch` | yes | string | Name of an earlier sketch feature |
+| `target_ref` | yes | object | `{of_feature, face}` — the up-to surface. `of_feature` must name an **earlier** fixed-extent boss (`boss_extrude_blind` / `_midplane` / `_two_direction`); `face` is its outward normal (`+x`…`-z`). |
+| `flip` | no | boolean | Extrude in -normal direction. Default `false`. |
+
+No `depth` — the boss runs until it terminates on `target_ref`.
+
+> **OOP end-condition trap (seat-proven):** the handler hardcodes
+> `T1 = swEndCondUpToSurface = 4`. The "modern" `swEndCondUpToSelection = 10`
+> that the SOLIDWORKS API docs recommend **silently no-ops out-of-process** — the
+> formally-deprecated `UpToSurface` is the only functional COM path. Do not
+> "modernise" the constant. See `docs/DEFERRED.md`.
+
 ### `cut_extrude_through_all`
 
 Removes material through the entire part in both directions.

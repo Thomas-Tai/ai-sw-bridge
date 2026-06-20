@@ -263,6 +263,36 @@ fail-closed contract.
    resolution).
 4. The Route-D add-in route (already parked for `move_copy_body`).
 
+## Wave-67 P5 (`boss_extrude_up_to_surface` — SHIPPED with a do-not-regress constant)
+
+**`boss_extrude_up_to_surface` SHIPPED GREEN** (Tier 2) — but it carries an
+**inverted-deprecation landmine** future engineers must not "fix". The handler
+hardcodes `T1 = swEndCondUpToSurface = 4`. SOLIDWORKS' own API documentation
+marks `4` as *deprecated* ("Do not use; superseded by
+`swEndCondUpToSelection`") and steers callers to `swEndCondUpToSelection = 10`.
+
+**Seat-proven out-of-process truth (the inversion):** the matrix sweep in
+`spikes/v0_2x/spike_extrude_up_to_surface.py` (SW 2024 SP1, rev 32.1.0, committed
+as forensic proof) fired every `[reference mark 0/1/2] × [T1 ∈ {10, 4}]` combo
+against a Ø20 boss whose terminus is a ref plane at z=60mm, with `IBody2.GetBodyBox`
+Zmax as the anti-ghost witness:
+
+* **`T1 = 10` (UpToSelection) — NO_OP at every mark.** Feature never
+  materialises (bbox unchanged at the base height). The "modern" constant the
+  docs recommend silently ghosts across the COM boundary.
+* **`T1 = 4` (UpToSurface) — PASS at every mark** (bbox 10mm → 60mm = the target
+  surface). The formally-deprecated constant is the **only** functional OOP path.
+* The reference selection **mark is irrelevant** (0/1/2 all passed). What gates
+  is `T1=4` + the reference simply being present on the selection stack. The
+  handler selects profile-sketch-then-target for hygiene, mark 0 both.
+
+**Do not change `4` to `10`.** It will compile, validate, and silently produce
+no geometry — the W42 ghost trap with extra steps. Same genre as the sheet-metal
+profile-sketch ghost wall (Wave-65): the API the docs steer you toward is the one
+that no-ops OOP. Recorded in `spec_reference.md`, the handler's inline comment,
+`examples/up_to_surface_boss/README.md`, and the
+`reference_extrude_up_to_surface_seat` memory.
+
 ## Wave-42 (`dxf_flat` — Developed Boundary Pass; inner bend lines deferred)
 
 **`dxf_flat` SHIPPED 2026-06-09 as a Developed Boundary Pass** — it exports the

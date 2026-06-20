@@ -873,6 +873,63 @@
     "required": [
       "type",
       "name",
+      "sketch",
+      "target_ref"
+    ],
+    "properties": {
+      "type": {
+        "const": "boss_extrude_up_to_surface"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "sketch": {
+        "type": "string",
+        "description": "Name of an earlier sketch to extrude."
+      },
+      "target_ref": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "of_feature",
+          "face"
+        ],
+        "properties": {
+          "of_feature": {
+            "type": "string",
+            "description": "Name of an earlier extrusion whose face the boss extrudes up to (the up-to termination surface)."
+          },
+          "face": {
+            "enum": [
+              "+x",
+              "-x",
+              "+y",
+              "-y",
+              "+z",
+              "-z"
+            ],
+            "description": "Outward normal of the up-to target face."
+          }
+        },
+        "description": "Durable reference to the up-to termination surface (a face of an earlier extrusion). Required — the boss has no fixed depth."
+      },
+      "flip": {
+        "type": "boolean",
+        "default": false
+      },
+      "merge": {
+        "type": "boolean",
+        "default": true
+      }
+    }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
       "sketch"
     ],
     "properties": {

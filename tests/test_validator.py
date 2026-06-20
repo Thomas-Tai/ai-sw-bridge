@@ -155,6 +155,86 @@ def test_reference_enforces_topological_order() -> None:
 
 
 # -----------------------------------------------------------------------------
+# boss_extrude_up_to_surface — durable target_ref checks (W67 P5 Tier 2)
+# -----------------------------------------------------------------------------
+
+
+def _spec_with_up_to_surface(target_ref: dict) -> dict:
+    """`_minimal_spec` (SK_A circle + EX_A blind boss) plus a second sketch and a
+    boss_extrude_up_to_surface terminating on `target_ref`."""
+    spec = _minimal_spec()
+    spec["features"].append(
+        {
+            "type": "sketch_circle_on_plane",
+            "name": "SK_B",
+            "plane": "Front",
+            "diameter": 10.0,
+        }
+    )
+    spec["features"].append(
+        {
+            "type": "boss_extrude_up_to_surface",
+            "name": "UpBoss",
+            "sketch": "SK_B",
+            "target_ref": target_ref,
+        }
+    )
+    return spec
+
+
+def test_up_to_surface_accepts_valid_target_ref() -> None:
+    # EX_A is a boss_extrude_blind -> a valid fixed-extent up-to target.
+    spec = _spec_with_up_to_surface({"of_feature": "EX_A", "face": "+z"})
+    validate(spec)  # must not raise
+
+
+def test_up_to_surface_rejects_unknown_target_ref() -> None:
+    spec = _spec_with_up_to_surface({"of_feature": "DoesNotExist", "face": "+z"})
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    msg = str(exc.value)
+    assert "DoesNotExist" in msg
+    assert "target_ref" in exc.value.path
+
+
+def test_up_to_surface_rejects_non_boss_target_ref() -> None:
+    # SK_A is a sketch, not a fixed-extent boss with resolvable faces.
+    spec = _spec_with_up_to_surface({"of_feature": "SK_A", "face": "+z"})
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    msg = str(exc.value)
+    assert "SK_A" in msg
+    assert "fixed-extent boss" in msg
+
+
+def test_up_to_surface_rejects_forward_target_ref() -> None:
+    """target_ref must name an EARLIER feature (topological order). Ordered so
+    UpBoss's *sketch* stays a valid back-reference, isolating the target_ref
+    forward reference as the sole failure."""
+    spec = {
+        "schema_version": 1,
+        "name": "ForwardTargetSpec",
+        "features": [
+            {"type": "sketch_circle_on_plane", "name": "SK_A",
+             "plane": "Front", "diameter": 25.0},
+            {"type": "sketch_circle_on_plane", "name": "SK_B",
+             "plane": "Front", "diameter": 10.0},
+            # UpBoss references EX_A, declared AFTER it -> forward target_ref.
+            {"type": "boss_extrude_up_to_surface", "name": "UpBoss",
+             "sketch": "SK_B", "target_ref": {"of_feature": "EX_A", "face": "+z"}},
+            {"type": "boss_extrude_blind", "name": "EX_A",
+             "sketch": "SK_A", "depth": 10.0},
+        ],
+    }
+    with pytest.raises(ValidationError) as exc:
+        validate(spec)
+    msg = str(exc.value)
+    assert "EX_A" in msg
+    assert "earlier" in msg.lower()
+    assert "target_ref" in exc.value.path
+
+
+# -----------------------------------------------------------------------------
 # Locals checks
 # -----------------------------------------------------------------------------
 

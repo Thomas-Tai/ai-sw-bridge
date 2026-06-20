@@ -187,6 +187,32 @@ RELATIONS_SCHEMA: dict[str, Any] = {
 # Face-direction enum, shared by all face-bound primitives.
 _FACE_ENUM = ["+x", "-x", "+y", "-y", "+z", "-z"]
 
+# Durable up-to reference for boss_extrude_up_to_surface: a face of an earlier
+# extrusion the boss terminates against. Carried as a self-contained object so
+# the reference is unambiguous and the validator can demand it explicitly.
+_TARGET_REF_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["of_feature", "face"],
+    "properties": {
+        "of_feature": {
+            "type": "string",
+            "description": (
+                "Name of an earlier extrusion whose face the boss extrudes "
+                "up to (the up-to termination surface)."
+            ),
+        },
+        "face": {
+            "enum": _FACE_ENUM,
+            "description": "Outward normal of the up-to target face.",
+        },
+    },
+    "description": (
+        "Durable reference to the up-to termination surface (a face of an "
+        "earlier extrusion). Required — the boss has no fixed depth."
+    ),
+}
+
 
 def _xyz_point(*, required: bool, description: str) -> dict[str, Any]:
     """An {x, y, z} number-object property. ``required`` toggles the x/y/z
@@ -511,6 +537,16 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         FieldSpec("sketch", {"type": "string"}, True),
         FieldSpec("depth", LENGTH_SCHEMA, True),
         FieldSpec("depth2", LENGTH_SCHEMA, True),
+        FieldSpec("flip", {"type": "boolean", "default": False}, False),
+        FieldSpec("merge", {"type": "boolean", "default": True}, False),
+    ],
+    "boss_extrude_up_to_surface": [
+        FieldSpec(
+            "sketch",
+            {"type": "string", "description": "Name of an earlier sketch to extrude."},
+            True,
+        ),
+        FieldSpec("target_ref", _TARGET_REF_SCHEMA, True),
         FieldSpec("flip", {"type": "boolean", "default": False}, False),
         FieldSpec("merge", {"type": "boolean", "default": True}, False),
     ],
@@ -1157,6 +1193,14 @@ FEATURE_META: dict[str, dict[str, Any]] = {
         "sw_min": "2024 SP1",
         "spike_id": None,
     },
+    "boss_extrude_up_to_surface": {
+        "doc": "Up-to-surface boss: extrudes the sketch until it terminates on "
+        "`target_ref` (a face of an earlier extrusion). No `depth`.",
+        "example_ref": "up_to_surface_boss",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": "spike_extrude_up_to_surface",
+    },
     "cut_extrude_through_all": {
         "doc": "Through-all cut extrusion along a sketch.",
         "example_ref": "drive_roller",
@@ -1322,6 +1366,7 @@ FEATURE_ORDER: list[str] = [
     "boss_extrude_midplane",
     "boss_extrude_through_all",
     "boss_extrude_two_direction",
+    "boss_extrude_up_to_surface",
     "cut_extrude_through_all",
     "cut_extrude_blind",
     "cut_extrude_midplane",

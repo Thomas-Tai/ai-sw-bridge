@@ -44,6 +44,7 @@ from ..sw_types import (  # noqa: F401  -- re-exported for downstream users
     SW_END_COND_THROUGH_NEXT,
     SW_END_COND_MID_PLANE,
     SW_END_COND_THROUGH_ALL_BOTH,
+    SW_END_COND_UP_TO_SURFACE,
     SW_START_SKETCH_PLANE,
     SW_CHAMFER_EQUAL_DISTANCE,
     SW_CHAMFER_ANGLE_DISTANCE,
@@ -688,6 +689,80 @@ def _build_boss_extrude_two_direction(
     )
     f.Name = feat["name"]
     return _boss_built_feature(feat, sketch, sketch_name, f, depth_m, flip)
+
+
+def _build_boss_extrude_up_to_surface(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
+    """Up-to-surface boss: extrudes the profile until it terminates on a durable
+    reference surface (``target_ref`` = a face of an earlier extrusion).
+
+    Seat-proven OOP recipe (W67 P5 Tier 2,
+    ``spikes/v0_2x/spike_extrude_up_to_surface.py``):
+
+      * T1 = ``swEndCondUpToSurface`` (4) — NOT ``swEndCondUpToSelection`` (10).
+        The "modern" UpToSelection constant the API docs steer you toward
+        SILENTLY NO-OPS out-of-process (feature never materialises); the
+        formally-deprecated UpToSurface is the only functional OOP path. See
+        the memory note / DEFERRED.md — do not "fix" this to 10.
+      * The up-to target is read off the SELECTION STACK (FeatureExtrusion2 has
+        no explicit reference-entity arg). Stack order (hygiene): profile sketch
+        first (Mark 0), target surface second. The selection MARK is irrelevant
+        (0/1/2 all proven) — what gates is T1=4 + the reference being present.
+
+    No fixed +normal extent (terminus is the target surface), so the rich
+    metadata records ``None`` for extrude_depth_m (same as through-all)."""
+    sketch_name = feat["sketch"]
+    sketch = ctx.features_by_name[sketch_name]
+
+    target = feat["target_ref"]
+    target_name = target["of_feature"]
+    target_parent = ctx.features_by_name.get(target_name)
+    if target_parent is None:
+        raise RuntimeError(
+            f"boss_extrude_up_to_surface '{feat['name']}': target_ref "
+            f"'{target_name}' not built yet"
+        )
+    if target_parent.extrude_axis is None:
+        raise RuntimeError(
+            f"boss_extrude_up_to_surface '{feat['name']}': target_ref "
+            f"'{target_name}' is not an extrusion with known faces"
+        )
+
+    # 1) Resolve the up-to target face -> durable IFace2 pointer (the normal-
+    #    verified face-center selection the stacked-extrude path already uses).
+    target_face = target["face"]
+    ok, *_ = _select_extrude_face(ctx, target_parent, target_face)
+    if not ok:
+        raise RuntimeError(
+            f"boss_extrude_up_to_surface '{feat['name']}': could not select "
+            f"up-to target face '{target_face}' of '{target_name}'"
+        )
+    target_face_obj = ctx.doc.SelectionManager.GetSelectedObject6(1, -1)
+    if target_face_obj is None:
+        raise RuntimeError(
+            f"boss_extrude_up_to_surface '{feat['name']}': up-to target face "
+            f"selected but GetSelectedObject6 returned None"
+        )
+
+    # 2) Select the profile sketch (Mark 0) — clears the target selection.
+    _select_sketch(ctx, sketch_name)
+
+    # 3) Re-append the target surface (callout-free IEntity.Select2, immune to
+    #    the SelectByID2 ICallout OOP wall; mark-agnostic per the seat proof).
+    if not target_face_obj.Select2(True, 0):
+        raise RuntimeError(
+            f"boss_extrude_up_to_surface '{feat['name']}': could not append the "
+            f"up-to target surface to the selection stack"
+        )
+
+    flip = bool(feat.get("flip", False))
+    merge = bool(feat.get("merge", True))
+    f = _call_feature_extrusion(
+        ctx, end_cond=SW_END_COND_UP_TO_SURFACE, depth_m=0.0, flip=flip, merge=merge
+    )
+    f.Name = feat["name"]
+    return _boss_built_feature(feat, sketch, sketch_name, f, None, flip)
 
 
 def _build_cut_extrude_through_all(
@@ -1896,6 +1971,11 @@ DESCRIPTORS: dict[str, FeatureDescriptor] = {
         handler=None,
         dim_fields={"depth": "D1", "depth2": "D2"},
     ),
+    "boss_extrude_up_to_surface": FeatureType(
+        name="boss_extrude_up_to_surface",
+        handler=None,
+        dim_fields={},  # no depth dim — terminus is the target surface
+    ),
     "cut_extrude_through_all": FeatureType(
         name="cut_extrude_through_all",
         handler=None,
@@ -2027,6 +2107,7 @@ def _wire_handlers() -> None:
         "boss_extrude_midplane": _build_boss_extrude_midplane,
         "boss_extrude_through_all": _build_boss_extrude_through_all,
         "boss_extrude_two_direction": _build_boss_extrude_two_direction,
+        "boss_extrude_up_to_surface": _build_boss_extrude_up_to_surface,
         "cut_extrude_through_all": _build_cut_extrude_through_all,
         "cut_extrude_blind": _build_cut_extrude_blind,
         "cut_extrude_midplane": _build_cut_extrude_midplane,

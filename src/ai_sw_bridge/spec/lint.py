@@ -220,6 +220,7 @@ _BODY_PRODUCING_TYPES = frozenset(
         "boss_extrude_blind",
         "boss_extrude_midplane",
         "boss_extrude_two_direction",
+        "boss_extrude_up_to_surface",
         "revolve_boss",
     }
 )

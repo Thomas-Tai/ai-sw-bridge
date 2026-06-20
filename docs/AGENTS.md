@@ -27,7 +27,7 @@ The feature types available (16 shipped primitives + 2 cut end-condition variant
 |---|---|
 | Sketch | `sketch_rectangle_on_plane`, `sketch_rectangle_on_face`, `sketch_circle_on_plane`, `sketch_circle_on_face`, `sketch_circles_on_face` |
 | Sketch primitives | `sketch_line`, `sketch_arc`, `sketch_spline`, `sketch_slot`, `sketch_polygon`, `sketch_ellipse`, `sketch_text`, `sketch_3d_sketch` |
-| Extrude | `boss_extrude_blind`, `boss_extrude_midplane`, `boss_extrude_through_all`, `boss_extrude_two_direction`, `cut_extrude_through_all`, `cut_extrude_blind`, `cut_extrude_midplane`, `cut_extrude_two_direction`, `revolve_boss`, `revolve_cut` |
+| Extrude | `boss_extrude_blind`, `boss_extrude_midplane`, `boss_extrude_through_all`, `boss_extrude_two_direction`, `boss_extrude_up_to_surface`, `cut_extrude_through_all`, `cut_extrude_blind`, `cut_extrude_midplane`, `cut_extrude_two_direction`, `revolve_boss`, `revolve_cut` |
 | Modify | `fillet_constant_radius`, `chamfer_edge`, `simple_hole` |
 | Pattern | `linear_pattern`, `circular_pattern`, `mirror_feature` |
 

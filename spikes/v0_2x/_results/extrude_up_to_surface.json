@@ -1,0 +1,158 @@
+{
+  "spike": "extrude_up_to_surface",
+  "purpose": "Prove (or wall) the UpToSurface/UpToSelection boss end condition by sweeping the reference selection-mark x end-condition and asserting the boss bbox terminates at the +60 mm ref plane.",
+  "attempts": [
+    {
+      "label": "mark=0,T1=10",
+      "selection": {
+        "requested_ref_mark": 0,
+        "selected_count": 2,
+        "marks": [
+          {
+            "idx": 1,
+            "mark": 0,
+            "type": 9
+          },
+          {
+            "idx": 2,
+            "mark": 0,
+            "type": 4
+          }
+        ]
+      },
+      "materialized": false,
+      "bbox_zmax_before_mm": 10.0,
+      "bbox_zmax_after_mm": 10.0,
+      "target_zmax_mm": 60.00000000000001,
+      "verdict": "NO_OP"
+    },
+    {
+      "label": "mark=1,T1=10",
+      "selection": {
+        "requested_ref_mark": 1,
+        "selected_count": 2,
+        "marks": [
+          {
+            "idx": 1,
+            "mark": 0,
+            "type": 9
+          },
+          {
+            "idx": 2,
+            "mark": 1,
+            "type": 4
+          }
+        ]
+      },
+      "materialized": false,
+      "bbox_zmax_before_mm": 10.0,
+      "bbox_zmax_after_mm": 10.0,
+      "target_zmax_mm": 60.00000000000001,
+      "verdict": "NO_OP"
+    },
+    {
+      "label": "mark=2,T1=10",
+      "selection": {
+        "requested_ref_mark": 2,
+        "selected_count": 2,
+        "marks": [
+          {
+            "idx": 1,
+            "mark": 0,
+            "type": 9
+          },
+          {
+            "idx": 2,
+            "mark": 2,
+            "type": 4
+          }
+        ]
+      },
+      "materialized": false,
+      "bbox_zmax_before_mm": 10.0,
+      "bbox_zmax_after_mm": 10.0,
+      "target_zmax_mm": 60.00000000000001,
+      "verdict": "NO_OP"
+    },
+    {
+      "label": "mark=0,T1=4",
+      "selection": {
+        "requested_ref_mark": 0,
+        "selected_count": 2,
+        "marks": [
+          {
+            "idx": 1,
+            "mark": 0,
+            "type": 9
+          },
+          {
+            "idx": 2,
+            "mark": 0,
+            "type": 4
+          }
+        ]
+      },
+      "materialized": true,
+      "bbox_zmax_before_mm": 10.0,
+      "bbox_zmax_after_mm": 60.00000000000001,
+      "target_zmax_mm": 60.00000000000001,
+      "verdict": "PASS"
+    },
+    {
+      "label": "mark=1,T1=4",
+      "selection": {
+        "requested_ref_mark": 1,
+        "selected_count": 2,
+        "marks": [
+          {
+            "idx": 1,
+            "mark": 0,
+            "type": 9
+          },
+          {
+            "idx": 2,
+            "mark": 1,
+            "type": 4
+          }
+        ]
+      },
+      "materialized": true,
+      "bbox_zmax_before_mm": 10.0,
+      "bbox_zmax_after_mm": 60.00000000000001,
+      "target_zmax_mm": 60.00000000000001,
+      "verdict": "PASS"
+    },
+    {
+      "label": "mark=2,T1=4",
+      "selection": {
+        "requested_ref_mark": 2,
+        "selected_count": 2,
+        "marks": [
+          {
+            "idx": 1,
+            "mark": 0,
+            "type": 9
+          },
+          {
+            "idx": 2,
+            "mark": 2,
+            "type": 4
+          }
+        ]
+      },
+      "materialized": true,
+      "bbox_zmax_before_mm": 10.0,
+      "bbox_zmax_after_mm": 60.00000000000001,
+      "target_zmax_mm": 60.00000000000001,
+      "verdict": "PASS"
+    }
+  ],
+  "sw_revision": "32.1.0",
+  "verdict": "PROVEN",
+  "winning_combos": [
+    "mark=0,T1=4",
+    "mark=1,T1=4",
+    "mark=2,T1=4"
+  ],
+  "wire_recommendation": "Wire boss_extrude_up_to_surface: select sketch (Mark 0) + up-to reference at the winning mark, FeatureExtrusion2 with the winning T1. Verify-the-effect = bbox Zmax at the target surface."
+}
