@@ -166,7 +166,21 @@ def _introspect_head(node: Any) -> dict[str, Any]:
             diag["segment_chain"] = _diag_segment(seg_list[0])
     except Exception as e:
         diag["IReferenceCurve_error"] = f"{type(e).__name__}: {e}"[:160]
-    # Fallback probes (projected-as-sketch / defensive).
+    # ISketch-head probe (project_curve is a projected sketch): typed
+    # ISketch.GetSketchSegments() -> segments, each seg.GetCurve() -> ICurve.
+    try:
+        sk = typed(spec, "ISketch", module=wrapper_module())
+        segs = sk.GetSketchSegments()
+        sk_list = list(segs) if isinstance(segs, (list, tuple)) else ([segs] if segs else [])
+        diag["ISketch.GetSketchSegments"] = f"len={len(sk_list)}"
+        if sk_list:
+            seg = sk_list[0]
+            raw_curve = _resolve(seg, "GetCurve")
+            diag["ISketch.seg.GetCurve"] = repr(raw_curve)[:60]
+            diag["ISketch.seg.length_mm"] = verify.icurve_length_mm(raw_curve)
+    except Exception as e:
+        diag["ISketch_error"] = f"{type(e).__name__}: {e}"[:140]
+    # Defensive probes on the raw spec.
     for probe in ("GetSketchSegments", "GetCurves"):
         try:
             val = _resolve(spec, probe)
@@ -186,7 +200,12 @@ def _probe_lane(
     candidate verify.curve_length_mm, and judge."""
     nodes = _nodes_matching(doc, tokens)
     if not nodes:
-        return {"lane": label, "verdict": "NO_NODE", "tokens": list(tokens)}
+        return {
+            "lane": label,
+            "verdict": "NO_NODE",
+            "tokens": list(tokens),
+            "feature_tree": [_type_name(n) for n in _feature_nodes(doc)],
+        }
     node = nodes[-1]  # the most-recently-created matching node
     # Absolute-cold first call (before any other curve COM traffic on the node)
     # — the real production exposure for a gate.
@@ -251,6 +270,70 @@ def _make_composite(doc: Any) -> bool:
     return True
 
 
+def _probe_project_curve(doc: Any) -> dict[str, Any]:
+    """Create a projected curve via the SHIPPED handler (its multi-mode path is
+    seat-proven GREEN), then probe verify.curve_length_mm on the node(s) it
+    actually added — the node type is uncertain (ProjectedSketch / RefCurve /
+    converted Sketch), so we diff the tree by type and probe each new node.
+
+    Distinguishes HANDLER_NOOP (the projection itself failed — a fixture/handler
+    matter, separate from the witness) from NO_OP (a real node the witness
+    can't read).
+    """
+    from collections import Counter
+
+    from ai_sw_bridge.features.project_curve import create_project_curve
+
+    try:
+        sketch_name, face = fx.seed_line_over_top(doc)
+    except Exception as e:
+        return {"lane": "project_curve", "verdict": "FIXTURE_FAILED",
+                "error": f"{type(e).__name__}: {e}"[:200]}
+    before = Counter(_type_name(n) for n in _feature_nodes(doc))
+    try:
+        ok, msg = create_project_curve(
+            doc, {"sketch_name": sketch_name}, {"face": face},
+        )
+    except Exception as e:
+        return {"lane": "project_curve", "verdict": "HANDLER_RAISED",
+                "error": f"{type(e).__name__}: {e}"[:200]}
+
+    after_nodes = _feature_nodes(doc)
+    new_ct = Counter(_type_name(n) for n in after_nodes) - before
+    seen: Counter = Counter()
+    candidates = []
+    for n in after_nodes:
+        t = _type_name(n)
+        if new_ct[t] - seen[t] > 0:
+            candidates.append(n)
+            seen[t] += 1
+
+    res: dict[str, Any] = {
+        "lane": "project_curve", "handler_ok": bool(ok), "handler_msg": msg,
+        "new_node_types": [_type_name(n) for n in candidates],
+    }
+    best = None
+    best_node = None
+    for n in candidates:
+        length = verify.curve_length_mm(n)
+        if length is not None and (best is None or length > best):
+            best, best_node = length, n
+    res["curve_length_mm"] = best
+    if best_node is not None:
+        res["winning_node_type"] = _type_name(best_node)
+        res["introspection"] = _introspect_head(best_node)
+
+    if not ok:
+        res["verdict"] = "HANDLER_NOOP"      # projection failed (fixture/handler)
+    elif best is None:
+        res["verdict"] = "NO_OP"             # real node, witness can't read it
+    elif best >= 10.0:
+        res["verdict"] = "PASS"
+    else:
+        res["verdict"] = "SHORT"
+    return res
+
+
 def _write_and_report(out: dict[str, Any], code: int) -> int:
     res_dir = Path(__file__).resolve().parent / "_results"
     res_dir.mkdir(parents=True, exist_ok=True)
@@ -305,6 +388,10 @@ def main() -> int:
             )
         else:
             out["lanes"].append({"lane": "composite", "verdict": "MAKE_FAILED"})
+
+        # --- Projected-curve lane: created via the shipped handler; the witness
+        # is probed on whatever node it adds (ISketch or IReferenceCurve head).
+        out["lanes"].append(_probe_project_curve(doc))
 
         verdicts = [latest.get("verdict") for latest in out["lanes"]]
         if any(v == "PASS" for v in verdicts):
