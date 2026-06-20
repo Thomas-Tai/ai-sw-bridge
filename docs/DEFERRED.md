@@ -592,6 +592,38 @@ Watch for these signals; they would unblock items above:
 - **First multi-part assembly user** — unblocks L4 multi-part storage decision.
 - **First non-English contributor** — pulls forward i18n catalog work beyond the scaffold.
 
+## W68 Route-C Classification (kernel wall proofs, 2026-06-20)
+
+Route-C in-process probe (`spikes/v0_2x/route_c/`) classifies four features
+that ghosted out-of-process: does the feature ghost because of the **COM
+marshaling boundary** (fixable), or because the **Parasolid kernel structurally
+refuses** it (permanently deferred)?
+
+| Feature | API call | In-process attempts | Result | Verdict |
+|---|---|---|---|---|
+| **edge_flange** | `InsertSheetMetalEdgeFlange2` (13-arg) | 8: `{edge_arg, preselect} × {opts:1,129} × {90°,45°}` | 8/8 ghost (ret:null, dVol:0, dFaces:0) | **KERNEL WALL** |
+| **miter_flange** | `InsertSheetMetalMiterFlange` (14-arg) + Mode-A scan | 16: 4 FlangePos legacy + 12 CreateDefinition IDs scanned | 16/16 ghost (no IMiterFlangeFeatureData found) | **KERNEL WALL** |
+| **jog** | `IModelDoc2.InsertSheetMetalJog` (7-arg, Void) | 6: `{30°,45°,90°} × {10mm,20mm}` offset | 6/6 ghost (dFaces:0, bbox:same, dVol:0) | **KERNEL WALL** |
+| **wrap** | `InsertWrapFeature2` (5-arg) + Mode-A scan | 13: 3 types (emboss/deboss/scribe) + 10 CreateDefinition IDs | 13/13 ghost (no IWrapSketchFeatureData found) | **KERNEL WALL** |
+
+**Structural finding:** all four features require a **profile↔face or
+profile↔topology relation** that the Parasolid kernel structurally refuses,
+even with a direct `ISldWorks` pointer (no COM marshaling boundary). This is
+the same class as the W67 `FeatureBossThicken` kernel wall (12/12 ghost
+in-process, `route_c_sweep_sentinel.txt`). The W65 diagnosis ("needs Route-C,
+not more spike iteration") is now resolved: Route-C proves these are **not**
+COM-boundary walls — no OOP fix (corrected selection, VARIANT coercion,
+typed proxy) can materialize them.
+
+**Implication for the production OOP path:** these four features are
+**permanently deferred** alongside thicken, rib, loft, wrap (F5), and F6
+boundary boss. The Route-C harness is retained in `spikes/v0_2x/route_c/` for
+future classification tasks.
+
+Artifacts: `spikes/v0_2x/_results/route_c_{edge_flange,miter_flange,jog,wrap}.{json,txt}`.
+
+---
+
 ## Process
 
 Adding to this list:

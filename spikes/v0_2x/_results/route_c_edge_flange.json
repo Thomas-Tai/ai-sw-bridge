@@ -1,0 +1,29 @@
+{
+  "feature": "edge_flange",
+  "api_call": "IFeatureManager.InsertSheetMetalEdgeFlange2",
+  "api_arity": 13,
+  "route": "Route-C in-process (ISwAddin, direct ISldWorks pointer)",
+  "fixture": "base flange (CreateDefinition(34)/IBaseFlangeFeatureData, 60x40x1.5mm, 3600 mm3 solid, 6 faces, 12 edges)",
+  "gate": "ADDITIVE: dVol > 0.001 mm3",
+  "matrix": {
+    "approaches": ["edge_arg (pass edge object as FlangeEdges)", "preselect_only (null FlangeEdges, use selection)"],
+    "boolean_options": [1, 129],
+    "angles_deg": [90, 45],
+    "total_attempts": 8
+  },
+  "results": [
+    {"id": 1, "approach": "edge_arg", "opts": 1, "angle_deg": 90, "ret": "null", "dsolids": 0, "dvol_mm3": 0.0, "dfaces": 0, "pass": false},
+    {"id": 2, "approach": "preselect", "opts": 1, "angle_deg": 90, "ret": "null", "dsolids": 0, "dvol_mm3": 0.0, "dfaces": 0, "pass": false, "sel_count": 1},
+    {"id": 3, "approach": "edge_arg", "opts": 1, "angle_deg": 45, "ret": "null", "dsolids": 0, "dvol_mm3": 0.0, "dfaces": 0, "pass": false},
+    {"id": 4, "approach": "preselect", "opts": 1, "angle_deg": 45, "ret": "null", "dsolids": 0, "dvol_mm3": 0.0, "dfaces": 0, "pass": false, "sel_count": 1},
+    {"id": 5, "approach": "edge_arg", "opts": 129, "angle_deg": 90, "ret": "null", "dsolids": 0, "dvol_mm3": 0.0, "dfaces": 0, "pass": false},
+    {"id": 6, "approach": "preselect", "opts": 129, "angle_deg": 90, "ret": "null", "dsolids": 0, "dvol_mm3": 0.0, "dfaces": 0, "pass": false, "sel_count": 1},
+    {"id": 7, "approach": "edge_arg", "opts": 129, "angle_deg": 45, "ret": "null", "dsolids": 0, "dvol_mm3": 0.0, "dfaces": 0, "pass": false},
+    {"id": 8, "approach": "preselect", "opts": 129, "angle_deg": 45, "ret": "null", "dsolids": 0, "dvol_mm3": 0.0, "dfaces": 0, "pass": false, "sel_count": 1}
+  ],
+  "verdict": "KERNEL_WALL",
+  "verdict_rationale": "8/8 attempts ghosted in-process (ret:null, dVol:0, dFaces:0) identical to OOP. The profile-face relation is structurally refused by the Parasolid kernel, not the COM marshaling boundary. Same class as W67 FeatureBossThicken.",
+  "sw_version": "32.1.0 (SW2024 SP1)",
+  "sentinel_path": "spikes/v0_2x/_results/route_c_edge_flange_sentinel.txt",
+  "date": "2026-06-20"
+}

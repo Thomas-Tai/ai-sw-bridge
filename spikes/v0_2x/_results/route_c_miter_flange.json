@@ -1,0 +1,27 @@
+{
+  "feature": "miter_flange",
+  "api_call": "IFeatureManager.InsertSheetMetalMiterFlange",
+  "api_arity": 14,
+  "route": "Route-C in-process (ISwAddin, direct ISldWorks pointer)",
+  "fixture": "base flange (CreateDefinition(34)/IBaseFlangeFeatureData, 60x40x1.5mm, 3600 mm3 solid, 6 faces, 12 edges)",
+  "gate": "ADDITIVE: dVol > 0.001 mm3",
+  "matrix": {
+    "legacy_insert": {"flange_pos_values": [0, 1, 2, 3], "attempts": 4},
+    "mode_a_scan": {"scanned_ids": [35, 36, 38, 39, 41, 42, 43, 44, 45, 50, 55, 60], "found_imiterflangedata": false, "attempts": 12},
+    "total_attempts": 16
+  },
+  "results_summary": {
+    "legacy_all_ghosted": true,
+    "legacy_ret": "null (all 4 FlangePos values)",
+    "legacy_dvol_mm3": 0.0,
+    "legacy_dfaces": 0,
+    "mode_a_imiterflangedata_found": false,
+    "mode_a_id35_def_ok_qi_null": true,
+    "mode_a_all_other_ids_null": true
+  },
+  "verdict": "KERNEL_WALL",
+  "verdict_rationale": "16/16 attempts ghosted in-process. Legacy InsertSheetMetalMiterFlange 4/4 FlangePos values returned null with zero geometric effect. Mode-A IMiterFlangeFeatureData not found in scanned CreateDefinition IDs (35-60). Identical to OOP. Same class as edge_flange and thicken.",
+  "sw_version": "32.1.0 (SW2024 SP1)",
+  "sentinel_path": "spikes/v0_2x/_results/route_c_miter_flange_sentinel.txt",
+  "date": "2026-06-20"
+}
