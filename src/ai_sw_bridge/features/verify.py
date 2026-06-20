@@ -35,9 +35,10 @@ genuinely want visible-only), but the default and every in-tree shim now use
 from __future__ import annotations
 
 import enum
+import math
 from typing import Any
 
-from ..com.earlybind import typed
+from ..com.earlybind import typed, typed_qi
 from ..com.sw_type_info import wrapper_module
 
 # --- swconst (SW2024 v32.1.0.123 harvest) ---------------------------------
@@ -50,6 +51,8 @@ SW_SHEET_BODY = 1  # swBodyType_e.swSheetBody
 VOL_EPS_MM3 = 1e-6
 AREA_EPS_MM2 = 1e-6
 BBOX_EPS_M = 1e-6
+# A reference curve below this arc length is a ghost (W42 trap), not a curve.
+CURVE_LEN_EPS_MM = 1e-6
 
 # GetFeatures(False) returns a flat node tuple; bound the walk on pathological
 # trees (project_curve's historical limit).
@@ -292,6 +295,131 @@ def count_nodes_by_type(
 
 
 # ===========================================================================
+# CURVE geometric witness (W67 P3b) — arc length as the anti-ghost scalar
+#
+# The CURVE lanes (composite/helix/project_curve) historically gated on a
+# feature-node COUNT delta alone — the W42 ghost trap (a node can materialize
+# with no real geometry).  The geometric witness is total arc length: a real
+# reference curve has positive length; a ghost node has none.
+#
+# TAIL (PROVEN OOP — brep/interrogator.py:_read_curve_mid_and_arc, seat-
+# confirmed SW2024 SP1 rev 32.1): ICurve.GetEndParams() → (status, tmin, tmax,
+# …); ICurve.GetLength(tmin, tmax) → metres.  Late-bound proxies cannot
+# dispatch these ("Member not found") — typed_qi(…, "ICurve") is required;
+# direct dispatch is the mock/late-bound fallback.
+#
+# HEAD (SEAT-PENDING — W67 P3b): the IFeature-node → ICurve hop for a STANDALONE
+# reference curve is NOT yet proven OOP (the interrogator proves EDGE → ICurve,
+# i.e. solid-body topology — a reference curve is not a B-rep boundary).  The
+# candidate ladder below is exercised live by spikes/spike_curve_length_witness.py.
+# Until that seat fire proves a head, NOTHING here is wired into a handler gate —
+# composite/helix/project_curve keep their node-count gate in production.
+# ===========================================================================
+def _call0(obj: Any, name: str) -> Any:
+    """Callable-or-property-guarded 0-arg accessor; ``None`` on any failure."""
+    try:
+        attr = getattr(obj, name)
+        return attr() if callable(attr) else attr
+    except Exception:
+        return None
+
+
+def _as_list(v: Any) -> list[Any]:
+    """Normalize a COM return (scalar / tuple / list / None) to a list."""
+    if not v:
+        return []
+    return list(v) if isinstance(v, (list, tuple)) else [v]
+
+
+def icurve_length_mm(raw_curve: Any) -> float | None:
+    """Arc length (mm) of a single ``ICurve``; ``None`` if unreadable.
+
+    The PROVEN tail (brep/interrogator.py): ``typed_qi(…, "ICurve")`` →
+    ``GetEndParams()`` (idx 1,2 = tmin,tmax) → ``GetLength(tmin, tmax)`` in
+    metres.  Direct dispatch is the late-bound / mock fallback when typed_qi
+    cannot QI (e.g. an offline fake).
+    """
+    if raw_curve is None:
+        return None
+    try:
+        curve = typed_qi(raw_curve, "ICurve")
+    except Exception:
+        curve = raw_curve  # late-bound / mock fallback
+    ep = _call0(curve, "GetEndParams")
+    if not (isinstance(ep, (tuple, list)) and len(ep) >= 3):
+        return None
+    try:
+        tmin, tmax = float(ep[1]), float(ep[2])
+    except (TypeError, ValueError):
+        return None
+    if not (math.isfinite(tmin) and math.isfinite(tmax) and tmax > tmin):
+        return None
+    try:
+        gl = float(curve.GetLength(tmin, tmax))
+    except Exception:
+        return None
+    if math.isfinite(gl) and gl >= 0.0:
+        return gl * 1000.0  # metres → mm
+    return None
+
+
+def _iter_node_curves(node: Any) -> list[Any]:
+    """Candidate ``IFeature`` → ``ICurve`` head ladder (SEAT-PENDING, W67 P3b).
+
+    Ordered by prior confidence; every hop is fail-soft.  The live spike reports
+    which one actually yields curves for composite/helix/projected nodes.
+
+      1. ``GetSpecificFeature2()`` → ``.GetCurves()`` — the architecturally
+         correct cast (GetSpecificFeature2 is OOP-proven in observe.py:871);
+         primary bet for composite/helix.
+      2. ``GetSpecificFeature2()`` → ``ISketch.GetSketchSegments()`` →
+         ``segment.GetCurve()`` — project_curve is a projected *sketch*
+         (InsertProjectedSketch2), so its specific feature is likely ISketch,
+         not a curve object (a genuinely different head per lane).
+      3. ``IFeature.GetEdges()`` → ``IEdge.GetCurve()`` — low confidence: a
+         reference curve is not solid-body topology, so this likely returns [].
+    """
+    curves: list[Any] = []
+    spec = _call0(node, "GetSpecificFeature2")
+    if spec is not None:
+        curves.extend(_as_list(_call0(spec, "GetCurves")))
+        for seg in _as_list(_call0(spec, "GetSketchSegments")):
+            c = _call0(seg, "GetCurve")
+            if c is not None:
+                curves.append(c)
+    for edge in _as_list(_call0(node, "GetEdges")):
+        try:
+            te = typed_qi(edge, "IEdge")
+        except Exception:
+            te = edge
+        c = _call0(te, "GetCurve")
+        if c is not None:
+            curves.append(c)
+    return curves
+
+
+def curve_length_mm(node: Any) -> float | None:
+    """Total arc length (mm) of the reference curve(s) a CURVE feature node
+    owns, or ``None`` if no curve geometry is readable OOP.
+
+    Proven tail + SEAT-PENDING head (see section banner).  Fail-soft and
+    UNWIRED: no handler gate calls this until spike_curve_length_witness proves
+    the head hop on the live seat (W67 P3b adjudication — never wire an unproven
+    scalar into a GREEN lane's gate).
+    """
+    if node is None:
+        return None
+    total = 0.0
+    found = False
+    for curve in _iter_node_curves(node):
+        length = icurve_length_mm(curve)
+        if length is not None:
+            total += length
+            found = True
+    return total if found else None
+
+
+# ===========================================================================
 # Centroid (BODY_MOVE substrate)
 # ===========================================================================
 def body_centroid_m(doc: Any) -> tuple[float, float, float] | None:
@@ -355,3 +483,20 @@ def gate_surface_to_solid(d_vol_mm3: float, d_solids: int) -> bool:
     """SURFACE_TO_SOLID (thicken / knit→solid): volume appeared AND a solid
     body materialized.  WALLED OOP for thicken — see docs/DEFERRED.md."""
     return d_vol_mm3 > VOL_EPS_MM3 and d_solids >= 1
+
+
+def gate_curve(d_nodes: int, total_len_mm: float | None) -> bool:
+    """CURVE (composite/helix/project_curve): a new curve feature node AND the
+    curve carries real arc length (the anti-ghost geometric witness).
+
+    HARD gate — ``total_len_mm is None`` (length unreadable OOP) is treated as
+    FAILURE, never as a fall-back to node-count (W67 P3b adjudication: a gate
+    that silently degrades to a weaker check is a ghost trap with extra steps).
+
+    SEAT-PENDING: NOT wired into composite/helix/project_curve until
+    spike_curve_length_witness proves the IFeature → ICurve head hop on the live
+    seat.  The production lanes keep their node-count gate until then.
+    """
+    if total_len_mm is None:
+        return False
+    return d_nodes > 0 and total_len_mm > CURVE_LEN_EPS_MM

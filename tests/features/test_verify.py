@@ -187,6 +187,71 @@ class TestGates:
 
 
 # ---------------------------------------------------------------------------
+# CURVE geometric witness (W67 P3b) — proven tail + hard gate + head ladder
+# ---------------------------------------------------------------------------
+class _Curve:
+    """Fake ICurve: GetEndParams -> (status, tmin, tmax, ...); GetLength(t1,t2) m."""
+
+    def __init__(self, length_m: float, tmin: float = 0.0, tmax: float = 1.0) -> None:
+        self._len_m = length_m
+        self._tmin = tmin
+        self._tmax = tmax
+
+    def GetEndParams(self):  # noqa: N802
+        return (True, self._tmin, self._tmax, False, False)
+
+    def GetLength(self, t1, t2):  # noqa: N802
+        return self._len_m
+
+
+class _SpecWithCurves:
+    """Fake GetSpecificFeature2() return exposing GetCurves() -> ICurve[]."""
+
+    def __init__(self, *curves) -> None:
+        self._curves = list(curves)
+
+    def GetCurves(self):  # noqa: N802
+        return self._curves
+
+
+class _CurveNode:
+    """Fake IFeature whose GetSpecificFeature2() yields a curve-bearing spec."""
+
+    def __init__(self, spec) -> None:
+        self._spec = spec
+
+    def GetSpecificFeature2(self):  # noqa: N802
+        return self._spec
+
+
+class TestCurveWitness:
+    def test_icurve_length_mm_proven_tail(self) -> None:
+        # 0.025 m arc -> 25.0 mm.
+        assert abs(v.icurve_length_mm(_Curve(0.025)) - 25.0) < 1e-9
+
+    def test_icurve_length_none_when_degenerate(self) -> None:
+        # tmax <= tmin -> unreadable.
+        assert v.icurve_length_mm(_Curve(0.025, tmin=1.0, tmax=1.0)) is None
+        assert v.icurve_length_mm(None) is None
+
+    def test_curve_length_mm_sums_head_to_tail(self) -> None:
+        node = _CurveNode(_SpecWithCurves(_Curve(0.010), _Curve(0.005)))
+        assert abs(v.curve_length_mm(node) - 15.0) < 1e-9
+
+    def test_curve_length_mm_none_when_no_geometry(self) -> None:
+        # A node whose specific feature exposes no curves -> ghost (None).
+        assert v.curve_length_mm(_CurveNode(_SpecWithCurves())) is None
+        assert v.curve_length_mm(None) is None
+
+    def test_gate_curve_is_hard(self) -> None:
+        assert v.gate_curve(1, 25.0) is True
+        assert v.gate_curve(0, 25.0) is False        # no new node
+        assert v.gate_curve(1, 1e-9) is False        # length below eps (ghost)
+        # HARD gate: unreadable length is FAILURE, never node-count fallback.
+        assert v.gate_curve(1, None) is False
+
+
+# ---------------------------------------------------------------------------
 # Centroid
 # ---------------------------------------------------------------------------
 class TestCentroid:

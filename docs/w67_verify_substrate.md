@@ -68,6 +68,39 @@ curve that nodes-but-ghosts would pass. `composite` is weakest (any node;
 helix/project_curve at least type-filter). **Phase-3 work:** add a geometry-
 grade witness for `FeatureClass.CURVE`.
 
+#### Phase-3b status — witness SCAFFOLDED, head hop SEAT-PENDING
+
+The geometric witness is **total arc length (mm)** (a real reference curve has
+positive length; a ghost node has none). Decomposed into a proven tail and an
+unproven head:
+
+- **TAIL — PROVEN OOP.** `verify.icurve_length_mm(raw_curve)` reuses the
+  `brep/interrogator.py` recipe verbatim: `typed_qi(…, "ICurve")` →
+  `GetEndParams()` (idx 1,2 = tmin,tmax) → `GetLength(tmin, tmax)` (metres →
+  mm). Late-bound proxies cannot dispatch these ("Member not found"); typed_qi
+  is required, direct dispatch is the mock fallback. Unit-tested offline.
+- **HEAD — SEAT-PENDING.** The `IFeature` node → `ICurve` hop for a *standalone*
+  reference curve is unproven OOP (the interrogator only proves EDGE → ICurve,
+  i.e. solid-body topology; a reference curve is not a B-rep boundary).
+  `verify._iter_node_curves(node)` holds the candidate ladder:
+  1. `GetSpecificFeature2()` → `.GetCurves()` (primary; GetSpecificFeature2 is
+     OOP-proven in `observe.py:871`) — bet for composite/helix.
+  2. `GetSpecificFeature2()` → `ISketch.GetSketchSegments()` → `seg.GetCurve()`
+     — bet for project_curve (a projected *sketch*, distinct head per lane).
+  3. `IFeature.GetEdges()` → `IEdge.GetCurve()` — low confidence (not topology).
+- **GATE — HARD, UNWIRED.** `verify.gate_curve(d_nodes, total_len_mm)` requires
+  `d_nodes > 0 AND total_len_mm > CURVE_LEN_EPS_MM`; `total_len_mm is None`
+  (unreadable) is **failure**, never a fall-back to node-count (adjudication:
+  no graceful degradation in a gate). **NOT wired** into composite/helix/
+  project_curve — they keep their node-count gate until the seat proves a head.
+
+**Seat probe:** `spikes/v0_2x/spike_curve_length_witness.py` fires the
+production-candidate `verify.curve_length_mm` on real helix/composite nodes +
+O1-introspects what `GetSpecificFeature2()` returns, and reports which head
+lands. Verdicts: `HEAD_PROVEN` → W0 wires `gate_curve` into the PASS lane(s) in
+a follow-up commit; `HEAD_WALLED` → CURVE witness is Route-C, lanes keep
+node-count, record in DEFERRED.md.
+
 ### 3. `mate_reference._count_feature_nodes` intentionally NOT delegated
 
 Its `TestNeverRaise` contract requires a COM failure in the node count to
