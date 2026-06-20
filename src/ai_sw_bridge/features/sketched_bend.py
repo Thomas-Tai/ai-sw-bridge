@@ -63,8 +63,8 @@ _BEND_POSITIONS: dict[str, int] = {
 
 def _metrics(doc: Any) -> tuple[int, float]:
     """(face_count, volume_mm³) over solid bodies. Delegates to the W67 verify
-    substrate; ``visible_only=True`` preserves the historical solid-lane arg."""
-    return verify.solid_metrics(doc, visible_only=True)
+    substrate (``visible_only=False`` — Phase-3 normalized to count all bodies)."""
+    return verify.solid_metrics(doc)
 
 
 def _body_bbox(doc: Any) -> tuple[float, ...] | None:
@@ -72,7 +72,7 @@ def _body_bbox(doc: Any) -> tuple[float, ...] | None:
     substrate. The fold-class witness: a bend is VOLUME-PRESERVING, so ΔVol≈0
     is expected — the EFFECT is the bounding box moving as material rotates out
     of the original plane (W65 seat finding 2026-06-18)."""
-    return verify.body_bbox(doc, visible_only=True)
+    return verify.body_bbox(doc)
 
 
 def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str | None]:

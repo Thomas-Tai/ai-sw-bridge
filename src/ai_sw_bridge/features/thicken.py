@@ -57,13 +57,10 @@ _THICKEN_DIRECTIONS: dict[str, int] = {
 
 
 def _sheet_bodies(doc: Any) -> list[Any] | None:
-    """Sheet bodies of *doc*. Delegates to the W67 verify substrate.
-
-    NOTE (W67 Phase-3 finding): thicken historically read SHEET bodies with
-    ``visible_only=True`` — unlike the surface-create lanes (planar/offset/knit)
-    which used ``False``. Preserved verbatim pending the GetBodies2-visibility-
-    drift adjudication."""
-    return verify.sheet_bodies(doc, visible_only=True)
+    """Sheet bodies of *doc*. Delegates to the W67 verify substrate
+    (``visible_only=False`` — Phase-3 normalized to count all bodies; thicken
+    historically used ``True`` here, the now-resolved visibility drift)."""
+    return verify.sheet_bodies(doc)
 
 
 def _surface_area(body: Any) -> float:
@@ -84,15 +81,15 @@ def _surface_area(body: Any) -> float:
 
 def _solid_body_count(doc: Any) -> int:
     """Count of solid bodies in *doc*. Delegates to the W67 verify substrate
-    (``visible_only=True``, per the historical thicken arg)."""
-    return verify.solid_body_count(doc, visible_only=True)
+    (``visible_only=False`` — Phase-3 normalized)."""
+    return verify.solid_body_count(doc)
 
 
 def _metrics_solid(doc: Any) -> tuple[int, float]:
     """(face_count, volume_mm³) over solid bodies. Delegates to the W67 verify
-    substrate (``visible_only=True``) — the additive gate thicken reverts to
+    substrate (``visible_only=False``) — the additive gate thicken reverts to
     after consuming the sheet body."""
-    return verify.solid_metrics(doc, visible_only=True)
+    return verify.solid_metrics(doc)
 
 
 def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str | None]:

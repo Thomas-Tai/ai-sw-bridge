@@ -77,19 +77,16 @@ def _total_sheet_area_mm2(doc: Any) -> float:
 
 
 def _solid_body_count(doc: Any) -> int:
-    """Solid-body count. Delegates to the W67 verify substrate.
-
-    NOTE (W67 Phase-3 finding): knit historically read solids with
-    ``visible_only=False`` — UNLIKE the solid lanes (hem/sketched_bend/
-    split_line) which used ``True``. Preserved verbatim here pending the
-    GetBodies2-visibility-drift adjudication."""
-    return verify.solid_body_count(doc, visible_only=False)
+    """Solid-body count. Delegates to the W67 verify substrate
+    (``visible_only=False`` — knit always used False; W67 Phase 3 made it the
+    normalized default for all lanes)."""
+    return verify.solid_body_count(doc)
 
 
 def _solid_volume_mm3(doc: Any) -> float:
     """Total solid volume (mm³). Delegates to the W67 verify substrate
-    (``visible_only=False``, per the historical knit arg)."""
-    return verify.solid_volume_mm3(doc, visible_only=False)
+    (``visible_only=False`` — Phase-3 normalized default)."""
+    return verify.solid_volume_mm3(doc)
 
 
 def _null_disp() -> Any:

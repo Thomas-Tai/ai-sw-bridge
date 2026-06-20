@@ -23,14 +23,13 @@ the conserved/measurable witness is feature-class-specific —
 
 A node/Feature return ALONE is never success — that is the W21/W42 ghost trap.
 
-**Behavior-preservation contract (W67 Phase 2):** this is a pure refactor.
-The readers reproduce the prior per-handler behavior exactly; in particular
-``visible_only`` (the ``GetBodies2`` 2nd arg) is a parameter that each caller
-passes with its historical value.  A known inconsistency — the solid lanes
-historically passed ``True`` while the surface lanes passed ``False`` — is
-preserved here, NOT silently normalized, and is tracked as a W67 Phase-3
-finding (a hidden solid body is invisible to the additive gate; the surface
-lanes' ``False`` is the safer choice).
+**W67 Phase-3 normalization:** every body reader now defaults to
+``visible_only=False`` (count ALL bodies).  This resolves the Phase-2 drift
+(solid lanes historically passed ``True``, surface lanes ``False``): a hidden
+but created body is a real effect, so the ``True`` lanes carried a latent
+false-negative.  ``visible_only`` remains a parameter (a future caller may
+genuinely want visible-only), but the default and every in-tree shim now use
+``False``.  See docs/w67_verify_substrate.md §1.
 """
 
 from __future__ import annotations
@@ -84,9 +83,8 @@ def bodies(doc: Any, body_type: int, visible_only: bool) -> list[Any] | None:
     a typed ``IModelDoc2`` proxy does not expose it, so fall back to a typed
     ``IPartDoc`` QI (the hem.py pattern).
 
-    ``visible_only`` is the ``GetBodies2`` ``bVisibleOnly`` arg — passed by the
-    caller with its historical value (see the module behavior-preservation
-    contract; the solid/sheet drift is intentional-for-now, tracked Phase 3).
+    ``visible_only`` is the ``GetBodies2`` ``bVisibleOnly`` arg.  Every in-tree
+    caller passes ``False`` (W67 Phase-3 normalization — count all bodies).
     """
     try:
         src = (
@@ -109,12 +107,13 @@ def _faces_of(body: Any) -> list[Any]:
     return list(f) if f else []
 
 
-def solid_metrics(doc: Any, visible_only: bool = True) -> tuple[int, float]:
+def solid_metrics(doc: Any, visible_only: bool = False) -> tuple[int, float]:
     """(face_count, volume_mm³) over the doc's solid bodies; (0, 0.0) on failure.
 
     The substrate for ADDITIVE_SOLID / FOLD* gates.  ``visible_only`` defaults
-    to ``True`` to match the historical solid-lane behavior (hem/sketched_bend/
-    split_line all called ``GetBodies2(SOLID, True)``).
+    to ``False`` — W67 Phase 3 normalized every reader to count ALL bodies
+    (a hidden/created body is a real effect; ``True`` was a latent false-
+    negative — see docs/w67_verify_substrate.md §1).
     """
     bs = bodies(doc, SW_SOLID_BODY, visible_only)
     if not bs:
@@ -135,13 +134,14 @@ def solid_metrics(doc: Any, visible_only: bool = True) -> tuple[int, float]:
     return faces, vol_mm3
 
 
-def solid_body_count(doc: Any, visible_only: bool = True) -> int:
-    """Count of solid bodies in *doc*; 0 on failure."""
+def solid_body_count(doc: Any, visible_only: bool = False) -> int:
+    """Count of solid bodies in *doc*; 0 on failure. ``visible_only`` defaults
+    to ``False`` (W67 Phase-3 normalization — count all bodies)."""
     bs = bodies(doc, SW_SOLID_BODY, visible_only)
     return len(bs) if bs else 0
 
 
-def solid_volume_mm3(doc: Any, visible_only: bool = True) -> float:
+def solid_volume_mm3(doc: Any, visible_only: bool = False) -> float:
     """Total solid volume (mm³); 0.0 on failure."""
     return solid_metrics(doc, visible_only)[1]
 
@@ -189,7 +189,7 @@ def sheet_area_mm2(doc: Any, visible_only: bool = False) -> float:
 # Bounding box (FOLD substrate — a bend is volume-preserving; the EFFECT is a
 # bbox change as material rotates out of the original plane)
 # ===========================================================================
-def body_bbox(doc: Any, visible_only: bool = True) -> tuple[float, ...] | None:
+def body_bbox(doc: Any, visible_only: bool = False) -> tuple[float, ...] | None:
     """Aggregate solid-body bounding box [xmin,ymin,zmin,xmax,ymax,zmax] in
     metres, or ``None`` on failure.  W65 seat finding: InsertSheetMetal3dBend
     returned +8 faces with ΔVol=0 — a real bend the old ΔVol>0 gate falsely

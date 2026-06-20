@@ -53,8 +53,8 @@ _HEM_POSITIONS: dict[str, int] = {"inside": 0, "outside": 1}
 
 def _metrics(doc: Any) -> tuple[int, float]:
     """(face_count, volume_mm³) over solid bodies. Delegates to the W67 verify
-    substrate; ``visible_only=True`` preserves the historical solid-lane arg."""
-    return verify.solid_metrics(doc, visible_only=True)
+    substrate (``visible_only=False`` — Phase-3 normalized to count all bodies)."""
+    return verify.solid_metrics(doc)
 
 
 def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str | None]:

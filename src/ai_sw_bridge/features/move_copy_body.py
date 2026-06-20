@@ -83,8 +83,8 @@ _METHOD_NAME = "InsertMoveCopyBody2"
 
 def _body_count(doc: Any) -> int:
     """Count solid bodies. Delegates to the W67 verify substrate
-    (``visible_only=True``, per the historical move_copy arg)."""
-    return verify.solid_body_count(doc, visible_only=True)
+    (``visible_only=False`` — Phase-3 normalized to count all bodies)."""
+    return verify.solid_body_count(doc)
 
 
 def _body_centroid_m(doc: Any) -> tuple[float, float, float] | None:
