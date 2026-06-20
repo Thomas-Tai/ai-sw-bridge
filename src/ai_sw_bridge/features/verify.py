@@ -308,12 +308,17 @@ def count_nodes_by_type(
 # dispatch these ("Member not found") — typed_qi(…, "ICurve") is required;
 # direct dispatch is the mock/late-bound fallback.
 #
-# HEAD (SEAT-PENDING — W67 P3b): the IFeature-node → ICurve hop for a STANDALONE
-# reference curve is NOT yet proven OOP (the interrogator proves EDGE → ICurve,
-# i.e. solid-body topology — a reference curve is not a B-rep boundary).  The
-# candidate ladder below is exercised live by spikes/spike_curve_length_witness.py.
-# Until that seat fire proves a head, NOTHING here is wired into a handler gate —
-# composite/helix/project_curve keep their node-count gate in production.
+# HEAD (SEAT-PROVEN — W67 P3b, spike_curve_length_witness HEAD_PROVEN): a node
+# from GetFeatures(False) is a late-bound proxy whose GetSpecificFeature2 trips
+# 'Member not found' OOP; the typed IFeature compiled dispid clears it.  The
+# specific feature is IReferenceCurve, whose GetSegments() returns the curve's
+# EDGES — so the proven EDGE→ICurve tail applies.  Confirmed on the live seat,
+# deterministic on the absolute-cold first call: helix 80.0 mm, composite
+# 70.0 mm.  LIFETIME: an ICurve is invalidated when its parent edge is released
+# — _node_curves returns the typed edges in a keepalive list the caller holds
+# during measurement (dropping them yields null; this was the W67 P3b bug, NOT
+# the cold-gen theory it was first mistaken for).  Still UNWIRED pending the
+# W67 P3b wiring decision.
 # ===========================================================================
 def _call0(obj: Any, name: str) -> Any:
     """Callable-or-property-guarded 0-arg accessor; ``None`` on any failure."""
@@ -363,59 +368,102 @@ def icurve_length_mm(raw_curve: Any) -> float | None:
     return None
 
 
-def _iter_node_curves(node: Any) -> list[Any]:
-    """Candidate ``IFeature`` → ``ICurve`` head ladder (SEAT-PENDING, W67 P3b).
+def _retype(obj: Any, iface: str) -> Any:
+    """Best-effort early-bind cast to *iface*; the raw object on failure
+    (offline fakes / late-bound surfaces where the cast is unavailable)."""
+    try:
+        return typed(obj, iface, module=wrapper_module())
+    except Exception:
+        return obj
 
-    Ordered by prior confidence; every hop is fail-soft.  The live spike reports
-    which one actually yields curves for composite/helix/projected nodes.
 
-      1. ``GetSpecificFeature2()`` → ``.GetCurves()`` — the architecturally
-         correct cast (GetSpecificFeature2 is OOP-proven in observe.py:871);
-         primary bet for composite/helix.
-      2. ``GetSpecificFeature2()`` → ``ISketch.GetSketchSegments()`` →
-         ``segment.GetCurve()`` — project_curve is a projected *sketch*
-         (InsertProjectedSketch2), so its specific feature is likely ISketch,
-         not a curve object (a genuinely different head per lane).
-      3. ``IFeature.GetEdges()`` → ``IEdge.GetCurve()`` — low confidence: a
-         reference curve is not solid-body topology, so this likely returns [].
+def _node_curves(node: Any) -> tuple[list[Any], list[Any]]:
+    """``IFeature`` node → (curves, keepalive) for a standalone reference curve.
+
+    Seat-corrected (W67 P3b): a node from ``GetFeatures(False)`` is a late-bound
+    IDispatch proxy whose ``GetSpecificFeature2`` trips ``'Member not found'``
+    (-2147352573) OOP — the typed ``IFeature`` compiled dispid clears it (the
+    same re-type idiom as spikes/v0_16/_seatcheck_sketch_fidelity_pae.py).  The
+    specific feature is ``IReferenceCurve`` whose ``GetSegments()`` returns the
+    curve's **edges**, so the proven EDGE→ICurve tail applies:
+
+        typed(node,"IFeature").GetSpecificFeature2()
+          → typed(spec,"IReferenceCurve").GetSegments()  # edges
+          → typed_qi(edge,"IEdge").GetCurve()            # ICurve
+
+    LIFETIME (seat-proven W67 P3b): an ``ICurve`` from ``IEdge.GetCurve()`` is
+    invalidated once its parent edge is released — so the typed edges are
+    returned in a parallel ``keepalive`` list the caller MUST hold alive while
+    measuring the curves (returning curves alone silently yields null lengths).
+
+    Fallbacks: a projected curve realized as a sketch (``ISketch`` →
+    ``GetSketchSegments`` → ``segment.GetCurve()``); and a defensive direct
+    ``GetCurves``.  Every hop is fail-soft.
     """
+    feat = _retype(node, "IFeature")
+    spec = _call0(feat, "GetSpecificFeature2")
+    if spec is None:
+        return [], []
     curves: list[Any] = []
-    spec = _call0(node, "GetSpecificFeature2")
-    if spec is not None:
-        curves.extend(_as_list(_call0(spec, "GetCurves")))
-        for seg in _as_list(_call0(spec, "GetSketchSegments")):
-            c = _call0(seg, "GetCurve")
-            if c is not None:
-                curves.append(c)
-    for edge in _as_list(_call0(node, "GetEdges")):
+    keepalive: list[Any] = []
+    # PRIMARY: IReferenceCurve.GetSegments() → edges → IEdge.GetCurve() → ICurve.
+    rc = _retype(spec, "IReferenceCurve")
+    for seg in _as_list(_call0(rc, "GetSegments")):
         try:
-            te = typed_qi(edge, "IEdge")
+            te = typed_qi(seg, "IEdge", module=wrapper_module())
         except Exception:
-            te = edge
+            te = seg
         c = _call0(te, "GetCurve")
         if c is not None:
             curves.append(c)
-    return curves
+            keepalive.append(te)  # pin the edge — the curve depends on it
+    # FALLBACK: projected sketch → segments → GetCurve.
+    if not curves:
+        sk = _retype(spec, "ISketch")
+        for seg in _as_list(_call0(sk, "GetSketchSegments")):
+            c = _call0(seg, "GetCurve")
+            if c is not None:
+                curves.append(c)
+                keepalive.append(seg)
+    # LAST-DITCH: spec exposes curves directly (defensive).
+    if not curves:
+        for c in _as_list(_call0(spec, "GetCurves")):
+            curves.append(c)
+            keepalive.append(spec)
+    return curves, keepalive
 
 
 def curve_length_mm(node: Any) -> float | None:
     """Total arc length (mm) of the reference curve(s) a CURVE feature node
     owns, or ``None`` if no curve geometry is readable OOP.
 
-    Proven tail + SEAT-PENDING head (see section banner).  Fail-soft and
-    UNWIRED: no handler gate calls this until spike_curve_length_witness proves
-    the head hop on the live seat (W67 P3b adjudication — never wire an unproven
-    scalar into a GREEN lane's gate).
+    Proven head + tail (W67 P3b, seat-confirmed HEAD_PROVEN, deterministic on
+    the absolute-cold first call — helix 80.0 mm, composite 70.0 mm):
+    ``typed(IFeature)`` → ``GetSpecificFeature2`` →
+    ``typed(IReferenceCurve).GetSegments`` (edges) → ``typed_qi(IEdge).GetCurve``
+    → ``ICurve.GetLength``.
+
+    The ``_keepalive`` list returned by ``_node_curves`` MUST stay referenced
+    across the measurement loop: an ``ICurve`` is invalidated the moment its
+    parent edge is released, so dropping the edges silently yields null lengths
+    (the W67 P3b bug — an earlier ``cold makepy gen`` theory was a red herring;
+    the real cause was COM object lifetime).
+
+    Fail-soft and UNWIRED: no handler gate calls this until the W67 P3b wiring
+    commit (never wired an unproven scalar into a GREEN lane's gate).
     """
     if node is None:
         return None
+    curves, _keepalive = _node_curves(node)
     total = 0.0
     found = False
-    for curve in _iter_node_curves(node):
+    for curve in curves:
         length = icurve_length_mm(curve)
         if length is not None:
             total += length
             found = True
+    # _keepalive stays referenced until here — releasing the parent edges would
+    # invalidate the ICurve objects mid-measurement.
     return total if found else None
 
 

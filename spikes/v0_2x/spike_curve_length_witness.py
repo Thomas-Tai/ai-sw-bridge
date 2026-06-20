@@ -54,6 +54,8 @@ if _SRC not in sys.path:
 
 import _feature_spike_fixtures as fx  # noqa: E402
 
+from ai_sw_bridge.com.earlybind import typed  # noqa: E402
+from ai_sw_bridge.com.sw_type_info import wrapper_module  # noqa: E402
 from ai_sw_bridge.features import verify  # noqa: E402
 
 # -- Helix parameters (mirror spike_helix so geometry is predictable) ---------
@@ -94,37 +96,86 @@ def _nodes_matching(doc: Any, tokens: tuple[str, ...]) -> list[Any]:
     return out
 
 
-def _introspect_head(node: Any) -> dict[str, Any]:
-    """O1 introspection of the IFeature → ICurve head ladder on a real node.
+def _diag_segment(seg: Any) -> dict[str, Any]:
+    """Step-by-step dump of one reference-curve segment → length, reporting the
+    result/error of every hop so the breaking step is unambiguous."""
+    from ai_sw_bridge.com.earlybind import typed_qi
 
-    Discovers (never guesses) what GetSpecificFeature2() returns and which
-    candidate tail the spec object exposes, so a NO_OP verdict is diagnosable.
+    d: dict[str, Any] = {"seg_repr": repr(seg)[:80], "seg_type": type(seg).__name__}
+    # Is the segment itself already an ICurve? (GetSegments may hand back curves.)
+    try:
+        d["seg_as_icurve_mm"] = verify.icurve_length_mm(seg)
+    except Exception as e:
+        d["seg_as_icurve_error"] = f"{type(e).__name__}: {e}"[:120]
+    # Segment as edge: typed_qi(IEdge).GetCurve() -> ICurve.
+    for caster in ("typed_qi", "typed"):
+        try:
+            te = (
+                typed_qi(seg, "IEdge", module=wrapper_module()) if caster == "typed_qi"
+                else typed(seg, "IEdge", module=wrapper_module())
+            )
+            d[f"edge_{caster}"] = "ok"
+            try:
+                raw_curve = te.GetCurve()
+                d[f"edge_{caster}.GetCurve"] = repr(raw_curve)[:60]
+                d[f"edge_{caster}.length_mm"] = verify.icurve_length_mm(raw_curve)
+            except Exception as e:
+                d[f"edge_{caster}.GetCurve_error"] = f"{type(e).__name__}: {e}"[:120]
+            break
+        except Exception as e:
+            d[f"edge_{caster}_error"] = f"{type(e).__name__}: {e}"[:120]
+    return d
+
+
+def _introspect_head(node: Any) -> dict[str, Any]:
+    """O1 introspection of the IFeature → ICurve head hop on a real node.
+
+    Re-types the late-bound node to IFeature FIRST (the GetSpecificFeature2
+    'Member not found' fix), then discovers what GetSpecificFeature2() hands
+    back and probes the seat-corrected IReferenceCurve.GetSegments() shape so
+    a NO_OP verdict stays diagnosable.
     """
     diag: dict[str, Any] = {"type_name": _type_name(node)}
     try:
-        spec = _resolve(node, "GetSpecificFeature2")
+        feat = typed(node, "IFeature", module=wrapper_module())
+        diag["retyped_ifeature"] = True
+    except Exception as e:
+        feat = node
+        diag["retype_ifeature_error"] = f"{type(e).__name__}: {e}"[:120]
+    try:
+        spec = feat.GetSpecificFeature2()
         diag["specific_feature_repr"] = repr(spec)[:160]
         diag["specific_feature_type"] = type(spec).__name__
-        for probe in ("GetCurves", "GetSketchSegments", "GetEdges"):
-            try:
-                val = _resolve(spec, probe) if spec is not None else None
-                diag[f"spec.{probe}"] = (
-                    f"len={len(val)}" if isinstance(val, (list, tuple))
-                    else repr(val)[:80]
-                )
-            except Exception as e:
-                diag[f"spec.{probe}_error"] = f"{type(e).__name__}: {e}"[:120]
     except Exception as e:
         diag["specific_feature_error"] = f"{type(e).__name__}: {e}"[:160]
-    # node-level GetEdges (low-confidence head 3)
+        return diag
+    if spec is None:
+        diag["specific_feature"] = "None"
+        return diag
+    # PRIMARY probe: typed IReferenceCurve.GetSegmentCount()/GetSegments().
     try:
-        edges = _resolve(node, "GetEdges")
-        diag["node.GetEdges"] = (
-            f"len={len(edges)}" if isinstance(edges, (list, tuple))
-            else repr(edges)[:80]
-        )
+        rc = typed(spec, "IReferenceCurve", module=wrapper_module())
+        cnt = _resolve(rc, "GetSegmentCount")
+        diag["IReferenceCurve.GetSegmentCount"] = cnt
+        segs = rc.GetSegments()
+        seg_list = list(segs) if isinstance(segs, (list, tuple)) else ([segs] if segs else [])
+        diag["IReferenceCurve.GetSegments"] = f"len={len(seg_list)}"
+        # Per-segment chain dump: seg -> (IEdge?) -> GetCurve -> (ICurve?) ->
+        # GetEndParams/GetLength. Pinpoints exactly which hop drops the length.
+        if seg_list:
+            diag["segment_chain"] = _diag_segment(seg_list[0])
     except Exception as e:
-        diag["node.GetEdges_error"] = f"{type(e).__name__}: {e}"[:120]
+        diag["IReferenceCurve_error"] = f"{type(e).__name__}: {e}"[:160]
+    # Fallback probes (projected-as-sketch / defensive).
+    for probe in ("GetSketchSegments", "GetCurves"):
+        try:
+            val = _resolve(spec, probe)
+            diag[f"spec.{probe}"] = (
+                f"len={len(val)}" if isinstance(val, (list, tuple))
+                else repr(val)[:80]
+            )
+        except Exception as e:
+            diag[f"spec.{probe}_error"] = f"{type(e).__name__}: {e}"[:120]
     return diag
 
 
@@ -137,8 +188,12 @@ def _probe_lane(
     if not nodes:
         return {"lane": label, "verdict": "NO_NODE", "tokens": list(tokens)}
     node = nodes[-1]  # the most-recently-created matching node
+    # Absolute-cold first call (before any other curve COM traffic on the node)
+    # — the real production exposure for a gate.
+    cold_first_clm = verify.curve_length_mm(node)
     res: dict[str, Any] = {
         "lane": label,
+        "cold_first_clm": cold_first_clm,
         "introspection": _introspect_head(node),
         "expected_min_mm": expected_min_mm,
     }

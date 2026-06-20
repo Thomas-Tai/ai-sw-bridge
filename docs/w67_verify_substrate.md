@@ -68,38 +68,48 @@ curve that nodes-but-ghosts would pass. `composite` is weakest (any node;
 helix/project_curve at least type-filter). **Phase-3 work:** add a geometry-
 grade witness for `FeatureClass.CURVE`.
 
-#### Phase-3b status — witness SCAFFOLDED, head hop SEAT-PENDING
+#### Phase-3b status — witness SCAFFOLDED, head hop SEAT-PROVEN (HEAD_PROVEN)
 
 The geometric witness is **total arc length (mm)** (a real reference curve has
-positive length; a ghost node has none). Decomposed into a proven tail and an
-unproven head:
+positive length; a ghost node has none). Decomposed into a proven tail and a
+**now-proven** head:
 
 - **TAIL — PROVEN OOP.** `verify.icurve_length_mm(raw_curve)` reuses the
   `brep/interrogator.py` recipe verbatim: `typed_qi(…, "ICurve")` →
   `GetEndParams()` (idx 1,2 = tmin,tmax) → `GetLength(tmin, tmax)` (metres →
-  mm). Late-bound proxies cannot dispatch these ("Member not found"); typed_qi
-  is required, direct dispatch is the mock fallback. Unit-tested offline.
-- **HEAD — SEAT-PENDING.** The `IFeature` node → `ICurve` hop for a *standalone*
-  reference curve is unproven OOP (the interrogator only proves EDGE → ICurve,
-  i.e. solid-body topology; a reference curve is not a B-rep boundary).
-  `verify._iter_node_curves(node)` holds the candidate ladder:
-  1. `GetSpecificFeature2()` → `.GetCurves()` (primary; GetSpecificFeature2 is
-     OOP-proven in `observe.py:871`) — bet for composite/helix.
-  2. `GetSpecificFeature2()` → `ISketch.GetSketchSegments()` → `seg.GetCurve()`
-     — bet for project_curve (a projected *sketch*, distinct head per lane).
-  3. `IFeature.GetEdges()` → `IEdge.GetCurve()` — low confidence (not topology).
+  mm). Unit-tested offline.
+- **HEAD — SEAT-PROVEN** (`spike_curve_length_witness` → `HEAD_PROVEN`,
+  deterministic on the absolute-cold first call: **helix 80.0 mm, composite
+  70.0 mm**). The real chain (`verify._node_curves`):
+  ```
+  typed(node,"IFeature").GetSpecificFeature2()          # IFeature re-type
+    → typed(spec,"IReferenceCurve").GetSegments()        # the segments ARE edges
+    → typed_qi(edge,"IEdge").GetCurve() → ICurve         # proven EDGE→ICurve tail
+  ```
+  Two seat findings, both load-bearing:
+  1. **IFeature re-type is mandatory.** A node from `GetFeatures(False)` is a
+     late-bound proxy whose `GetSpecificFeature2` trips `'Member not found'`
+     (-2147352573) OOP; the typed `IFeature` compiled dispid clears it (same
+     idiom as `spikes/v0_16/_seatcheck_sketch_fidelity_pae.py`).
+  2. **COM edge lifetime.** An `ICurve` from `IEdge.GetCurve()` is invalidated
+     the moment its parent edge is released — so `_node_curves` returns the
+     typed edges in a parallel **keepalive** list the caller holds during
+     measurement. Dropping the edges silently yields null lengths. (An initial
+     "cold makepy gen" theory was a red herring; the real cause was lifetime.)
+  - Fallbacks (unprobed): `ISketch.GetSketchSegments` for project_curve (a
+    projected *sketch* — likely a different head per lane); defensive `GetCurves`.
 - **GATE — HARD, UNWIRED.** `verify.gate_curve(d_nodes, total_len_mm)` requires
   `d_nodes > 0 AND total_len_mm > CURVE_LEN_EPS_MM`; `total_len_mm is None`
   (unreadable) is **failure**, never a fall-back to node-count (adjudication:
-  no graceful degradation in a gate). **NOT wired** into composite/helix/
-  project_curve — they keep their node-count gate until the seat proves a head.
+  no graceful degradation in a gate). **NOT yet wired** into composite/helix/
+  project_curve pending the wiring decision: **helix + composite are seat-proven**;
+  **project_curve's `ISketch` head is unprobed**, so it needs its own seat fire
+  before its gate flips off node-count.
 
 **Seat probe:** `spikes/v0_2x/spike_curve_length_witness.py` fires the
 production-candidate `verify.curve_length_mm` on real helix/composite nodes +
-O1-introspects what `GetSpecificFeature2()` returns, and reports which head
-lands. Verdicts: `HEAD_PROVEN` → W0 wires `gate_curve` into the PASS lane(s) in
-a follow-up commit; `HEAD_WALLED` → CURVE witness is Route-C, lanes keep
-node-count, record in DEFERRED.md.
+O1-introspects `GetSpecificFeature2()`'s `IReferenceCurve.GetSegments()` shape
+and the per-segment chain.
 
 ### 3. `mate_reference._count_feature_nodes` intentionally NOT delegated
 

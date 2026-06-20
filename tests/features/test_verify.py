@@ -204,8 +204,29 @@ class _Curve:
         return self._len_m
 
 
+class _Edge:
+    """Fake reference-curve segment (an edge) whose GetCurve() -> ICurve."""
+
+    def __init__(self, curve) -> None:
+        self._curve = curve
+
+    def GetCurve(self):  # noqa: N802
+        return self._curve
+
+
+class _SpecWithSegments:
+    """Fake IReferenceCurve: GetSegments() -> edge[] (the seat-proven head)."""
+
+    def __init__(self, *edges) -> None:
+        self._edges = list(edges)
+
+    def GetSegments(self):  # noqa: N802
+        return self._edges
+
+
 class _SpecWithCurves:
-    """Fake GetSpecificFeature2() return exposing GetCurves() -> ICurve[]."""
+    """Fake GetSpecificFeature2() return exposing GetCurves() -> ICurve[]
+    (the defensive last-ditch branch)."""
 
     def __init__(self, *curves) -> None:
         self._curves = list(curves)
@@ -234,7 +255,16 @@ class TestCurveWitness:
         assert v.icurve_length_mm(_Curve(0.025, tmin=1.0, tmax=1.0)) is None
         assert v.icurve_length_mm(None) is None
 
-    def test_curve_length_mm_sums_head_to_tail(self) -> None:
+    def test_curve_length_mm_via_reference_curve_segments(self) -> None:
+        # PRIMARY seat-proven head: IReferenceCurve.GetSegments() -> edges ->
+        # IEdge.GetCurve() -> ICurve -> length.
+        node = _CurveNode(
+            _SpecWithSegments(_Edge(_Curve(0.010)), _Edge(_Curve(0.005)))
+        )
+        assert abs(v.curve_length_mm(node) - 15.0) < 1e-9
+
+    def test_curve_length_mm_defensive_get_curves(self) -> None:
+        # LAST-DITCH branch: spec exposes GetCurves() directly.
         node = _CurveNode(_SpecWithCurves(_Curve(0.010), _Curve(0.005)))
         assert abs(v.curve_length_mm(node) - 15.0) < 1e-9
 
