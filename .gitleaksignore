@@ -1,0 +1,19 @@
+# gitleaks allowlist — documented false positives.
+#
+# All entries below are gitleaks `generic-api-key` hits that fired ONLY because
+# the JSON field is literally named "token". The values are PUBLIC SOLIDWORKS
+# sketch-relation constraint identifiers (sgHORIZONTAL2D, sgVERTICAL2D,
+# sgPARALLEL, sgPERPENDICULAR2D, sgSAMELENGTH, sgCONCENTRIC) emitted into W39
+# sketch-relation spike `_results/*.json` dumps. They are SOLIDWORKS API enum
+# strings, NOT credentials. Triaged 2026-06-20 during the W68 IP-scrub pass.
+#
+# Fingerprint format: <commit>:<file>:<rule-id>:<startline>
+a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations_effect_pae.json:generic-api-key:60
+a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations_effect_pae.json:generic-api-key:82
+a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations_effect_pae.json:generic-api-key:101
+a06ea3e39152115c3b794759f660c154101e5629:_results/sketch_relations.json:generic-api-key:14
+a06ea3e39152115c3b794759f660c154101e5629:_results/sketch_relations.json:generic-api-key:15
+a06ea3e39152115c3b794759f660c154101e5629:_results/sketch_relations.json:generic-api-key:17
+a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations.json:generic-api-key:28
+a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations.json:generic-api-key:29
+a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations.json:generic-api-key:31
