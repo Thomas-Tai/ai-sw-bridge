@@ -1,0 +1,23 @@
+{
+  "spike": "route_c_thicken",
+  "dll": "C:\\D\\WorkSpace\\[Local]_Station\\01_Heavy_Assets\\ai-sw-bridge\\spikes\\v0_2x\\route_c\\RouteCThicken_0620145049.dll",
+  "sw_revision": "32.1.0",
+  "solids_before": 0,
+  "vol_before_mm3": 0.0,
+  "preselect_count_oop": 0,
+  "runmacro_attempts": [
+    {
+      "module": "SolidWorksMacro",
+      "called": true,
+      "ran": true,
+      "error_code": 0,
+      "error_name": "NoError"
+    }
+  ],
+  "sentinel": {},
+  "sentinel_path": "C:\\Users\\sky\\AppData\\Local\\Temp\\route_c_sentinel.txt",
+  "solids_after_oop": 0,
+  "vol_after_mm3_oop": 0.0,
+  "dvol_mm3_oop": 0.0,
+  "verdict": "MAIN_NOT_RUN"
+}
