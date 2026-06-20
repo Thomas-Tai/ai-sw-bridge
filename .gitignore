@@ -77,3 +77,11 @@ references/
 # PR body + release-note drafts (one-shot artifacts; not part of the repo)
 .github/pr_body_*.md
 .github/release_notes_*.md
+
+# Route-C in-process add-in build outputs — NEVER track compiled binaries.
+# The proprietary SOLIDWORKS-interop-linked RouteCAddin.dll was excised from
+# full history via git-filter-repo (W68 IP scrub, 2026-06-20). Source (.cs/.ps1)
+# is kept; build artifacts are reproducible and must not re-enter the tree.
+spikes/v0_2x/route_c/*.dll
+spikes/v0_2x/route_c/bin/
+spikes/v0_2x/route_c/obj/
