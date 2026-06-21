@@ -257,3 +257,14 @@ from .fillet_face_fullround import SPIKE_STATUS as _fillet_face_status  # noqa: 
 from .fillet_face_fullround import create_fillet_face_fullround  # noqa: E402
 
 _register_lane("fillet_face", create_fillet_face_fullround, _fillet_face_status)
+
+# W68 — curve_through_xyz (4th curve type, sibling to composite/helix/project).
+# Seat-proven 2026-06-21: Mode-B IModelDoc2 InsertCurveFileBegin -> N x
+# InsertCurveFilePoint(x_m,y_m,z_m) -> InsertCurveFileEnd materializes a
+# "CurveInFile" node (arc 119mm on a 3-point fire, ΔVol 0, survives reopen).
+# CURVE gate = node-count delta ∧ readable arc length (the W42 ghost trap needs
+# the geometric check, not node-count alone).
+from .curve_through_xyz import SPIKE_STATUS as _curve_through_xyz_status  # noqa: E402
+from .curve_through_xyz import create_curve_through_xyz  # noqa: E402
+
+_register_lane("curve_through_xyz", create_curve_through_xyz, _curve_through_xyz_status)

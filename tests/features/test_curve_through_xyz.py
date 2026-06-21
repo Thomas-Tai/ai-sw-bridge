@@ -299,12 +299,14 @@ class TestCurveGate:
 
 
 class TestDormantGate:
-    def test_spike_status_is_unfired(self):
-        assert curve_through_xyz.SPIKE_STATUS == "UNFIRED"
+    def test_spike_status_is_green(self):
+        # seat-proven 2026-06-21 (CurveInFile node, arc 119mm, survives reopen)
+        assert curve_through_xyz.SPIKE_STATUS == "GREEN"
 
-    def test_curve_through_xyz_not_in_registry(self):
-        """UNFIRED lane must NOT be advertised in HANDLER_REGISTRY."""
-        assert "curve_through_xyz" not in HANDLER_REGISTRY
+    def test_curve_through_xyz_registered(self):
+        """GREEN lane is advertised in HANDLER_REGISTRY."""
+        assert "curve_through_xyz" in HANDLER_REGISTRY
+        assert HANDLER_REGISTRY["curve_through_xyz"] is create_curve_through_xyz
 
 
 class TestKindNames:

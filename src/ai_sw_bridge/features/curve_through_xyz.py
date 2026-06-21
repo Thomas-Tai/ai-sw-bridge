@@ -23,10 +23,11 @@ array-length delta) AND the curve carries real arc length (W67 P3b geometric
 gate — node-count alone is the W42 ghost trap).  The CURVE verify class
 mirrors composite / helix / project_curve.
 
-UNKNOWNS (probed by spike_curve_through_xyz, resolved by W0 on the seat):
-  (1) exact ``GetTypeName2`` of the new node (likely "RefCurve" or
-      "CurveThroughPoints" — the spike logs it);
-  (2) minimum point count the kernel accepts (>= 2 assumed).
+SEAT-PROVEN 2026-06-21 (W0): the new node's ``GetTypeName2`` is **"CurveInFile"**
+(not "RefCurve"); a 3-point fire materialized one CurveInFile node carrying
+119.07 mm of arc length, ΔVol 0 (a reference curve adds no solid — the witness
+is the node + arc length), surviving save/close/reopen. The kernel accepted 3
+points (>= 2 by validation).
 """
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.curve_through_xyz")
 
-SPIKE_STATUS = "UNFIRED"
+SPIKE_STATUS = "GREEN"  # seat-proven 2026-06-21 (CurveInFile node, arc 119mm, survives reopen)
 
 VERIFY_CLASS = verify.FeatureClass.CURVE
 
