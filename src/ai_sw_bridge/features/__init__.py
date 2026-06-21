@@ -277,3 +277,15 @@ from .sketch_driven_pattern import SPIKE_STATUS as _sketch_driven_pattern_status
 from .sketch_driven_pattern import create_sketch_driven_pattern  # noqa: E402
 
 _register_lane("sketch_driven_pattern", create_sketch_driven_pattern, _sketch_driven_pattern_status)
+
+# W71 — scale (closed-form volume transform; locks the Part-Feature axis).
+# IFeatureManager.InsertScale(Type, Uniform, X, Y, Z) -> Feature: a uniform
+# scale is a pure matrix transform, so the kernel never traverses/solves
+# geometry mid-invocation — the boundary law's MATERIALIZE column (W71 probe:
+# 1.5× → Δvol ×3.375 = 1.5³ exact). VOLUME_TRANSFORM gate witnesses the
+# commanded f**3 ratio (a no-op leaves ratio==1). Target body via the
+# IBody2.Select doctrine. SPIKE_STATUS gate: UNFIRED until W0 fires the spike.
+from .scale import SPIKE_STATUS as _scale_status  # noqa: E402
+from .scale import create_scale  # noqa: E402
+
+_register_lane("scale", create_scale, _scale_status)

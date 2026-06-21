@@ -20,6 +20,7 @@ the conserved/measurable witness is feature-class-specific —
     CURVE               feature-node delta                (composite/helix/proj)
     REF_NODE            feature-node delta + type-name     (bbox/com_point/materef)
     BODY_MOVE           centroid delta                     (move_copy_body)
+    VOLUME_TRANSFORM    volume ratio == commanded f**3     (scale)
 
 A node/Feature return ALONE is never success — that is the W21/W42 ghost trap.
 
@@ -74,6 +75,7 @@ class FeatureClass(enum.Enum):
     CURVE = "curve"
     REF_NODE = "ref_node"
     BODY_MOVE = "body_move"
+    VOLUME_TRANSFORM = "volume_transform"
 
 
 # ===========================================================================
@@ -562,6 +564,31 @@ def gate_surface_to_solid(d_vol_mm3: float, d_solids: int) -> bool:
     """SURFACE_TO_SOLID (thicken / knit→solid): volume appeared AND a solid
     body materialized.  WALLED OOP for thicken — see docs/DEFERRED.md."""
     return d_vol_mm3 > VOL_EPS_MM3 and d_solids >= 1
+
+
+def gate_volume_transform(
+    vol_before_mm3: float,
+    vol_after_mm3: float,
+    expected_ratio: float,
+    rel_tol: float = 1e-3,
+) -> bool:
+    """VOLUME_TRANSFORM (scale): the solid volume changed by the COMMANDED
+    closed-form ratio.
+
+    For a uniform scale by factor ``f``, volume scales by ``f**3`` exactly
+    (the W71 seat finding: a 1.5× cube went 1000→3375 mm³, ratio 3.375 to
+    IEEE-754 precision).  Gating on the ratio — not merely ``|ΔVol| > eps`` —
+    is the anti-ghost witness: a silent no-op leaves ``ratio == 1.0`` and is
+    rejected, and a WRONG scale (e.g. the legacy void ``InsertScale`` form
+    that ignores the Feature return) fails the ratio even though volume moved.
+    Both volumes must be physically present (a vanished body fails closed).
+    """
+    if vol_before_mm3 <= VOL_EPS_MM3 or vol_after_mm3 <= VOL_EPS_MM3:
+        return False
+    if expected_ratio <= 0.0:
+        return False
+    ratio = vol_after_mm3 / vol_before_mm3
+    return abs(ratio - expected_ratio) <= rel_tol * expected_ratio
 
 
 def gate_curve(d_nodes: int, total_len_mm: float | None) -> bool:
