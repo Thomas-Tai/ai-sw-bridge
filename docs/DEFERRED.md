@@ -624,6 +624,201 @@ Artifacts: `spikes/v0_2x/_results/route_c_{edge_flange,miter_flange,jog,wrap}.{j
 
 ---
 
+## W68 indent (out-of-process `InsertIndent` ghost — forensic kill, 2026-06-21)
+
+`indent` (`IFeatureManager.InsertIndent(Thickness, Clearance, Exclude, ClrDir,
+Cut, CutDir) -> Feature`) was seat-proven dead across the COM boundary by an
+exhaustive forensic chain on the live seat. The lane first bounced on a
+**selection** wall (the handler used `select_entity` for the tool body — a whole
+solid body is not an `IEntity`); that wall was fixed (native
+`IBody2.Select(Append, Mark)`, W0 patch, confirmed working — the handler reached
+`InsertIndent`). With selection cleared, the feature still ghosted:
+
+| Probe | Target entity | Marks swept | Bodies intersect? | Result |
+|---|---|---|---|---|
+| mark sweep | top **face** | (0,1)(1,2)(0,2)(1,1) | yes (10×10×10 mm) | 4/4 ghost (ret:None, dFaces:0, dVol:0) |
+| body sweep | whole **body** | (0,1)(1,0)(1,1)(0,0) | yes (10×10×10 mm) | 4/4 ghost (ret:None, dFaces:0, dVol:0) |
+
+**Key facts proven, not guessed:** (1) the two fixture bodies genuinely
+intersect — an axis-aligned bbox preflight measured a 10×10×10 mm overlap every
+variant, refuting the handler's own "must overlap" self-diagnosis; (2) both
+entities select (`GetSelectedObjectCount2` == 2) under every configuration;
+(3) `InsertIndent` returns `None` and produces zero topological change across all
+8 topologically valid configurations (face-target and body-target × the full
+mark matrix). The 6 `InsertIndent` args carry no target/tool role — roles come
+only from marks — so marks were the live variable, and they are exhausted.
+
+**Verdict: KERNEL/COM wall** — same OOP-ghost class as `InsertFlexFeature`
+(all-Types ghost), `fill_pattern` `CreateFeature`, and the Route-C set (API
+accepts, returns null, kernel refuses across marshaling). **Permanently
+deferred**; do not re-attempt out-of-process. The durable extraction is the
+`IBody2.Select` body-selection recipe (banked, reusable for every future
+deform/boolean lane) and the reception-gate lint that now mechanically catches
+the `"BODY"`→`"SOLIDBODY"` selection-type trap.
+
+Artifacts (ephemeral, in the now-pruned `feat/w68-indent` worktree):
+`spike_indent_marksweep.py` / `spike_indent_bodysweep.py` →
+`_results/indent_{marksweep,bodysweep}.json`.
+
+---
+
+## W68 table_driven_pattern (out-of-process `InsertTableDrivenPattern` ghost, 2026-06-21)
+
+`table_driven_pattern` (`IFeatureManager.InsertTableDrivenPattern(String
+FileName, Object PointVar, Boolean UseCentroid, Boolean GeomPatt) -> Feature`)
+was W0-authored (the offline worker's branch never reached origin) and
+seat-proven dead across the COM boundary. The lane attempted the cleanest
+pattern shape — a seed feature replicated at explicit (X,Y) points injected as
+an in-memory array — and was the prime candidate for the W68 SAFEARRAY doctrine.
+It ghosted (`ret=None`, ΔFaces 0, ΔVol 0) across **7 distinct configurations**:
+
+| Axis | Variants | Result |
+|---|---|---|
+| marshalling (seed only, mark 4) | `VARIANT(VT_ARRAY\|VT_R8)` / bare list / `InsertTableDrivenPattern2` | 3/3 ghost (ret:None) |
+| coordinate-system prerequisite | CS at origin (`CoordSys`) + seed(4), CS mark ∈ {1,2,0} | 3/3 ghost (ret:None) |
+| seed-only baseline | seed(4) + SAFEARRAY | 1/1 ghost (ret:None) |
+
+**Two decisive findings:** (1) the **SAFEARRAY doctrine did NOT extend** — a bare
+list and `VARIANT(VT_ARRAY|VT_R8)` ghost *identically*, so marshalling is not the
+differentiator; the wall sits upstream of the point array. (2) Supplying a valid
+**coordinate system** (the table-driven frame of reference) and selecting it
+alongside the seed at every plausible mark still produced a creation-level ghost
+(`ret=None` — the feature never forms). Both genuine structural requirements
+(array marshalling + reference frame) were satisfied and the kernel still
+refused.
+
+**Verdict: KERNEL/COM wall** — same OOP-ghost class as `indent`,
+`InsertFlexFeature`, `fill_pattern`, and the Route-C set. The likely cause is
+that the OOP path demands an internal context it cannot receive (e.g. a
+file-backed `*.sldptab` pattern table rather than an in-memory array — the
+`FileName` arg hints at a file-first design). **Permanently deferred**; do not
+re-attempt the in-memory array path out-of-process. Lane branch+worktree pruned.
+
+Artifacts (ephemeral, pruned worktree): `spike_table_driven_pattern.py` /
+`spike_table_driven_csys.py` → `_results/table_driven_{pattern,csys}.json`.
+
+---
+
+## W68 flex (out-of-process `InsertFlexFeature` ghost — undefined flex frame, 2026-06-21)
+
+`flex` (`IFeatureManager.InsertFlexFeature(RotX,RotY,RotZ, TanX,TanY,TanZ,
+RadX,RadY,RadZ, Angle, PivotX,PivotY,PivotZ, Type, LeftTrim, RightTrim,
+HardEdges) -> Feature`) was bounced once (selection wall), W0-fixed and
+re-fired, and is now seat-proven dead OOP. The selection wall is CLEARED (native
+`IBody2.Select` → "selected" every attempt — see [[reference_ibody2_select_not_ientity]]);
+with the body correctly selected, the feature ghosts (`ret=None`) across:
+
+| Axis | Variants | Result |
+|---|---|---|
+| Type Int32 (prior session) | 0/1/2/3, zeroed trim | 4/4 ghost |
+| trim-plane convention (this session) | A(−L/4,+L/4) / B(+L/4,+3L/4) / C(+L/4,+L/4), L=100 mm | 3/3 ghost (ret:None, ΔFaces 0, bbox unchanged) |
+| handler (variant A baked) | bbox-derived ∓L/4 | ghost |
+
+**Decisive finding:** non-degenerate, well-separated trim planes (∓25 mm and
++25/+75 mm, all inside the 100 mm block) did NOT unstick it — so the original
+all-zero-trim defect was real but not the whole story. The residual is the
+**all-zero `Rot/Tan/Rad/Pivot` flex-frame triad**: `InsertFlexFeature` needs a
+defined local coordinate system (tangent/rotation/radius vectors + pivot) to
+orient the bend, and that is a 9-parameter continuous geometric space, not a
+bounded discrete sweep. The OOP path cannot synthesize it reliably; `ret=None`
+is a creation-level ghost.
+
+**Verdict: KERNEL/COM wall** (same `ret=None` OOP-ghost class as `indent`,
+`table_driven_pattern`, `fill_pattern`, Route-C). **Deferred**; an in-process
+Route-C add-in with a UI-derived flex triad is the only plausible future path.
+The durable wins extracted: the `IBody2.Select` recipe (re-confirmed) and the
+bbox-derived `_trim_planes` math (correct, just insufficient alone). Lane
+branch+worktree pruned.
+
+Artifacts (ephemeral, pruned worktree): `spike_flex.py` (A/B/C trim sweep),
+`spike_flex_typesweep.py` → `_results/flex{,_typesweep}.json`.
+
+---
+
+## W68 dimension_pattern + derived_pattern — KERNEL/COM WALL (PREDICTED, 2026-06-21)
+
+Pre-emptively deferred WITHOUT a seat fire, by the **W68 OOP boundary law**
+established empirically this session:
+
+> **OOP gives Selection-and-Replication; abstract-spec geometry is Route-C.**
+> Features that materialize out-of-process replicate a pre-SELECTED seed at
+> pre-SELECTED locations (linear/circular/mirror/`sketch_driven`/`chain`). Features
+> that require the kernel to synthesize geometry from an ABSTRACT spec — a boolean
+> shell (`indent`), a coordinate matrix (`table_driven`), a deform frame (`flex`) —
+> ghost `ret=None` at the COM boundary. (Empirical basis: `indent`,
+> `table_driven_pattern`, `flex` all seat-killed `ret=None` this session;
+> `sketch_driven`/`curve_through_xyz` shipped.)
+
+- **`dimension_pattern`** (`FeatureDimensionPattern(Num1, Spacing1, Num2,
+  Spacing2, DiagonalOnly, DName1, DName2, VaryInstance)`) is driven by live
+  **dimension NAME strings** (`"D1@Sketch2"`) — an abstract symbolic spec the OOP
+  caller must author and feed back; squarely on the wrong side of the boundary
+  (no pre-selected geometry; the kernel resolves named parameters).
+- **`derived_pattern`** (`InsertDerivedPattern2()`, zero-arg) derives a pattern
+  from a parent pattern's instance layout via **UI-context parent-child
+  relations** — pure abstract-context dependency, no pre-selectable seed-and-path.
+
+Both violate the boundary law and are predicted `ret=None` ghosts. Deferred
+without burning seat time; re-evaluate only via Route-C in-process. (If ever
+seat-tested and one materializes, the boundary law needs revision — log it.)
+
+---
+
+## W68 chain_pattern (out-of-process `FeatureChainPattern` ghost — curve-traversal wall, 2026-06-21)
+
+`chain_pattern` (`IFeatureManager.FeatureChainPattern(PitchMethod, Flip,
+FillPath, Number, Spacing, G1Flip, G2Chain, G2Flip, Align, Options) ->
+Feature`) was W0-authored and fired as the deliberate test of the OOP boundary
+law (it looked like pure selection-and-replication). It ghosted `ret=None`
+across **8 configurations**:
+
+| Path type | seed×path marks | Result |
+|---|---|---|
+| model edge | (4,1)(4,2)(4,0)(0,1)(0,2)(0,0) | 6/6 ghost (ret:None, both selected, sel_count 2) |
+| sketch-segment chain | (4,1)(4,2) | 2/2 ghost |
+
+Neither the selection-mark role nor the path topology unstuck it. **This
+SHARPENED the boundary law rather than breaking it:** `chain` and
+`curve_driven` are the two *curve-traversal* patterns (the kernel must walk an
+arbitrary path and solve arc-length spacing), and BOTH wall — while the three
+*closed-form/explicit* patterns (linear / circular / `sketch_driven`) all ship.
+The refined law: **OOP materializes replication at positions the caller
+specifies directly (offset / rotation / explicit points); it walls when the
+kernel must traverse or solve geometry mid-invocation to derive the positions.**
+See `reference_oop_boundary_law` (memory).
+
+**Verdict: KERNEL/COM wall** (curve-traversal subclass). Permanently deferred;
+Route-C in-process only. Lane branch+worktree pruned. Artifacts (ephemeral):
+`spike_chain_pattern.py` / `spike_chain_marksweep.py` →
+`_results/chain_{pattern,marksweep}.json`.
+
+---
+
+## W68 wave-2 bounces — curve_driven_pattern + fill_pattern (epoch-close record, 2026-06-21)
+
+Two W68 wave-2 lanes were bounced in earlier sessions and are now formally
+deferred at epoch close (branches pruned; tips reflog-recoverable —
+`curve_driven` @ `9d870a4`, `fill_pattern` @ `a2ba6e3`):
+
+- **curve_driven_pattern** — `IFeatureManager.FeatureLocalCurveDrivenPattern`
+  (the live method; `FeatureCurvePattern` on IModelDoc is a Void method that
+  CRASHED the seat OOP, `RPC_E_DISCONNECTED`). Now cleanly classified by the
+  **OOP boundary law** (see `reference_oop_boundary_law`) as a **curve-traversal
+  wall** — the kernel must arc-length-march the seed along a path, the same
+  subclass as `chain_pattern`. Permanently deferred OOP.
+- **fill_pattern** — Mode-B marks ghost; Mode-A `CreateDefinition(105)` →
+  `IFillPatternFeatureData` array setters BIND via the SAFEARRAY doctrine
+  (readback 1/1) but `CreateFeature` still ghosts (the `full_round` "binds-but-
+  ghosts" class — a missing scalar prop or fixture-geometry question, not a
+  marshalling wall). Deferred pending a fresh-doc Mode-A scalar audit; low
+  priority (boundary-law-adjacent: fill places instances inside a boundary the
+  kernel must solve).
+
+Both are documented in `project_w68_seat_fire_punchlist` (memory) with full
+seat evidence.
+
+---
+
 ## Process
 
 Adding to this list:
