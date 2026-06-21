@@ -830,6 +830,48 @@ is no out-of-process path to author an equation-driven curve; **DEFERRED — no
 API**.  (Measure-don't-guess catch: the audit guessed a method name; the DLL is
 the authority.)  Removed from the W69 materialize batch before any seat burn.
 
+### W71 Part-Feature unknowns sweep — final classification (2026-06-21)
+
+A throwaway classification probe (`spikes/v0_2x/spike_unknowns_probe.py`,
+fixture = 40×40×10 block + Ø6 seed hole) fired the three lingering unknowns and
+classified each materialize-vs-wall. Results:
+
+- **`scale` — MATERIALIZE (NOT deferred; ready lane).** `IFeatureManager.
+  InsertScale(Type, Uniform, X, Y, Z) -> Feature` returns a real `IFeature`;
+  uniform 1.5× scaled the body volume 15717 → 53045 mm³ = **×3.375 = 1.5³
+  exact**. A closed-form matrix transform — the boundary law predicts
+  materialize and it does. Author a lane when the metadata/document axis is
+  cleared; the Part-Feature axis is not 100% shipped until it lands.
+
+- **`fill_pattern` — CONFIRMED KERNEL WALL (upgraded from W68 "low-priority").**
+  The W68 note (above) deferred the `CreateDefinition(105)`→`IFillPatternFeature
+  Data` route as "binds-but-ghosts." W71 fired the OTHER route — the direct
+  `IFeatureManager.FeatureFillPattern(19 args) -> Feature` — with a VALID
+  2-entity selection (boundary +z face at (15,15,10)mm + `CUT_Seed` feature,
+  `GetSelectedObjectCount2 == 2`) and complete params: it returned **`None`,
+  ΔVol 0**. BOTH routes wall. Boundary law confirmed: a fill pattern makes the
+  kernel solve boundary intersections + internal grid spacing mid-invocation =
+  a traversal/solve op = the `ret=None` kernel-deep class (same as curve-driven
+  / table pattern / indent / flex). PERMANENTLY DEFERRED — do not re-attempt.
+
+- **`advanced_hole` — DEFERRED (complexity wall, not a clean kernel proof).**
+  There is NO `InsertAdvancedHole` (audit guessed; the real method is
+  `IFeatureManager.AdvancedHole(near[], far[], UseBaseline, IsCustomCallout, out
+  Result) -> Feature`). It needs fully-configured near/far `IAdvancedHole
+  ElementData` arrays (13 props each); `CreateAdvancedHoleElementData(ElmType)`
+  lives on **`IModelDocExtension`**, NOT `IFeatureManager`. Marshaling footgun:
+  a bare Python list for `near` → `com_error -2147352563 DISP_E_ARRAYISLOCKED
+  ("Memory is locked")` — the makepy SAFEARRAY doctrine fixes it
+  (`VARIANT(VT_ARRAY|VT_DISPATCH, [elem])`). With marshaling fixed but the
+  element minimally-configured, `AdvancedHole` returned `(None, None)`. NOT
+  claimed a clean kernel wall (the inputs were incomplete) — a HIGH-COST lane
+  deferred pending a full near/far element-data spec. Low priority.
+
+Net: the Part-Feature geometric board is now classification-complete — one ready
+materialize lane (`scale`) and two walls (`fill_pattern` kernel, `advanced_hole`
+complexity). Boundary law corroborated on both sides (closed-form scale
+materializes; traversal-solve fill walls).
+
 ---
 
 ## Process
