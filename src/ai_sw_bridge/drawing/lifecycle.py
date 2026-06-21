@@ -342,6 +342,30 @@ def _validate_annotations(
                     f"known: {sorted(known_views)}"
                 )
 
+    note_array = annotations.get("note")
+    if note_array is not None:
+        if not isinstance(note_array, list) or not note_array:
+            raise ValueError(f"{path}.note must be a non-empty array")
+        for i, entry in enumerate(note_array):
+            if not isinstance(entry, dict):
+                raise ValueError(f"{path}.note[{i}] must be a dict")
+            view_name = entry.get("view")
+            if not isinstance(view_name, str) or not view_name:
+                raise ValueError(
+                    f"{path}.note[{i}].view must be a non-empty string"
+                )
+            if view_name not in known_views:
+                raise ValueError(
+                    f"{path}.note[{i}].view {view_name!r}: "
+                    f"no matching view on this sheet; "
+                    f"known: {sorted(known_views)}"
+                )
+            text = entry.get("text")
+            if not isinstance(text, str) or not text:
+                raise ValueError(
+                    f"{path}.note[{i}].text must be a non-empty string"
+                )
+
 
 def validate_drawing_spec(spec: dict[str, Any]) -> None:
     """Semantic validation beyond the structural JSON-schema check.
@@ -948,6 +972,104 @@ def _apply_surface_finish_annotations(
     return result
 
 
+def _apply_note_annotations(
+    drawing_doc: Any,
+    mdoc2: Any,
+    annotations_spec: dict[str, Any],
+    placed_by_name: dict[str, Any],
+    sheet_index: int,
+) -> dict[str, Any]:
+    """Insert general text notes via IModelDoc2.InsertNote.
+
+    Recipe (UNFIRED — pending seat-proof; swNote=6):
+        note = mdoc2.InsertNote(text)            # -> INote
+        ann  = note.GetAnnotation()              # INote -> IAnnotation
+        ann.SetPosition(x, y, 0.0)               # place in the sheet frame
+
+    Mirrors ``_apply_surface_finish_annotations`` exactly except the COM call:
+    a note carries no inline position, so placement is a follow-up
+    ``IAnnotation.SetPosition`` (the part the seat-proof confirms).  The active
+    view is set first so the note attaches to the intended view.  Fail-soft:
+    each entry's failure is recorded in ``errors`` and skipped.
+
+    Returns a result dict with ``inserted`` / ``errors`` / ``count``.
+    """
+    result: dict[str, Any] = {"ok": False, "inserted": [], "errors": [], "count": 0}
+
+    note_array = annotations_spec.get("note")
+    if not note_array:
+        result["ok"] = True
+        return result
+
+    for i, entry in enumerate(note_array):
+        view_name = entry.get("view", "")
+        x = entry.get("x", 0.0)
+        y = entry.get("y", 0.0)
+        text = entry.get("text", "")
+
+        target_view = placed_by_name.get(view_name)
+        if target_view is None:
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.note[{i}]: "
+                f"view {view_name!r} was not placed"
+            )
+            continue
+
+        try:
+            vn = target_view.GetName2() or ""
+            if vn:
+                drawing_doc.ActivateView(vn)
+        except Exception:
+            pass
+
+        try:
+            note = mdoc2.InsertNote(text)
+        except Exception as exc:
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.note[{i}]: "
+                f"InsertNote raised {type(exc).__name__}: {exc}"
+            )
+            continue
+        if note is None:
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.note[{i}]: "
+                f"InsertNote({text!r}) returned None"
+            )
+            continue
+
+        # Place the note.  The RAW InsertNote dispatch does NOT expose
+        # GetAnnotation (DISP_E_MEMBERNOTFOUND on 32.1) — type the note to
+        # INote FIRST, THEN GetAnnotation resolves and the returned
+        # IAnnotation.SetPosition(X,Y,Z)->Boolean works.  Seat-MEASURED W70
+        # (spike_note_placement_probe winner:
+        #   typed_qi(note,"INote").GetAnnotation().SetPosition(x,y,0) -> True).
+        try:
+            from ..com.earlybind import typed_qi
+            from ..com.sw_type_info import wrapper_module
+
+            tnote = typed_qi(note, "INote", module=wrapper_module())
+            ann = tnote.GetAnnotation()
+            if ann is None:
+                result["errors"].append(
+                    f"sheet[{sheet_index}].annotations.note[{i}]: "
+                    f"INote.GetAnnotation() returned None"
+                )
+                continue
+            ann.SetPosition(float(x), float(y), 0.0)
+        except Exception as exc:
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.note[{i}]: "
+                f"placement raised {type(exc).__name__}: {exc}"
+            )
+            continue
+
+        result["inserted"].append({"view": view_name, "x": x, "y": y, "text": text})
+        result["count"] += 1
+
+    result["ok"] = not result["errors"]
+    return result
+
+
 def _verify_surface_finish_annotations(
     sw: Any,
     drawing_path: str,
@@ -1392,7 +1514,7 @@ def _build_sheet_views(
         result["bom_inserted"] = True
 
     # ------------------------------------------------------------------
-    # W53: Annotations (surface-finish symbols)
+    # Annotations — surface-finish symbols (W53) + text notes (W70)
     # ------------------------------------------------------------------
     annot_spec = sheet_spec.get("annotations")
     if annot_spec and views_placed and placed_by_name:
@@ -1406,6 +1528,18 @@ def _build_sheet_views(
         result["annotations"] = sf_result
         if sf_result.get("errors"):
             result["view_errors"].extend(sf_result["errors"])
+            return result
+
+        note_result = _apply_note_annotations(
+            drawing_doc,
+            mdoc2,
+            annot_spec,
+            placed_by_name,
+            sheet_index,
+        )
+        result["note_annotations"] = note_result
+        if note_result.get("errors"):
+            result["view_errors"].extend(note_result["errors"])
             return result
 
     return result

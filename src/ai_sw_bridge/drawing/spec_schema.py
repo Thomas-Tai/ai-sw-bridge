@@ -286,6 +286,37 @@ _SURFACE_FINISH_ENTRY_SCHEMA: dict[str, Any] = {
     },
 }
 
+# Note (general text) annotation — InsertNote(text) → IAnnotation.SetPosition.
+# A note REQUIRES text (unlike surface_finish, where text is optional).
+_NOTE_ENTRY_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["view", "x", "y", "text"],
+    "additionalProperties": False,
+    "properties": {
+        "view": {
+            "type": "string",
+            "minLength": 1,
+            "description": (
+                "View identifier. Must match a view placed on this sheet "
+                "(ortho/iso string name or derived-view placed name)."
+            ),
+        },
+        "x": {
+            "type": "number",
+            "description": "X position on the sheet (metres, drawing frame).",
+        },
+        "y": {
+            "type": "number",
+            "description": "Y position on the sheet (metres, drawing frame).",
+        },
+        "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Note text (required; e.g. 'TYP.', 'DEBURR ALL EDGES').",
+        },
+    },
+}
+
 _ANNOTATIONS_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -299,12 +330,22 @@ _ANNOTATIONS_SCHEMA: dict[str, Any] = {
                 "symbol at the given sheet-frame position on the named view."
             ),
         },
+        "note": {
+            "type": "array",
+            "items": _NOTE_ENTRY_SCHEMA,
+            "minItems": 1,
+            "description": (
+                "General text-note annotations. Each entry places a note "
+                "(IModelDoc2.InsertNote) at the given sheet-frame position "
+                "on the named view."
+            ),
+        },
     },
     "description": (
-        "Drawing-annotation block. v1 supports surface-finish symbols "
-        "via IModelDoc2.InsertSurfaceFinishSymbol2 (14-arg, seat-proven). "
-        "GD&T (feature-control-frames), weld symbols, and hole tables "
-        "are deferred."
+        "Drawing-annotation block. Supports surface-finish symbols "
+        "(InsertSurfaceFinishSymbol2, 14-arg, seat-proven) and text notes "
+        "(InsertNote). GD&T (feature-control-frames), weld symbols, balloons, "
+        "and hole tables are the next annotation lanes."
     ),
 }
 

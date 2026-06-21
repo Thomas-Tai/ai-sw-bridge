@@ -724,3 +724,184 @@ class TestAnnotationsPropose:
         assert result["ok"] is False
         assert "no matching view" in result["error"]
 
+
+
+# ---- W70: note (general text) annotations ----
+
+_NOTE = {"note": [{"view": "front", "x": 0.15, "y": 0.15, "text": "DEBURR ALL EDGES"}]}
+
+
+class TestNoteAnnotationsSchema:
+    def test_accepts_note(self) -> None:
+        import jsonschema
+        jsonschema.validate(_drawing_spec(annotations=_NOTE), DRAWING_SPEC_SCHEMA)
+
+    def test_accepts_note_alongside_surface_finish(self) -> None:
+        import jsonschema
+        both = {
+            "surface_finish": [{"view": "front", "x": 0.1, "y": 0.1, "text": "3.2"}],
+            "note": [{"view": "top", "x": 0.2, "y": 0.2, "text": "TYP."}],
+        }
+        jsonschema.validate(
+            _drawing_spec(views=["front", "top"], annotations=both),
+            DRAWING_SPEC_SCHEMA,
+        )
+
+    def test_rejects_note_missing_text(self) -> None:
+        import jsonschema
+        bad = {"note": [{"view": "front", "x": 0.1, "y": 0.1}]}
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
+
+    def test_rejects_note_empty_text(self) -> None:
+        import jsonschema
+        bad = {"note": [{"view": "front", "x": 0.1, "y": 0.1, "text": ""}]}
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
+
+    def test_rejects_note_unknown_key(self) -> None:
+        import jsonschema
+        bad = {"note": [{"view": "front", "x": 0.1, "y": 0.1, "text": "x", "font": "Arial"}]}
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
+
+
+class TestNoteAnnotationsSemanticValidation:
+    def test_accepts_known_view(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(_drawing_spec(annotations=_NOTE))
+
+    def test_rejects_unknown_view(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        bad = {"note": [{"view": "xray", "x": 0.1, "y": 0.1, "text": "hi"}]}
+        with pytest.raises(ValueError, match="no matching view"):
+            validate_drawing_spec(_drawing_spec(annotations=bad))
+
+    def test_rejects_empty_text_semantic(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        bad = {"note": [{"view": "front", "x": 0.1, "y": 0.1, "text": ""}]}
+        with pytest.raises(ValueError, match="text must be a non-empty string"):
+            validate_drawing_spec(_drawing_spec(annotations=bad))
+
+    def test_rejects_empty_note_array(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        bad = {"note": []}
+        with pytest.raises(ValueError, match="note must be a non-empty array"):
+            validate_drawing_spec(_drawing_spec(annotations=bad))
+
+
+# ---- W70: _apply_note_annotations against a fake COM seam ----
+
+
+class _FakeAnnotation:
+    def __init__(self) -> None:
+        self.position: tuple | None = None
+
+    def SetPosition(self, x: float, y: float, z: float) -> bool:
+        self.position = (x, y, z)
+        return True
+
+
+class _FakeNote:
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self._ann = _FakeAnnotation()
+
+    def GetAnnotation(self):
+        return self._ann
+
+
+class _FakeMdoc2Note:
+    """IModelDoc2 stub recording InsertNote calls; returns a placeable note."""
+
+    def __init__(self, *, return_none: bool = False) -> None:
+        self.insert_calls: list[str] = []
+        self.notes: list[_FakeNote] = []
+        self._return_none = return_none
+
+    def InsertNote(self, text: str):
+        self.insert_calls.append(text)
+        if self._return_none:
+            return None
+        n = _FakeNote(text)
+        self.notes.append(n)
+        return n
+
+
+class _FakeView:
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def GetName2(self) -> str:
+        return self._name
+
+
+class _FakeDrawingDocNote:
+    def __init__(self) -> None:
+        self.activated: list[str] = []
+
+    def ActivateView(self, name: str) -> None:
+        self.activated.append(name)
+
+
+class TestApplyNoteAnnotations:
+    def _run(self, monkeypatch, annot, *, return_none=False):
+        # The handler types the GetAnnotation() dispatch via typed_qi to resolve
+        # IAnnotation.SetPosition (raw dispatch -> DISP_E_MEMBERNOTFOUND on 32.1).
+        # Offline, patch typed_qi to identity so the fake annotation passes through.
+        import ai_sw_bridge.com.earlybind as eb
+        import ai_sw_bridge.com.sw_type_info as sti
+        monkeypatch.setattr(eb, "typed_qi", lambda obj, iface, module=None: obj)
+        monkeypatch.setattr(sti, "wrapper_module", lambda: None)
+        from ai_sw_bridge.drawing.lifecycle import _apply_note_annotations
+        ddoc = _FakeDrawingDocNote()
+        mdoc2 = _FakeMdoc2Note(return_none=return_none)
+        placed = {"front": _FakeView("front"), "top": _FakeView("top")}
+        res = _apply_note_annotations(ddoc, mdoc2, annot, placed, 0)
+        return res, ddoc, mdoc2
+
+    def test_inserts_and_positions(self, monkeypatch) -> None:
+        res, ddoc, mdoc2 = self._run(
+            monkeypatch,
+            {"note": [{"view": "front", "x": 0.15, "y": 0.2, "text": "TYP."}]},
+        )
+        assert res["ok"] is True and res["count"] == 1 and not res["errors"]
+        assert mdoc2.insert_calls == ["TYP."]
+        assert mdoc2.notes[0].GetAnnotation().position == (0.15, 0.2, 0.0)
+        assert ddoc.activated == ["front"]
+
+    def test_multi_entry_both_views(self, monkeypatch) -> None:
+        res, _, mdoc2 = self._run(
+            monkeypatch,
+            {"note": [
+                {"view": "front", "x": 0.1, "y": 0.1, "text": "A"},
+                {"view": "top", "x": 0.2, "y": 0.2, "text": "B"},
+            ]},
+        )
+        assert res["count"] == 2 and res["ok"] is True
+        assert mdoc2.insert_calls == ["A", "B"]
+
+    def test_unplaced_view_is_error_not_crash(self, monkeypatch) -> None:
+        res, _, mdoc2 = self._run(
+            monkeypatch,
+            {"note": [{"view": "ghost", "x": 0.1, "y": 0.1, "text": "X"}]},
+        )
+        assert res["ok"] is False and res["count"] == 0
+        assert "was not placed" in res["errors"][0]
+        assert mdoc2.insert_calls == []
+
+    def test_insertnote_none_is_error(self, monkeypatch) -> None:
+        res, _, mdoc2 = self._run(
+            monkeypatch,
+            {"note": [{"view": "front", "x": 0.1, "y": 0.1, "text": "X"}]},
+            return_none=True,
+        )
+        assert res["ok"] is False and res["count"] == 0
+        assert "returned None" in res["errors"][0]
+
+    def test_no_note_key_is_noop_ok(self, monkeypatch) -> None:
+        res, _, mdoc2 = self._run(
+            monkeypatch, {"surface_finish": [{"view": "front", "x": 0, "y": 0}]}
+        )
+        assert res["ok"] is True and res["count"] == 0
+        assert mdoc2.insert_calls == []
