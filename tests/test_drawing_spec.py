@@ -994,13 +994,17 @@ class _FakeEAView:
 class _FakePlaceable:
     def __init__(self) -> None:
         self._ann = _FakeAnnotation()
+        self.frame_values: tuple | None = None
 
     def GetAnnotation(self):
         return self._ann
 
+    def SetFrameValues(self, frame, t1, t2, d1, d2, d3) -> None:
+        self.frame_values = (frame, t1, t2, d1, d2, d3)
+
 
 class _FakeMdoc2EA:
-    """IModelDoc2 stub recording the three entity-attached insert calls."""
+    """IModelDoc2 stub recording the entity-attached insert calls."""
 
     def __init__(self, *, return_none: bool = False) -> None:
         self.calls: list[str] = []
@@ -1024,6 +1028,9 @@ class _FakeMdoc2EA:
     def InsertBOMBalloon2(self, *args):
         return self._make("InsertBOMBalloon2")
 
+    def InsertGtol(self):
+        return self._make("InsertGtol")
+
 
 _EA_LANES = [
     ("datum_tag", "IDatumTag", "_insert_datum_tag", "InsertDatumTag2"),
@@ -1034,7 +1041,7 @@ _EA_LANES = [
 
 class TestApplyEntityAttachedAnnotation:
     def _run(self, monkeypatch, kind, iface, insert_name, annot,
-             *, return_none=False, edges=1):
+             *, return_none=False, edges=1, configure_name=None):
         # typed_qi resolves the specific iface (raw dispatch -> MEMBERNOTFOUND
         # on 32.1); offline, patch to identity so the fakes pass through.
         import ai_sw_bridge.com.earlybind as eb
@@ -1043,12 +1050,14 @@ class TestApplyEntityAttachedAnnotation:
         monkeypatch.setattr(sti, "wrapper_module", lambda: None)
         from ai_sw_bridge.drawing import lifecycle
         insert_fn = getattr(lifecycle, insert_name)
+        configure_fn = getattr(lifecycle, configure_name) if configure_name else None
         ddoc = _FakeDrawingDocNote()
         mdoc2 = _FakeMdoc2EA(return_none=return_none)
         placed = {"front": _FakeEAView("front", edges=edges),
                   "top": _FakeEAView("top", edges=edges)}
         res = lifecycle._apply_entity_attached_annotation(
-            ddoc, mdoc2, annot, placed, 0, kind=kind, iface=iface, insert=insert_fn)
+            ddoc, mdoc2, annot, placed, 0, kind=kind, iface=iface,
+            insert=insert_fn, configure=configure_fn)
         return res, ddoc, mdoc2
 
     @pytest.mark.parametrize("kind,iface,insert_name,com_name", _EA_LANES)
@@ -1097,3 +1106,60 @@ class TestApplyEntityAttachedAnnotation:
         assert res["count"] == 2 and res["ok"] is True
         assert mdoc2.calls == ["InsertWeldSymbol3", "InsertWeldSymbol3"]
         assert ddoc.activated == ["front", "top"]
+
+
+class TestGtolAnnotationsSchema:
+    def test_accepts_gtol(self) -> None:
+        import jsonschema
+        ok = {"geometric_tolerance": [{"view": "front", "x": 0.1, "y": 0.1}]}
+        jsonschema.validate(_drawing_spec(annotations=ok), DRAWING_SPEC_SCHEMA)
+
+    def test_accepts_gtol_tolerance(self) -> None:
+        import jsonschema
+        ok = {"geometric_tolerance": [{"view": "front", "x": 0.1, "y": 0.1, "tolerance": "0.05"}]}
+        jsonschema.validate(_drawing_spec(annotations=ok), DRAWING_SPEC_SCHEMA)
+
+    def test_rejects_gtol_missing_y(self) -> None:
+        import jsonschema
+        bad = {"geometric_tolerance": [{"view": "front", "x": 0.1}]}
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
+
+    def test_rejects_gtol_unknown_view(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        bad = {"geometric_tolerance": [{"view": "xray", "x": 0.1, "y": 0.1}]}
+        with pytest.raises(ValueError, match="no matching view"):
+            validate_drawing_spec(_drawing_spec(annotations=bad))
+
+
+class TestApplyGtolAnnotation(TestApplyEntityAttachedAnnotation):
+    """GTOL reuses the generic handler + a configure hook (SetFrameValues)."""
+
+    def test_inserts_configures_positions(self, monkeypatch) -> None:
+        annot = {"geometric_tolerance": [
+            {"view": "front", "x": 0.16, "y": 0.16, "tolerance": "0.05"}]}
+        res, ddoc, mdoc2 = self._run(
+            monkeypatch, "geometric_tolerance", "IGtol", "_insert_gtol", annot,
+            configure_name="_configure_gtol")
+        assert res["ok"] is True and res["count"] == 1 and not res["errors"]
+        assert mdoc2.calls == ["InsertGtol"]
+        # configure hook set frame-1 content, THEN placement happened
+        assert mdoc2.objs[0].frame_values == (1, "0.05", "", "", "", "")
+        assert mdoc2.objs[0].GetAnnotation().position == (0.16, 0.16, 0.0)
+
+    def test_default_tolerance_when_omitted(self, monkeypatch) -> None:
+        annot = {"geometric_tolerance": [{"view": "front", "x": 0.1, "y": 0.1}]}
+        res, _, mdoc2 = self._run(
+            monkeypatch, "geometric_tolerance", "IGtol", "_insert_gtol", annot,
+            configure_name="_configure_gtol")
+        assert res["ok"] is True
+        assert mdoc2.objs[0].frame_values == (1, "0.1", "", "", "", "")
+
+    def test_no_edge_is_error_no_insert(self, monkeypatch) -> None:
+        annot = {"geometric_tolerance": [{"view": "front", "x": 0.1, "y": 0.1}]}
+        res, _, mdoc2 = self._run(
+            monkeypatch, "geometric_tolerance", "IGtol", "_insert_gtol", annot,
+            configure_name="_configure_gtol", edges=0)
+        assert res["ok"] is False and res["count"] == 0
+        assert "no projected edge" in res["errors"][0]
+        assert mdoc2.calls == []

@@ -378,6 +378,30 @@ _BALLOON_ENTRY_SCHEMA: dict[str, Any] = {
     },
 }
 
+# A geometric tolerance (feature-control-frame) accepts an optional tolerance
+# value placed in frame 1.  An EMPTY FCF can be culled by SW on save, so the
+# default gives the frame content (Tol1) — making it non-empty + persistent.
+_GTOL_ENTRY_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["view", "x", "y"],
+    "additionalProperties": False,
+    "properties": {
+        "view": _ENTITY_ATTACHED_ENTRY_SCHEMA["properties"]["view"],
+        "x": _ENTITY_ATTACHED_ENTRY_SCHEMA["properties"]["x"],
+        "y": _ENTITY_ATTACHED_ENTRY_SCHEMA["properties"]["y"],
+        "tolerance": {
+            "type": "string",
+            "default": "0.1",
+            "minLength": 1,
+            "description": (
+                "Tolerance value placed in frame 1 (IGtol.SetFrameValues Tol1). "
+                "Gives the feature-control-frame content so it survives save; "
+                "default '0.1'."
+            ),
+        },
+    },
+}
+
 _ANNOTATIONS_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -431,13 +455,25 @@ _ANNOTATIONS_SCHEMA: dict[str, Any] = {
                 "and places it at the given sheet-frame position."
             ),
         },
+        "geometric_tolerance": {
+            "type": "array",
+            "items": _GTOL_ENTRY_SCHEMA,
+            "minItems": 1,
+            "description": (
+                "Geometric-tolerance (GD&T feature-control-frame) annotations "
+                "(InsertGtol). Each entry attaches a GTOL to a projected edge "
+                "of the named view, sets a frame-1 tolerance value, and places "
+                "it at the given sheet-frame position."
+            ),
+        },
     },
     "description": (
         "Drawing-annotation block. Supports surface-finish symbols "
         "(InsertSurfaceFinishSymbol2, 14-arg), text notes (InsertNote), datum "
-        "tags (InsertDatumTag2), weld symbols (InsertWeldSymbol3), and BOM "
-        "balloons (InsertBOMBalloon2) — all seat-proven. GD&T "
-        "(feature-control-frames) and hole tables are the next annotation lanes."
+        "tags (InsertDatumTag2), weld symbols (InsertWeldSymbol3), BOM "
+        "balloons (InsertBOMBalloon2), and geometric tolerances (InsertGtol) "
+        "— ALL seat-proven; the Insert*-placeable annotation family is complete. "
+        "Hole/revision/weld tables are the next (separate API family) lane."
     ),
 }
 

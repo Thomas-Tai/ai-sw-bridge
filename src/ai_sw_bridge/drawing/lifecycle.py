@@ -366,10 +366,11 @@ def _validate_annotations(
                     f"{path}.note[{i}].text must be a non-empty string"
                 )
 
-    # W70: entity-attached annotations (datum_tag / weld_symbol / balloon).
-    # Each entry's view must match a placed view (the handler attaches the
-    # symbol to a projected edge of that view). No required text field.
-    for kind in ("datum_tag", "weld_symbol", "balloon"):
+    # W70: entity-attached annotations (datum_tag / weld_symbol / balloon /
+    # geometric_tolerance). Each entry's view must match a placed view (the
+    # handler attaches the symbol to a projected edge of that view). No
+    # required text field.
+    for kind in ("datum_tag", "weld_symbol", "balloon", "geometric_tolerance"):
         arr = annotations.get(kind)
         if arr is None:
             continue
@@ -1148,6 +1149,21 @@ def _insert_balloon(mdoc2: Any, entry: dict[str, Any]) -> Any:
     )
 
 
+def _insert_gtol(mdoc2: Any, entry: dict[str, Any]) -> Any:
+    return mdoc2.InsertGtol()
+
+
+def _configure_gtol(tgtol: Any, entry: dict[str, Any]) -> None:
+    """Give the feature-control-frame content (frame-1 tolerance value).
+
+    An EMPTY GTOL can be culled by SW on save (unlike a blank datum/weld), so
+    set Tol1 on frame 1 to make it non-empty + persistent.
+    IGtol.SetFrameValues(FrameNumber, Tol1, Tol2, Datum1, Datum2, Datum3).
+    """
+    tol = str(entry.get("tolerance", "0.1"))
+    tgtol.SetFrameValues(1, tol, "", "", "", "")
+
+
 def _apply_entity_attached_annotation(
     drawing_doc: Any,
     mdoc2: Any,
@@ -1158,17 +1174,20 @@ def _apply_entity_attached_annotation(
     kind: str,
     iface: str,
     insert: Any,
+    configure: Any = None,
 ) -> dict[str, Any]:
-    """Insert an edge-attached annotation (datum_tag / weld_symbol / balloon).
+    """Insert an edge-attached annotation (datum_tag / weld_symbol / balloon / GTOL).
 
-    Shared core for the three W70 entity-attached annotation lanes.  Each
-    differs only in the COM insert call (``insert``) and the interface the
-    returned object is typed to (``iface``); the surrounding mechanic is
+    Shared core for the W70 entity-attached annotation lanes.  Each differs
+    only in the COM insert call (``insert``), the interface the returned object
+    is typed to (``iface``), and an optional post-type ``configure(tobj, entry)``
+    hook (GTOL uses it to set frame-1 content); the surrounding mechanic is
     identical and seat-MEASURED:
 
         activate view -> _select_first_view_edge(view)   # attach precondition
         obj  = insert(mdoc2, entry)                      # -> raw CDispatch
         tobj = typed_qi(obj, iface)                      # type FIRST
+        configure(tobj, entry)                           # optional content hook
         tobj.GetAnnotation().SetPosition(x, y, 0.0)      # place -> True
 
     Fail-soft: each entry's failure is recorded in ``errors`` and skipped.
@@ -1234,6 +1253,8 @@ def _apply_entity_attached_annotation(
             from ..com.sw_type_info import wrapper_module
 
             tobj = typed_qi(obj, iface, module=wrapper_module())
+            if configure is not None:
+                configure(tobj, entry)
             ann = tobj.GetAnnotation()
             if ann is None:
                 result["errors"].append(
@@ -1728,11 +1749,14 @@ def _build_sheet_views(
             result["view_errors"].extend(note_result["errors"])
             return result
 
-        # W70: entity-attached annotations (datum_tag / weld_symbol / balloon).
-        for kind, iface, insert_fn, result_key in (
-            ("datum_tag", "IDatumTag", _insert_datum_tag, "datum_tag_annotations"),
-            ("weld_symbol", "IWeldSymbol", _insert_weld_symbol, "weld_symbol_annotations"),
-            ("balloon", "INote", _insert_balloon, "balloon_annotations"),
+        # W70: entity-attached annotations (datum_tag / weld_symbol / balloon /
+        # geometric_tolerance). GTOL adds a post-type configure hook (frame-1
+        # content) so its FCF survives save.
+        for kind, iface, insert_fn, configure_fn, result_key in (
+            ("datum_tag", "IDatumTag", _insert_datum_tag, None, "datum_tag_annotations"),
+            ("weld_symbol", "IWeldSymbol", _insert_weld_symbol, None, "weld_symbol_annotations"),
+            ("balloon", "INote", _insert_balloon, None, "balloon_annotations"),
+            ("geometric_tolerance", "IGtol", _insert_gtol, _configure_gtol, "gtol_annotations"),
         ):
             ea_result = _apply_entity_attached_annotation(
                 drawing_doc,
@@ -1743,6 +1767,7 @@ def _build_sheet_views(
                 kind=kind,
                 iface=iface,
                 insert=insert_fn,
+                configure=configure_fn,
             )
             result[result_key] = ea_result
             if ea_result.get("errors"):
