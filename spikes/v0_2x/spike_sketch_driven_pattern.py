@@ -85,14 +85,23 @@ def _build_seed_boss(doc: Any) -> str | None:
         doc.SketchManager.CreateCircleByRadius(0.005, 0.005, 0.0, 0.003)
         doc.SketchManager.InsertSketch(True)
         doc.ClearSelection2(True)
-        doc.FeatureManager.FeatureExtrusion2(
+        # W0 fix: FeatureExtrusion2 needs the profile SELECTED. The prior code
+        # cleared selection then extruded nothing (Sketch2 left unconsumed, no
+        # Boss-Extrude2). Re-select the just-created seed sketch first.
+        seed_sketch = doc.FeatureByPositionReverse(0)
+        if seed_sketch is not None:
+            seed_sketch.Select2(False, 0)
+        boss = doc.FeatureManager.FeatureExtrusion2(
             True, False, False, _BLIND, 0,
             0.005, 0.0, False, False, False, False,
             0.0, 0.0, False, False, False, False,
             True, True, True, 0, 0.0, False,
         )
         doc.ClearSelection2(True)
-        return "Boss-Extrude2"
+        if boss is None:
+            print("[seed_boss] FeatureExtrusion2 returned None", file=sys.stderr)
+            return None
+        return _feat_name(boss) or "Boss-Extrude2"
     except Exception as e:
         print(f"[seed_boss] FAILED: {e!r}", file=sys.stderr)
         return None

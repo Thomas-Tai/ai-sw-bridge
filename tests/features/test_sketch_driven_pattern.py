@@ -124,11 +124,13 @@ def _wire(
 # ---------------------------------------------------------------------------
 
 class TestDormantGate:
-    def test_spike_status_is_unfired(self) -> None:
-        assert sdp.SPIKE_STATUS == "UNFIRED"
+    def test_spike_status_is_green(self) -> None:
+        # seat-proven 2026-06-21 (SketchPattern node, +5 faces/+423mm³, survives reopen)
+        assert sdp.SPIKE_STATUS == "GREEN"
 
-    def test_sketch_driven_pattern_not_in_registry(self) -> None:
-        assert "sketch_driven_pattern" not in HANDLER_REGISTRY
+    def test_sketch_driven_pattern_registered(self) -> None:
+        assert "sketch_driven_pattern" in HANDLER_REGISTRY
+        assert HANDLER_REGISTRY["sketch_driven_pattern"] is create_sketch_driven_pattern
 
 
 # ---------------------------------------------------------------------------
@@ -314,9 +316,9 @@ class TestKindNames:
         }
         assert "sketch_driven_pattern" not in builtin_kinds
 
-    def test_sketch_driven_pattern_disjoint_from_registry_kinds(self) -> None:
-        existing = set(HANDLER_REGISTRY.keys())
-        assert "sketch_driven_pattern" not in existing
+    def test_sketch_driven_pattern_registered_to_its_handler(self) -> None:
+        # post-ship: the kind maps to ITS handler (no collision with another lane)
+        assert HANDLER_REGISTRY.get("sketch_driven_pattern") is create_sketch_driven_pattern
 
 
 # ---------------------------------------------------------------------------

@@ -30,7 +30,10 @@ from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.sketch_driven_pattern")
 
-SPIKE_STATUS = "UNFIRED"
+# seat-proven 2026-06-21: FeatureSketchDrivenPattern(use_centroid, geom_patt) on
+# seed(mark 4) + ref-sketch(mark 1) -> 'SketchPattern' node, +5 faces/+423mm³ on
+# a 3-point sketch, survives reopen. Ref-sketch mark UNKNOWN resolved to 1.
+SPIKE_STATUS = "GREEN"
 
 VERIFY_CLASS = verify.FeatureClass.ADDITIVE_SOLID
 
@@ -190,8 +193,6 @@ def create_sketch_driven_pattern(
         f"seed={seed_name!r}, sketch={sketch_name!r}, sketch_mark={mark_used}"
     )
 
-
-if SPIKE_STATUS == "GREEN":
-    from . import HANDLER_REGISTRY
-
-    HANDLER_REGISTRY["sketch_driven_pattern"] = create_sketch_driven_pattern
+# Registration is via the sanctioned ``_register_lane`` gate in
+# ``features/__init__.py`` (W67 Phase-4 fail-loud path) — not a module-level
+# self-register block.

@@ -268,3 +268,12 @@ from .curve_through_xyz import SPIKE_STATUS as _curve_through_xyz_status  # noqa
 from .curve_through_xyz import create_curve_through_xyz  # noqa: E402
 
 _register_lane("curve_through_xyz", create_curve_through_xyz, _curve_through_xyz_status)
+
+# W68 — sketch_driven_pattern (4th pattern family: linear/circular/mirror/sketch).
+# Seat-proven 2026-06-21: fm.FeatureSketchDrivenPattern(use_centroid, geom_patt)
+# on seed(mark 4) + ref-sketch(mark 1) materializes a 'SketchPattern' node
+# (+5 faces/+423mm³ from a 3-point sketch, survives reopen). gate_additive_solid.
+from .sketch_driven_pattern import SPIKE_STATUS as _sketch_driven_pattern_status  # noqa: E402
+from .sketch_driven_pattern import create_sketch_driven_pattern  # noqa: E402
+
+_register_lane("sketch_driven_pattern", create_sketch_driven_pattern, _sketch_driven_pattern_status)
