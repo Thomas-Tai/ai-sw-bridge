@@ -817,6 +817,19 @@ deferred at epoch close (branches pruned; tips reflog-recoverable —
 Both are documented in `project_w68_seat_fire_punchlist` (memory) with full
 seat evidence.
 
+### W69 equation_curve — NO-API WALL (2026-06-21)
+
+The ribbon audit listed `CreateEquationCurve2` as the COM entry for an
+equation-driven sketch curve.  **That method does not exist** — a full grep of
+the SW2024 v32.1 DLL export (`docs/sw_api_full.md`, all 17 redist assemblies)
+has NO `Create/InsertEquationCurve*` anywhere; the only `Equation` hits are the
+read-only `Equation : String` data property, simulation load-case strings, and
+event notifiers.  Same class as the audit's confirmed `SendKeys` /
+`InsertSplitBody` no-API walls (absent from the DLL, not just the CHM).  There
+is no out-of-process path to author an equation-driven curve; **DEFERRED — no
+API**.  (Measure-don't-guess catch: the audit guessed a method name; the DLL is
+the authority.)  Removed from the W69 materialize batch before any seat burn.
+
 ---
 
 ## Process

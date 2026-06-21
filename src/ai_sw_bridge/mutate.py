@@ -320,21 +320,83 @@ def _create_fillet(doc: Any, target: dict, radius_mm: float) -> tuple[bool, str 
         return False, f"fillet pipeline failed: {exc!r}"
 
 
-_SW_CHAMFER_ANGLE_DISTANCE = 1
+_SW_CHAMFER_ANGLE_DISTANCE = 1     # swChamferType_e.swChamferAngleDistance
+_SW_CHAMFER_DISTANCE_DISTANCE = 2  # swChamferType_e.swChamferDistanceDistance
+_SW_CHAMFER_VERTEX = 3             # swChamferType_e.swChamferVertex
+_CHAMFER_TYPES = ("angle_distance", "distance_distance", "vertex")
 
 
 def _create_chamfer(
-    doc: Any, target: dict, distance_mm: float, angle_deg: float
+    doc: Any, feature: dict, target: dict
 ) -> tuple[bool, str | None]:
-    """Run the chamfer pipeline on a durable edge — fillet sibling.
+    """Run the chamfer pipeline on a durable edge or vertex — fillet sibling.
 
-    Uses ``InsertFeatureChamfer`` (the proven seat-validated 8-arg call from
-    builder.py). ``CreateDefinition(swFmChamfer=0)`` returns ``None`` on
-    SW 2024 SP1 — the CreateDefinition pipeline is fillet-only. Returns
-    (ok, error).
+    Three closed-form modes via ``feature['chamfer_type']`` (default
+    ``'angle_distance'`` — the W24 shipped behaviour, so existing specs are
+    unaffected):
+
+      * ``angle_distance``    — EDGE target; ``distance_mm`` + ``angle_deg``.
+      * ``distance_distance`` — EDGE target; ``distance_mm`` (face-set 1) +
+        ``distance2_mm`` (face-set 2).
+      * ``vertex``            — VERTEX target ``{'point':[x,y,z]}`` (mm); three
+        back-set distances ``distance_mm``/``distance2_mm``/``distance3_mm``.
+
+    Uses ``InsertFeatureChamfer`` (8-arg, seat-proven W24):
+    ``(Options, ChamferType, Width, Angle, OtherDist, VCDist1, VCDist2,
+    VCDist3)``.  swChamferType_e: AngleDistance=1, DistanceDistance=2,
+    Vertex=3.  ``CreateDefinition(swFmChamfer)`` returns ``None`` on SW 2024
+    SP1 — the CreateDefinition pipeline is fillet-only.  Returns (ok, error);
+    fail-closed.
     """
-    edge_ref = DurableEdgeRef.from_dict(target)
+    chamfer_type = (
+        feature.get("chamfer_type", "angle_distance")
+        if isinstance(feature, dict) else "angle_distance"
+    )
+    if chamfer_type not in _CHAMFER_TYPES:
+        return False, (
+            f"chamfer_type must be one of {list(_CHAMFER_TYPES)}, got {chamfer_type!r}"
+        )
+
+    def _dist_m(key: str) -> float | None:
+        val = feature.get(key)
+        if not isinstance(val, (int, float)) or val <= 0:
+            return None
+        return float(val) / 1000.0
+
+    options = 4  # swFeatureChamferTangentPropagation
     doc.ForceRebuild3(False)
+
+    # --- VERTEX chamfer: select a vertex by point, three back-set distances ---
+    if chamfer_type == "vertex":
+        point = target.get("point") if isinstance(target, dict) else None
+        if not (isinstance(point, (list, tuple)) and len(point) == 3):
+            return False, "vertex chamfer target.point must be [x, y, z] mm"
+        d1, d2, d3 = (_dist_m("distance_mm"), _dist_m("distance2_mm"), _dist_m("distance3_mm"))
+        if None in (d1, d2, d3):
+            return False, (
+                "vertex chamfer requires positive distance_mm, distance2_mm, distance3_mm"
+            )
+        try:
+            doc.ClearSelection2(True)
+        except Exception:
+            pass
+        if not doc.SelectByID(
+            "", "VERTEX",
+            float(point[0]) / 1000.0, float(point[1]) / 1000.0, float(point[2]) / 1000.0,
+        ):
+            return False, f"SelectByID(VERTEX at {list(point)} mm) failed"
+        try:
+            feat = doc.FeatureManager.InsertFeatureChamfer(
+                options, _SW_CHAMFER_VERTEX, 0.0, 0.0, 0.0, d1, d2, d3,
+            )
+            if _materialized(feat):
+                return True, None
+            return False, "InsertFeatureChamfer(vertex) did not materialize"
+        except Exception as exc:
+            return False, f"vertex chamfer pipeline failed: {exc!r}"
+
+    # --- EDGE chamfer (angle_distance | distance_distance) -------------------
+    edge_ref = DurableEdgeRef.from_dict(target)
     res = resolve_edge_ref(doc, edge_ref)
     if res.entity is None:
         return False, f"edge unresolved (method={res.method})"
@@ -346,16 +408,28 @@ def _create_chamfer(
         return False, "select_entity failed for chamfer edge"
     try:
         fm = doc.FeatureManager
-        distance_m = distance_mm / 1000.0
-        angle_rad = angle_deg * math.pi / 180.0
-        options = 4  # swFeatureChamferTangentPropagation
-        feat = fm.InsertFeatureChamfer(
-            options, _SW_CHAMFER_ANGLE_DISTANCE,
-            distance_m, angle_rad, 0.0, 0.0, 0.0, 0.0,
-        )
+        if chamfer_type == "distance_distance":
+            d1, d2 = _dist_m("distance_mm"), _dist_m("distance2_mm")
+            if None in (d1, d2):
+                return False, (
+                    "distance_distance chamfer requires positive distance_mm and distance2_mm"
+                )
+            feat = fm.InsertFeatureChamfer(
+                options, _SW_CHAMFER_DISTANCE_DISTANCE,
+                d1, 0.0, d2, 0.0, 0.0, 0.0,
+            )
+        else:  # angle_distance (default / W24)
+            d1 = _dist_m("distance_mm")
+            if d1 is None:
+                return False, "angle_distance chamfer requires positive distance_mm"
+            angle_rad = float(feature.get("angle_deg", 45.0)) * math.pi / 180.0
+            feat = fm.InsertFeatureChamfer(
+                options, _SW_CHAMFER_ANGLE_DISTANCE,
+                d1, angle_rad, 0.0, 0.0, 0.0, 0.0,
+            )
         if _materialized(feat):
             return True, None
-        return False, "InsertFeatureChamfer did not materialize"
+        return False, f"InsertFeatureChamfer({chamfer_type}) did not materialize"
     except Exception as exc:
         return False, f"chamfer pipeline failed: {exc!r}"
 
@@ -1963,10 +2037,31 @@ def _create_linear_pattern(
     "z": mm}}`` where the point lies on the desired direction edge.
     ``feature.spacing_mm`` (positive number), ``feature.count`` (int >= 2),
     optional ``feature.flip`` (bool).
+
+    **Direction-2 (optional, closed-form):** supply ``target.direction2``
+    (a point on a second edge) + ``feature.count2`` (int >= 2) +
+    ``feature.spacing2_mm`` (positive) + optional ``feature.flip2``.  The
+    second edge is marked 2; ``FeatureLinearPattern5`` arg-3/4/6 (Num2/
+    Spacing2/FlipDir2) carry it.  Omitted ⇒ Num2=1 (single direction, the
+    W21 default — byte-identical).
+
+    **Multi-seed (optional):** supply ``target.seeds`` (a list of feature
+    names) to pattern several seeds together; each is marked 4 (append).
+    Omitted ⇒ the single ``target.seed`` (back-compat).
     """
-    seed_name = target.get("seed") if isinstance(target, dict) else None
-    if not seed_name:
-        return False, "target.seed must be a non-empty feature name"
+    # seeds: list form wins; else single seed (back-compat)
+    seeds = target.get("seeds") if isinstance(target, dict) else None
+    if seeds is None:
+        single = target.get("seed") if isinstance(target, dict) else None
+        if not single:
+            return False, "target.seed must be a non-empty feature name"
+        seed_names = [single]
+    else:
+        if not isinstance(seeds, list) or not seeds or not all(
+            isinstance(s, str) and s for s in seeds
+        ):
+            return False, "target.seeds must be a non-empty list of feature names"
+        seed_names = seeds
     direction = target.get("direction") if isinstance(target, dict) else None
     if not isinstance(direction, dict):
         return False, "target.direction must be a dict with x, y, z (mm)"
@@ -1978,36 +2073,74 @@ def _create_linear_pattern(
         return False, "feature.count must be an integer >= 2"
     flip = bool(feature.get("flip", False)) if isinstance(feature, dict) else False
 
+    # --- optional direction 2 ------------------------------------------------
+    direction2 = target.get("direction2") if isinstance(target, dict) else None
+    num2 = 1
+    spacing2_m = 0.0
+    flip2 = False
+    if direction2 is not None:
+        if not isinstance(direction2, dict):
+            return False, "target.direction2 must be a dict with x, y, z (mm)"
+        count2 = feature.get("count2") if isinstance(feature, dict) else None
+        if not isinstance(count2, int) or count2 < 2:
+            return False, "feature.count2 must be an integer >= 2 when direction2 is set"
+        spacing2_mm = feature.get("spacing2_mm") if isinstance(feature, dict) else None
+        if not isinstance(spacing2_mm, (int, float)) or spacing2_mm <= 0:
+            return False, "feature.spacing2_mm must be a positive number when direction2 is set"
+        num2 = count2
+        spacing2_m = float(spacing2_mm) / 1000.0
+        flip2 = bool(feature.get("flip2", False)) if isinstance(feature, dict) else False
+
     doc.ForceRebuild3(False)
     try:
         fm = doc.FeatureManager
-        seed_feat = _find_feature_by_name(doc, seed_name)
-        if seed_feat is None:
-            return False, f"seed feature {seed_name!r} not found in feature tree"
+        seed_feats = []
+        for name in seed_names:
+            sf = _find_feature_by_name(doc, name)
+            if sf is None:
+                return False, f"seed feature {name!r} not found in feature tree"
+            seed_feats.append((name, sf))
+
+        sel_mgr = doc.SelectionManager
+        doc.ClearSelection2(True)
 
         # 1. Direction edge (mark=1)
         dx = float(direction["x"]) / 1000.0
         dy = float(direction["y"]) / 1000.0
         dz = float(direction["z"]) / 1000.0
-        doc.ClearSelection2(True)
         if not doc.SelectByID("", "EDGE", dx, dy, dz):
             return False, (
                 f"could not select direction edge at ({direction['x']}, "
                 f"{direction['y']}, {direction['z']}) mm"
             )
-        sel_mgr = doc.SelectionManager
         if not sel_mgr.SetSelectedObjectMark(1, 1, 0):
             return False, "SetSelectedObjectMark(1, 1, 0) failed for direction"
 
-        # 2. Seed (mark=4)
-        if not seed_feat.Select2(True, 4):
-            return False, f"IFeature.Select2 on seed {seed_name!r} returned False"
+        # 1b. Direction-2 edge (mark=2), if requested. Appending coordinate
+        # selection needs the TYPED IModelDocExtension.SelectByID2 (the raw
+        # late-bound doc has no SelectByID2, and a bare-None callout only
+        # walls on the raw proxy — the typed proxy coerces it correctly).
+        if direction2 is not None:
+            ext = typed(doc.Extension, "IModelDocExtension")
+            d2x = float(direction2["x"]) / 1000.0
+            d2y = float(direction2["y"]) / 1000.0
+            d2z = float(direction2["z"]) / 1000.0
+            if not ext.SelectByID2("", "EDGE", d2x, d2y, d2z, True, 2, None, 0):
+                return False, (
+                    f"could not select direction2 edge at ({direction2['x']}, "
+                    f"{direction2['y']}, {direction2['z']}) mm"
+                )
+
+        # 2. Seed(s) (mark=4, append)
+        for name, sf in seed_feats:
+            if not sf.Select2(True, 4):
+                return False, f"IFeature.Select2 on seed {name!r} returned False"
 
         # 3. FeatureLinearPattern5 (22 args)
         spacing_m = float(spacing_mm) / 1000.0
         feat = fm.FeatureLinearPattern5(
-            count, spacing_m, 1, 0.0,
-            flip, False, "", "",
+            count, spacing_m, num2, spacing2_m,
+            flip, flip2, "", "",
             False, False, False, False,
             False, False, False, False,
             False, False, 0.0, 0.0, False, False,
@@ -2525,9 +2658,7 @@ def _apply_feature(
     if ftype == "fillet_constant_radius":
         return _create_fillet(doc, target, feature["radius_mm"])
     if ftype == "chamfer":
-        return _create_chamfer(
-            doc, target, feature["distance_mm"], feature.get("angle_deg", 45.0)
-        )
+        return _create_chamfer(doc, feature, target)
     if ftype == "base_flange":
         return _create_base_flange(
             doc, target, feature["thickness_mm"], feature["bend_radius_mm"]
@@ -3034,18 +3165,47 @@ def sw_propose_feature_add(
                 )
                 return result
         elif feat_type == "chamfer":
+            chamfer_type = feature.get("chamfer_type", "angle_distance")
+            if chamfer_type not in _CHAMFER_TYPES:
+                result["error"] = (
+                    f"chamfer_type must be one of {list(_CHAMFER_TYPES)}, "
+                    f"got {chamfer_type!r}"
+                )
+                return result
             distance_mm = feature.get("distance_mm")
             if not isinstance(distance_mm, (int, float)) or distance_mm <= 0:
                 result["error"] = (
                     f"distance_mm must be a positive number, got {distance_mm!r}"
                 )
                 return result
-            angle_deg = feature.get("angle_deg", 45.0)
-            if not isinstance(angle_deg, (int, float)) or not (0 < angle_deg < 90):
-                result["error"] = (
-                    f"angle_deg must be in (0, 90), got {angle_deg!r}"
-                )
-                return result
+            if chamfer_type == "angle_distance":
+                angle_deg = feature.get("angle_deg", 45.0)
+                if not isinstance(angle_deg, (int, float)) or not (0 < angle_deg < 90):
+                    result["error"] = (
+                        f"angle_deg must be in (0, 90), got {angle_deg!r}"
+                    )
+                    return result
+            elif chamfer_type == "distance_distance":
+                d2 = feature.get("distance2_mm")
+                if not isinstance(d2, (int, float)) or d2 <= 0:
+                    result["error"] = (
+                        f"distance_distance chamfer requires positive distance2_mm, got {d2!r}"
+                    )
+                    return result
+            else:  # vertex
+                for pname in ("distance2_mm", "distance3_mm"):
+                    pval = feature.get(pname)
+                    if not isinstance(pval, (int, float)) or pval <= 0:
+                        result["error"] = (
+                            f"vertex chamfer requires positive {pname}, got {pval!r}"
+                        )
+                        return result
+                point = target.get("point") if isinstance(target, dict) else None
+                if not (isinstance(point, (list, tuple)) and len(point) == 3):
+                    result["error"] = (
+                        "vertex chamfer requires target.point = [x, y, z] (mm)"
+                    )
+                    return result
         elif feat_type == "base_flange":
             for pname in ("thickness_mm", "bend_radius_mm"):
                 pval = feature.get(pname)

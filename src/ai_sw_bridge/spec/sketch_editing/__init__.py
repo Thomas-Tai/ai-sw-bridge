@@ -82,6 +82,10 @@ from . import pattern as _pattern  # noqa: E402
 
 register(_pattern.OP)
 
+from . import circular_pattern as _circular_pattern  # noqa: E402
+
+register(_circular_pattern.OP)
+
 from . import convert as _convert  # noqa: E402
 
 register(_convert.OP)

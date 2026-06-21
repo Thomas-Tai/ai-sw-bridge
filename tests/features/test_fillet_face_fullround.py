@@ -10,8 +10,9 @@ the bind), NOT a Parasolid refusal.  Pins:
   * verify: |d_vol| > VOL_EPS_MM3 (the face delta is unreliable; a fillet
     redistributes material).  CreateFeature's RETURN is NOT the witness — it may
     raise DISP_E_MEMBERNOTFOUND while the solid is already built (swallowed).
-  * full_round: DEFERRED — fails closed regardless of input (binds on the seat
-    but CreateFeature ghosts on a square-edged fixture).
+  * full_round: SHIPPED 2026-06-21 — Initialize(swFullRoundFillet=3); SetFaces
+    on WhichFaceList 3/4/5 (side1/center/side2); same |d_vol| gate (the prior
+    slab ghost was a fixture artifact, not a kernel wall).
   * registry: GREEN ⇒ ``fillet_face`` advertised; sibling names are not.
 
 COM seams are patched on the lane module itself (``features.fillet_face_fullround``)
@@ -202,24 +203,36 @@ class TestDispatch:
         assert which == [1, 2]  # WhichFaceList set1 / set2
         assert state["fake_fd"].default_radius_m == pytest.approx(0.003)
 
-    def test_full_round_deferred(self, monkeypatch):
-        state = _wire(monkeypatch)
+    def test_full_round_uses_type_3_and_setfaces_3_4_5(self, monkeypatch):
+        # SEAT-PROVEN 2026-06-21: full_round materializes (Δvol -1716.81 exact).
+        # center face replaced -> negative vol delta.
+        state = _wire(monkeypatch, metrics=((6, 8000.0), (4, 6283.0)))
         ok, err = create_fillet_face_fullround(
             _FakeDoc(),
             {"fillet_type": "full_round"},
             {"side1": _face_ref("s1"), "center": _face_ref("c"), "side2": _face_ref("s2")},
         )
-        assert ok is False
-        assert "DEFERRED" in err or "deferred" in err.lower()
-        # deferral is early — the FeatureData pipeline never ran
-        assert state["fake_fd"].initialize_calls == []
+        assert (ok, err) == (True, None)
+        assert state["fake_fd"].initialize_calls == [3]  # swFullRoundFillet
+        which = [w for (w, _f) in state["fake_fd"].setfaces_calls]
+        assert which == [3, 4, 5]  # side1 / center / side2
 
-    def test_full_round_deferred_regardless_of_target(self):
-        # even a malformed full_round target hits the deferral, not validation
+    def test_full_round_rejects_missing_face_ref(self):
+        # a malformed full_round target fails closed at validation
         ok, err = create_fillet_face_fullround(
             _FakeDoc(), {"fillet_type": "full_round"}, {},
         )
-        assert ok is False and "defer" in err.lower()
+        assert ok is False and "face_ref" in err
+
+    def test_full_round_ghost_is_false(self, monkeypatch):
+        # binds 1/1/1 but zero vol delta -> fail closed (no fixture is valid)
+        _wire(monkeypatch, metrics=((6, 8000.0), (6, 8000.0)))
+        ok, err = create_fillet_face_fullround(
+            _FakeDoc(),
+            {"fillet_type": "full_round"},
+            {"side1": _face_ref("s1"), "center": _face_ref("c"), "side2": _face_ref("s2")},
+        )
+        assert ok is False and "did not redistribute" in err
 
 
 # --- volume-change gate ---------------------------------------------------

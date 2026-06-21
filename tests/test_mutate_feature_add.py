@@ -1644,6 +1644,12 @@ class _FakeChamferDoc:
     def ClearSelection2(self, top_only: bool) -> None:
         self.clear_selection_calls.append(top_only)
 
+    def SelectByID(self, name: str, typ: str, x: float, y: float, z: float) -> bool:
+        # vertex chamfer path selects a VERTEX by coordinate
+        self.select_by_id_calls = getattr(self, "select_by_id_calls", [])
+        self.select_by_id_calls.append((typ, x, y, z))
+        return True
+
     def Save(self) -> int:
         self.save_calls.append(())
         return 1
@@ -1864,3 +1870,88 @@ class TestDryRunChamfer:
         assert r["state"] == ST_DRY_RUN_BROKE
         assert "unresolved" in r["error"]
         assert fakes["fm"].insert_chamfer_calls == []
+
+
+class TestDryRunChamferModes:
+    """The W68 dd + vertex chamfer modes (closed-form, seat-proven 2026-06-21)."""
+
+    def test_distance_distance_arg_mapping(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        fakes = _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        feat = {
+            "type": "chamfer", "chamfer_type": "distance_distance",
+            "distance_mm": 2.0, "distance2_mm": 3.0,
+        }
+        pid = sw_propose_feature_add(str(doc), feat, _VALID_TARGET)["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+        assert r["ok"] is True
+        args = fakes["fm"].insert_chamfer_calls[0]
+        assert args[1] == 2  # swChamferDistanceDistance
+        assert args[2] == pytest.approx(0.002)  # Width = dist1
+        assert args[4] == pytest.approx(0.003)  # OtherDist = dist2
+
+    def test_vertex_arg_mapping(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        fakes = _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        feat = {
+            "type": "chamfer", "chamfer_type": "vertex",
+            "distance_mm": 2.0, "distance2_mm": 2.0, "distance3_mm": 2.0,
+        }
+        target = {"point": [10.0, 10.0, 10.0]}
+        pid = sw_propose_feature_add(str(doc), feat, target)["proposal_id"]
+        r = sw_dry_run_feature_add(pid)
+        assert r["ok"] is True
+        args = fakes["fm"].insert_chamfer_calls[0]
+        assert args[1] == 3  # swChamferVertex
+        assert args[5] == pytest.approx(0.002)  # VertexChamDist1
+        assert args[6] == pytest.approx(0.002)
+        assert args[7] == pytest.approx(0.002)
+        # vertex selected by coordinate (mm -> m)
+        assert fakes["doc"].select_by_id_calls[0] == ("VERTEX", pytest.approx(0.010), pytest.approx(0.010), pytest.approx(0.010))
+
+    def test_distance_distance_requires_distance2(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        feat = {"type": "chamfer", "chamfer_type": "distance_distance", "distance_mm": 2.0}
+        r = sw_propose_feature_add(str(doc), feat, _VALID_TARGET)
+        assert r["ok"] is False
+        assert "distance2_mm" in r["error"]
+
+    def test_vertex_requires_point(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        feat = {
+            "type": "chamfer", "chamfer_type": "vertex",
+            "distance_mm": 2.0, "distance2_mm": 2.0, "distance3_mm": 2.0,
+        }
+        r = sw_propose_feature_add(str(doc), feat, _VALID_TARGET)  # edge target, no point
+        assert r["ok"] is False
+        assert "point" in r["error"]
+
+    def test_rejects_bad_chamfer_type(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
+        _patch_chamfer_advertised(monkeypatch)
+        feat = {"type": "chamfer", "chamfer_type": "bogus", "distance_mm": 2.0}
+        r = sw_propose_feature_add(str(doc), feat, _VALID_TARGET)
+        assert r["ok"] is False
+        assert "chamfer_type" in r["error"]

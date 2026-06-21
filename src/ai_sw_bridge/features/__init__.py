@@ -250,9 +250,9 @@ _register_lane("knit", create_knit, _knit_status)
 # [face])) binds (GetFaceCount readback-guarded) -> CreateFeature (DISP_E_
 # MEMBERNOTFOUND on return swallowed; the solid is already built).  Gate =
 # |d_vol| > eps (face cert -57.94 mm³, GetTypeName2 'Fillet', survives reopen).
-# full_round is DEFERRED in-handler (binds 1/1/1 but CreateFeature ghosts on a
-# square-edged fixture — needs a tangent-chain geometry probe), so only the
-# face kind ships.
+# full_round SHIPPED 2026-06-21 (Initialize(3), SetFaces 3/4/5 side1/center/
+# side2; seat-proven dVol -1716.81mm³ on a 40x20x10 box — the prior slab ghost
+# was a fixture artifact, not a wall).  Both fillet_type kinds ship via this lane.
 from .fillet_face_fullround import SPIKE_STATUS as _fillet_face_status  # noqa: E402
 from .fillet_face_fullround import create_fillet_face_fullround  # noqa: E402
 

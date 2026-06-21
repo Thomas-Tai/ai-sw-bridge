@@ -28,13 +28,16 @@ list (docs/sw_api_full.md, SW2024 v32.1):
 VARIANT-array ``SetFaces``; a ``GetFaceCount(which) == 1`` readback guards against
 the silent-no-op ghost BEFORE ``CreateFeature``.
 
-**FULL-ROUND (DEFERRED — W0 note):** the same VARIANT-array binding succeeds for
-all three sets (``GetFaceCount`` 1/1/1 on the seat), but ``CreateFeature`` still
-ghosts (returns None, dVol=0) on the slab fixture.  Full-round fillets need a
-specific continuous tangent-chain topology between side1/center/side2 that the
-square-edged slab fixture does not present; whether OOP full-round is achievable
-with a valid tangent fixture is an OPEN question requiring a dedicated geometry
-probe.  Until then this path fails closed (never raises — the handler contract).
+**FULL-ROUND (SHIPPED 2026-06-21):** three face-sets (WhichFaceList 3 side1 /
+4 center / 5 side2), each bound via the same VARIANT-array ``SetFaces`` +
+``GetFaceCount==1`` guard, then ``Initialize(swFullRoundFillet=3)`` →
+``CreateFeature``.  The centre face is replaced by a surface tangent to the two
+side faces.  Seat-proven by ``spike_fillet_fullround_probe`` (40x20x10 box →
+half-cylinder, dVol = -1716.81mm³ exact).  The earlier slab-fixture ghost was a
+FIXTURE artifact (degenerate adjacency), NOT a kernel wall — full-round is
+MATERIALIZE-class (explicit 3-face) per the boundary law.  Fail-closed: if a
+caller's three faces are not a valid tangent candidate, ``CreateFeature``
+no-ops and the |d_vol| gate returns ``(False, ...)``.
 
 **Verify-the-EFFECT (VOLUME CHANGE):** a fillet REDISTRIBUTES material.  The face
 delta is unreliable (a blend can consume faces), so the gate is
@@ -53,7 +56,7 @@ from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.fillet_face_fullround")
 
-SPIKE_STATUS = "GREEN"  # face seat-proven 2026-06-21 (full_round deferred)
+SPIKE_STATUS = "GREEN"  # face + full_round seat-proven 2026-06-21
 
 # Verify class: no fillet-specific enum; the gate is an inline volume-change
 # test (the brief's §WHY-NOT gate_additive_solid).  Attribute present so the
@@ -72,14 +75,6 @@ _MEMBER_NOT_FOUND = -2147352573         # DISP_E_MEMBERNOTFOUND
 _FACE_WHICH = (1, 2)                     # swFaceFilletSet1 / Set2
 _FULL_ROUND_WHICH = (3, 4, 5)           # side1 / center / side2
 
-_FULL_ROUND_DEFERRED = (
-    "full_round fillet is DEFERRED (W68): VARIANT-array SetFaces binds all three "
-    "face-sets (GetFaceCount 1/1/1) but CreateFeature ghosts on a square-edged "
-    "fixture — full-round needs a continuous tangent-chain topology not yet "
-    "characterized OOP; awaiting a dedicated geometry probe"
-)
-
-
 def _face_safearray(face: Any) -> Any:
     """Wrap a single IFace2 in a typed ``VARIANT(VT_ARRAY|VT_DISPATCH)`` SafeArray.
 
@@ -97,12 +92,12 @@ def create_fillet_face_fullround(
     """Create a FACE fillet on two resolved face-sets.  Fail-closed; never raises.
 
     ``feature`` keys
-        fillet_type : str — ``"face"`` (SHIPPED) or ``"full_round"`` (DEFERRED)
-        radius_mm   : float — fillet radius (default 5.0; applied via DefaultRadius)
+        fillet_type : str — ``"face"`` or ``"full_round"`` (both SHIPPED)
+        radius_mm   : float — face-fillet radius (default 5.0; via DefaultRadius)
 
     ``target`` keys
         face:        faces : list[face_ref] — exactly 2 face_ref dicts (set1, set2)
-        full_round:  side1 / center / side2 face_refs (validated, then deferred)
+        full_round:  side1 / center / side2 face_refs (the tangent candidate)
 
     Returns ``(True, None)`` on a verified materialization (|d_vol| > eps) or
     ``(False, "<reason>")`` otherwise.
@@ -118,9 +113,12 @@ def create_fillet_face_fullround(
             f"fillet_type must be one of ['face', 'full_round'], got {fillet_type!r}"
         )
 
-    # full_round is characterized-but-deferred — fail closed (see module docstring).
+    # full_round: SEAT-PROVEN 2026-06-21 (spike_fillet_fullround_probe = PASS,
+    # Δvol -1716.81mm³ exact half-cylinder on a 40x20x10 box).  The prior slab
+    # ghost was a FIXTURE artifact, NOT a kernel wall — full-round is
+    # MATERIALIZE-class (explicit 3-face), per [[reference_oop_boundary_law]].
     if fillet_type == "full_round":
-        return False, _FULL_ROUND_DEFERRED
+        return _create_full_round(doc, target)
 
     # --- FACE fillet: collect exactly two face_refs ------------------------
     faces = target.get("faces")
@@ -215,4 +213,90 @@ def create_fillet_face_fullround(
         f"(d_vol_mm3={d_vol:.4e}, d_faces={d_faces}, "
         f"vol_before={vol_before:.3f}, vol_after={vol_after:.3f}); "
         f"the two faces must share an edge suitable for a face fillet"
+    )
+
+
+def _create_full_round(doc: Any, target: dict) -> tuple[bool, str | None]:
+    """Create a FULL-ROUND fillet across three resolved face-sets.
+
+    Seat-proven 2026-06-21 (spike_fillet_fullround_probe):
+    ``CreateDefinition(swFmFillet=1) → typed_qi(ISimpleFilletFeatureData2) →
+    Initialize(swFullRoundFillet=3) → SetFaces(which, VARIANT[face]) for
+    which ∈ (3 side1, 4 center, 5 side2) with a GetFaceCount==1 readback guard
+    → CreateFeature``.  The centre face is replaced by a surface tangent to the
+    two side faces, so the witness is ``|d_vol| > eps``.  Fail-closed.
+
+    ``target`` keys (each a face_ref dict): ``side1`` / ``center`` / ``side2``.
+    """
+    refs = [(target.get("side1"), 3), (target.get("center"), 4), (target.get("side2"), 5)]
+    for name, ref_which in zip(("side1", "center", "side2"), refs):
+        if not isinstance(ref_which[0], dict):
+            return False, f"full_round target.{name} must be a face_ref dict"
+
+    try:
+        doc.ForceRebuild3(False)
+    except Exception:
+        pass
+    faces_before, vol_before = verify.solid_metrics(doc)
+    try:
+        doc.ClearSelection2(True)
+    except Exception:
+        pass
+
+    try:
+        from ..com.earlybind import typed_qi
+        from ..com.sw_type_info import wrapper_module
+
+        fm = doc.FeatureManager
+        data = fm.CreateDefinition(_SW_FM_FILLET)
+        if data is None:
+            return False, "CreateDefinition(swFmFillet=1) returned None"
+        fd = typed_qi(data, "ISimpleFilletFeatureData2", module=wrapper_module())
+        init_ok = fd.Initialize(_SW_FULL_ROUND_FILLET)
+        if init_ok is False:
+            return False, f"Initialize({_SW_FULL_ROUND_FILLET}) returned False"
+
+        for ref, which in refs:
+            res = resolve_manifest_face(doc, ref)
+            entity = getattr(res, "entity", None)
+            if entity is None:
+                return False, (
+                    f"full_round face-set {which} did not resolve to a live face "
+                    f"(method={getattr(res, 'method', None)})"
+                )
+            fd.SetFaces(which, _face_safearray(entity))
+            try:
+                bound = fd.GetFaceCount(which)
+            except Exception as exc:
+                return False, f"GetFaceCount({which}) raised: {exc!r}"
+            if bound != 1:
+                return False, (
+                    f"full_round face-set {which} did not bind (GetFaceCount={bound!r})"
+                )
+
+        try:
+            fm.CreateFeature(fd)
+        except Exception as exc:
+            hr = getattr(exc, "args", [None])[0] if hasattr(exc, "args") else None
+            if hr != _MEMBER_NOT_FOUND:
+                return False, f"CreateFeature raised: {exc!r}"
+    except Exception as exc:
+        return False, f"full_round pipeline raised: {exc!r}"
+
+    try:
+        doc.ForceRebuild3(False)
+    except Exception:
+        pass
+    faces_after, vol_after = verify.solid_metrics(doc)
+    d_vol = vol_after - vol_before
+    d_faces = faces_after - faces_before
+
+    if abs(d_vol) > verify.VOL_EPS_MM3:
+        logger.info("full_round fillet materialized: d_vol_mm3=%.4f, d_faces=%d", d_vol, d_faces)
+        return True, None
+
+    return False, (
+        f"full_round fillet did not redistribute material "
+        f"(d_vol_mm3={d_vol:.4e}, d_faces={d_faces}); the three face-sets must "
+        f"form a valid side1/center/side2 tangent candidate"
     )

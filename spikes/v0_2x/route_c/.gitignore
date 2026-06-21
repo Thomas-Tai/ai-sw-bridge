@@ -1,7 +1,0 @@
-# Licensed SOLIDWORKS redist interop assemblies — co-located for regasm to
-# resolve the add-in's dependencies, but NOT ours to commit.
-SolidWorks.Interop.*.dll
-# Throwaway stamped RunMacro2 probe DLLs (cache-defeat); the forensic record is
-# the source + result JSON, not the binaries.
-RouteCThicken*.dll
-*.pdb
