@@ -8,6 +8,7 @@ Subcommands:
   bounding_box        -> bounding_box()            [part only, W30]
   assembly_bbox       -> assembly_bounding_box()   [assembly only, W52]
   volume              -> sw_get_volume()           [part only]
+  feature_statistics  -> sw_get_feature_statistics()  [part/assembly, W71]
   screenshot          -> sw_screenshot(width, height, fit_view, filename)
   measure             -> sw_measure(entity_a, entity_b)  [legacy]
   measure_selection   -> measure_selection()      [W30, pre-selected entities]
@@ -72,6 +73,10 @@ def _run_bounding_box(_args: argparse.Namespace) -> dict[str, Any]:
 
 def _run_volume(_args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().volume()
+
+
+def _run_feature_statistics(_args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().feature_statistics()
 
 
 def _run_screenshot(args: argparse.Namespace) -> dict[str, Any]:
@@ -228,6 +233,18 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.set_defaults(func=_run_volume)
+
+    p = subs.add_parser(
+        "feature_statistics",
+        help="Report the active model's build-tree statistics (part/assembly).",
+        description=(
+            "Read IFeatureManager.FeatureStatistics (Refresh()ed first): "
+            "feature_count, solid_bodies_count, surface_bodies_count, "
+            "total_rebuild_time, and per-feature name/type/update-time arrays. "
+            "Lets the system introspect its own generated build tree."
+        ),
+    )
+    p.set_defaults(func=_run_feature_statistics)
 
     p = subs.add_parser(
         "screenshot",

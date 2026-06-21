@@ -55,6 +55,18 @@ def register(mcp: Any) -> None:
 
     @mcp.tool()
     @com_tool
+    def sw_feature_statistics() -> dict[str, Any]:
+        """Return the active model's build-tree statistics (W71).
+
+        Reads IFeatureManager.FeatureStatistics (Refresh()ed first):
+        feature_count, solid_bodies_count, surface_bodies_count,
+        total_rebuild_time, and per-feature name/type/update-time arrays.
+        Lets the system introspect its own generated build tree. Part/assembly.
+        """
+        return SolidWorksObserver().feature_statistics()
+
+    @mcp.tool()
+    @com_tool
     def sw_screenshot(
         width: int = 640,
         height: int = 360,

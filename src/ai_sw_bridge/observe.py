@@ -645,6 +645,119 @@ def sw_get_volume() -> dict[str, Any]:
         return result
 
 
+def _to_list(val: Any) -> list[Any] | None:
+    """Coerce a SAFEARRAY-style COM return (tuple/list/None) to a list."""
+    if val is None:
+        return None
+    try:
+        return [v for v in val]
+    except TypeError:
+        return [val]
+
+
+def sw_get_feature_statistics() -> dict[str, Any]:
+    """Return build-tree statistics for the active part/assembly (W71).
+
+    Reads ``IFeatureManager.FeatureStatistics`` (an ``IFeatureStatistics``),
+    calls ``Refresh()`` so the snapshot reflects the CURRENT model state, then
+    reports the topology + rebuild-cost metrics. All reads are late-bound
+    (``resolve``); the basic scalar/array properties are readable on the
+    late-bound proxy (same class as ``sw_get_volume``).
+
+    Keys: ``feature_count``, ``solid_bodies_count``, ``surface_bodies_count``,
+    ``total_rebuild_time`` (seconds; SW reports the cumulative rebuild cost),
+    ``part_name``, plus the per-feature arrays ``feature_names`` /
+    ``feature_types`` / ``feature_update_times`` (best-effort, fail-soft).
+
+    Parts and assemblies (both carry a FeatureManager). Drawings are rejected.
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "doc_path": None,
+        "part_name": None,
+        "feature_count": None,
+        "solid_bodies_count": None,
+        "surface_bodies_count": None,
+        "total_rebuild_time": None,
+        "feature_names": None,
+        "feature_types": None,
+        "feature_update_times": None,
+        "refreshed": False,
+        "error": None,
+        "errors": [],
+    }
+    try:
+        sw = get_sw_app()
+        doc = get_active_doc(sw)
+        if doc is None:
+            result["error"] = "no_active_doc"
+            return result
+        try:
+            result["doc_path"] = str(resolve(doc, "GetPathName"))
+        except Exception:
+            pass
+
+        try:
+            fm = resolve(doc, "FeatureManager")
+        except Exception as exc:
+            result["error"] = f"FeatureManager failed: {exc!r}"
+            return result
+        if fm is None:
+            result["error"] = "FeatureManager returned None"
+            return result
+
+        try:
+            stats = resolve(fm, "FeatureStatistics")
+        except Exception as exc:
+            result["error"] = f"FeatureStatistics failed: {exc!r}"
+            return result
+        if stats is None:
+            result["error"] = "FeatureStatistics returned None (drawing/unsupported doc?)"
+            return result
+
+        # Refresh BEFORE reading so counts/times reflect the current tree.
+        # Refresh is documented as a method (Refresh() -> Boolean), but the
+        # late-bound proxy exposes it as a BOOLEAN PROPERTY whose get triggers
+        # the refresh and returns the success flag (the GetSaveFlag footgun).
+        # Callable-or-property guard handles both forms.
+        try:
+            ref = stats.Refresh
+            if callable(ref):
+                ref = ref()
+            result["refreshed"] = bool(ref) if ref is not None else True
+        except Exception as exc:
+            result["errors"].append(f"Refresh: {exc!r}")
+
+        def _read(key: str, prop: str, cast: Any) -> None:
+            try:
+                v = resolve(stats, prop)
+                result[key] = cast(v) if v is not None else None
+            except Exception as exc:
+                result["errors"].append(f"{prop}: {exc!r}")
+
+        _read("feature_count", "FeatureCount", int)
+        _read("solid_bodies_count", "SolidBodiesCount", int)
+        _read("surface_bodies_count", "SurfaceBodiesCount", int)
+        _read("total_rebuild_time", "TotalRebuildTime", float)
+        _read("part_name", "PartName", str)
+        for key, prop in (
+            ("feature_names", "FeatureNames"),
+            ("feature_types", "FeatureTypes"),
+            ("feature_update_times", "FeatureUpdateTimes"),
+        ):
+            try:
+                result[key] = _to_list(resolve(stats, prop))
+            except Exception as exc:
+                result["errors"].append(f"{prop}: {exc!r}")
+
+        # The load-bearing witness is the count trio; missing arrays don't fail.
+        result["ok"] = result["feature_count"] is not None
+        return result
+    except Exception as exc:
+        result["error"] = f"dispatch failed: {exc!r}"
+        return result
+
+
 def sw_screenshot(
     width: int = 640,
     height: int = 360,
@@ -1841,6 +1954,16 @@ class SolidWorksObserver:
     def volume(self) -> dict[str, Any]:
         """Return volume, surface area, mass, and CoM of the active part."""
         return sw_get_volume()
+
+    def feature_statistics(self) -> dict[str, Any]:
+        """Return build-tree statistics for the active part/assembly (W71).
+
+        Reads ``IFeatureManager.FeatureStatistics`` (Refresh()ed first):
+        ``feature_count``, ``solid_bodies_count``, ``surface_bodies_count``,
+        ``total_rebuild_time``, plus per-feature name/type/update-time arrays.
+        Lets the framework introspect its own generated build tree.
+        """
+        return sw_get_feature_statistics()
 
     def inertia(self) -> dict[str, Any]:
         """Return inertia properties of the active part (Wave-5 E1).
