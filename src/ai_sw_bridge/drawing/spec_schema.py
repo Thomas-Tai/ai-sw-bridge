@@ -488,6 +488,9 @@ _SHEET_ENTRY_SCHEMA: dict[str, Any] = {
         "dimensions": _DIMENSIONS_SCHEMA,
         "bom": {"type": "boolean", "default": False},
         "hole_table": {"type": "boolean", "default": False},
+        "revision_table": {"type": "boolean", "default": False},
+        "general_table": {"type": "boolean", "default": False},
+        "weldment_table": {"type": "boolean", "default": False},
         "annotations": _ANNOTATIONS_SCHEMA,
     },
 }
@@ -533,6 +536,34 @@ DRAWING_SPEC_SCHEMA: dict[str, Any] = {
                 "IView.InsertHoleTable2 auto-detects the holes. Works on a "
                 ".sldprt or .sldasm whose view shows holes as circles; a view "
                 "with no recognized holes fails closed."
+            ),
+        },
+        "revision_table": {
+            "type": "boolean",
+            "default": False,
+            "description": (
+                "If true, insert a Revision Table on the sheet "
+                "(ISheet.InsertRevisionTable2, circle symbol). Sheet-anchored "
+                "— no datum origin needed."
+            ),
+        },
+        "general_table": {
+            "type": "boolean",
+            "default": False,
+            "description": (
+                "If true, insert a blank General Table "
+                "(IModelDocExtension.InsertGeneralTableAnnotation, 3x3). "
+                "Document-anchored — no datum origin needed."
+            ),
+        },
+        "weldment_table": {
+            "type": "boolean",
+            "default": False,
+            "description": (
+                "If true, insert a Weldment Cut List table on the first model "
+                "view (IView.InsertWeldmentTable). Requires the model to be a "
+                "weldment (a part with a Weldment feature / cut-list folder); a "
+                "non-weldment model fails closed."
             ),
         },
         "title_block": _TITLE_BLOCK_SCHEMA,

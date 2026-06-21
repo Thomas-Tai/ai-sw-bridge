@@ -367,6 +367,54 @@ class TestHoleTableSemanticValidation:
         assert result["ok"] is True
 
 
+# ---- W71: revision / general / weldment table cluster ----
+
+
+class TestTableClusterSchema:
+    def test_accepts_each_flag_true(self) -> None:
+        import jsonschema
+        for flag in ("revision_table", "general_table", "weldment_table"):
+            jsonschema.validate(_drawing_spec(**{flag: True}), DRAWING_SPEC_SCHEMA)
+
+    def test_accepts_all_three_together(self) -> None:
+        import jsonschema
+        jsonschema.validate(
+            _drawing_spec(
+                revision_table=True, general_table=True, weldment_table=True,
+            ),
+            DRAWING_SPEC_SCHEMA,
+        )
+
+    def test_rejects_non_bool(self) -> None:
+        import jsonschema
+        for flag in ("revision_table", "general_table", "weldment_table"):
+            with pytest.raises(jsonschema.ValidationError):
+                jsonschema.validate(
+                    _drawing_spec(**{flag: "yes"}), DRAWING_SPEC_SCHEMA
+                )
+
+    def test_accepts_per_sheet_flags(self) -> None:
+        import jsonschema
+        spec = {
+            "kind": "drawing", "name": "tc", "model": "p.sldprt",
+            "sheets": [{
+                "views": ["front"], "revision_table": True,
+                "general_table": True, "weldment_table": True,
+            }],
+        }
+        jsonschema.validate(spec, DRAWING_SPEC_SCHEMA)
+
+    def test_propose_accepts_cluster_on_part(self) -> None:
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(
+            _drawing_spec(
+                model="part.sldprt",
+                revision_table=True, general_table=True, weldment_table=True,
+            )
+        )
+        assert result["ok"] is True
+
+
 class TestBomPropose:
     def test_propose_bom_true_with_sldasm(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))

@@ -593,6 +593,9 @@ def _normalize_sheets(spec: dict[str, Any]) -> list[dict[str, Any]]:
                     "dimensions": dims_raw,  # Preserve bool OR object (W28)
                     "bom": bool(sh.get("bom", False)),
                     "hole_table": bool(sh.get("hole_table", False)),  # W71
+                    "revision_table": bool(sh.get("revision_table", False)),  # W71
+                    "general_table": bool(sh.get("general_table", False)),  # W71
+                    "weldment_table": bool(sh.get("weldment_table", False)),  # W71
                     "annotations": sh.get("annotations"),  # W53
                 }
             )
@@ -608,6 +611,9 @@ def _normalize_sheets(spec: dict[str, Any]) -> list[dict[str, Any]]:
             "dimensions": dims_raw,  # Preserve bool OR object (W28)
             "bom": bool(spec.get("bom", False)),
             "hole_table": bool(spec.get("hole_table", False)),  # W71
+            "revision_table": bool(spec.get("revision_table", False)),  # W71
+            "general_table": bool(spec.get("general_table", False)),  # W71
+            "weldment_table": bool(spec.get("weldment_table", False)),  # W71
             "annotations": spec.get("annotations"),  # W53
         }
     ]
@@ -1179,6 +1185,99 @@ def _insert_hole_table(
         return None, (
             "InsertHoleTable2 returned None — the view has no recognized holes "
             "(the holes must read as circles in this view)"
+        )
+    return ann, None
+
+
+def _glob_template(*patterns: str) -> str:
+    """First matching template path, or '' (UI-prompt-deadlock guard)."""
+    for pat in patterns:
+        matches = glob.glob(pat, recursive=True)
+        if matches:
+            return matches[0]
+    return ""
+
+
+_ENG = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\lang\english"
+_PROGDATA = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024"
+
+
+def _insert_revision_table(
+    drawing_doc: Any, *, mod: Any, typed_qi: Any
+) -> tuple[Any, str | None]:
+    """Insert a Revision Table on the current SHEET (W71).
+
+    ``InsertRevisionTable2`` is an **ISheet** method (NOT IView) — the table is
+    sheet-anchored, so no datum origin is needed. Shape = circle symbol (1).
+    Returns ``(annotation, None)`` or ``(None, reason)`` fail-closed.
+    """
+    from ..com.sw_type_info import wrapper_module
+
+    template = _glob_template(
+        _ENG + r"\standard revision block.sldrevtbt",
+        _ENG + r"\*.sldrevtbt",
+        _PROGDATA + r"\**\*.sldrevtbt",
+    )
+    sheet_raw = drawing_doc.GetCurrentSheet()
+    if sheet_raw is None or isinstance(sheet_raw, int):
+        return None, "GetCurrentSheet returned None"
+    sheet = typed_qi(sheet_raw, "ISheet", module=wrapper_module())
+    try:
+        drawing_doc.ClearSelection2(True)
+    except Exception:
+        pass
+    try:
+        # (UseAnchorPoint, X, Y, AnchorType, TableTemplate, Shape, AutoUpdateZoomCells)
+        ann = sheet.InsertRevisionTable2(False, 0.28, 0.10, 1, template, 1, False)
+    except Exception as exc:
+        return None, f"InsertRevisionTable2 raised: {exc!r}"
+    if ann is None or isinstance(ann, int):
+        return None, "InsertRevisionTable2 returned None"
+    return ann, None
+
+
+def _insert_general_table(
+    drawing_mdoc2: Any, *, mod: Any, typed_qi: Any
+) -> tuple[Any, str | None]:
+    """Insert a blank 3x3 General Table on the drawing (W71).
+
+    ``InsertGeneralTableAnnotation`` is an **IModelDocExtension** method. A
+    blank table (empty template + explicit Rows/Columns) needs no chooser, so
+    it cannot UI-deadlock. Returns ``(annotation, None)`` or ``(None, reason)``.
+    """
+    try:
+        ext = drawing_mdoc2.Extension
+        # (UseAnchorPoint, X, Y, AnchorType, TableTemplate, Rows, Columns)
+        ann = ext.InsertGeneralTableAnnotation(False, 0.05, 0.10, 1, "", 3, 3)
+    except Exception as exc:
+        return None, f"InsertGeneralTableAnnotation raised: {exc!r}"
+    if ann is None or isinstance(ann, int):
+        return None, "InsertGeneralTableAnnotation returned None"
+    return ann, None
+
+
+def _insert_weldment_table(target_view: Any) -> tuple[Any, str | None]:
+    """Insert a Weldment Cut List table on *target_view* (W71).
+
+    ``InsertWeldmentTable`` is an **IView** method (like hole/BOM). The model
+    must be a weldment (a part with a Weldment feature / cut-list folder); a
+    non-weldment model returns None -> fail-closed. Config '' = active config.
+    """
+    template = _glob_template(
+        _ENG + r"\cut list.sldwldtbt",
+        _ENG + r"\weldtable-standard.sldwldtbt",
+        _ENG + r"\*.sldwldtbt",
+        _PROGDATA + r"\**\*.sldwldtbt",
+    )
+    try:
+        # (UseAnchorPoint, X, Y, AnchorType, Configuration, TableTemplate)
+        ann = target_view.InsertWeldmentTable(False, 0.28, 0.18, 1, "", template)
+    except Exception as exc:
+        return None, f"InsertWeldmentTable raised: {exc!r}"
+    if ann is None or isinstance(ann, int):
+        return None, (
+            "InsertWeldmentTable returned None — the model has no weldment "
+            "cut list (it must be a weldment part)"
         )
     return ann, None
 
@@ -1820,6 +1919,38 @@ def _build_sheet_views(
         result["hole_table_inserted"] = True
 
     # ------------------------------------------------------------------
+    # Revision / General / Weldment tables (W71 cluster) — IView's siblings,
+    # each on its OWN interface: revision=ISheet (sheet-anchored), general=
+    # IModelDocExtension (doc-anchored), weldment=IView. Fail-closed each.
+    # ------------------------------------------------------------------
+    if sheet_spec.get("revision_table") and views_placed:
+        rt_ann, rt_err = _insert_revision_table(drawing_doc, mod=mod, typed_qi=typed_qi)
+        if rt_ann is None:
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].revision_table: {rt_err}"
+            )
+            return result
+        result["revision_table_inserted"] = True
+
+    if sheet_spec.get("general_table") and views_placed:
+        gt_ann, gt_err = _insert_general_table(mdoc2, mod=mod, typed_qi=typed_qi)
+        if gt_ann is None:
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].general_table: {gt_err}"
+            )
+            return result
+        result["general_table_inserted"] = True
+
+    if sheet_spec.get("weldment_table") and views_placed and placed_views:
+        wt_ann, wt_err = _insert_weldment_table(placed_views[0])
+        if wt_ann is None:
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].weldment_table: {wt_err}"
+            )
+            return result
+        result["weldment_table_inserted"] = True
+
+    # ------------------------------------------------------------------
     # Annotations — surface-finish symbols (W53) + text notes (W70)
     # ------------------------------------------------------------------
     annot_spec = sheet_spec.get("annotations")
@@ -2100,6 +2231,15 @@ def commit_drawing(
         result["view_count"] = total_view_count
         result["hole_table_inserted"] = any(
             sr.get("hole_table_inserted") for sr in per_sheet_results
+        )
+        result["revision_table_inserted"] = any(
+            sr.get("revision_table_inserted") for sr in per_sheet_results
+        )
+        result["general_table_inserted"] = any(
+            sr.get("general_table_inserted") for sr in per_sheet_results
+        )
+        result["weldment_table_inserted"] = any(
+            sr.get("weldment_table_inserted") for sr in per_sheet_results
         )
 
         if all_errors:
