@@ -338,6 +338,22 @@ class TestConfigAndDeleteSchema:
         assert result["properties_count"] == 0
         assert result["delete_count"] == 1
 
+    def test_linked_property_value_is_accepted(self) -> None:
+        """Zero-code linked properties (W71): a quoted "Name@Source" link string
+        is just a TEXT value — it validates and the kernel resolves it natively
+        (seat-proven: "D1@Boss-Extrude1" -> "10.00")."""
+        spec = {
+            "kind": "properties",
+            "model": "/nonexistent/part.SLDPRT",
+            "properties": {
+                "DepthLink": '"D1@Boss-Extrude1"',
+                "MassLink": '"SW-Mass@part.SLDPRT"',
+            },
+        }
+        result = propose_properties(spec)
+        assert result["ok"] is True
+        assert result["properties_count"] == 2
+
 
 # ---- resolve_prop_type_and_value tests ---------------------------------------
 

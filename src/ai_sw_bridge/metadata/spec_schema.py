@@ -36,8 +36,20 @@ v3 scope (W71 — CRUD completion):
   - ``properties`` is now OPTIONAL — a delete-only spec ({configuration, delete})
     is valid; a spec must set OR delete at least one property.
 
+Linked properties (ZERO-CODE — seat-proven W71, spike_linked_property_probe):
+  A property *value* that uses SOLIDWORKS' QUOTED link syntax is resolved by the
+  kernel natively through the shipped Add3 path — no new COM surface needed.
+  Just feed the link string as the value:
+    - dimension link:  "D1@Boss-Extrude1"   → evaluates to the dim (e.g. "10.00")
+    - mass/system link: "SW-Mass@<file>.SLDPRT" → evaluates to the mass
+  The QUOTES are mandatory — the BARE form ("D1@Boss-Extrude1" without the
+  surrounding quotes) is stored literally and NOT resolved, and the ``$PRP:"X"``
+  field-code form (valid in note/title-block TEXT, W38) is NOT resolved as a
+  property value. The STORED value is the raw link text (so read-back/overwrite
+  semantics are unchanged); the EVALUATED value is Get4's 3rd return element.
+
 Deferred:
-  - Linked properties (link a property to a dimension/equation)
+  - (none for custom properties — CRUD + linked values are complete)
 """
 
 from __future__ import annotations
