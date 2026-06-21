@@ -317,6 +317,67 @@ _NOTE_ENTRY_SCHEMA: dict[str, Any] = {
     },
 }
 
+# W70: entity-attached annotations — datum_tag / weld_symbol / balloon.
+#
+# Unlike a free-floating note, these Insert* calls return None unless an
+# entity is pre-selected (the interactive-starter trap, W31v2). The handler
+# attaches each to a projected view edge first (IView.GetVisibleEntities2 ->
+# IEntity.Select2), then InsertDatumTag2 / InsertWeldSymbol3 / InsertBOMBalloon2,
+# then types the result to its specific interface and places it via
+# IAnnotation.SetPosition. Seat-MEASURED + persistence-proven W70
+# (swDatumTag=2, swWeldSymbol=8, swNote=6 for balloon — each survives reopen).
+_ENTITY_ATTACHED_ENTRY_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["view", "x", "y"],
+    "additionalProperties": False,
+    "properties": {
+        "view": {
+            "type": "string",
+            "minLength": 1,
+            "description": (
+                "View identifier. Must match a view placed on this sheet "
+                "(ortho/iso string name or derived-view placed name). The "
+                "annotation attaches to a projected edge of this view."
+            ),
+        },
+        "x": {
+            "type": "number",
+            "description": "X position on the sheet (metres, drawing frame).",
+        },
+        "y": {
+            "type": "number",
+            "description": "Y position on the sheet (metres, drawing frame).",
+        },
+    },
+}
+
+# A balloon additionally accepts the proven InsertBOMBalloon2 style/size knobs
+# (defaults match the seat-measured call: style=1 circular, size=2).
+_BALLOON_ENTRY_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["view", "x", "y"],
+    "additionalProperties": False,
+    "properties": {
+        "view": _ENTITY_ATTACHED_ENTRY_SCHEMA["properties"]["view"],
+        "x": _ENTITY_ATTACHED_ENTRY_SCHEMA["properties"]["x"],
+        "y": _ENTITY_ATTACHED_ENTRY_SCHEMA["properties"]["y"],
+        "style": {
+            "type": "integer",
+            "default": 1,
+            "description": (
+                "swBalloonStyle_e (InsertBOMBalloon2 Style arg). 1 = circular "
+                "(default). Item-number text resolves only when the model "
+                "drawing carries a BOM; a part drawing shows a placeholder."
+            ),
+        },
+        "size": {
+            "type": "integer",
+            "default": 2,
+            "description": "swBalloonFit_e (InsertBOMBalloon2 Size arg). Default 2.",
+        },
+    },
+}
+
 _ANNOTATIONS_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -340,12 +401,43 @@ _ANNOTATIONS_SCHEMA: dict[str, Any] = {
                 "on the named view."
             ),
         },
+        "datum_tag": {
+            "type": "array",
+            "items": _ENTITY_ATTACHED_ENTRY_SCHEMA,
+            "minItems": 1,
+            "description": (
+                "Datum-feature-symbol annotations (InsertDatumTag2). Each "
+                "entry attaches a datum tag to a projected edge of the named "
+                "view and places it at the given sheet-frame position."
+            ),
+        },
+        "weld_symbol": {
+            "type": "array",
+            "items": _ENTITY_ATTACHED_ENTRY_SCHEMA,
+            "minItems": 1,
+            "description": (
+                "Welding-symbol annotations (InsertWeldSymbol3). Each entry "
+                "attaches a weld symbol to a projected edge of the named view "
+                "and places it at the given sheet-frame position."
+            ),
+        },
+        "balloon": {
+            "type": "array",
+            "items": _BALLOON_ENTRY_SCHEMA,
+            "minItems": 1,
+            "description": (
+                "BOM-balloon annotations (InsertBOMBalloon2). Each entry "
+                "attaches a balloon to a projected edge of the named view "
+                "and places it at the given sheet-frame position."
+            ),
+        },
     },
     "description": (
         "Drawing-annotation block. Supports surface-finish symbols "
-        "(InsertSurfaceFinishSymbol2, 14-arg, seat-proven) and text notes "
-        "(InsertNote). GD&T (feature-control-frames), weld symbols, balloons, "
-        "and hole tables are the next annotation lanes."
+        "(InsertSurfaceFinishSymbol2, 14-arg), text notes (InsertNote), datum "
+        "tags (InsertDatumTag2), weld symbols (InsertWeldSymbol3), and BOM "
+        "balloons (InsertBOMBalloon2) — all seat-proven. GD&T "
+        "(feature-control-frames) and hole tables are the next annotation lanes."
     ),
 }
 

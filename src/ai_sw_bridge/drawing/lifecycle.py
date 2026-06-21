@@ -366,6 +366,30 @@ def _validate_annotations(
                     f"{path}.note[{i}].text must be a non-empty string"
                 )
 
+    # W70: entity-attached annotations (datum_tag / weld_symbol / balloon).
+    # Each entry's view must match a placed view (the handler attaches the
+    # symbol to a projected edge of that view). No required text field.
+    for kind in ("datum_tag", "weld_symbol", "balloon"):
+        arr = annotations.get(kind)
+        if arr is None:
+            continue
+        if not isinstance(arr, list) or not arr:
+            raise ValueError(f"{path}.{kind} must be a non-empty array")
+        for i, entry in enumerate(arr):
+            if not isinstance(entry, dict):
+                raise ValueError(f"{path}.{kind}[{i}] must be a dict")
+            view_name = entry.get("view")
+            if not isinstance(view_name, str) or not view_name:
+                raise ValueError(
+                    f"{path}.{kind}[{i}].view must be a non-empty string"
+                )
+            if view_name not in known_views:
+                raise ValueError(
+                    f"{path}.{kind}[{i}].view {view_name!r}: "
+                    f"no matching view on this sheet; "
+                    f"known: {sorted(known_views)}"
+                )
+
 
 def validate_drawing_spec(spec: dict[str, Any]) -> None:
     """Semantic validation beyond the structural JSON-schema check.
@@ -981,10 +1005,11 @@ def _apply_note_annotations(
 ) -> dict[str, Any]:
     """Insert general text notes via IModelDoc2.InsertNote.
 
-    Recipe (UNFIRED — pending seat-proof; swNote=6):
-        note = mdoc2.InsertNote(text)            # -> INote
-        ann  = note.GetAnnotation()              # INote -> IAnnotation
-        ann.SetPosition(x, y, 0.0)               # place in the sheet frame
+    Recipe (SEAT-PROVEN W70, commit 927b242; swNote=6):
+        note  = mdoc2.InsertNote(text)           # -> raw CDispatch
+        tnote = typed_qi(note, "INote")          # type FIRST (raw has no GetAnnotation)
+        ann   = tnote.GetAnnotation()            # INote -> IAnnotation
+        ann.SetPosition(x, y, 0.0)               # place in the sheet frame -> True
 
     Mirrors ``_apply_surface_finish_annotations`` exactly except the COM call:
     a note carries no inline position, so placement is a follow-up
@@ -1064,6 +1089,167 @@ def _apply_note_annotations(
             continue
 
         result["inserted"].append({"view": view_name, "x": x, "y": y, "text": text})
+        result["count"] += 1
+
+    result["ok"] = not result["errors"]
+    return result
+
+
+# W70: swViewEntityType_e.swViewEntityType_Edge — projected model edges of a view.
+_SW_VIEW_ENTITY_EDGE = 1
+
+
+def _select_first_view_edge(target_view: Any) -> bool:
+    """Pre-select a projected edge so an entity-attached annotation sticks.
+
+    datum_tag / weld_symbol / balloon ``Insert*`` calls return ``None`` unless
+    an entity is pre-selected (the interactive-starter trap, W31v2).  A free
+    coordinate-pick (SelectByID2 on the view outline) misses every projected
+    edge — they sit INSIDE the outline, not on its bounding box.
+    ``IView.GetVisibleEntities2(None, swViewEntityType_Edge=1)`` returns the
+    actual projected model edges as ``IEntity`` objects; select the first via
+    ``IEntity.Select2(False, 0)`` — callout-free, so immune to the SelectByID2
+    arg-8 bare-None wall.  Seat-MEASURED W70
+    (spike_annotation_recipes_probe: n_edges=4, sel_count=1, all three PLACED).
+    """
+    try:
+        from ..com.earlybind import typed_qi
+        from ..com.sw_type_info import wrapper_module
+
+        raw = target_view.GetVisibleEntities2(None, _SW_VIEW_ENTITY_EDGE)
+        ents = list(raw) if raw else []
+        if not ents:
+            return False
+        tent = typed_qi(ents[0], "IEntity", module=wrapper_module())
+        return bool(tent.Select2(False, 0))
+    except Exception:
+        return False
+
+
+def _insert_datum_tag(mdoc2: Any, entry: dict[str, Any]) -> Any:
+    return mdoc2.InsertDatumTag2()
+
+
+def _insert_weld_symbol(mdoc2: Any, entry: dict[str, Any]) -> Any:
+    return mdoc2.InsertWeldSymbol3()
+
+
+def _insert_balloon(mdoc2: Any, entry: dict[str, Any]) -> Any:
+    # InsertBOMBalloon2(Style, Size, UpperTextStyle, UpperText, LowerTextStyle,
+    # LowerText). Style/Size are author-tunable (seat-proven defaults 1, 2);
+    # UpperTextStyle=1 (item number), no custom text.
+    return mdoc2.InsertBOMBalloon2(
+        int(entry.get("style", 1)),
+        int(entry.get("size", 2)),
+        1,
+        "",
+        0,
+        "",
+    )
+
+
+def _apply_entity_attached_annotation(
+    drawing_doc: Any,
+    mdoc2: Any,
+    annotations_spec: dict[str, Any],
+    placed_by_name: dict[str, Any],
+    sheet_index: int,
+    *,
+    kind: str,
+    iface: str,
+    insert: Any,
+) -> dict[str, Any]:
+    """Insert an edge-attached annotation (datum_tag / weld_symbol / balloon).
+
+    Shared core for the three W70 entity-attached annotation lanes.  Each
+    differs only in the COM insert call (``insert``) and the interface the
+    returned object is typed to (``iface``); the surrounding mechanic is
+    identical and seat-MEASURED:
+
+        activate view -> _select_first_view_edge(view)   # attach precondition
+        obj  = insert(mdoc2, entry)                      # -> raw CDispatch
+        tobj = typed_qi(obj, iface)                      # type FIRST
+        tobj.GetAnnotation().SetPosition(x, y, 0.0)      # place -> True
+
+    Fail-soft: each entry's failure is recorded in ``errors`` and skipped.
+    Returns a result dict with ``inserted`` / ``errors`` / ``count``.
+    """
+    result: dict[str, Any] = {"ok": False, "inserted": [], "errors": [], "count": 0}
+
+    arr = annotations_spec.get(kind)
+    if not arr:
+        result["ok"] = True
+        return result
+
+    for i, entry in enumerate(arr):
+        view_name = entry.get("view", "")
+        x = entry.get("x", 0.0)
+        y = entry.get("y", 0.0)
+
+        target_view = placed_by_name.get(view_name)
+        if target_view is None:
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.{kind}[{i}]: "
+                f"view {view_name!r} was not placed"
+            )
+            continue
+
+        try:
+            vn = target_view.GetName2() or ""
+            if vn:
+                drawing_doc.ActivateView(vn)
+        except Exception:
+            pass
+
+        # Entity-attach precondition: a bare Insert* returns None without a
+        # pre-selected edge (W31v2 interactive-starter trap).
+        if not _select_first_view_edge(target_view):
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.{kind}[{i}]: "
+                f"no projected edge to attach to in view {view_name!r}"
+            )
+            continue
+
+        try:
+            obj = insert(mdoc2, entry)
+        except Exception as exc:
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.{kind}[{i}]: "
+                f"insert raised {type(exc).__name__}: {exc}"
+            )
+            continue
+        if obj is None:
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.{kind}[{i}]: "
+                f"insert returned None (no entity attached?)"
+            )
+            continue
+
+        # Place it.  The RAW Insert* dispatch does NOT expose GetAnnotation
+        # (DISP_E_MEMBERNOTFOUND on 32.1) — type the object to its SPECIFIC
+        # interface FIRST, THEN GetAnnotation resolves and the returned
+        # IAnnotation.SetPosition(X,Y,Z)->Boolean works.  Seat-MEASURED W70.
+        try:
+            from ..com.earlybind import typed_qi
+            from ..com.sw_type_info import wrapper_module
+
+            tobj = typed_qi(obj, iface, module=wrapper_module())
+            ann = tobj.GetAnnotation()
+            if ann is None:
+                result["errors"].append(
+                    f"sheet[{sheet_index}].annotations.{kind}[{i}]: "
+                    f"{iface}.GetAnnotation() returned None"
+                )
+                continue
+            ann.SetPosition(float(x), float(y), 0.0)
+        except Exception as exc:
+            result["errors"].append(
+                f"sheet[{sheet_index}].annotations.{kind}[{i}]: "
+                f"placement raised {type(exc).__name__}: {exc}"
+            )
+            continue
+
+        result["inserted"].append({"view": view_name, "x": x, "y": y})
         result["count"] += 1
 
     result["ok"] = not result["errors"]
@@ -1541,6 +1727,27 @@ def _build_sheet_views(
         if note_result.get("errors"):
             result["view_errors"].extend(note_result["errors"])
             return result
+
+        # W70: entity-attached annotations (datum_tag / weld_symbol / balloon).
+        for kind, iface, insert_fn, result_key in (
+            ("datum_tag", "IDatumTag", _insert_datum_tag, "datum_tag_annotations"),
+            ("weld_symbol", "IWeldSymbol", _insert_weld_symbol, "weld_symbol_annotations"),
+            ("balloon", "INote", _insert_balloon, "balloon_annotations"),
+        ):
+            ea_result = _apply_entity_attached_annotation(
+                drawing_doc,
+                mdoc2,
+                annot_spec,
+                placed_by_name,
+                sheet_index,
+                kind=kind,
+                iface=iface,
+                insert=insert_fn,
+            )
+            result[result_key] = ea_result
+            if ea_result.get("errors"):
+                result["view_errors"].extend(ea_result["errors"])
+                return result
 
     return result
 

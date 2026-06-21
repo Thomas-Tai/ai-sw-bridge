@@ -905,3 +905,195 @@ class TestApplyNoteAnnotations:
         )
         assert res["ok"] is True and res["count"] == 0
         assert mdoc2.insert_calls == []
+
+
+# ---- W70: entity-attached annotations (datum_tag / weld_symbol / balloon) ----
+
+
+_ENTITY_ATTACHED = {"datum_tag": [{"view": "front", "x": 0.1, "y": 0.1}]}
+
+
+class TestEntityAttachedAnnotationsSchema:
+    def test_accepts_datum_tag(self) -> None:
+        import jsonschema
+        jsonschema.validate(_drawing_spec(annotations=_ENTITY_ATTACHED), DRAWING_SPEC_SCHEMA)
+
+    def test_accepts_all_three_together(self) -> None:
+        import jsonschema
+        block = {
+            "datum_tag": [{"view": "front", "x": 0.1, "y": 0.1}],
+            "weld_symbol": [{"view": "top", "x": 0.2, "y": 0.2}],
+            "balloon": [{"view": "right", "x": 0.3, "y": 0.3, "style": 1, "size": 2}],
+        }
+        jsonschema.validate(
+            _drawing_spec(views=["front", "top", "right"], annotations=block),
+            DRAWING_SPEC_SCHEMA,
+        )
+
+    def test_rejects_datum_tag_missing_y(self) -> None:
+        import jsonschema
+        bad = {"datum_tag": [{"view": "front", "x": 0.1}]}
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
+
+    def test_rejects_weld_unknown_key(self) -> None:
+        import jsonschema
+        bad = {"weld_symbol": [{"view": "front", "x": 0.1, "y": 0.1, "z": 0.0}]}
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
+
+    def test_balloon_accepts_style_size(self) -> None:
+        import jsonschema
+        ok = {"balloon": [{"view": "front", "x": 0.1, "y": 0.1, "style": 3, "size": 5}]}
+        jsonschema.validate(_drawing_spec(annotations=ok), DRAWING_SPEC_SCHEMA)
+
+
+class TestEntityAttachedSemanticValidation:
+    def test_accepts_known_view(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(_drawing_spec(annotations=_ENTITY_ATTACHED))
+
+    def test_rejects_unknown_view(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        bad = {"weld_symbol": [{"view": "xray", "x": 0.1, "y": 0.1}]}
+        with pytest.raises(ValueError, match="no matching view"):
+            validate_drawing_spec(_drawing_spec(annotations=bad))
+
+    def test_rejects_empty_balloon_array(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        bad = {"balloon": []}
+        with pytest.raises(ValueError, match="balloon must be a non-empty array"):
+            validate_drawing_spec(_drawing_spec(annotations=bad))
+
+
+class _FakeEntity:
+    """IEntity stub recording IEntity.Select2 calls (the edge-attach precondition)."""
+
+    def __init__(self) -> None:
+        self.selected = False
+
+    def Select2(self, append: bool, mark: int) -> bool:
+        self.selected = True
+        return True
+
+
+class _FakeEAView:
+    """IView stub exposing GetVisibleEntities2 (projected edges) + GetName2."""
+
+    def __init__(self, name: str, *, edges: int = 1) -> None:
+        self._name = name
+        self._edges = [_FakeEntity() for _ in range(edges)]
+
+    def GetName2(self) -> str:
+        return self._name
+
+    def GetVisibleEntities2(self, comp, etype):
+        return list(self._edges)
+
+
+class _FakePlaceable:
+    def __init__(self) -> None:
+        self._ann = _FakeAnnotation()
+
+    def GetAnnotation(self):
+        return self._ann
+
+
+class _FakeMdoc2EA:
+    """IModelDoc2 stub recording the three entity-attached insert calls."""
+
+    def __init__(self, *, return_none: bool = False) -> None:
+        self.calls: list[str] = []
+        self.objs: list[_FakePlaceable] = []
+        self._return_none = return_none
+
+    def _make(self, name: str):
+        self.calls.append(name)
+        if self._return_none:
+            return None
+        o = _FakePlaceable()
+        self.objs.append(o)
+        return o
+
+    def InsertDatumTag2(self):
+        return self._make("InsertDatumTag2")
+
+    def InsertWeldSymbol3(self):
+        return self._make("InsertWeldSymbol3")
+
+    def InsertBOMBalloon2(self, *args):
+        return self._make("InsertBOMBalloon2")
+
+
+_EA_LANES = [
+    ("datum_tag", "IDatumTag", "_insert_datum_tag", "InsertDatumTag2"),
+    ("weld_symbol", "IWeldSymbol", "_insert_weld_symbol", "InsertWeldSymbol3"),
+    ("balloon", "INote", "_insert_balloon", "InsertBOMBalloon2"),
+]
+
+
+class TestApplyEntityAttachedAnnotation:
+    def _run(self, monkeypatch, kind, iface, insert_name, annot,
+             *, return_none=False, edges=1):
+        # typed_qi resolves the specific iface (raw dispatch -> MEMBERNOTFOUND
+        # on 32.1); offline, patch to identity so the fakes pass through.
+        import ai_sw_bridge.com.earlybind as eb
+        import ai_sw_bridge.com.sw_type_info as sti
+        monkeypatch.setattr(eb, "typed_qi", lambda obj, iface, module=None: obj)
+        monkeypatch.setattr(sti, "wrapper_module", lambda: None)
+        from ai_sw_bridge.drawing import lifecycle
+        insert_fn = getattr(lifecycle, insert_name)
+        ddoc = _FakeDrawingDocNote()
+        mdoc2 = _FakeMdoc2EA(return_none=return_none)
+        placed = {"front": _FakeEAView("front", edges=edges),
+                  "top": _FakeEAView("top", edges=edges)}
+        res = lifecycle._apply_entity_attached_annotation(
+            ddoc, mdoc2, annot, placed, 0, kind=kind, iface=iface, insert=insert_fn)
+        return res, ddoc, mdoc2
+
+    @pytest.mark.parametrize("kind,iface,insert_name,com_name", _EA_LANES)
+    def test_inserts_and_positions(self, monkeypatch, kind, iface, insert_name, com_name) -> None:
+        annot = {kind: [{"view": "front", "x": 0.11, "y": 0.22}]}
+        res, ddoc, mdoc2 = self._run(monkeypatch, kind, iface, insert_name, annot)
+        assert res["ok"] is True and res["count"] == 1 and not res["errors"]
+        assert mdoc2.calls == [com_name]
+        assert mdoc2.objs[0].GetAnnotation().position == (0.11, 0.22, 0.0)
+        assert ddoc.activated == ["front"]
+
+    @pytest.mark.parametrize("kind,iface,insert_name,com_name", _EA_LANES)
+    def test_no_edge_is_error(self, monkeypatch, kind, iface, insert_name, com_name) -> None:
+        annot = {kind: [{"view": "front", "x": 0.1, "y": 0.1}]}
+        res, _, mdoc2 = self._run(monkeypatch, kind, iface, insert_name, annot, edges=0)
+        assert res["ok"] is False and res["count"] == 0
+        assert "no projected edge" in res["errors"][0]
+        assert mdoc2.calls == []  # insert never attempted without a selection
+
+    @pytest.mark.parametrize("kind,iface,insert_name,com_name", _EA_LANES)
+    def test_insert_none_is_error(self, monkeypatch, kind, iface, insert_name, com_name) -> None:
+        annot = {kind: [{"view": "front", "x": 0.1, "y": 0.1}]}
+        res, _, mdoc2 = self._run(monkeypatch, kind, iface, insert_name, annot, return_none=True)
+        assert res["ok"] is False and res["count"] == 0
+        assert "returned None" in res["errors"][0]
+
+    def test_unplaced_view_is_error(self, monkeypatch) -> None:
+        annot = {"datum_tag": [{"view": "ghost", "x": 0.1, "y": 0.1}]}
+        res, _, mdoc2 = self._run(monkeypatch, "datum_tag", "IDatumTag", "_insert_datum_tag", annot)
+        assert res["ok"] is False and res["count"] == 0
+        assert "was not placed" in res["errors"][0]
+        assert mdoc2.calls == []
+
+    def test_no_key_is_noop_ok(self, monkeypatch) -> None:
+        annot = {"note": [{"view": "front", "x": 0, "y": 0, "text": "x"}]}
+        res, _, mdoc2 = self._run(monkeypatch, "balloon", "INote", "_insert_balloon", annot)
+        assert res["ok"] is True and res["count"] == 0
+        assert mdoc2.calls == []
+
+    def test_multi_entry_two_views(self, monkeypatch) -> None:
+        annot = {"weld_symbol": [
+            {"view": "front", "x": 0.1, "y": 0.1},
+            {"view": "top", "x": 0.2, "y": 0.2},
+        ]}
+        res, ddoc, mdoc2 = self._run(monkeypatch, "weld_symbol", "IWeldSymbol", "_insert_weld_symbol", annot)
+        assert res["count"] == 2 and res["ok"] is True
+        assert mdoc2.calls == ["InsertWeldSymbol3", "InsertWeldSymbol3"]
+        assert ddoc.activated == ["front", "top"]
