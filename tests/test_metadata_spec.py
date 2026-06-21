@@ -81,14 +81,18 @@ class TestPropertiesSpecSchema:
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
-    def test_missing_properties_fails(self) -> None:
+    def test_missing_properties_and_delete_rejected_semantically(self) -> None:
+        """v3: ``properties`` is now OPTIONAL at the schema layer (delete-only
+        specs are valid), so {kind, model} passes jsonschema — but the SEMANTIC
+        validator rejects a spec that neither sets nor deletes anything."""
         spec = {
             "kind": "properties",
             "model": "/path/to/part.SLDPRT",
         }
         import jsonschema
-        with pytest.raises(jsonschema.ValidationError):
-            jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
+        jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)  # schema-valid now
+        with pytest.raises(ValueError, match="at least one"):
+            validate_properties_spec(spec)
 
     def test_empty_properties_fails(self) -> None:
         spec = {
@@ -227,6 +231,112 @@ class TestTypedPropertySchema:
         import jsonschema
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
+
+
+# ---- W71 config-level + delete (CRUD completion) schema/semantic -------------
+
+
+class TestConfigAndDeleteSchema:
+    """v3: optional ``configuration`` + ``delete`` fields, properties optional."""
+
+    def test_configuration_field_passes(self) -> None:
+        spec = {
+            "kind": "properties",
+            "model": "/path/to/part.SLDPRT",
+            "configuration": "Config_B",
+            "properties": {"PartNo": "BRK-001"},
+        }
+        import jsonschema
+        jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
+        validate_properties_spec(spec)
+
+    def test_delete_field_passes(self) -> None:
+        spec = {
+            "kind": "properties",
+            "model": "/path/to/part.SLDPRT",
+            "properties": {"Keep": "yes"},
+            "delete": ["Old1", "Old2"],
+        }
+        import jsonschema
+        jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
+        validate_properties_spec(spec)
+
+    def test_delete_only_spec_passes(self) -> None:
+        """A delete-only spec (no properties) is valid."""
+        spec = {
+            "kind": "properties",
+            "model": "/path/to/part.SLDPRT",
+            "configuration": "Config_B",
+            "delete": ["Temp"],
+        }
+        import jsonschema
+        jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
+        validate_properties_spec(spec)
+
+    def test_empty_delete_with_no_properties_rejected(self) -> None:
+        spec = {
+            "kind": "properties",
+            "model": "/path/to/part.SLDPRT",
+            "delete": [],
+        }
+        with pytest.raises(ValueError, match="at least one"):
+            validate_properties_spec(spec)
+
+    def test_delete_non_unique_rejected_by_schema(self) -> None:
+        spec = {
+            "kind": "properties",
+            "model": "/path/to/part.SLDPRT",
+            "delete": ["X", "X"],
+        }
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
+
+    def test_delete_empty_string_rejected_by_schema(self) -> None:
+        spec = {
+            "kind": "properties",
+            "model": "/path/to/part.SLDPRT",
+            "delete": [""],
+        }
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
+
+    def test_configuration_non_string_rejected_by_schema(self) -> None:
+        spec = {
+            "kind": "properties",
+            "model": "/path/to/part.SLDPRT",
+            "configuration": 5,
+            "properties": {"A": "b"},
+        }
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
+
+    def test_propose_reports_config_and_delete_counts(self) -> None:
+        spec = {
+            "kind": "properties",
+            "model": "/nonexistent/part.SLDPRT",
+            "configuration": "Config_B",
+            "properties": {"A": "b"},
+            "delete": ["Old1", "Old2"],
+        }
+        result = propose_properties(spec)
+        assert result["ok"] is True
+        assert result["configuration"] == "Config_B"
+        assert result["properties_count"] == 1
+        assert result["delete_count"] == 2
+
+    def test_propose_delete_only_ok(self) -> None:
+        spec = {
+            "kind": "properties",
+            "model": "/nonexistent/part.SLDPRT",
+            "delete": ["Temp"],
+        }
+        result = propose_properties(spec)
+        assert result["ok"] is True
+        assert result["properties_count"] == 0
+        assert result["delete_count"] == 1
 
 
 # ---- resolve_prop_type_and_value tests ---------------------------------------

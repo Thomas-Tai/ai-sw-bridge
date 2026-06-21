@@ -24,10 +24,20 @@ v2 scope (W53):
     - date: date string (e.g., "2024-06-15" or locale format)
     - yes_no: "Yes" or "No" (case-sensitive per SW API)
 
+v3 scope (W71 — CRUD completion):
+  - ``configuration`` (optional): config name for config-specific properties.
+    Absent or "" = file-level (document) properties — the historical default,
+    so existing specs are unchanged. A string selects
+    ``Extension.CustomPropertyManager(<config>)`` (the config-specific store,
+    isolated from the file-level one).
+  - ``delete`` (optional): a list of property names to remove via
+    ``ICustomPropertyManager.Delete2`` (the D in CRUD). Honored against the
+    same ``configuration`` as the writes.
+  - ``properties`` is now OPTIONAL — a delete-only spec ({configuration, delete})
+    is valid; a spec must set OR delete at least one property.
+
 Deferred:
-  - Configuration-specific properties
-  - Linked properties
-  - Property deletion (Delete2)
+  - Linked properties (link a property to a dimension/equation)
 """
 
 from __future__ import annotations
@@ -47,6 +57,11 @@ SW_CUSTOM_INFO_YES_OR_NO = 11
 # swCustomPropertyAddOption_e
 SW_CUSTOM_PROP_ADD = 0      # add only, fail if exists
 SW_CUSTOM_PROP_REPLACE = 1  # overwrite if exists
+
+# swCustomInfoDeleteResult_e (Delete2 return codes)
+SW_CUSTOM_DELETE_OK = 0           # deleted
+SW_CUSTOM_DELETE_NOT_PRESENT = 1  # nothing to delete (already absent → idempotent OK)
+SW_CUSTOM_DELETE_LINKED = 2       # property is linked → cannot delete (error)
 
 # Property type name -> swCustomInfoType_e int
 SW_CUSTOM_INFO_TYPE_MAP: dict[str, int] = {
@@ -142,7 +157,7 @@ PROPERTIES_SPEC_SCHEMA: dict[str, Any] = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "ai-sw-bridge properties spec v2",
     "type": "object",
-    "required": ["kind", "model", "properties"],
+    "required": ["kind", "model"],
     "additionalProperties": False,
     "properties": {
         "kind": {"const": "properties"},
@@ -150,6 +165,23 @@ PROPERTIES_SPEC_SCHEMA: dict[str, Any] = {
             "type": "string",
             "minLength": 1,
             "description": "Path to the .sldprt or .sldasm file.",
+        },
+        "configuration": {
+            "type": "string",
+            "description": (
+                "Configuration name for config-specific properties. Absent or "
+                "empty string = file-level (document) properties (the default). "
+                "A non-empty string selects CustomPropertyManager(<config>)."
+            ),
+        },
+        "delete": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "uniqueItems": True,
+            "description": (
+                "Custom property names to delete via Delete2, honored against "
+                "the same 'configuration' as the writes."
+            ),
         },
         "properties": {
             "type": "object",
@@ -230,38 +262,66 @@ def validate_properties_spec(spec: dict[str, Any]) -> None:
             f"model must be a .sldprt or .sldasm file; got extension '{ext}'"
         )
 
+    # v3: ``properties`` is optional (a delete-only spec is valid); when present
+    # it must be a non-empty object with valid typed values.
     properties = spec.get("properties")
-    if not isinstance(properties, dict) or not properties:
-        raise ValueError("properties must be a non-empty object")
+    if properties is not None:
+        if not isinstance(properties, dict) or not properties:
+            raise ValueError("properties, if present, must be a non-empty object")
 
-    for name, entry in properties.items():
-        if not isinstance(name, str) or not name:
-            raise ValueError(
-                f"property name must be a non-empty string; got {type(name).__name__}"
-            )
-
-        _type_id, value, type_name = resolve_prop_type_and_value(name, entry)
-
-        if type_name == "number":
-            if not _NUMERIC_RE.match(value):
+        for name, entry in properties.items():
+            if not isinstance(name, str) or not name:
                 raise ValueError(
-                    f"property '{name}' (number) value must be a numeric string; "
-                    f"got {value!r}"
+                    f"property name must be a non-empty string; got {type(name).__name__}"
                 )
 
-        if type_name == "date":
-            if not _VALID_DATE_RE.match(value):
-                raise ValueError(
-                    f"property '{name}' (date) value must be a date string "
-                    f"(YYYY-MM-DD, M/D/YYYY, or DD.MM.YYYY); got {value!r}"
-                )
+            _type_id, value, type_name = resolve_prop_type_and_value(name, entry)
 
-        if type_name == "yes_no":
-            if value not in ("Yes", "No"):
-                raise ValueError(
-                    f"property '{name}' (yes_no) value must be 'Yes' or 'No'; "
-                    f"got {value!r}"
-                )
+            if type_name == "number":
+                if not _NUMERIC_RE.match(value):
+                    raise ValueError(
+                        f"property '{name}' (number) value must be a numeric string; "
+                        f"got {value!r}"
+                    )
+
+            if type_name == "date":
+                if not _VALID_DATE_RE.match(value):
+                    raise ValueError(
+                        f"property '{name}' (date) value must be a date string "
+                        f"(YYYY-MM-DD, M/D/YYYY, or DD.MM.YYYY); got {value!r}"
+                    )
+
+            if type_name == "yes_no":
+                if value not in ("Yes", "No"):
+                    raise ValueError(
+                        f"property '{name}' (yes_no) value must be 'Yes' or 'No'; "
+                        f"got {value!r}"
+                    )
+    else:
+        properties = {}
+
+    # v3: ``configuration`` (file-level if absent/empty) + ``delete`` list.
+    configuration = spec.get("configuration")
+    if configuration is not None and not isinstance(configuration, str):
+        raise ValueError("configuration must be a string if present")
+
+    delete = spec.get("delete")
+    if delete is not None:
+        if not isinstance(delete, list):
+            raise ValueError("delete must be a list of property names")
+        for d in delete:
+            if not isinstance(d, str) or not d:
+                raise ValueError("delete entries must be non-empty strings")
+        if len(set(delete)) != len(delete):
+            raise ValueError("delete entries must be unique")
+    else:
+        delete = []
+
+    if not properties and not delete:
+        raise ValueError(
+            "spec must set at least one property or delete at least one "
+            "(both 'properties' and 'delete' are empty)"
+        )
 
     overwrite = spec.get("overwrite")
     if overwrite is not None and not isinstance(overwrite, bool):

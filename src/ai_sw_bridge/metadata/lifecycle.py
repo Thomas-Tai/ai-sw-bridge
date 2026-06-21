@@ -25,6 +25,8 @@ from typing import Any
 
 from .spec_schema import (
     PROPERTIES_SPEC_SCHEMA,
+    SW_CUSTOM_DELETE_NOT_PRESENT,
+    SW_CUSTOM_DELETE_OK,
     SW_CUSTOM_PROP_ADD,
     SW_CUSTOM_PROP_REPLACE,
     resolve_prop_type_and_value,
@@ -55,7 +57,9 @@ def propose_properties(spec: dict[str, Any]) -> dict[str, Any]:
         return result
 
     result["ok"] = True
-    result["properties_count"] = len(spec.get("properties", {}))
+    result["properties_count"] = len(spec.get("properties") or {})
+    result["delete_count"] = len(spec.get("delete") or [])
+    result["configuration"] = spec.get("configuration") or ""
     result["model"] = spec.get("model")
     return result
 
@@ -73,7 +77,9 @@ def dry_run_properties(spec: dict[str, Any]) -> dict[str, Any]:
         return result
 
     result["model_path"] = model_path
-    result["properties_count"] = len(spec.get("properties", {}))
+    result["properties_count"] = len(spec.get("properties") or {})
+    result["delete_count"] = len(spec.get("delete") or [])
+    result["configuration"] = spec.get("configuration") or ""
     result["ok"] = True
     return result
 
@@ -110,6 +116,7 @@ def commit_properties(
         "ok": False,
         "props_set": [],
         "props_skipped": [],
+        "props_deleted": [],
         "read_back": [],
         "errors": [],
     }
@@ -119,10 +126,17 @@ def commit_properties(
         result["errors"].append(f"model file not found: {model_path}")
         return result
 
-    properties = spec.get("properties", {})
-    if not properties:
-        result["errors"].append("properties map is empty")
+    properties = spec.get("properties") or {}
+    delete_names = spec.get("delete") or []
+    if not properties and not delete_names:
+        result["errors"].append(
+            "nothing to do: no properties to set and none to delete"
+        )
         return result
+
+    # v3: config-level vs file-level manager. "" = file-level (the default).
+    config_name = spec.get("configuration") or ""
+    result["configuration"] = config_name
 
     overwrite = spec.get("overwrite", True)
 
@@ -140,9 +154,11 @@ def commit_properties(
         mdoc2 = typed_qi(model_doc, "IModelDoc2", module=mod)
 
         ext_obj = model_doc.Extension
-        cpm_raw = ext_obj.CustomPropertyManager("")
+        cpm_raw = ext_obj.CustomPropertyManager(config_name)
         if cpm_raw is None:
-            result["errors"].append("CustomPropertyManager('') returned None")
+            result["errors"].append(
+                f"CustomPropertyManager({config_name!r}) returned None"
+            )
             title = mdoc2.GetTitle
             title = title() if callable(title) else title
             sw.CloseDoc(title)
@@ -222,6 +238,28 @@ def commit_properties(
             except Exception as exc:
                 result["errors"].append(f"Get4({name}) raised: {exc!r}")
 
+        # v3 — Delete2 teardown (the D in CRUD). 0=OK / 1=NotPresent (already
+        # absent → idempotent OK); LinkedProp(2) or any other code is an error.
+        # ``was_present`` distinguishes a real deletion (count drops) from a
+        # no-op, so the count gate stays honest. Reopen verifies absence.
+        for name in delete_names:
+            try:
+                del_result = typed_cpm.Delete2(name)
+            except Exception as exc:
+                result["errors"].append(f"Delete2({name}) raised: {exc!r}")
+                continue
+            if del_result in (SW_CUSTOM_DELETE_OK, SW_CUSTOM_DELETE_NOT_PRESENT):
+                result["props_deleted"].append({
+                    "name": name,
+                    "result": del_result,
+                    "was_present": del_result == SW_CUSTOM_DELETE_OK,
+                })
+            else:
+                result["errors"].append(
+                    f"Delete2({name}) returned {del_result} "
+                    f"(linked/unremovable; expected 0 OK or 1 NotPresent)"
+                )
+
         if result["errors"]:
             title = mdoc2.GetTitle
             title = title() if callable(title) else title
@@ -262,7 +300,7 @@ def commit_properties(
 
         mdoc2b = typed_qi(model_doc2, "IModelDoc2", module=mod)
         ext_obj2 = model_doc2.Extension
-        cpm_raw2 = ext_obj2.CustomPropertyManager("")
+        cpm_raw2 = ext_obj2.CustomPropertyManager(config_name)
         typed_cpm2 = typed_qi(cpm_raw2, "ICustomPropertyManager", module=mod)
 
         count_after = typed_cpm2.Count
@@ -296,12 +334,38 @@ def commit_properties(
             except Exception as exc:
                 result["errors"].append(f"reopen Get4({name}) raised: {exc!r}")
 
+        # v3 — verify-the-EFFECT for deletions: the name must be ABSENT from the
+        # reopened manager's GetNames() (the real witness; the Delete2 return code
+        # alone is the property-write equivalent of the W21/W42 ghost trap).
+        deletes_verified = True
+        for d in result["props_deleted"]:
+            name = d["name"]
+            still_present = name in reopen_names
+            d["verified_absent"] = not still_present
+            if still_present:
+                deletes_verified = False
+                result["errors"].append(
+                    f"delete verification failed: '{name}' still present "
+                    f"after reopen (config={config_name!r})"
+                )
+
         title2 = mdoc2b.GetTitle
         title2 = title2() if callable(title2) else title2
         sw.CloseDoc(title2)
 
         all_match = all(rb["match"] for rb in result["read_back"])
-        count_delta_ok = count_after >= count_before + len(result["props_set"])
+        # Count gate accounting for adds (only NEW names grow the count) and
+        # deletes (only those actually PRESENT shrink it). A pure overwrite or a
+        # delete-of-absent leaves the count flat — gating on >= len(props_set)
+        # would false-fail those, so compute the true expected net delta.
+        new_added = sum(
+            1 for p in result["props_set"] if p["name"] not in existing_names
+        )
+        deleted_present = sum(
+            1 for d in result["props_deleted"] if d.get("was_present")
+        )
+        expected_delta = new_added - deleted_present
+        count_delta_ok = (count_after - count_before) == expected_delta
 
         if result["errors"]:
             return result
@@ -310,19 +374,24 @@ def commit_properties(
             result["errors"].append("one or more read-back values don't match")
             return result
 
+        if not deletes_verified:
+            result["errors"].append("one or more deletions did not persist")
+            return result
+
         if not count_delta_ok:
             result["errors"].append(
-                f"count didn't increase as expected: "
-                f"before={count_before}, after={count_after}, "
-                f"set={len(result['props_set'])}"
+                f"count delta mismatch: before={count_before}, after={count_after}, "
+                f"expected net {expected_delta:+d} "
+                f"(+{new_added} new, -{deleted_present} deleted)"
             )
             return result
 
         result["ok"] = True
         result["summary"] = (
-            f"set {len(result['props_set'])} properties; "
-            f"count {count_before}->{count_after}; "
-            f"all read-back verified"
+            f"config={config_name or '<file-level>'}: "
+            f"set {len(result['props_set'])} / deleted {len(result['props_deleted'])} "
+            f"properties; count {count_before}->{count_after}; "
+            f"all read-back + delete verified"
         )
         return result
 
