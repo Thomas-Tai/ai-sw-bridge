@@ -242,3 +242,18 @@ from .knit import SPIKE_STATUS as _knit_status  # noqa: E402
 from .knit import create_knit  # noqa: E402
 
 _register_lane("knit", create_knit, _knit_status)
+
+# W68 — fillet_face (face fillet).  Seat-proven 2026-06-21: the face-set wall
+# was a makepy SAFEARRAY-of-IDispatch marshaling boundary, not a Parasolid
+# refusal.  CreateDefinition(swFmFillet=1) -> typed_qi(ISimpleFilletFeatureData2)
+# -> Initialize(swFaceFillet=2) -> SetFaces(which, VARIANT(VT_ARRAY|VT_DISPATCH,
+# [face])) binds (GetFaceCount readback-guarded) -> CreateFeature (DISP_E_
+# MEMBERNOTFOUND on return swallowed; the solid is already built).  Gate =
+# |d_vol| > eps (face cert -57.94 mm³, GetTypeName2 'Fillet', survives reopen).
+# full_round is DEFERRED in-handler (binds 1/1/1 but CreateFeature ghosts on a
+# square-edged fixture — needs a tangent-chain geometry probe), so only the
+# face kind ships.
+from .fillet_face_fullround import SPIKE_STATUS as _fillet_face_status  # noqa: E402
+from .fillet_face_fullround import create_fillet_face_fullround  # noqa: E402
+
+_register_lane("fillet_face", create_fillet_face_fullround, _fillet_face_status)
