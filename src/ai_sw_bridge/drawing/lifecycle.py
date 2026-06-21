@@ -53,6 +53,24 @@ def _find_bom_template() -> str | None:
     return None
 
 
+def _find_hole_template() -> str | None:
+    """Locate a Hole Table template (.sldholtbt) on this machine (W71).
+
+    The explicit W71-proven default is tried first to avoid a UI-prompt
+    deadlock when an empty template string would otherwise open a chooser.
+    """
+    patterns = [
+        r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\lang\english\hole table--sizes combined--letters.sldholtbt",
+        r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\lang\english\*.sldholtbt",
+        r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\**\*.sldholtbt",
+    ]
+    for pat in patterns:
+        matches = glob.glob(pat, recursive=True)
+        if matches:
+            return matches[0]
+    return None
+
+
 def _count_bom_data_rows(bom_annotation: Any) -> int:
     """Count data rows via IBomTableAnnotation.GetComponentsCount2 iterator.
 
@@ -574,6 +592,7 @@ def _normalize_sheets(spec: dict[str, Any]) -> list[dict[str, Any]]:
                     "views": sh.get("views", []),
                     "dimensions": dims_raw,  # Preserve bool OR object (W28)
                     "bom": bool(sh.get("bom", False)),
+                    "hole_table": bool(sh.get("hole_table", False)),  # W71
                     "annotations": sh.get("annotations"),  # W53
                 }
             )
@@ -588,6 +607,7 @@ def _normalize_sheets(spec: dict[str, Any]) -> list[dict[str, Any]]:
             "views": spec.get("views", []),
             "dimensions": dims_raw,  # Preserve bool OR object (W28)
             "bom": bool(spec.get("bom", False)),
+            "hole_table": bool(spec.get("hole_table", False)),  # W71
             "annotations": spec.get("annotations"),  # W53
         }
     ]
@@ -1098,6 +1118,69 @@ def _apply_note_annotations(
 
 # W70: swViewEntityType_e.swViewEntityType_Edge — projected model edges of a view.
 _SW_VIEW_ENTITY_EDGE = 1
+
+
+_SW_VIEW_ENTITY_VERTEX = 2  # swViewEntityType_e.swViewEntityType_Vertex
+
+
+def _insert_hole_table(
+    drawing_doc: Any, target_view: Any, *, mod: Any, typed_qi: Any
+) -> tuple[Any, str | None]:
+    """Insert a Hole Table on *target_view* via the W71-proven recipe.
+
+    Returns ``(annotation, None)`` on success or ``(None, reason)`` fail-closed.
+
+    Recipe (seat-proven 2026-06-21, spike_hole_table — first view, first try):
+    ``IView.InsertHoleTable2`` needs a single pre-selected datum ORIGIN. Select
+    the view's first projected VERTEX via the W70 doctrine
+    (``GetVisibleEntities2(None, swViewEntityType_Vertex=2)`` →
+    ``IEntity.Select2(False, 0)`` — callout-free, immune to the SelectByID2
+    arg-8 wall), then call ``InsertHoleTable2`` with an explicit
+    ``.sldholtbt`` template (a UI-prompt-deadlock guard). SW auto-detects the
+    holes in the view; no face/edge escalation is needed.
+    """
+    from ..com.sw_type_info import wrapper_module
+
+    template = _find_hole_template() or ""
+
+    # Activate the view (the BOM ActivateView precondition, at view level).
+    try:
+        vn = target_view.GetName2() or ""
+        if vn:
+            drawing_doc.ActivateView(vn)
+    except Exception:
+        pass
+
+    try:
+        drawing_doc.ClearSelection2(True)
+    except Exception:
+        pass
+
+    try:
+        raw = target_view.GetVisibleEntities2(None, _SW_VIEW_ENTITY_VERTEX)
+        verts = list(raw) if raw else []
+    except Exception as exc:
+        return None, f"GetVisibleEntities2(vertex) raised: {exc!r}"
+    if not verts:
+        return None, "no projected vertex on the view to use as the datum origin"
+
+    try:
+        tent = typed_qi(verts[0], "IEntity", module=wrapper_module())
+        if not tent.Select2(False, 0):
+            return None, "failed to select the datum-origin vertex"
+    except Exception as exc:
+        return None, f"datum-origin selection raised: {exc!r}"
+
+    try:
+        ann = target_view.InsertHoleTable2(False, 0.25, 0.18, 1, "", template)
+    except Exception as exc:
+        return None, f"InsertHoleTable2 raised: {exc!r}"
+    if ann is None or isinstance(ann, int):
+        return None, (
+            "InsertHoleTable2 returned None — the view has no recognized holes "
+            "(the holes must read as circles in this view)"
+        )
+    return ann, None
 
 
 def _select_first_view_edge(target_view: Any) -> bool:
@@ -1721,6 +1804,22 @@ def _build_sheet_views(
         result["bom_inserted"] = True
 
     # ------------------------------------------------------------------
+    # Hole Table (W71; per-sheet) — IView.InsertHoleTable2 on the first model
+    # view. The view must show the holes as circles (axis perpendicular to the
+    # view plane); the front/top view of a drilled face satisfies this.
+    # ------------------------------------------------------------------
+    if sheet_spec.get("hole_table") and views_placed and placed_views:
+        ht_ann, ht_err = _insert_hole_table(
+            drawing_doc, placed_views[0], mod=mod, typed_qi=typed_qi,
+        )
+        if ht_ann is None:
+            result["view_errors"].append(
+                f"sheet[{sheet_index}].hole_table: {ht_err}"
+            )
+            return result
+        result["hole_table_inserted"] = True
+
+    # ------------------------------------------------------------------
     # Annotations — surface-finish symbols (W53) + text notes (W70)
     # ------------------------------------------------------------------
     annot_spec = sheet_spec.get("annotations")
@@ -1999,6 +2098,9 @@ def commit_drawing(
         result["sheet_names"] = sheet_names_created
         result["views_placed"] = all_views_placed
         result["view_count"] = total_view_count
+        result["hole_table_inserted"] = any(
+            sr.get("hole_table_inserted") for sr in per_sheet_results
+        )
 
         if all_errors:
             result["view_errors"] = all_errors

@@ -487,6 +487,7 @@ _SHEET_ENTRY_SCHEMA: dict[str, Any] = {
         "views": _VIEWS_ARRAY_SCHEMA,
         "dimensions": _DIMENSIONS_SCHEMA,
         "bom": {"type": "boolean", "default": False},
+        "hole_table": {"type": "boolean", "default": False},
         "annotations": _ANNOTATIONS_SCHEMA,
     },
 }
@@ -520,6 +521,18 @@ DRAWING_SPEC_SCHEMA: dict[str, Any] = {
                 "If true, insert a top-level Bill-of-Materials table "
                 "anchored to the first view. Requires model to be a "
                 ".sldasm — a .sldprt rejects with a clear error message."
+            ),
+        },
+        "hole_table": {
+            "type": "boolean",
+            "default": False,
+            "description": (
+                "If true, insert a Hole Table on the first model view. The "
+                "view's first projected vertex is selected as the datum "
+                "origin (IView.GetVisibleEntities2 -> IEntity.Select2), then "
+                "IView.InsertHoleTable2 auto-detects the holes. Works on a "
+                ".sldprt or .sldasm whose view shows holes as circles; a view "
+                "with no recognized holes fails closed."
             ),
         },
         "title_block": _TITLE_BLOCK_SCHEMA,

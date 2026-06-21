@@ -312,6 +312,61 @@ class TestBomSemanticValidation:
             validate_drawing_spec(_drawing_spec(bom="yes"))
 
 
+# ---- W71: hole_table flag ----
+
+
+class TestHoleTableSchema:
+    def test_accepts_hole_table_true(self) -> None:
+        import jsonschema
+        jsonschema.validate(_drawing_spec(hole_table=True), DRAWING_SPEC_SCHEMA)
+
+    def test_accepts_hole_table_false(self) -> None:
+        import jsonschema
+        jsonschema.validate(_drawing_spec(hole_table=False), DRAWING_SPEC_SCHEMA)
+
+    def test_hole_table_optional_absent(self) -> None:
+        import jsonschema
+        jsonschema.validate(_drawing_spec(), DRAWING_SPEC_SCHEMA)
+
+    def test_rejects_hole_table_string(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _drawing_spec(hole_table="yes"), DRAWING_SPEC_SCHEMA
+            )
+
+    def test_rejects_hole_table_int(self) -> None:
+        import jsonschema
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(_drawing_spec(hole_table=1), DRAWING_SPEC_SCHEMA)
+
+    def test_accepts_per_sheet_hole_table(self) -> None:
+        import jsonschema
+        spec = {
+            "kind": "drawing", "name": "ht", "model": "p.sldprt",
+            "sheets": [{"views": ["front"], "hole_table": True}],
+        }
+        jsonschema.validate(spec, DRAWING_SPEC_SCHEMA)
+
+
+class TestHoleTableSemanticValidation:
+    def test_hole_table_on_sldprt_ok(self) -> None:
+        """Unlike BOM, a hole table works on a part (no .sldasm requirement)."""
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(_drawing_spec(model="part.sldprt", hole_table=True))
+
+    def test_hole_table_on_sldasm_ok(self) -> None:
+        from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+        validate_drawing_spec(_drawing_spec(model="asm.sldasm", hole_table=True))
+
+    def test_propose_accepts_hole_table(self) -> None:
+        from ai_sw_bridge.mutate import sw_propose_drawing
+        result = sw_propose_drawing(
+            _drawing_spec(model="part.sldprt", hole_table=True)
+        )
+        assert result["ok"] is True
+
+
 class TestBomPropose:
     def test_propose_bom_true_with_sldasm(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
