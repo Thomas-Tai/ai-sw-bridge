@@ -51,6 +51,7 @@ CLI_EMITTERS = frozenset(
         "export_dxf_flat.py",
         "motion.py",
         "solver.py",
+        "urdf.py",
     }
 )
 

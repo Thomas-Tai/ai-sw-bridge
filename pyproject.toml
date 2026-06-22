@@ -101,6 +101,7 @@ ai-sw-import     = "ai_sw_bridge.cli.import:main"
 ai-sw-export-dxf-flat = "ai_sw_bridge.cli.export_dxf_flat:main"
 ai-sw-motion     = "ai_sw_bridge.cli.motion:main"
 ai-sw-solver     = "ai_sw_bridge.cli.solver:main"
+ai-sw-urdf       = "ai_sw_bridge.cli.urdf:main"
 ai-sw-mcp        = "ai_sw_bridge.mcp.server:main"
 
 [tool.setuptools.packages.find]
