@@ -272,6 +272,28 @@ def _check_mates(
                 "coincident mate requires 'alignment'", path
             )
 
+        # Advanced mates (W75). symmetric requires a symmetry_plane (RefPlane
+        # name); the profile_center scalars (offset_mm/flip/lock_rotation) belong
+        # only to profile_center. Fail closed on cross-type leakage.
+        if mtype == "symmetric":
+            sp = mate.get("symmetry_plane")
+            if not isinstance(sp, str) or not sp.strip():
+                raise AssemblyValidationError(
+                    "symmetric mate requires 'symmetry_plane' (a reference "
+                    "plane feature name, e.g. 'Right Plane')",
+                    path,
+                )
+        elif mate.get("symmetry_plane") is not None:
+            raise AssemblyValidationError(
+                f"{mtype} mate does not accept 'symmetry_plane'", path
+            )
+        if mtype != "profile_center":
+            for adv in ("offset_mm", "flip", "lock_rotation"):
+                if mate.get(adv) is not None:
+                    raise AssemblyValidationError(
+                        f"{mtype} mate does not accept {adv!r}", path
+                    )
+
         value_mm = mate.get("value_mm")
         if mtype == "distance":
             if value_mm is None:
@@ -283,7 +305,10 @@ def _check_mates(
                     f"distance mate value_mm must be a positive number, got {value_mm!r}",
                     path,
                 )
-        elif mtype in ("concentric", "parallel", "perpendicular", "tangent"):
+        elif mtype in (
+            "concentric", "parallel", "perpendicular", "tangent",
+            "symmetric", "profile_center",
+        ):
             if value_mm is not None:
                 raise AssemblyValidationError(
                     f"{mtype} mate does not accept 'value_mm' (geometric constraint)",

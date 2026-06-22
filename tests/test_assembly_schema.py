@@ -1104,3 +1104,79 @@ class TestHingeMateValidation:
         ])
         with pytest.raises(AssemblyValidationError, match="not found"):
             validate_assembly(_assembly_with(m))
+
+
+# ---------------------------------------------------------------------------
+# W75 advanced mates — symmetric + profile_center
+# ---------------------------------------------------------------------------
+
+class TestAdvancedMatesW75Schema:
+    """Schema-level acceptance for the W75 advanced mate pair."""
+
+    def test_both_advertised(self) -> None:
+        assert "symmetric" in MATE_TYPES
+        assert "profile_center" in MATE_TYPES
+
+    def test_assembly_accepts_symmetric(self) -> None:
+        import jsonschema
+        mate = _mate_spec("symmetric", symmetry_plane="Right Plane")
+        jsonschema.validate(_assembly_with_mate(mate), ASSEMBLY_SCHEMA)
+
+    def test_assembly_accepts_profile_center_bare(self) -> None:
+        import jsonschema
+        jsonschema.validate(
+            _assembly_with_mate(_mate_spec("profile_center")), ASSEMBLY_SCHEMA)
+
+    def test_assembly_accepts_profile_center_scalars(self) -> None:
+        import jsonschema
+        mate = _mate_spec("profile_center", offset_mm=5.0, flip=True,
+                          lock_rotation=False)
+        jsonschema.validate(_assembly_with_mate(mate), ASSEMBLY_SCHEMA)
+
+
+class TestAdvancedMatesW75Validation:
+    """Semantic (validate_assembly) rules for the W75 advanced mate pair."""
+
+    def test_accepts_symmetric_well_formed(self) -> None:
+        validate_assembly(_assembly_with_mate(
+            _mate_spec("symmetric", symmetry_plane="Right Plane")))
+
+    def test_symmetric_requires_symmetry_plane(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="symmetry_plane"):
+            validate_assembly(_assembly_with_mate(_mate_spec("symmetric")))
+
+    def test_symmetric_rejects_empty_symmetry_plane(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="symmetry_plane"):
+            validate_assembly(_assembly_with_mate(
+                _mate_spec("symmetric", symmetry_plane="  ")))
+
+    def test_symmetric_rejects_value_mm(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(_assembly_with_mate(
+                _mate_spec("symmetric", symmetry_plane="Right Plane",
+                           value_mm=5.0)))
+
+    def test_symmetric_rejects_profile_center_scalars(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(_assembly_with_mate(
+                _mate_spec("symmetric", symmetry_plane="Right Plane",
+                           offset_mm=3.0)))
+
+    def test_accepts_profile_center_well_formed(self) -> None:
+        validate_assembly(_assembly_with_mate(
+            _mate_spec("profile_center", offset_mm=2.0, lock_rotation=True)))
+
+    def test_profile_center_rejects_symmetry_plane(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="symmetry_plane"):
+            validate_assembly(_assembly_with_mate(
+                _mate_spec("profile_center", symmetry_plane="Right Plane")))
+
+    def test_profile_center_rejects_value_mm(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(_assembly_with_mate(
+                _mate_spec("profile_center", value_mm=5.0)))
+
+    def test_non_advanced_rejects_offset_mm(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(_assembly_with_mate(
+                _mate_spec("concentric", offset_mm=5.0)))

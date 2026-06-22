@@ -53,6 +53,9 @@ MATE_TYPE_ENUMS = {
     # Mechanical mates (W48 Tier-3) — limit/compound, typelib-verified (v32).
     "slot": 21,            # swMateSLOT
     "hinge": 22,           # swMateHINGE
+    # Advanced mates (W75) — vanguard pair, probe-cracked + reopen-proven.
+    "symmetric": 8,        # swMateSYMMETRIC
+    "profile_center": 24,  # swMatePROFILECENTER
 }
 
 # swRackPinionMateDistanceOptions_e (swconst.tlb): gates how DiameterVal reads.
@@ -95,7 +98,31 @@ MATE_TYPE_INTERFACES = {
     # array PROPPUT); hinge is dispatched to _create_hinge_mate (role-keyed).
     "slot": "ISlotMateFeatureData",
     "hinge": "IHingeMateFeatureData",
+    # W75 advanced mates. Both ride the a/b EntitiesToMate path. symmetric ALSO
+    # needs a SymmetryPlane = reference DATUM PLANE (RefPlane feature, NOT a face
+    # — a face → CreateMate None; probe-cracked). profile_center carries optional
+    # FlipDimension/LockRotation/OffsetDistance scalars.
+    "symmetric": "ISymmetricMateFeatureData",
+    "profile_center": "IProfileCenterMateFeatureData",
 }
+
+
+def _resolve_symmetry_plane(asm_doc: Any, plane_name: Any) -> Any | None:
+    """Resolve a symmetric mate's SymmetryPlane to a reference-plane IFeature.
+
+    The plane MUST be a RefPlane feature (probe-cracked: a planar face yields
+    CreateMate None). v1 resolves an assembly-level plane feature by name via
+    the assembly doc's ``FeatureByName`` (the 3 default datums 'Front Plane' /
+    'Top Plane' / 'Right Plane', or any assembly reference plane). Returns the
+    IFeature, or None if unresolvable.
+    """
+    if not plane_name or not isinstance(plane_name, str):
+        return None
+    try:
+        feat = asm_doc.FeatureByName(plane_name)
+    except Exception:
+        return None
+    return feat if feat is not None and not isinstance(feat, int) else None
 
 
 def _rpy_to_transform(
@@ -616,6 +643,32 @@ def create_mate(
                 typed_iface.Distance = float(mate_spec["distance_mm"]) / 1000.0
             elif constraint == "percent" and mate_spec.get("percent") is not None:
                 typed_iface.Percent = float(mate_spec["percent"])
+
+        # Symmetric (W75): the two a/b entities are made symmetric about a
+        # SymmetryPlane that MUST be a reference DATUM PLANE (RefPlane feature) —
+        # a planar face yields CreateMate None (probe-cracked, the GUI-vs-COM
+        # parity trap). Resolve it via the assembly doc's FeatureByName and set
+        # BEFORE CreateMate.
+        if mate_type_str == "symmetric":
+            plane_name = mate_spec.get("symmetry_plane")
+            plane_feat = _resolve_symmetry_plane(asm_doc, plane_name)
+            if plane_feat is None:
+                return None, (
+                    f"symmetric mate: could not resolve symmetry_plane "
+                    f"{plane_name!r} (must name a reference plane feature on the "
+                    f"assembly, e.g. 'Right Plane')"
+                )
+            typed_iface.SymmetryPlane = plane_feat
+
+        # Profile-center (W75): EntitiesToMate (two faces, set above) + optional
+        # scalars. LockRotation/FlipDimension set before OffsetDistance.
+        if mate_type_str == "profile_center":
+            if mate_spec.get("lock_rotation") is not None:
+                typed_iface.LockRotation = bool(mate_spec["lock_rotation"])
+            if mate_spec.get("flip") is not None:
+                typed_iface.FlipDimension = bool(mate_spec["flip"])
+            if mate_spec.get("offset_mm") is not None:
+                typed_iface.OffsetDistance = float(mate_spec["offset_mm"]) / 1000.0
 
         mate_ret = typed_asm.CreateMate(mate_data)
     except Exception as exc:

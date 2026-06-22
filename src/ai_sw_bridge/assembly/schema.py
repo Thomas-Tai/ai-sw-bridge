@@ -28,6 +28,9 @@ MATE_TYPES = frozenset(
         "camfollower",
         "slot",
         "hinge",
+        # W75 advanced mates — both ride the a/b path (MATE_SCHEMA).
+        "symmetric",
+        "profile_center",
     }
 )
 
@@ -110,6 +113,14 @@ MATE_SCHEMA = {
         "constraint": {"type": "string", "enum": sorted(SLOT_CONSTRAINTS)},
         "distance_mm": {"type": "number", "exclusiveMinimum": 0},
         "percent": {"type": "number", "minimum": 0, "maximum": 100},
+        # symmetric (W75): the SymmetryPlane — a reference plane feature name
+        # resolvable on the assembly (e.g. "Right Plane"). MUST be a RefPlane,
+        # not a face (validator enforces presence for symmetric mates).
+        "symmetry_plane": {"type": "string", "minLength": 1},
+        # profile_center (W75): optional alignment scalars.
+        "offset_mm": {"type": "number"},
+        "flip": {"type": "boolean"},
+        "lock_rotation": {"type": "boolean"},
         "limit": {
             "type": "object",
             "additionalProperties": False,
