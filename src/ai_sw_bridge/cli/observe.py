@@ -116,6 +116,13 @@ def _run_clearance(args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().clearance(comp_a=args.comp_a, comp_b=args.comp_b)
 
 
+def _run_analyze_stackup(args: argparse.Namespace) -> dict[str, Any]:
+    return SolidWorksObserver().analyze_stackup(
+        component_names=args.components,
+        check_endpoints=not args.no_endpoints,
+    )
+
+
 def _run_draft(args: argparse.Namespace) -> dict[str, Any]:
     return SolidWorksObserver().draft_analysis(
         pull_direction=args.pull_direction,
@@ -348,6 +355,36 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Name of the second component (IComponent2.Name2, e.g. 'block_20mm-2').",
     )
     p.set_defaults(func=_run_clearance)
+
+    p = subs.add_parser(
+        "analyze_stackup",
+        help="Accumulate inter-component gaps along an ordered chain (W77).",
+        description=(
+            "W77 orchestration verb — traverse an ORDERED component chain and "
+            "sum the inter-component gaps by composing the shipped clearance "
+            "primitive over consecutive pairs (c[0]↔c[1], c[1]↔c[2], …). "
+            "Optionally measures the first↔last span as a collinearity sanity "
+            "check. Reports {pairs, accumulated_gap_mm, endpoint_span_mm, "
+            "intervening_span_mm, linear_consistent}. READ-ONLY. Assembly docs only."
+        ),
+    )
+    p.add_argument(
+        "--components",
+        nargs="+",
+        required=True,
+        metavar="NAME",
+        help=(
+            "Ordered component names (IComponent2.Name2), e.g. "
+            "--components base-1 spacer-1 top-1. At least two required."
+        ),
+    )
+    p.add_argument(
+        "--no-endpoints",
+        dest="no_endpoints",
+        action="store_true",
+        help="Skip the first↔last endpoint sanity measurement.",
+    )
+    p.set_defaults(func=_run_analyze_stackup)
 
     p = subs.add_parser(
         "draft",

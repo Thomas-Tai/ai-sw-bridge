@@ -1,6 +1,6 @@
 """Observation MCP tools (W5.4, §6.1, W30, W37, W43).
 
-Nineteen read-only tools that mirror the ``ai-sw-observe`` CLI
+Twenty read-only tools that mirror the ``ai-sw-observe`` CLI
 subcommands. Each tool is a thin wrapper around a
 :class:`ai_sw_bridge.observe.SolidWorksObserver` method, decorated
 with ``@com_tool`` so the body runs on the ComExecutor's STA
@@ -167,6 +167,32 @@ def register(mcp: Any) -> None:
         (e.g. 'block_20mm-1', 'block_20mm-2'). Assembly docs only.
         """
         return SolidWorksObserver().clearance(comp_a=comp_a, comp_b=comp_b)
+
+    @mcp.tool()
+    @com_tool
+    def sw_analyze_stackup(
+        components: list[str],
+        check_endpoints: bool = True,
+    ) -> dict[str, Any]:
+        """Accumulate inter-component gaps along an ordered stack chain (W77).
+
+        Read-only orchestration verb: composes IMeasure-based component
+        clearance over CONSECUTIVE pairs of an ordered chain
+        (components[0]↔[1], [1]↔[2], …) and sums the gaps. Lets the model
+        audit a tolerance stack-up (e.g. mount → spacer → sensor) and verify
+        the accumulated dimension. With check_endpoints (chains of ≥3) it also
+        measures the first↔last span — for a collinear stack that span is ≥ the
+        gap sum (it includes the intervening bodies); linear_consistent=False
+        flags a non-collinear/misaligned chain.
+
+        components: ordered IComponent2.Name2 values, e.g.
+        ['base-1', 'spacer-1', 'top-1']. At least two required.
+        Returns {ok, pairs, accumulated_gap_mm, endpoint_span_mm,
+        intervening_span_mm, linear_consistent, warnings}. Assembly docs only.
+        """
+        return SolidWorksObserver().analyze_stackup(
+            component_names=components, check_endpoints=check_endpoints
+        )
 
     @mcp.tool()
     @com_tool

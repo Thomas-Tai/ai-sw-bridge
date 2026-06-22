@@ -390,3 +390,173 @@ def sw_get_face_clearance(
         result["ok"] = True
 
     return result
+
+
+def _gap_of(clr: dict[str, Any]) -> tuple[float | None, bool, str | None]:
+    """Reduce a :func:`read_clearance` result to ``(gap_mm, touching, error)``.
+
+    ``touching`` (Distance == -1.0, flush/overlap) maps to a ``0.0`` gap so a
+    flush stack still accumulates. An unmeasurable pair (component not found,
+    measure error) yields ``(None, touching, error_str)``.
+    """
+    touching = bool(clr.get("touching"))
+    err = "; ".join(clr["errors"]) if clr.get("errors") else None
+    if touching:
+        return 0.0, True, err
+    dist = clr.get("min_distance_mm")
+    if dist is not None and err is None:
+        return float(dist), False, None
+    return None, touching, err
+
+
+def analyze_stackup(
+    asm_doc: Any,
+    component_names: Any,
+    *,
+    check_endpoints: bool = True,
+    mod: Any = None,
+) -> dict[str, Any]:
+    """Traverse an ORDERED component chain and accumulate the inter-component gaps.
+
+    READ-ONLY orchestration verb (W77): composes the shipped
+    :func:`read_clearance` primitive over CONSECUTIVE pairs of an ordered
+    mechanical stack — ``c[0]↔c[1]``, ``c[1]↔c[2]``, … — and sums the measured
+    gaps. It never mutates the model (selection + IMeasure only), so it is
+    cleared for the MCP surface alongside the CLI.
+
+    ``component_names`` is the ordered chain (``IComponent2.Name2`` values),
+    e.g. ``["base-1", "spacer-1", "top-1"]``. At least two are required.
+
+    The optional endpoint sanity check (``check_endpoints``, chains of ≥3) also
+    measures the FIRST↔LAST component directly. For a clean collinear stack the
+    end-to-end nearest-face distance spans the intervening BODIES too, so it
+    must be **≥** the sum of the inter-component gaps — ``endpoint_span_mm`` is
+    therefore reported as a *separate* datum (NOT asserted equal to the gap
+    sum), and ``intervening_span_mm = endpoint_span − accumulated_gap`` is the
+    cumulative body extent along the chain. ``linear_consistent`` is False only
+    when the endpoint span is *shorter* than the accumulated gaps — physically
+    impossible for a collinear stack, so it flags a non-linear / misaligned
+    chain.
+
+    Returns::
+
+        {
+          "ok": bool,                      # True iff ≥1 pair AND every pair measured
+          "error": str | None,
+          "chain": [name, ...],
+          "pairs": [
+            {"components": [a, b], "gap_mm": float|None,
+             "touching": bool, "error": str|None}, ...
+          ],
+          "accumulated_gap_mm": float | None,   # Σ measured gaps (touching = 0)
+          "accumulation_complete": bool,        # False if any pair unmeasurable
+          "measured_pairs": int,
+          "endpoint_span_mm": float | None,     # direct first↔last clearance
+          "intervening_span_mm": float | None,  # endpoint_span − accumulated_gap
+          "linear_consistent": bool | None,     # endpoint_span ≥ accumulated_gap
+          "warnings": [str, ...],
+        }
+    """
+    result: dict[str, Any] = {
+        "ok": False,
+        "error": None,
+        "chain": [],
+        "pairs": [],
+        "accumulated_gap_mm": None,
+        "accumulation_complete": False,
+        "measured_pairs": 0,
+        "endpoint_span_mm": None,
+        "intervening_span_mm": None,
+        "linear_consistent": None,
+        "warnings": [],
+    }
+
+    # ── Input validation (fail fast, before any seat work) ───────────────
+    if not isinstance(component_names, (list, tuple)):
+        result["error"] = "component_names must be a list of component names"
+        return result
+    names = [str(n) for n in component_names]
+    result["chain"] = names
+    if len(names) < 2:
+        result["error"] = "need >= 2 components to form a stack chain"
+        return result
+    if any(not n.strip() for n in names):
+        result["error"] = "component names must be non-empty"
+        return result
+
+    if mod is None:
+        mod = wrapper_module()
+
+    # ── Traverse consecutive pairs ───────────────────────────────────────
+    acc = 0.0
+    measured = 0
+    complete = True
+    for a, b in zip(names, names[1:]):
+        clr = read_clearance(asm_doc, a, b, mod)
+        gap, touching, err = _gap_of(clr)
+        result["pairs"].append({
+            "components": [a, b],
+            "gap_mm": gap,
+            "touching": touching,
+            "error": err,
+        })
+        if gap is None:
+            complete = False
+        else:
+            acc += gap
+            measured += 1
+
+    result["measured_pairs"] = measured
+    result["accumulation_complete"] = complete
+    result["accumulated_gap_mm"] = round(acc, 6) if measured else None
+
+    # ── Optional endpoint sanity check (chains of >= 3) ──────────────────
+    if check_endpoints and len(names) >= 3:
+        ec = read_clearance(asm_doc, names[0], names[-1], mod)
+        span, _touch, _err = _gap_of(ec)
+        result["endpoint_span_mm"] = span
+        if span is not None and complete and result["accumulated_gap_mm"] is not None:
+            acc_gap = result["accumulated_gap_mm"]
+            result["intervening_span_mm"] = round(span - acc_gap, 6)
+            result["linear_consistent"] = span + 1e-6 >= acc_gap
+            if not result["linear_consistent"]:
+                result["warnings"].append(
+                    "endpoint span is shorter than the accumulated gaps — the "
+                    "chain may be non-collinear or misaligned"
+                )
+
+    # ── Verdict ──────────────────────────────────────────────────────────
+    if not complete:
+        unmeasured = [p["components"] for p in result["pairs"] if p["gap_mm"] is None]
+        result["error"] = f"unmeasurable pair(s): {unmeasured}"
+        result["ok"] = False
+    else:
+        result["ok"] = True
+
+    return result
+
+
+def sw_analyze_stackup(
+    doc: Any, component_names: Any, check_endpoints: bool = True
+) -> dict[str, Any]:
+    """Top-level observer: tolerance stack-up over an ordered component chain (W77).
+
+    Validates *doc* is an assembly, then delegates to :func:`analyze_stackup`.
+    Fail-closed: a non-assembly document returns ``ok=False`` with a typed
+    error rather than silently mis-measuring.
+    """
+    try:
+        doc_type = resolve(doc, "GetType")
+        if callable(doc_type):
+            doc_type = doc_type()
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": f"doc.GetType failed: {exc!r}", "chain": []}
+
+    if doc_type != SW_DOC_ASSEMBLY:
+        return {
+            "ok": False,
+            "error": f"stack-up analysis requires assembly document (got type {doc_type})",
+            "chain": list(component_names) if isinstance(component_names, (list, tuple)) else [],
+        }
+
+    return analyze_stackup(doc, component_names, check_endpoints=check_endpoints)

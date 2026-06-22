@@ -22,7 +22,11 @@ from .sw_com import (
     resolve,
 )
 from .observe_bbox import sw_get_assembly_bbox_from_doc, sw_get_bbox_from_doc
-from .observe_clearance import sw_get_clearance, sw_get_face_clearance
+from .observe_clearance import (
+    sw_analyze_stackup,
+    sw_get_clearance,
+    sw_get_face_clearance,
+)
 from .observe_draft import sw_get_draft_analysis
 from .observe_inertia import sw_get_inertia
 from .observe_interference import sw_get_interference
@@ -2067,6 +2071,25 @@ class SolidWorksObserver:
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
         return sw_get_clearance(doc, comp_a, comp_b)
+
+    def analyze_stackup(
+        self, component_names: Any, check_endpoints: bool = True
+    ) -> dict[str, Any]:
+        """Tolerance stack-up over an ordered component chain (W77).
+
+        Composes the shipped clearance primitive over consecutive pairs of an
+        ordered mechanical stack (``c[0]↔c[1]``, ``c[1]↔c[2]``, …) and sums the
+        inter-component gaps. Optionally measures the first↔last span as a
+        collinearity sanity check. READ-ONLY (selection + IMeasure only).
+
+        Returns ``{ok, chain, pairs, accumulated_gap_mm, endpoint_span_mm,
+        intervening_span_mm, linear_consistent, warnings, …}``.
+        Assembly documents only.
+        """
+        doc = get_active_doc(get_sw_app())
+        if doc is None:
+            return {"ok": False, "error": "no_active_doc"}
+        return sw_analyze_stackup(doc, component_names, check_endpoints=check_endpoints)
 
     def draft_analysis(
         self,
