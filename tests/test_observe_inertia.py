@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ai_sw_bridge.observe_inertia import read_inertia, sw_get_inertia
+from ai_sw_bridge.observe_inertia import _sw_get_inertia_impl, read_inertia
 
 
 class _FakeMassProperty:
@@ -142,13 +142,13 @@ class TestSwGetInertia:
     def test_ok(self) -> None:
         mp = _FakeMassProperty()
         doc = _FakeDoc(mp)
-        result = sw_get_inertia(doc)
+        result = _sw_get_inertia_impl(doc)
         assert result["ok"] is True
         assert result["center_of_mass_mm"] is not None
 
     def test_extension_fails(self) -> None:
         doc = _FakeDocNoExt()
-        result = sw_get_inertia(doc)
+        result = _sw_get_inertia_impl(doc)
         assert result["ok"] is False
         assert "Extension" in result["error"]
 
@@ -156,6 +156,6 @@ class TestSwGetInertia:
     @patch("ai_sw_bridge.com.sw_type_info.wrapper_module", lambda: object())
     def test_mass_property_none(self) -> None:
         doc = _FakeDoc(None)
-        result = sw_get_inertia(doc)
+        result = _sw_get_inertia_impl(doc)
         assert result["ok"] is False
         assert "returned None" in result["error"]

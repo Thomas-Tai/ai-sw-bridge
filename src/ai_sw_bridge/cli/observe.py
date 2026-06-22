@@ -40,6 +40,7 @@ import json
 import sys
 from typing import Any
 
+from ..client import SolidWorksClient
 from ..observe import SolidWorksObserver
 from ..observe_section import sw_get_section_props
 from ..sw_com import get_active_doc, get_sw_app
@@ -97,7 +98,9 @@ def _run_measure_selection(_args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_inertia(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().inertia()
+    # v0.18 slice: route through the class-based SolidWorksClient (bypasses the
+    # deprecated sw_get_inertia shim — no PendingDeprecationWarning fires).
+    return SolidWorksClient().observe.get_inertia()
 
 
 def _run_custom_props(_args: argparse.Namespace) -> dict[str, Any]:
@@ -117,8 +120,9 @@ def _run_clearance(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_analyze_stackup(args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().analyze_stackup(
-        component_names=args.components,
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.analyze_stackup(
+        args.components,
         check_endpoints=not args.no_endpoints,
     )
 

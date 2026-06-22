@@ -4,7 +4,7 @@ Composes shipped primitives into a single read-only export verb that turns a
 SOLIDWORKS assembly into a Unified Robot Description Format (URDF) package for
 ROS / dynamic simulation:
 
-  - per-component mass / CoM / inertia tensor  → ``observe_inertia.sw_get_inertia``
+  - per-component mass / CoM / inertia tensor  → ``observe_inertia._sw_get_inertia_impl``
     (+ a direct ``IMassProperty2.Mass`` read). Extracts cleanly per component via
     ``IComponent2.GetModelDoc2`` with NO isolate maneuver. The inertia tensor is
     the eigen-safe one (the unreachable ``PrincipalAxesOfInertia`` PROPGET is
@@ -43,7 +43,7 @@ from typing import Any
 from .com.earlybind import typed
 from .com.sw_type_info import wrapper_module
 from .observe_bbox import _read_component_transform
-from .observe_inertia import sw_get_inertia
+from .observe_inertia import _sw_get_inertia_impl
 from .sw_com import SW_DOC_ASSEMBLY, SW_DOC_PART, get_sw_app, resolve
 
 # swOpenDocOptions_Silent — open the part standalone without UI prompts.
@@ -215,7 +215,7 @@ def _extract_link_data(comp: Any, used: set[str], mod: Any) -> dict[str, Any]:
         rec["error"] = "GetModelDoc2 returned None (suppressed?)"
         return rec
 
-    inert = sw_get_inertia(part_doc)
+    inert = _sw_get_inertia_impl(part_doc)
     if not inert.get("ok") or inert.get("inertia_tensor_kg_m2") is None:
         rec["error"] = f"inertia read failed: {inert.get('error')}"
         return rec

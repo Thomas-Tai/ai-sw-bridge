@@ -26,9 +26,9 @@ _SW_DOC_ASSEMBLY = 2
 
 
 def _run_export(args: argparse.Namespace) -> dict[str, Any]:
+    from ..client import SolidWorksClient
     from ..com.earlybind import typed
     from ..com.sw_type_info import wrapper_module
-    from ..export_urdf import export_urdf
     from ..sw_com import get_sw_app
 
     result: dict[str, Any] = {"tool": "export_urdf", "ok": False}
@@ -57,12 +57,14 @@ def _run_export(args: argparse.Namespace) -> dict[str, Any]:
         return result
 
     try:
-        report = export_urdf(
+        # v0.18 slice: route through the class-based SolidWorksClient.urdf facade
+        # (reuses the app + wrapper module we already hold).
+        client = SolidWorksClient(app=sw, mod=mod)
+        report = client.urdf.export(
             doc,
             args.output_dir,
             robot_name=args.robot_name,
             binary_stl=not args.ascii_stl,
-            mod=mod,
         )
         result.update(report)
     except Exception as exc:  # noqa: BLE001

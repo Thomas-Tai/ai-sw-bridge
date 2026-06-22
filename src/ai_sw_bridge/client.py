@@ -1,0 +1,130 @@
+"""SolidWorksClient — the v0.18 class-based public API boundary.
+
+The commercial-contract entry point. A single stateful client owns the
+connection state — the ``ISldWorks`` application pointer and the makepy wrapper
+module, plus active-document resolution — and exposes domain facades that share
+that one context::
+
+    client = SolidWorksClient()
+    client.observe.get_inertia()
+    client.observe.analyze_stackup(["a-1", "b-1", "c-1"])
+    client.urdf.export(asm_doc, "out/")
+
+Taxonomy: *domain objects on a single stateful client* (not a god-client, not
+scattered standalone objects). The client owns COM state; each facade is a
+namespaced view that delegates to the private ``_*_impl`` cores. The legacy
+``sw_*`` free functions remain as ``PendingDeprecationWarning`` shims routing to
+the same cores, so existing scripts keep working while this class API becomes
+the stable boundary. The stateless v0.14 ``observe.SolidWorksObserver`` is the
+precursor this supersedes.
+
+v0.18 pilot slice: ``observe`` (get_inertia, analyze_stackup) + ``urdf``.
+Remaining domains (mutate / assembly / drawing / export / features) fan out
+behind the same pattern — a series of friction-triggered seams, not a big-bang
+(see ``project_consolidation_policy``).
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from .observe_clearance import _sw_analyze_stackup_impl
+from .observe_inertia import _sw_get_inertia_impl
+from .sw_com import get_active_doc, get_sw_app
+
+_NO_DOC = {"ok": False, "error": "no_active_doc"}
+
+
+class SolidWorksObserverFacade:
+    """Read-only observation facade — routes to the ``_impl`` cores (no warnings)."""
+
+    def __init__(self, client: "SolidWorksClient") -> None:
+        self._client = client
+
+    def get_inertia(self, doc: Any = None) -> dict[str, Any]:
+        """Inertia tensor / CoM / principal moments of the active (or given) part."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_inertia_impl(doc)
+
+    def analyze_stackup(
+        self,
+        component_names: Any,
+        *,
+        check_endpoints: bool = True,
+        doc: Any = None,
+    ) -> dict[str, Any]:
+        """Tolerance stack-up / clearance-chain over an ordered component chain (W77)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_analyze_stackup_impl(
+            doc, component_names, check_endpoints=check_endpoints)
+
+
+class UrdfFacade:
+    """URDF export facade — assembly → ROS robot model (W78)."""
+
+    def __init__(self, client: "SolidWorksClient") -> None:
+        self._client = client
+
+    def export(self, asm_doc: Any, output_dir: Any, **kwargs: Any) -> dict[str, Any]:
+        """Export *asm_doc* to a URDF package under *output_dir*.
+
+        Threads the client's wrapper module so the orchestrator's internal
+        mass-props reads use the shared ``_impl`` cores (no deprecation noise).
+        """
+        from .export_urdf import export_urdf
+
+        kwargs.setdefault("mod", self._client.mod)
+        return export_urdf(asm_doc, output_dir, **kwargs)
+
+
+class SolidWorksClient:
+    """Stateful owner of the SOLIDWORKS connection; root of the class-based API.
+
+    Connection state (app pointer + wrapper module) is acquired lazily so the
+    client can be constructed cheaply / in tests, and injected explicitly
+    (``app=``, ``mod=``) when a caller already holds them — e.g. a CLI entry that
+    opened a document, or the MCP ComExecutor STA worker.
+    """
+
+    def __init__(self, *, app: Any = None, mod: Any = None) -> None:
+        self._app = app
+        self._mod = mod
+        self._observe: SolidWorksObserverFacade | None = None
+        self._urdf: UrdfFacade | None = None
+
+    # ── connection state ────────────────────────────────────────────────
+    @property
+    def app(self) -> Any:
+        """The ``ISldWorks`` application pointer (acquired on first use)."""
+        if self._app is None:
+            self._app = get_sw_app()
+        return self._app
+
+    @property
+    def mod(self) -> Any:
+        """The makepy wrapper module used by ``typed()`` (acquired on first use)."""
+        if self._mod is None:
+            from .com.sw_type_info import wrapper_module
+            self._mod = wrapper_module()
+        return self._mod
+
+    def active_doc(self) -> Any:
+        """Resolve the active ``IModelDoc2`` (or ``None`` if no document is open)."""
+        return get_active_doc(self.app)
+
+    # ── domain facades (cached) ─────────────────────────────────────────
+    @property
+    def observe(self) -> SolidWorksObserverFacade:
+        if self._observe is None:
+            self._observe = SolidWorksObserverFacade(self)
+        return self._observe
+
+    @property
+    def urdf(self) -> UrdfFacade:
+        if self._urdf is None:
+            self._urdf = UrdfFacade(self)
+        return self._urdf

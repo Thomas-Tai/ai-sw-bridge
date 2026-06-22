@@ -134,7 +134,7 @@ def test_sw_wrapper_rejects_non_assembly():
         def GetType(self):
             return 1  # swDocPART
 
-    res = C.sw_analyze_stackup(_Doc(), ["a-1", "b-1"])
+    res = C._sw_analyze_stackup_impl(_Doc(), ["a-1", "b-1"])
     assert res["ok"] is False and "assembly" in res["error"]
 
 
@@ -145,5 +145,5 @@ def test_sw_wrapper_passes_assembly_through():
 
     with patch.object(C, "wrapper_module", return_value=object()), \
          patch.object(C, "read_clearance", side_effect=[_clr(2.0)]):
-        res = C.sw_analyze_stackup(_Doc(), ["a-1", "b-1"])
+        res = C._sw_analyze_stackup_impl(_Doc(), ["a-1", "b-1"])
     assert res["ok"] is True and res["accumulated_gap_mm"] == 2.0

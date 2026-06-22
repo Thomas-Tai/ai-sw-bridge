@@ -23,12 +23,16 @@ from .sw_com import (
 )
 from .observe_bbox import sw_get_assembly_bbox_from_doc, sw_get_bbox_from_doc
 from .observe_clearance import (
-    sw_analyze_stackup,
+    _sw_analyze_stackup_impl,
+    sw_analyze_stackup,  # noqa: F401  (re-export: backward-compat import path)
     sw_get_clearance,
     sw_get_face_clearance,
 )
 from .observe_draft import sw_get_draft_analysis
-from .observe_inertia import sw_get_inertia
+from .observe_inertia import (
+    _sw_get_inertia_impl,
+    sw_get_inertia,  # noqa: F401  (re-export: backward-compat import path)
+)
 from .observe_interference import sw_get_interference
 from .observe_measure import (
     sw_get_measure_angle_from_doc,
@@ -1983,7 +1987,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_inertia(doc)
+        return _sw_get_inertia_impl(doc)
 
     def screenshot(
         self,
@@ -2089,7 +2093,8 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_analyze_stackup(doc, component_names, check_endpoints=check_endpoints)
+        return _sw_analyze_stackup_impl(
+            doc, component_names, check_endpoints=check_endpoints)
 
     def draft_analysis(
         self,

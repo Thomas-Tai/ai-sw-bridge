@@ -536,14 +536,17 @@ def analyze_stackup(
     return result
 
 
-def sw_analyze_stackup(
+def _sw_analyze_stackup_impl(
     doc: Any, component_names: Any, check_endpoints: bool = True
 ) -> dict[str, Any]:
-    """Top-level observer: tolerance stack-up over an ordered component chain (W77).
+    """Core: tolerance stack-up over an ordered component chain (W77, v0.18 impl).
 
     Validates *doc* is an assembly, then delegates to :func:`analyze_stackup`.
     Fail-closed: a non-assembly document returns ``ok=False`` with a typed
-    error rather than silently mis-measuring.
+    error rather than silently mis-measuring. Internal callers (the
+    ``SolidWorksClient.observe`` facade) call this directly; the public
+    :func:`sw_analyze_stackup` free function routes here behind a
+    ``PendingDeprecationWarning``.
     """
     try:
         doc_type = resolve(doc, "GetType")
@@ -560,3 +563,24 @@ def sw_analyze_stackup(
         }
 
     return analyze_stackup(doc, component_names, check_endpoints=check_endpoints)
+
+
+def sw_analyze_stackup(
+    doc: Any, component_names: Any, check_endpoints: bool = True
+) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.analyze_stackup()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_analyze_stackup_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_analyze_stackup() is deprecated; use "
+        "SolidWorksClient().observe.analyze_stackup(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_analyze_stackup_impl(doc, component_names, check_endpoints=check_endpoints)

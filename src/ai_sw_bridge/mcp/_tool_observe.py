@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..client import SolidWorksClient
 from ..observe import SolidWorksObserver
 from .tools import com_tool
 
@@ -153,7 +154,8 @@ def register(mcp: Any) -> None:
         center_of_mass_mm, inertia_tensor_kg_m2, principal_moments_kg_m2,
         principal_axes. Parts only — assemblies/drawings error.
         """
-        return SolidWorksObserver().inertia()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.get_inertia()
 
     @mcp.tool()
     @com_tool
@@ -190,8 +192,9 @@ def register(mcp: Any) -> None:
         Returns {ok, pairs, accumulated_gap_mm, endpoint_span_mm,
         intervening_span_mm, linear_consistent, warnings}. Assembly docs only.
         """
-        return SolidWorksObserver().analyze_stackup(
-            component_names=components, check_endpoints=check_endpoints
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.analyze_stackup(
+            components, check_endpoints=check_endpoints
         )
 
     @mcp.tool()
