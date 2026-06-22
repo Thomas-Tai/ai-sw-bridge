@@ -21,7 +21,7 @@ import pytest
 
 from ai_sw_bridge.observe import (
     KNOWN_PROBLEMATIC_ADDINS,
-    sw_get_enabled_addins,
+    _sw_get_enabled_addins_impl as sw_get_enabled_addins,
 )
 
 ADDIN_KEYS = frozenset({"ok", "addins", "known_problematic", "error"})

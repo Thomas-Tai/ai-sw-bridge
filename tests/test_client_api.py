@@ -13,12 +13,22 @@ so both ``_impl`` cores return their typed error dicts immediately.
 
 Batch O1 additions: interference, draft_analysis, section_props, selection,
 bbox_from_doc, assembly_bbox — same pattern as the pilot slice.
+
+Batch O2 additions: the 13 active-doc verbs from observe.py —
+active_doc, feature_errors, equations, bbox, volume, feature_statistics,
+screenshot, mate_errors, custom_props, measure, undercut_faces,
+min_wall_thickness, enabled_addins.  All self-resolve the active doc, so
+we monkeypatch observe.get_sw_app / observe.get_active_doc to return None,
+driving the no_active_doc typed-error path without any COM touch.
 """
 from __future__ import annotations
 
 import warnings
+from unittest.mock import patch
 
 import pytest
+
+import ai_sw_bridge.observe as _observe_mod
 
 from ai_sw_bridge.client import (
     SolidWorksClient,
@@ -43,6 +53,36 @@ from ai_sw_bridge.observe_interference import (
 )
 from ai_sw_bridge.observe_section import _sw_get_section_props_impl, sw_get_section_props
 from ai_sw_bridge.observe_selection import _sw_get_selection_impl, sw_get_selection
+from ai_sw_bridge.observe import (
+    # Batch O2 _impl cores
+    _sw_get_active_doc_impl,
+    _sw_get_feature_errors_impl,
+    _sw_get_equations_impl,
+    _sw_get_bbox_impl,
+    _sw_get_volume_impl,
+    _sw_get_feature_statistics_impl,
+    _sw_screenshot_impl,
+    _sw_get_mate_errors_impl,
+    _sw_get_custom_props_impl,
+    _sw_measure_impl,
+    _sw_undercut_faces_impl,
+    _sw_min_wall_thickness_impl,
+    _sw_get_enabled_addins_impl,
+    # Batch O2 shims
+    sw_get_active_doc,
+    sw_get_feature_errors,
+    sw_get_equations,
+    sw_get_bbox,
+    sw_get_volume,
+    sw_get_feature_statistics,
+    sw_screenshot,
+    sw_get_mate_errors,
+    sw_get_custom_props,
+    sw_measure,
+    sw_undercut_faces,
+    sw_min_wall_thickness,
+    sw_get_enabled_addins,
+)
 
 
 class _PartDoc:
@@ -230,3 +270,276 @@ def test_client_facade_assembly_bbox_routes_without_warning():
         warnings.simplefilter("error", PendingDeprecationWarning)
         res = client.observe.assembly_bbox(doc=_PartDoc())
     assert res["ok"] is False  # type-guard fires, not a warning
+
+
+# ── Batch O2: active-doc verbs from observe.py ──────────────────────────────
+#
+# All 13 self-resolve the active doc via get_sw_app / get_active_doc internally.
+# We monkeypatch both to drive the no_active_doc typed-error path without COM.
+# _sw_get_enabled_addins_impl is the exception: it calls get_sw_app() and then
+# uses getattr(sw, "GetEnabledAddIns", None); returning object() → api_not_present.
+#
+# Pattern per function:
+#   shim_warns:  call sw_*() under the same patches, assert warns + impl == shim
+#   facade_clean: call client.observe.<method>() under warnings-as-errors, no raise
+# ─────────────────────────────────────────────────────────────────────────────
+
+_FAKE_SW = object()  # a sw app object that has no COM members
+
+
+def _no_doc_patches():
+    """Context manager that patches observe.get_sw_app / get_active_doc to simulate
+    no active document, driving the no_active_doc typed-error path."""
+    return (
+        patch.object(_observe_mod, "get_sw_app", return_value=_FAKE_SW),
+        patch.object(_observe_mod, "get_active_doc", return_value=None),
+    )
+
+
+# sw_get_active_doc / active_doc
+def test_sw_get_active_doc_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_get_active_doc"):
+            shim = sw_get_active_doc()
+        impl = _sw_get_active_doc_impl()
+    assert shim == impl
+    assert shim["ok"] is True   # active_doc returns ok=True even on no_active_doc
+
+
+def test_client_facade_active_doc_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.active_doc()
+    assert res["ok"] is True  # no_active_doc returns ok=True with error set
+
+
+# sw_get_feature_errors / feature_errors
+def test_sw_get_feature_errors_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_get_feature_errors"):
+            shim = sw_get_feature_errors()
+        impl = _sw_get_feature_errors_impl()
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_feature_errors_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.feature_errors()
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_get_equations / equations
+def test_sw_get_equations_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_get_equations"):
+            shim = sw_get_equations()
+        impl = _sw_get_equations_impl()
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_equations_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.equations()
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_get_bbox / bbox (no-arg legacy form)
+def test_sw_get_bbox_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_get_bbox"):
+            shim = sw_get_bbox()
+        impl = _sw_get_bbox_impl()
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_bbox_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.bbox()
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_get_volume / volume
+def test_sw_get_volume_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_get_volume"):
+            shim = sw_get_volume()
+        impl = _sw_get_volume_impl()
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_volume_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.volume()
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_get_feature_statistics / feature_statistics
+def test_sw_get_feature_statistics_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_get_feature_statistics"):
+            shim = sw_get_feature_statistics()
+        impl = _sw_get_feature_statistics_impl()
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_feature_statistics_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.feature_statistics()
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_screenshot / screenshot
+def test_sw_screenshot_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_screenshot"):
+            shim = sw_screenshot(width=320, height=240)
+        impl = _sw_screenshot_impl(width=320, height=240)
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_screenshot_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.screenshot(width=320, height=240)
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_get_mate_errors / mate_errors
+def test_sw_get_mate_errors_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_get_mate_errors"):
+            shim = sw_get_mate_errors()
+        impl = _sw_get_mate_errors_impl()
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_mate_errors_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.mate_errors()
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_get_custom_props / custom_props
+def test_sw_get_custom_props_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_get_custom_props"):
+            shim = sw_get_custom_props()
+        impl = _sw_get_custom_props_impl()
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_custom_props_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.custom_props()
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_measure / measure
+def test_sw_measure_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_measure"):
+            shim = sw_measure()
+        impl = _sw_measure_impl()
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_measure_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.measure()
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_undercut_faces / undercut_faces
+def test_sw_undercut_faces_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_undercut_faces"):
+            shim = sw_undercut_faces(pull_x=0.0, pull_y=1.0, pull_z=0.0)
+        impl = _sw_undercut_faces_impl(pull_x=0.0, pull_y=1.0, pull_z=0.0)
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_undercut_faces_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.undercut_faces(pull_x=0.0, pull_y=1.0, pull_z=0.0)
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_min_wall_thickness / min_wall_thickness
+def test_sw_min_wall_thickness_shim_warns_and_delegates():
+    with _no_doc_patches()[0], _no_doc_patches()[1]:
+        with pytest.warns(PendingDeprecationWarning, match="sw_min_wall_thickness"):
+            shim = sw_min_wall_thickness(samples_per_face=2)
+        impl = _sw_min_wall_thickness_impl(samples_per_face=2)
+    assert shim == impl
+    assert shim["ok"] is False and shim["error"] == "no_active_doc"
+
+
+def test_client_facade_min_wall_thickness_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with _no_doc_patches()[0], _no_doc_patches()[1]:
+            res = client.observe.min_wall_thickness(samples_per_face=2)
+    assert res["ok"] is False and res["error"] == "no_active_doc"
+
+
+# sw_get_enabled_addins / enabled_addins
+# enabled_addins calls get_sw_app() directly (no get_active_doc); returning
+# object() (no GetEnabledAddIns attr) → ok=True, error="api_not_present".
+def test_sw_get_enabled_addins_shim_warns_and_delegates():
+    with patch.object(_observe_mod, "get_sw_app", return_value=object()):
+        with pytest.warns(PendingDeprecationWarning, match="sw_get_enabled_addins"):
+            shim = sw_get_enabled_addins()
+        impl = _sw_get_enabled_addins_impl()
+    assert shim == impl
+    assert shim["ok"] is True and shim["error"] == "api_not_present"
+
+
+def test_client_facade_enabled_addins_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        with patch.object(_observe_mod, "get_sw_app", return_value=object()):
+            res = client.observe.enabled_addins()
+    assert res["ok"] is True and res["error"] == "api_not_present"

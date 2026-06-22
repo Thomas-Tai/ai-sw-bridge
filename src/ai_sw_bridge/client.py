@@ -28,6 +28,21 @@ from __future__ import annotations
 
 from typing import Any
 
+from .observe import (
+    _sw_get_active_doc_impl,
+    _sw_get_feature_errors_impl,
+    _sw_get_equations_impl,
+    _sw_get_bbox_impl,
+    _sw_get_volume_impl,
+    _sw_get_feature_statistics_impl,
+    _sw_screenshot_impl,
+    _sw_get_mate_errors_impl,
+    _sw_get_custom_props_impl,
+    _sw_measure_impl,
+    _sw_undercut_faces_impl,
+    _sw_min_wall_thickness_impl,
+    _sw_get_enabled_addins_impl,
+)
 from .observe_bbox import _sw_get_assembly_bbox_from_doc_impl, _sw_get_bbox_from_doc_impl
 from .observe_clearance import _sw_analyze_stackup_impl
 from .observe_draft import _sw_get_draft_analysis_impl
@@ -114,6 +129,75 @@ class SolidWorksObserverFacade:
         if doc is None:
             return dict(_NO_DOC)
         return _sw_get_assembly_bbox_from_doc_impl(doc)
+
+    # ── Batch O2: observe.py active-doc verbs ──────────────────────────────
+
+    def active_doc(self) -> dict[str, Any]:
+        """Return metadata about the currently active SOLIDWORKS document."""
+        return _sw_get_active_doc_impl()
+
+    def feature_errors(self) -> dict[str, Any]:
+        """Walk the active document's feature tree and report non-OK features."""
+        return _sw_get_feature_errors_impl()
+
+    def equations(self) -> dict[str, Any]:
+        """Dump every equation in the active document with its current value and status."""
+        return _sw_get_equations_impl()
+
+    def bbox(self) -> dict[str, Any]:
+        """Return the active part's axis-aligned bounding box (parts only, legacy form)."""
+        return _sw_get_bbox_impl()
+
+    def volume(self) -> dict[str, Any]:
+        """Return volume, surface area, mass, and CoM of the active part."""
+        return _sw_get_volume_impl()
+
+    def feature_statistics(self) -> dict[str, Any]:
+        """Return build-tree statistics for the active part/assembly (W71)."""
+        return _sw_get_feature_statistics_impl()
+
+    def screenshot(
+        self,
+        width: int = 640,
+        height: int = 360,
+        fit_view: bool = False,
+        filename: str | None = None,
+    ) -> dict[str, Any]:
+        """Capture the active SW viewport to a PNG on disk."""
+        return _sw_screenshot_impl(width=width, height=height, fit_view=fit_view, filename=filename)
+
+    def mate_errors(self) -> dict[str, Any]:
+        """Walk an assembly's mate set and report status per mate."""
+        return _sw_get_mate_errors_impl()
+
+    def custom_props(self) -> dict[str, Any]:
+        """Read every custom property from the active document."""
+        return _sw_get_custom_props_impl()
+
+    def measure(
+        self,
+        entity_a: str | None = None,
+        entity_b: str | None = None,
+    ) -> dict[str, Any]:
+        """Measure entities in the active document."""
+        return _sw_measure_impl(entity_a=entity_a, entity_b=entity_b)
+
+    def undercut_faces(
+        self,
+        pull_x: float = 0.0,
+        pull_y: float = 1.0,
+        pull_z: float = 0.0,
+    ) -> dict[str, Any]:
+        """Report faces that block tool/mold withdrawal along a pull direction (DFM)."""
+        return _sw_undercut_faces_impl(pull_x=pull_x, pull_y=pull_y, pull_z=pull_z)
+
+    def min_wall_thickness(self, samples_per_face: int = 4) -> dict[str, Any]:
+        """Report the minimum wall thickness of the active solid part (DFM)."""
+        return _sw_min_wall_thickness_impl(samples_per_face=samples_per_face)
+
+    def enabled_addins(self) -> dict[str, Any]:
+        """Enumerate currently-loaded SOLIDWORKS add-ins (W7.1)."""
+        return _sw_get_enabled_addins_impl()
 
 
 class UrdfFacade:

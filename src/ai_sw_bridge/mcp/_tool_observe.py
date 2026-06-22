@@ -28,31 +28,36 @@ def register(mcp: Any) -> None:
     @com_tool
     def sw_active_doc() -> dict[str, Any]:
         """Return metadata about the currently active SOLIDWORKS document."""
-        return SolidWorksObserver().active_doc()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.active_doc()
 
     @mcp.tool()
     @com_tool
     def sw_feature_errors() -> dict[str, Any]:
         """Walk the active document's feature tree and report non-OK features."""
-        return SolidWorksObserver().feature_errors()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.feature_errors()
 
     @mcp.tool()
     @com_tool
     def sw_equations() -> dict[str, Any]:
         """Dump every equation in the active document with values and status."""
-        return SolidWorksObserver().equations()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.equations()
 
     @mcp.tool()
     @com_tool
     def sw_bbox() -> dict[str, Any]:
         """Return the active part's axis-aligned bounding box."""
-        return SolidWorksObserver().bbox()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.bbox()
 
     @mcp.tool()
     @com_tool
     def sw_volume() -> dict[str, Any]:
         """Return volume, surface area, mass, and center of mass of the active part."""
-        return SolidWorksObserver().volume()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.volume()
 
     @mcp.tool()
     @com_tool
@@ -64,7 +69,8 @@ def register(mcp: Any) -> None:
         total_rebuild_time, and per-feature name/type/update-time arrays.
         Lets the system introspect its own generated build tree. Part/assembly.
         """
-        return SolidWorksObserver().feature_statistics()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.feature_statistics()
 
     @mcp.tool()
     @com_tool
@@ -75,7 +81,8 @@ def register(mcp: Any) -> None:
         filename: str | None = None,
     ) -> dict[str, Any]:
         """Capture the active SW viewport to a PNG file."""
-        return SolidWorksObserver().screenshot(
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.screenshot(
             width=width,
             height=height,
             fit_view=fit_view,
@@ -89,25 +96,29 @@ def register(mcp: Any) -> None:
         entity_b: str | None = None,
     ) -> dict[str, Any]:
         """Measure entities in the active document."""
-        return SolidWorksObserver().measure(entity_a=entity_a, entity_b=entity_b)
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.measure(entity_a=entity_a, entity_b=entity_b)
 
     @mcp.tool()
     @com_tool
     def sw_mate_errors() -> dict[str, Any]:
         """Walk an assembly's mate set and report status per mate."""
-        return SolidWorksObserver().mate_errors()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.mate_errors()
 
     @mcp.tool()
     @com_tool
     def sw_custom_props() -> dict[str, Any]:
         """Read every custom property from the active document."""
-        return SolidWorksObserver().custom_props()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.custom_props()
 
     @mcp.tool()
     @com_tool
     def sw_enabled_addins() -> dict[str, Any]:
         """Enumerate currently-loaded SOLIDWORKS add-ins."""
-        return SolidWorksObserver().enabled_addins()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.enabled_addins()
 
     @mcp.tool()
     @com_tool
@@ -228,7 +239,8 @@ def register(mcp: Any) -> None:
         pull_z: float = 0.0,
     ) -> dict[str, Any]:
         """Report part faces that block mold/tool withdrawal along a pull direction (DFM)."""
-        return SolidWorksObserver().undercut_faces(
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.undercut_faces(
             pull_x=pull_x, pull_y=pull_y, pull_z=pull_z
         )
 
@@ -251,6 +263,7 @@ def register(mcp: Any) -> None:
     @com_tool
     def sw_min_wall_thickness(samples_per_face: int = 4) -> dict[str, Any]:
         """Report the minimum wall thickness of the active solid part (DFM)."""
-        return SolidWorksObserver().min_wall_thickness(
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.min_wall_thickness(
             samples_per_face=samples_per_face
         )

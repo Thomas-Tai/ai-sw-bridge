@@ -16,7 +16,7 @@ from contextlib import redirect_stdout
 from unittest.mock import MagicMock, patch
 
 from ai_sw_bridge.cli.observe import _build_parser
-from ai_sw_bridge.observe import sw_get_custom_props
+from ai_sw_bridge.observe import _sw_get_custom_props_impl as sw_get_custom_props
 
 CUSTOM_PROPS_KEYS = frozenset(
     {

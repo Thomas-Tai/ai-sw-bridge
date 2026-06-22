@@ -47,23 +47,28 @@ from .streams import add_quiet_flag, apply_quiet
 
 
 def _run_active_doc(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().active_doc()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.active_doc()
 
 
 def _run_feature_errors(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().feature_errors()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.feature_errors()
 
 
 def _run_equations(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().equations()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.equations()
 
 
 def _run_mate_errors(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().mate_errors()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.mate_errors()
 
 
 def _run_bbox(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().bbox()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.bbox()
 
 
 def _run_bounding_box(_args: argparse.Namespace) -> dict[str, Any]:
@@ -71,15 +76,18 @@ def _run_bounding_box(_args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_volume(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().volume()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.volume()
 
 
 def _run_feature_statistics(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().feature_statistics()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.feature_statistics()
 
 
 def _run_screenshot(args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().screenshot(
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.screenshot(
         width=args.width,
         height=args.height,
         fit_view=args.fit_view,
@@ -88,7 +96,8 @@ def _run_screenshot(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_measure(args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().measure(entity_a=args.entity_a, entity_b=args.entity_b)
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.measure(entity_a=args.entity_a, entity_b=args.entity_b)
 
 
 def _run_measure_selection(_args: argparse.Namespace) -> dict[str, Any]:
@@ -102,11 +111,13 @@ def _run_inertia(_args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_custom_props(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().custom_props()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.custom_props()
 
 
 def _run_addins(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().enabled_addins()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.enabled_addins()
 
 
 def _run_interference(_args: argparse.Namespace) -> dict[str, Any]:
@@ -140,13 +151,15 @@ def _run_selection(_args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_undercut(args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().undercut_faces(
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.undercut_faces(
         pull_x=args.pull_x, pull_y=args.pull_y, pull_z=args.pull_z
     )
 
 
 def _run_min_wall(args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().min_wall_thickness(
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.min_wall_thickness(
         samples_per_face=args.samples_per_face
     )
 

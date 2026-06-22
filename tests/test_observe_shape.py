@@ -13,7 +13,7 @@ None, but the key is there.
 
 from __future__ import annotations
 
-from ai_sw_bridge.observe import sw_get_bbox, sw_get_volume
+from ai_sw_bridge.observe import _sw_get_bbox_impl as sw_get_bbox, _sw_get_volume_impl as sw_get_volume
 
 
 BBOX_KEYS = frozenset(

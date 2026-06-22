@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 
 import ai_sw_bridge.observe as observe
-from ai_sw_bridge.observe import sw_get_feature_statistics
+from ai_sw_bridge.observe import _sw_get_feature_statistics_impl as sw_get_feature_statistics
 
 
 class _FakeStats:

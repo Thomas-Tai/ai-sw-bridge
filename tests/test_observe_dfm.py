@@ -24,8 +24,8 @@ from ai_sw_bridge.observe import (
     _measure_opposite_distance,
     _min_wall_from_samples,
     _vec_unit,
-    sw_min_wall_thickness,
-    sw_undercut_faces,
+    _sw_min_wall_thickness_impl as sw_min_wall_thickness,
+    _sw_undercut_faces_impl as sw_undercut_faces,
 )
 
 
@@ -283,7 +283,7 @@ def test_sw_min_wall_thickness_discriminates_via_fake_doc(monkeypatch):
         monkeypatch.setattr(
             obs, "get_active_doc", lambda _sw: FakeDoc(_slab_faces(thickness_m))
         )
-        return obs.sw_min_wall_thickness(samples_per_face=2)
+        return obs._sw_min_wall_thickness_impl(samples_per_face=2)
 
     thin = run(0.002)
     thick = run(0.020)
@@ -309,9 +309,9 @@ def test_sw_undercut_faces_flags_back_face_via_fake_doc(monkeypatch):
     dirty = clean + [FakeFace((0.0, -1.0, 0.0), (0.0, -0.01, 0.0))]
 
     monkeypatch.setattr(obs, "get_active_doc", lambda _sw: FakeDoc(clean))
-    c = obs.sw_undercut_faces()  # default pull +Y
+    c = obs._sw_undercut_faces_impl()  # default pull +Y
     monkeypatch.setattr(obs, "get_active_doc", lambda _sw: FakeDoc(dirty))
-    d = obs.sw_undercut_faces()
+    d = obs._sw_undercut_faces_impl()
 
     assert c["ok"] is True and d["ok"] is True
     assert c["undercut_count"] == 0
@@ -326,7 +326,7 @@ def test_sw_undercut_faces_rejects_non_part(monkeypatch):
     monkeypatch.setattr(
         obs, "get_active_doc", lambda _sw: FakeDoc([], doc_type=2)
     )  # assembly
-    out = obs.sw_undercut_faces()
+    out = obs._sw_undercut_faces_impl()
     assert out["ok"] is False
     assert "requires a part" in out["error"]
 

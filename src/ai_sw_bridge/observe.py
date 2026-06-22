@@ -93,8 +93,8 @@ EQ_STATUS_NAMES = {
 FEATURE_STATE_NAMES = {0: "ok", 1: "warning", 2: "error"}
 
 
-def sw_get_active_doc() -> dict[str, Any]:
-    """Return metadata about whatever document is currently active in SW."""
+def _sw_get_active_doc_impl() -> dict[str, Any]:
+    """v0.18 core — Return metadata about whatever document is currently active in SW."""
     result: dict[str, Any] = {
         "ok": False,
         "path": None,
@@ -141,6 +141,18 @@ def sw_get_active_doc() -> dict[str, Any]:
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
+
+
+def sw_get_active_doc() -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.active_doc()."""
+    import warnings
+    warnings.warn(
+        "sw_get_active_doc() is deprecated; use SolidWorksClient().observe.active_doc(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_active_doc_impl()
 
 
 def _walk_feature_tree(first_feature: Any, max_depth: int = 8) -> list[Any]:
@@ -281,8 +293,8 @@ def collect_feature_health(doc: Any) -> dict[str, Any]:
     return out
 
 
-def sw_get_feature_errors() -> dict[str, Any]:
-    """Walk the active document's feature tree and report any feature whose
+def _sw_get_feature_errors_impl() -> dict[str, Any]:
+    """v0.18 core — Walk the active document's feature tree and report any feature whose
     state is non-OK. Also returns the total feature count for sanity."""
     result: dict[str, Any] = {
         "ok": False,
@@ -319,8 +331,20 @@ def sw_get_feature_errors() -> dict[str, Any]:
         return result
 
 
-def sw_get_equations() -> dict[str, Any]:
-    """Dump every equation in the active document with its current value,
+def sw_get_feature_errors() -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.feature_errors()."""
+    import warnings
+    warnings.warn(
+        "sw_get_feature_errors() is deprecated; use SolidWorksClient().observe.feature_errors(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_feature_errors_impl()
+
+
+def _sw_get_equations_impl() -> dict[str, Any]:
+    """v0.18 core — Dump every equation in the active document with its current value,
     solve status, and the linked external locals file if any."""
     result: dict[str, Any] = {
         "ok": False,
@@ -444,8 +468,20 @@ def sw_get_equations() -> dict[str, Any]:
         return result
 
 
-def sw_get_bbox() -> dict[str, Any]:
-    """Return the active part's axis-aligned bounding box in part coords.
+def sw_get_equations() -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.equations()."""
+    import warnings
+    warnings.warn(
+        "sw_get_equations() is deprecated; use SolidWorksClient().observe.equations(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_equations_impl()
+
+
+def _sw_get_bbox_impl() -> dict[str, Any]:
+    """v0.18 core — Return the active part's axis-aligned bounding box in part coords.
 
     Uses ``IPartDoc.GetPartBox(bUseDefaultMode=True)`` which returns a
     6-tuple [Xmin, Ymin, Zmin, Xmax, Ymax, Zmax] in METERS in the part's
@@ -540,8 +576,20 @@ def sw_get_bbox() -> dict[str, Any]:
         return result
 
 
-def sw_get_volume() -> dict[str, Any]:
-    """Return volume + surface area + mass of the active part.
+def sw_get_bbox() -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.bbox()."""
+    import warnings
+    warnings.warn(
+        "sw_get_bbox() is deprecated; use SolidWorksClient().observe.bbox(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_bbox_impl()
+
+
+def _sw_get_volume_impl() -> dict[str, Any]:
+    """v0.18 core — Return volume + surface area + mass of the active part.
 
     Uses ``IModelDocExtension.CreateMassProperty`` (returns an
     IMassProperty2), then reads ``Volume`` (m^3), ``SurfaceArea`` (m^2),
@@ -667,6 +715,18 @@ def sw_get_volume() -> dict[str, Any]:
         return result
 
 
+def sw_get_volume() -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.volume()."""
+    import warnings
+    warnings.warn(
+        "sw_get_volume() is deprecated; use SolidWorksClient().observe.volume(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_volume_impl()
+
+
 def _to_list(val: Any) -> list[Any] | None:
     """Coerce a SAFEARRAY-style COM return (tuple/list/None) to a list."""
     if val is None:
@@ -677,8 +737,8 @@ def _to_list(val: Any) -> list[Any] | None:
         return [val]
 
 
-def sw_get_feature_statistics() -> dict[str, Any]:
-    """Return build-tree statistics for the active part/assembly (W71).
+def _sw_get_feature_statistics_impl() -> dict[str, Any]:
+    """v0.18 core — Return build-tree statistics for the active part/assembly (W71).
 
     Reads ``IFeatureManager.FeatureStatistics`` (an ``IFeatureStatistics``),
     calls ``Refresh()`` so the snapshot reflects the CURRENT model state, then
@@ -780,14 +840,25 @@ def sw_get_feature_statistics() -> dict[str, Any]:
         return result
 
 
-def sw_screenshot(
+def sw_get_feature_statistics() -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.feature_statistics()."""
+    import warnings
+    warnings.warn(
+        "sw_get_feature_statistics() is deprecated; use SolidWorksClient().observe.feature_statistics(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_feature_statistics_impl()
+
+
+def _sw_screenshot_impl(
     width: int = 640,
     height: int = 360,
     fit_view: bool = False,
     filename: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Capture the active SW viewport to a PNG on disk.
+    """v0.18 core — Capture the active SW viewport to a PNG on disk.
 
     Default resolution is 640x360 - good for sanity checks. Pass
     width=1280, height=720 for detail work (fillets, cross-references).
@@ -870,6 +941,23 @@ def sw_screenshot(
         return result
 
 
+def sw_screenshot(
+    width: int = 640,
+    height: int = 360,
+    fit_view: bool = False,
+    filename: str | None = None,
+) -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.screenshot()."""
+    import warnings
+    warnings.warn(
+        "sw_screenshot() is deprecated; use SolidWorksClient().observe.screenshot(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_screenshot_impl(width=width, height=height, fit_view=fit_view, filename=filename)
+
+
 # IMate2.Status values per SW API
 MATE_STATUS_NAMES = {
     0: "ok",
@@ -904,8 +992,8 @@ MATE_TYPE_NAMES = {
 }
 
 
-def sw_get_mate_errors() -> dict[str, Any]:
-    """Walk an assembly's mate set and report status per mate.
+def _sw_get_mate_errors_impl() -> dict[str, Any]:
+    """v0.18 core — Walk an assembly's mate set and report status per mate.
 
     Active document MUST be an assembly. Returns an error for parts/drawings.
     """
@@ -1051,6 +1139,18 @@ def sw_get_mate_errors() -> dict[str, Any]:
         return result
 
 
+def sw_get_mate_errors() -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.mate_errors()."""
+    import warnings
+    warnings.warn(
+        "sw_get_mate_errors() is deprecated; use SolidWorksClient().observe.mate_errors(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_mate_errors_impl()
+
+
 def _select_by_id(doc: Any, entity: str, append: bool = False) -> bool:
     """Drive SW selection via IModelDoc2.SelectByID (legacy 5-arg form)."""
     type_attempts = [
@@ -1074,8 +1174,8 @@ def _select_by_id(doc: Any, entity: str, append: bool = False) -> bool:
     return False
 
 
-def sw_get_custom_props() -> dict[str, Any]:
-    """Read every custom property from the active document.
+def _sw_get_custom_props_impl() -> dict[str, Any]:
+    """v0.18 core — Read every custom property from the active document.
 
     Uses ``IModelDoc2.GetCustomInfoNames3`` to enumerate field names, then
     ``IModelDoc2.GetCustomInfoValue2`` per field. The active configuration
@@ -1148,12 +1248,23 @@ def sw_get_custom_props() -> dict[str, Any]:
         return result
 
 
-def sw_measure(
+def sw_get_custom_props() -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.custom_props()."""
+    import warnings
+    warnings.warn(
+        "sw_get_custom_props() is deprecated; use SolidWorksClient().observe.custom_props(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_custom_props_impl()
+
+
+def _sw_measure_impl(
     entity_a: str | None = None,
     entity_b: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Measure entities in the active document.
+    """v0.18 core — Measure entities in the active document.
 
     Two modes:
       - No args: measure whatever is currently selected in SW UI.
@@ -1282,6 +1393,21 @@ def sw_measure(
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
+
+
+def sw_measure(
+    entity_a: str | None = None,
+    entity_b: str | None = None,
+) -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.measure()."""
+    import warnings
+    warnings.warn(
+        "sw_measure() is deprecated; use SolidWorksClient().observe.measure(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_measure_impl(entity_a=entity_a, entity_b=entity_b)
 
 
 # ---------------------------------------------------------------------------
@@ -1511,12 +1637,12 @@ def _enum_solid_faces(doc: Any) -> tuple[list[Any], str | None]:
     return faces, None
 
 
-def sw_undercut_faces(
+def _sw_undercut_faces_impl(
     pull_x: float = 0.0,
     pull_y: float = 1.0,
     pull_z: float = 0.0,
 ) -> dict[str, Any]:
-    """Report faces that block tool/mold withdrawal along a pull direction.
+    """v0.18 core — Report faces that block tool/mold withdrawal along a pull direction.
 
     READ-ONLY DFM probe. Cousin of draft analysis: enumerates every solid
     face of the active PART, reads its outward ``IFace2.Normal``, and
@@ -1622,8 +1748,24 @@ def sw_undercut_faces(
         return result
 
 
-def sw_min_wall_thickness(samples_per_face: int = 4) -> dict[str, Any]:
-    """Report the minimum wall thickness of the active solid PART.
+def sw_undercut_faces(
+    pull_x: float = 0.0,
+    pull_y: float = 1.0,
+    pull_z: float = 0.0,
+) -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.undercut_faces()."""
+    import warnings
+    warnings.warn(
+        "sw_undercut_faces() is deprecated; use SolidWorksClient().observe.undercut_faces(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_undercut_faces_impl(pull_x=pull_x, pull_y=pull_y, pull_z=pull_z)
+
+
+def _sw_min_wall_thickness_impl(samples_per_face: int = 4) -> dict[str, Any]:
+    """v0.18 core — Report the minimum wall thickness of the active solid PART.
 
     READ-ONLY DFM probe -- the thin-region risk metric for molding /
     casting / printing. Geometric derivation (no native add-in): for each
@@ -1731,6 +1873,18 @@ def sw_min_wall_thickness(samples_per_face: int = 4) -> dict[str, Any]:
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
+
+
+def sw_min_wall_thickness(samples_per_face: int = 4) -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.min_wall_thickness()."""
+    import warnings
+    warnings.warn(
+        "sw_min_wall_thickness() is deprecated; use SolidWorksClient().observe.min_wall_thickness(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_min_wall_thickness_impl(samples_per_face=samples_per_face)
 
 
 def _face_sample_points(fobj: Any, n: int) -> list[tuple[float, float, float]]:
@@ -1853,8 +2007,8 @@ KNOWN_PROBLEMATIC_ADDINS: frozenset[str] = frozenset(
 _KNOWN_LOWER: frozenset[str] = frozenset(n.lower() for n in KNOWN_PROBLEMATIC_ADDINS)
 
 
-def sw_get_enabled_addins() -> dict[str, Any]:
-    """Enumerate currently-loaded SOLIDWORKS add-ins (W7.1).
+def _sw_get_enabled_addins_impl() -> dict[str, Any]:
+    """v0.18 core — Enumerate currently-loaded SOLIDWORKS add-ins (W7.1).
 
     Returns a dict with keys:
         ok               -- bool; True when the query ran without COM error.
@@ -1917,6 +2071,18 @@ def sw_get_enabled_addins() -> dict[str, Any]:
     return result
 
 
+def sw_get_enabled_addins() -> dict[str, Any]:
+    """Deprecated shim — use SolidWorksClient().observe.enabled_addins()."""
+    import warnings
+    warnings.warn(
+        "sw_get_enabled_addins() is deprecated; use SolidWorksClient().observe.enabled_addins(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_enabled_addins_impl()
+
+
 # ---------------------------------------------------------------------------
 # v0.14 — class-based facade over the legacy ``sw_get_*`` free functions.
 #
@@ -1940,15 +2106,15 @@ class SolidWorksObserver:
 
     def active_doc(self) -> dict[str, Any]:
         """Return metadata about the currently active SOLIDWORKS document."""
-        return sw_get_active_doc()
+        return _sw_get_active_doc_impl()
 
     def feature_errors(self) -> dict[str, Any]:
         """Walk the active document's feature tree and report non-OK features."""
-        return sw_get_feature_errors()
+        return _sw_get_feature_errors_impl()
 
     def equations(self) -> dict[str, Any]:
         """Dump every equation in the active document with value + status."""
-        return sw_get_equations()
+        return _sw_get_equations_impl()
 
     def bbox(self) -> dict[str, Any]:
         """Return the active part's axis-aligned bounding box (parts only).
@@ -1957,7 +2123,7 @@ class SolidWorksObserver:
         For W30-style report (only mm values with dx_mm/dy_mm/dz_mm),
         use ``bounding_box()`` instead.
         """
-        return sw_get_bbox()
+        return _sw_get_bbox_impl()
 
     def bounding_box(self) -> dict[str, Any]:
         """Return the active part's bounding box (W30 perception axis).
@@ -1975,7 +2141,7 @@ class SolidWorksObserver:
 
     def volume(self) -> dict[str, Any]:
         """Return volume, surface area, mass, and CoM of the active part."""
-        return sw_get_volume()
+        return _sw_get_volume_impl()
 
     def feature_statistics(self) -> dict[str, Any]:
         """Return build-tree statistics for the active part/assembly (W71).
@@ -1985,7 +2151,7 @@ class SolidWorksObserver:
         ``total_rebuild_time``, plus per-feature name/type/update-time arrays.
         Lets the framework introspect its own generated build tree.
         """
-        return sw_get_feature_statistics()
+        return _sw_get_feature_statistics_impl()
 
     def inertia(self) -> dict[str, Any]:
         """Return inertia properties of the active part (Wave-5 E1).
@@ -2011,7 +2177,7 @@ class SolidWorksObserver:
         filename: str | None = None,
     ) -> dict[str, Any]:
         """Capture the active SW viewport to a PNG on disk."""
-        return sw_screenshot(
+        return _sw_screenshot_impl(
             width=width,
             height=height,
             fit_view=fit_view,
@@ -2020,11 +2186,11 @@ class SolidWorksObserver:
 
     def mate_errors(self) -> dict[str, Any]:
         """Walk an assembly's mate set and report status per mate."""
-        return sw_get_mate_errors()
+        return _sw_get_mate_errors_impl()
 
     def custom_props(self) -> dict[str, Any]:
         """Read every custom property from the active document."""
-        return sw_get_custom_props()
+        return _sw_get_custom_props_impl()
 
     def measure(
         self,
@@ -2037,7 +2203,7 @@ class SolidWorksObserver:
         For W30-style measurement of pre-selected entities, use
         ``measure_selection()`` instead (reads Distance, DeltaX/Y/Z only).
         """
-        return sw_measure(entity_a=entity_a, entity_b=entity_b)
+        return _sw_measure_impl(entity_a=entity_a, entity_b=entity_b)
 
     def measure_selection(self) -> dict[str, Any]:
         """Measure currently selected entities (W30 perception axis).
@@ -2056,7 +2222,7 @@ class SolidWorksObserver:
 
     def enabled_addins(self) -> dict[str, Any]:
         """Enumerate currently-loaded SOLIDWORKS add-ins (W7.1)."""
-        return sw_get_enabled_addins()
+        return _sw_get_enabled_addins_impl()
 
     def interference(self) -> dict[str, Any]:
         """Detect physical interferences in the active assembly (Wave-27 E4).
@@ -2207,8 +2373,8 @@ class SolidWorksObserver:
         pull_z: float = 0.0,
     ) -> dict[str, Any]:
         """Report faces that block tool/mold withdrawal along a pull direction."""
-        return sw_undercut_faces(pull_x=pull_x, pull_y=pull_y, pull_z=pull_z)
+        return _sw_undercut_faces_impl(pull_x=pull_x, pull_y=pull_y, pull_z=pull_z)
 
     def min_wall_thickness(self, samples_per_face: int = 4) -> dict[str, Any]:
         """Report the minimum wall thickness of the active solid part (DFM)."""
-        return sw_min_wall_thickness(samples_per_face=samples_per_face)
+        return _sw_min_wall_thickness_impl(samples_per_face=samples_per_face)
