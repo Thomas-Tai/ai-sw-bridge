@@ -31,6 +31,7 @@ from .design_table import (
 )
 from .dispatch import apply_overrides, create_all, materialize_all, validate_overrides
 from .dt_dispatch import insert_design_table, write_grid_file
+from .lifecycle import create_configuration, delete_configuration
 from .schema import (
     VARIANTS_BLOCK_SCHEMA,
     VARIANT_ENTRY_SCHEMA,
@@ -56,7 +57,9 @@ __all__ = [
     "VariantOverride",
     "apply_overrides",
     "create_all",
+    "create_configuration",
     "deep_merge",
+    "delete_configuration",
     "format_grid_csv",
     "format_grid_tab_separated",
     "insert_design_table",

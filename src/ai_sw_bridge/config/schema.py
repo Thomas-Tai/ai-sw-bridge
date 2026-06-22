@@ -58,6 +58,17 @@ VARIANT_ENTRY_SCHEMA: dict[str, Any] = {
                 "SW configuration's description field."
             ),
         },
+        "parent": {
+            "type": "string",
+            "minLength": 1,
+            "description": (
+                "Optional parent configuration name (W74).  When present, the "
+                "variant is created as a DERIVED (parent-linked) configuration "
+                "via AddConfiguration2's ParentConfigName + LinkToParent option "
+                "— IConfiguration.IsDerived() returns True and GetParent().Name "
+                "resolves to this parent.  The parent must already exist."
+            ),
+        },
     },
 }
 
