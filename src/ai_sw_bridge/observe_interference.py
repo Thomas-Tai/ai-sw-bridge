@@ -185,12 +185,16 @@ def _read_single_interference(
     return entry
 
 
-def sw_get_interference(doc: Any) -> dict[str, Any]:
-    """Top-level observer: detect interference in an assembly document.
+def _sw_get_interference_impl(doc: Any) -> dict[str, Any]:
+    """Core: detect interference in an assembly document (v0.18 implementation).
 
     Acquires the document type, validates it is an assembly, then delegates
     to :func:`read_interference`. Returns the structured report:
     ``{"ok": bool, "interference_count": int, "interferences": list, ...}``.
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_interference` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Fail-closed: non-assembly input → ``ok=False`` with clear error.
     Manager-acquisition failure → ``ok=False`` (not a false "0 clashes").
@@ -227,3 +231,21 @@ def sw_get_interference(doc: Any) -> dict[str, Any]:
         result["ok"] = True
 
     return result
+
+
+def sw_get_interference(doc: Any) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.interference()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_interference_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_interference() is deprecated; use SolidWorksClient().observe.interference(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_interference_impl(doc)

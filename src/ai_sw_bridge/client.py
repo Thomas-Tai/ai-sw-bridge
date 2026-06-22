@@ -28,8 +28,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from .observe_bbox import _sw_get_assembly_bbox_from_doc_impl, _sw_get_bbox_from_doc_impl
 from .observe_clearance import _sw_analyze_stackup_impl
+from .observe_draft import _sw_get_draft_analysis_impl
 from .observe_inertia import _sw_get_inertia_impl
+from .observe_interference import _sw_get_interference_impl
+from .observe_section import _sw_get_section_props_impl
+from .observe_selection import _sw_get_selection_impl
 from .sw_com import get_active_doc, get_sw_app
 
 _NO_DOC = {"ok": False, "error": "no_active_doc"}
@@ -61,6 +66,54 @@ class SolidWorksObserverFacade:
             return dict(_NO_DOC)
         return _sw_analyze_stackup_impl(
             doc, component_names, check_endpoints=check_endpoints)
+
+    def interference(self, *, doc: Any = None) -> dict[str, Any]:
+        """Detect physical interferences in the active (or given) assembly (W27/E4)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_interference_impl(doc)
+
+    def draft_analysis(
+        self,
+        pull_direction: str,
+        min_angle_deg: float = 1.0,
+        *,
+        doc: Any = None,
+    ) -> dict[str, Any]:
+        """DFM draft analysis of the active (or given) part (W37)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_draft_analysis_impl(doc, pull_direction, min_angle_deg)
+
+    def section_props(self, *, doc: Any = None) -> dict[str, Any]:
+        """Section properties of the pre-selected planar face (W58)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_section_props_impl(doc)
+
+    def selection(self, *, doc: Any = None) -> dict[str, Any]:
+        """Read the current selection from the active (or given) document (W43)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_selection_impl(doc)
+
+    def bbox_from_doc(self, *, doc: Any = None) -> dict[str, Any]:
+        """Bounding-box of the active (or given) part document (W30)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_bbox_from_doc_impl(doc)
+
+    def assembly_bbox(self, *, doc: Any = None) -> dict[str, Any]:
+        """Combined bounding-box of all components in the active (or given) assembly (W52)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_assembly_bbox_from_doc_impl(doc)
 
 
 class UrdfFacade:

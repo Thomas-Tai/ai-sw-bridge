@@ -42,8 +42,6 @@ from typing import Any
 
 from ..client import SolidWorksClient
 from ..observe import SolidWorksObserver
-from ..observe_section import sw_get_section_props
-from ..sw_com import get_active_doc, get_sw_app
 from .stability import add_subcommand_tier, add_tier, cli_stability
 from .streams import add_quiet_flag, apply_quiet
 
@@ -112,7 +110,8 @@ def _run_addins(_args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_interference(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().interference()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.interference()
 
 
 def _run_clearance(args: argparse.Namespace) -> dict[str, Any]:
@@ -128,14 +127,16 @@ def _run_analyze_stackup(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_draft(args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().draft_analysis(
-        pull_direction=args.pull_direction,
-        min_angle_deg=args.min_angle,
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.draft_analysis(
+        args.pull_direction,
+        args.min_angle,
     )
 
 
 def _run_selection(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().selection()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.selection()
 
 
 def _run_undercut(args: argparse.Namespace) -> dict[str, Any]:
@@ -151,7 +152,8 @@ def _run_min_wall(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_assembly_bbox(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().assembly_bounding_box()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.assembly_bbox()
 
 
 def _run_measure_durable_pair(args: argparse.Namespace) -> dict[str, Any]:
@@ -175,10 +177,8 @@ def _run_face_clearance(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_section_props(_args: argparse.Namespace) -> dict[str, Any]:
-    doc = get_active_doc(get_sw_app())
-    if doc is None:
-        return {"ok": False, "error": "no_active_doc"}
-    return sw_get_section_props(doc)
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.section_props()
 
 
 def _build_parser() -> argparse.ArgumentParser:

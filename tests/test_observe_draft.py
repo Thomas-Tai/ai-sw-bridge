@@ -16,9 +16,9 @@ from ai_sw_bridge.observe_draft import (
     PULL_DIRECTIONS,
     _classify_draft,
     _compute_draft_deg,
+    _sw_get_draft_analysis_impl,
     parse_pull_direction,
     read_draft,
-    sw_get_draft_analysis,
 )
 
 
@@ -152,7 +152,7 @@ def test_sw_get_draft_analysis_shape_not_part():
     doc = MagicMock()
     doc.GetType = 2  # SW_DOC_ASSEMBLY
 
-    result = sw_get_draft_analysis(doc, "top")
+    result = _sw_get_draft_analysis_impl(doc, "top")
     assert isinstance(result, dict)
     assert set(result.keys()) == SW_DRAFT_KEYS
     assert result["ok"] is False
@@ -164,7 +164,7 @@ def test_sw_get_draft_analysis_shape_drawing():
     doc = MagicMock()
     doc.GetType = 3  # SW_DOC_DRAWING
 
-    result = sw_get_draft_analysis(doc, "top")
+    result = _sw_get_draft_analysis_impl(doc, "top")
     assert result["ok"] is False
     assert "part document" in str(result["error"])
 
@@ -254,7 +254,7 @@ def test_sw_get_draft_analysis_ok():
     body = _make_body([vertical, top])
     doc = _make_part_doc([body], doc_type=1)
 
-    result = sw_get_draft_analysis(doc, "front")
+    result = _sw_get_draft_analysis_impl(doc, "front")
 
     assert result["ok"] is True
     assert result["error"] is None
@@ -266,7 +266,7 @@ def test_sw_get_draft_analysis_no_bodies():
     """No solid bodies → ok=False with error."""
     doc = _make_part_doc([], doc_type=1)
 
-    result = sw_get_draft_analysis(doc, "front")
+    result = _sw_get_draft_analysis_impl(doc, "front")
 
     assert result["ok"] is False
     assert "no solid bodies" in str(result["error"])

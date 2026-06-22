@@ -98,12 +98,16 @@ def read_bbox(part_doc: Any, mod: Any = None) -> dict[str, Any]:
     return result
 
 
-def sw_get_bbox_from_doc(doc: Any) -> dict[str, Any]:
-    """Top-level observer: read bounding-box from a part document.
+def _sw_get_bbox_from_doc_impl(doc: Any) -> dict[str, Any]:
+    """Core: read bounding-box from a part document (v0.18 implementation).
 
     Validates doc type, then delegates to :func:`read_bbox`.
     Returns structured report:
     ``{"ok": bool, "bounding_box": {...}, "error": str|None}``.
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_bbox_from_doc` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Fail-closed: non-part input → ``ok=False`` with clear error.
     """
@@ -162,6 +166,24 @@ def sw_get_bbox_from_doc(doc: Any) -> dict[str, Any]:
         result["ok"] = True
 
     return result
+
+
+def sw_get_bbox_from_doc(doc: Any) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.bbox_from_doc()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_bbox_from_doc_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_bbox_from_doc() is deprecated; use SolidWorksClient().observe.bbox_from_doc(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_bbox_from_doc_impl(doc)
 
 
 def _transform_point(m: list[float], x: float, y: float, z: float) -> tuple[float, float, float]:
@@ -349,12 +371,16 @@ def read_assembly_bbox(asm_doc: Any, mod: Any = None) -> dict[str, Any]:
     return result
 
 
-def sw_get_assembly_bbox_from_doc(doc: Any) -> dict[str, Any]:
-    """Top-level observer: read bounding-box from an assembly document (W52).
+def _sw_get_assembly_bbox_from_doc_impl(doc: Any) -> dict[str, Any]:
+    """Core: read bounding-box from an assembly document (v0.18 implementation).
 
     Validates doc type is assembly, then delegates to :func:`read_assembly_bbox`.
     Returns structured report:
     ``{"ok": bool, "bounding_box": {...}, "error": str|None}``.
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_assembly_bbox_from_doc` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Fail-closed: non-assembly input → ``ok=False`` with clear error.
     """
@@ -416,3 +442,22 @@ def sw_get_assembly_bbox_from_doc(doc: Any) -> dict[str, Any]:
         result["ok"] = True
 
     return result
+
+
+def sw_get_assembly_bbox_from_doc(doc: Any) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.assembly_bbox()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to
+    :func:`_sw_get_assembly_bbox_from_doc_impl`, returning identical data.
+    The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_assembly_bbox_from_doc() is deprecated; use SolidWorksClient().observe.assembly_bbox(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_assembly_bbox_from_doc_impl(doc)

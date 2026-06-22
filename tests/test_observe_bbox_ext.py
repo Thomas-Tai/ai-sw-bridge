@@ -8,9 +8,9 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from ai_sw_bridge.observe_bbox import (
-    read_assembly_bbox,
-    sw_get_assembly_bbox_from_doc,
+    _sw_get_assembly_bbox_from_doc_impl,
     _transform_point,
+    read_assembly_bbox,
 )
 
 
@@ -46,7 +46,7 @@ def test_sw_get_assembly_bbox_rejects_part_doc():
     mock_doc = MagicMock()
     mock_doc.GetType = 1  # SW_DOC_PART
 
-    result = sw_get_assembly_bbox_from_doc(mock_doc)
+    result = _sw_get_assembly_bbox_from_doc_impl(mock_doc)
     assert result["ok"] is False
     assert "assembly document" in str(result["error"])
 
@@ -56,7 +56,7 @@ def test_sw_get_assembly_bbox_rejects_drawing_doc():
     mock_doc = MagicMock()
     mock_doc.GetType = 3  # SW_DOC_DRAWING
 
-    result = sw_get_assembly_bbox_from_doc(mock_doc)
+    result = _sw_get_assembly_bbox_from_doc_impl(mock_doc)
     assert result["ok"] is False
     assert "assembly document" in str(result["error"])
 
@@ -192,7 +192,7 @@ def test_sw_get_assembly_bbox_green_shape():
         return MagicMock()
 
     with patch("ai_sw_bridge.observe_bbox.typed", side_effect=typed_se):
-        result = sw_get_assembly_bbox_from_doc(mock_doc)
+        result = _sw_get_assembly_bbox_from_doc_impl(mock_doc)
 
     assert result["ok"] is True
     assert set(result.keys()) == SW_ASM_BBOX_KEYS

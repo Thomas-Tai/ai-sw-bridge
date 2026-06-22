@@ -233,17 +233,21 @@ def read_draft(
     return result
 
 
-def sw_get_draft_analysis(
+def _sw_get_draft_analysis_impl(
     doc: Any,
     pull_direction: str,
     min_angle_deg: float = 1.0,
     mod: Any = None,
 ) -> dict[str, Any]:
-    """Top-level observer: DFM draft analysis of the active part.
+    """Core: DFM draft analysis of the active part (v0.18 implementation).
 
     Validates *doc* is a part document, then delegates to
     :func:`read_draft`.  Returns structured report:
     ``{"ok": bool, "draft_analysis": {...}, "error": str|None}``.
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_draft_analysis` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Fail-closed:
       - Not a part → ``ok=False``, typed error.
@@ -284,3 +288,26 @@ def sw_get_draft_analysis(
         result["ok"] = True
 
     return result
+
+
+def sw_get_draft_analysis(
+    doc: Any,
+    pull_direction: str,
+    min_angle_deg: float = 1.0,
+    mod: Any = None,
+) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.draft_analysis()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_draft_analysis_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_draft_analysis() is deprecated; use SolidWorksClient().observe.draft_analysis(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_draft_analysis_impl(doc, pull_direction, min_angle_deg, mod)

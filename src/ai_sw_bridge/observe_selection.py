@@ -193,11 +193,15 @@ def read_selection(doc: Any, mod: Any = None) -> dict[str, Any]:
     return result
 
 
-def sw_get_selection(doc: Any) -> dict[str, Any]:
-    """Top-level observer: read the current selection from *doc*.
+def _sw_get_selection_impl(doc: Any) -> dict[str, Any]:
+    """Core: read the current selection from *doc* (v0.18 implementation).
 
     Returns structured report:
     ``{"ok": bool, "selection": {count, selections}, "error": str|None}``.
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_selection` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Fail-closed:
       - SelectionManager failure → ``ok=False``, typed error.
@@ -227,3 +231,21 @@ def sw_get_selection(doc: Any) -> dict[str, Any]:
         result["ok"] = True
 
     return result
+
+
+def sw_get_selection(doc: Any) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.selection()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_selection_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_selection() is deprecated; use SolidWorksClient().observe.selection(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_selection_impl(doc)

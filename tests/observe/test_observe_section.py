@@ -20,8 +20,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from ai_sw_bridge.observe_section import (
+    _sw_get_section_props_impl,
     read_section_props,
-    sw_get_section_props,
 )
 
 # ── Analytic fixture values — 20 mm × 20 mm square section ───────────────────
@@ -213,14 +213,14 @@ class TestSwGetSectionProps:
 
     def test_ok_result_shape(self):
         doc = _make_mock_doc(_good_raw())
-        result = sw_get_section_props(doc)
+        result = _sw_get_section_props_impl(doc)
         assert result["ok"] is True
         assert result["error"] is None
         assert isinstance(result["section"], dict)
 
     def test_section_keys_complete(self):
         doc = _make_mock_doc(_good_raw())
-        result = sw_get_section_props(doc)
+        result = _sw_get_section_props_impl(doc)
         expected = {
             "area_mm2", "centroid_mm",
             "ixx_mm4", "iyy_mm4", "izz_mm4",
@@ -233,17 +233,17 @@ class TestSwGetSectionProps:
 
     def test_area_value_propagated(self):
         doc = _make_mock_doc(_good_raw())
-        result = sw_get_section_props(doc)
+        result = _sw_get_section_props_impl(doc)
         assert result["section"]["area_mm2"] == pytest.approx(400.0, rel=1e-6)
 
     def test_centroid_value_propagated(self):
         doc = _make_mock_doc(_good_raw())
-        result = sw_get_section_props(doc)
+        result = _sw_get_section_props_impl(doc)
         cx = result["section"]["centroid_mm"]
         assert cx[2] == pytest.approx(20.0, rel=1e-6)
 
     def test_no_active_doc(self):
-        result = sw_get_section_props(None)
+        result = _sw_get_section_props_impl(None)
         assert result["ok"] is False
         assert result["error"] == "no_active_doc"
         assert result["section"] is None
@@ -253,7 +253,7 @@ class TestSwGetSectionProps:
         to typed() path.  Since no real typed() is available offline, it
         is expected to fail cleanly (ok=False, error non-empty)."""
         doc = MagicMock(spec=[])   # spec=[] → AttributeError on all attrs
-        result = sw_get_section_props(doc)
+        result = _sw_get_section_props_impl(doc)
         assert result["ok"] is False
         assert result["error"] is not None
 
@@ -263,7 +263,7 @@ class TestSwGetSectionProps:
         ext.GetSectionProperties2.side_effect = Exception("COM error: member not found")
         doc = MagicMock()
         doc.Extension = ext
-        result = sw_get_section_props(doc)
+        result = _sw_get_section_props_impl(doc)
         assert result["ok"] is False
         assert "GetSectionProperties2 failed" in result["error"]
         # section dict is None when COM itself raises
@@ -272,7 +272,7 @@ class TestSwGetSectionProps:
     def test_com_returns_none(self):
         """GetSectionProperties2 returns None — observer reports error."""
         doc = _make_mock_doc(None)
-        result = sw_get_section_props(doc)
+        result = _sw_get_section_props_impl(doc)
         assert result["ok"] is False
         assert result["error"] is not None
 
@@ -280,7 +280,7 @@ class TestSwGetSectionProps:
         raw = _good_raw()
         raw[0] = 2.0  # not coplanar
         doc = _make_mock_doc(raw)
-        result = sw_get_section_props(doc)
+        result = _sw_get_section_props_impl(doc)
         assert result["ok"] is False
         assert "not in the same or parallel planes" in result["error"]
 
@@ -288,5 +288,5 @@ class TestSwGetSectionProps:
         """Verify GetSectionProperties2 is invoked with None as the
         Sections argument (the pre-selected face path)."""
         doc = _make_mock_doc(_good_raw())
-        sw_get_section_props(doc)
+        _sw_get_section_props_impl(doc)
         doc.Extension.GetSectionProperties2.assert_called_once_with(None)

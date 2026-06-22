@@ -118,7 +118,8 @@ def register(mcp: Any) -> None:
         clashes. Returns interference_count and a list of interferences with
         component names and volumes (mm³). Assembly documents only.
         """
-        return SolidWorksObserver().interference()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.interference()
 
     @mcp.tool()
     @com_tool
@@ -130,7 +131,8 @@ def register(mcp: Any) -> None:
         {x_min_mm, x_max_mm, y_min_mm, y_max_mm, z_min_mm, z_max_mm,
         dx_mm, dy_mm, dz_mm}. Parts only — assemblies/drawings error.
         """
-        return SolidWorksObserver().bounding_box()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.bbox_from_doc()
 
     @mcp.tool()
     @com_tool
@@ -213,9 +215,9 @@ def register(mcp: Any) -> None:
         pull_direction: front, back, top, bottom, right, left, or
         +x, -x, +y, -y, +z, -z. Part docs only.
         """
-        return SolidWorksObserver().draft_analysis(
-            pull_direction=pull_direction,
-            min_angle_deg=min_angle_deg,
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.draft_analysis(
+            pull_direction, min_angle_deg
         )
 
     @mcp.tool()
@@ -242,7 +244,8 @@ def register(mcp: Any) -> None:
         base64url-encoded persist token from GetPersistReference3 when
         obtainable, null otherwise.
         """
-        return SolidWorksObserver().selection()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.selection()
 
     @mcp.tool()
     @com_tool

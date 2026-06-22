@@ -175,15 +175,18 @@ def read_section_props(raw: Any) -> dict[str, Any]:
     return result
 
 
-def sw_get_section_props(doc: Any) -> dict[str, Any]:
-    """Top-level observer: section properties of the pre-selected planar face.
+def _sw_get_section_props_impl(doc: Any) -> dict[str, Any]:
+    """Core: section properties of the pre-selected planar face (v0.18 implementation).
 
     Requires a face to be selected in ``doc`` before calling (via
     ``SelectByID2`` or interactive selection in SOLIDWORKS).
 
     Acquires ``IModelDocExtension``, calls ``GetSectionProperties2(None)``
     to operate on the current selection, then delegates to
-    :func:`read_section_props`.
+    :func:`read_section_props`. Internal callers (the
+    ``SolidWorksClient.observe`` facade) call this directly so they bypass
+    the deprecation shim; the public :func:`sw_get_section_props` free
+    function routes here behind a ``PendingDeprecationWarning``.
 
     NOTE: ``GetSectionProperties2`` clears the selection set (CHM Remarks).
 
@@ -277,3 +280,21 @@ def sw_get_section_props(doc: Any) -> dict[str, Any]:
         result["ok"] = True
 
     return result
+
+
+def sw_get_section_props(doc: Any) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.section_props()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_section_props_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_section_props() is deprecated; use SolidWorksClient().observe.section_props(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_section_props_impl(doc)

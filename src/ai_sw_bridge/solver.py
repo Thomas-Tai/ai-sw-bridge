@@ -2,7 +2,7 @@
 
 A thin, deterministic orchestration over shipped, seat-proven pieces:
 
-  - sense : ``observe_interference.sw_get_interference``  (W27)
+  - sense : ``observe_interference._sw_get_interference_impl``  (W27)
   - act   : ``motion_audit.drive_mate_value_si``         (W49 — drives the
             named distance mate's ``D1@<mate>`` dimension + ``EditRebuild3``)
 
@@ -35,7 +35,7 @@ from typing import Any
 from .com.earlybind import typed
 from .com.sw_type_info import wrapper_module
 from .motion_audit import drive_mate_value_si, read_mate_value_si
-from .observe_interference import sw_get_interference
+from .observe_interference import _sw_get_interference_impl as sw_get_interference
 
 _VOL_EPS = 1e-6  # mm³ — below this an overlap reads as "no interference"
 

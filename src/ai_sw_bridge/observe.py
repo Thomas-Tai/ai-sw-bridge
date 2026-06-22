@@ -21,26 +21,40 @@ from .sw_com import (
     get_sw_app,
     resolve,
 )
-from .observe_bbox import sw_get_assembly_bbox_from_doc, sw_get_bbox_from_doc
+from .observe_bbox import (
+    _sw_get_assembly_bbox_from_doc_impl,
+    _sw_get_bbox_from_doc_impl,
+    sw_get_assembly_bbox_from_doc,  # noqa: F401  (re-export: backward-compat import path)
+    sw_get_bbox_from_doc,  # noqa: F401  (re-export: backward-compat import path)
+)
 from .observe_clearance import (
     _sw_analyze_stackup_impl,
     sw_analyze_stackup,  # noqa: F401  (re-export: backward-compat import path)
     sw_get_clearance,
     sw_get_face_clearance,
 )
-from .observe_draft import sw_get_draft_analysis
+from .observe_draft import (
+    _sw_get_draft_analysis_impl,
+    sw_get_draft_analysis,  # noqa: F401  (re-export: backward-compat import path)
+)
 from .observe_inertia import (
     _sw_get_inertia_impl,
     sw_get_inertia,  # noqa: F401  (re-export: backward-compat import path)
 )
-from .observe_interference import sw_get_interference
+from .observe_interference import (
+    _sw_get_interference_impl,
+    sw_get_interference,  # noqa: F401  (re-export: backward-compat import path)
+)
 from .observe_measure import (
     sw_get_measure_angle_from_doc,
     sw_get_measure_area_from_doc,
     sw_get_measure_durable_pair,
     sw_get_measure_from_doc,
 )
-from .observe_selection import sw_get_selection
+from .observe_selection import (
+    _sw_get_selection_impl,
+    sw_get_selection,  # noqa: F401  (re-export: backward-compat import path)
+)
 
 
 def _captures_dir() -> Path:
@@ -1957,7 +1971,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_bbox_from_doc(doc)
+        return _sw_get_bbox_from_doc_impl(doc)
 
     def volume(self) -> dict[str, Any]:
         """Return volume, surface area, mass, and CoM of the active part."""
@@ -2056,7 +2070,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_interference(doc)
+        return _sw_get_interference_impl(doc)
 
     def clearance(self, comp_a: str, comp_b: str) -> dict[str, Any]:
         """Measure minimum distance between two assembly components (Wave-35).
@@ -2113,7 +2127,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_draft_analysis(doc, pull_direction, min_angle_deg)
+        return _sw_get_draft_analysis_impl(doc, pull_direction, min_angle_deg)
 
     def selection(self) -> dict[str, Any]:
         """Read the active document's current selection (Wave-43).
@@ -2128,7 +2142,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_selection(doc)
+        return _sw_get_selection_impl(doc)
 
     def assembly_bounding_box(self) -> dict[str, Any]:
         """Read the combined bounding-box of all assembly components (W52).
@@ -2139,7 +2153,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_assembly_bbox_from_doc(doc)
+        return _sw_get_assembly_bbox_from_doc_impl(doc)
 
     def measure_durable_pair(
         self, durable_ref_a: str, durable_ref_b: str
