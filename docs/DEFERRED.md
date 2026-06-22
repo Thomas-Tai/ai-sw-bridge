@@ -874,6 +874,61 @@ materializes; traversal-solve fill walls).
 
 ---
 
+## W72 MBD / DimXpert (Model-Based Definition) — READABLE-WALL-ON-WRITE (2026-06-22)
+
+**DEFERRED — a NEW boundary-law subclass: out-of-process read/manager access is
+GREEN, but headless write/auto-dimensioning GHOSTS.** Structural probe
+`spikes/v0_2x/spike_mbd_probe.py` (telemetry `_results/mbd_probe.json`, verdict
+`READABLE_WALL_ON_WRITE`) classified the entire DimXpert / 3D-annotation axis
+against the live seat on a 10×10×10 block.
+
+- **Accessible (GREEN):** `IModelDocExtension.DimXpertManager(Config, CreateSchema)`
+  returns a VALID pointer out-of-process — **not** E_NOINTERFACE — and
+  auto-creates a schema (`SchemaName` = 'Scheme2'). `IDimXpertManager.DimXpertPart`
+  resolves; `GetFeatureCount` / `GetAnnotationCount` read cleanly (0 on a fresh
+  schema). Selection model is standard: a raw `IFace2` selected via
+  `IEntity.Select2(False, 0)` is accepted — DimXpert does NOT require its own
+  `IDimXpertFeature` entity class for selection.
+- **Write WALLS (GHOST):** `IDimXpertPart.AutoDimensionScheme(opt)` returns
+  **`False`** with ΔFeatures / ΔAnnotations = 0 — **even with** the option fully
+  configured (`FeatureFilters = 0xFFFF` = all 16 feature types, `ScopeAllFeature
+  = True`, `PartType = Prismatic`, `ToleranceType = PlusMinus`). Manual
+  `InsertSizeDimension(GetDimOption())` also returns **`False`** even with a valid
+  face pre-selected — because the recognition engine found 0 DimXpert features to
+  dimension. Nothing materializes; nothing to persist.
+- **Why (boundary law):** DimXpert feature RECOGNITION requires the kernel to
+  traverse/solve the B-rep mid-invocation to classify faces into DimXpert
+  features. That traversal/solve ghosts headless/out-of-process — the same
+  write-side wall class as `split_line`, `fill_pattern`, `indent`, `flex`. The
+  signature differs from the classic creation-level `ret=None` ghost only in
+  surface form (a clean Boolean `False` + zero delta instead of a null handle).
+- **Not Route-C-rescuable:** per the W69 kernel-deep corollary, traversal/solve
+  walls ghost identically in-process (zero COM marshaling). An MBD add-in driving
+  recognition through the live UI session is the only known path; out of scope.
+- **PERMANENTLY DEFERRED** — do not burn lane cycles on 3D annotations / DimXpert
+  dimensioning out-of-process. Read/navigation of an existing schema (counts,
+  names, annotation enumeration) IS viable OOP if a future read-only "observe MBD"
+  need arises.
+
+**Reusable technical artifacts banked from the dig (apply to ANY isolated SW
+typelib):**
+- `Extension.DimXpertManager` has TWO same-named makepy overloads; the 2-arg
+  `(Configuration, CreateSchema)` form wins the generated class dict, so a single
+  bool argument lands in the string `Configuration` slot → `Type mismatch`. Call
+  it as `DimXpertManager("", True)`.
+- `IDimXpertPart` and every `IDimXpert*` sub-object live in the **separate
+  `swdimxpert.tlb`**, deliberately NOT makepy-gen'd (the protected SldWorks 32.0
+  gen stays untouched). They arrive as late-bound `CDispatch` with
+  `GetTypeInfoCount == 0` but a WORKING `GetIDsOfNames`. Drive them gen-free via
+  `_oleobj_.InvokeTypes(GetIDsOfNames(name), 0, DISPATCH_METHOD, (ret_vt, 0),
+  arg_vts, *args)` — the forced `DISPATCH_METHOD` invkind sidesteps the
+  property/method auto-invoke ambiguity that otherwise throws a spurious
+  `Member not found`. Do NOT `typed_qi` these objects (the interface isn't in the
+  wrapper) and do NOT `()`-call no-arg getters on a `dynamic.Dispatch` (they
+  resolve as property-gets returning the value directly).
+
+---
+
 ## Process
 
 Adding to this list:
