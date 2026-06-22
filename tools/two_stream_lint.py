@@ -50,6 +50,7 @@ CLI_EMITTERS = frozenset(
         "import.py",
         "export_dxf_flat.py",
         "motion.py",
+        "solver.py",
     }
 )
 
