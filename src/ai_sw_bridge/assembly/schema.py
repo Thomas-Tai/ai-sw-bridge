@@ -31,6 +31,8 @@ MATE_TYPES = frozenset(
         # W75 advanced mates — both ride the a/b path (MATE_SCHEMA).
         "symmetric",
         "profile_center",
+        # W75b mechanical linkage — couples two translations (a/b directions).
+        "linear_coupler",
     }
 )
 
@@ -121,6 +123,12 @@ MATE_SCHEMA = {
         "offset_mm": {"type": "number"},
         "flip": {"type": "boolean"},
         "lock_rotation": {"type": "boolean"},
+        # linear_coupler (W75b): translation ratio (faithful round-trip, no
+        # transpose) + direction reverse. a/b face_refs name the linear
+        # direction entities (e.g. {"linear_edge": true}).
+        "ratio_numerator": {"type": "number", "exclusiveMinimum": 0},
+        "ratio_denominator": {"type": "number", "exclusiveMinimum": 0},
+        "reverse": {"type": "boolean"},
         "limit": {
             "type": "object",
             "additionalProperties": False,

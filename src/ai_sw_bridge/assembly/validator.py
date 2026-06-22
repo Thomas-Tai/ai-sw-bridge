@@ -294,6 +294,23 @@ def _check_mates(
                         f"{mtype} mate does not accept {adv!r}", path
                     )
 
+        # linear_coupler (W75b): requires a positive ratio; reverse optional.
+        # The ratio/reverse fields belong only to linear_coupler.
+        if mtype == "linear_coupler":
+            for key in ("ratio_numerator", "ratio_denominator"):
+                v = mate.get(key)
+                if not isinstance(v, (int, float)) or isinstance(v, bool) or v <= 0:
+                    raise AssemblyValidationError(
+                        f"linear_coupler mate requires {key!r} as a positive number",
+                        path,
+                    )
+        else:
+            for key in ("ratio_numerator", "ratio_denominator", "reverse"):
+                if mate.get(key) is not None:
+                    raise AssemblyValidationError(
+                        f"{mtype} mate does not accept {key!r}", path
+                    )
+
         value_mm = mate.get("value_mm")
         if mtype == "distance":
             if value_mm is None:
@@ -307,7 +324,7 @@ def _check_mates(
                 )
         elif mtype in (
             "concentric", "parallel", "perpendicular", "tangent",
-            "symmetric", "profile_center",
+            "symmetric", "profile_center", "linear_coupler",
         ):
             if value_mm is not None:
                 raise AssemblyValidationError(

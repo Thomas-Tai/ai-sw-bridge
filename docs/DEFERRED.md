@@ -929,6 +929,29 @@ typelib):**
 
 ---
 
+## W75c path mate (swMatePATH) — WALLED out-of-process (GUI-PropertyManager-only, 2026-06-22)
+
+**DEFERRED — no creation route from the COM bridge.** `spike_path_mate_probe.py`
+(verdict `WALLED`, telemetry `_results/path_mate_probe.json`) classified the path
+mate after the reflect-first sweep found it has **no `IPathMateFeatureData`
+interface** in the 32.1 typelib — the only mate type (of 21) lacking a FeatureData
+interface, so the declarative `CreateMateData → typed_qi → CreateMate` pipeline
+that every shipped mate uses is structurally unavailable. The only legacy route is
+selection-driven `IAssemblyDoc.AddMate3`. The probe pre-selected a slider VERTEX +
+a base linear EDGE (a valid single-segment path) across 3 mark combinations
+{(0,0),(0,1),(1,0)} — **every attempt: selections succeed (`sel_v`/`sel_e` True),
+`ErrorStatus == 0`, but `AddMate3` returns NO mate** (silent ghost; `mate=None`,
+nothing on reopen). The path mate's pitch/yaw + roll-control parametrization can
+only be supplied through its PropertyManager dialog, which is headless-unreachable
+— the same GUI-only class as the W36 ray-cast sketch-trim and motion free-DOF drag
+walls. PERMANENTLY DEFERRED for the OOP bridge; a future Route-C in-process add-in
+is the only conceivable vehicle (and even that must supply the PM-only options).
+Sibling `linear_coupler` (swMateLINEARCOUPLER=18) SHIPPED the same wave — it HAS
+`ILinearCouplerMateFeatureData` and fit the pipeline cleanly (faithful ratio
+round-trip, no gear-style transpose).
+
+---
+
 ## Process
 
 Adding to this list:

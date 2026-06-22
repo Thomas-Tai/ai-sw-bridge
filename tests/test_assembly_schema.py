@@ -1180,3 +1180,62 @@ class TestAdvancedMatesW75Validation:
         with pytest.raises(AssemblyValidationError, match="does not accept"):
             validate_assembly(_assembly_with_mate(
                 _mate_spec("concentric", offset_mm=5.0)))
+
+
+# ---------------------------------------------------------------------------
+# W75b mechanical linkage — linear_coupler
+# ---------------------------------------------------------------------------
+
+def _lc_mate(**kw) -> dict:
+    base = _mate_spec("linear_coupler", ratio_numerator=1.0, ratio_denominator=2.0)
+    base["a"]["face_ref"] = {"linear_edge": True}
+    base["b"]["face_ref"] = {"linear_edge": True}
+    base.update(kw)
+    return base
+
+
+class TestLinearCouplerSchema:
+    def test_advertised(self) -> None:
+        assert "linear_coupler" in MATE_TYPES
+
+    def test_assembly_accepts_linear_coupler(self) -> None:
+        import jsonschema
+        jsonschema.validate(_assembly_with_mate(_lc_mate(reverse=True)), ASSEMBLY_SCHEMA)
+
+
+class TestLinearCouplerValidation:
+    def test_accepts_well_formed(self) -> None:
+        validate_assembly(_assembly_with_mate(_lc_mate()))
+
+    def test_accepts_with_reverse(self) -> None:
+        validate_assembly(_assembly_with_mate(_lc_mate(reverse=True)))
+
+    def test_requires_numerator(self) -> None:
+        mate = _lc_mate()
+        del mate["ratio_numerator"]
+        with pytest.raises(AssemblyValidationError, match="ratio_numerator"):
+            validate_assembly(_assembly_with_mate(mate))
+
+    def test_requires_denominator(self) -> None:
+        mate = _lc_mate()
+        del mate["ratio_denominator"]
+        with pytest.raises(AssemblyValidationError, match="ratio_denominator"):
+            validate_assembly(_assembly_with_mate(mate))
+
+    def test_rejects_nonpositive_ratio(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="positive"):
+            validate_assembly(_assembly_with_mate(_lc_mate(ratio_numerator=0)))
+
+    def test_rejects_value_mm(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(_assembly_with_mate(_lc_mate(value_mm=5.0)))
+
+    def test_non_coupler_rejects_ratio_fields(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(_assembly_with_mate(
+                _mate_spec("concentric", ratio_numerator=1.0)))
+
+    def test_non_coupler_rejects_reverse(self) -> None:
+        with pytest.raises(AssemblyValidationError, match="does not accept"):
+            validate_assembly(_assembly_with_mate(
+                _mate_spec("concentric", reverse=True)))

@@ -56,6 +56,8 @@ MATE_TYPE_ENUMS = {
     # Advanced mates (W75) — vanguard pair, probe-cracked + reopen-proven.
     "symmetric": 8,        # swMateSYMMETRIC
     "profile_center": 24,  # swMatePROFILECENTER
+    # Mechanical linkage (W75b) — couples two translations; faithful ratio.
+    "linear_coupler": 18,  # swMateLINEARCOUPLER
 }
 
 # swRackPinionMateDistanceOptions_e (swconst.tlb): gates how DiameterVal reads.
@@ -104,6 +106,9 @@ MATE_TYPE_INTERFACES = {
     # FlipDimension/LockRotation/OffsetDistance scalars.
     "symmetric": "ISymmetricMateFeatureData",
     "profile_center": "IProfileCenterMateFeatureData",
+    # W75b: dedicated population (_create_linear_coupler_mate) — MateEntity1/2 +
+    # ReferenceComponent1/2, NOT EntitiesToMate; listed for provenance.
+    "linear_coupler": "ILinearCouplerMateFeatureData",
 }
 
 
@@ -354,6 +359,83 @@ def _create_width_mate(
     return mate_ret, None
 
 
+def _create_linear_coupler_mate(
+    asm_doc: Any,
+    typed_asm: Any,
+    placed: dict[str, Any],
+    mate_spec: dict[str, Any],
+    mod: Any,
+) -> tuple[Any | None, str | None]:
+    """Linear-coupler mate (W75b) — couples the TRANSLATION of two components.
+
+    Structural departure from the a/b EntitiesToMate path:
+    ``ILinearCouplerMateFeatureData`` takes SINGLE entities via ``MateEntity1`` /
+    ``MateEntity2`` (each a linear edge/axis = a translation direction) plus the
+    owning ``ReferenceComponent1`` / ``ReferenceComponent2`` pointers, NOT an
+    EntitiesToMate array.  ``a`` -> entity1/refcomp1, ``b`` -> entity2/refcomp2.
+
+    Ratio round-trips FAITHFULLY (probe-proven: no gear-style transpose), so the
+    setters are 1:1.  ``reverse`` flips the coupled direction.
+    """
+    def _resolve_side(side: str) -> tuple[Any, Any, str | None]:
+        ref = mate_spec[side]
+        cid = ref["component"]
+        comp = placed.get(cid)
+        if comp is None:
+            return None, None, f"{side}: component {cid!r} not placed"
+        resolution = resolve_component_face(asm_doc, comp, ref["face_ref"], mod=mod)
+        if not resolution.ok:
+            return None, None, (
+                f"{side}: entity unresolved on {cid!r} (method="
+                f"{resolution.method}, error={resolution.error}) — linear_coupler "
+                f"needs a LINEAR entity (e.g. face_ref {{\"linear_edge\": true}})"
+            )
+        return resolution.entity, comp, None
+
+    ent1, comp1, e1 = _resolve_side("a")
+    if e1:
+        return None, e1
+    ent2, comp2, e2 = _resolve_side("b")
+    if e2:
+        return None, e2
+
+    num = mate_spec.get("ratio_numerator", 1.0)
+    den = mate_spec.get("ratio_denominator", 1.0)
+    reverse = bool(mate_spec.get("reverse", False))
+
+    try:
+        mate_data = typed_asm.CreateMateData(MATE_TYPE_ENUMS["linear_coupler"])
+        if mate_data is None:
+            return None, "CreateMateData(linear_coupler) returned None"
+        lc = typed_qi(mate_data, "ILinearCouplerMateFeatureData", module=mod)
+        lc.ReferenceComponent1 = comp1
+        lc.ReferenceComponent2 = comp2
+        lc.MateEntity1 = ent1
+        lc.MateEntity2 = ent2
+        lc.CouplerRatioNumerator = float(num)
+        lc.CouplerRatioDenominator = float(den)
+        lc.Reverse = reverse
+        mate_ret = typed_asm.CreateMate(mate_data)
+    except Exception as exc:
+        return None, f"linear_coupler mate pipeline failed: {exc!r}"
+
+    if mate_ret is None or isinstance(mate_ret, int):
+        try:
+            es = typed_qi(mate_data, "IMateFeatureData", module=mod).ErrorStatus
+        except Exception:
+            es = "?"
+        return None, f"CreateMate returned None (ErrorStatus={es})"
+
+    try:
+        feat_type = typed(mate_ret, "IFeature", module=mod).GetTypeName2()
+        if "Mate" not in feat_type:
+            return None, f"unexpected feature type: {feat_type}"
+    except Exception as exc:
+        return None, f"linear_coupler verification failed: {exc!r}"
+
+    return mate_ret, None
+
+
 def _create_hinge_mate(
     asm_doc: Any,
     typed_asm: Any,
@@ -506,6 +588,11 @@ def create_mate(
     # face pairs — never touches the symmetric a/b path (like width).
     if mate_type_str == "hinge":
         return _create_hinge_mate(asm_doc, typed_asm, placed, mate_spec, mod)
+
+    # Linear-coupler (W75b): single MateEntity1/2 + ReferenceComponent1/2 + ratio
+    # — dedicated population, never the a/b EntitiesToMate path.
+    if mate_type_str == "linear_coupler":
+        return _create_linear_coupler_mate(asm_doc, typed_asm, placed, mate_spec, mod)
 
     # Resolve both face entities
     faces = []
