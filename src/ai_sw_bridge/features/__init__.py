@@ -289,3 +289,17 @@ from .scale import SPIKE_STATUS as _scale_status  # noqa: E402
 from .scale import create_scale  # noqa: E402
 
 _register_lane("scale", create_scale, _scale_status)
+
+# W73 — structural_weldment (the boundary-law macro-feature corollary).
+# IFeatureManager.InsertStructuralWeldment5 sweeps a library .sldlfp profile
+# along an explicit 3D-sketch path AND solves the member end-trim/coped/miter
+# intersection in ONE generative transaction — the encapsulated macro-feature
+# bypasses the raw-B-rep traversal wall (W73 probe: ΔVol +26739.822 mm³ / 2
+# bodies; miter-merge fuses 2->1). swConnectedSegmentsOption is 1/2 — NEVER 0
+# (0 ghosts the whole feature). Segments + Groups marshal via
+# VARIANT(VT_ARRAY|VT_DISPATCH). ADDITIVE_SOLID gate (Δfaces>0 ∧ |ΔVol|>eps).
+# SPIKE_STATUS gate: UNFIRED until W0 fires the production seat-proof.
+from .structural_weldment import SPIKE_STATUS as _structural_weldment_status  # noqa: E402
+from .structural_weldment import create_structural_weldment  # noqa: E402
+
+_register_lane("structural_weldment", create_structural_weldment, _structural_weldment_status)
