@@ -303,3 +303,18 @@ from .structural_weldment import SPIKE_STATUS as _structural_weldment_status  # 
 from .structural_weldment import create_structural_weldment  # noqa: E402
 
 _register_lane("structural_weldment", create_structural_weldment, _structural_weldment_status)
+
+# Recipe-C — pattern family (linear/circular/mirror). Relocated from mutate.py
+# into the registry (the first 1.0.0 strangler-fig cut). Seat-proven W21
+# (spike 5a94b05); the handlers and their propose-time validation are unchanged,
+# only their home moved. GREEN.
+from .patterns import SPIKE_STATUS as _patterns_status  # noqa: E402
+from .patterns import (  # noqa: E402
+    create_circular_pattern,
+    create_linear_pattern,
+    create_mirror_feature,
+)
+
+_register_lane("linear_pattern", create_linear_pattern, _patterns_status)
+_register_lane("circular_pattern", create_circular_pattern, _patterns_status)
+_register_lane("mirror_feature", create_mirror_feature, _patterns_status)

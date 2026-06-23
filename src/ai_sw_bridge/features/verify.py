@@ -79,6 +79,30 @@ class FeatureClass(enum.Enum):
 
 
 # ===========================================================================
+# Feature materialization helpers (relocated from mutate.py, Recipe-C W21)
+# ===========================================================================
+def materialized(feat: Any) -> bool:
+    """True if a CreateFeature return value represents a materialized feature."""
+    return feat is not None and not isinstance(feat, int)
+
+
+def find_feature_by_name(doc: Any, name: str) -> Any:
+    """Look up a feature by its tree-name. Returns the IFeature or None."""
+    feats = doc.FeatureManager.GetFeatures(True)
+    if not feats:
+        return None
+    for f in feats:
+        try:
+            n = f.Name
+            n = n() if callable(n) else n
+            if str(n) == name:
+                return f
+        except Exception:
+            continue
+    return None
+
+
+# ===========================================================================
 # Body accessors
 # ===========================================================================
 def bodies(doc: Any, body_type: int, visible_only: bool) -> list[Any] | None:
