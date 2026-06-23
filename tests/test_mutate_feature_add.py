@@ -268,7 +268,8 @@ def _patch_all(
     _fake_entity_fn = lambda doc_, ref: _FakeRefResolution(fake_entity)  # noqa: E731
     _sel = lambda e, **kw: True  # noqa: E731
 
-    # mutate seams (sweep/sweep_cut handlers still live here)
+    # mutate orchestration seams (propose/PAE plumbing; sweep/sweep_cut now in
+    # features/sweep.py per Recipe-C cut #6)
     monkeypatch.setattr(mutate, "wrapper_module", _fake_wm)
     monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
     monkeypatch.setattr(mutate, "get_active_doc", lambda sw_: None)
@@ -1385,6 +1386,7 @@ class _FakeSwOpen:
 
 def _patch_wall2(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, doc: Any) -> Any:
     from ai_sw_bridge.features import dress_up as _du
+    from ai_sw_bridge.features import sweep as _sw
     monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
     sw = _FakeSwOpen(doc)
     monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
@@ -1397,6 +1399,10 @@ def _patch_wall2(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, doc: Any) -> A
     monkeypatch.setattr(_du, "typed", lambda obj, iface, **kw: obj)
     monkeypatch.setattr(_du, "typed_qi", lambda obj, iface, **kw: obj)
     monkeypatch.setattr(_du, "select_entity", lambda e, **kw: True)
+    # Recipe-C cut #6: sweep/sweep_cut handlers moved to features/sweep; patch there.
+    monkeypatch.setattr(_sw, "wrapper_module", lambda: object())
+    monkeypatch.setattr(_sw, "typed", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(_sw, "typed_qi", lambda obj, iface, **kw: obj)
     return sw
 
 

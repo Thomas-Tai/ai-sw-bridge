@@ -65,19 +65,20 @@ def test_apply_feature_dispatches_registry_kind(monkeypatch):
     assert seen["args"] == ("DOC", feature, target)
 
 
-def test_apply_feature_builtin_kind_wins_over_registry(monkeypatch):
-    # The built-in chain runs first; a (disallowed) collision must not
-    # reroute a shipped kind through the registry.
-    # Recipe-C cut #4: "shell" moved to registry; use "sweep" (remaining builtin).
-    def hijack(doc, feature, target):  # pragma: no cover - must not run
-        raise AssertionError("registry shadowed a built-in kind")
+def test_apply_feature_dispatches_purely_through_registry(monkeypatch):
+    # Recipe-C cut #6: sweep/sweep_cut relocated to features/sweep.py; there are
+    # no inline built-in branches left. _apply_feature is now a pure registry
+    # dispatch — every kind, including sweep, resolves through HANDLER_REGISTRY.
+    seen = {}
 
-    monkeypatch.setitem(features.HANDLER_REGISTRY, "sweep", hijack)
-    monkeypatch.setattr(
-        mutate, "_create_sweep", lambda doc, feature, target: (True, "builtin")
-    )
+    def spy(doc, feature, target):
+        seen["called"] = True
+        return (True, "registry")
+
+    monkeypatch.setitem(features.HANDLER_REGISTRY, "sweep", spy)
     ok, err = mutate._apply_feature("DOC", {"type": "sweep"}, {})
-    assert (ok, err) == (True, "builtin")
+    assert (ok, err) == (True, "registry")
+    assert seen.get("called") is True  # the registry handler ran (no builtin shadow)
 
 
 def test_apply_feature_unknown_kind_still_fails_closed():

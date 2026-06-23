@@ -423,3 +423,12 @@ def _base_flange_adapter(doc: Any, feature: dict, target: dict):  # type: ignore
 
 _register_lane("base_flange", _base_flange_adapter, _base_flange_status)
 _register_lane("edge_flange", _create_edge_flange, _edge_flange_status)  # DORMANT → skip
+
+# Recipe-C cut #6 — sweep family (the FINAL extraction; mutate.py now holds zero
+# feature handlers, _apply_feature is a pure registry lookup). sweep + sweep_cut
+# both seat-proven GREEN (W6 spikes), relocated byte-identical from mutate.py.
+from .sweep import SPIKE_STATUS as _sweep_status  # noqa: E402
+from .sweep import _create_sweep, _create_sweep_cut  # noqa: E402
+
+_register_lane("sweep", _create_sweep, _sweep_status)
+_register_lane("sweep_cut", _create_sweep_cut, _sweep_status)

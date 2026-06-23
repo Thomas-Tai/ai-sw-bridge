@@ -34,6 +34,7 @@ def _patch_com_imports(monkeypatch: pytest.MonkeyPatch) -> None:
     from ai_sw_bridge.features import advanced_shapes as adv_mod
     from ai_sw_bridge.features import flanges as flanges_mod
     from ai_sw_bridge.features import ref_geometry as ref_geo_mod
+    from ai_sw_bridge.features import sweep as sweep_mod
 
     def _fake_typed(obj: Any, iface: str, module: Any = None) -> Any:
         return obj
@@ -57,6 +58,10 @@ def _patch_com_imports(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(flanges_mod, "typed", _fake_typed)
     monkeypatch.setattr(flanges_mod, "typed_qi", _fake_typed_qi)
     monkeypatch.setattr(flanges_mod, "wrapper_module", _fake_wrapper_module)
+    # Recipe-C cut #6: sweep handlers relocated to features/sweep; patch there.
+    monkeypatch.setattr(sweep_mod, "typed", _fake_typed)
+    monkeypatch.setattr(sweep_mod, "typed_qi", _fake_typed_qi)
+    monkeypatch.setattr(sweep_mod, "wrapper_module", _fake_wrapper_module)
 
 
 class _FakeSweepCutExt:
@@ -1222,42 +1227,46 @@ class TestProposeEdgeFlange:
 
 
 class TestCreateSweepCutHandler:
-    """Direct tests for the PRODUCTION mutate._create_sweep_cut (W6 T4).
+    """Direct tests for the PRODUCTION features.sweep._create_sweep_cut (W6 T4).
 
+    Recipe-C cut #6: handler relocated from mutate to features/sweep.
     Distinct from TestDryRunSweepCut, which exercises a test-local mirror.
     Verifies the delta-based detection: CreateFeature may return None even on
     success, so materialization is read from GetFeatures(True), not the return.
     """
 
     def test_green_delta_with_none_return(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from ai_sw_bridge.features import sweep as sweep_mod
         _patch_com_imports(monkeypatch)
         # CreateFeature returns None but the feature count bumps -> GREEN.
         fm = _FakeSweepCutFm(create_feat_ret=None, materializes=True)
         doc = _FakeSweepCutDoc(fm)
-        ok, err = mutate._create_sweep_cut(
+        ok, err = sweep_mod._create_sweep_cut(
             doc, {"type": "sweep_cut"}, {"profile": "Sketch2", "path": "Sketch3"}
         )
         assert ok is True
         assert err is None
-        assert fm.create_def_calls == [mutate._SW_FM_SWEEP_CUT]
+        assert fm.create_def_calls == [sweep_mod._SW_FM_SWEEP_CUT]
 
     def test_no_delta_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from ai_sw_bridge.features import sweep as sweep_mod
         _patch_com_imports(monkeypatch)
         # CreateFeature returns a non-None object but NO feature appears (the
         # path didn't pierce the solid) -> must still fail on the delta.
         fm = _FakeSweepCutFm(create_feat_ret=object(), materializes=False)
         doc = _FakeSweepCutDoc(fm)
-        ok, err = mutate._create_sweep_cut(
+        ok, err = sweep_mod._create_sweep_cut(
             doc, {"type": "sweep_cut"}, {"profile": "Sketch2", "path": "Sketch3"}
         )
         assert ok is False
         assert "did not materialize" in err
 
     def test_missing_path_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from ai_sw_bridge.features import sweep as sweep_mod
         _patch_com_imports(monkeypatch)
         fm = _FakeSweepCutFm()
         doc = _FakeSweepCutDoc(fm)
-        ok, err = mutate._create_sweep_cut(doc, {"type": "sweep_cut"}, {"profile": "Sketch2"})
+        ok, err = sweep_mod._create_sweep_cut(doc, {"type": "sweep_cut"}, {"profile": "Sketch2"})
         assert ok is False
         assert "profile" in err and "path" in err
 
