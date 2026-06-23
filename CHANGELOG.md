@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-06-23
+
+The **class-based API grace line** release. Freezes the commercial-contract
+boundary ahead of the 1.0.0 internal refactor by sealing the entire public
+`sw_*` surface (≈27 observe + 17 mutate = 44 verbs) behind a single stateful
+client, while every legacy free function keeps working behind a deprecation
+shim. **All v0.17 scripts run unchanged** — the only behavioural change is a
+`PendingDeprecationWarning` emitted by the legacy `sw_*` free functions.
+
+This release also folds in the work tagged (but never changelogged) across
+v0.15–v0.17: surfaces, sheet-metal completion, thread features, reference
+geometry, drawing-annotation axis, and the read-only Evaluate cluster.
+
+Design notes: [`docs/v1_0_commercialization_rfc.md`](docs/v1_0_commercialization_rfc.md).
+
+### Added
+
+- **`SolidWorksClient` — the canonical entry point for the commercial API.**
+  A single stateful owner of the SOLIDWORKS connection (`ISldWorks` app +
+  makepy wrapper), acquired lazily and injectable for testing. Domain work is
+  reached through cached facades that share that one context:
+  - `.observe` (`SolidWorksObserverFacade`) — read / B-rep interrogation:
+    bounding box, mass properties, inertia, measure (selection / angle / area /
+    durable-pair), clearance / face-clearance, draft, undercut, min-wall,
+    interference, section properties, feature statistics, and more.
+  - `.mutate` (`SolidWorksMutatorFacade`) — the approval-gated write lifecycle:
+    `propose_local_change` / `dry_run` / `commit` / `undo_last_commit`,
+    `propose_feature_add` family, and the `assembly` / `drawing` / `properties`
+    transaction families. The disk-backed, `proposal_id`-keyed transaction
+    store is unchanged.
+  - `.urdf` (`UrdfFacade`) — SOLIDWORKS assembly → ROS/URDF robot model.
+
+      ```python
+      client = SolidWorksClient()
+      client.observe.measure_area()
+      pid = client.mutate.propose_local_change("width_mm", "30")["proposal_id"]
+      client.mutate.dry_run(pid); client.mutate.commit(pid)
+      ```
+
+- **`export_urdf` (W78)** — build a ROS/URDF robot model from a SOLIDWORKS
+  assembly: joint origins from component placement, mesh export per link, with
+  the co-residency STL lock handled via a two-phase read-then-standalone export.
+
+### Changed
+
+- **All public `sw_*` free functions are now thin deprecation shims.** Each
+  emits `PendingDeprecationWarning` and delegates to a relocated `_impl` core;
+  the logic is byte-identical to v0.17. The legacy in-module facades
+  (`SolidWorksObserver`, `ProposalStore`) are retained and route to the same
+  cores without warning. Internal callers (CLI runners, MCP tools) now consume
+  `SolidWorksClient`.
+
+### Deprecated
+
+- **The public `sw_*` free functions** (e.g. `sw_get_measure_from_doc`,
+  `sw_propose_local_change`, `sw_commit_assembly`) are deprecated in favour of
+  the `SolidWorksClient().<facade>.*` methods. They remain fully functional in
+  the 0.18.x line and are **scheduled for removal in 1.0.0**. Migrate by
+  replacing a free-function call with the corresponding facade method.
+
+### Fixed
+
+- **`undo_last_commit` crashed on a shared proposal store.** When a committed
+  proposal from another family (assembly / drawing / properties) sat in the
+  shared store, the local-change undo bare-indexed local-only keys and raised
+  `KeyError`. It now skips non-local-change records during candidate selection.
+
 ## [0.14.0] - 2026-05-29
 
 The v0.14 commercial-hardening release. Fixes four shipped
