@@ -235,8 +235,8 @@ class TestProposeAssembly:
     def test_feature_add_does_not_accept_assembly(self, tmp_path, monkeypatch) -> None:
         """Assembly is de-advertised — feature_add must fail-closed for it."""
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_feature_add
-        result = sw_propose_feature_add(
+        from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
+        result = _sw_propose_feature_add_impl(
             "dummy.sldprt",
             {"type": "assembly"},
             {"components": []},

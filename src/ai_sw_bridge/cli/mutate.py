@@ -22,25 +22,25 @@ import json
 import sys
 from typing import Any
 
-from ..mutate import ProposalStore
+from ..client import SolidWorksClient
 from .stability import add_tier, cli_stability
 from .streams import add_quiet_flag, apply_quiet
 
 
 def _run_propose(args: argparse.Namespace) -> dict[str, Any]:
-    return ProposalStore().propose(var=args.var, new_value=args.new_value)
+    return SolidWorksClient().mutate.propose_local_change(var=args.var, new_value=args.new_value)
 
 
 def _run_dry_run(args: argparse.Namespace) -> dict[str, Any]:
-    return ProposalStore().dry_run(proposal_id=args.proposal_id)
+    return SolidWorksClient().mutate.dry_run(proposal_id=args.proposal_id)
 
 
 def _run_commit(args: argparse.Namespace) -> dict[str, Any]:
-    return ProposalStore().commit(proposal_id=args.proposal_id)
+    return SolidWorksClient().mutate.commit(proposal_id=args.proposal_id)
 
 
 def _run_undo_last_commit(_args: argparse.Namespace) -> dict[str, Any]:
-    return ProposalStore().undo_last()
+    return SolidWorksClient().mutate.undo_last_commit()
 
 
 def _build_parser() -> argparse.ArgumentParser:

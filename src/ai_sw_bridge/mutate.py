@@ -2810,8 +2810,13 @@ def _read_var_value(doc: Any, var_name: str) -> float | str | None:
     return None
 
 
-def sw_propose_local_change(var: str, new_value: str) -> dict[str, Any]:
-    """Stage a change to a single variable in the linked *_locals.txt file.
+def _sw_propose_local_change_impl(var: str, new_value: str) -> dict[str, Any]:
+    """Core: stage a change to a single variable in the linked *_locals.txt file (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_propose_local_change` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     No SW state is modified. We read the file (under exclusive lock) to
     verify the var exists and to snapshot its current value, so we can
@@ -2892,8 +2897,33 @@ def sw_propose_local_change(var: str, new_value: str) -> dict[str, Any]:
         return result
 
 
-def sw_dry_run(proposal_id: str) -> dict[str, Any]:
-    """Apply a proposed change, force-rebuild, capture state, roll back."""
+def sw_propose_local_change(var: str, new_value: str) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.propose_local_change()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_propose_local_change_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_propose_local_change() is deprecated; use "
+        "SolidWorksClient().mutate.propose_local_change(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_propose_local_change_impl(var=var, new_value=new_value)
+
+
+def _sw_dry_run_impl(proposal_id: str) -> dict[str, Any]:
+    """Core: apply a proposed change, force-rebuild, capture state, roll back (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_dry_run` free function routes here behind a
+    ``PendingDeprecationWarning``.
+    """
     result: dict[str, Any] = {
         "ok": False,
         "proposal_id": proposal_id,
@@ -3002,9 +3032,34 @@ def sw_dry_run(proposal_id: str) -> dict[str, Any]:
         return result
 
 
-def sw_commit(proposal_id: str) -> dict[str, Any]:
-    """Re-apply a proposal that passed dry-run, save the SW document,
-    and mark the proposal as committed."""
+def sw_dry_run(proposal_id: str) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.dry_run()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_dry_run_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_dry_run() is deprecated; use "
+        "SolidWorksClient().mutate.dry_run(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_dry_run_impl(proposal_id=proposal_id)
+
+
+def _sw_commit_impl(proposal_id: str) -> dict[str, Any]:
+    """Core: re-apply a proposal that passed dry-run, save the SW document,
+    and mark the proposal as committed (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_commit` free function routes here behind a
+    ``PendingDeprecationWarning``.
+    """
     result: dict[str, Any] = {
         "ok": False,
         "proposal_id": proposal_id,
@@ -3062,9 +3117,34 @@ def sw_commit(proposal_id: str) -> dict[str, Any]:
         return result
 
 
-def sw_undo_last_commit() -> dict[str, Any]:
-    """Revert the most recently committed proposal by restoring its
-    snapshot, force-rebuilding, and saving."""
+def sw_commit(proposal_id: str) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.commit()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_commit_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_commit() is deprecated; use "
+        "SolidWorksClient().mutate.commit(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_commit_impl(proposal_id=proposal_id)
+
+
+def _sw_undo_last_commit_impl() -> dict[str, Any]:
+    """Core: revert the most recently committed proposal by restoring its
+    snapshot, force-rebuilding, and saving (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_undo_last_commit` free function routes here behind a
+    ``PendingDeprecationWarning``.
+    """
     result: dict[str, Any] = {
         "ok": False,
         "proposal_id": None,
@@ -3128,13 +3208,40 @@ def sw_undo_last_commit() -> dict[str, Any]:
         return result
 
 
+def sw_undo_last_commit() -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.undo_last_commit()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_undo_last_commit_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_undo_last_commit() is deprecated; use "
+        "SolidWorksClient().mutate.undo_last_commit(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_undo_last_commit_impl()
+
+
 # ---- feature_add PAE functions ---------------------------------------------
 
 
-def sw_propose_feature_add(
+def _sw_propose_feature_add_impl(
     doc_path: str, feature: dict, target: dict
 ) -> dict[str, Any]:
-    """Stage a feature-add proposal. No SW state is modified."""
+    """Core: stage a feature-add proposal (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_propose_feature_add` free function routes here behind a
+    ``PendingDeprecationWarning``.
+
+    No SW state is modified.
+    """
     result: dict[str, Any] = {
         "ok": False,
         "proposal_id": None,
@@ -3599,6 +3706,29 @@ def sw_propose_feature_add(
         return result
 
 
+def sw_propose_feature_add(
+    doc_path: str, feature: dict, target: dict
+) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.propose_feature_add()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_propose_feature_add_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_propose_feature_add() is deprecated; use "
+        "SolidWorksClient().mutate.propose_feature_add(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_propose_feature_add_impl(
+        doc_path=doc_path, feature=feature, target=target
+    )
+
+
 def sw_propose_assembly(spec: dict[str, Any]) -> dict[str, Any]:
     """Stage an assembly proposal. Validates offline; no SW state touched.
 
@@ -4051,8 +4181,14 @@ def sw_commit_properties(proposal_id: str) -> dict[str, Any]:
     return result
 
 
-def sw_dry_run_feature_add(proposal_id: str) -> dict[str, Any]:
-    """Open the doc, resolve the edge, add the fillet, rebuild, close without saving."""
+def _sw_dry_run_feature_add_impl(proposal_id: str) -> dict[str, Any]:
+    """Core: open the doc, resolve the edge, add the fillet, rebuild, close without saving (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_dry_run_feature_add` free function routes here behind a
+    ``PendingDeprecationWarning``.
+    """
     result: dict[str, Any] = {
         "ok": False,
         "proposal_id": proposal_id,
@@ -4140,8 +4276,33 @@ def sw_dry_run_feature_add(proposal_id: str) -> dict[str, Any]:
     return result
 
 
-def sw_commit_feature_add(proposal_id: str) -> dict[str, Any]:
-    """Re-run the feature-add pipeline and save the document."""
+def sw_dry_run_feature_add(proposal_id: str) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.dry_run_feature_add()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_dry_run_feature_add_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_dry_run_feature_add() is deprecated; use "
+        "SolidWorksClient().mutate.dry_run_feature_add(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_dry_run_feature_add_impl(proposal_id=proposal_id)
+
+
+def _sw_commit_feature_add_impl(proposal_id: str) -> dict[str, Any]:
+    """Core: re-run the feature-add pipeline and save the document (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_commit_feature_add` free function routes here behind a
+    ``PendingDeprecationWarning``.
+    """
     result: dict[str, Any] = {
         "ok": False,
         "proposal_id": proposal_id,
@@ -4224,6 +4385,25 @@ def sw_commit_feature_add(proposal_id: str) -> dict[str, Any]:
                 pass
 
 
+def sw_commit_feature_add(proposal_id: str) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.commit_feature_add()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_commit_feature_add_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_commit_feature_add() is deprecated; use "
+        "SolidWorksClient().mutate.commit_feature_add(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_commit_feature_add_impl(proposal_id=proposal_id)
+
+
 # ---------------------------------------------------------------------------
 # v0.14 — class-based facade over the legacy ``sw_*`` free functions.
 #
@@ -4252,32 +4432,32 @@ class ProposalStore:
 
     def propose(self, var: str, new_value: str) -> dict[str, Any]:
         """Stage a change to *var* — no SW state is modified yet."""
-        return sw_propose_local_change(var=var, new_value=new_value)
+        return _sw_propose_local_change_impl(var=var, new_value=new_value)
 
     def dry_run(self, proposal_id: str) -> dict[str, Any]:
         """Apply a proposal, force-rebuild, capture state, roll back."""
-        return sw_dry_run(proposal_id=proposal_id)
+        return _sw_dry_run_impl(proposal_id=proposal_id)
 
     def commit(self, proposal_id: str) -> dict[str, Any]:
         """Re-apply a dry-run-ok proposal and save the SW document."""
-        return sw_commit(proposal_id=proposal_id)
+        return _sw_commit_impl(proposal_id=proposal_id)
 
     def undo_last(self) -> dict[str, Any]:
         """Revert the most recently committed proposal."""
-        return sw_undo_last_commit()
+        return _sw_undo_last_commit_impl()
 
     def propose_feature_add(
         self, doc_path: str, feature: dict, target: dict
     ) -> dict[str, Any]:
         """Stage a feature-add proposal — no SW state is modified yet."""
-        return sw_propose_feature_add(
+        return _sw_propose_feature_add_impl(
             doc_path=doc_path, feature=feature, target=target
         )
 
     def dry_run_feature_add(self, proposal_id: str) -> dict[str, Any]:
         """Apply a feature-add proposal, rebuild, close without saving."""
-        return sw_dry_run_feature_add(proposal_id=proposal_id)
+        return _sw_dry_run_feature_add_impl(proposal_id=proposal_id)
 
     def commit_feature_add(self, proposal_id: str) -> dict[str, Any]:
         """Re-run a dry-run-ok feature-add and save the SW document."""
-        return sw_commit_feature_add(proposal_id=proposal_id)
+        return _sw_commit_feature_add_impl(proposal_id=proposal_id)

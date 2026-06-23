@@ -149,11 +149,11 @@ class TestAssemblyPipeline:
     def test_dry_run_rejects_non_assembly(self, tmp_path: Path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path / "proposals"))
 
-        from ai_sw_bridge.mutate import sw_propose_feature_add, sw_dry_run_assembly
+        from ai_sw_bridge.mutate import _sw_propose_feature_add_impl, sw_dry_run_assembly
 
         doc_path = str(tmp_path / "dummy.sldprt")
         Path(doc_path).write_text("fake")
-        propose = sw_propose_feature_add(
+        propose = _sw_propose_feature_add_impl(
             doc_path,
             {"type": "ref_plane", "distance_mm": 10},
             {"plane": "Front Plane"},

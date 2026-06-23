@@ -24,7 +24,7 @@ from typing import Any
 import pytest
 
 from ai_sw_bridge import mutate
-from ai_sw_bridge.mutate import sw_propose_feature_add
+from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +214,7 @@ class TestProposeDeleteBody:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file), {"type": "delete_body"}, {"body_index": 1}
         )
         assert r["ok"] is True
@@ -225,7 +225,7 @@ class TestProposeDeleteBody:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file), {"type": "delete_body"}, {"body_name": "Body2"}
         )
         assert r["ok"] is True
@@ -236,7 +236,7 @@ class TestProposeDeleteBody:
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
         # Non-empty target missing both keys -> the delete_body-specific branch
         # (an empty {} is caught earlier by the generic non-empty-dict guard).
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file), {"type": "delete_body"}, {"unrelated": 1}
         )
         assert r["ok"] is False
@@ -246,7 +246,7 @@ class TestProposeDeleteBody:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file), {"type": "delete_body"}, {"body_index": -2}
         )
         assert r["ok"] is False
@@ -267,7 +267,7 @@ class TestCombineSplitFailClosed:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "combine", "operation": "subtract"},
             {"main_body_index": 0, "tool_body_indices": [1]},
@@ -279,7 +279,7 @@ class TestCombineSplitFailClosed:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "split"},
             {"body_index": 0, "cutting_plane": "RefPlane1"},

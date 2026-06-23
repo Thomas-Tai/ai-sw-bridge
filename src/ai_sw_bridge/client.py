@@ -8,6 +8,7 @@ that one context::
     client = SolidWorksClient()
     client.observe.get_inertia()
     client.observe.analyze_stackup(["a-1", "b-1", "c-1"])
+    client.mutate.propose_local_change("width_mm", "30")
     client.urdf.export(asm_doc, "out/")
 
 Taxonomy: *domain objects on a single stateful client* (not a god-client, not
@@ -18,8 +19,9 @@ the same cores, so existing scripts keep working while this class API becomes
 the stable boundary. The stateless v0.14 ``observe.SolidWorksObserver`` is the
 precursor this supersedes.
 
-v0.18 pilot slice: ``observe`` (get_inertia, analyze_stackup) + ``urdf``.
-Remaining domains (mutate / assembly / drawing / export / features) fan out
+v0.18 pilot slice: ``observe`` (get_inertia, analyze_stackup) + ``urdf`` +
+``mutate`` (propose/dry_run/commit local_change + feature_add).
+Remaining domains (assembly / drawing / export / features) fan out
 behind the same pattern — a series of friction-triggered seams, not a big-bang
 (see ``project_consolidation_policy``).
 """
@@ -60,6 +62,15 @@ from .observe_measure import (
 )
 from .observe_section import _sw_get_section_props_impl
 from .observe_selection import _sw_get_selection_impl
+from .mutate import (
+    _sw_propose_local_change_impl,
+    _sw_dry_run_impl,
+    _sw_commit_impl,
+    _sw_undo_last_commit_impl,
+    _sw_propose_feature_add_impl,
+    _sw_dry_run_feature_add_impl,
+    _sw_commit_feature_add_impl,
+)
 from .sw_com import get_active_doc, get_sw_app
 
 _NO_DOC = {"ok": False, "error": "no_active_doc"}
@@ -290,6 +301,51 @@ class UrdfFacade:
         return export_urdf(asm_doc, output_dir, **kwargs)
 
 
+class SolidWorksMutatorFacade:
+    """Mutation facade — Propose-Approve-Execute transaction lifecycle (v0.18).
+
+    Routes to the ``_impl`` cores directly (no deprecation warnings). The
+    proposal store is module-level, stateless, disk-backed; this facade
+    holds zero transaction state — the ``proposal_id`` string is the only
+    handle.
+    """
+
+    def __init__(self, client: "SolidWorksClient") -> None:
+        self._client = client
+
+    def propose_local_change(self, var: str, new_value: str) -> dict[str, Any]:
+        """Stage a change to a single variable in the linked *_locals.txt file."""
+        return _sw_propose_local_change_impl(var=var, new_value=new_value)
+
+    def dry_run(self, proposal_id: str) -> dict[str, Any]:
+        """Apply a proposed change, force-rebuild, capture state, roll back."""
+        return _sw_dry_run_impl(proposal_id=proposal_id)
+
+    def commit(self, proposal_id: str) -> dict[str, Any]:
+        """Re-apply a proposal that passed dry-run, save the SW document."""
+        return _sw_commit_impl(proposal_id=proposal_id)
+
+    def undo_last_commit(self) -> dict[str, Any]:
+        """Revert the most recently committed proposal."""
+        return _sw_undo_last_commit_impl()
+
+    def propose_feature_add(
+        self, doc_path: str, feature: dict, target: dict
+    ) -> dict[str, Any]:
+        """Stage a feature-add proposal — no SW state is modified yet."""
+        return _sw_propose_feature_add_impl(
+            doc_path=doc_path, feature=feature, target=target
+        )
+
+    def dry_run_feature_add(self, proposal_id: str) -> dict[str, Any]:
+        """Apply a feature-add proposal, rebuild, close without saving."""
+        return _sw_dry_run_feature_add_impl(proposal_id=proposal_id)
+
+    def commit_feature_add(self, proposal_id: str) -> dict[str, Any]:
+        """Re-run a dry-run-ok feature-add and save the SW document."""
+        return _sw_commit_feature_add_impl(proposal_id=proposal_id)
+
+
 class SolidWorksClient:
     """Stateful owner of the SOLIDWORKS connection; root of the class-based API.
 
@@ -304,6 +360,7 @@ class SolidWorksClient:
         self._mod = mod
         self._observe: SolidWorksObserverFacade | None = None
         self._urdf: UrdfFacade | None = None
+        self._mutate: SolidWorksMutatorFacade | None = None
 
     # ── connection state ────────────────────────────────────────────────
     @property
@@ -337,3 +394,9 @@ class SolidWorksClient:
         if self._urdf is None:
             self._urdf = UrdfFacade(self)
         return self._urdf
+
+    @property
+    def mutate(self) -> SolidWorksMutatorFacade:
+        if self._mutate is None:
+            self._mutate = SolidWorksMutatorFacade(self)
+        return self._mutate

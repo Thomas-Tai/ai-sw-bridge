@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 
 from ai_sw_bridge import mutate
-from ai_sw_bridge.mutate import sw_propose_feature_add
+from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
 
 # ---------------------------------------------------------------------------
 # F1 — Sweep-cut handler (mirror _create_sweep with swFmSweepCut=18)
@@ -312,7 +312,7 @@ def _validate_boundary_target(target: dict) -> tuple[bool, str | None]:
 # ===========================================================================
 
 from ai_sw_bridge import mutate
-from ai_sw_bridge.mutate import sw_propose_feature_add
+from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
 
 
 class _FakeWave5Doc:
@@ -354,7 +354,7 @@ class TestProposeRefPlane:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "ref_plane", "distance_mm": 50.0},
             {"plane": "Front Plane"},
@@ -368,7 +368,7 @@ class TestProposeRefPlane:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "ref_plane"},
             {"edge_ref": {"persist_id": "AAAA", "length": 0.05}},
@@ -381,7 +381,7 @@ class TestProposeRefPlane:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "ref_plane", "distance_mm": 50.0},
             {"unrelated": 1},
@@ -393,7 +393,7 @@ class TestProposeRefPlane:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "ref_plane", "distance_mm": 0},
             {"plane": "Front Plane"},
@@ -407,7 +407,7 @@ class TestProposeRefAxis:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "ref_axis"},
             {"planes": ["Front Plane", "Right Plane"]},
@@ -420,7 +420,7 @@ class TestProposeRefAxis:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "ref_axis"},
             {"planes": ["Front Plane"]},
@@ -620,7 +620,7 @@ class TestProposeCoordinateSystem:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "coordinate_system", "flip_x": False, "flip_y": False, "flip_z": False},
             {"origin": "Origin"},
@@ -641,7 +641,7 @@ class TestProposeRefPoint:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "ref_point"},
             {"face_ref": {"normal": [0, 0, 1], "centroid": [0, 0, 0.02], "area_mm2": 1600.0}},
@@ -654,7 +654,7 @@ class TestProposeRefPoint:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "ref_point"},
             {"face_ref": {}},
@@ -666,7 +666,7 @@ class TestProposeRefPoint:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "ref_point"},
             {"unrelated": 1},
@@ -1175,7 +1175,7 @@ class TestProposeEdgeFlange:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "edge_flange", "height_mm": 10, "angle_deg": 90, "radius_mm": 2},
             _EF_TARGET,
@@ -1234,7 +1234,7 @@ class TestProposeSweepCut_Advertised:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "sweep_cut"},
             {"profile": "Sketch2", "path": "Sketch3"},
@@ -1247,7 +1247,7 @@ class TestProposeSweepCut_Advertised:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "sweep_cut"},
             {"profile": "Sketch2"},
@@ -1261,7 +1261,7 @@ class TestProposeLoft:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "loft"},
             {"profiles": ["Sketch1", "Sketch2"]},
@@ -1274,7 +1274,7 @@ class TestProposeLoft:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "loft"},
             {"profiles": ["Sketch1"]},
@@ -1289,7 +1289,7 @@ class TestProposeRib:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "rib"},
             {"sketch": "Sketch1", "face": [0, 0, 0.01]},
@@ -1307,7 +1307,7 @@ class TestProposeDome:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "dome", "distance_mm": 10.0},
             {"face_ref": {"normal": [0, 0, 1], "centroid": [0, 0, 0.02], "area_mm2": 1600.0}},
@@ -1320,7 +1320,7 @@ class TestProposeDome:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "dome"},
             {"face_ref": {}},
@@ -1332,7 +1332,7 @@ class TestProposeDome:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "dome"},
             {"unrelated": 1},
@@ -1346,7 +1346,7 @@ class TestProposeWrap:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "wrap"},
             {"sketch": "Sketch1", "face": [0, 0, 0.01]},
@@ -1361,7 +1361,7 @@ class TestProposeBoundaryBoss:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "boundary_boss"},
             {"dir1_profiles": ["Sketch1"], "dir2_profiles": ["Sketch2"]},
@@ -1374,7 +1374,7 @@ class TestProposeBoundaryBoss:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "boundary_boss"},
             {"dir1_profiles": [], "dir2_profiles": ["Sketch2"]},

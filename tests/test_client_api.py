@@ -32,6 +32,7 @@ import ai_sw_bridge.observe as _observe_mod
 
 from ai_sw_bridge.client import (
     SolidWorksClient,
+    SolidWorksMutatorFacade,
     SolidWorksObserverFacade,
     UrdfFacade,
 )
@@ -96,6 +97,26 @@ from ai_sw_bridge.observe import (
     sw_undercut_faces,
     sw_min_wall_thickness,
     sw_get_enabled_addins,
+)
+from ai_sw_bridge.mutate import (
+    # Batch M1 _impl cores
+    _sw_propose_local_change_impl,
+    _sw_dry_run_impl,
+    _sw_commit_impl,
+    _sw_undo_last_commit_impl,
+    _sw_propose_feature_add_impl,
+    _sw_dry_run_feature_add_impl,
+    _sw_commit_feature_add_impl,
+    # Batch M1 shims
+    sw_propose_local_change,
+    sw_dry_run,
+    sw_commit,
+    sw_undo_last_commit,
+    sw_propose_feature_add,
+    sw_dry_run_feature_add,
+    sw_commit_feature_add,
+    # v0.14 legacy facade (verify no internal warning leak)
+    ProposalStore,
 )
 
 
@@ -680,3 +701,192 @@ def test_client_facade_o3_no_active_doc_guard():
     assert client.observe.measure_area()["error"] == "no_active_doc"
     assert client.observe.clearance("a", "b")["error"] == "no_active_doc"
     assert client.observe.face_clearance("a", "b")["error"] == "no_active_doc"
+
+
+# ── Batch M1: mutate Local + Feature transaction triads ────────────────────
+#
+# sw_propose_local_change, sw_dry_run, sw_commit, sw_undo_last_commit,
+# sw_propose_feature_add, sw_dry_run_feature_add, sw_commit_feature_add —
+# shim warns + delegates; facade routes without warning; ProposalStore
+# (v0.14 legacy facade) does not leak deprecation warnings.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# sw_propose_local_change — the _impl resolves active doc internally, returns error dict
+def test_sw_propose_local_change_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_propose_local_change"):
+        shim = sw_propose_local_change("x", "1")
+    impl = _sw_propose_local_change_impl("x", "1")
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_propose_local_change_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.propose_local_change("x", "1")
+    assert res["ok"] is False
+
+
+# sw_dry_run — _impl loads proposal from disk (nonexistent id -> error)
+def test_sw_dry_run_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_dry_run"):
+        shim = sw_dry_run("nonexistent_id")
+    impl = _sw_dry_run_impl("nonexistent_id")
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "not found" in shim["error"]
+
+
+def test_client_facade_dry_run_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.dry_run("nonexistent_id")
+    assert res["ok"] is False
+    assert "not found" in res["error"]
+
+
+# sw_commit — _impl loads proposal from disk (nonexistent id -> error)
+def test_sw_commit_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_commit"):
+        shim = sw_commit("nonexistent_id")
+    impl = _sw_commit_impl("nonexistent_id")
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "not found" in shim["error"]
+
+
+def test_client_facade_commit_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.commit("nonexistent_id")
+    assert res["ok"] is False
+    assert "not found" in res["error"]
+
+
+# sw_undo_last_commit — _impl scans proposals dir (empty -> error)
+def test_sw_undo_last_commit_shim_warns_and_delegates(tmp_path, monkeypatch):
+    monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path / "proposals"))
+    with pytest.warns(PendingDeprecationWarning, match="sw_undo_last_commit"):
+        shim = sw_undo_last_commit()
+    impl = _sw_undo_last_commit_impl()
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "no committed proposal" in shim["error"]
+
+
+def test_client_facade_undo_last_commit_routes_without_warning(tmp_path, monkeypatch):
+    monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path / "proposals"))
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.undo_last_commit()
+    assert res["ok"] is False
+    assert "no committed proposal" in res["error"]
+
+
+# sw_propose_feature_add — _impl validates offline (no doc_path -> error)
+def test_sw_propose_feature_add_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_propose_feature_add"):
+        shim = sw_propose_feature_add("/no/such.sldprt", {"type": "fillet_constant_radius", "radius_mm": 2}, {"edges": [{"ref": {"persist_id": "AA"}, "radius_mm": 2}]})
+    impl = _sw_propose_feature_add_impl("/no/such.sldprt", {"type": "fillet_constant_radius", "radius_mm": 2}, {"edges": [{"ref": {"persist_id": "AA"}, "radius_mm": 2}]})
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_propose_feature_add_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.propose_feature_add("/no/such.sldprt", {"type": "fillet_constant_radius", "radius_mm": 2}, {"edges": [{"ref": {"persist_id": "AA"}, "radius_mm": 2}]})
+    assert res["ok"] is False
+
+
+# sw_dry_run_feature_add — _impl loads proposal from disk (nonexistent id -> error)
+def test_sw_dry_run_feature_add_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_dry_run_feature_add"):
+        shim = sw_dry_run_feature_add("nonexistent_id")
+    impl = _sw_dry_run_feature_add_impl("nonexistent_id")
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "not found" in shim["error"]
+
+
+def test_client_facade_dry_run_feature_add_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.dry_run_feature_add("nonexistent_id")
+    assert res["ok"] is False
+    assert "not found" in res["error"]
+
+
+# sw_commit_feature_add — _impl loads proposal from disk (nonexistent id -> error)
+def test_sw_commit_feature_add_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_commit_feature_add"):
+        shim = sw_commit_feature_add("nonexistent_id")
+    impl = _sw_commit_feature_add_impl("nonexistent_id")
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "not found" in shim["error"]
+
+
+def test_client_facade_commit_feature_add_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.commit_feature_add("nonexistent_id")
+    assert res["ok"] is False
+    assert "not found" in res["error"]
+
+
+# ── Batch M1: ProposalStore (v0.14 legacy facade) must not leak warnings ────
+
+def test_proposal_store_no_deprecation_warning(tmp_path, monkeypatch):
+    """ProposalStore routes to _impl cores — no PendingDeprecationWarning."""
+    monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path / "proposals"))
+    store = ProposalStore()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = store.propose("x", "1")
+    assert res["ok"] is False
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = store.dry_run("nonexistent_id")
+    assert res["ok"] is False
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = store.commit("nonexistent_id")
+    assert res["ok"] is False
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = store.undo_last()
+    assert res["ok"] is False
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = store.propose_feature_add("/no/such.sldprt", {"type": "fillet_constant_radius", "radius_mm": 2}, {"edges": [{"ref": {"persist_id": "AA"}, "radius_mm": 2}]})
+    assert res["ok"] is False
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = store.dry_run_feature_add("nonexistent_id")
+    assert res["ok"] is False
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = store.commit_feature_add("nonexistent_id")
+    assert res["ok"] is False
+
+
+# ── Batch M1: facade is the right type and cached ────────────────────────────
+
+def test_client_mutate_facade_type_and_cached():
+    client = SolidWorksClient(app=object(), mod=object())
+    assert isinstance(client.mutate, SolidWorksMutatorFacade)
+    assert client.mutate is client.mutate  # cached

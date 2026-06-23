@@ -92,7 +92,7 @@ def test_propose_accepts_registry_kind(monkeypatch, tmp_path):
     )
     doc = tmp_path / "part.sldprt"
     doc.write_text("stub")
-    res = mutate.sw_propose_feature_add(
+    res = mutate._sw_propose_feature_add_impl(
         str(doc), {"type": "fake_kind"}, {"face_ref": "F1"}
     )
     assert res["error"] is None
@@ -105,7 +105,7 @@ def test_propose_rejects_unknown_kind_and_lists_registry(monkeypatch, tmp_path):
     monkeypatch.setitem(
         features.HANDLER_REGISTRY, "fake_kind", lambda d, f, t: (True, None)
     )
-    res = mutate.sw_propose_feature_add("C:/nope.sldprt", {"type": "bogus"}, {})
+    res = mutate._sw_propose_feature_add_impl("C:/nope.sldprt", {"type": "bogus"}, {})
     assert res["ok"] is False
     assert "unsupported feature type 'bogus'" in res["error"]
     # Registry kinds are advertised alongside the built-ins.

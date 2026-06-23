@@ -19,9 +19,9 @@ from ai_sw_bridge.mutate import (
     ST_DRY_RUN_OK,
     ST_PROPOSED,
     ProposalStore,
-    sw_commit_feature_add,
-    sw_dry_run_feature_add,
-    sw_propose_feature_add,
+    _sw_commit_feature_add_impl,
+    _sw_dry_run_feature_add_impl,
+    _sw_propose_feature_add_impl,
 )
 
 
@@ -293,7 +293,7 @@ class TestProposeFeatureAdd:
         doc.touch()
         fakes = _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
 
-        r = sw_propose_feature_add(str(doc), _VALID_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), _VALID_FEATURE, _VALID_TARGET)
 
         assert r["ok"] is True
         assert r["proposal_id"] is not None
@@ -317,7 +317,7 @@ class TestProposeFeatureAdd:
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
 
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), {"type": "wrap", "radius_mm": 1.0}, _VALID_TARGET
         )
         assert r["ok"] is False
@@ -330,7 +330,7 @@ class TestProposeFeatureAdd:
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
 
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc),
             {"type": "fillet_constant_radius", "radius_mm": -1},
             _VALID_TARGET,
@@ -343,7 +343,7 @@ class TestProposeFeatureAdd:
     ) -> None:
         _patch_all(monkeypatch, tmp_path, "/no/such.sldprt", _FakeEntity(), object())
 
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             "/no/such.sldprt", _VALID_FEATURE, _VALID_TARGET
         )
         assert r["ok"] is False
@@ -357,7 +357,7 @@ class TestProposeFeatureAdd:
 
 class TestDryRunFeatureAdd:
     def _propose(self, tmp_path: Path, doc_path: str) -> str:
-        r = sw_propose_feature_add(doc_path, _VALID_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(doc_path, _VALID_FEATURE, _VALID_TARGET)
         return r["proposal_id"]
 
     def test_ok_no_save(
@@ -368,7 +368,7 @@ class TestDryRunFeatureAdd:
         fakes = _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         pid = self._propose(tmp_path, str(doc))
 
-        r = sw_dry_run_feature_add(pid)
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_DRY_RUN_OK
@@ -386,7 +386,7 @@ class TestDryRunFeatureAdd:
         fakes = _patch_all(monkeypatch, tmp_path, str(doc), None, object())
         pid = self._propose(tmp_path, str(doc))
 
-        r = sw_dry_run_feature_add(pid)
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is False
         assert r["state"] == ST_DRY_RUN_BROKE
@@ -410,9 +410,9 @@ class TestCommitFeatureAdd:
         feature: Any,
     ) -> str:
         fakes = _patch_all(monkeypatch, tmp_path, doc_path, entity, feature)
-        r = sw_propose_feature_add(doc_path, _VALID_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(doc_path, _VALID_FEATURE, _VALID_TARGET)
         pid = r["proposal_id"]
-        sw_dry_run_feature_add(pid)
+        _sw_dry_run_feature_add_impl(pid)
         # Re-patch after dry_run (state persists on disk, fakes still wired).
         return pid, fakes
 
@@ -422,9 +422,9 @@ class TestCommitFeatureAdd:
         doc = tmp_path / "test.sldprt"
         doc.touch()
         fakes = _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
-        r = sw_propose_feature_add(str(doc), _VALID_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), _VALID_FEATURE, _VALID_TARGET)
 
-        cr = sw_commit_feature_add(r["proposal_id"])
+        cr = _sw_commit_feature_add_impl(r["proposal_id"])
 
         assert cr["ok"] is False
         assert "refusing" in cr["error"]
@@ -443,7 +443,7 @@ class TestCommitFeatureAdd:
         fakes["sw"].close_calls.clear()
         fakes["fm"].create_feat_calls.clear()
 
-        r = sw_commit_feature_add(pid)
+        r = _sw_commit_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_COMMITTED
@@ -468,7 +468,7 @@ class TestProposeBaseFlange:
             data=_FakeBaseFlangeData(),
         )
 
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
         )
 
@@ -489,7 +489,7 @@ class TestProposeBaseFlange:
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), None, object())
 
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc),
             {"type": "base_flange", "thickness_mm": 0, "bend_radius_mm": 1.0},
             _VALID_SKETCH_TARGET,
@@ -504,7 +504,7 @@ class TestProposeBaseFlange:
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), None, object())
 
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc),
             {"type": "base_flange", "thickness_mm": 2.0, "bend_radius_mm": -1},
             _VALID_SKETCH_TARGET,
@@ -519,7 +519,7 @@ class TestProposeBaseFlange:
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), None, object())
 
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), _VALID_BASEFLANGE_FEATURE, {"persist_id": "AQID"}
         )
         assert r["ok"] is False
@@ -536,11 +536,11 @@ class TestDryRunBaseFlange:
         fakes = _patch_all(
             monkeypatch, tmp_path, str(doc), None, object(), data=bf
         )
-        pid = sw_propose_feature_add(
+        pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
         )["proposal_id"]
 
-        r = sw_dry_run_feature_add(pid)
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_DRY_RUN_OK
@@ -566,11 +566,11 @@ class TestDryRunBaseFlange:
             monkeypatch, tmp_path, str(doc), None, object(), data=bf
         )
         fakes["doc"].select_returns = False  # sketch cannot be selected
-        pid = sw_propose_feature_add(
+        pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
         )["proposal_id"]
 
-        r = sw_dry_run_feature_add(pid)
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is False
         assert r["state"] == ST_DRY_RUN_BROKE
@@ -590,16 +590,16 @@ class TestCommitBaseFlange:
         fakes = _patch_all(
             monkeypatch, tmp_path, str(doc), None, object(), data=bf
         )
-        pid = sw_propose_feature_add(
+        pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
         )["proposal_id"]
-        sw_dry_run_feature_add(pid)
+        _sw_dry_run_feature_add_impl(pid)
 
         fakes["doc"].save_calls.clear()
         fakes["sw"].close_calls.clear()
         fakes["fm"].create_feat_calls.clear()
 
-        r = sw_commit_feature_add(pid)
+        r = _sw_commit_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_COMMITTED
@@ -621,7 +621,7 @@ class TestProposeVariableFillet:
         doc.touch()
         fakes = _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
 
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), _VALID_VARFIL_FEATURE, _VALID_VARFIL_TARGET
         )
         assert r["ok"] is True
@@ -638,7 +638,7 @@ class TestProposeVariableFillet:
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
 
-        r = sw_propose_feature_add(str(doc), _VALID_VARFIL_FEATURE, {"edges": []})
+        r = _sw_propose_feature_add_impl(str(doc), _VALID_VARFIL_FEATURE, {"edges": []})
         assert r["ok"] is False
         assert "edges" in r["error"]
 
@@ -649,7 +649,7 @@ class TestProposeVariableFillet:
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
 
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), _VALID_VARFIL_FEATURE, {"edges": [{"radius_mm": 2.0}]}
         )
         assert r["ok"] is False
@@ -662,7 +662,7 @@ class TestProposeVariableFillet:
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
 
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc),
             _VALID_VARFIL_FEATURE,
             {"edges": [{"ref": dict(_VALID_TARGET), "radius_mm": 0}]},
@@ -694,10 +694,10 @@ class TestDryRunVariableFillet:
             lambda e, **kw: (sel_appends.append(kw.get("append", False)), True)[1],
         )
 
-        pid = sw_propose_feature_add(
+        pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_VARFIL_FEATURE, _VALID_VARFIL_TARGET
         )["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_DRY_RUN_OK
@@ -718,11 +718,11 @@ class TestDryRunVariableFillet:
         doc.touch()
         # 2 edges requested but the fillet collapses to 1 item.
         data, feat, fakes = self._wire(monkeypatch, tmp_path, str(doc), 1)
-        pid = sw_propose_feature_add(
+        pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_VARFIL_FEATURE, _VALID_VARFIL_TARGET
         )["proposal_id"]
 
-        r = sw_dry_run_feature_add(pid)
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is False
         assert r["state"] == ST_DRY_RUN_BROKE
@@ -742,13 +742,13 @@ class TestCommitVariableFillet:
         fakes = _patch_all(
             monkeypatch, tmp_path, str(doc), _FakeEntity(), feat, data=data
         )
-        pid = sw_propose_feature_add(
+        pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_VARFIL_FEATURE, _VALID_VARFIL_TARGET
         )["proposal_id"]
-        sw_dry_run_feature_add(pid)
+        _sw_dry_run_feature_add_impl(pid)
 
         fakes["doc"].save_calls.clear()
-        r = sw_commit_feature_add(pid)
+        r = _sw_commit_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_COMMITTED
@@ -939,14 +939,14 @@ class TestProposeWizardHole:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
-        r = sw_propose_feature_add(str(doc), self._FEATURE, self._TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), self._FEATURE, self._TARGET)
         assert r["ok"] is True
 
     def test_rejects_bad_hole_type(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), {**self._FEATURE, "hole_type": "wormhole"}, self._TARGET
         )
         assert r["ok"] is False and "hole_type" in r["error"]
@@ -955,7 +955,7 @@ class TestProposeWizardHole:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), self._FEATURE, {"face": [0, 0, 0.01], "point": [0, 0]}
         )
         assert r["ok"] is False and "point" in r["error"]
@@ -971,7 +971,7 @@ class TestProposeWizardHole:
             "normal": [0, 0, 1], "centroid": [0, 0, 0.01], "area_mm2": 1600.0,
             "role_hint": "+z_top", "persist_id": "QUJD",
         }
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), self._FEATURE, {"face_ref": face_ref, "point": [0.003, 0.002, 0.01]}
         )
         assert r["ok"] is True
@@ -982,7 +982,7 @@ class TestProposeWizardHole:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
-        r = sw_propose_feature_add(str(doc), self._FEATURE, {"point": [0, 0, 0.01]})
+        r = _sw_propose_feature_add_impl(str(doc), self._FEATURE, {"point": [0, 0, 0.01]})
         assert r["ok"] is False and "face_ref" in r["error"]
 
     def test_rejects_bad_face_ref(
@@ -991,7 +991,7 @@ class TestProposeWizardHole:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), self._FEATURE, {"face_ref": "nope", "point": [0, 0, 0.01]}
         )
         assert r["ok"] is False and "face_ref" in r["error"]
@@ -1104,8 +1104,8 @@ class TestDryRunWizardHole:
         monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
         monkeypatch.setattr(mutate, "get_active_doc", lambda s: None)
 
-        pid = sw_propose_feature_add(str(doc_file), self._FEATURE, self._TARGET)["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        pid = _sw_propose_feature_add_impl(str(doc_file), self._FEATURE, self._TARGET)["proposal_id"]
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_DRY_RUN_OK
@@ -1160,8 +1160,8 @@ class TestDryRunWizardHole:
             "role_hint": "+z_top", "persist_id": "QUJD",
         }
         target = {"face_ref": face_ref, "point": [0.003, 0.002, 0.01]}
-        pid = sw_propose_feature_add(str(doc_file), self._FEATURE, target)["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        pid = _sw_propose_feature_add_impl(str(doc_file), self._FEATURE, target)["proposal_id"]
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_DRY_RUN_OK
@@ -1204,8 +1204,8 @@ class TestDryRunWizardHole:
         face_ref = {"normal": [0, 0, 1], "centroid": [0, 0, 0.01],
                     "area_mm2": 1600.0, "role_hint": "+z_top"}
         target = {"face_ref": face_ref, "point": [0.003, 0.002, 0.01]}
-        pid = sw_propose_feature_add(str(doc_file), self._FEATURE, target)["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        pid = _sw_propose_feature_add_impl(str(doc_file), self._FEATURE, target)["proposal_id"]
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is False
         assert "unresolved" in (r.get("error") or "")
@@ -1355,37 +1355,37 @@ class TestProposeShellDraft:
     def test_shell_writes_record(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "t.sldprt"; doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeShellDoc(str(doc), 1))
-        r = sw_propose_feature_add(str(doc), _SHELL_FEATURE, _SHELL_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), _SHELL_FEATURE, _SHELL_TARGET)
         assert r["ok"] is True
 
     def test_shell_rejects_bad_thickness(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "t.sldprt"; doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeShellDoc(str(doc), 1))
-        r = sw_propose_feature_add(str(doc), {**_SHELL_FEATURE, "thickness_mm": 0}, _SHELL_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), {**_SHELL_FEATURE, "thickness_mm": 0}, _SHELL_TARGET)
         assert r["ok"] is False and "thickness_mm" in r["error"]
 
     def test_shell_rejects_empty_faces(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "t.sldprt"; doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeShellDoc(str(doc), 1))
-        r = sw_propose_feature_add(str(doc), _SHELL_FEATURE, {"faces": []})
+        r = _sw_propose_feature_add_impl(str(doc), _SHELL_FEATURE, {"faces": []})
         assert r["ok"] is False and "faces" in r["error"]
 
     def test_draft_rejects_bad_angle(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "t.sldprt"; doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object())))
-        r = sw_propose_feature_add(str(doc), {**_DRAFT_FEATURE, "angle_deg": -5}, _DRAFT_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), {**_DRAFT_FEATURE, "angle_deg": -5}, _DRAFT_TARGET)
         assert r["ok"] is False and "angle_deg" in r["error"]
 
     def test_draft_rejects_bad_propagation(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "t.sldprt"; doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object())))
-        r = sw_propose_feature_add(str(doc), {**_DRAFT_FEATURE, "propagation": "sideways"}, _DRAFT_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), {**_DRAFT_FEATURE, "propagation": "sideways"}, _DRAFT_TARGET)
         assert r["ok"] is False and "propagation" in r["error"]
 
     def test_draft_rejects_missing_neutral(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "t.sldprt"; doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object())))
-        r = sw_propose_feature_add(str(doc), _DRAFT_FEATURE, {"faces": [[0.02, 0, 0.01]]})
+        r = _sw_propose_feature_add_impl(str(doc), _DRAFT_FEATURE, {"faces": [[0.02, 0, 0.01]]})
         assert r["ok"] is False and "neutral_face" in r["error"]
 
 
@@ -1395,8 +1395,8 @@ class TestDryRunShell:
         shell_doc = _FakeShellDoc(str(doc_file), 1)  # +1 feature
         _patch_wall2(monkeypatch, tmp_path, shell_doc)
         monkeypatch.setattr(mutate, "select_entity", lambda e, **kw: True)
-        pid = sw_propose_feature_add(str(doc_file), _SHELL_FEATURE, _SHELL_TARGET)["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        pid = _sw_propose_feature_add_impl(str(doc_file), _SHELL_FEATURE, _SHELL_TARGET)["proposal_id"]
+        r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is True and r["state"] == ST_DRY_RUN_OK
         assert shell_doc.shell_calls == [(pytest.approx(0.002), False)]
         assert shell_doc.save_calls == []
@@ -1406,8 +1406,8 @@ class TestDryRunShell:
         shell_doc = _FakeShellDoc(str(doc_file), 0)  # no feature added
         _patch_wall2(monkeypatch, tmp_path, shell_doc)
         monkeypatch.setattr(mutate, "select_entity", lambda e, **kw: True)
-        pid = sw_propose_feature_add(str(doc_file), _SHELL_FEATURE, _SHELL_TARGET)["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        pid = _sw_propose_feature_add_impl(str(doc_file), _SHELL_FEATURE, _SHELL_TARGET)["proposal_id"]
+        r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is False and r["state"] == ST_DRY_RUN_BROKE
         assert "did not add a feature" in r["error"]
 
@@ -1423,8 +1423,8 @@ class TestDryRunDraft:
             mutate, "select_entity",
             lambda e, **kw: (marks.append((kw.get("append", False), kw.get("mark", 0))), True)[1],
         )
-        pid = sw_propose_feature_add(str(doc_file), _DRAFT_FEATURE, _DRAFT_TARGET)["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        pid = _sw_propose_feature_add_impl(str(doc_file), _DRAFT_FEATURE, _DRAFT_TARGET)["proposal_id"]
+        r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is True and r["state"] == ST_DRY_RUN_OK
         # neutral plane mark=1 (append False), draft face mark=2 (append True).
         assert marks == [(False, 1), (True, 2)]
@@ -1488,19 +1488,19 @@ class TestProposeSweep:
     def test_sweep_writes_record(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "t.sldprt"; doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())))
-        r = sw_propose_feature_add(str(doc), _SWEEP_FEATURE, _SWEEP_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), _SWEEP_FEATURE, _SWEEP_TARGET)
         assert r["ok"] is True
 
     def test_sweep_rejects_missing_profile(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "t.sldprt"; doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())))
-        r = sw_propose_feature_add(str(doc), _SWEEP_FEATURE, {"path": "Sketch2"})
+        r = _sw_propose_feature_add_impl(str(doc), _SWEEP_FEATURE, {"path": "Sketch2"})
         assert r["ok"] is False and "profile" in r["error"]
 
     def test_sweep_rejects_missing_path(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "t.sldprt"; doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())))
-        r = sw_propose_feature_add(str(doc), _SWEEP_FEATURE, {"profile": "Sketch1"})
+        r = _sw_propose_feature_add_impl(str(doc), _SWEEP_FEATURE, {"profile": "Sketch1"})
         assert r["ok"] is False and "path" in r["error"]
 
 
@@ -1510,8 +1510,8 @@ class TestDryRunSweep:
         fm = _FakeFeatureManager(object(), object())  # materialized feature
         sweep_doc = _FakeSweepDoc(str(doc_file), fm)
         _patch_wall2(monkeypatch, tmp_path, sweep_doc)
-        pid = sw_propose_feature_add(str(doc_file), _SWEEP_FEATURE, _SWEEP_TARGET)["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        pid = _sw_propose_feature_add_impl(str(doc_file), _SWEEP_FEATURE, _SWEEP_TARGET)["proposal_id"]
+        r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is True and r["state"] == ST_DRY_RUN_OK
         assert fm.create_def_calls == [17]
         # profile select mark 1 (append False), path select mark 4 (append True)
@@ -1526,8 +1526,8 @@ class TestDryRunSweep:
         fm = _FakeFeatureManager(object(), None)  # CreateFeature returns None
         sweep_doc = _FakeSweepDoc(str(doc_file), fm)
         _patch_wall2(monkeypatch, tmp_path, sweep_doc)
-        pid = sw_propose_feature_add(str(doc_file), _SWEEP_FEATURE, _SWEEP_TARGET)["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        pid = _sw_propose_feature_add_impl(str(doc_file), _SWEEP_FEATURE, _SWEEP_TARGET)["proposal_id"]
+        r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is False and r["state"] == ST_DRY_RUN_BROKE
         assert "did not materialize" in r["error"]
 
@@ -1599,14 +1599,14 @@ class TestSaveDoc:
         doc.touch()
         fakes = _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
 
-        r = sw_propose_feature_add(str(doc), _VALID_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), _VALID_FEATURE, _VALID_TARGET)
         pid = r["proposal_id"]
-        sw_dry_run_feature_add(pid)
+        _sw_dry_run_feature_add_impl(pid)
 
         # Swap in a Save() that returns None, as late binding does on S_OK.
         monkeypatch.setattr(fakes["doc"], "Save", lambda: None)
 
-        cr = sw_commit_feature_add(pid)
+        cr = _sw_commit_feature_add_impl(pid)
         assert cr["ok"] is True
         assert cr["doc_saved"] is True
 
@@ -1720,7 +1720,7 @@ class TestChamferAdvertised:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
-        r = sw_propose_feature_add(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
         assert r["ok"] is True
 
 
@@ -1732,7 +1732,7 @@ class TestProposeChamfer:
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
-        r = sw_propose_feature_add(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
         assert r["ok"] is True
 
     def test_rejects_bad_distance(
@@ -1742,7 +1742,7 @@ class TestProposeChamfer:
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), {"type": "chamfer", "distance_mm": -1}, _VALID_TARGET
         )
         assert r["ok"] is False
@@ -1755,7 +1755,7 @@ class TestProposeChamfer:
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc), {"type": "chamfer", "distance_mm": 0}, _VALID_TARGET
         )
         assert r["ok"] is False
@@ -1768,7 +1768,7 @@ class TestProposeChamfer:
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc),
             {"type": "chamfer", "distance_mm": 2.0, "angle_deg": 95},
             _VALID_TARGET,
@@ -1783,7 +1783,7 @@ class TestProposeChamfer:
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
-        r = sw_propose_feature_add(
+        r = _sw_propose_feature_add_impl(
             str(doc),
             {"type": "chamfer", "distance_mm": 2.0, "angle_deg": 0},
             _VALID_TARGET,
@@ -1798,7 +1798,7 @@ class TestProposeChamfer:
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
-        r = sw_propose_feature_add(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
         assert r["ok"] is True
         rec = json.loads(
             (tmp_path / "proposals" / f"{r['proposal_id']}.json").read_text()
@@ -1816,11 +1816,11 @@ class TestDryRunChamfer:
             monkeypatch, tmp_path, str(doc), _FakeEntity(), object()
         )
         _patch_chamfer_advertised(monkeypatch)
-        pid = sw_propose_feature_add(
+        pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_CHAMFER_FEATURE_ANGLE, _VALID_TARGET
         )["proposal_id"]
 
-        r = sw_dry_run_feature_add(pid)
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_DRY_RUN_OK
@@ -1841,11 +1841,11 @@ class TestDryRunChamfer:
             monkeypatch, tmp_path, str(doc), _FakeEntity(), object()
         )
         _patch_chamfer_advertised(monkeypatch)
-        pid = sw_propose_feature_add(
+        pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET
         )["proposal_id"]
 
-        r = sw_dry_run_feature_add(pid)
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is True
         args = fakes["fm"].insert_chamfer_calls[0]
@@ -1860,11 +1860,11 @@ class TestDryRunChamfer:
             monkeypatch, tmp_path, str(doc), None, object()
         )
         _patch_chamfer_advertised(monkeypatch)
-        pid = sw_propose_feature_add(
+        pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET
         )["proposal_id"]
 
-        r = sw_dry_run_feature_add(pid)
+        r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is False
         assert r["state"] == ST_DRY_RUN_BROKE
@@ -1886,8 +1886,8 @@ class TestDryRunChamferModes:
             "type": "chamfer", "chamfer_type": "distance_distance",
             "distance_mm": 2.0, "distance2_mm": 3.0,
         }
-        pid = sw_propose_feature_add(str(doc), feat, _VALID_TARGET)["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        pid = _sw_propose_feature_add_impl(str(doc), feat, _VALID_TARGET)["proposal_id"]
+        r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is True
         args = fakes["fm"].insert_chamfer_calls[0]
         assert args[1] == 2  # swChamferDistanceDistance
@@ -1906,8 +1906,8 @@ class TestDryRunChamferModes:
             "distance_mm": 2.0, "distance2_mm": 2.0, "distance3_mm": 2.0,
         }
         target = {"point": [10.0, 10.0, 10.0]}
-        pid = sw_propose_feature_add(str(doc), feat, target)["proposal_id"]
-        r = sw_dry_run_feature_add(pid)
+        pid = _sw_propose_feature_add_impl(str(doc), feat, target)["proposal_id"]
+        r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is True
         args = fakes["fm"].insert_chamfer_calls[0]
         assert args[1] == 3  # swChamferVertex
@@ -1925,7 +1925,7 @@ class TestDryRunChamferModes:
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
         feat = {"type": "chamfer", "chamfer_type": "distance_distance", "distance_mm": 2.0}
-        r = sw_propose_feature_add(str(doc), feat, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), feat, _VALID_TARGET)
         assert r["ok"] is False
         assert "distance2_mm" in r["error"]
 
@@ -1940,7 +1940,7 @@ class TestDryRunChamferModes:
             "type": "chamfer", "chamfer_type": "vertex",
             "distance_mm": 2.0, "distance2_mm": 2.0, "distance3_mm": 2.0,
         }
-        r = sw_propose_feature_add(str(doc), feat, _VALID_TARGET)  # edge target, no point
+        r = _sw_propose_feature_add_impl(str(doc), feat, _VALID_TARGET)  # edge target, no point
         assert r["ok"] is False
         assert "point" in r["error"]
 
@@ -1952,6 +1952,6 @@ class TestDryRunChamferModes:
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
         feat = {"type": "chamfer", "chamfer_type": "bogus", "distance_mm": 2.0}
-        r = sw_propose_feature_add(str(doc), feat, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(str(doc), feat, _VALID_TARGET)
         assert r["ok"] is False
         assert "chamfer_type" in r["error"]
