@@ -203,10 +203,15 @@ def read_clearance(
     return result
 
 
-def sw_get_clearance(doc: Any, comp_a_name: str, comp_b_name: str) -> dict[str, Any]:
-    """Top-level observer: measure clearance between two assembly components.
+def _sw_get_clearance_impl(doc: Any, comp_a_name: str, comp_b_name: str) -> dict[str, Any]:
+    """Core: measure clearance between two assembly components (v0.18 implementation).
 
     Validates *doc* is an assembly, then delegates to :func:`read_clearance`.
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_clearance` free function routes here behind a
+    ``PendingDeprecationWarning``.
+
     Returns structured report:
     ``{"ok": bool, "clearance": {...}, "error": str|None}``.
 
@@ -255,6 +260,24 @@ def sw_get_clearance(doc: Any, comp_a_name: str, comp_b_name: str) -> dict[str, 
         result["ok"] = True
 
     return result
+
+
+def sw_get_clearance(doc: Any, comp_a_name: str, comp_b_name: str) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.clearance()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_clearance_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_clearance() is deprecated; use SolidWorksClient().observe.clearance(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_clearance_impl(doc, comp_a_name, comp_b_name)
 
 
 def read_face_pair_clearance(
@@ -357,10 +380,15 @@ def read_face_pair_clearance(
     return result
 
 
-def sw_get_face_clearance(
+def _sw_get_face_clearance_impl(
     doc: Any, face_a_name: str, face_b_name: str
 ) -> dict[str, Any]:
-    """Top-level observer: min distance between two named faces (W52).
+    """Core: min distance between two named faces (W52, v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_face_clearance` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Returns structured report:
     ``{"ok": bool, "clearance": {...}, "error": str|None}``.
@@ -390,6 +418,27 @@ def sw_get_face_clearance(
         result["ok"] = True
 
     return result
+
+
+def sw_get_face_clearance(
+    doc: Any, face_a_name: str, face_b_name: str
+) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.face_clearance()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_face_clearance_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_face_clearance() is deprecated; use "
+        "SolidWorksClient().observe.face_clearance(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_face_clearance_impl(doc, face_a_name, face_b_name)
 
 
 def _gap_of(clr: dict[str, Any]) -> tuple[float | None, bool, str | None]:

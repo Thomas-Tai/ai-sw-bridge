@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from ai_sw_bridge.observe_clearance import read_clearance, sw_get_clearance
+from ai_sw_bridge.observe_clearance import read_clearance, _sw_get_clearance_impl
 
 
 # ── Schema / shape tests ──────────────────────────────────────────────────
@@ -51,7 +51,7 @@ def test_sw_get_clearance_shape_when_not_assembly():
     # doc.GetType returns 1 = SW_DOC_PART
     mock_doc.GetType = 1
 
-    result = sw_get_clearance(mock_doc, "comp_a", "comp_b")
+    result = _sw_get_clearance_impl(mock_doc, "comp_a", "comp_b")
     assert isinstance(result, dict)
     assert set(result.keys()) == SW_CLEARANCE_KEYS
     assert result["ok"] is False
@@ -63,7 +63,7 @@ def test_sw_get_clearance_same_component_names():
     mock_doc = MagicMock()
     mock_doc.GetType = 2  # SW_DOC_ASSEMBLY
 
-    result = sw_get_clearance(mock_doc, "same_name", "same_name")
+    result = _sw_get_clearance_impl(mock_doc, "same_name", "same_name")
     assert result["ok"] is False
     assert result["error"] is not None
 

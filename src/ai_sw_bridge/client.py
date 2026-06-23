@@ -44,10 +44,20 @@ from .observe import (
     _sw_get_enabled_addins_impl,
 )
 from .observe_bbox import _sw_get_assembly_bbox_from_doc_impl, _sw_get_bbox_from_doc_impl
-from .observe_clearance import _sw_analyze_stackup_impl
+from .observe_clearance import (
+    _sw_analyze_stackup_impl,
+    _sw_get_clearance_impl,
+    _sw_get_face_clearance_impl,
+)
 from .observe_draft import _sw_get_draft_analysis_impl
 from .observe_inertia import _sw_get_inertia_impl
 from .observe_interference import _sw_get_interference_impl
+from .observe_measure import (
+    _sw_get_measure_angle_from_doc_impl,
+    _sw_get_measure_area_from_doc_impl,
+    _sw_get_measure_durable_pair_impl,
+    _sw_get_measure_from_doc_impl,
+)
 from .observe_section import _sw_get_section_props_impl
 from .observe_selection import _sw_get_selection_impl
 from .sw_com import get_active_doc, get_sw_app
@@ -129,6 +139,68 @@ class SolidWorksObserverFacade:
         if doc is None:
             return dict(_NO_DOC)
         return _sw_get_assembly_bbox_from_doc_impl(doc)
+
+    # ── Batch O3: observe_measure + observe_clearance verbs ────────────────
+
+    def measure_selection(self, *, doc: Any = None) -> dict[str, Any]:
+        """Measure currently selected entities in the active (or given) document (W30)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_measure_from_doc_impl(doc)
+
+    def measure_durable_pair(
+        self,
+        durable_ref_a: str,
+        durable_ref_b: str,
+        *,
+        doc: Any = None,
+    ) -> dict[str, Any]:
+        """Measure between two durable-reference entities in the active (or given) document (W52)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_measure_durable_pair_impl(doc, durable_ref_a, durable_ref_b)
+
+    def measure_angle(self, *, doc: Any = None) -> dict[str, Any]:
+        """Measure the angle of currently selected entities in the active (or given) document (W52)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_measure_angle_from_doc_impl(doc)
+
+    def measure_area(self, *, doc: Any = None) -> dict[str, Any]:
+        """Measure the area of the currently selected face in the active (or given) document (W52)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_measure_area_from_doc_impl(doc)
+
+    def clearance(
+        self,
+        comp_a: str,
+        comp_b: str,
+        *,
+        doc: Any = None,
+    ) -> dict[str, Any]:
+        """Measure minimum distance between two assembly components (W35)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_clearance_impl(doc, comp_a, comp_b)
+
+    def face_clearance(
+        self,
+        face_a: str,
+        face_b: str,
+        *,
+        doc: Any = None,
+    ) -> dict[str, Any]:
+        """Measure minimum distance between two named faces (W52)."""
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_face_clearance_impl(doc, face_a, face_b)
 
     # ── Batch O2: observe.py active-doc verbs ──────────────────────────────
 

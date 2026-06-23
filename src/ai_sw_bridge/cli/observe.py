@@ -101,7 +101,8 @@ def _run_measure(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_measure_selection(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().measure_selection()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.measure_selection()
 
 
 def _run_inertia(_args: argparse.Namespace) -> dict[str, Any]:
@@ -126,7 +127,8 @@ def _run_interference(_args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_clearance(args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().clearance(comp_a=args.comp_a, comp_b=args.comp_b)
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.clearance(comp_a=args.comp_a, comp_b=args.comp_b)
 
 
 def _run_analyze_stackup(args: argparse.Namespace) -> dict[str, Any]:
@@ -170,21 +172,25 @@ def _run_assembly_bbox(_args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_measure_durable_pair(args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().measure_durable_pair(
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.measure_durable_pair(
         durable_ref_a=args.ref_a, durable_ref_b=args.ref_b
     )
 
 
 def _run_measure_angle(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().measure_angle()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.measure_angle()
 
 
 def _run_measure_area(_args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().measure_area()
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.measure_area()
 
 
 def _run_face_clearance(args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksObserver().face_clearance(
+    # v0.18 slice: route through the class-based SolidWorksClient.
+    return SolidWorksClient().observe.face_clearance(
         face_a=args.face_a, face_b=args.face_b
     )
 

@@ -43,7 +43,11 @@ from ai_sw_bridge.observe_bbox import (
 )
 from ai_sw_bridge.observe_clearance import (
     _sw_analyze_stackup_impl,
+    _sw_get_clearance_impl,
+    _sw_get_face_clearance_impl,
     sw_analyze_stackup,
+    sw_get_clearance,
+    sw_get_face_clearance,
 )
 from ai_sw_bridge.observe_draft import _sw_get_draft_analysis_impl, sw_get_draft_analysis
 from ai_sw_bridge.observe_inertia import _sw_get_inertia_impl, sw_get_inertia
@@ -53,6 +57,16 @@ from ai_sw_bridge.observe_interference import (
 )
 from ai_sw_bridge.observe_section import _sw_get_section_props_impl, sw_get_section_props
 from ai_sw_bridge.observe_selection import _sw_get_selection_impl, sw_get_selection
+from ai_sw_bridge.observe_measure import (
+    _sw_get_measure_from_doc_impl,
+    _sw_get_measure_durable_pair_impl,
+    _sw_get_measure_angle_from_doc_impl,
+    _sw_get_measure_area_from_doc_impl,
+    sw_get_measure_from_doc,
+    sw_get_measure_durable_pair,
+    sw_get_measure_angle_from_doc,
+    sw_get_measure_area_from_doc,
+)
 from ai_sw_bridge.observe import (
     # Batch O2 _impl cores
     _sw_get_active_doc_impl,
@@ -543,3 +557,126 @@ def test_client_facade_enabled_addins_routes_without_warning():
         with patch.object(_observe_mod, "get_sw_app", return_value=object()):
             res = client.observe.enabled_addins()
     assert res["ok"] is True and res["error"] == "api_not_present"
+
+
+# ── Batch O3: observe_measure + observe_clearance verbs ─────────────────────
+#
+# sw_get_measure_from_doc, sw_get_measure_durable_pair,
+# sw_get_measure_angle_from_doc, sw_get_measure_area_from_doc,
+# sw_get_clearance, sw_get_face_clearance — shim warns + delegates;
+# facade routes without warning.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# sw_get_measure_from_doc / measure_selection — bare object() has no SelectionManager
+def test_sw_get_measure_from_doc_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_get_measure_from_doc"):
+        shim = sw_get_measure_from_doc(object())
+    impl = _sw_get_measure_from_doc_impl(object())
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_measure_selection_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.observe.measure_selection(doc=object())
+    assert res["ok"] is False
+
+
+# sw_get_measure_durable_pair / measure_durable_pair — bare object() fails in durable-ref resolution
+def test_sw_get_measure_durable_pair_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_get_measure_durable_pair"):
+        shim = sw_get_measure_durable_pair(object(), "ref_a", "ref_b")
+    impl = _sw_get_measure_durable_pair_impl(object(), "ref_a", "ref_b")
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_measure_durable_pair_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.observe.measure_durable_pair("ref_a", "ref_b", doc=object())
+    assert res["ok"] is False
+
+
+# sw_get_measure_angle_from_doc / measure_angle — bare object() has no SelectionManager
+def test_sw_get_measure_angle_from_doc_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_get_measure_angle_from_doc"):
+        shim = sw_get_measure_angle_from_doc(object())
+    impl = _sw_get_measure_angle_from_doc_impl(object())
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_measure_angle_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.observe.measure_angle(doc=object())
+    assert res["ok"] is False
+
+
+# sw_get_measure_area_from_doc / measure_area — bare object() has no SelectionManager
+def test_sw_get_measure_area_from_doc_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_get_measure_area_from_doc"):
+        shim = sw_get_measure_area_from_doc(object())
+    impl = _sw_get_measure_area_from_doc_impl(object())
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_measure_area_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.observe.measure_area(doc=object())
+    assert res["ok"] is False
+
+
+# sw_get_clearance / clearance — bare object() has no GetType → typed error
+def test_sw_get_clearance_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_get_clearance"):
+        shim = sw_get_clearance(object(), "a", "b")
+    impl = _sw_get_clearance_impl(object(), "a", "b")
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_clearance_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.observe.clearance("a", "b", doc=object())
+    assert res["ok"] is False
+
+
+# sw_get_face_clearance / face_clearance — bare object() fails typed(IModelDoc2)
+def test_sw_get_face_clearance_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_get_face_clearance"):
+        shim = sw_get_face_clearance(object(), "Face<1>", "Face<2>")
+    impl = _sw_get_face_clearance_impl(object(), "Face<1>", "Face<2>")
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_face_clearance_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.observe.face_clearance("Face<1>", "Face<2>", doc=object())
+    assert res["ok"] is False
+
+
+# ── Batch O3: no_active_doc guard for all 6 O3 facade methods ──────────────
+
+def test_client_facade_o3_no_active_doc_guard():
+    client = SolidWorksClient(app=object(), mod=object())
+    client.active_doc = lambda: None  # type: ignore[method-assign]
+    assert client.observe.measure_selection()["error"] == "no_active_doc"
+    assert client.observe.measure_durable_pair("a", "b")["error"] == "no_active_doc"
+    assert client.observe.measure_angle()["error"] == "no_active_doc"
+    assert client.observe.measure_area()["error"] == "no_active_doc"
+    assert client.observe.clearance("a", "b")["error"] == "no_active_doc"
+    assert client.observe.face_clearance("a", "b")["error"] == "no_active_doc"

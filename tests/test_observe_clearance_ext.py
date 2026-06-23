@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 from ai_sw_bridge.observe_clearance import (
     read_face_pair_clearance,
-    sw_get_face_clearance,
+    _sw_get_face_clearance_impl,
 )
 
 
@@ -33,7 +33,7 @@ def test_read_face_clearance_shape_when_same_face():
 def test_sw_get_face_clearance_shape():
     """Verify return shape keys."""
     mock_doc = MagicMock()
-    result = sw_get_face_clearance(mock_doc, "Face<1>", "Face<1>")
+    result = _sw_get_face_clearance_impl(mock_doc, "Face<1>", "Face<1>")
     assert set(result.keys()) == SW_FACE_CLEARANCE_KEYS
     assert result["ok"] is False
 
@@ -130,7 +130,7 @@ def test_sw_get_face_clearance_green():
     mock_doc_typed.Extension = ext
 
     with patch("ai_sw_bridge.observe_clearance.typed", return_value=mock_doc_typed):
-        result = sw_get_face_clearance(mock_doc, "Face<1>", "Face<2>")
+        result = _sw_get_face_clearance_impl(mock_doc, "Face<1>", "Face<2>")
 
     assert result["ok"] is True
     assert result["clearance"]["min_distance_mm"] == 25.0

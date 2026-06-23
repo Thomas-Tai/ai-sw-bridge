@@ -155,7 +155,8 @@ def register(mcp: Any) -> None:
         {distance_mm, delta_x_mm, delta_y_mm, delta_z_mm}.
         Pre-select entities via select_entity or SW UI before calling.
         """
-        return SolidWorksObserver().measure_selection()
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.measure_selection()
 
     @mcp.tool()
     @com_tool
@@ -181,7 +182,8 @@ def register(mcp: Any) -> None:
         comp_a and comp_b are IComponent2.Name2 values
         (e.g. 'block_20mm-1', 'block_20mm-2'). Assembly docs only.
         """
-        return SolidWorksObserver().clearance(comp_a=comp_a, comp_b=comp_b)
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.clearance(comp_a=comp_a, comp_b=comp_b)
 
     @mcp.tool()
     @com_tool

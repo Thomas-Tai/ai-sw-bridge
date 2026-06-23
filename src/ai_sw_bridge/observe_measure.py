@@ -124,11 +124,15 @@ def _create_measure(doc: Any) -> tuple[Any | None, str | None]:
         return None, raise_err or f"CreateMeasure failed: {exc!r}"
 
 
-def sw_get_measure_from_doc(doc: Any) -> dict[str, Any]:
-    """Top-level observer: measure currently selected entities.
+def _sw_get_measure_from_doc_impl(doc: Any) -> dict[str, Any]:
+    """Core: measure currently selected entities (v0.18 implementation).
 
     Validates doc exists, creates IMeasure, runs Calculate,
     then delegates to :func:`read_measure`.
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_measure_from_doc` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Returns structured report:
     ``{"ok": bool, "measure": {...}, "selected_count": int, "error": str|None}``.
@@ -269,6 +273,25 @@ def sw_get_measure_from_doc(doc: Any) -> dict[str, Any]:
         result["ok"] = True
 
     return result
+
+
+def sw_get_measure_from_doc(doc: Any) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.measure_selection()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_measure_from_doc_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_measure_from_doc() is deprecated; use "
+        "SolidWorksClient().observe.measure_selection(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_measure_from_doc_impl(doc)
 
 
 def _resolve_durable_ref(
@@ -430,10 +453,15 @@ def read_measure_durable_pair(
     return result
 
 
-def sw_get_measure_durable_pair(
+def _sw_get_measure_durable_pair_impl(
     doc: Any, durable_ref_a: str, durable_ref_b: str
 ) -> dict[str, Any]:
-    """Top-level observer: measure between two durable references (W52).
+    """Core: measure between two durable references (W52, v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_measure_durable_pair` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Returns structured report:
     ``{"ok": bool, "measure": {distance_mm, delta_x_mm, delta_y_mm, delta_z_mm},
@@ -460,6 +488,27 @@ def sw_get_measure_durable_pair(
         "delta_z_mm": meas["delta_z_mm"],
     }
     return result
+
+
+def sw_get_measure_durable_pair(
+    doc: Any, durable_ref_a: str, durable_ref_b: str
+) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.measure_durable_pair()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_measure_durable_pair_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_measure_durable_pair() is deprecated; use "
+        "SolidWorksClient().observe.measure_durable_pair(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_measure_durable_pair_impl(doc, durable_ref_a, durable_ref_b)
 
 
 def read_measure_angle(measure: Any) -> dict[str, Any]:
@@ -512,8 +561,13 @@ def read_measure_area(measure: Any) -> dict[str, Any]:
     return result
 
 
-def sw_get_measure_angle_from_doc(doc: Any) -> dict[str, Any]:
-    """Top-level observer: angle of currently selected entities (W52).
+def _sw_get_measure_angle_from_doc_impl(doc: Any) -> dict[str, Any]:
+    """Core: angle of currently selected entities (W52, v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_measure_angle_from_doc` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Measures the current selection and reads ``IMeasure.Angle``.
     Returns ``{"ok": bool, "measure": {"angle_deg": float|None}, "error": str|None}``.
@@ -571,8 +625,13 @@ def sw_get_measure_angle_from_doc(doc: Any) -> dict[str, Any]:
     return result
 
 
-def sw_get_measure_area_from_doc(doc: Any) -> dict[str, Any]:
-    """Top-level observer: area of currently selected entity (W52).
+def _sw_get_measure_area_from_doc_impl(doc: Any) -> dict[str, Any]:
+    """Core: area of currently selected entity (W52, v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.observe`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_get_measure_area_from_doc` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Measures the current selection and reads ``IMeasure.Area``.
     Returns ``{"ok": bool, "measure": {"area_mm2": float|None}, "error": str|None}``.
@@ -628,3 +687,41 @@ def sw_get_measure_area_from_doc(doc: Any) -> dict[str, Any]:
 
     result["measure"] = {"area_mm2": area_result["area_mm2"]}
     return result
+
+
+def sw_get_measure_angle_from_doc(doc: Any) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.measure_angle()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_measure_angle_from_doc_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_measure_angle_from_doc() is deprecated; use "
+        "SolidWorksClient().observe.measure_angle(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_measure_angle_from_doc_impl(doc)
+
+
+def sw_get_measure_area_from_doc(doc: Any) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().observe.measure_area()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_measure_area_from_doc_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_get_measure_area_from_doc() is deprecated; use "
+        "SolidWorksClient().observe.measure_area(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_get_measure_area_from_doc_impl(doc)

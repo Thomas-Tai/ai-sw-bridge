@@ -13,9 +13,9 @@ from ai_sw_bridge.observe_measure import (
     read_measure_angle,
     read_measure_area,
     read_measure_durable_pair,
-    sw_get_measure_angle_from_doc,
-    sw_get_measure_area_from_doc,
-    sw_get_measure_durable_pair,
+    _sw_get_measure_angle_from_doc_impl,
+    _sw_get_measure_area_from_doc_impl,
+    _sw_get_measure_durable_pair_impl,
 )
 
 
@@ -135,7 +135,7 @@ def test_sw_get_measure_angle_no_selection():
     sel_mgr.GetSelectedObjectCount2 = MagicMock(return_value=0)
     mock_doc.SelectionManager = sel_mgr
 
-    result = sw_get_measure_angle_from_doc(mock_doc)
+    result = _sw_get_measure_angle_from_doc_impl(mock_doc)
     assert result["ok"] is False
     assert "no entities selected" in str(result["error"])
 
@@ -147,7 +147,7 @@ def test_sw_get_measure_area_no_selection():
     sel_mgr.GetSelectedObjectCount2 = MagicMock(return_value=0)
     mock_doc.SelectionManager = sel_mgr
 
-    result = sw_get_measure_area_from_doc(mock_doc)
+    result = _sw_get_measure_area_from_doc_impl(mock_doc)
     assert result["ok"] is False
     assert "no entities selected" in str(result["error"])
 
@@ -166,7 +166,7 @@ def test_sw_get_measure_angle_green():
     ext.CreateMeasure = MagicMock(return_value=mock_measure)
     mock_doc.Extension = ext
 
-    result = sw_get_measure_angle_from_doc(mock_doc)
+    result = _sw_get_measure_angle_from_doc_impl(mock_doc)
     assert result["ok"] is True
     assert result["measure"]["angle_deg"] is not None
     assert abs(result["measure"]["angle_deg"] - 30.0) < 0.001
@@ -186,7 +186,7 @@ def test_sw_get_measure_area_green():
     ext.CreateMeasure = MagicMock(return_value=mock_measure)
     mock_doc.Extension = ext
 
-    result = sw_get_measure_area_from_doc(mock_doc)
+    result = _sw_get_measure_area_from_doc_impl(mock_doc)
     assert result["ok"] is True
     assert result["measure"]["area_mm2"] is not None
     assert abs(result["measure"]["area_mm2"] - 100.0) < 0.01
@@ -203,7 +203,7 @@ def test_sw_get_measure_angle_create_measure_none():
     ext.CreateMeasure = MagicMock(return_value=None)
     mock_doc.Extension = ext
 
-    result = sw_get_measure_angle_from_doc(mock_doc)
+    result = _sw_get_measure_angle_from_doc_impl(mock_doc)
     assert result["ok"] is False
     assert "CreateMeasure" in str(result["error"])
 
@@ -215,7 +215,7 @@ def test_sw_get_measure_area_result_shape():
     sel_mgr.GetSelectedObjectCount2 = MagicMock(return_value=0)
     mock_doc.SelectionManager = sel_mgr
 
-    result = sw_get_measure_area_from_doc(mock_doc)
+    result = _sw_get_measure_area_from_doc_impl(mock_doc)
     assert set(result.keys()) == SW_AREA_KEYS
 
 
@@ -226,7 +226,7 @@ def test_sw_get_measure_angle_result_shape():
     sel_mgr.GetSelectedObjectCount2 = MagicMock(return_value=0)
     mock_doc.SelectionManager = sel_mgr
 
-    result = sw_get_measure_angle_from_doc(mock_doc)
+    result = _sw_get_measure_angle_from_doc_impl(mock_doc)
     assert set(result.keys()) == SW_ANGLE_KEYS
 
 
@@ -243,7 +243,7 @@ def test_read_measure_durable_pair_shape_on_bad_ref():
 
 
 def test_sw_get_measure_durable_pair_shape():
-    """Verify sw_get_measure_durable_pair return shape."""
+    """Verify _sw_get_measure_durable_pair_impl return shape."""
     mock_doc = MagicMock()
 
     with patch("ai_sw_bridge.observe_measure.typed_extension") as mock_ext, \
@@ -251,7 +251,7 @@ def test_sw_get_measure_durable_pair_shape():
         mock_ext.side_effect = Exception("no extension")
         mock_typed.side_effect = Exception("no typed")
 
-        result = sw_get_measure_durable_pair(mock_doc, "ref_a", "ref_b")
+        result = _sw_get_measure_durable_pair_impl(mock_doc, "ref_a", "ref_b")
     assert set(result.keys()) == SW_DURABLE_PAIR_KEYS
     assert result["ok"] is False
     assert result["measure"] is not None
@@ -300,7 +300,7 @@ def test_sw_get_measure_durable_pair_green():
             return MagicMock()
         mock_typed_fn.side_effect = typed_se
 
-        result = sw_get_measure_durable_pair(mock_doc, pid_a, pid_b)
+        result = _sw_get_measure_durable_pair_impl(mock_doc, pid_a, pid_b)
 
     assert result["ok"] is True
     assert result["measure"]["distance_mm"] == 10.0

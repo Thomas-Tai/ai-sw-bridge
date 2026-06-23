@@ -29,9 +29,11 @@ from .observe_bbox import (
 )
 from .observe_clearance import (
     _sw_analyze_stackup_impl,
+    _sw_get_clearance_impl,
+    _sw_get_face_clearance_impl,
     sw_analyze_stackup,  # noqa: F401  (re-export: backward-compat import path)
-    sw_get_clearance,
-    sw_get_face_clearance,
+    sw_get_clearance,  # noqa: F401  (re-export: backward-compat import path)
+    sw_get_face_clearance,  # noqa: F401  (re-export: backward-compat import path)
 )
 from .observe_draft import (
     _sw_get_draft_analysis_impl,
@@ -46,10 +48,14 @@ from .observe_interference import (
     sw_get_interference,  # noqa: F401  (re-export: backward-compat import path)
 )
 from .observe_measure import (
-    sw_get_measure_angle_from_doc,
-    sw_get_measure_area_from_doc,
-    sw_get_measure_durable_pair,
-    sw_get_measure_from_doc,
+    _sw_get_measure_angle_from_doc_impl,
+    _sw_get_measure_area_from_doc_impl,
+    _sw_get_measure_durable_pair_impl,
+    _sw_get_measure_from_doc_impl,
+    sw_get_measure_angle_from_doc,  # noqa: F401  (re-export: backward-compat import path)
+    sw_get_measure_area_from_doc,  # noqa: F401  (re-export: backward-compat import path)
+    sw_get_measure_durable_pair,  # noqa: F401  (re-export: backward-compat import path)
+    sw_get_measure_from_doc,  # noqa: F401  (re-export: backward-compat import path)
 )
 from .observe_selection import (
     _sw_get_selection_impl,
@@ -2218,7 +2224,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_measure_from_doc(doc)
+        return _sw_get_measure_from_doc_impl(doc)
 
     def enabled_addins(self) -> dict[str, Any]:
         """Enumerate currently-loaded SOLIDWORKS add-ins (W7.1)."""
@@ -2254,7 +2260,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_clearance(doc, comp_a, comp_b)
+        return _sw_get_clearance_impl(doc, comp_a, comp_b)
 
     def analyze_stackup(
         self, component_names: Any, check_endpoints: bool = True
@@ -2332,7 +2338,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_measure_durable_pair(doc, durable_ref_a, durable_ref_b)
+        return _sw_get_measure_durable_pair_impl(doc, durable_ref_a, durable_ref_b)
 
     def measure_angle(self) -> dict[str, Any]:
         """Measure the angle of currently selected entities (W52).
@@ -2343,7 +2349,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_measure_angle_from_doc(doc)
+        return _sw_get_measure_angle_from_doc_impl(doc)
 
     def measure_area(self) -> dict[str, Any]:
         """Measure the area of the currently selected face (W52).
@@ -2353,7 +2359,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_measure_area_from_doc(doc)
+        return _sw_get_measure_area_from_doc_impl(doc)
 
     def face_clearance(self, face_a: str, face_b: str) -> dict[str, Any]:
         """Measure min distance between two named faces (W52).
@@ -2364,7 +2370,7 @@ class SolidWorksObserver:
         doc = get_active_doc(get_sw_app())
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
-        return sw_get_face_clearance(doc, face_a, face_b)
+        return _sw_get_face_clearance_impl(doc, face_a, face_b)
 
     def undercut_faces(
         self,
