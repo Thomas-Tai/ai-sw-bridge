@@ -16,6 +16,7 @@ import base64
 from typing import Any
 
 import pythoncom
+import win32com.client.dynamic as _w32dyn
 from win32com.client import VARIANT
 
 from ..com.earlybind import typed
@@ -30,6 +31,20 @@ from ..selection import (
 from .verify import materialized as _materialized
 
 SPIKE_STATUS = "GREEN"
+
+
+def _latebound(com_obj: Any) -> Any:
+    """Re-wrap a COM proxy as LATE-BOUND (``win32com.client.dynamic.Dispatch``).
+
+    A ``VARIANT(VT_DISPATCH, None)`` ICallout argument marshals on a late-bound
+    proxy but NOT on a makepy-typed one (raises ``TypeError('The Python
+    instance can not be converted to a COM object')``). The disk-transaction
+    path opens docs TYPED (``mutate._open_doc_typed``), so any Extension callout
+    must be late-bound first. Isolated as a seam so offline tests can
+    monkeypatch it to identity and still spy the underlying COM call.
+    """
+    return _w32dyn.Dispatch(com_obj)
+
 
 # swRefPlaneReferenceConstraint_e (duplicated — also used by the edge_flange
 # island that stays in mutate.py).
@@ -169,17 +184,24 @@ def _create_ref_axis(
         return False, "target.planes must be a 2-element list of plane names"
     try:
         doc.ClearSelection2(True)
-        # SelectByID has no Append arg; route the append-select via the
-        # IModelDocExtension (where SelectByID2 lives). The 8th arg (ICallout)
-        # MUST be VARIANT(VT_DISPATCH, None): a bare Python None walls
-        # 'Type mismatch arg 8' (com_error -2147352571) on the late-bound
-        # Extension proxy out-of-process — the production path. This handler
-        # was latently OOP-broken until the W64 seat audit caught it
-        # (probe_existing_ref_axis_oop 2026-06-18: bare None walls, VARIANT
-        # null materializes 'RefAxis'). The offline tests never saw it because
-        # they monkeypatch the COM seam.
-        ext = doc.Extension
+        # Append-select the 2nd plane via IModelDocExtension.SelectByID2 — the
+        # 5-arg IModelDoc2.SelectByID has no Append and does NOT accumulate
+        # (seat-proven: a 2nd SelectByID leaves sel_count==1). Its 8th arg
+        # (ICallout) needs VARIANT(VT_DISPATCH, None) — but that VARIANT only
+        # marshals on a LATE-BOUND Extension. The disk-transaction path
+        # (dry_run/commit) opens the doc via _open_doc_typed → a TYPED
+        # IModelDocExtension, on which the VARIANT callout raises
+        # TypeError('The Python instance can not be converted to a COM object').
+        # The W64 fix (VARIANT vs bare-None) was characterized on a late-bound
+        # OOP probe, NOT the typed transaction path it actually runs in — so it
+        # fixed the wrong binding and the full lifecycle was never seat-proven
+        # until cut #3's gate. _latebound() re-wraps the Extension late-bound so
+        # the callout marshals regardless of how the doc was opened (typed
+        # transaction docs AND late-bound direct calls); InsertAxis2 still runs
+        # on the original doc — both proxies share the one live selection set.
+        # Seat-proven 2026-06-23 (probe_ref_axis_typed_select2 candidate D).
         doc.SelectByID(planes[0], "PLANE", 0, 0, 0)
+        ext = _latebound(doc.Extension)
         ext.SelectByID2(
             planes[1], "PLANE", 0, 0, 0, True, 0,
             VARIANT(pythoncom.VT_DISPATCH, None), 0,

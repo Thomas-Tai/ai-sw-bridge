@@ -488,10 +488,18 @@ class TestCreateRefAxisOOPContract:
     before recording it. This test asserts the marshaling contract directly.
     """
 
-    def test_append_select_callout_is_variant_not_bare_none(self) -> None:
+    def test_append_select_callout_is_variant_not_bare_none(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from win32com.client import VARIANT  # late import: pywin32 only
         import pythoncom
 
+        # The handler re-wraps doc.Extension late-bound via _latebound() (so the
+        # VARIANT callout marshals on the typed transaction doc). Patch the seam
+        # to identity so the spy Extension is used directly and records the call;
+        # the VARIANT-callout contract below is what production passes to the
+        # (real) late-bound Extension.
+        monkeypatch.setattr(ref_geometry, "_latebound", lambda obj: obj)
         doc = _RefAxisSpyDoc()
         ok, err = ref_geometry._create_ref_axis(
             doc, {}, {"planes": ["Front Plane", "Right Plane"]}
