@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-23
+
+**General Availability.** The first stable release. `1.0.0` locks the commercial
+architecture: a single public class API over a strictly-layered internal core
+(`SolidWorksClient` → transaction pipeline → modular feature registry). The
+legacy free-function surface is gone; the dependency graph is provably acyclic
+and matches the conceptual architecture (import-linter: 0 violations).
+
+This release is the culmination of the v0.18 grace line (which froze the
+commercial boundary and deprecated the `sw_*` functions) and the 1.0.0
+strangler-fig refactor (which dismantled the ~4,700-line `mutate.py` monolith
+into a per-feature registry). The full offline suite is green at 3502 tests.
+
+### Added
+
+- **`SolidWorksClient` is the General Availability public API.** All capability
+  is reached through one stateful, lazily-connected, injectable client and its
+  five domain facades: `.observe` (read), `.mutate` (write — propose/dry-run/
+  commit transactions), `.urdf`, `.export`, and `.features`.
+
+### Changed
+
+- **Modular feature registry.** Every `feature_add` handler now lives in its own
+  `features/` module, registered in a `HANDLER_REGISTRY` and dispatched by a
+  pure registry lookup. `mutate.py` retains only the transaction/orchestration
+  pipeline (propose/dry-run/commit, the proposal store, validators) and holds
+  **zero** feature handlers. This sharply improves maintainability and
+  extensibility — a new feature is a new module + one registration line, with no
+  edits to the monolith and no parallel-work collisions.
+- The internal architecture is now strictly layered: `client` (facades) →
+  `mutate` (transactions) → `features` (handlers). The `client → mutate`
+  delegation is the single intended cross-layer edge, formally declared.
+
+### Removed
+
+- **The 44 legacy `sw_*` free functions are deleted.** They emitted
+  `PendingDeprecationWarning` throughout v0.18 and were always slated for removal
+  in 1.0.0. The implementation cores remain as module-private functions accessed
+  exclusively by the client facades — the `SolidWorksClient` class is now the
+  **sole** public interface.
+
+### Migration
+
+- Replace any remaining `sw_foo(...)` free-function call with the corresponding
+  `SolidWorksClient` facade method (e.g. `sw_get_interference(doc)` →
+  `SolidWorksClient().observe.get_interference()`; `sw_propose_feature_add(...)`
+  → `client.mutate.propose_feature_add(...)`). The data contracts (return
+  payloads) are unchanged — only the entry point moved.
+
 ## [0.18.1] - 2026-06-23
 
 Finalizes the v0.18 commercial boundary. `0.18.0` introduced `SolidWorksClient`
