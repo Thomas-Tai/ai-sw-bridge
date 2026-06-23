@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-06-23
+
+Finalizes the v0.18 commercial boundary. `0.18.0` introduced `SolidWorksClient`
+and sealed the 44-verb `sw_*` surface behind `.observe` / `.mutate` / `.urdf`;
+`0.18.1` completes the surface with the two remaining facade-only domains, so
+every framework capability is reachable through the single client.
+
+### Added
+
+- **`SolidWorksClient.export` (`SolidWorksExportFacade`)** — `run(doc, requests,
+  part_name)` wraps the `export.export_all` orchestrator. The internal build
+  pipeline (`spec/orchestrator.py`) and URDF export now route file output through
+  this facade, making the client the single export seam.
+- **`SolidWorksClient.features` (`SolidWorksFeaturesFacade`)** — read-only
+  introspection over the feature registry: `list_kinds()` returns the
+  seat-proven feature kinds the build supports, `supports(kind)` tests
+  membership. A discovery surface for consumers deciding what to dispatch; the
+  feature-creation write path remains on `.mutate.propose_feature_add`.
+
+These are facade-only (no `sw_*` free functions exist in these domains), so no
+deprecation shims were added. The full client surface is now `.observe` /
+`.mutate` / `.urdf` / `.export` / `.features`.
+
 ## [0.18.0] - 2026-06-23
 
 The **class-based API grace line** release. Freezes the commercial-contract
