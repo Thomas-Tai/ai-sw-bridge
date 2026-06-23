@@ -70,6 +70,11 @@ from .mutate import (
     _sw_propose_feature_add_impl,
     _sw_dry_run_feature_add_impl,
     _sw_commit_feature_add_impl,
+    # Batch M2: assembly verbs
+    _sw_propose_assembly_impl,
+    _sw_dry_run_assembly_impl,
+    _sw_commit_assembly_impl,
+    _sw_edit_assembly_impl,
 )
 from .sw_com import get_active_doc, get_sw_app
 
@@ -344,6 +349,34 @@ class SolidWorksMutatorFacade:
     def commit_feature_add(self, proposal_id: str) -> dict[str, Any]:
         """Re-run a dry-run-ok feature-add and save the SW document."""
         return _sw_commit_feature_add_impl(proposal_id=proposal_id)
+
+    # ── Batch M2: assembly verbs ─────────────────────────────────────────
+
+    def propose_assembly(self, spec: dict[str, Any]) -> dict[str, Any]:
+        """Stage an assembly proposal — validate offline; no SW state touched."""
+        return _sw_propose_assembly_impl(spec=spec)
+
+    def dry_run_assembly(self, proposal_id: str) -> dict[str, Any]:
+        """Dry-run an assembly proposal — validate bindings without mutating SW."""
+        return _sw_dry_run_assembly_impl(proposal_id=proposal_id)
+
+    def commit_assembly(
+        self,
+        proposal_id: str,
+        output_path: str,
+        *,
+        part_paths: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Build the assembly — place components, create mates, save."""
+        return _sw_commit_assembly_impl(
+            proposal_id=proposal_id, output_path=output_path, part_paths=part_paths
+        )
+
+    def edit_assembly(
+        self, manifest_path: str, op: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Edit an assembly via its manifest sidecar."""
+        return _sw_edit_assembly_impl(manifest_path=manifest_path, op=op)
 
 
 class SolidWorksClient:

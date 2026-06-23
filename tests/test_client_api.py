@@ -115,6 +115,16 @@ from ai_sw_bridge.mutate import (
     sw_propose_feature_add,
     sw_dry_run_feature_add,
     sw_commit_feature_add,
+    # Batch M2 _impl cores (assembly)
+    _sw_propose_assembly_impl,
+    _sw_dry_run_assembly_impl,
+    _sw_commit_assembly_impl,
+    _sw_edit_assembly_impl,
+    # Batch M2 shims (assembly)
+    sw_propose_assembly,
+    sw_dry_run_assembly,
+    sw_commit_assembly,
+    sw_edit_assembly,
     # v0.14 legacy facade (verify no internal warning leak)
     ProposalStore,
 )
@@ -890,3 +900,83 @@ def test_client_mutate_facade_type_and_cached():
     client = SolidWorksClient(app=object(), mod=object())
     assert isinstance(client.mutate, SolidWorksMutatorFacade)
     assert client.mutate is client.mutate  # cached
+
+
+# ── Batch M2: assembly verbs ─────────────────────────────────────────────
+#
+# sw_propose_assembly, sw_dry_run_assembly, sw_commit_assembly,
+# sw_edit_assembly — shim warns + delegates; facade routes without warning.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# sw_propose_assembly — _impl validates offline (non-dict → error)
+def test_sw_propose_assembly_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_propose_assembly"):
+        shim = sw_propose_assembly("not a dict")  # type: ignore[arg-type]
+    impl = _sw_propose_assembly_impl("not a dict")  # type: ignore[arg-type]
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_propose_assembly_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.propose_assembly("not a dict")  # type: ignore[arg-type]
+    assert res["ok"] is False
+
+
+# sw_dry_run_assembly — _impl loads proposal from disk (nonexistent id → error)
+def test_sw_dry_run_assembly_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_dry_run_assembly"):
+        shim = sw_dry_run_assembly("nonexistent_id")
+    impl = _sw_dry_run_assembly_impl("nonexistent_id")
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "not found" in shim["error"]
+
+
+def test_client_facade_dry_run_assembly_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.dry_run_assembly("nonexistent_id")
+    assert res["ok"] is False
+    assert "not found" in res["error"]
+
+
+# sw_commit_assembly — _impl loads proposal from disk (nonexistent id → error)
+def test_sw_commit_assembly_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_commit_assembly"):
+        shim = sw_commit_assembly("nonexistent_id", "/tmp/out.sldasm")
+    impl = _sw_commit_assembly_impl("nonexistent_id", "/tmp/out.sldasm")
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "not found" in shim["error"]
+
+
+def test_client_facade_commit_assembly_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.commit_assembly("nonexistent_id", "/tmp/out.sldasm")
+    assert res["ok"] is False
+    assert "not found" in res["error"]
+
+
+# sw_edit_assembly — _impl loads manifest from disk (nonexistent → error)
+def test_sw_edit_assembly_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_edit_assembly"):
+        shim = sw_edit_assembly("/no/such.manifest.json", {"op": "bogus"})
+    impl = _sw_edit_assembly_impl("/no/such.manifest.json", {"op": "bogus"})
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "manifest load failed" in shim["error"]
+
+
+def test_client_facade_edit_assembly_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.edit_assembly("/no/such.manifest.json", {"op": "bogus"})
+    assert res["ok"] is False
+    assert "manifest load failed" in res["error"]

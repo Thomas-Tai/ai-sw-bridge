@@ -3737,13 +3737,19 @@ def sw_propose_feature_add(
     )
 
 
-def sw_propose_assembly(spec: dict[str, Any]) -> dict[str, Any]:
-    """Stage an assembly proposal. Validates offline; no SW state touched.
+def _sw_propose_assembly_impl(spec: dict[str, Any]) -> dict[str, Any]:
+    """Core: stage an assembly proposal (v0.18 implementation).
 
-    The assembly kind is **de-advertised** — this function is the only entry
-    point and is not reachable through ``sw_propose_feature_add``. It validates
-    the spec structurally (jsonschema against ``ASSEMBLY_SCHEMA``) and
-    semantically (``validate_assembly``) before writing a proposal record with
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_propose_assembly` free function routes here behind a
+    ``PendingDeprecationWarning``.
+
+    Validates offline; no SW state touched. The assembly kind is
+    **de-advertised** — this function is the only entry point and is not
+    reachable through ``sw_propose_feature_add``. It validates the spec
+    structurally (jsonschema against ``ASSEMBLY_SCHEMA``) and semantically
+    (``validate_assembly``) before writing a proposal record with
     ``kind: "assembly"``.
     """
     import jsonschema
@@ -3796,11 +3802,36 @@ def sw_propose_assembly(spec: dict[str, Any]) -> dict[str, Any]:
         return result
 
 
-def sw_dry_run_assembly(proposal_id: str) -> dict[str, Any]:
-    """Dry-run an assembly proposal — validate bindings without mutating SW.
+def sw_propose_assembly(spec: dict[str, Any]) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.propose_assembly()``.
 
-    Resolves part file paths, confirms files exist, and validates mate face_refs
-    are well-formed. Does not open any SW documents.
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_propose_assembly_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_propose_assembly() is deprecated; use "
+        "SolidWorksClient().mutate.propose_assembly(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_propose_assembly_impl(spec=spec)
+
+
+def _sw_dry_run_assembly_impl(proposal_id: str) -> dict[str, Any]:
+    """Core: dry-run an assembly proposal (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_dry_run_assembly` free function routes here behind a
+    ``PendingDeprecationWarning``.
+
+    Validates bindings without mutating SW. Resolves part file paths,
+    confirms files exist, and validates mate face_refs are well-formed.
+    Does not open any SW documents.
     """
     from .assembly.lifecycle import dry_run_assembly
 
@@ -3832,13 +3863,37 @@ def sw_dry_run_assembly(proposal_id: str) -> dict[str, Any]:
     return result
 
 
-def sw_commit_assembly(
+def sw_dry_run_assembly(proposal_id: str) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.dry_run_assembly()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_dry_run_assembly_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_dry_run_assembly() is deprecated; use "
+        "SolidWorksClient().mutate.dry_run_assembly(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_dry_run_assembly_impl(proposal_id=proposal_id)
+
+
+def _sw_commit_assembly_impl(
     proposal_id: str,
     output_path: str,
     *,
     part_paths: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Build the assembly — place components, create mates, save.
+    """Core: build the assembly (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_commit_assembly` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Requires the proposal to be in ``dry_run_ok`` state. Opens an assembly
     document, places all components, creates all mates, saves the ``.sldasm``,
@@ -3888,15 +3943,46 @@ def sw_commit_assembly(
     return result
 
 
-def sw_edit_assembly(
+def sw_commit_assembly(
+    proposal_id: str,
+    output_path: str,
+    *,
+    part_paths: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.commit_assembly()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_commit_assembly_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_commit_assembly() is deprecated; use "
+        "SolidWorksClient().mutate.commit_assembly(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_commit_assembly_impl(
+        proposal_id=proposal_id, output_path=output_path, part_paths=part_paths
+    )
+
+
+def _sw_edit_assembly_impl(
     manifest_path: str, op: dict[str, Any]
 ) -> dict[str, Any]:
-    """Edit an assembly via its manifest sidecar.
+    """Core: edit an assembly via its manifest sidecar (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_edit_assembly` free function routes here behind a
+    ``PendingDeprecationWarning``.
 
     Loads the manifest, extracts the verbatim spec via ``to_spec()``,
     applies the declarative edit op, re-validates, and proposes the
     edited spec. Returns a ``proposal_id`` that feeds the existing
-    ``sw_dry_run_assembly`` → ``sw_commit_assembly`` pipeline.
+    ``dry_run_assembly`` → ``commit_assembly`` pipeline.
 
     Args:
         manifest_path: path to the ``.manifest.json`` sidecar.
@@ -3942,9 +4028,30 @@ def sw_edit_assembly(
         )
         return result
 
-    propose = sw_propose_assembly(new_spec)
+    propose = _sw_propose_assembly_impl(new_spec)
     result.update(propose)
     return result
+
+
+def sw_edit_assembly(
+    manifest_path: str, op: dict[str, Any]
+) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.edit_assembly()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_edit_assembly_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_edit_assembly() is deprecated; use "
+        "SolidWorksClient().mutate.edit_assembly(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_edit_assembly_impl(manifest_path=manifest_path, op=op)
 
 
 # ---- Drawing lifecycle (Wave-16) ----

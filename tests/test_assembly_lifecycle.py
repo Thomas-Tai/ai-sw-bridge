@@ -135,13 +135,13 @@ class TestAssemblyPipeline:
         spec["components"][0]["part"] = str(part_dir / "a.sldprt")
         spec["components"][1]["part"] = str(part_dir / "b.sldprt")
 
-        from ai_sw_bridge.mutate import sw_propose_assembly, sw_dry_run_assembly
+        from ai_sw_bridge.mutate import _sw_propose_assembly_impl, _sw_dry_run_assembly_impl
 
-        propose = sw_propose_assembly(spec)
+        propose = _sw_propose_assembly_impl(spec)
         assert propose["ok"] is True
         pid = propose["proposal_id"]
 
-        dry = sw_dry_run_assembly(pid)
+        dry = _sw_dry_run_assembly_impl(pid)
         assert dry["ok"] is True
         assert dry["state"] == "dry_run_ok"
         assert len(dry["resolved_parts"]) == 2
@@ -149,7 +149,7 @@ class TestAssemblyPipeline:
     def test_dry_run_rejects_non_assembly(self, tmp_path: Path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path / "proposals"))
 
-        from ai_sw_bridge.mutate import _sw_propose_feature_add_impl, sw_dry_run_assembly
+        from ai_sw_bridge.mutate import _sw_propose_feature_add_impl, _sw_dry_run_assembly_impl
 
         doc_path = str(tmp_path / "dummy.sldprt")
         Path(doc_path).write_text("fake")
@@ -160,7 +160,7 @@ class TestAssemblyPipeline:
         )
         assert propose["ok"] is True
 
-        dry = sw_dry_run_assembly(propose["proposal_id"])
+        dry = _sw_dry_run_assembly_impl(propose["proposal_id"])
         assert dry["ok"] is False
         assert "not an assembly" in dry["error"]
 
@@ -168,12 +168,12 @@ class TestAssemblyPipeline:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path / "proposals"))
 
         spec = _assembly_spec()
-        from ai_sw_bridge.mutate import sw_propose_assembly, sw_commit_assembly
+        from ai_sw_bridge.mutate import _sw_propose_assembly_impl, _sw_commit_assembly_impl
 
-        propose = sw_propose_assembly(spec)
+        propose = _sw_propose_assembly_impl(spec)
         assert propose["ok"] is True
 
-        commit = sw_commit_assembly(
+        commit = _sw_commit_assembly_impl(
             propose["proposal_id"],
             str(tmp_path / "out.sldasm"),
         )

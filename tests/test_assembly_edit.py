@@ -283,7 +283,7 @@ class TestSwEditAssembly:
     def test_edit_round_trip(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.assembly.storage import AssemblyManifest
-        from ai_sw_bridge.mutate import sw_edit_assembly
+        from ai_sw_bridge.mutate import _sw_edit_assembly_impl
 
         spec = _base_spec()
         manifest = AssemblyManifest(spec=spec, assembly_path="test.sldasm")
@@ -291,7 +291,7 @@ class TestSwEditAssembly:
         mpath = tmp_path / "test.SLDASM.manifest.json"
         manifest.save(mpath)
 
-        result = sw_edit_assembly(
+        result = _sw_edit_assembly_impl(
             str(mpath),
             {"op": "add_mate", "mate": {
                 "type": "parallel",
@@ -305,7 +305,7 @@ class TestSwEditAssembly:
 
     def test_edit_rejects_bad_op(self, tmp_path) -> None:
         from ai_sw_bridge.assembly.storage import AssemblyManifest
-        from ai_sw_bridge.mutate import sw_edit_assembly
+        from ai_sw_bridge.mutate import _sw_edit_assembly_impl
 
         spec = _base_spec()
         manifest = AssemblyManifest(spec=spec, assembly_path="test.sldasm")
@@ -313,14 +313,14 @@ class TestSwEditAssembly:
         mpath = tmp_path / "test.SLDASM.manifest.json"
         manifest.save(mpath)
 
-        result = sw_edit_assembly(str(mpath), {"op": "bogus"})
+        result = _sw_edit_assembly_impl(str(mpath), {"op": "bogus"})
         assert result["ok"] is False
         assert "edit op rejected" in result["error"]
 
     def test_edit_missing_manifest(self, tmp_path) -> None:
-        from ai_sw_bridge.mutate import sw_edit_assembly
+        from ai_sw_bridge.mutate import _sw_edit_assembly_impl
 
-        result = sw_edit_assembly(
+        result = _sw_edit_assembly_impl(
             str(tmp_path / "nonexistent.manifest.json"),
             {"op": "add_mate", "mate": {"type": "parallel"}},
         )

@@ -204,32 +204,32 @@ class TestValidateAssembly:
 class TestProposeAssembly:
     def test_propose_accepts_valid(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_assembly
-        result = sw_propose_assembly(_minimal_assembly())
+        from ai_sw_bridge.mutate import _sw_propose_assembly_impl
+        result = _sw_propose_assembly_impl(_minimal_assembly())
         assert result["ok"] is True
         assert result["proposal_id"] is not None
         assert result["kind"] == "assembly"
 
     def test_propose_rejects_schema_error(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_assembly
-        result = sw_propose_assembly({"kind": "part", "name": "x"})
+        from ai_sw_bridge.mutate import _sw_propose_assembly_impl
+        result = _sw_propose_assembly_impl({"kind": "part", "name": "x"})
         assert result["ok"] is False
         assert "schema" in result["error"]
 
     def test_propose_rejects_semantic_error(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_assembly
+        from ai_sw_bridge.mutate import _sw_propose_assembly_impl
         spec = _minimal_assembly()
         spec["components"][1]["id"] = "a"  # duplicate
-        result = sw_propose_assembly(spec)
+        result = _sw_propose_assembly_impl(spec)
         assert result["ok"] is False
         assert "duplicate" in result["error"]
 
     def test_propose_rejects_non_dict(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_assembly
-        result = sw_propose_assembly("not a dict")  # type: ignore[arg-type]
+        from ai_sw_bridge.mutate import _sw_propose_assembly_impl
+        result = _sw_propose_assembly_impl("not a dict")  # type: ignore[arg-type]
         assert result["ok"] is False
 
     def test_feature_add_does_not_accept_assembly(self, tmp_path, monkeypatch) -> None:

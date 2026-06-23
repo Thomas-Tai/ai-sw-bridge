@@ -28,12 +28,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from ..mutate import (
-    sw_commit_assembly,
-    sw_dry_run_assembly,
-    sw_edit_assembly,
-    sw_propose_assembly,
-)
+from ..client import SolidWorksClient
 from .stability import add_tier, cli_stability
 from .streams import add_quiet_flag, apply_quiet
 
@@ -46,11 +41,11 @@ def _run_propose(args: argparse.Namespace) -> dict[str, Any]:
         spec = json.loads(spec_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         return {"ok": False, "error": f"invalid JSON in {args.spec}: {exc}"}
-    return sw_propose_assembly(spec)
+    return SolidWorksClient().mutate.propose_assembly(spec)
 
 
 def _run_dry_run(args: argparse.Namespace) -> dict[str, Any]:
-    return sw_dry_run_assembly(args.proposal_id)
+    return SolidWorksClient().mutate.dry_run_assembly(args.proposal_id)
 
 
 def _run_commit(args: argparse.Namespace) -> dict[str, Any]:
@@ -62,7 +57,7 @@ def _run_commit(args: argparse.Namespace) -> dict[str, Any]:
             return {"ok": False, "error": f"invalid --part-paths JSON: {exc}"}
         if not isinstance(part_paths, dict):
             return {"ok": False, "error": "--part-paths must be a JSON object"}
-    return sw_commit_assembly(args.proposal_id, args.out, part_paths=part_paths)
+    return SolidWorksClient().mutate.commit_assembly(args.proposal_id, args.out, part_paths=part_paths)
 
 
 def _load_op(raw: str) -> dict[str, Any] | None:
@@ -85,7 +80,7 @@ def _run_edit(args: argparse.Namespace) -> dict[str, Any]:
     op = _load_op(args.op)
     if op is None:
         return {"ok": False, "error": f"invalid --op JSON: {args.op}"}
-    return sw_edit_assembly(manifest_path, op)
+    return SolidWorksClient().mutate.edit_assembly(manifest_path, op)
 
 
 def _build_parser() -> argparse.ArgumentParser:
