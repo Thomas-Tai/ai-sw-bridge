@@ -23,11 +23,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from ..mutate import (
-    sw_commit_properties,
-    sw_dry_run_properties,
-    sw_propose_properties,
-)
+from ..client import SolidWorksClient
 from .stability import add_tier, cli_stability
 from .streams import add_quiet_flag, apply_quiet
 
@@ -40,15 +36,15 @@ def _run_propose(args: argparse.Namespace) -> dict[str, Any]:
         spec = json.loads(spec_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         return {"ok": False, "error": f"invalid JSON in {args.spec}: {exc}"}
-    return sw_propose_properties(spec)
+    return SolidWorksClient().mutate.propose_properties(spec)
 
 
 def _run_dry_run(args: argparse.Namespace) -> dict[str, Any]:
-    return sw_dry_run_properties(args.proposal_id)
+    return SolidWorksClient().mutate.dry_run_properties(args.proposal_id)
 
 
 def _run_commit(args: argparse.Namespace) -> dict[str, Any]:
-    return sw_commit_properties(args.proposal_id)
+    return SolidWorksClient().mutate.commit_properties(args.proposal_id)
 
 
 def _build_parser() -> argparse.ArgumentParser:

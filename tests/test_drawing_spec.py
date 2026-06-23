@@ -131,43 +131,43 @@ class TestDrawingDryRun:
 class TestDrawingPropose:
     def test_propose_accepts_valid(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(_drawing_spec())
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(_drawing_spec())
         assert result["ok"] is True
         assert result["proposal_id"] is not None
         assert result["kind"] == "drawing"
 
     def test_propose_rejects_schema_error(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing({"kind": "part", "name": "x"})
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl({"kind": "part", "name": "x"})
         assert result["ok"] is False
         assert "schema" in result["error"]
 
     def test_dry_run_rejects_missing_model(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing, sw_dry_run_drawing
-        p = sw_propose_drawing(_drawing_spec(model="/nonexistent.sldasm"))
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl, _sw_dry_run_drawing_impl
+        p = _sw_propose_drawing_impl(_drawing_spec(model="/nonexistent.sldasm"))
         assert p["ok"] is True
-        d = sw_dry_run_drawing(p["proposal_id"])
+        d = _sw_dry_run_drawing_impl(p["proposal_id"])
         assert d["ok"] is False
         assert "not found" in d["error"]
 
     def test_dry_run_accepts_existing(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing, sw_dry_run_drawing
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl, _sw_dry_run_drawing_impl
         model = tmp_path / "test.sldasm"
         model.write_text("dummy")
-        p = sw_propose_drawing(_drawing_spec(model=str(model)))
-        d = sw_dry_run_drawing(p["proposal_id"])
+        p = _sw_propose_drawing_impl(_drawing_spec(model=str(model)))
+        d = _sw_dry_run_drawing_impl(p["proposal_id"])
         assert d["ok"] is True
         assert d["state"] == "dry_run_ok"
 
     def test_commit_rejects_without_dry_run(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing, sw_commit_drawing
-        p = sw_propose_drawing(_drawing_spec())
-        c = sw_commit_drawing(p["proposal_id"], str(tmp_path / "out.SLDDRW"))
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl, _sw_commit_drawing_impl
+        p = _sw_propose_drawing_impl(_drawing_spec())
+        c = _sw_commit_drawing_impl(p["proposal_id"], str(tmp_path / "out.SLDDRW"))
         assert c["ok"] is False
         assert "dry_run" in c["error"]
 
@@ -244,15 +244,15 @@ class TestDimensionsSchema:
 class TestDimensionsPropose:
     def test_propose_with_dimensions_true(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(_drawing_spec(dimensions=True))
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(_drawing_spec(dimensions=True))
         assert result["ok"] is True
         assert result["kind"] == "drawing"
 
     def test_propose_with_dimensions_false(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(_drawing_spec(dimensions=False))
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(_drawing_spec(dimensions=False))
         assert result["ok"] is True
 
 
@@ -360,8 +360,8 @@ class TestHoleTableSemanticValidation:
         validate_drawing_spec(_drawing_spec(model="asm.sldasm", hole_table=True))
 
     def test_propose_accepts_hole_table(self) -> None:
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(
             _drawing_spec(model="part.sldprt", hole_table=True)
         )
         assert result["ok"] is True
@@ -405,8 +405,8 @@ class TestTableClusterSchema:
         jsonschema.validate(spec, DRAWING_SPEC_SCHEMA)
 
     def test_propose_accepts_cluster_on_part(self) -> None:
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(
             _drawing_spec(
                 model="part.sldprt",
                 revision_table=True, general_table=True, weldment_table=True,
@@ -418,16 +418,16 @@ class TestTableClusterSchema:
 class TestBomPropose:
     def test_propose_bom_true_with_sldasm(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(_drawing_spec(model="asm.sldasm", bom=True))
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(_drawing_spec(model="asm.sldasm", bom=True))
         assert result["ok"] is True
 
     def test_propose_bom_true_with_sldprt_fails(
         self, tmp_path, monkeypatch
     ) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(_drawing_spec(model="part.sldprt", bom=True))
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(_drawing_spec(model="part.sldprt", bom=True))
         assert result["ok"] is False
         assert "assembly model" in result["error"]
 
@@ -435,8 +435,8 @@ class TestBomPropose:
         self, tmp_path, monkeypatch
     ) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(_drawing_spec(model="part.sldprt", bom=False))
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(_drawing_spec(model="part.sldprt", bom=False))
         assert result["ok"] is True
 
 
@@ -650,8 +650,8 @@ class TestSectionDetailPropose:
 
     def test_propose_section_ok(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(
             _drawing_spec(views=["front", _SECTION_VIEW])
         )
         assert result["ok"] is True
@@ -659,24 +659,24 @@ class TestSectionDetailPropose:
 
     def test_propose_detail_ok(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(
             _drawing_spec(views=["front", _DETAIL_VIEW])
         )
         assert result["ok"] is True
 
     def test_propose_mixed_views_ok(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(
             _drawing_spec(views=["front", "top", _SECTION_VIEW, _DETAIL_VIEW])
         )
         assert result["ok"] is True
 
     def test_propose_forward_ref_fails(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(
             _drawing_spec(views=[_SECTION_VIEW, "front"])
         )
         assert result["ok"] is False
@@ -804,8 +804,8 @@ class TestAnnotationsSemanticValidation:
 class TestAnnotationsPropose:
     def test_propose_with_annotations(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
-        result = sw_propose_drawing(
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+        result = _sw_propose_drawing_impl(
             _drawing_spec(annotations=_SURFACE_FINISH)
         )
         assert result["ok"] is True
@@ -815,13 +815,13 @@ class TestAnnotationsPropose:
         self, tmp_path, monkeypatch
     ) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import sw_propose_drawing
+        from ai_sw_bridge.mutate import _sw_propose_drawing_impl
         bad = {
             "surface_finish": [
                 {"view": "xray", "x": 0.1, "y": 0.1},
             ]
         }
-        result = sw_propose_drawing(
+        result = _sw_propose_drawing_impl(
             _drawing_spec(annotations=bad)
         )
         assert result["ok"] is False

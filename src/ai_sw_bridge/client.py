@@ -75,6 +75,13 @@ from .mutate import (
     _sw_dry_run_assembly_impl,
     _sw_commit_assembly_impl,
     _sw_edit_assembly_impl,
+    # Batch M3: drawing + properties verbs
+    _sw_propose_drawing_impl,
+    _sw_dry_run_drawing_impl,
+    _sw_commit_drawing_impl,
+    _sw_propose_properties_impl,
+    _sw_dry_run_properties_impl,
+    _sw_commit_properties_impl,
 )
 from .sw_com import get_active_doc, get_sw_app
 
@@ -377,6 +384,36 @@ class SolidWorksMutatorFacade:
     ) -> dict[str, Any]:
         """Edit an assembly via its manifest sidecar."""
         return _sw_edit_assembly_impl(manifest_path=manifest_path, op=op)
+
+    # ── Batch M3: drawing + properties verbs ─────────────────────────────
+
+    def propose_drawing(self, spec: dict[str, Any]) -> dict[str, Any]:
+        """Stage a drawing proposal — validate offline; no SW state touched."""
+        return _sw_propose_drawing_impl(spec=spec)
+
+    def dry_run_drawing(self, proposal_id: str) -> dict[str, Any]:
+        """Dry-run a drawing proposal — confirm model file exists."""
+        return _sw_dry_run_drawing_impl(proposal_id=proposal_id)
+
+    def commit_drawing(
+        self,
+        proposal_id: str,
+        output_path: str,
+    ) -> dict[str, Any]:
+        """Build the drawing — create views, save .SLDDRW."""
+        return _sw_commit_drawing_impl(proposal_id=proposal_id, output_path=output_path)
+
+    def propose_properties(self, spec: dict[str, Any]) -> dict[str, Any]:
+        """Stage a properties proposal — validate offline; no SW state touched."""
+        return _sw_propose_properties_impl(spec=spec)
+
+    def dry_run_properties(self, proposal_id: str) -> dict[str, Any]:
+        """Dry-run a properties proposal — confirm model file exists."""
+        return _sw_dry_run_properties_impl(proposal_id=proposal_id)
+
+    def commit_properties(self, proposal_id: str) -> dict[str, Any]:
+        """Commit a properties proposal — set custom properties on the model."""
+        return _sw_commit_properties_impl(proposal_id=proposal_id)
 
 
 class SolidWorksClient:

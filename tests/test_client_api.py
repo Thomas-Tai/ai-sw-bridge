@@ -125,6 +125,20 @@ from ai_sw_bridge.mutate import (
     sw_dry_run_assembly,
     sw_commit_assembly,
     sw_edit_assembly,
+    # Batch M3 _impl cores (drawing + properties)
+    _sw_propose_drawing_impl,
+    _sw_dry_run_drawing_impl,
+    _sw_commit_drawing_impl,
+    _sw_propose_properties_impl,
+    _sw_dry_run_properties_impl,
+    _sw_commit_properties_impl,
+    # Batch M3 shims (drawing + properties)
+    sw_propose_drawing,
+    sw_dry_run_drawing,
+    sw_commit_drawing,
+    sw_propose_properties,
+    sw_dry_run_properties,
+    sw_commit_properties,
     # v0.14 legacy facade (verify no internal warning leak)
     ProposalStore,
 )
@@ -980,3 +994,120 @@ def test_client_facade_edit_assembly_routes_without_warning():
         res = client.mutate.edit_assembly("/no/such.manifest.json", {"op": "bogus"})
     assert res["ok"] is False
     assert "manifest load failed" in res["error"]
+
+
+# ── Batch M3: drawing + properties verbs ─────────────────────────────────
+#
+# sw_propose_drawing, sw_dry_run_drawing, sw_commit_drawing,
+# sw_propose_properties, sw_dry_run_properties, sw_commit_properties —
+# shim warns + delegates; facade routes without warning.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# sw_propose_drawing — _impl validates offline (non-dict → schema error)
+def test_sw_propose_drawing_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_propose_drawing"):
+        shim = sw_propose_drawing("not a dict")  # type: ignore[arg-type]
+    impl = _sw_propose_drawing_impl("not a dict")  # type: ignore[arg-type]
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_propose_drawing_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.propose_drawing("not a dict")  # type: ignore[arg-type]
+    assert res["ok"] is False
+
+
+# sw_dry_run_drawing — _impl loads proposal from disk (nonexistent id → error)
+def test_sw_dry_run_drawing_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_dry_run_drawing"):
+        shim = sw_dry_run_drawing("nonexistent_id")
+    impl = _sw_dry_run_drawing_impl("nonexistent_id")
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "not found" in shim["error"]
+
+
+def test_client_facade_dry_run_drawing_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.dry_run_drawing("nonexistent_id")
+    assert res["ok"] is False
+    assert "not found" in res["error"]
+
+
+# sw_commit_drawing — _impl loads proposal from disk (nonexistent id → error)
+def test_sw_commit_drawing_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_commit_drawing"):
+        shim = sw_commit_drawing("nonexistent_id", "/tmp/out.SLDDRW")
+    impl = _sw_commit_drawing_impl("nonexistent_id", "/tmp/out.SLDDRW")
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "not found" in shim["error"]
+
+
+def test_client_facade_commit_drawing_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.commit_drawing("nonexistent_id", "/tmp/out.SLDDRW")
+    assert res["ok"] is False
+    assert "not found" in res["error"]
+
+
+# sw_propose_properties — _impl validates offline (non-dict → schema error)
+def test_sw_propose_properties_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_propose_properties"):
+        shim = sw_propose_properties("not a dict")  # type: ignore[arg-type]
+    impl = _sw_propose_properties_impl("not a dict")  # type: ignore[arg-type]
+    assert shim == impl
+    assert shim["ok"] is False
+
+
+def test_client_facade_propose_properties_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.propose_properties("not a dict")  # type: ignore[arg-type]
+    assert res["ok"] is False
+
+
+# sw_dry_run_properties — _impl loads proposal from disk (nonexistent id → error)
+def test_sw_dry_run_properties_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_dry_run_properties"):
+        shim = sw_dry_run_properties("nonexistent_id")
+    impl = _sw_dry_run_properties_impl("nonexistent_id")
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "not found" in shim["error"]
+
+
+def test_client_facade_dry_run_properties_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.dry_run_properties("nonexistent_id")
+    assert res["ok"] is False
+    assert "not found" in res["error"]
+
+
+# sw_commit_properties — _impl loads proposal from disk (nonexistent id → error)
+def test_sw_commit_properties_shim_warns_and_delegates():
+    with pytest.warns(PendingDeprecationWarning, match="sw_commit_properties"):
+        shim = sw_commit_properties("nonexistent_id")
+    impl = _sw_commit_properties_impl("nonexistent_id")
+    assert shim == impl
+    assert shim["ok"] is False
+    assert "not found" in shim["error"]
+
+
+def test_client_facade_commit_properties_routes_without_warning():
+    client = SolidWorksClient(app=object(), mod=object())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PendingDeprecationWarning)
+        res = client.mutate.commit_properties("nonexistent_id")
+    assert res["ok"] is False
+    assert "not found" in res["error"]

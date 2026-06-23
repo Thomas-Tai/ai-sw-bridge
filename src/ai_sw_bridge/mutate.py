@@ -4057,10 +4057,16 @@ def sw_edit_assembly(
 # ---- Drawing lifecycle (Wave-16) ----
 
 
-def sw_propose_drawing(spec: dict[str, Any]) -> dict[str, Any]:
-    """Propose a drawing spec — validate offline.
+def _sw_propose_drawing_impl(spec: dict[str, Any]) -> dict[str, Any]:
+    """Core: propose a drawing spec (v0.18 implementation).
 
-    Returns a result dict with ``ok``, ``proposal_id``, and ``error``.
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_propose_drawing` free function routes here behind a
+    ``PendingDeprecationWarning``.
+
+    Validates offline. Returns a result dict with ``ok``, ``proposal_id``,
+    and ``error``.
     """
     import jsonschema
 
@@ -4100,8 +4106,35 @@ def sw_propose_drawing(spec: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def sw_dry_run_drawing(proposal_id: str) -> dict[str, Any]:
-    """Dry-run a drawing proposal — confirm model file exists."""
+def sw_propose_drawing(spec: dict[str, Any]) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.propose_drawing()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_propose_drawing_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_propose_drawing() is deprecated; use "
+        "SolidWorksClient().mutate.propose_drawing(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_propose_drawing_impl(spec=spec)
+
+
+def _sw_dry_run_drawing_impl(proposal_id: str) -> dict[str, Any]:
+    """Core: dry-run a drawing proposal (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_dry_run_drawing` free function routes here behind a
+    ``PendingDeprecationWarning``.
+
+    Confirms the model file exists without mutating SW.
+    """
     from .drawing.lifecycle import dry_run_drawing
 
     result: dict[str, Any] = {
@@ -4130,11 +4163,40 @@ def sw_dry_run_drawing(proposal_id: str) -> dict[str, Any]:
     return result
 
 
-def sw_commit_drawing(
+def sw_dry_run_drawing(proposal_id: str) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.dry_run_drawing()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_dry_run_drawing_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_dry_run_drawing() is deprecated; use "
+        "SolidWorksClient().mutate.dry_run_drawing(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_dry_run_drawing_impl(proposal_id=proposal_id)
+
+
+def _sw_commit_drawing_impl(
     proposal_id: str,
     output_path: str,
 ) -> dict[str, Any]:
-    """Commit a drawing proposal — create views, save .SLDDRW."""
+    """Core: commit a drawing proposal (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_commit_drawing` free function routes here behind a
+    ``PendingDeprecationWarning``.
+
+    Creates views from the model and saves the ``.SLDDRW`` to
+    ``output_path``. Only allowed after the proposal is in ``dry_run_ok``
+    state.
+    """
     from .drawing.lifecycle import commit_drawing
 
     result: dict[str, Any] = {
@@ -4176,13 +4238,41 @@ def sw_commit_drawing(
     return result
 
 
+def sw_commit_drawing(
+    proposal_id: str,
+    output_path: str,
+) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.commit_drawing()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_commit_drawing_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_commit_drawing() is deprecated; use "
+        "SolidWorksClient().mutate.commit_drawing(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_commit_drawing_impl(proposal_id=proposal_id, output_path=output_path)
+
+
 # ---- properties support (W29) ------------------------------------------------
 
 
-def sw_propose_properties(spec: dict[str, Any]) -> dict[str, Any]:
-    """Propose a properties spec — validate offline.
+def _sw_propose_properties_impl(spec: dict[str, Any]) -> dict[str, Any]:
+    """Core: propose a properties spec (v0.18 implementation).
 
-    Returns a result dict with ``ok``, ``proposal_id``, and ``error``.
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_propose_properties` free function routes here behind a
+    ``PendingDeprecationWarning``.
+
+    Validates offline. Returns a result dict with ``ok``, ``proposal_id``,
+    and ``error``.
     """
     import jsonschema
 
@@ -4222,8 +4312,35 @@ def sw_propose_properties(spec: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def sw_dry_run_properties(proposal_id: str) -> dict[str, Any]:
-    """Dry-run a properties proposal — confirm model file exists."""
+def sw_propose_properties(spec: dict[str, Any]) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.propose_properties()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_propose_properties_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_propose_properties() is deprecated; use "
+        "SolidWorksClient().mutate.propose_properties(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_propose_properties_impl(spec=spec)
+
+
+def _sw_dry_run_properties_impl(proposal_id: str) -> dict[str, Any]:
+    """Core: dry-run a properties proposal (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_dry_run_properties` free function routes here behind a
+    ``PendingDeprecationWarning``.
+
+    Confirms the model file exists without mutating SW.
+    """
     from .metadata.lifecycle import dry_run_properties
 
     result: dict[str, Any] = {
@@ -4253,8 +4370,36 @@ def sw_dry_run_properties(proposal_id: str) -> dict[str, Any]:
     return result
 
 
-def sw_commit_properties(proposal_id: str) -> dict[str, Any]:
-    """Commit a properties proposal — set custom properties on the model."""
+def sw_dry_run_properties(proposal_id: str) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.dry_run_properties()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_dry_run_properties_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_dry_run_properties() is deprecated; use "
+        "SolidWorksClient().mutate.dry_run_properties(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_dry_run_properties_impl(proposal_id=proposal_id)
+
+
+def _sw_commit_properties_impl(proposal_id: str) -> dict[str, Any]:
+    """Core: commit a properties proposal (v0.18 implementation).
+
+    Internal callers (the ``SolidWorksClient.mutate`` facade) call this
+    directly so they bypass the deprecation shim; the public
+    :func:`sw_commit_properties` free function routes here behind a
+    ``PendingDeprecationWarning``.
+
+    Sets the custom properties on the model, saves, and verifies
+    read-back. Only allowed after the proposal is in ``dry_run_ok`` state.
+    """
     from .metadata.lifecycle import commit_properties
 
     result: dict[str, Any] = {
@@ -4294,6 +4439,25 @@ def sw_commit_properties(proposal_id: str) -> dict[str, Any]:
         result["state"] = ST_COMMITTED
 
     return result
+
+
+def sw_commit_properties(proposal_id: str) -> dict[str, Any]:
+    """Deprecated free-function shim — use ``SolidWorksClient().mutate.commit_properties()``.
+
+    Preserved for backward compatibility (v0.18 grace line). Emits a
+    ``PendingDeprecationWarning`` and routes to :func:`_sw_commit_properties_impl`,
+    returning identical data. The class-based API is the stable contract.
+    """
+    import warnings
+
+    warnings.warn(
+        "sw_commit_properties() is deprecated; use "
+        "SolidWorksClient().mutate.commit_properties(). "
+        "It will be removed in a future release.",
+        PendingDeprecationWarning,
+        stacklevel=2,
+    )
+    return _sw_commit_properties_impl(proposal_id=proposal_id)
 
 
 def _sw_dry_run_feature_add_impl(proposal_id: str) -> dict[str, Any]:
