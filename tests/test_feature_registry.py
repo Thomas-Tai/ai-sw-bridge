@@ -68,14 +68,15 @@ def test_apply_feature_dispatches_registry_kind(monkeypatch):
 def test_apply_feature_builtin_kind_wins_over_registry(monkeypatch):
     # The built-in chain runs first; a (disallowed) collision must not
     # reroute a shipped kind through the registry.
+    # Recipe-C cut #4: "shell" moved to registry; use "sweep" (remaining builtin).
     def hijack(doc, feature, target):  # pragma: no cover - must not run
         raise AssertionError("registry shadowed a built-in kind")
 
-    monkeypatch.setitem(features.HANDLER_REGISTRY, "shell", hijack)
+    monkeypatch.setitem(features.HANDLER_REGISTRY, "sweep", hijack)
     monkeypatch.setattr(
-        mutate, "_create_shell", lambda doc, feature, target: (True, "builtin")
+        mutate, "_create_sweep", lambda doc, feature, target: (True, "builtin")
     )
-    ok, err = mutate._apply_feature("DOC", {"type": "shell"}, {})
+    ok, err = mutate._apply_feature("DOC", {"type": "sweep"}, {})
     assert (ok, err) == (True, "builtin")
 
 

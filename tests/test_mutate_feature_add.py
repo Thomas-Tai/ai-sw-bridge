@@ -12,7 +12,8 @@ from typing import Any
 
 import pytest
 
-from ai_sw_bridge import mutate
+from ai_sw_bridge import features, mutate
+from ai_sw_bridge.features import advanced_shapes
 from ai_sw_bridge.mutate import (
     ST_COMMITTED,
     ST_DRY_RUN_BROKE,
@@ -249,6 +250,10 @@ def _patch_all(
     ``data`` is the object ``CreateDefinition`` returns (and on which the
     pipeline sets properties); defaults to a fillet-data fake.
     """
+    from ai_sw_bridge.features import advanced_shapes as _adv
+    from ai_sw_bridge.features import dress_up as _du
+    from ai_sw_bridge.features import flanges as _fl
+
     monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
 
     fd = data if data is not None else _FakeFilletData()
@@ -257,19 +262,38 @@ def _patch_all(
     sw = _FakeSldWorks(doc)
     fake_entity = entity
 
-    monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
+    _fake_typed = lambda obj, iface, **kw: obj  # noqa: E731
+    _fake_typed_qi = lambda obj, iface, **kw: obj  # noqa: E731
+    _fake_wm = lambda: object()  # noqa: E731
+    _fake_entity_fn = lambda doc_, ref: _FakeRefResolution(fake_entity)  # noqa: E731
+    _sel = lambda e, **kw: True  # noqa: E731
+
+    # mutate seams (sweep/sweep_cut handlers still live here)
+    monkeypatch.setattr(mutate, "wrapper_module", _fake_wm)
     monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
     monkeypatch.setattr(mutate, "get_active_doc", lambda sw_: None)
-    monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
-    monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
-    monkeypatch.setattr(
-        mutate,
-        "resolve_edge_ref",
-        lambda doc_, ref: _FakeRefResolution(fake_entity),
-    )
-    monkeypatch.setattr(
-        mutate, "select_entity", lambda e, **kw: True
-    )
+    monkeypatch.setattr(mutate, "typed", _fake_typed)
+    monkeypatch.setattr(mutate, "typed_qi", _fake_typed_qi)
+
+    # Recipe-C cut #4: dress_up / advanced_shapes / flanges handlers; patch their seams.
+    monkeypatch.setattr(_du, "wrapper_module", _fake_wm)
+    monkeypatch.setattr(_du, "typed", _fake_typed)
+    monkeypatch.setattr(_du, "typed_qi", _fake_typed_qi)
+    monkeypatch.setattr(_du, "resolve_edge_ref", _fake_entity_fn)
+    monkeypatch.setattr(_du, "select_entity", _sel)
+
+    monkeypatch.setattr(_adv, "wrapper_module", _fake_wm)
+    monkeypatch.setattr(_adv, "typed", _fake_typed)
+    monkeypatch.setattr(_adv, "typed_qi", _fake_typed_qi)
+    monkeypatch.setattr(_adv, "get_sw_app", lambda: sw)
+    monkeypatch.setattr(_adv, "resolve_manifest_face", _fake_entity_fn)
+    monkeypatch.setattr(_adv, "select_entity", _sel)
+
+    monkeypatch.setattr(_fl, "wrapper_module", _fake_wm)
+    monkeypatch.setattr(_fl, "typed", _fake_typed)
+    monkeypatch.setattr(_fl, "typed_qi", _fake_typed_qi)
+    monkeypatch.setattr(_fl, "resolve_edge_ref", _fake_entity_fn)
+    monkeypatch.setattr(_fl, "select_entity", _sel)
 
     return {
         "sw": sw,
@@ -688,9 +712,11 @@ class TestDryRunVariableFillet:
         data, feat, fakes = self._wire(monkeypatch, tmp_path, str(doc), 2)
 
         # Record the append flags select_entity is called with.
+        # Recipe-C cut #4: _create_variable_fillet moved to dress_up; patch there.
+        from ai_sw_bridge.features import dress_up as _du
         sel_appends: list[bool] = []
         monkeypatch.setattr(
-            mutate, "select_entity",
+            _du, "select_entity",
             lambda e, **kw: (sel_appends.append(kw.get("append", False)), True)[1],
         )
 
@@ -803,9 +829,14 @@ class _FakeSwAppHoles:
 
 
 def _patch_holes(monkeypatch: pytest.MonkeyPatch, sizes: list[str]) -> None:
+    from ai_sw_bridge.features import advanced_shapes as _adv
     monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
     monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
     monkeypatch.setattr(mutate, "get_sw_app", lambda: _FakeSwAppHoles(sizes))
+    # Recipe-C cut #4: _resolve_hole_args moved to advanced_shapes; patch there too.
+    monkeypatch.setattr(_adv, "wrapper_module", lambda: object())
+    monkeypatch.setattr(_adv, "typed_qi", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(_adv, "get_sw_app", lambda: _FakeSwAppHoles(sizes))
 
 
 class TestResolveHoleArgs:
@@ -813,7 +844,7 @@ class TestResolveHoleArgs:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_holes(monkeypatch, ["M6", "M8", "M10"])
-        ok, std, fast, err = mutate._resolve_hole_args(
+        ok, std, fast, err = advanced_shapes._resolve_hole_args(
             2, "ANSI Metric", "Tap Drills", "M8"
         )
         assert ok is True
@@ -825,7 +856,7 @@ class TestResolveHoleArgs:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_holes(monkeypatch, ["M6"])
-        ok, std, fast, err = mutate._resolve_hole_args(
+        ok, std, fast, err = advanced_shapes._resolve_hole_args(
             2, "ansi metric", "drill sizes", "M6"
         )
         assert ok is True and std == 1 and fast == 39
@@ -834,7 +865,7 @@ class TestResolveHoleArgs:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_holes(monkeypatch, ["M6"])
-        ok, _, _, err = mutate._resolve_hole_args(2, "Klingon", "Tap Drills", "M6")
+        ok, _, _, err = advanced_shapes._resolve_hole_args(2, "Klingon", "Tap Drills", "M6")
         assert ok is False
         assert "not found" in err and "ANSI Metric" in err
 
@@ -842,7 +873,7 @@ class TestResolveHoleArgs:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_holes(monkeypatch, ["M6"])
-        ok, _, _, err = mutate._resolve_hole_args(2, "ISO", "Nonsense", "M6")
+        ok, _, _, err = advanced_shapes._resolve_hole_args(2, "ISO", "Nonsense", "M6")
         assert ok is False
         assert "Tap Drills" in err
 
@@ -850,7 +881,7 @@ class TestResolveHoleArgs:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_holes(monkeypatch, ["M6", "M8", "M10"])
-        ok, _, _, err = mutate._resolve_hole_args(2, "ISO", "Tap Drills", "M7.5")
+        ok, _, _, err = advanced_shapes._resolve_hole_args(2, "ISO", "Tap Drills", "M7.5")
         assert ok is False
         assert "M7.5" in err and "M6" in err and "M10" in err
 
@@ -861,16 +892,16 @@ class TestFormatSizeCatalog:
     still byte-stable for short lists so substring assertions hold."""
 
     def test_empty_list_returns_placeholder(self) -> None:
-        assert mutate._format_size_catalog([]) == "<no sizes enumerated>"
+        assert advanced_shapes._format_size_catalog([]) == "<no sizes enumerated>"
 
     def test_short_list_is_comma_separated_not_repr(self) -> None:
         # Raw repr would be "['M6', 'M8', 'M10']" with brackets+quotes. The
         # H2 format is a clean comma-separated string.
-        assert mutate._format_size_catalog(["M6", "M8", "M10"]) == "M6, M8, M10"
+        assert advanced_shapes._format_size_catalog(["M6", "M8", "M10"]) == "M6, M8, M10"
 
     def test_long_list_is_truncated_with_total_count(self) -> None:
         sizes = [f"M{i}" for i in range(1, 51)]  # 50 entries, well over limit
-        out = mutate._format_size_catalog(sizes)
+        out = advanced_shapes._format_size_catalog(sizes)
         assert "(50 total)" in out
         assert "..." in out
         # First 20 present; entry #21 (M21) is past the cutoff.
@@ -878,14 +909,14 @@ class TestFormatSizeCatalog:
         assert "M21" not in out.split("...")[0]
 
     def test_at_limit_is_not_truncated(self) -> None:
-        sizes = [f"M{i}" for i in range(1, mutate._SIZE_ERROR_DISPLAY_LIMIT + 1)]
-        out = mutate._format_size_catalog(sizes)
+        sizes = [f"M{i}" for i in range(1, advanced_shapes._SIZE_ERROR_DISPLAY_LIMIT + 1)]
+        out = advanced_shapes._format_size_catalog(sizes)
         assert "..." not in out
         assert "total" not in out
 
     def test_byte_stable_across_calls(self) -> None:
         sizes = ["M6", "M8", "M10", "M12"]
-        assert mutate._format_size_catalog(sizes) == mutate._format_size_catalog(sizes)
+        assert advanced_shapes._format_size_catalog(sizes) == advanced_shapes._format_size_catalog(sizes)
 
 
 class TestResolveHoleArgsH2:
@@ -896,7 +927,7 @@ class TestResolveHoleArgsH2:
     ) -> None:
         sizes = [f"M{i}" for i in range(1, 40)]  # 39 entries
         _patch_holes(monkeypatch, sizes)
-        ok, _, _, err = mutate._resolve_hole_args(2, "ISO", "Tap Drills", "M999")
+        ok, _, _, err = advanced_shapes._resolve_hole_args(2, "ISO", "Tap Drills", "M999")
         assert ok is False
         assert "(39 total)" in err
         # The rejected size is named.
@@ -910,7 +941,7 @@ class TestResolveHoleArgsH2:
         unhelpful COM error). Post-H2: surface a structured 'no sizes enumerated'
         diagnostic so the user sees what went wrong at the DB read."""
         _patch_holes(monkeypatch, [])
-        ok, _, _, err = mutate._resolve_hole_args(2, "ISO", "Tap Drills", "M6")
+        ok, _, _, err = advanced_shapes._resolve_hole_args(2, "ISO", "Tap Drills", "M6")
         assert ok is False
         assert "no sizes enumerated" in err
 
@@ -918,7 +949,7 @@ class TestResolveHoleArgsH2:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_holes(monkeypatch, ["M6", "M8", "M10"])
-        ok, _, _, err = mutate._resolve_hole_args(2, "ISO", "Tap Drills", "M7.5")
+        ok, _, _, err = advanced_shapes._resolve_hole_args(2, "ISO", "Tap Drills", "M7.5")
         assert ok is False
         # Post-H2: no raw Python list repr (no brackets/quotes around the catalog).
         assert "[" not in err or err.count("[") == err.count("[")  # sanity
@@ -1080,6 +1111,7 @@ class TestDryRunWizardHole:
     def test_resolves_args_and_creates_no_save(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
+        from ai_sw_bridge.features import advanced_shapes as _adv
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
@@ -1103,6 +1135,11 @@ class TestDryRunWizardHole:
         monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
         monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
         monkeypatch.setattr(mutate, "get_active_doc", lambda s: None)
+        # Recipe-C cut #4: wizard_hole moved to advanced_shapes; patch its seams.
+        monkeypatch.setattr(_adv, "wrapper_module", lambda: object())
+        monkeypatch.setattr(_adv, "typed_qi", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(_adv, "typed", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(_adv, "get_sw_app", lambda: sw)
 
         pid = _sw_propose_feature_add_impl(str(doc_file), self._FEATURE, self._TARGET)["proposal_id"]
         r = _sw_dry_run_feature_add_impl(pid)
@@ -1122,6 +1159,7 @@ class TestDryRunWizardHole:
         # resolves it (resolve_manifest_face) and selects the live entity
         # (select_entity) instead of a raw coordinate SelectByID.
         import types
+        from ai_sw_bridge.features import advanced_shapes as _adv
 
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
@@ -1142,16 +1180,21 @@ class TestDryRunWizardHole:
         monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
         monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
         monkeypatch.setattr(mutate, "get_active_doc", lambda s: None)
+        # Recipe-C cut #4: wizard_hole moved to advanced_shapes; patch its seams.
+        monkeypatch.setattr(_adv, "wrapper_module", lambda: object())
+        monkeypatch.setattr(_adv, "typed_qi", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(_adv, "typed", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(_adv, "get_sw_app", lambda: sw)
 
         # Durable-resolution seam: resolve to a face entity, select succeeds.
         resolved: list[Any] = []
         face_entity = object()
         monkeypatch.setattr(
-            mutate, "resolve_manifest_face",
+            _adv, "resolve_manifest_face",
             lambda d, ref, **kw: types.SimpleNamespace(entity=face_entity, method="persist_id"),
         )
         monkeypatch.setattr(
-            mutate, "select_entity",
+            _adv, "select_entity",
             lambda ent, **kw: resolved.append(ent) or True,
         )
 
@@ -1174,6 +1217,7 @@ class TestDryRunWizardHole:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         import types
+        from ai_sw_bridge.features import advanced_shapes as _adv
 
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
@@ -1194,12 +1238,17 @@ class TestDryRunWizardHole:
         monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
         monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
         monkeypatch.setattr(mutate, "get_active_doc", lambda s: None)
+        # Recipe-C cut #4: wizard_hole moved to advanced_shapes; patch its seams.
+        monkeypatch.setattr(_adv, "wrapper_module", lambda: object())
+        monkeypatch.setattr(_adv, "typed_qi", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(_adv, "typed", lambda obj, iface, **kw: obj)
+        monkeypatch.setattr(_adv, "get_sw_app", lambda: sw)
         # Face does not resolve — the hole must NOT be created.
         monkeypatch.setattr(
-            mutate, "resolve_manifest_face",
+            _adv, "resolve_manifest_face",
             lambda d, ref, **kw: types.SimpleNamespace(entity=None, method="unresolved"),
         )
-        monkeypatch.setattr(mutate, "select_entity", lambda ent, **kw: True)
+        monkeypatch.setattr(_adv, "select_entity", lambda ent, **kw: True)
 
         face_ref = {"normal": [0, 0, 1], "centroid": [0, 0, 0.01],
                     "area_mm2": 1600.0, "role_hint": "+z_top"}
@@ -1335,6 +1384,7 @@ class _FakeSwOpen:
 
 
 def _patch_wall2(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, doc: Any) -> Any:
+    from ai_sw_bridge.features import dress_up as _du
     monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
     sw = _FakeSwOpen(doc)
     monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
@@ -1342,6 +1392,11 @@ def _patch_wall2(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, doc: Any) -> A
     monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
     monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
     monkeypatch.setattr(mutate, "get_active_doc", lambda s: None)
+    # Recipe-C cut #4: shell/draft handlers moved to dress_up; patch its seams too.
+    monkeypatch.setattr(_du, "wrapper_module", lambda: object())
+    monkeypatch.setattr(_du, "typed", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(_du, "typed_qi", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(_du, "select_entity", lambda e, **kw: True)
     return sw
 
 
@@ -1391,10 +1446,12 @@ class TestProposeShellDraft:
 
 class TestDryRunShell:
     def test_ok_inserts_shell_no_save(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        from ai_sw_bridge.features import dress_up as _du
         doc_file = tmp_path / "t.sldprt"; doc_file.touch()
         shell_doc = _FakeShellDoc(str(doc_file), 1)  # +1 feature
         _patch_wall2(monkeypatch, tmp_path, shell_doc)
-        monkeypatch.setattr(mutate, "select_entity", lambda e, **kw: True)
+        # Recipe-C cut #4: shell moved to dress_up; patch there (wall2 also blankets it).
+        monkeypatch.setattr(_du, "select_entity", lambda e, **kw: True)
         pid = _sw_propose_feature_add_impl(str(doc_file), _SHELL_FEATURE, _SHELL_TARGET)["proposal_id"]
         r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is True and r["state"] == ST_DRY_RUN_OK
@@ -1402,10 +1459,11 @@ class TestDryRunShell:
         assert shell_doc.save_calls == []
 
     def test_noop_shell_broke(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        from ai_sw_bridge.features import dress_up as _du
         doc_file = tmp_path / "t.sldprt"; doc_file.touch()
         shell_doc = _FakeShellDoc(str(doc_file), 0)  # no feature added
         _patch_wall2(monkeypatch, tmp_path, shell_doc)
-        monkeypatch.setattr(mutate, "select_entity", lambda e, **kw: True)
+        monkeypatch.setattr(_du, "select_entity", lambda e, **kw: True)
         pid = _sw_propose_feature_add_impl(str(doc_file), _SHELL_FEATURE, _SHELL_TARGET)["proposal_id"]
         r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is False and r["state"] == ST_DRY_RUN_BROKE
@@ -1414,13 +1472,15 @@ class TestDryRunShell:
 
 class TestDryRunDraft:
     def test_ok_inserts_draft_with_marks_no_save(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        from ai_sw_bridge.features import dress_up as _du
         doc_file = tmp_path / "t.sldprt"; doc_file.touch()
         fm = _FakeDraftFM(object())  # materialized feature
         draft_doc = _FakeDraftDoc(str(doc_file), fm)
         _patch_wall2(monkeypatch, tmp_path, draft_doc)
         marks: list[tuple] = []
+        # Recipe-C cut #4: draft moved to dress_up; patch there.
         monkeypatch.setattr(
-            mutate, "select_entity",
+            _du, "select_entity",
             lambda e, **kw: (marks.append((kw.get("append", False), kw.get("mark", 0))), True)[1],
         )
         pid = _sw_propose_feature_add_impl(str(doc_file), _DRAFT_FEATURE, _DRAFT_TARGET)["proposal_id"]
@@ -1680,6 +1740,7 @@ def _patch_chamfer(
     entity: Any,
     feature: Any,
 ) -> dict[str, Any]:
+    from ai_sw_bridge.features import dress_up as _du
     monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
     fm = _FakeChamferFM(feature)
     doc = _FakeChamferDoc(doc_path, fm)
@@ -1688,11 +1749,15 @@ def _patch_chamfer(
     monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
     monkeypatch.setattr(mutate, "get_sw_app", lambda: sw)
     monkeypatch.setattr(mutate, "get_active_doc", lambda sw_: None)
+    # Recipe-C cut #4: chamfer moved to dress_up; patch its seams there.
+    monkeypatch.setattr(_du, "wrapper_module", lambda: object())
+    monkeypatch.setattr(_du, "typed", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(_du, "typed_qi", lambda obj, iface, **kw: obj)
     monkeypatch.setattr(
-        mutate, "resolve_edge_ref",
+        _du, "resolve_edge_ref",
         lambda doc_, ref, **kw: _FakeRefResolution(entity),
     )
-    monkeypatch.setattr(mutate, "select_entity", lambda e, **kw: True)
+    monkeypatch.setattr(_du, "select_entity", lambda e, **kw: True)
     return {"sw": sw, "doc": doc, "fm": fm}
 
 
@@ -1712,7 +1777,7 @@ class TestChamferAdvertised:
     def test_in_supported_types(
         self,
     ) -> None:
-        assert "chamfer" in mutate._SUPPORTED_FEATURE_TYPES
+        assert "chamfer" in features.HANDLER_REGISTRY  # moved to registry (Recipe-C cut #4)
 
     def test_accepted_with_valid_params(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path

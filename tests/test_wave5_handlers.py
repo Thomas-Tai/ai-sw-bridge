@@ -20,7 +20,7 @@ import pytest
 
 from ai_sw_bridge import mutate
 from ai_sw_bridge import features
-from ai_sw_bridge.features import ref_geometry
+from ai_sw_bridge.features import advanced_shapes, flanges, ref_geometry
 from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
 
 # ---------------------------------------------------------------------------
@@ -31,6 +31,8 @@ from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
 def _patch_com_imports(monkeypatch: pytest.MonkeyPatch) -> None:
     """Monkeypatch COM imports so _create_sweep_cut works with fake objects."""
     import ai_sw_bridge.mutate as mutate_mod
+    from ai_sw_bridge.features import advanced_shapes as adv_mod
+    from ai_sw_bridge.features import flanges as flanges_mod
     from ai_sw_bridge.features import ref_geometry as ref_geo_mod
 
     def _fake_typed(obj: Any, iface: str, module: Any = None) -> Any:
@@ -48,6 +50,13 @@ def _patch_com_imports(monkeypatch: pytest.MonkeyPatch) -> None:
     # Seam split: ref_geometry handlers now live in ref_geo_mod; patch both.
     monkeypatch.setattr(ref_geo_mod, "typed", _fake_typed)
     monkeypatch.setattr(ref_geo_mod, "wrapper_module", _fake_wrapper_module)
+    # Recipe-C cut #4: advanced_shapes / flanges handlers; patch their seams too.
+    monkeypatch.setattr(adv_mod, "typed", _fake_typed)
+    monkeypatch.setattr(adv_mod, "typed_qi", _fake_typed_qi)
+    monkeypatch.setattr(adv_mod, "wrapper_module", _fake_wrapper_module)
+    monkeypatch.setattr(flanges_mod, "typed", _fake_typed)
+    monkeypatch.setattr(flanges_mod, "typed_qi", _fake_typed_qi)
+    monkeypatch.setattr(flanges_mod, "wrapper_module", _fake_wrapper_module)
 
 
 class _FakeSweepCutExt:
@@ -539,7 +548,6 @@ class TestCreateCoordinateSystemDurable:
         return {"persist_id": base64.urlsafe_b64encode(token).decode().rstrip("=")}
 
     def _patch_resolve_select(self, monkeypatch, *, resolves=True):
-        import ai_sw_bridge.mutate as m
         from ai_sw_bridge.features import ref_geometry as ref_geo_mod
 
         calls = {"resolve": [], "select": []}
@@ -558,9 +566,8 @@ class TestCreateCoordinateSystemDurable:
             calls["select"].append((append, mark))
             return True
 
-        monkeypatch.setattr(m, "resolve_persist_id", fake_resolve)
-        monkeypatch.setattr(m, "select_entity", fake_select)
-        # Seam split: _create_coordinate_system now lives in ref_geo_mod; patch both.
+        # Recipe-C cut #4: mutate no longer imports resolve_persist_id/select_entity;
+        # _create_coordinate_system lives in ref_geometry — patch only there.
         monkeypatch.setattr(ref_geo_mod, "resolve_persist_id", fake_resolve)
         monkeypatch.setattr(ref_geo_mod, "select_entity", fake_select)
         return calls
@@ -727,11 +734,8 @@ class TestCreateRefPointHandler:
         fm = _FakeRefPointFm(materialize=True)
         doc = _FakeRefPointDoc(fm)
         sentinel_face = object()
-        monkeypatch.setattr(
-            mutate, "resolve_manifest_face",
-            lambda d, fr: _FakeRefResolution(sentinel_face),
-        )
-        monkeypatch.setattr(mutate, "select_entity", lambda e: True)
+        # Recipe-C cut #4: mutate no longer imports resolve_manifest_face/select_entity;
+        # _create_ref_point lives in ref_geometry — patch only there.
         monkeypatch.setattr(
             ref_geometry, "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(sentinel_face),
@@ -745,11 +749,7 @@ class TestCreateRefPointHandler:
 
     def test_face_ref_unresolved_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
         doc = _FakeRefPointDoc(_FakeRefPointFm())
-        monkeypatch.setattr(
-            mutate, "resolve_manifest_face",
-            lambda d, fr: _FakeRefResolution(None, method="none"),
-        )
-        monkeypatch.setattr(mutate, "select_entity", lambda e: True)
+        # Recipe-C cut #4: patch only on ref_geometry.
         monkeypatch.setattr(
             ref_geometry, "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(None, method="none"),
@@ -761,11 +761,7 @@ class TestCreateRefPointHandler:
 
     def test_face_ref_select_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
         doc = _FakeRefPointDoc(_FakeRefPointFm())
-        monkeypatch.setattr(
-            mutate, "resolve_manifest_face",
-            lambda d, fr: _FakeRefResolution(object()),
-        )
-        monkeypatch.setattr(mutate, "select_entity", lambda e: False)
+        # Recipe-C cut #4: patch only on ref_geometry.
         monkeypatch.setattr(
             ref_geometry, "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(object()),
@@ -842,11 +838,11 @@ class TestCreateDomeHandler:
             return False
 
         monkeypatch.setattr(
-            mutate, "resolve_manifest_face",
+            advanced_shapes, "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(sentinel),
         )
-        monkeypatch.setattr(mutate, "select_entity", _sel)
-        ok, err = mutate._create_dome(
+        monkeypatch.setattr(advanced_shapes, "select_entity", _sel)
+        ok, err = advanced_shapes._create_dome(
             doc, {"type": "dome", "distance_mm": 10.0}, {"face_ref": {"role": "top"}}
         )
         assert ok is True
@@ -857,28 +853,28 @@ class TestCreateDomeHandler:
     def test_face_ref_no_delta_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
         doc = _FakeDomeDoc(will_materialize=False)
         monkeypatch.setattr(
-            mutate, "resolve_manifest_face",
+            advanced_shapes, "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(object()),
         )
-        monkeypatch.setattr(mutate, "select_entity", lambda e, *, append=False, mark=0: True)
-        ok, err = mutate._create_dome(doc, {"type": "dome"}, {"face_ref": {"role": "x"}})
+        monkeypatch.setattr(advanced_shapes, "select_entity", lambda e, *, append=False, mark=0: True)
+        ok, err = advanced_shapes._create_dome(doc, {"type": "dome"}, {"face_ref": {"role": "x"}})
         assert ok is False
         assert "did not add a feature" in err
 
     def test_face_ref_unresolved_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
         doc = _FakeDomeDoc()
         monkeypatch.setattr(
-            mutate, "resolve_manifest_face",
+            advanced_shapes, "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(None, method="none"),
         )
-        monkeypatch.setattr(mutate, "select_entity", lambda e, *, append=False, mark=0: True)
-        ok, err = mutate._create_dome(doc, {"type": "dome"}, {"face_ref": {"role": "x"}})
+        monkeypatch.setattr(advanced_shapes, "select_entity", lambda e, *, append=False, mark=0: True)
+        ok, err = advanced_shapes._create_dome(doc, {"type": "dome"}, {"face_ref": {"role": "x"}})
         assert ok is False
         assert "unresolved" in err
 
     def test_no_target_fails_soft(self) -> None:
         doc = _FakeDomeDoc()
-        ok, err = mutate._create_dome(doc, {"type": "dome"}, {})
+        ok, err = advanced_shapes._create_dome(doc, {"type": "dome"}, {})
         assert ok is False
         assert "face_ref" in err or "face" in err
 
@@ -948,10 +944,8 @@ class TestCreateRefPlaneNormalToEdge:
         doc = _FakeEdgePlaneDoc(will_materialize=True)
         vertex = object()
         edge = _FakeEdge(vertex)
-        monkeypatch.setattr(
-            mutate, "resolve_edge_ref",
-            lambda d, ref: _FakeRefResolution(edge),
-        )
+        # Recipe-C cut #4: mutate no longer imports resolve_edge_ref/select_entity;
+        # patch only on ref_geometry (where the handler lives).
         monkeypatch.setattr(
             ref_geometry, "resolve_edge_ref",
             lambda d, ref: _FakeRefResolution(edge),
@@ -966,7 +960,6 @@ class TestCreateRefPlaneNormalToEdge:
                 return True
             return False
 
-        monkeypatch.setattr(mutate, "select_entity", _sel)
         monkeypatch.setattr(ref_geometry, "select_entity", _sel)
         ok, err = ref_geometry._create_ref_plane(
             doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
@@ -980,14 +973,9 @@ class TestCreateRefPlaneNormalToEdge:
         _patch_com_imports(monkeypatch)
         doc = _FakeEdgePlaneDoc(will_materialize=False)
         edge = _FakeEdge(object())
-        monkeypatch.setattr(
-            mutate, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
-        )
+        # Recipe-C cut #4: patch only on ref_geometry.
         monkeypatch.setattr(
             ref_geometry, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
-        )
-        monkeypatch.setattr(
-            mutate, "select_entity", lambda e, *, append=False, mark=0: True,
         )
         monkeypatch.setattr(
             ref_geometry, "select_entity", lambda e, *, append=False, mark=0: True,
@@ -1001,10 +989,7 @@ class TestCreateRefPlaneNormalToEdge:
     def test_edge_ref_unresolved_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_com_imports(monkeypatch)
         doc = _FakeEdgePlaneDoc()
-        monkeypatch.setattr(
-            mutate, "resolve_edge_ref",
-            lambda d, ref: _FakeRefResolution(None, method="none"),
-        )
+        # Recipe-C cut #4: patch only on ref_geometry.
         monkeypatch.setattr(
             ref_geometry, "resolve_edge_ref",
             lambda d, ref: _FakeRefResolution(None, method="none"),
@@ -1019,9 +1004,7 @@ class TestCreateRefPlaneNormalToEdge:
         _patch_com_imports(monkeypatch)
         doc = _FakeEdgePlaneDoc()
         edge = _FakeEdge(None)  # GetStartVertex -> None
-        monkeypatch.setattr(
-            mutate, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
-        )
+        # Recipe-C cut #4: patch only on ref_geometry.
         monkeypatch.setattr(
             ref_geometry, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
         )
@@ -1141,18 +1124,18 @@ class TestCreateEdgeFlangeHandler:
     def _patch(self, monkeypatch: pytest.MonkeyPatch, doc: _FakeEdgeFlangeDoc) -> None:
         _patch_com_imports(monkeypatch)
         monkeypatch.setattr(
-            mutate, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(doc._edge)
+            flanges, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(doc._edge)
         )
-        monkeypatch.setattr(mutate, "read_persist_reference", lambda d, e: b"pid")
+        monkeypatch.setattr(flanges, "read_persist_reference", lambda d, e: b"pid")
         monkeypatch.setattr(
-            mutate, "select_entity", lambda e, *, append=False, mark=0: True
+            flanges, "select_entity", lambda e, *, append=False, mark=0: True
         )
-        monkeypatch.setattr(mutate, "VARIANT", lambda vt, val: ("V", vt, val))
+        monkeypatch.setattr(flanges, "VARIANT", lambda vt, val: ("V", vt, val))
 
     def test_green_delta(self, monkeypatch: pytest.MonkeyPatch) -> None:
         doc = _FakeEdgeFlangeDoc(will_materialize=True)
         self._patch(monkeypatch, doc)
-        ok, err = mutate._create_edge_flange(
+        ok, err = flanges._create_edge_flange(
             doc, {"type": "edge_flange", "height_mm": 10}, _EF_TARGET
         )
         assert ok is True
@@ -1170,7 +1153,7 @@ class TestCreateEdgeFlangeHandler:
         # off the plane/sketch delta (the bug the count-around-the-flange guards).
         doc = _FakeEdgeFlangeDoc(will_materialize=False)
         self._patch(monkeypatch, doc)
-        ok, err = mutate._create_edge_flange(
+        ok, err = flanges._create_edge_flange(
             doc, {"type": "edge_flange", "height_mm": 10}, _EF_TARGET
         )
         assert ok is False
@@ -1180,10 +1163,10 @@ class TestCreateEdgeFlangeHandler:
         doc = _FakeEdgeFlangeDoc()
         _patch_com_imports(monkeypatch)
         monkeypatch.setattr(
-            mutate, "resolve_edge_ref",
+            flanges, "resolve_edge_ref",
             lambda d, ref: _FakeRefResolution(None, method="none"),
         )
-        ok, err = mutate._create_edge_flange(
+        ok, err = flanges._create_edge_flange(
             doc, {"type": "edge_flange", "height_mm": 10}, _EF_TARGET
         )
         assert ok is False
@@ -1191,7 +1174,7 @@ class TestCreateEdgeFlangeHandler:
 
     def test_rejects_non_positive_height(self) -> None:
         doc = _FakeEdgeFlangeDoc()
-        ok, err = mutate._create_edge_flange(
+        ok, err = flanges._create_edge_flange(
             doc, {"type": "edge_flange", "height_mm": 0}, _EF_TARGET
         )
         assert ok is False
@@ -1199,7 +1182,7 @@ class TestCreateEdgeFlangeHandler:
 
     def test_rejects_missing_edge_ref(self) -> None:
         doc = _FakeEdgeFlangeDoc()
-        ok, err = mutate._create_edge_flange(
+        ok, err = flanges._create_edge_flange(
             doc, {"type": "edge_flange", "height_mm": 10}, {}
         )
         assert ok is False
@@ -1304,6 +1287,9 @@ class TestProposeSweepCut_Advertised:
 
 class TestProposeLoft:
     def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        # Recipe-C cut #4: loft relocated to advanced_shapes but registered
+        # WALLED (documented permanent kernel wall, NO-GO). It is NOT advertised
+        # — propose still fail-closes exactly as at HEAD.
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -1332,6 +1318,9 @@ class TestProposeLoft:
 
 class TestProposeRib:
     def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        # Recipe-C cut #4: rib relocated to advanced_shapes but registered WALLED
+        # (documented permanent kernel wall, df68c3c — walled both modes). NOT
+        # advertised — propose still fail-closes exactly as at HEAD.
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -1389,6 +1378,9 @@ class TestProposeDome:
 
 class TestProposeWrap:
     def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        # Recipe-C cut #4: wrap relocated to advanced_shapes but registered WALLED
+        # (PROVEN kernel wall, permanently deferred). NOT advertised — propose
+        # still fail-closes exactly as at HEAD.
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -1404,6 +1396,9 @@ class TestProposeWrap:
 
 class TestProposeBoundaryBoss:
     def test_valid(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        # Recipe-C cut #4: boundary_boss relocated to advanced_shapes but
+        # registered DORMANT (propose-walled at HEAD, never seat-proven). NOT
+        # advertised — propose still fail-closes exactly as at HEAD.
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))

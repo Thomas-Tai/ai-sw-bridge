@@ -349,3 +349,77 @@ _register_lane("ref_plane", _create_ref_plane, _ref_geometry_status)
 _register_lane("ref_axis", _create_ref_axis, _ref_geometry_status)
 _register_lane("coordinate_system", _create_coordinate_system, _ref_geometry_status)
 _register_lane("ref_point", _create_ref_point, _ref_geometry_status)
+
+# Recipe-C cut #4 — dress-up family (fillet/chamfer/variable_radius_fillet/
+# shell/draft). All seat-proven GREEN; relocated from mutate.py.
+from .dress_up import SPIKE_STATUS as _dress_up_status  # noqa: E402
+from .dress_up import (  # noqa: E402
+    _create_chamfer,
+    _create_draft,
+    _create_fillet,
+    _create_shell,
+    _create_variable_fillet,
+)
+
+# _create_fillet original signature: (doc, target, radius_mm) — non-standard.
+# Wrap to the standard (doc, feature, target) calling convention.
+def _fillet_adapter(doc: Any, feature: dict, target: dict):  # type: ignore[return]
+    return _create_fillet(doc, target, feature["radius_mm"])
+
+_register_lane("fillet_constant_radius", _fillet_adapter, _dress_up_status)
+_register_lane("chamfer", _create_chamfer, _dress_up_status)
+# _create_variable_fillet original signature: (doc, edges) — non-standard.
+def _varfil_adapter(doc: Any, feature: dict, target: dict):  # type: ignore[return]
+    return _create_variable_fillet(doc, target["edges"])
+
+_register_lane("variable_radius_fillet", _varfil_adapter, _dress_up_status)
+_register_lane("shell", _create_shell, _dress_up_status)
+_register_lane("draft", _create_draft, _dress_up_status)
+
+# Recipe-C cut #4 — advanced-shapes family (loft/rib/dome/wrap/boundary_boss/
+# wizard_hole). Relocated byte-identical from mutate.py. Disposition is
+# PER-FEATURE (Option A — a structural port grants walls NO behavior amnesty):
+# dome + wizard_hole were in HEAD _SUPPORTED → GREEN (advertised); loft/rib/wrap
+# are documented permanent kernel walls and boundary_boss was propose-walled at
+# HEAD → evacuated for provenance but registered WALLED/DORMANT so propose keeps
+# fail-closing exactly as at HEAD (the combine/split precedent).
+from .advanced_shapes import (  # noqa: E402
+    BOUNDARY_BOSS_STATUS as _boundary_boss_status,
+    DOME_STATUS as _dome_status,
+    LOFT_STATUS as _loft_status,
+    RIB_STATUS as _rib_status,
+    WIZARD_HOLE_STATUS as _wizard_hole_status,
+    WRAP_STATUS as _wrap_status,
+)
+from .advanced_shapes import (  # noqa: E402
+    _create_boundary_boss,
+    _create_dome,
+    _create_loft,
+    _create_rib,
+    _create_wizard_hole,
+    _create_wrap,
+)
+
+_register_lane("dome", _create_dome, _dome_status)
+_register_lane("wizard_hole", _create_wizard_hole, _wizard_hole_status)
+_register_lane("loft", _create_loft, _loft_status)  # WALLED → dormant skip
+_register_lane("rib", _create_rib, _rib_status)  # WALLED → dormant skip
+_register_lane("wrap", _create_wrap, _wrap_status)  # WALLED → dormant skip
+_register_lane("boundary_boss", _create_boundary_boss, _boundary_boss_status)  # DORMANT → skip
+
+# Recipe-C cut #4 — flanges family (base_flange GREEN / edge_flange DORMANT).
+# base_flange = W7 seat-proven GREEN. edge_flange = DORMANT ghost (quarantined
+# W42 — ΔVol=0 reproduced 3×; kept for provenance, NEVER advertised).
+from .flanges import BASE_FLANGE_STATUS as _base_flange_status  # noqa: E402
+from .flanges import EDGE_FLANGE_STATUS as _edge_flange_status  # noqa: E402
+from .flanges import (  # noqa: E402
+    _create_base_flange,
+    _create_edge_flange,
+)
+
+# _create_base_flange original signature: (doc, target, thickness_mm, bend_radius_mm).
+def _base_flange_adapter(doc: Any, feature: dict, target: dict):  # type: ignore[return]
+    return _create_base_flange(doc, target, feature["thickness_mm"], feature["bend_radius_mm"])
+
+_register_lane("base_flange", _base_flange_adapter, _base_flange_status)
+_register_lane("edge_flange", _create_edge_flange, _edge_flange_status)  # DORMANT → skip
