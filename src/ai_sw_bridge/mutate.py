@@ -3162,8 +3162,16 @@ def _sw_undo_last_commit_impl() -> dict[str, Any]:
             rec = json.loads(p.read_text(encoding="utf-8"))
         except Exception:
             continue
-        if rec.get("state") == ST_COMMITTED and rec.get("committed_at"):
-            candidates.append((rec["committed_at"], rec["proposal_id"], rec))
+        if rec.get("state") != ST_COMMITTED or not rec.get("committed_at"):
+            continue
+        # undo_last_commit reverts a LOCAL-change proposal by restoring its
+        # locals snapshot. The proposals dir is shared across all families, so
+        # it also holds feature/assembly/drawing/properties commits (keyed by
+        # `kind`/`spec`, with no `var`). Skip those rather than crashing on
+        # their absent local-change keys.
+        if "var" not in rec or "proposal_id" not in rec:
+            continue
+        candidates.append((rec["committed_at"], rec["proposal_id"], rec))
 
     if not candidates:
         result["error"] = "no committed proposal to undo"
