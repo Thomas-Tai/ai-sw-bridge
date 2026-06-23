@@ -23,7 +23,8 @@ from typing import Any
 
 import pytest
 
-from ai_sw_bridge import mutate
+from ai_sw_bridge import features, mutate
+from ai_sw_bridge.features import body_ops
 from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
 
 
@@ -92,8 +93,8 @@ class _FakeBodyDoc:
 def _patch_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     # typed() is identity (fake Extension already exposes SelectByID2);
     # wrapper_module() is never dereferenced past being passed to typed().
-    monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
-    monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
+    monkeypatch.setattr(body_ops, "typed", lambda obj, iface, **kw: obj)
+    monkeypatch.setattr(body_ops, "wrapper_module", lambda: object())
 
 
 def _two_bodies(will_delete: bool = True) -> _FakeBodyDoc:
@@ -110,12 +111,12 @@ def _two_bodies(will_delete: bool = True) -> _FakeBodyDoc:
 class TestBodyCountAndVolumes:
     def test_count_and_per_body_volume_mm3(self, _patch_helpers: None) -> None:
         doc = _two_bodies()
-        count, vols = mutate._get_body_count_and_volumes(doc)
+        count, vols = body_ops._get_body_count_and_volumes(doc)
         assert count == 2
         assert vols == pytest.approx([1800.0, 4000.0])  # m³ -> mm³ (×1e9)
 
     def test_empty_doc_returns_zero_none(self, _patch_helpers: None) -> None:
-        count, vols = mutate._get_body_count_and_volumes(_FakeBodyDoc([]))
+        count, vols = body_ops._get_body_count_and_volumes(_FakeBodyDoc([]))
         assert count == 0
         assert vols == []
 
@@ -126,7 +127,7 @@ class TestBodyCountAndVolumes:
 class TestDeleteBodyHandler:
     def test_green_delta_by_index(self, _patch_helpers: None) -> None:
         doc = _two_bodies()
-        ok, err = mutate._create_delete_body(
+        ok, err = body_ops._create_delete_body(
             doc, {"type": "delete_body"}, {"body_index": 1}
         )
         assert ok is True
@@ -135,7 +136,7 @@ class TestDeleteBodyHandler:
 
     def test_green_delta_by_name(self, _patch_helpers: None) -> None:
         doc = _two_bodies()
-        ok, err = mutate._create_delete_body(
+        ok, err = body_ops._create_delete_body(
             doc, {"type": "delete_body"}, {"body_name": "Body1"}
         )
         assert ok is True
@@ -145,7 +146,7 @@ class TestDeleteBodyHandler:
         # InsertDeleteBody2 returns a feature but the count never drops -> the
         # handler must NOT report success off the non-None return (W21 gate).
         doc = _two_bodies(will_delete=False)
-        ok, err = mutate._create_delete_body(
+        ok, err = body_ops._create_delete_body(
             doc, {"type": "delete_body"}, {"body_index": 1}
         )
         assert ok is False
@@ -153,27 +154,27 @@ class TestDeleteBodyHandler:
 
     def test_requires_two_bodies(self, _patch_helpers: None) -> None:
         doc = _FakeBodyDoc([_FakeBody("Body1", 1.8e-6)])
-        ok, err = mutate._create_delete_body(
+        ok, err = body_ops._create_delete_body(
             doc, {"type": "delete_body"}, {"body_index": 0}
         )
         assert ok is False
         assert ">= 2 bodies" in err
 
     def test_missing_target_rejected(self, _patch_helpers: None) -> None:
-        ok, err = mutate._create_delete_body(_two_bodies(), {"type": "delete_body"}, {})
+        ok, err = body_ops._create_delete_body(_two_bodies(), {"type": "delete_body"}, {})
         assert ok is False
         assert "body_index" in err and "body_name" in err
 
     def test_unselectable_body_fails_soft(self, _patch_helpers: None) -> None:
         doc = _two_bodies()
-        ok, err = mutate._create_delete_body(
+        ok, err = body_ops._create_delete_body(
             doc, {"type": "delete_body"}, {"body_name": "NoSuchBody"}
         )
         assert ok is False
         assert "could not select target body" in err
 
     def test_negative_index_rejected(self, _patch_helpers: None) -> None:
-        ok, err = mutate._create_delete_body(
+        ok, err = body_ops._create_delete_body(
             _two_bodies(), {"type": "delete_body"}, {"body_index": -1}
         )
         assert ok is False
@@ -208,7 +209,8 @@ def _patch_propose(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, doc: Any) ->
 
 class TestProposeDeleteBody:
     def test_delete_body_is_supported(self) -> None:
-        assert "delete_body" in mutate._SUPPORTED_FEATURE_TYPES
+        assert "delete_body" in features.HANDLER_REGISTRY
+        assert "delete_body" not in mutate._SUPPORTED_FEATURE_TYPES
 
     def test_propose_accepts_body_index(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"
@@ -259,9 +261,11 @@ class TestCombineSplitFailClosed:
 
     def test_combine_not_advertised(self) -> None:
         assert "combine" not in mutate._SUPPORTED_FEATURE_TYPES
+        assert "combine" not in features.HANDLER_REGISTRY
 
     def test_split_not_advertised(self) -> None:
         assert "split" not in mutate._SUPPORTED_FEATURE_TYPES
+        assert "split" not in features.HANDLER_REGISTRY
 
     def test_propose_combine_fails_closed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc_file = tmp_path / "t.sldprt"

@@ -318,3 +318,19 @@ from .patterns import (  # noqa: E402
 _register_lane("linear_pattern", create_linear_pattern, _patterns_status)
 _register_lane("circular_pattern", create_circular_pattern, _patterns_status)
 _register_lane("mirror_feature", create_mirror_feature, _patterns_status)
+
+# Recipe-C cut #2 — body-ops family. delete_body W41-SHIPPED (GREEN); combine/
+# split are characterized OOP walls (W53), registered DORMANT (WALLED, mirroring
+# move_copy_body) so propose keeps fail-closing. Relocated from mutate.py.
+from .body_ops import COMBINE_STATUS as _combine_status  # noqa: E402
+from .body_ops import DELETE_BODY_STATUS as _delete_body_status  # noqa: E402
+from .body_ops import SPLIT_STATUS as _split_status  # noqa: E402
+from .body_ops import (  # noqa: E402
+    _create_combine,
+    _create_delete_body,
+    _create_split,
+)
+
+_register_lane("delete_body", _create_delete_body, _delete_body_status)
+_register_lane("combine", _create_combine, _combine_status)  # WALLED → dormant skip
+_register_lane("split", _create_split, _split_status)  # WALLED → dormant skip
