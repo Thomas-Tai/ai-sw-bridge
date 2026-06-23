@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-sw-bridge"
-version = "0.18.1"
+version = "1.0.0rc1"
 description = "A semi-automated bridge that lets an AI assistant (Claude, ChatGPT, Codex, etc.) drive SOLIDWORKS through the COM API for design-guide tuning and parametric part creation."
 readme = "README.md"
 license = { text = "MIT" }
@@ -155,4 +155,11 @@ layers = [
     "ai_sw_bridge.locals_io",
     "ai_sw_bridge.errors",
     "ai_sw_bridge.telemetry",
+]
+# v1.0 commercial boundary: the SolidWorksClient facade legitimately delegates
+# to the mutate transaction layer (Facade -> Transaction -> Handlers). This is
+# the intended GA architecture, not a layer leak — formally blessed here so the
+# layers contract passes. (Was the v0.18 class-API "grace line" exception.)
+ignore_imports = [
+    "ai_sw_bridge.client -> ai_sw_bridge.mutate",
 ]

@@ -166,19 +166,3 @@ def _sw_get_inertia_impl(doc: Any) -> dict[str, Any]:
     return result
 
 
-def sw_get_inertia(doc: Any) -> dict[str, Any]:
-    """Deprecated free-function shim — use ``SolidWorksClient().observe.get_inertia()``.
-
-    Preserved for backward compatibility (v0.18 grace line). Emits a
-    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_inertia_impl`,
-    returning identical data. The class-based API is the stable contract.
-    """
-    import warnings
-
-    warnings.warn(
-        "sw_get_inertia() is deprecated; use SolidWorksClient().observe.get_inertia(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_inertia_impl(doc)

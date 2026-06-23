@@ -24,42 +24,29 @@ from .sw_com import (
 from .observe_bbox import (
     _sw_get_assembly_bbox_from_doc_impl,
     _sw_get_bbox_from_doc_impl,
-    sw_get_assembly_bbox_from_doc,  # noqa: F401  (re-export: backward-compat import path)
-    sw_get_bbox_from_doc,  # noqa: F401  (re-export: backward-compat import path)
 )
 from .observe_clearance import (
     _sw_analyze_stackup_impl,
     _sw_get_clearance_impl,
     _sw_get_face_clearance_impl,
-    sw_analyze_stackup,  # noqa: F401  (re-export: backward-compat import path)
-    sw_get_clearance,  # noqa: F401  (re-export: backward-compat import path)
-    sw_get_face_clearance,  # noqa: F401  (re-export: backward-compat import path)
 )
 from .observe_draft import (
     _sw_get_draft_analysis_impl,
-    sw_get_draft_analysis,  # noqa: F401  (re-export: backward-compat import path)
 )
 from .observe_inertia import (
     _sw_get_inertia_impl,
-    sw_get_inertia,  # noqa: F401  (re-export: backward-compat import path)
 )
 from .observe_interference import (
     _sw_get_interference_impl,
-    sw_get_interference,  # noqa: F401  (re-export: backward-compat import path)
 )
 from .observe_measure import (
     _sw_get_measure_angle_from_doc_impl,
     _sw_get_measure_area_from_doc_impl,
     _sw_get_measure_durable_pair_impl,
     _sw_get_measure_from_doc_impl,
-    sw_get_measure_angle_from_doc,  # noqa: F401  (re-export: backward-compat import path)
-    sw_get_measure_area_from_doc,  # noqa: F401  (re-export: backward-compat import path)
-    sw_get_measure_durable_pair,  # noqa: F401  (re-export: backward-compat import path)
-    sw_get_measure_from_doc,  # noqa: F401  (re-export: backward-compat import path)
 )
 from .observe_selection import (
     _sw_get_selection_impl,
-    sw_get_selection,  # noqa: F401  (re-export: backward-compat import path)
 )
 
 
@@ -147,18 +134,6 @@ def _sw_get_active_doc_impl() -> dict[str, Any]:
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
-
-
-def sw_get_active_doc() -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.active_doc()."""
-    import warnings
-    warnings.warn(
-        "sw_get_active_doc() is deprecated; use SolidWorksClient().observe.active_doc(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_active_doc_impl()
 
 
 def _walk_feature_tree(first_feature: Any, max_depth: int = 8) -> list[Any]:
@@ -337,18 +312,6 @@ def _sw_get_feature_errors_impl() -> dict[str, Any]:
         return result
 
 
-def sw_get_feature_errors() -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.feature_errors()."""
-    import warnings
-    warnings.warn(
-        "sw_get_feature_errors() is deprecated; use SolidWorksClient().observe.feature_errors(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_feature_errors_impl()
-
-
 def _sw_get_equations_impl() -> dict[str, Any]:
     """v0.18 core — Dump every equation in the active document with its current value,
     solve status, and the linked external locals file if any."""
@@ -474,18 +437,6 @@ def _sw_get_equations_impl() -> dict[str, Any]:
         return result
 
 
-def sw_get_equations() -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.equations()."""
-    import warnings
-    warnings.warn(
-        "sw_get_equations() is deprecated; use SolidWorksClient().observe.equations(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_equations_impl()
-
-
 def _sw_get_bbox_impl() -> dict[str, Any]:
     """v0.18 core — Return the active part's axis-aligned bounding box in part coords.
 
@@ -580,18 +531,6 @@ def _sw_get_bbox_impl() -> dict[str, Any]:
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
-
-
-def sw_get_bbox() -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.bbox()."""
-    import warnings
-    warnings.warn(
-        "sw_get_bbox() is deprecated; use SolidWorksClient().observe.bbox(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_bbox_impl()
 
 
 def _sw_get_volume_impl() -> dict[str, Any]:
@@ -721,18 +660,6 @@ def _sw_get_volume_impl() -> dict[str, Any]:
         return result
 
 
-def sw_get_volume() -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.volume()."""
-    import warnings
-    warnings.warn(
-        "sw_get_volume() is deprecated; use SolidWorksClient().observe.volume(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_volume_impl()
-
-
 def _to_list(val: Any) -> list[Any] | None:
     """Coerce a SAFEARRAY-style COM return (tuple/list/None) to a list."""
     if val is None:
@@ -846,18 +773,6 @@ def _sw_get_feature_statistics_impl() -> dict[str, Any]:
         return result
 
 
-def sw_get_feature_statistics() -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.feature_statistics()."""
-    import warnings
-    warnings.warn(
-        "sw_get_feature_statistics() is deprecated; use SolidWorksClient().observe.feature_statistics(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_feature_statistics_impl()
-
-
 def _sw_screenshot_impl(
     width: int = 640,
     height: int = 360,
@@ -945,23 +860,6 @@ def _sw_screenshot_impl(
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
-
-
-def sw_screenshot(
-    width: int = 640,
-    height: int = 360,
-    fit_view: bool = False,
-    filename: str | None = None,
-) -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.screenshot()."""
-    import warnings
-    warnings.warn(
-        "sw_screenshot() is deprecated; use SolidWorksClient().observe.screenshot(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_screenshot_impl(width=width, height=height, fit_view=fit_view, filename=filename)
 
 
 # IMate2.Status values per SW API
@@ -1145,18 +1043,6 @@ def _sw_get_mate_errors_impl() -> dict[str, Any]:
         return result
 
 
-def sw_get_mate_errors() -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.mate_errors()."""
-    import warnings
-    warnings.warn(
-        "sw_get_mate_errors() is deprecated; use SolidWorksClient().observe.mate_errors(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_mate_errors_impl()
-
-
 def _select_by_id(doc: Any, entity: str, append: bool = False) -> bool:
     """Drive SW selection via IModelDoc2.SelectByID (legacy 5-arg form)."""
     type_attempts = [
@@ -1252,18 +1138,6 @@ def _sw_get_custom_props_impl() -> dict[str, Any]:
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
-
-
-def sw_get_custom_props() -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.custom_props()."""
-    import warnings
-    warnings.warn(
-        "sw_get_custom_props() is deprecated; use SolidWorksClient().observe.custom_props(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_custom_props_impl()
 
 
 def _sw_measure_impl(
@@ -1399,21 +1273,6 @@ def _sw_measure_impl(
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
-
-
-def sw_measure(
-    entity_a: str | None = None,
-    entity_b: str | None = None,
-) -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.measure()."""
-    import warnings
-    warnings.warn(
-        "sw_measure() is deprecated; use SolidWorksClient().observe.measure(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_measure_impl(entity_a=entity_a, entity_b=entity_b)
 
 
 # ---------------------------------------------------------------------------
@@ -1754,22 +1613,6 @@ def _sw_undercut_faces_impl(
         return result
 
 
-def sw_undercut_faces(
-    pull_x: float = 0.0,
-    pull_y: float = 1.0,
-    pull_z: float = 0.0,
-) -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.undercut_faces()."""
-    import warnings
-    warnings.warn(
-        "sw_undercut_faces() is deprecated; use SolidWorksClient().observe.undercut_faces(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_undercut_faces_impl(pull_x=pull_x, pull_y=pull_y, pull_z=pull_z)
-
-
 def _sw_min_wall_thickness_impl(samples_per_face: int = 4) -> dict[str, Any]:
     """v0.18 core — Report the minimum wall thickness of the active solid PART.
 
@@ -1879,18 +1722,6 @@ def _sw_min_wall_thickness_impl(samples_per_face: int = 4) -> dict[str, Any]:
     except Exception as exc:
         result["error"] = f"dispatch failed: {exc!r}"
         return result
-
-
-def sw_min_wall_thickness(samples_per_face: int = 4) -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.min_wall_thickness()."""
-    import warnings
-    warnings.warn(
-        "sw_min_wall_thickness() is deprecated; use SolidWorksClient().observe.min_wall_thickness(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_min_wall_thickness_impl(samples_per_face=samples_per_face)
 
 
 def _face_sample_points(fobj: Any, n: int) -> list[tuple[float, float, float]]:
@@ -2075,18 +1906,6 @@ def _sw_get_enabled_addins_impl() -> dict[str, Any]:
     result["known_problematic"] = known_problematic
     result["ok"] = True
     return result
-
-
-def sw_get_enabled_addins() -> dict[str, Any]:
-    """Deprecated shim — use SolidWorksClient().observe.enabled_addins()."""
-    import warnings
-    warnings.warn(
-        "sw_get_enabled_addins() is deprecated; use SolidWorksClient().observe.enabled_addins(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_enabled_addins_impl()
 
 
 # ---------------------------------------------------------------------------

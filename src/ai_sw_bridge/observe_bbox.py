@@ -168,24 +168,6 @@ def _sw_get_bbox_from_doc_impl(doc: Any) -> dict[str, Any]:
     return result
 
 
-def sw_get_bbox_from_doc(doc: Any) -> dict[str, Any]:
-    """Deprecated free-function shim — use ``SolidWorksClient().observe.bbox_from_doc()``.
-
-    Preserved for backward compatibility (v0.18 grace line). Emits a
-    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_bbox_from_doc_impl`,
-    returning identical data. The class-based API is the stable contract.
-    """
-    import warnings
-
-    warnings.warn(
-        "sw_get_bbox_from_doc() is deprecated; use SolidWorksClient().observe.bbox_from_doc(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_bbox_from_doc_impl(doc)
-
-
 def _transform_point(m: list[float], x: float, y: float, z: float) -> tuple[float, float, float]:
     """Apply a 4×4 row-major transform matrix to a 3D point."""
     tx = m[0] * x + m[1] * y + m[2] * z + m[3]
@@ -443,21 +425,3 @@ def _sw_get_assembly_bbox_from_doc_impl(doc: Any) -> dict[str, Any]:
 
     return result
 
-
-def sw_get_assembly_bbox_from_doc(doc: Any) -> dict[str, Any]:
-    """Deprecated free-function shim — use ``SolidWorksClient().observe.assembly_bbox()``.
-
-    Preserved for backward compatibility (v0.18 grace line). Emits a
-    ``PendingDeprecationWarning`` and routes to
-    :func:`_sw_get_assembly_bbox_from_doc_impl`, returning identical data.
-    The class-based API is the stable contract.
-    """
-    import warnings
-
-    warnings.warn(
-        "sw_get_assembly_bbox_from_doc() is deprecated; use SolidWorksClient().observe.assembly_bbox(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_assembly_bbox_from_doc_impl(doc)

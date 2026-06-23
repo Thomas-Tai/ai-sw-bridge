@@ -262,24 +262,6 @@ def _sw_get_clearance_impl(doc: Any, comp_a_name: str, comp_b_name: str) -> dict
     return result
 
 
-def sw_get_clearance(doc: Any, comp_a_name: str, comp_b_name: str) -> dict[str, Any]:
-    """Deprecated free-function shim — use ``SolidWorksClient().observe.clearance()``.
-
-    Preserved for backward compatibility (v0.18 grace line). Emits a
-    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_clearance_impl`,
-    returning identical data. The class-based API is the stable contract.
-    """
-    import warnings
-
-    warnings.warn(
-        "sw_get_clearance() is deprecated; use SolidWorksClient().observe.clearance(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_clearance_impl(doc, comp_a_name, comp_b_name)
-
-
 def read_face_pair_clearance(
     doc: Any,
     face_a_name: str,
@@ -418,27 +400,6 @@ def _sw_get_face_clearance_impl(
         result["ok"] = True
 
     return result
-
-
-def sw_get_face_clearance(
-    doc: Any, face_a_name: str, face_b_name: str
-) -> dict[str, Any]:
-    """Deprecated free-function shim — use ``SolidWorksClient().observe.face_clearance()``.
-
-    Preserved for backward compatibility (v0.18 grace line). Emits a
-    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_face_clearance_impl`,
-    returning identical data. The class-based API is the stable contract.
-    """
-    import warnings
-
-    warnings.warn(
-        "sw_get_face_clearance() is deprecated; use "
-        "SolidWorksClient().observe.face_clearance(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_face_clearance_impl(doc, face_a_name, face_b_name)
 
 
 def _gap_of(clr: dict[str, Any]) -> tuple[float | None, bool, str | None]:
@@ -614,22 +575,3 @@ def _sw_analyze_stackup_impl(
     return analyze_stackup(doc, component_names, check_endpoints=check_endpoints)
 
 
-def sw_analyze_stackup(
-    doc: Any, component_names: Any, check_endpoints: bool = True
-) -> dict[str, Any]:
-    """Deprecated free-function shim — use ``SolidWorksClient().observe.analyze_stackup()``.
-
-    Preserved for backward compatibility (v0.18 grace line). Emits a
-    ``PendingDeprecationWarning`` and routes to :func:`_sw_analyze_stackup_impl`,
-    returning identical data. The class-based API is the stable contract.
-    """
-    import warnings
-
-    warnings.warn(
-        "sw_analyze_stackup() is deprecated; use "
-        "SolidWorksClient().observe.analyze_stackup(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_analyze_stackup_impl(doc, component_names, check_endpoints=check_endpoints)

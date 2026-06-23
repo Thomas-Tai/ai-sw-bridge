@@ -275,25 +275,6 @@ def _sw_get_measure_from_doc_impl(doc: Any) -> dict[str, Any]:
     return result
 
 
-def sw_get_measure_from_doc(doc: Any) -> dict[str, Any]:
-    """Deprecated free-function shim — use ``SolidWorksClient().observe.measure_selection()``.
-
-    Preserved for backward compatibility (v0.18 grace line). Emits a
-    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_measure_from_doc_impl`,
-    returning identical data. The class-based API is the stable contract.
-    """
-    import warnings
-
-    warnings.warn(
-        "sw_get_measure_from_doc() is deprecated; use "
-        "SolidWorksClient().observe.measure_selection(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_measure_from_doc_impl(doc)
-
-
 def _resolve_durable_ref(
     doc: Any, durable_ref_b64: str, mod: Any = None
 ) -> tuple[Any | None, str | None]:
@@ -490,27 +471,6 @@ def _sw_get_measure_durable_pair_impl(
     return result
 
 
-def sw_get_measure_durable_pair(
-    doc: Any, durable_ref_a: str, durable_ref_b: str
-) -> dict[str, Any]:
-    """Deprecated free-function shim — use ``SolidWorksClient().observe.measure_durable_pair()``.
-
-    Preserved for backward compatibility (v0.18 grace line). Emits a
-    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_measure_durable_pair_impl`,
-    returning identical data. The class-based API is the stable contract.
-    """
-    import warnings
-
-    warnings.warn(
-        "sw_get_measure_durable_pair() is deprecated; use "
-        "SolidWorksClient().observe.measure_durable_pair(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_measure_durable_pair_impl(doc, durable_ref_a, durable_ref_b)
-
-
 def read_measure_angle(measure: Any) -> dict[str, Any]:
     """Read the ``Angle`` property from an ``IMeasure`` object.
 
@@ -689,39 +649,3 @@ def _sw_get_measure_area_from_doc_impl(doc: Any) -> dict[str, Any]:
     return result
 
 
-def sw_get_measure_angle_from_doc(doc: Any) -> dict[str, Any]:
-    """Deprecated free-function shim — use ``SolidWorksClient().observe.measure_angle()``.
-
-    Preserved for backward compatibility (v0.18 grace line). Emits a
-    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_measure_angle_from_doc_impl`,
-    returning identical data. The class-based API is the stable contract.
-    """
-    import warnings
-
-    warnings.warn(
-        "sw_get_measure_angle_from_doc() is deprecated; use "
-        "SolidWorksClient().observe.measure_angle(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_measure_angle_from_doc_impl(doc)
-
-
-def sw_get_measure_area_from_doc(doc: Any) -> dict[str, Any]:
-    """Deprecated free-function shim — use ``SolidWorksClient().observe.measure_area()``.
-
-    Preserved for backward compatibility (v0.18 grace line). Emits a
-    ``PendingDeprecationWarning`` and routes to :func:`_sw_get_measure_area_from_doc_impl`,
-    returning identical data. The class-based API is the stable contract.
-    """
-    import warnings
-
-    warnings.warn(
-        "sw_get_measure_area_from_doc() is deprecated; use "
-        "SolidWorksClient().observe.measure_area(). "
-        "It will be removed in a future release.",
-        PendingDeprecationWarning,
-        stacklevel=2,
-    )
-    return _sw_get_measure_area_from_doc_impl(doc)
