@@ -186,12 +186,12 @@ def _run_export(state: OrchestrationState) -> StageOutcome:
     block = state.spec.get("export") if isinstance(state.spec, dict) else None
     if not block:
         return StageOutcome("export", ok=True, skipped=True, detail="no export block")
-    from ..export import export_all
+    from ..client import SolidWorksClient
 
     requests = _parse_export_requests(block)
     part_name = Path(state.part_path).stem if state.part_path else state.spec.get("name", "part")
     try:
-        results = export_all(state.doc, requests, str(part_name))
+        results = SolidWorksClient().export.run(state.doc, requests, str(part_name))
     except Exception as exc:  # noqa: BLE001
         return StageOutcome("export", ok=False, detail=f"{type(exc).__name__}: {exc}")
     state.export_results = list(results) if results else []

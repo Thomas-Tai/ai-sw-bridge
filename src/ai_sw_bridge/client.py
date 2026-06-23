@@ -313,6 +313,50 @@ class UrdfFacade:
         return export_urdf(asm_doc, output_dir, **kwargs)
 
 
+class SolidWorksExportFacade:
+    """Export facade — wraps the ``export.export_all`` orchestrator.
+
+    Facade-only (no ``sw_*`` free function, no shim): ``export_all`` is already
+    the public dispatch entry. The internal build pipeline and URDF export route
+    file output through here so ``SolidWorksClient`` is the single export seam.
+    """
+
+    def __init__(self, client: "SolidWorksClient") -> None:
+        self._client = client
+
+    def run(self, doc: Any, requests: Any, part_name: str) -> Any:
+        """Export *doc* in every requested format; returns ``list[ExportResult]``.
+
+        The import is lazy so the ``client`` ↔ ``export_urdf`` cycle never forms
+        at module load (``export_urdf`` routes back through this facade).
+        """
+        from .export import export_all
+
+        return export_all(doc, requests, part_name)
+
+
+class SolidWorksFeaturesFacade:
+    """Read-only introspection over the feature ``HANDLER_REGISTRY``.
+
+    Discovery surface — *which* seat-proven feature kinds the current build
+    advertises — for consumers deciding what to dispatch. The write path stays
+    on :meth:`SolidWorksClient.mutate.propose_feature_add`; it is NOT duplicated
+    here, preserving the read/write boundary.
+    """
+
+    def list_kinds(self) -> list[str]:
+        """Sorted list of registered (seat-proven GREEN) feature kinds."""
+        from .features import HANDLER_REGISTRY
+
+        return sorted(HANDLER_REGISTRY)
+
+    def supports(self, kind: str) -> bool:
+        """True iff *kind* is a registered feature handler."""
+        from .features import HANDLER_REGISTRY
+
+        return kind in HANDLER_REGISTRY
+
+
 class SolidWorksMutatorFacade:
     """Mutation facade — Propose-Approve-Execute transaction lifecycle (v0.18).
 
@@ -431,6 +475,8 @@ class SolidWorksClient:
         self._observe: SolidWorksObserverFacade | None = None
         self._urdf: UrdfFacade | None = None
         self._mutate: SolidWorksMutatorFacade | None = None
+        self._export: SolidWorksExportFacade | None = None
+        self._features: SolidWorksFeaturesFacade | None = None
 
     # ── connection state ────────────────────────────────────────────────
     @property
@@ -464,6 +510,18 @@ class SolidWorksClient:
         if self._urdf is None:
             self._urdf = UrdfFacade(self)
         return self._urdf
+
+    @property
+    def export(self) -> SolidWorksExportFacade:
+        if self._export is None:
+            self._export = SolidWorksExportFacade(self)
+        return self._export
+
+    @property
+    def features(self) -> SolidWorksFeaturesFacade:
+        if self._features is None:
+            self._features = SolidWorksFeaturesFacade()
+        return self._features
 
     @property
     def mutate(self) -> SolidWorksMutatorFacade:

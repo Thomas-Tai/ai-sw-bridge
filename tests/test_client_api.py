@@ -1111,3 +1111,43 @@ def test_client_facade_commit_properties_routes_without_warning():
         res = client.mutate.commit_properties("nonexistent_id")
     assert res["ok"] is False
     assert "not found" in res["error"]
+
+
+# ── Recipe-B: facade-only domains (.export / .features) — no shims ──────────
+
+def test_export_facade_delegates_to_export_all(monkeypatch):
+    """client.export.run forwards (doc, requests, part_name) to export.export_all
+    verbatim and returns its result. The facade lazy-imports export_all, so we
+    patch the name on the ai_sw_bridge.export package the import resolves from."""
+    captured = {}
+
+    def fake_export_all(doc, requests, part_name):
+        captured["args"] = (doc, requests, part_name)
+        return ["EXPORT_RESULT"]
+
+    monkeypatch.setattr("ai_sw_bridge.export.export_all", fake_export_all)
+    client = SolidWorksClient(app=object(), mod=object())
+    out = client.export.run("DOC", ["req"], "part_stem")
+    assert out == ["EXPORT_RESULT"]
+    assert captured["args"] == ("DOC", ["req"], "part_stem")
+
+
+def test_features_facade_introspection():
+    """client.features.list_kinds() mirrors the HANDLER_REGISTRY; supports() is
+    membership. Read-only — the write path stays on .mutate.propose_feature_add."""
+    from ai_sw_bridge.features import HANDLER_REGISTRY
+
+    client = SolidWorksClient(app=object(), mod=object())
+    kinds = client.features.list_kinds()
+    assert isinstance(kinds, list)
+    assert kinds == sorted(HANDLER_REGISTRY)
+    assert kinds  # registry is non-empty (seat-proven lanes registered)
+    assert client.features.supports(kinds[0]) is True
+    assert client.features.supports("__not_a_real_feature_kind__") is False
+
+
+def test_export_features_facades_cached():
+    """.export and .features are cached singletons, like .observe/.mutate/.urdf."""
+    client = SolidWorksClient(app=object(), mod=object())
+    assert client.export is client.export
+    assert client.features is client.features

@@ -263,7 +263,8 @@ def _export_part_stl(
     after the caller has flushed the session. Each part is flushed again on the
     way out so the next iteration opens fresh.
     """
-    from .export.dispatch import ExportRequest, export_all
+    from .client import SolidWorksClient
+    from .export.dispatch import ExportRequest
 
     if not Path(str(part_path)).exists():
         return False, f"part file missing on disk: {part_path!r}"
@@ -279,7 +280,7 @@ def _export_part_stl(
     reqs = [ExportRequest(
         format="stl", output_dir=meshes_dir, filename=stl_name, binary=binary_stl)]
     try:
-        exp = export_all(opened_doc, reqs, stl_name)
+        exp = SolidWorksClient().export.run(opened_doc, reqs, stl_name)
     except Exception as exc:  # noqa: BLE001
         exp = None
         err = f"export raised: {exc!r}"
