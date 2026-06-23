@@ -19,6 +19,8 @@ from typing import Any
 import pytest
 
 from ai_sw_bridge import mutate
+from ai_sw_bridge import features
+from ai_sw_bridge.features import ref_geometry
 from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
 
 # ---------------------------------------------------------------------------
@@ -29,6 +31,7 @@ from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
 def _patch_com_imports(monkeypatch: pytest.MonkeyPatch) -> None:
     """Monkeypatch COM imports so _create_sweep_cut works with fake objects."""
     import ai_sw_bridge.mutate as mutate_mod
+    from ai_sw_bridge.features import ref_geometry as ref_geo_mod
 
     def _fake_typed(obj: Any, iface: str, module: Any = None) -> Any:
         return obj
@@ -42,6 +45,9 @@ def _patch_com_imports(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mutate_mod, "typed", _fake_typed)
     monkeypatch.setattr(mutate_mod, "typed_qi", _fake_typed_qi)
     monkeypatch.setattr(mutate_mod, "wrapper_module", _fake_wrapper_module)
+    # Seam split: ref_geometry handlers now live in ref_geo_mod; patch both.
+    monkeypatch.setattr(ref_geo_mod, "typed", _fake_typed)
+    monkeypatch.setattr(ref_geo_mod, "wrapper_module", _fake_wrapper_module)
 
 
 class _FakeSweepCutExt:
@@ -340,6 +346,9 @@ def _patch_propose(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, doc: Any) ->
     monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
     monkeypatch.setattr(mutate, "typed", lambda obj, iface, **kw: obj)
     monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
+    # Seam split: ref_geometry handlers now live in ref_geometry module; patch both.
+    monkeypatch.setattr(ref_geometry, "wrapper_module", lambda: object())
+    monkeypatch.setattr(ref_geometry, "typed", lambda obj, iface, **kw: obj)
 
 
 # ---------------------------------------------------------------------------
@@ -475,7 +484,7 @@ class TestCreateRefAxisOOPContract:
         import pythoncom
 
         doc = _RefAxisSpyDoc()
-        ok, err = mutate._create_ref_axis(
+        ok, err = ref_geometry._create_ref_axis(
             doc, {}, {"planes": ["Front Plane", "Right Plane"]}
         )
         assert ok is True, err
@@ -531,6 +540,7 @@ class TestCreateCoordinateSystemDurable:
 
     def _patch_resolve_select(self, monkeypatch, *, resolves=True):
         import ai_sw_bridge.mutate as m
+        from ai_sw_bridge.features import ref_geometry as ref_geo_mod
 
         calls = {"resolve": [], "select": []}
 
@@ -550,6 +560,9 @@ class TestCreateCoordinateSystemDurable:
 
         monkeypatch.setattr(m, "resolve_persist_id", fake_resolve)
         monkeypatch.setattr(m, "select_entity", fake_select)
+        # Seam split: _create_coordinate_system now lives in ref_geo_mod; patch both.
+        monkeypatch.setattr(ref_geo_mod, "resolve_persist_id", fake_resolve)
+        monkeypatch.setattr(ref_geo_mod, "select_entity", fake_select)
         return calls
 
     def test_durable_origin_axes_route_correct_marks(self, monkeypatch) -> None:
@@ -561,7 +574,7 @@ class TestCreateCoordinateSystemDurable:
             "x_axis_ref": self._ref(b"XAXIS"),
             "y_axis_ref": self._ref(b"YAXIS"),
         }
-        ok, err = mutate._create_coordinate_system(doc, {"flip_x": True}, target)
+        ok, err = ref_geometry._create_coordinate_system(doc, {"flip_x": True}, target)
         assert ok is True, err
         # Three durable refs resolved (tier-1 persist) with the decoded tokens.
         assert calls["resolve"] == [b"ORIGIN", b"XAXIS", b"YAXIS"]
@@ -575,7 +588,7 @@ class TestCreateCoordinateSystemDurable:
         calls = self._patch_resolve_select(monkeypatch)
         fm = _FakeCsysFm()
         doc = _FakeCsysDoc(fm)
-        ok, err = mutate._create_coordinate_system(doc, {}, {})
+        ok, err = ref_geometry._create_coordinate_system(doc, {}, {})
         assert ok is True, err
         # No durable refs -> no resolve/select, no rebuild (legacy behavior).
         assert calls["resolve"] == [] and calls["select"] == []
@@ -586,7 +599,7 @@ class TestCreateCoordinateSystemDurable:
         calls = self._patch_resolve_select(monkeypatch)
         fm = _FakeCsysFm()
         doc = _FakeCsysDoc(fm)
-        ok, err = mutate._create_coordinate_system(
+        ok, err = ref_geometry._create_coordinate_system(
             doc, {}, {"origin_ref": self._ref(b"O")}
         )
         assert ok is True, err
@@ -596,7 +609,7 @@ class TestCreateCoordinateSystemDurable:
         self._patch_resolve_select(monkeypatch)
         fm = _FakeCsysFm()
         doc = _FakeCsysDoc(fm)
-        ok, err = mutate._create_coordinate_system(
+        ok, err = ref_geometry._create_coordinate_system(
             doc, {}, {"origin_ref": {"not_a_token": 1}}
         )
         assert ok is False
@@ -607,7 +620,7 @@ class TestCreateCoordinateSystemDurable:
         self._patch_resolve_select(monkeypatch, resolves=False)
         fm = _FakeCsysFm()
         doc = _FakeCsysDoc(fm)
-        ok, err = mutate._create_coordinate_system(
+        ok, err = ref_geometry._create_coordinate_system(
             doc, {}, {"origin_ref": self._ref(b"O")}
         )
         assert ok is False
@@ -719,7 +732,12 @@ class TestCreateRefPointHandler:
             lambda d, fr: _FakeRefResolution(sentinel_face),
         )
         monkeypatch.setattr(mutate, "select_entity", lambda e: True)
-        ok, err = mutate._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "top"}})
+        monkeypatch.setattr(
+            ref_geometry, "resolve_manifest_face",
+            lambda d, fr: _FakeRefResolution(sentinel_face),
+        )
+        monkeypatch.setattr(ref_geometry, "select_entity", lambda e: True)
+        ok, err = ref_geometry._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "top"}})
         assert ok is True
         assert err is None
         # type 4 = swRefPointTypeInCentreOfFace
@@ -732,7 +750,12 @@ class TestCreateRefPointHandler:
             lambda d, fr: _FakeRefResolution(None, method="none"),
         )
         monkeypatch.setattr(mutate, "select_entity", lambda e: True)
-        ok, err = mutate._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "x"}})
+        monkeypatch.setattr(
+            ref_geometry, "resolve_manifest_face",
+            lambda d, fr: _FakeRefResolution(None, method="none"),
+        )
+        monkeypatch.setattr(ref_geometry, "select_entity", lambda e: True)
+        ok, err = ref_geometry._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "x"}})
         assert ok is False
         assert "unresolved" in err
 
@@ -743,13 +766,18 @@ class TestCreateRefPointHandler:
             lambda d, fr: _FakeRefResolution(object()),
         )
         monkeypatch.setattr(mutate, "select_entity", lambda e: False)
-        ok, err = mutate._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "x"}})
+        monkeypatch.setattr(
+            ref_geometry, "resolve_manifest_face",
+            lambda d, fr: _FakeRefResolution(object()),
+        )
+        monkeypatch.setattr(ref_geometry, "select_entity", lambda e: False)
+        ok, err = ref_geometry._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "x"}})
         assert ok is False
         assert "could not select" in err
 
     def test_no_target_fails_soft(self) -> None:
         doc = _FakeRefPointDoc(_FakeRefPointFm())
-        ok, err = mutate._create_ref_point(doc, {"type": "ref_point"}, {})
+        ok, err = ref_geometry._create_ref_point(doc, {"type": "ref_point"}, {})
         assert ok is False
         assert "face_ref" in err
 
@@ -924,6 +952,10 @@ class TestCreateRefPlaneNormalToEdge:
             mutate, "resolve_edge_ref",
             lambda d, ref: _FakeRefResolution(edge),
         )
+        monkeypatch.setattr(
+            ref_geometry, "resolve_edge_ref",
+            lambda d, ref: _FakeRefResolution(edge),
+        )
 
         def _sel(entity, *, append=False, mark=0):
             if entity is vertex and mark == 0 and not append:
@@ -935,7 +967,8 @@ class TestCreateRefPlaneNormalToEdge:
             return False
 
         monkeypatch.setattr(mutate, "select_entity", _sel)
-        ok, err = mutate._create_ref_plane(
+        monkeypatch.setattr(ref_geometry, "select_entity", _sel)
+        ok, err = ref_geometry._create_ref_plane(
             doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
         )
         assert ok is True
@@ -951,9 +984,15 @@ class TestCreateRefPlaneNormalToEdge:
             mutate, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
         )
         monkeypatch.setattr(
+            ref_geometry, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
+        )
+        monkeypatch.setattr(
             mutate, "select_entity", lambda e, *, append=False, mark=0: True,
         )
-        ok, err = mutate._create_ref_plane(
+        monkeypatch.setattr(
+            ref_geometry, "select_entity", lambda e, *, append=False, mark=0: True,
+        )
+        ok, err = ref_geometry._create_ref_plane(
             doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
         )
         assert ok is False
@@ -966,7 +1005,11 @@ class TestCreateRefPlaneNormalToEdge:
             mutate, "resolve_edge_ref",
             lambda d, ref: _FakeRefResolution(None, method="none"),
         )
-        ok, err = mutate._create_ref_plane(
+        monkeypatch.setattr(
+            ref_geometry, "resolve_edge_ref",
+            lambda d, ref: _FakeRefResolution(None, method="none"),
+        )
+        ok, err = ref_geometry._create_ref_plane(
             doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
         )
         assert ok is False
@@ -979,7 +1022,10 @@ class TestCreateRefPlaneNormalToEdge:
         monkeypatch.setattr(
             mutate, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
         )
-        ok, err = mutate._create_ref_plane(
+        monkeypatch.setattr(
+            ref_geometry, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
+        )
+        ok, err = ref_geometry._create_ref_plane(
             doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
         )
         assert ok is False

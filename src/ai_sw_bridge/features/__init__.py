@@ -334,3 +334,18 @@ from .body_ops import (  # noqa: E402
 _register_lane("delete_body", _create_delete_body, _delete_body_status)
 _register_lane("combine", _create_combine, _combine_status)  # WALLED → dormant skip
 _register_lane("split", _create_split, _split_status)  # WALLED → dormant skip
+
+# Recipe-C cut #3 — ref-geometry family (ref_plane/ref_axis/coordinate_system/
+# ref_point). All seat-proven GREEN (W3/W5/W6/W64); relocated from mutate.py.
+from .ref_geometry import SPIKE_STATUS as _ref_geometry_status  # noqa: E402
+from .ref_geometry import (  # noqa: E402
+    _create_coordinate_system,
+    _create_ref_axis,
+    _create_ref_plane,
+    _create_ref_point,
+)
+
+_register_lane("ref_plane", _create_ref_plane, _ref_geometry_status)
+_register_lane("ref_axis", _create_ref_axis, _ref_geometry_status)
+_register_lane("coordinate_system", _create_coordinate_system, _ref_geometry_status)
+_register_lane("ref_point", _create_ref_point, _ref_geometry_status)
