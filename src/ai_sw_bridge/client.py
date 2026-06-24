@@ -51,6 +51,7 @@ from .observe_clearance import (
     _sw_get_clearance_impl,
     _sw_get_face_clearance_impl,
 )
+from .observe_body_interference import _sw_get_body_interference_impl
 from .observe_draft import _sw_get_draft_analysis_impl
 from .observe_import_diag import _sw_get_import_diagnostics_impl
 from .observe_inertia import _sw_get_inertia_impl
@@ -122,6 +123,12 @@ class SolidWorksObserverFacade:
         if doc is None:
             return dict(_NO_DOC)
         return _sw_get_interference_impl(doc)
+
+    def body_interference(self) -> dict[str, Any]:
+        """Detect pairwise solid-body interference in the active multibody PART —
+        intersection edge counts + read-only boolean-common volume (mm³) per
+        clashing pair. The parts complement to interference() (assemblies)."""
+        return _sw_get_body_interference_impl()
 
     def draft_analysis(
         self,
