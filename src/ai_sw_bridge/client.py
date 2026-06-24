@@ -52,6 +52,7 @@ from .observe_clearance import (
     _sw_get_face_clearance_impl,
 )
 from .observe_draft import _sw_get_draft_analysis_impl
+from .observe_import_diag import _sw_get_import_diagnostics_impl
 from .observe_inertia import _sw_get_inertia_impl
 from .observe_interference import _sw_get_interference_impl
 from .observe_measure import (
@@ -250,6 +251,12 @@ class SolidWorksObserverFacade:
     def feature_statistics(self) -> dict[str, Any]:
         """Return build-tree statistics for the active part/assembly (W71)."""
         return _sw_get_feature_statistics_impl()
+
+    def import_diagnostics(self) -> dict[str, Any]:
+        """Geometric health of the active part — solid/surface body breakdown,
+        IBody2.Check3 topology faults (decoded), and the IPartDoc.ImportDiagnosis
+        status flag. Read-only; parts only."""
+        return _sw_get_import_diagnostics_impl()
 
     def screenshot(
         self,
