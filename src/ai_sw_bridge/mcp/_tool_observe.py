@@ -17,7 +17,6 @@ from __future__ import annotations
 from typing import Any
 
 from ..client import SolidWorksClient
-from ..observe import SolidWorksObserver
 from .tools import com_tool
 
 

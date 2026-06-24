@@ -19,7 +19,6 @@ or used directly by the MCP observe layer.
 from __future__ import annotations
 
 import logging
-import math
 from typing import Any
 
 logger = logging.getLogger("ai_sw_bridge.brep.surface_eval")

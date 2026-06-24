@@ -37,7 +37,6 @@ from typing import Any
 
 from .com.earlybind import read_persist_reference, typed
 from .com.sw_type_info import wrapper_module
-from .sw_com import resolve
 
 logger = logging.getLogger(__name__)
 

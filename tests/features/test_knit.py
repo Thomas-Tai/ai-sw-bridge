@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import pythoncom
 import pytest
-from win32com.client import VARIANT
 
 from ai_sw_bridge.features import knit as kn
 from ai_sw_bridge.features.knit import create_knit

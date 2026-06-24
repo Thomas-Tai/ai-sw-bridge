@@ -19,7 +19,6 @@ from typing import Any
 import pytest
 
 from ai_sw_bridge import mutate
-from ai_sw_bridge import features
 from ai_sw_bridge.features import advanced_shapes, flanges, ref_geometry
 from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
 
@@ -346,9 +345,6 @@ def _validate_boundary_target(target: dict) -> tuple[bool, str | None]:
 # ===========================================================================
 # End-to-end propose-validation tests using real mutate.py (Wave-5 wiring)
 # ===========================================================================
-
-from ai_sw_bridge import mutate
-from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
 
 
 class _FakeWave5Doc:

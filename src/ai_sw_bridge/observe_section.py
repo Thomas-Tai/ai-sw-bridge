@@ -67,7 +67,6 @@ from typing import Any
 
 from .com.earlybind import typed
 from .com.sw_type_info import wrapper_module
-from .sw_com import resolve
 
 # Status codes from GetSectionProperties2 return array index 0.
 # Sourced: sldworksapi.chm Remarks table.

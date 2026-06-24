@@ -12,9 +12,6 @@ Gate: every test here must be green before the W0 seat fire.
 
 from __future__ import annotations
 
-import math
-from types import SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest

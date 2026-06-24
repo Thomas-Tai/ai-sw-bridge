@@ -16,7 +16,6 @@ import copy
 import jsonschema
 import pytest
 
-from ai_sw_bridge.spec import schema as schema_mod
 from ai_sw_bridge.spec.schema import (
     SCHEMA,
     SCHEMA_V2,

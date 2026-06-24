@@ -17,7 +17,6 @@ per the registry lane protocol — never on ``mutate``. The real
 
 from __future__ import annotations
 
-import pytest
 
 from ai_sw_bridge.features import HANDLER_REGISTRY
 from ai_sw_bridge.features import structural_weldment as swm

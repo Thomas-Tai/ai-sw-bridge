@@ -12,8 +12,6 @@ is the surface form of the W42/W65 ghost.
 
 from __future__ import annotations
 
-import pythoncom
-from win32com.client import VARIANT
 
 from ai_sw_bridge.features import planar_surface
 from ai_sw_bridge.features.planar_surface import create_planar_surface

@@ -6,11 +6,8 @@ dry_run→commit pipeline in mutate.py. Uses fakes — no SOLIDWORKS required.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from ai_sw_bridge.assembly.lifecycle import dry_run_assembly
 

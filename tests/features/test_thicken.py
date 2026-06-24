@@ -20,7 +20,6 @@ involved; the live thicken + save→reopen is proven by the seat spike.
 
 from __future__ import annotations
 
-import pythoncom
 import pytest
 
 from ai_sw_bridge.features import thicken as tk

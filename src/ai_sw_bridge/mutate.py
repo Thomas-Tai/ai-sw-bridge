@@ -18,9 +18,7 @@ single source of truth stays in version control.
 
 from __future__ import annotations
 
-import base64
 import json
-import math
 import os
 import time
 import uuid
@@ -37,10 +35,9 @@ from .locals_io import (
 )
 from .sw_com import get_active_doc, get_sw_app, resolve
 
-import pythoncom
-from win32com.client import VARIANT
 
-from .com.earlybind import typed, typed_qi
+from .com.earlybind import typed
+from .com.earlybind import typed_qi  # noqa: F401 — module surface; tests patch mutate.typed_qi
 from .com.sw_type_info import wrapper_module
 from .features import HANDLER_REGISTRY
 

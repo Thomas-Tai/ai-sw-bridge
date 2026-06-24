@@ -260,9 +260,7 @@ __all__ = [
 def _run_export(args: argparse.Namespace) -> dict[str, Any]:
     """Build fixture, export flat-pattern DXF, verify, report."""
     from ..export.dispatch import (
-        ExportRequest,
         _flat_pattern_dxf,
-        _get_doc_type,
     )
     from ..export.formats import EXPORT_FORMATS
     from ..sw_com import get_sw_app

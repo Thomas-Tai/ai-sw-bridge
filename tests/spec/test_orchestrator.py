@@ -12,7 +12,6 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-import pytest
 
 from ai_sw_bridge.spec.orchestrator import (
     OrchestrationEnvelope,

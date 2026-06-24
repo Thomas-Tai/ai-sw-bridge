@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import Any
 
 from .formats import (
-    DRAWING_FORMATS,
     DrawingFormat,
     DrawingMethod,
     resolve_format,

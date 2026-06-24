@@ -22,7 +22,7 @@ from typing import Any
 import pythoncom
 import win32com.client as w32
 
-from ..com.earlybind import typed, typed_qi, typed_extension
+from ..com.earlybind import typed, typed_qi
 from ..com.sw_type_info import wrapper_module
 
 from .face_resolver import resolve_component_face

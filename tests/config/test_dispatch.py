@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
 
 from ai_sw_bridge.config.dispatch import (
     apply_overrides,
@@ -12,7 +11,6 @@ from ai_sw_bridge.config.dispatch import (
     validate_overrides,
 )
 from ai_sw_bridge.config.variants import (
-    ConfigResult,
     ConfigVariant,
     VariantOverride,
 )

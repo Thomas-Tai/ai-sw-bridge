@@ -28,19 +28,17 @@ Design:
 
 from __future__ import annotations
 
-import copy
 import logging
 import sys
 from pathlib import Path
 from typing import Any
 
-from ..locals_io import find_entry, parse, replace_rhs
+from ..locals_io import parse, replace_rhs
 from .deep_merge import deep_merge
 from .variants import (
     ConfigResult,
     ConfigVariant,
     VariantOverride,
-    parse_variants,
 )
 
 logger = logging.getLogger("ai_sw_bridge.config")

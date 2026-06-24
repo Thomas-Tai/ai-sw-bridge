@@ -21,7 +21,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .face_resolver import resolve_component_face
 from .handlers import (
     create_exploded_view,
     create_mate,

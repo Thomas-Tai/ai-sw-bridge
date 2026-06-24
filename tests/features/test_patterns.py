@@ -17,7 +17,6 @@ import types
 
 import ai_sw_bridge.features as features
 import ai_sw_bridge.mutate as mutate
-import ai_sw_bridge.features.patterns as patterns_mod
 from ai_sw_bridge.features.patterns import (
     create_circular_pattern,
     create_linear_pattern,

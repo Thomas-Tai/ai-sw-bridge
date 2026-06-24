@@ -26,7 +26,6 @@ never on ``mutate``.
 
 from __future__ import annotations
 
-import pytest
 
 from ai_sw_bridge.features import HANDLER_REGISTRY
 from ai_sw_bridge.features import sketch_driven_pattern as sdp

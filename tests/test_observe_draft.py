@@ -13,7 +13,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from ai_sw_bridge.observe_draft import (
-    PULL_DIRECTIONS,
     _classify_draft,
     _compute_draft_deg,
     _sw_get_draft_analysis_impl,

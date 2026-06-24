@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +14,7 @@ from ai_sw_bridge.export.dispatch import (
     export_all,
     resolve_output_path,
 )
-from ai_sw_bridge.export.formats import EXPORT_FORMATS, resolve_format
+from ai_sw_bridge.export.formats import resolve_format
 
 
 class _MockDoc:

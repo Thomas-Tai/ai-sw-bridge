@@ -14,7 +14,6 @@ from ai_sw_bridge.drawing.dispatch import (
     generate_all,
     resolve_output_path,
 )
-from ai_sw_bridge.drawing.formats import DRAWING_FORMATS, resolve_format
 
 
 class _MockDrawingDoc:

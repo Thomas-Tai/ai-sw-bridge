@@ -174,7 +174,11 @@ class TestGreenPath:
         """Both SelectByID2 and InsertHelix must route through _latebound (the
         ref_axis binding trap). Count the re-wrap calls."""
         calls = []
-        real_identity = lambda obj: (calls.append(obj), obj)[1]
+
+        def real_identity(obj):
+            calls.append(obj)
+            return obj
+
         monkeypatch.setattr(spiral, "_latebound", real_identity)
         doc = _FakeDoc()
         ok, _ = create_spiral(doc, {"pitch_mm": 5}, {"sketch": "SpiralBase"})

@@ -27,7 +27,6 @@ from __future__ import annotations
 import warnings
 from unittest.mock import patch
 
-import pytest
 
 import ai_sw_bridge.observe as _observe_mod
 

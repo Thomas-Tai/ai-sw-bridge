@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pythoncom
 
 from ..com.earlybind import typed, typed_qi
 from ..com.sw_type_info import wrapper_module

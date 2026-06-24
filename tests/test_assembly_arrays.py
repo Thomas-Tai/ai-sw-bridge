@@ -17,9 +17,7 @@ from ai_sw_bridge.assembly.arrays import (
     expand_circular_array,
     expand_component_arrays,
     expand_linear_array,
-    _cross,
     _matrix_to_rpy,
-    _normalize,
     _rotation_matrix_about_axis,
     _rpy_to_matrix,
 )

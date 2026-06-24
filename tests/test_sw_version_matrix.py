@@ -24,7 +24,6 @@ if _TOOLS_DIR not in sys.path:
     sys.path.insert(0, _TOOLS_DIR)
 
 from sw_version_tag import (  # noqa: E402
-    FEATURE_VERSION_SUPPORT,
     KNOWN_MAJORS,
     SUPPORTED_VERSIONS,
     should_skip,

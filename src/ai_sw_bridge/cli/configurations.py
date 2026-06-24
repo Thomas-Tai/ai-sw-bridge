@@ -18,7 +18,6 @@ Each subcommand prints a single JSON object to stdout and exits 0 if ok.
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 import sys
 from pathlib import Path

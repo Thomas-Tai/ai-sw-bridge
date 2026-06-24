@@ -14,7 +14,6 @@ Test matrix:
 
 from __future__ import annotations
 
-import pytest
 
 from ai_sw_bridge.features import com_point as cp
 

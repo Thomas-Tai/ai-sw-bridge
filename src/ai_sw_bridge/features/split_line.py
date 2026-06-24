@@ -32,13 +32,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import pythoncom
-from win32com.client import VARIANT
-
-from ..com.earlybind import (
+from ..com.earlybind import (  # noqa: F401 — module surface; test_split_line patches sl.typed_qi (historical Mode-A fixture)
     EarlyBindError,
     typed_qi,
-)  # noqa: F401 — module surface; test_split_line patches sl.typed_qi (historical Mode-A fixture)
+)
 from ..selection.live import select_entity
 from . import verify
 

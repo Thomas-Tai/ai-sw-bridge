@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
 
 from ai_sw_bridge.features import bounding_box as bb
 
