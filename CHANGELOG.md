@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-24
+
+**Post-GA hardening sprint.** Four backward-compatible additions on top of the
+`1.0.0` GA architecture — one new `mutate` feature lane, two new read-only
+`observe` lanes, and a transaction-binding hardening fix — each measure-first
+probed on a live seat and proven through the full zero-trust gauntlet (offline
+suite, two-stream lint, import-linter, live seat PAE). The public API surface
+grows only additively; no existing contract changed. Offline suite green at
+3547 tests.
+
+### Added
+
+- **`spiral` feature_add lane** (`features/spiral.py`). A flat (planar)
+  Archimedean spiral — the closed-form curve sibling of `helix` — via the legacy
+  `IModelDoc2.InsertHelix` call with `DefinedBy=3` (`swHelixDefinedBySpiral`) and
+  `ConstantPitch=False`. Registered GREEN in `HANDLER_REGISTRY` (35 feature_add
+  kinds). Authored as `{"type": "spiral", "pitch_mm": …, "revolutions": …}` on a
+  base-circle sketch; verified by a real arc-length witness (CURVE gate).
+- **`observe.import_diagnostics()`** (`observe_import_diag.py`). Read-only
+  geometric health of the active part: solid/surface body breakdown, per-body
+  `IBody2.Check3 → IFaultEntity` topology faults decoded via
+  `swFaultEntityErrorCode_e`, the `IPartDoc.ImportDiagnosis` status flag, and a
+  single-bool `clean` verdict. (`IModelDoc2.CheckModel` is absent from the SW2024
+  DLL; `Check3` is the load-bearing fault source.)
+- **`observe.body_interference()`** (`observe_body_interference.py`). Read-only
+  pairwise solid-body clash detection within a multibody part —
+  `IBody2.GetIntersectionEdges` for the clash signal and an exact interference
+  volume computed on detached temp bodies (`Copy()` →
+  `Operations2(SWBODYINTERSECT)` → `GetMassProperties`), guarded by a body-count
+  mutation assertion. The parts complement to the W27 assembly `interference()`;
+  kept a distinct, strictly-typed lane (never polymorphic). Logs the O(N²)
+  pairwise count above 50 bodies.
+
+### Fixed
+
+- **Curve-lane typed-transaction binding** (`features/helix.py`). The disk
+  transaction opens documents typed (`mutate._open_doc_typed`), on which
+  `Extension.SelectByID2`'s `VARIANT(VT_DISPATCH, None)` callout and
+  `InsertHelix` fail to marshal (`TypeError`). Both calls now route through a
+  `_latebound` re-wrap seam (mirroring `ref_axis`/`spiral`), so `helix`
+  materializes through the full `propose → dry_run → commit` transaction. A
+  measure-first probe confirmed the sibling curve lanes (`composite`,
+  `project_curve`, `curve_through_xyz`) were structurally immune (callout-free
+  `select_entity` or no selection), so only `helix` required the fix.
+
 ## [1.0.0] - 2026-06-23
 
 **General Availability.** The first stable release. `1.0.0` locks the commercial
