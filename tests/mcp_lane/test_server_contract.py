@@ -86,8 +86,15 @@ class TestToolRegistration:
             # W45 — DFM probes
             "sw_undercut_faces",
             "sw_min_wall_thickness",
+            # v0.18 observe additions (were registered but unlisted — trued up
+            # 2026-06-24 when sw_batch_plan landed; this module runs only in the
+            # isolated destructive_sw job, so the staleness had hidden)
+            "sw_feature_statistics",
+            "sw_analyze_stackup",
             # Build (1)
             "sw_build",
+            # Batch-plan (1) — read-only dry-run validation; never writes to disk
+            "sw_batch_plan",
             # API doc (5)
             "sw_apidoc_search",
             "sw_apidoc_detail",
@@ -174,6 +181,8 @@ class TestToolRegistration:
                 "sw_custom_props",
                 "sw_enabled_addins",
                 "sw_build",
+                # batch-plan opens the doc + fires handlers on the kernel
+                "sw_batch_plan",
             }
         )
 

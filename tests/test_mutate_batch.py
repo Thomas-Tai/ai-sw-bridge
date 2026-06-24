@@ -270,6 +270,46 @@ class TestStageFaults:
 
 
 # ---------------------------------------------------------------------------
+# dry_run (PLAN-ONLY) — validates every feature but NEVER saves
+# ---------------------------------------------------------------------------
+
+class TestDryRun:
+    def _counting_save(self, monkeypatch):
+        n = {"saves": 0}
+
+        def save(doc):
+            n["saves"] += 1
+            return True
+
+        monkeypatch.setattr(mutate, "_save_doc", save)
+        return n
+
+    def test_all_green_dry_run_never_saves(self, monkeypatch):
+        _wire(monkeypatch, apply_results=[(True, "a"), (True, "b"), (True, "c")])
+        saves = self._counting_save(monkeypatch)
+        r = _sw_batch_feature_add_impl(
+            "p.sldprt", _props("ref_plane", "scale", "com_point"), dry_run=True
+        )
+        assert r["dry_run"] is True
+        assert r["ok"] is True              # all features WOULD commit
+        assert r["committed_count"] == 3    # the would-commit trail
+        assert r["doc_saved"] is False      # nothing persisted
+        assert saves["saves"] == 0          # _save_doc NEVER called
+
+    def test_dry_run_fault_still_reported_no_save(self, monkeypatch):
+        _wire(monkeypatch, apply_results=[(True, "a"), (False, "bad")])
+        saves = self._counting_save(monkeypatch)
+        r = _sw_batch_feature_add_impl(
+            "p.sldprt", _props("ref_plane", "scale", "com_point"), dry_run=True
+        )
+        assert r["dry_run"] is True and r["ok"] is False
+        assert r["committed_count"] == 1 and r["halted_at"] == 1
+        assert r["fault"]["index"] == 1
+        assert [s["kind"] for s in r["skipped"]] == ["com_point"]
+        assert r["doc_saved"] is False and saves["saves"] == 0
+
+
+# ---------------------------------------------------------------------------
 # active-doc guard + facade delegation
 # ---------------------------------------------------------------------------
 

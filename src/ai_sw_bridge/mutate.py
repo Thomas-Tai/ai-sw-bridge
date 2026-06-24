@@ -1843,8 +1843,19 @@ def _sw_batch_feature_add_impl(
     doc_path: str,
     proposals: "list[dict]",
     strict: bool = False,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     """Apply a SEQUENCE of feature-add proposals in ONE open-doc transaction.
+
+    ``dry_run=True`` is the PLAN-ONLY mode (the MCP ``sw_batch_plan`` surface):
+    every proposal's handler still runs — so each B-rep is genuinely validated
+    on the live kernel (the handler's verify-the-effect gate fires) — but
+    ``_save_doc`` is NEVER called, and the ``finally`` ``CloseDoc`` discards all
+    in-memory changes. The document on disk is guaranteed untouched. The manifest
+    is identical in shape (``committed`` = what WOULD commit, ``fault``/``skipped``
+    as usual), with ``doc_saved`` always False and ``dry_run=True``. This is the
+    autonomous-safe half of the §6.5 boundary: an agent may PLAN over MCP; the
+    irreversible commit stays a human-gated CLI action.
 
     The throughput primitive for agent-generated multi-feature edits: instead
     of N propose→dry-run→commit round-trips (each opening + closing the doc),
@@ -1893,6 +1904,7 @@ def _sw_batch_feature_add_impl(
         "doc_saved": False,
         "halted_at": None,
         "strict": bool(strict),
+        "dry_run": bool(dry_run),
         "committed": [],
         "fault": None,
         "skipped": [],
@@ -1998,6 +2010,12 @@ def _sw_batch_feature_add_impl(
 
         green = manifest["committed_count"]
         faulted = manifest["fault"] is not None
+
+        # --- PLAN-ONLY (dry_run): never persist; finally CloseDoc discards. ---
+        if dry_run:
+            if not faulted:
+                manifest["ok"] = True  # every feature validated / WOULD commit
+            return manifest
 
         # --- save policy ---
         if faulted and strict:

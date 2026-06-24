@@ -58,25 +58,33 @@ def create_server(runtime: ServerRuntime) -> Any:
 
     Registers every tool from the §6 inventory:
 
-    * Observation (19 tools): sw_active_doc, sw_feature_errors,
+    * Observation (21 tools): sw_active_doc, sw_feature_errors,
       sw_equations, sw_bbox, sw_volume, sw_screenshot, sw_measure,
       sw_mate_errors, sw_custom_props, sw_enabled_addins,
       sw_interference, sw_bounding_box, sw_measure_selection,
       sw_inertia, sw_clearance, sw_draft_analysis, sw_undercut_faces,
-      sw_current_selection, sw_min_wall_thickness.
+      sw_current_selection, sw_min_wall_thickness,
+      sw_feature_statistics, sw_analyze_stackup.
     * Build (1 tool): sw_build.
+    * Batch-plan (1 tool): sw_batch_plan — a READ-ONLY (dry-run)
+      validation pass over a multi-feature batch; never writes to
+      disk (the §6.5-aligned write-PLANNING surface; the irreversible
+      commit stays a human-gated CLI action).
     * API doc (5 tools): sw_apidoc_search, sw_apidoc_detail,
       sw_apidoc_members, sw_apidoc_examples, sw_apidoc_enum.
     * History (4 tools): sw_history_part, sw_history_since,
       sw_history_diff, sw_checkpoint_info.
     * Reconnect (1 tool): sw_reconnect.
 
-    Total: 30 tools.
+    Total: 33 tools.
 
     Tools NOT registered (per §6.5): the four mutate operations
     (sw_propose_local_change, sw_dry_run, sw_commit,
-    sw_undo_last_commit) stay CLI-only because each one requires a
-    human approval in the loop. sw_codegen, sw_probe, and
+    sw_undo_last_commit) stay CLI-only because each one COMMITS an
+    irreversible write and requires a human approval in the loop.
+    sw_batch_plan is the EXCEPTION that proves the rule — it is
+    exposed precisely because it CANNOT commit (hard-wired dry-run,
+    document never saved). sw_codegen, sw_probe, and
     sw_checkpoint_genkey/rekey/migrate are also CLI-only.
 
     Args:
@@ -97,6 +105,7 @@ def create_server(runtime: ServerRuntime) -> Any:
     # server via a registration helper rather than relying on a global.
     from . import (
         _tool_apidoc,
+        _tool_batch,
         _tool_build,
         _tool_history,
         _tool_observe,
@@ -105,6 +114,7 @@ def create_server(runtime: ServerRuntime) -> Any:
 
     _tool_observe.register(mcp)
     _tool_build.register(mcp)
+    _tool_batch.register(mcp)
     _tool_apidoc.register(mcp)
     _tool_history.register(mcp)
     _tool_reconnect.register(mcp)
