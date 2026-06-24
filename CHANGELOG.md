@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-24
+
+**The Single-Surface Approval & Telemetry Release.** The human-in-the-loop batch
+approval moves into the agent's chat surface. Where v1.2.0 split the loop across
+two surfaces — plan over MCP, approve+commit on the CLI — v1.3.0 collapses
+approval onto one surface via the MCP **elicitation** protocol: the agent runs a
+single tool, the approval prompt appears in-chat (e.g. Claude Desktop), the human
+clicks, and the commit fires. The CLI gate remains as the headless/non-interactive
+fallback (nothing was removed). Shipped alongside a zero-red test-suite hygiene
+pass that eliminates the last known-failing tests from the isolated destructive
+lane. Backward compatible — the public surface grows only additively. Offline
+suite green at 3636 tests; the live-seat `destructive_sw` lane green at 66.
+
+### Added
+
+- **`sw_batch_execute` MCP tool** (`mcp/_tool_batch_execute.py`) — the
+  single-surface PLAN → approve-in-chat → COMMIT loop. An `async` tool that runs
+  a hard-wired **dry-run** plan on the live kernel, presents the recovery manifest
+  for approval via `ctx.elicit` (MCP elicitation), and — only on an explicit
+  in-chat approval — fires the irreversible commit. A `300s` walk-away timeout and
+  every non-approval path (decline / cancel / accept-but-unapproved / timeout)
+  route to a clean no-op abort with **zero COM mutation**. Capability-gated: a
+  client that does not advertise elicitation degrades gracefully to a refusal that
+  points at `sw_batch_plan` + the `ai-sw-batch` CLI.
+- **`run_on_executor` STA-dispatch primitive** (`mcp/tools.py`) — extracted from
+  the `@com_tool` decorator (now a thin wrapper over it) so the async tool reuses
+  the exact same ComExecutor STA-thread dispatch invariant. `sw_batch_execute`
+  awaits `ctx.elicit` on the event loop *between* two `run_on_executor` COM phases
+  (plan, then commit) — a pattern `@com_tool` structurally cannot express, since it
+  submits the whole body to the event-loop-less STA worker.
+
+### Fixed
+
+- **Zero-red hygiene pass on the `destructive_sw` lane.** The payload-snapshot
+  suite (`tests/mcp_lane/test_payload_snapshots.py`) carried a cross-test cached-
+  dispatch leak: the observe tools build a fresh `SolidWorksClient()` whose COM
+  dispatch is bound, via the module-level `sw_com` cache, to the executor STA
+  thread that created it. Each test gets its own per-test runtime/executor thread
+  but shares that module cache, so a later test reused an earlier (since-dead)
+  thread's dispatch and raised `CO_E_OBJNOTCONNECTED`. The `mcp_server` fixture now
+  drops the cache (`release_sw_app()`) around each test so every runtime
+  re-attaches on its own thread. (The real server is one runtime/one thread per
+  process, so the leak was a per-test-runtime artifact only — not a product
+  defect.)
+
+### Added (tests)
+
+- Snapshot fixtures for `sw_feature_statistics`, `sw_analyze_stackup`, and
+  `sw_batch_plan` — the last three registered tools that lacked one — generated via
+  `tools/probe_mcp_tools.py` (now covers them) and hardened with union-marker
+  shapes so a future re-probe against an open document cannot silently degrade a
+  state-tolerant fixture to a single-state one.
+
 ## [1.2.0] - 2026-06-24
 
 **The Agentic Batch & Extensibility Release.** A complete, human-gated batch
