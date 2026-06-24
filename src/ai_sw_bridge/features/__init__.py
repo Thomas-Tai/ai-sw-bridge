@@ -128,6 +128,16 @@ from .helix import create_helix  # noqa: E402
 
 _register_lane("helix", create_helix, _helix_status)
 
+# spiral — flat (planar) Archimedean spiral, curve-sibling of helix via the same
+# legacy InsertHelix call with DefinedBy=3 (swHelixDefinedBySpiral) + ConstantPitch
+# =False (the seat-proven difference; ConstantPitch=True silently no-ops). Selection
+# + InsertHelix go through the _latebound re-wrap (the typed transaction doc rejects
+# the VARIANT callout — the ref_axis binding trap). Seat-proven 2026-06-23.
+from .spiral import SPIKE_STATUS as _spiral_status  # noqa: E402
+from .spiral import create_spiral  # noqa: E402
+
+_register_lane("spiral", create_spiral, _spiral_status)
+
 # W62 — project_curve (curves group, boss-fight lane). Mode-A QUARANTINED:
 # the swconst harvest exposes no creation enum (ids 14/61 only; the v1
 # spike's QI scan rejected all 5 candidate ref-curve FeatureData ifaces
