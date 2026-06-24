@@ -81,6 +81,19 @@ def main() -> int:
         "sw_enabled_addins": {},
         "sw_undercut_faces": {},
         "sw_min_wall_thickness": {},
+        # W71/W77 observe additions — no active doc => the no_active_doc branch.
+        "sw_feature_statistics": {},
+        "sw_analyze_stackup": {
+            "components": ["base-1", "top-1"],
+            "check_endpoints": True,
+        },
+        # Batch-plan — point at a path that doesn't exist so the open-doc
+        # failure manifest is captured (deterministic, live-seat-independent;
+        # mirrors sw_build's nonexistent-spec branch).
+        "sw_batch_plan": {
+            "file_path": "/nonexistent/part.sldprt",
+            "proposals": [{"feature": {"type": "fillet"}, "target": {"edge": "Edge1"}}],
+        },
         # Observation (with args)
         "sw_screenshot": {"width": 320, "height": 240, "fit_view": False},
         "sw_measure": {},

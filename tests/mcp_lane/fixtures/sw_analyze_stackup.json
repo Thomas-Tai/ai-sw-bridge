@@ -1,0 +1,22 @@
+{
+  "tool": "sw_analyze_stackup",
+  "args": {
+    "components": [
+      "base-1",
+      "top-1"
+    ],
+    "check_endpoints": true
+  },
+  "result": {
+    "ok": false,
+    "error": "no_active_doc"
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "error": [
+      "$str",
+      "$none"
+    ]
+  },
+  "error": null
+}

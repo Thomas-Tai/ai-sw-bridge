@@ -1,0 +1,87 @@
+{
+  "tool": "sw_feature_statistics",
+  "args": {},
+  "result": {
+    "ok": false,
+    "doc_path": null,
+    "part_name": null,
+    "feature_count": null,
+    "solid_bodies_count": null,
+    "surface_bodies_count": null,
+    "total_rebuild_time": null,
+    "feature_names": null,
+    "feature_types": null,
+    "feature_update_times": null,
+    "refreshed": false,
+    "error": "no_active_doc",
+    "errors": []
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
+    "part_name": [
+      "$str",
+      "$none"
+    ],
+    "feature_count": [
+      "$int",
+      "$none"
+    ],
+    "solid_bodies_count": [
+      "$int",
+      "$none"
+    ],
+    "surface_bodies_count": [
+      "$int",
+      "$none"
+    ],
+    "total_rebuild_time": [
+      "$float",
+      "$int",
+      "$none"
+    ],
+    "feature_names": [
+      {
+        "__list__": true,
+        "len": "*",
+        "item": "$str"
+      },
+      "$none"
+    ],
+    "feature_types": [
+      {
+        "__list__": true,
+        "len": "*",
+        "item": "$str"
+      },
+      "$none"
+    ],
+    "feature_update_times": [
+      {
+        "__list__": true,
+        "len": "*",
+        "item": "$float"
+      },
+      {
+        "__list__": true,
+        "len": "*",
+        "item": "$int"
+      },
+      "$none"
+    ],
+    "refreshed": "$bool",
+    "error": [
+      "$str",
+      "$none"
+    ],
+    "errors": {
+      "__list__": true,
+      "len": "*",
+      "item": "$str"
+    }
+  },
+  "error": null
+}

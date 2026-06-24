@@ -1,0 +1,99 @@
+{
+  "tool": "sw_batch_plan",
+  "args": {
+    "file_path": "/nonexistent/part.sldprt",
+    "proposals": [
+      {
+        "feature": {
+          "type": "fillet"
+        },
+        "target": {
+          "edge": "Edge1"
+        }
+      }
+    ]
+  },
+  "result": {
+    "ok": false,
+    "doc_path": "/nonexistent/part.sldprt",
+    "total": 1,
+    "attempted": 0,
+    "committed_count": 0,
+    "doc_saved": false,
+    "halted_at": 0,
+    "strict": false,
+    "dry_run": true,
+    "committed": [],
+    "fault": {
+      "index": 0,
+      "kind": "fillet",
+      "stage": "open_doc",
+      "error": "failed to open doc: /nonexistent/part.sldprt",
+      "feature": {
+        "type": "fillet"
+      },
+      "target": {
+        "edge": "Edge1"
+      }
+    },
+    "skipped": [],
+    "error": "batch halted at 0/1 (open_doc): failed to open /nonexistent/part.sldprt",
+    "mcp_mode": "plan_only_dry_run",
+    "committed_to_disk": false,
+    "next_step": "VALIDATION ONLY \u2014 nothing was written to disk. To execute this batch, a human must commit it via the CLI ai-sw-mutate lane after reviewing this manifest."
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": "$str",
+    "total": "$int",
+    "attempted": "$int",
+    "committed_count": "$int",
+    "doc_saved": "$bool",
+    "halted_at": [
+      "$int",
+      "$none"
+    ],
+    "strict": "$bool",
+    "dry_run": "$bool",
+    "committed": {
+      "__list__": true,
+      "len": "*",
+      "item": {
+        "index": "$int",
+        "kind": "$str",
+        "note": [
+          "$str",
+          "$none"
+        ]
+      }
+    },
+    "fault": [
+      {
+        "index": "$int",
+        "kind": "$str",
+        "stage": "$str",
+        "error": "$str",
+        "feature": {
+          "type": "$str"
+        },
+        "target": {
+          "edge": "$str"
+        }
+      },
+      "$none"
+    ],
+    "skipped": {
+      "__list__": true,
+      "len": "*",
+      "item": null
+    },
+    "error": [
+      "$str",
+      "$none"
+    ],
+    "mcp_mode": "$str",
+    "committed_to_disk": "$bool",
+    "next_step": "$str"
+  },
+  "error": null
+}

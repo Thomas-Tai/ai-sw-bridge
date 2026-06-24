@@ -36,8 +36,9 @@ import pytest
 # before the marker filter could deselect this module.
 pytest.importorskip("mcp", reason="requires `ai-sw-bridge[mcp]` extra")
 
-from ai_sw_bridge.mcp.runtime import ServerRuntime
-from ai_sw_bridge.mcp.server import create_server
+from ai_sw_bridge.mcp.runtime import ServerRuntime  # noqa: E402
+from ai_sw_bridge.mcp.server import create_server  # noqa: E402
+from ai_sw_bridge.sw_com import release_sw_app  # noqa: E402
 
 
 FIXTURES_ROOT = Path(__file__).resolve().parent / "fixtures"
@@ -174,7 +175,21 @@ def _fixture_names() -> list[str]:
 
 @pytest.fixture
 def mcp_server():
-    """Per-test ServerRuntime (mock adapter) + FastMCP server."""
+    """Per-test ServerRuntime (mock adapter) + FastMCP server.
+
+    The observe tools build a fresh ``SolidWorksClient()`` whose app resolves
+    through the module-level ``sw_com`` cache (``get_sw_app``), NOT the mock
+    adapter — so when a live seat is present they bind to it and a no-doc seat
+    yields the ``no_active_doc`` fixtures. That cached COM dispatch is bound to
+    the executor STA thread that created it. Each test gets its OWN per-test
+    runtime+executor thread, but the cache is module-global: without a release,
+    test N reuses test 1's dispatch on a since-dead executor thread and raises
+    CO_E_OBJNOTCONNECTED. (The real server is one runtime / one executor thread
+    for the whole process, so this leak is a per-test-runtime artifact only.)
+    Drop the cache around each test so every runtime re-attaches on its own
+    thread. Same fix as spike_mcp_batch_execute_pae's release_sw_app().
+    """
+    release_sw_app()
     runtime = ServerRuntime.create(adapter_type="mock")
     runtime.adapter.connect()
     runtime.executor.start()
@@ -183,6 +198,7 @@ def mcp_server():
         yield mcp
     finally:
         runtime.shutdown()
+        release_sw_app()
 
 
 # ---------------------------------------------------------------------------
