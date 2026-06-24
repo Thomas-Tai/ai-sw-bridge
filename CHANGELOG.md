@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-24
+
+**The Agentic Batch & Extensibility Release.** A complete, human-gated batch
+workflow that spans the agent↔transaction boundary: an agent validates a
+multi-feature edit over MCP (dry-run, never persists), a human approves and
+commits it via the CLI. Plus the final out-of-process feature extraction
+(`intersect`) and a typed-transaction hardening fix. Every addition was
+measure-first probed on a live seat and proven through the full zero-trust
+gauntlet (offline suite, two-stream lint, import-linter, live seat PAE). Backward
+compatible — the public surface grows only additively. Offline suite green at
+3608 tests.
+
+### Added
+
+- **`client.mutate.batch(file_path, proposals, strict=False)`** — apply a sequence
+  of feature-add proposals to an existing part in ONE `_open_doc_typed`
+  transaction. Default semantics are **fail-fast best-effort**: execute in order,
+  halt on the first handler failure, save the features that materialized. A
+  ratified **recovery manifest** designed for agent resumption — a `committed`
+  success trail (each with its verify-the-effect witness), a *singular* `fault`
+  (with `stage` ∈ `open_doc`/`apply`/`save` and the offending proposal echoed
+  verbatim), and a `skipped` resume queue. `strict=True` is all-or-nothing
+  (close-without-save on any fault; SOLIDWORKS has no native rollback).
+- **`sw_batch_plan` MCP tool** (`mcp/_tool_batch.py`) — the §6.5-aligned write
+  *planning* surface. Runs the batch in a new hard-wired **dry-run** mode: every
+  proposal's handler executes on the live kernel (each B-rep genuinely validated),
+  but the document is **never saved** — the open-doc context is closed-without-save
+  and all changes discarded. Returns the recovery manifest as the human-review
+  artifact. The autonomous MCP surface can validate but can never persist; the
+  commit stays a human-gated CLI action.
+- **`ai-sw-batch` CLI command** (`cli/batch.py`) — the commit half of the
+  workflow, closing the plan → approve → execute loop. Echoes a human-readable
+  plan and an explicit `[y/N]` gate; decline (or EOF) exits cleanly with zero COM
+  touch, approve fires the irreversible commit. Two-stream clean: plan/prompt/
+  recovery render to stderr, the manifest JSON to stdout (pipe it back to the agent
+  to resume a halted batch).
+- **`intersect` feature_add lane** (`features/intersect.py`) — the final
+  out-of-process feature extraction. A measure-first probe **falsified** the
+  prediction that `intersect` joins the `combine`/`split` `ret=None` wall: its
+  two-phase `IFeatureManager.PreIntersect2` (returns the mutual region list to the
+  caller) → `PostIntersect` (commits a `Sculpt` feature) materializes
+  out-of-process. This codified a **refinement of the boundary law**: the
+  discriminator for OOP viability is the *transactional contract* (single-call
+  solve-and-commit walls; two-phase explicit hand-back materializes), not the
+  boolean nature of the operation. Registered GREEN (`BOOLEAN_INTERSECT` verify
+  class). 36 feature_add kinds.
+
+### Fixed
+
+- **`bounding_box` typed-transaction hardening** (`features/bounding_box.py`). The
+  handler resolved its reference plane via `IModelDoc2.FeatureByName`, which is
+  absent on the makepy-typed proxy that `mutate._open_doc_typed` produces — so an
+  advertised-GREEN feature silently *ghosted* on the production
+  `propose → dry_run → commit` (and `batch`) path while passing on a raw
+  late-bound doc. The lookup now routes through the callout-free
+  `verify.find_feature_by_name` (a `GetFeatures` walk), which marshals on both doc
+  flavors. Every registry kind now materializes through the typed transaction.
+
 ## [1.1.0] - 2026-06-24
 
 **Post-GA hardening sprint.** Four backward-compatible additions on top of the
