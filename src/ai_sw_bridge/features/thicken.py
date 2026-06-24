@@ -92,7 +92,9 @@ def _metrics_solid(doc: Any) -> tuple[int, float]:
     return verify.solid_metrics(doc)
 
 
-def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str | None]:
+def _enum(
+    value: Any, table: dict[str, int], name: str
+) -> tuple[int | None, str | None]:
     """Map a string token (or accept a raw int) to its enum value, fail-closed."""
     if isinstance(value, bool):  # bool is an int subclass — reject explicitly
         return None, f"{name} must be a string or int, got bool"
@@ -107,7 +109,9 @@ def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str
 
 
 def create_thicken(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Thicken a surface (sheet) body into a solid.  Fail-closed.
 
@@ -127,7 +131,9 @@ def create_thicken(
         return False, "target must be a dict"
 
     direction, err = _enum(
-        feature.get("direction", "side1"), _THICKEN_DIRECTIONS, "direction",
+        feature.get("direction", "side1"),
+        _THICKEN_DIRECTIONS,
+        "direction",
     )
     if err:
         return False, err
@@ -179,8 +185,13 @@ def create_thicken(
         # docs/DEFERRED.md. Handler kept UNFIRED/unregistered; this is the
         # authored shape, not a shipping path.
         fm.FeatureBossThicken(
-            thickness_m, direction, 0,
-            False, False, False, True,
+            thickness_m,
+            direction,
+            0,
+            False,
+            False,
+            False,
+            True,
         )
         doc.ForceRebuild3(False)
     except Exception as exc:

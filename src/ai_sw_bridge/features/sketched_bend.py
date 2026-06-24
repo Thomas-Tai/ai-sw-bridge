@@ -75,7 +75,9 @@ def _body_bbox(doc: Any) -> tuple[float, ...] | None:
     return verify.body_bbox(doc)
 
 
-def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str | None]:
+def _enum(
+    value: Any, table: dict[str, int], name: str
+) -> tuple[int | None, str | None]:
     """Map a string token (or accept a raw int) to its enum value, fail-closed."""
     if isinstance(value, bool):  # bool is an int subclass — reject explicitly
         return None, f"{name} must be a string or int, got bool"
@@ -90,7 +92,9 @@ def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str
 
 
 def create_sketched_bend(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Insert a sheet-metal sketched bend along a sketch line on a flat face.
 
@@ -116,7 +120,9 @@ def create_sketched_bend(
         return False, "target must be a dict"
 
     position, err = _enum(
-        feature.get("position", "material_inside"), _BEND_POSITIONS, "position",
+        feature.get("position", "material_inside"),
+        _BEND_POSITIONS,
+        "position",
     )
     if err:
         return False, err
@@ -182,7 +188,12 @@ def create_sketched_bend(
         fm = doc.FeatureManager
         pcba_null = VARIANT(pythoncom.VT_DISPATCH, None)
         fm.InsertSheetMetal3dBend(
-            angle_rad, use_default_radius, radius_m, flip, position, pcba_null,
+            angle_rad,
+            use_default_radius,
+            radius_m,
+            flip,
+            position,
+            pcba_null,
         )
         doc.ForceRebuild3(False)
     except Exception as exc:

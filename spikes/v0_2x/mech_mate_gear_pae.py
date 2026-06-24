@@ -14,6 +14,7 @@ GREEN: reopened (GearRatioNumerator, GearRatioDenominator) == (2.0, 1.0).
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/mech_mate_gear_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -121,8 +122,8 @@ def main() -> int:
             out["note"] = (
                 "GREEN <=> reopened ratio == requested (2,1). The handler's "
                 "transposed-setter compensation is correct end-to-end."
-                if green else
-                f"NO-GO: reopened {rb} != requested (2,1)."
+                if green
+                else f"NO-GO: reopened {rb} != requested (2,1)."
             )
         else:
             out["error"] = f"readback failed: {rb}"

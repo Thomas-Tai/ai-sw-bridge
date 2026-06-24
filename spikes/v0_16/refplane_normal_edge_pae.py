@@ -23,6 +23,7 @@ Flow:
 Usage:
     python spikes/v0_16/refplane_normal_edge_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -80,9 +81,29 @@ def _build_box(sw: Any, path: str) -> Any:
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.05, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.05,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
     doc.SaveAs3(path, 0, 2)
@@ -151,8 +172,7 @@ def _capture_linear_edge_ref(doc: Any, mod: Any) -> tuple[dict, dict]:
             )
             best_dict = ref.to_dict()
             diag["tangent"] = (
-                [eval_out[3], eval_out[4], eval_out[5]]
-                if len(eval_out) >= 6 else None
+                [eval_out[3], eval_out[4], eval_out[5]] if len(eval_out) >= 6 else None
             )
         except Exception as exc:
             diag["last_error"] = f"{type(exc).__name__}: {exc}"[:200]
@@ -192,9 +212,7 @@ def _verify_perpendicularity(doc: Any, mod: Any, tangent: list) -> dict:
                             if normal is not None:
                                 n = list(normal)
                                 t = tangent
-                                dot = abs(
-                                    n[0] * t[0] + n[1] * t[1] + n[2] * t[2]
-                                )
+                                dot = abs(n[0] * t[0] + n[1] * t[1] + n[2] * t[2])
                                 out["normal"] = n
                                 out["dot_with_tangent"] = round(dot, 8)
                                 out["perpendicular"] = dot < 0.01
@@ -235,10 +253,13 @@ def main() -> int:
         out["edge_ref"] = edge_ref_dict
         out["edge_diag"] = edge_diag
         out["edge_ref_method"] = "persist_id"
-        print("[pae] edge_ref captured: length=%.1fmm, persist_id=%d bytes" % (
-            edge_ref_dict["length"] * 1000,
-            len(edge_diag.get("tangent") or []),
-        ))
+        print(
+            "[pae] edge_ref captured: length=%.1fmm, persist_id=%d bytes"
+            % (
+                edge_ref_dict["length"] * 1000,
+                len(edge_diag.get("tangent") or []),
+            )
+        )
 
         print("[pae] saving + closing doc for production pipeline...")
         sw.CloseDoc(_title(doc))
@@ -322,18 +343,22 @@ def main() -> int:
             perp = _verify_perpendicularity(doc, mod, tangent)
             out["perpendicularity"] = perp
 
-        out["ok"] = (
-            out.get("delta") == 1
-            and out.get("feature_type") == "RefPlane"
-        )
+        out["ok"] = out.get("delta") == 1 and out.get("feature_type") == "RefPlane"
 
         status = "GREEN" if out["ok"] else "FAIL"
-        print("[pae] %s: delta=%s type=%s name=%s" % (
-            status, out.get("delta"), out.get("feature_type"), out.get("feature_name"),
-        ))
+        print(
+            "[pae] %s: delta=%s type=%s name=%s"
+            % (
+                status,
+                out.get("delta"),
+                out.get("feature_type"),
+                out.get("feature_name"),
+            )
+        )
 
     except Exception as exc:
         import traceback
+
         out["error"] = traceback.format_exc()
         out["ok"] = False
         print("[pae] EXCEPTION: %s" % exc)
@@ -348,9 +373,7 @@ def main() -> int:
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out_path = RESULTS_DIR / "refplane_normal_edge_pae.json"
-    out_path.write_text(
-        json.dumps(out, indent=2, default=str), encoding="utf-8"
-    )
+    out_path.write_text(json.dumps(out, indent=2, default=str), encoding="utf-8")
     print("[pae] wrote %s" % out_path)
     return 0 if out["ok"] else 1
 

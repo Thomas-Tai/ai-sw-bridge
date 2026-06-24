@@ -1,4 +1,5 @@
 """Dump full IDrawingDoc member list to check exact names."""
+
 from __future__ import annotations
 
 TLB_PATH = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\sldworks.tlb"
@@ -44,7 +45,12 @@ def main() -> None:
                         mname = names[0]
                         # Print all members with "ord" or "base" or "chain" in name
                         lower = mname.lower()
-                        if "ord" in lower or "base" in lower or "chain" in lower or "dim" in lower:
+                        if (
+                            "ord" in lower
+                            or "base" in lower
+                            or "chain" in lower
+                            or "dim" in lower
+                        ):
                             param_count = fd.cParams
                             ret_vt = decode_vt(fd.elemdescFunc.tdesc)
                             param_names = list(names)[1:] if len(names) > 1 else []

@@ -117,11 +117,17 @@ def run(keep_file: bool) -> dict[str, Any]:
     # 2. Read the persist token (early-bound Extension).
     ext = typed(mod, "IModelDocExtension", doc.Extension)
     pid = ext.GetPersistReference3(faces[0])
-    result["read"] = {"status": "OK" if pid is not None else "NONE",
-                      "python_type": _tag(pid),
-                      "byte_len": len(pid) if hasattr(pid, "__len__") else None}
+    result["read"] = {
+        "status": "OK" if pid is not None else "NONE",
+        "python_type": _tag(pid),
+        "byte_len": len(pid) if hasattr(pid, "__len__") else None,
+    }
     if pid is None:
-        return {**result, "overall": "FAIL", "reason": "GetPersistReference3 returned None"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": "GetPersistReference3 returned None",
+        }
 
     # 3. Save -> capture title -> close.
     tmp = Path(tempfile.gettempdir()) / "ai-sw-bridge" / "spike_earlybind_reopen.sldprt"
@@ -254,29 +260,40 @@ def run(keep_file: bool) -> dict[str, Any]:
         overall, interp = "PASS", (
             "persist token survives save->close->reopen: resolves (errCode "
             f"{resolve.get('out_error_code')}) AND selectable. Open-existing "
-            "keystone lane is unblocked out-of-process.")
+            "keystone lane is unblocked out-of-process."
+        )
     elif resolve.get("object_resolved"):
         overall, interp = "PARTIAL", (
             "token resolves after reopen but selectability/errCode unconfirmed "
             f"(err={resolve.get('out_error_code')}, selectable="
-            f"{resolve.get('selectable')}) -- not a binding blocker.")
+            f"{resolve.get('selectable')}) -- not a binding blocker."
+        )
     else:
         overall, interp = "FAIL", (
             "token did NOT resolve after reopen -- persistence is the wall, not "
             "the binding; capture/anchor must fall back to fingerprint "
-            "reselection across reopen (roadmap S4.4).")
+            "reselection across reopen (roadmap S4.4)."
+        )
     result["overall"] = overall
     result["interpretation"] = interp
     return result
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--keep-file", action="store_true",
-                   help="Do not delete the temp .sldprt (leave the reopened doc open).")
-    p.add_argument("--out", type=Path, default=None,
-                   help="Write JSON report to this path instead of stdout.")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--keep-file",
+        action="store_true",
+        help="Do not delete the temp .sldprt (leave the reopened doc open).",
+    )
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Write JSON report to this path instead of stdout.",
+    )
     args = p.parse_args()
 
     pythoncom.CoInitialize()

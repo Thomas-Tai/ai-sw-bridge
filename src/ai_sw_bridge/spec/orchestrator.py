@@ -107,7 +107,9 @@ def _run_material(state: OrchestrationState) -> StageOutcome:
         return StageOutcome("material", ok=False, detail=f"{type(exc).__name__}: {exc}")
     state.material_result = result
     if result is None:
-        return StageOutcome("material", ok=True, skipped=True, detail="no material in spec")
+        return StageOutcome(
+            "material", ok=True, skipped=True, detail="no material in spec"
+        )
     if result is True:
         return StageOutcome("material", ok=True, detail="material applied")
     return StageOutcome("material", ok=False, detail="material write failed")
@@ -154,7 +156,9 @@ def _run_drawing(state: OrchestrationState) -> StageOutcome:
             ok=False,
             detail=f"{len(failed)}/{len(state.drawing_results)} view(s) failed",
         )
-    return StageOutcome("drawing", ok=True, detail=f"{len(state.drawing_results)} view(s) placed")
+    return StageOutcome(
+        "drawing", ok=True, detail=f"{len(state.drawing_results)} view(s) placed"
+    )
 
 
 def _parse_export_requests(block: list[Any]) -> list[Any]:
@@ -189,7 +193,11 @@ def _run_export(state: OrchestrationState) -> StageOutcome:
     from ..client import SolidWorksClient
 
     requests = _parse_export_requests(block)
-    part_name = Path(state.part_path).stem if state.part_path else state.spec.get("name", "part")
+    part_name = (
+        Path(state.part_path).stem
+        if state.part_path
+        else state.spec.get("name", "part")
+    )
     try:
         results = SolidWorksClient().export.run(state.doc, requests, str(part_name))
     except Exception as exc:  # noqa: BLE001
@@ -202,7 +210,9 @@ def _run_export(state: OrchestrationState) -> StageOutcome:
             ok=False,
             detail=f"{len(failed)}/{len(state.export_results)} export(s) failed",
         )
-    return StageOutcome("export", ok=True, detail=f"{len(state.export_results)} export(s) written")
+    return StageOutcome(
+        "export", ok=True, detail=f"{len(state.export_results)} export(s) written"
+    )
 
 
 def default_stages(**build_kwargs: Any) -> list[Stage]:
@@ -331,14 +341,28 @@ def orchestrate(
     drawing_payload: Optional[list[dict[str, Any]]] = None
     if state.drawing_results:
         drawing_payload = [
-            r.to_dict() if hasattr(r, "to_dict") else {"view": getattr(r, "view", ""), "ok": bool(getattr(r, "ok", False))}
+            (
+                r.to_dict()
+                if hasattr(r, "to_dict")
+                else {
+                    "view": getattr(r, "view", ""),
+                    "ok": bool(getattr(r, "ok", False)),
+                }
+            )
             for r in state.drawing_results
         ]
 
     export_payload: Optional[list[dict[str, Any]]] = None
     if state.export_results:
         export_payload = [
-            r.to_dict() if hasattr(r, "to_dict") else {"format": getattr(r, "format", ""), "ok": bool(getattr(r, "ok", False))}
+            (
+                r.to_dict()
+                if hasattr(r, "to_dict")
+                else {
+                    "format": getattr(r, "format", ""),
+                    "ok": bool(getattr(r, "ok", False)),
+                }
+            )
             for r in state.export_results
         ]
 

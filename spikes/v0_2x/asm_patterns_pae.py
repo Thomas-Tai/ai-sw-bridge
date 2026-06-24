@@ -136,8 +136,11 @@ def run() -> str:
     # Dry run
     print("\n--- Dry run ---")
     dry_result = dry_run_assembly(asm_spec)
-    gate("dry_run", dry_result.get("ok", False),
-         f"resolved={len(dry_result.get('resolved_parts', {}))}")
+    gate(
+        "dry_run",
+        dry_result.get("ok", False),
+        f"resolved={len(dry_result.get('resolved_parts', {}))}",
+    )
     if not dry_result.get("ok"):
         gate("dry_run_detail", False, dry_result.get("error", "?"))
         save_results()
@@ -145,24 +148,34 @@ def run() -> str:
 
     # Commit
     print("\n--- Commit ---")
-    commit_result = commit_assembly(
-        sw, asm_spec, ASM_PATH, mod=mod
+    commit_result = commit_assembly(sw, asm_spec, ASM_PATH, mod=mod)
+    gate(
+        "commit",
+        commit_result.get("ok", False),
+        f"components={commit_result.get('component_count', '?')}, "
+        f"mirror={commit_result.get('mirror_count', '?')}",
     )
-    gate("commit", commit_result.get("ok", False),
-         f"components={commit_result.get('component_count', '?')}, "
-         f"mirror={commit_result.get('mirror_count', '?')}")
 
     if not commit_result.get("ok"):
         gate("commit_detail", False, commit_result.get("error", "?"))
         save_results()
         return "WALL"
 
-    gate("component_count", commit_result.get("component_count") == 1,
-         f"placed={commit_result.get('component_count')}")
-    gate("mirror_count", commit_result.get("mirror_count") == 1,
-         f"mirrored={commit_result.get('mirror_count')}")
-    gate("asm_saved", os.path.isfile(ASM_PATH),
-         f"size={os.path.getsize(ASM_PATH) if os.path.isfile(ASM_PATH) else '?'}")
+    gate(
+        "component_count",
+        commit_result.get("component_count") == 1,
+        f"placed={commit_result.get('component_count')}",
+    )
+    gate(
+        "mirror_count",
+        commit_result.get("mirror_count") == 1,
+        f"mirrored={commit_result.get('mirror_count')}",
+    )
+    gate(
+        "asm_saved",
+        os.path.isfile(ASM_PATH),
+        f"size={os.path.getsize(ASM_PATH) if os.path.isfile(ASM_PATH) else '?'}",
+    )
 
     # Re-open and verify
     print("\n--- Re-open and verify ---")
@@ -193,8 +206,7 @@ def run() -> str:
         gate("comp_count_reopen", False, f"GetComponentCount: {exc!r}")
         comp_count = -1
 
-    gate("comp_count_reopen", comp_count == 2,
-         f"expected 2, got {comp_count}")
+    gate("comp_count_reopen", comp_count == 2, f"expected 2, got {comp_count}")
 
     # Check for mirror component in feature tree
     try:

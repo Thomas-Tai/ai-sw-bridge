@@ -27,9 +27,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "rotated_placement_pae.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "rotated_placement_pae.json"
 
 results: dict[str, Any] = {
     "pae": "w13_rotated_placement",
@@ -71,7 +69,7 @@ def run() -> str:
 
     # Close all docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 d.CloseDoc
             except Exception:
@@ -90,15 +88,18 @@ def run() -> str:
         "schema_version": 1,
         "name": "RotBox",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 20.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 20.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
 
-    r = part_build(PART_SPEC, save_as=PART_PATH, save_format="current",
-                   no_dim=True)
+    r = part_build(PART_SPEC, save_as=PART_PATH, save_format="current", no_dim=True)
     gate("build_part", r.ok and os.path.isfile(PART_PATH), f"ok={r.ok}")
 
     if not os.path.isfile(PART_PATH):
@@ -108,6 +109,7 @@ def run() -> str:
     # Create assembly
     print("\n--- Creating assembly ---")
     import glob
+
     asm_templates = glob.glob(
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
     )
@@ -132,11 +134,12 @@ def run() -> str:
             },
         ]
 
-        placed, place_err = place_components(
-            sw, asm_doc, components, mod=mod
+        placed, place_err = place_components(sw, asm_doc, components, mod=mod)
+        gate(
+            "place_with_rotation",
+            place_err is None,
+            f"placed={len(placed)}, err={place_err}",
         )
-        gate("place_with_rotation", place_err is None,
-             f"placed={len(placed)}, err={place_err}")
 
         if place_err:
             save_results()
@@ -150,12 +153,12 @@ def run() -> str:
 
         # Expected: Rz(90°) = [[0,-1,0],[1,0,0],[0,0,1]]
         expected_rot = [0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
-        rot_match = all(
-            abs(rb_ad[i] - expected_rot[i]) < 0.001 for i in range(9)
+        rot_match = all(abs(rb_ad[i] - expected_rot[i]) < 0.001 for i in range(9))
+        gate(
+            "rotation_matrix",
+            rot_match,
+            f"expected={expected_rot}, " f"got={[round(v, 4) for v in rb_ad[:9]]}",
         )
-        gate("rotation_matrix", rot_match,
-             f"expected={expected_rot}, "
-             f"got={[round(v, 4) for v in rb_ad[:9]]}")
 
         results["transform_readback"] = [round(v, 6) for v in rb_ad]
 
@@ -187,12 +190,14 @@ def run() -> str:
                     cc = typed_qi(comps[0], "IComponent2", module=mod)
                     reopen_ad = list(cc.Transform2.ArrayData)
                     persist_match = all(
-                        abs(reopen_ad[i] - expected_rot[i]) < 0.001
-                        for i in range(9)
+                        abs(reopen_ad[i] - expected_rot[i]) < 0.001 for i in range(9)
                     )
-                    gate("persist_after_reopen", persist_match,
-                         f"rotation preserved: "
-                         f"{[round(v, 4) for v in reopen_ad[:9]]}")
+                    gate(
+                        "persist_after_reopen",
+                        persist_match,
+                        f"rotation preserved: "
+                        f"{[round(v, 4) for v in reopen_ad[:9]]}",
+                    )
                 try:
                     t = asm2.GetTitle
                     t = t() if callable(t) else t
@@ -215,9 +220,11 @@ def run() -> str:
                 placed2, err2 = place_components(
                     sw, asm_doc2, components_no_rot, mod=mod
                 )
-                gate("zero_rpy_still_works",
-                     err2 is None and len(placed2) == 1,
-                     f"placed={len(placed2)}, err={err2}")
+                gate(
+                    "zero_rpy_still_works",
+                    err2 is None and len(placed2) == 1,
+                    f"placed={len(placed2)}, err={err2}",
+                )
             finally:
                 try:
                     t = asm_doc2.GetTitle
@@ -228,8 +235,11 @@ def run() -> str:
 
         # Overall
         all_pass = all(g["ok"] for g in results["gates"].values())
-        gate("OVERALL_GREEN", all_pass,
-             "rotation applied + persisted + zero-rpy regression clean")
+        gate(
+            "OVERALL_GREEN",
+            all_pass,
+            "rotation applied + persisted + zero-rpy regression clean",
+        )
 
         return "GREEN" if all_pass else "PARTIAL"
 

@@ -87,8 +87,13 @@ def test_boss_extrude_blind_reads_feat_merge(monkeypatch):
     ctx.doc.ClearSelection2 = lambda *a: None
     ctx.doc.SelectByID = lambda *a: True
 
-    feat = {"type": "boss_extrude_blind", "name": "Block", "sketch": "SK",
-            "depth": 50.0, "merge": False}
+    feat = {
+        "type": "boss_extrude_blind",
+        "name": "Block",
+        "sketch": "SK",
+        "depth": 50.0,
+        "merge": False,
+    }
     with pytest.raises(_Stop):
         builder._build_boss_extrude_blind(ctx, feat)
     assert captured["merge"] is False

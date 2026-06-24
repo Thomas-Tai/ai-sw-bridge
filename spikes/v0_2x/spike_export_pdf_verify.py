@@ -30,17 +30,13 @@ from pathlib import Path
 from typing import Any
 
 if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(
-        sys.stdout.buffer, encoding="utf-8", errors="replace"
-    )
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "export_pdf_verify.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "export_pdf_verify.json"
 
 results: dict[str, Any] = {
     "probe": "w25v_export_pdf_verify",
@@ -111,7 +107,9 @@ def _build_test_part(sw: Any, part_path: str) -> bool:
     return bool(r.ok) and os.path.isfile(part_path)
 
 
-def _build_discriminating_drawing(sw: Any, part_path: str, template_path: str) -> str | None:
+def _build_discriminating_drawing(
+    sw: Any, part_path: str, template_path: str
+) -> str | None:
     """Build a DISCRIMINATING 2-sheet drawing:
     - Sheet "Solo": 1 view (front only)
     - Sheet "Quad": 4 views (front, top, right, iso)
@@ -151,7 +149,11 @@ def _build_discriminating_drawing(sw: Any, part_path: str, template_path: str) -
     )
 
     if not result.get("ok", False):
-        gate("drawing_build", False, f"commit_drawing failed: {result.get('error', 'unknown')}")
+        gate(
+            "drawing_build",
+            False,
+            f"commit_drawing failed: {result.get('error', 'unknown')}",
+        )
         return None
 
     drawing_path = result.get("path", output_path)
@@ -179,7 +181,11 @@ def _build_discriminating_drawing(sw: Any, part_path: str, template_path: str) -
         if doc_raw is not None and not isinstance(doc_raw, int):
             drawing_doc = typed_qi(doc_raw, "IDrawingDoc", module=mod)
             names = list(drawing_doc.GetSheetNames())
-            gate("drawing_sheet_names", names == ["Solo", "Quad"], f"expected ['Solo', 'Quad'], got {names}")
+            gate(
+                "drawing_sheet_names",
+                names == ["Solo", "Quad"],
+                f"expected ['Solo', 'Quad'], got {names}",
+            )
             try:
                 sw.CloseDoc(drawing_path)
             except Exception:
@@ -203,6 +209,7 @@ def _count_pdf_pages(pdf_path: str) -> int:
     # Try pypdf/PyPDF2 first
     try:
         from pypdf import PdfReader  # type: ignore
+
         reader = PdfReader(pdf_path)
         count = len(reader.pages)
         results["page_counting_method"] = "pypdf.PdfReader.pages"
@@ -212,6 +219,7 @@ def _count_pdf_pages(pdf_path: str) -> int:
 
     try:
         from PyPDF2 import PdfReader  # type: ignore
+
         reader = PdfReader(pdf_path)
         count = len(reader.pages)
         results["page_counting_method"] = "PyPDF2.PdfReader.pages"
@@ -226,7 +234,7 @@ def _count_pdf_pages(pdf_path: str) -> int:
             data = f.read()
 
         # Regex: b'/Type\s*/Page(?![s])' - matches /Type /Page but NOT /Type /Pages
-        pattern = re.compile(rb'/Type\s*/Page(?![s])')
+        pattern = re.compile(rb"/Type\s*/Page(?![s])")
         matches = pattern.findall(data)
         count = len(matches)
         results["page_counting_method"] = "raw_byte_scan:/Type/Page(?![s])"
@@ -326,7 +334,11 @@ def run() -> str:
 
     results_all = export_all(doc_m2, [req_all], f"w25v_verify_all_{_ts}")
     if not results_all or len(results_all) != 1:
-        gate("export_all_call", False, f"expected 1 result, got {len(results_all) if results_all else 0}")
+        gate(
+            "export_all_call",
+            False,
+            f"expected 1 result, got {len(results_all) if results_all else 0}",
+        )
         results["verdict"] = "FAIL"
         save_results()
         try:
@@ -478,11 +490,15 @@ def run() -> str:
     if pages_all == 2 and pages_solo == 1 and pages_quad == 1:
         results["verdict"] = "GREEN"
         print(">>> VERDICT: GREEN (sheet selection filters correctly)")
-        print(f"    pages(all)={pages_all}, pages(solo)={pages_solo}, pages(quad)={pages_quad}")
+        print(
+            f"    pages(all)={pages_all}, pages(solo)={pages_solo}, pages(quad)={pages_quad}"
+        )
     else:
         results["verdict"] = "BUG"
         print(">>> VERDICT: BUG (sheet selection NOT filtering!)")
-        print(f"    pages(all)={pages_all}, pages(solo)={pages_solo}, pages(quad)={pages_quad}")
+        print(
+            f"    pages(all)={pages_all}, pages(solo)={pages_solo}, pages(quad)={pages_quad}"
+        )
 
         # Trace: find where sheets selection is lost
         # Prime suspect: SetSheets mode logic in _export_pdf
@@ -515,8 +531,11 @@ if __name__ == "__main__":
         verdict = run()
     except Exception:
         import traceback
+
         traceback.print_exc()
-        results["verdict"] = f"FAIL (unhandled exception: {traceback.format_exc()[:200]})"
+        results["verdict"] = (
+            f"FAIL (unhandled exception: {traceback.format_exc()[:200]})"
+        )
         save_results()
         verdict = "FAIL"
     sys.exit(0 if verdict in ("GREEN", "PASS") else 1)

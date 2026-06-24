@@ -39,13 +39,16 @@ from _feature_spike_fixtures import (  # noqa: E402
     top_face,
 )
 
-RESULTS_PATH = _REPO_ROOT / "spikes" / "v0_2x" / "_results" / "sketch_driven_pattern.json"
+RESULTS_PATH = (
+    _REPO_ROOT / "spikes" / "v0_2x" / "_results" / "sketch_driven_pattern.json"
+)
 
 _BLIND = 0
 
 
 def _null_disp() -> Any:
     from win32com.client import VARIANT
+
     return VARIANT(pythoncom.VT_DISPATCH, None)
 
 
@@ -70,6 +73,7 @@ def _feat_name(feat: Any) -> str | None:
 def _solid_metrics(doc: Any) -> tuple[int, float]:
     """(face_count, volume_mm3) over solid bodies."""
     from ai_sw_bridge.features import verify
+
     return verify.solid_metrics(doc)
 
 
@@ -92,10 +96,29 @@ def _build_seed_boss(doc: Any) -> str | None:
         if seed_sketch is not None:
             seed_sketch.Select2(False, 0)
         boss = doc.FeatureManager.FeatureExtrusion2(
-            True, False, False, _BLIND, 0,
-            0.005, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False,
-            True, True, True, 0, 0.0, False,
+            True,
+            False,
+            False,
+            _BLIND,
+            0,
+            0.005,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
+            False,
         )
         doc.ClearSelection2(True)
         if boss is None:
@@ -135,10 +158,12 @@ def _dump_feature_tree(doc: Any) -> list[dict[str, Any]]:
         feats = doc.FeatureManager.GetFeatures(False)
         if feats:
             for f in feats:
-                result.append({
-                    "name": _feat_name(f),
-                    "type": _type_name(f),
-                })
+                result.append(
+                    {
+                        "name": _feat_name(f),
+                        "type": _type_name(f),
+                    }
+                )
     except Exception:
         pass
     return result
@@ -155,10 +180,15 @@ def _find_pattern_node(doc: Any) -> tuple[str | None, str | None]:
             return None, None
         for f in feats:
             tn = _type_name(f)
-            if tn and any(tok in tn.lower() for tok in (
-                "sketchdrivenpattern", "localsketchpattern", "sketchpattern",
-                "drivenpattern",
-            )):
+            if tn and any(
+                tok in tn.lower()
+                for tok in (
+                    "sketchdrivenpattern",
+                    "localsketchpattern",
+                    "sketchpattern",
+                    "drivenpattern",
+                )
+            ):
                 return _feat_name(f), tn
     except Exception:
         pass
@@ -246,9 +276,7 @@ def run() -> dict[str, Any]:
                 "vol_mm3": vol_reopen,
                 "nodes": nodes_reopen,
                 "pattern_node": {"name": pat_name_r, "type_name": pat_type_r},
-                "survives": (
-                    faces_reopen >= faces_after and vol_reopen > 0
-                ),
+                "survives": (faces_reopen >= faces_after and vol_reopen > 0),
             }
         except Exception as e:
             result["reopen"] = {"error": str(e)[:200]}

@@ -27,6 +27,7 @@ best-achieved state so the caller can re-call with a larger step / direction.
 This module is a MUTATOR (it drives a mate): CLI-only, never MCP, per §6.5 —
 the same gate ``ai-sw-motion`` follows.
 """
+
 from __future__ import annotations
 
 import math
@@ -43,8 +44,10 @@ _DIRECTIONS = {"out": +1, "in": -1}
 
 
 def _vol_sum(intf: dict[str, Any]) -> float:
-    return sum(float(i.get("interference_volume_mm3") or 0.0)
-               for i in (intf.get("interferences") or []))
+    return sum(
+        float(i.get("interference_volume_mm3") or 0.0)
+        for i in (intf.get("interferences") or [])
+    )
 
 
 def _save(doc: Any, mod: Any) -> bool:
@@ -109,7 +112,9 @@ def resolve_clearance(
         return res
     sign = _DIRECTIONS.get(direction)
     if sign is None:
-        res["error"] = f"direction must be one of {sorted(_DIRECTIONS)} (got {direction!r})"
+        res["error"] = (
+            f"direction must be one of {sorted(_DIRECTIONS)} (got {direction!r})"
+        )
         return res
 
     # ── Capture the original value (the revert anchor) ──────────────────────
@@ -137,13 +142,20 @@ def resolve_clearance(
             break
         count = int(intf.get("interference_count", 0))
         vol = _vol_sum(intf)
-        res["trajectory"].append({
-            "iter": it, "dist_mm": round(cur_si * 1000.0, 4),
-            "count": count, "volume_mm3": round(vol, 4),
-        })
+        res["trajectory"].append(
+            {
+                "iter": it,
+                "dist_mm": round(cur_si * 1000.0, 4),
+                "count": count,
+                "volume_mm3": round(vol, 4),
+            }
+        )
         if vol < best["volume_mm3"]:
-            best = {"dist_mm": round(cur_si * 1000.0, 4),
-                    "count": count, "volume_mm3": round(vol, 4)}
+            best = {
+                "dist_mm": round(cur_si * 1000.0, 4),
+                "count": count,
+                "volume_mm3": round(vol, 4),
+            }
 
         if count == 0 and vol <= _VOL_EPS:
             solved = True
@@ -185,7 +197,10 @@ def resolve_clearance(
         reason = "step increased interference; try direction='in'"
     else:
         reason = f"hit max_iters ({max_iters}) without clearing"
-    revert_note = (f"reverted to {res['initial_mm']:.3f}mm"
-                   if res["reverted"] else "REVERT FAILED — model left mutated")
+    revert_note = (
+        f"reverted to {res['initial_mm']:.3f}mm"
+        if res["reverted"]
+        else "REVERT FAILED — model left mutated"
+    )
     res["error"] = f"unresolved: {reason}; {revert_note}"
     return res

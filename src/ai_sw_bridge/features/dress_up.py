@@ -29,9 +29,9 @@ _SW_CONST_RADIUS_FILLET = 0  # swFilletType_e.swConstantRadiusFillet
 
 # swChamferType_e — duplicated from mutate (the original stays for the
 # propose-time validator; this copy serves the handler only).
-_SW_CHAMFER_ANGLE_DISTANCE = 1     # swChamferType_e.swChamferAngleDistance
+_SW_CHAMFER_ANGLE_DISTANCE = 1  # swChamferType_e.swChamferAngleDistance
 _SW_CHAMFER_DISTANCE_DISTANCE = 2  # swChamferType_e.swChamferDistanceDistance
-_SW_CHAMFER_VERTEX = 3             # swChamferType_e.swChamferVertex
+_SW_CHAMFER_VERTEX = 3  # swChamferType_e.swChamferVertex
 _CHAMFER_TYPES = ("angle_distance", "distance_distance", "vertex")
 
 # swDraftFacePropagationType_e — draft face propagation (duplicated for handler).
@@ -67,9 +67,7 @@ def _create_fillet(doc: Any, target: dict, radius_mm: float) -> tuple[bool, str 
         return False, f"fillet pipeline failed: {exc!r}"
 
 
-def _create_chamfer(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_chamfer(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Run the chamfer pipeline on a durable edge or vertex — fillet sibling.
 
     Three closed-form modes via ``feature['chamfer_type']`` (default
@@ -91,7 +89,8 @@ def _create_chamfer(
     """
     chamfer_type = (
         feature.get("chamfer_type", "angle_distance")
-        if isinstance(feature, dict) else "angle_distance"
+        if isinstance(feature, dict)
+        else "angle_distance"
     )
     if chamfer_type not in _CHAMFER_TYPES:
         return False, (
@@ -112,7 +111,11 @@ def _create_chamfer(
         point = target.get("point") if isinstance(target, dict) else None
         if not (isinstance(point, (list, tuple)) and len(point) == 3):
             return False, "vertex chamfer target.point must be [x, y, z] mm"
-        d1, d2, d3 = (_dist_m("distance_mm"), _dist_m("distance2_mm"), _dist_m("distance3_mm"))
+        d1, d2, d3 = (
+            _dist_m("distance_mm"),
+            _dist_m("distance2_mm"),
+            _dist_m("distance3_mm"),
+        )
         if None in (d1, d2, d3):
             return False, (
                 "vertex chamfer requires positive distance_mm, distance2_mm, distance3_mm"
@@ -122,13 +125,23 @@ def _create_chamfer(
         except Exception:
             pass
         if not doc.SelectByID(
-            "", "VERTEX",
-            float(point[0]) / 1000.0, float(point[1]) / 1000.0, float(point[2]) / 1000.0,
+            "",
+            "VERTEX",
+            float(point[0]) / 1000.0,
+            float(point[1]) / 1000.0,
+            float(point[2]) / 1000.0,
         ):
             return False, f"SelectByID(VERTEX at {list(point)} mm) failed"
         try:
             feat = doc.FeatureManager.InsertFeatureChamfer(
-                options, _SW_CHAMFER_VERTEX, 0.0, 0.0, 0.0, d1, d2, d3,
+                options,
+                _SW_CHAMFER_VERTEX,
+                0.0,
+                0.0,
+                0.0,
+                d1,
+                d2,
+                d3,
             )
             if _materialized(feat):
                 return True, None
@@ -156,8 +169,14 @@ def _create_chamfer(
                     "distance_distance chamfer requires positive distance_mm and distance2_mm"
                 )
             feat = fm.InsertFeatureChamfer(
-                options, _SW_CHAMFER_DISTANCE_DISTANCE,
-                d1, 0.0, d2, 0.0, 0.0, 0.0,
+                options,
+                _SW_CHAMFER_DISTANCE_DISTANCE,
+                d1,
+                0.0,
+                d2,
+                0.0,
+                0.0,
+                0.0,
             )
         else:  # angle_distance (default / W24)
             d1 = _dist_m("distance_mm")
@@ -165,8 +184,14 @@ def _create_chamfer(
                 return False, "angle_distance chamfer requires positive distance_mm"
             angle_rad = float(feature.get("angle_deg", 45.0)) * math.pi / 180.0
             feat = fm.InsertFeatureChamfer(
-                options, _SW_CHAMFER_ANGLE_DISTANCE,
-                d1, angle_rad, 0.0, 0.0, 0.0, 0.0,
+                options,
+                _SW_CHAMFER_ANGLE_DISTANCE,
+                d1,
+                angle_rad,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
             )
         if _materialized(feat):
             return True, None
@@ -188,9 +213,7 @@ def _get_definition(feat: Any, mod: Any) -> Any:
     return typed(feat, "IFeature", module=mod).GetDefinition()
 
 
-def _create_variable_fillet(
-    doc: Any, edges: list[dict]
-) -> tuple[bool, str | None]:
+def _create_variable_fillet(doc: Any, edges: list[dict]) -> tuple[bool, str | None]:
     """Multi-edge fillet with a DISTINCT radius per durable edge.
 
     Seat-validated recipe (``spike_varfil_v4`` = PASS-PER-EDGE): variable

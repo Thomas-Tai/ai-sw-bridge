@@ -62,9 +62,7 @@ def _load_json(spec_path: Path) -> dict[str, Any]:
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise ImportValidationError(
-            "spec", f"spec is not valid JSON: {exc}"
-        ) from exc
+        raise ImportValidationError("spec", f"spec is not valid JSON: {exc}") from exc
     if not isinstance(data, dict):
         raise ImportValidationError(
             "spec", f"spec must be a JSON object, got {type(data).__name__}"
@@ -77,9 +75,7 @@ def _require_str(data: dict[str, Any], key: str) -> str:
         raise ImportValidationError(key, "required field is missing")
     val = data[key]
     if not isinstance(val, str):
-        raise ImportValidationError(
-            key, f"must be a string, got {type(val).__name__}"
-        )
+        raise ImportValidationError(key, f"must be a string, got {type(val).__name__}")
     if not val.strip():
         raise ImportValidationError(key, "must be a non-empty string")
     return val
@@ -119,9 +115,7 @@ def validate_import_spec(
         output_path = (anchor / output_path).resolve()
 
     if not source_path.exists():
-        raise ImportValidationError(
-            "source", f"file does not exist: {source_path}"
-        )
+        raise ImportValidationError("source", f"file does not exist: {source_path}")
 
     src_ext = source_path.suffix.lower()
     if src_ext not in SUPPORTED_EXTENSIONS:
@@ -158,11 +152,7 @@ def validate_import_spec(
                 )
         if "volume_rel_tol" in verify:
             tol = verify["volume_rel_tol"]
-            if (
-                not isinstance(tol, (int, float))
-                or tol <= 0
-                or tol > 1
-            ):
+            if not isinstance(tol, (int, float)) or tol <= 0 or tol > 1:
                 raise ImportValidationError(
                     "verify.volume_rel_tol",
                     f"must be in (0, 1], got {tol!r}",

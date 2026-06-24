@@ -95,9 +95,7 @@ def _run_materialize(args: argparse.Namespace) -> dict[str, Any]:
 
     ok_count = sum(1 for r in results if r.ok)
     all_vols = {
-        r.variant: r.volume_mm3
-        for r in results
-        if r.ok and r.volume_mm3 is not None
+        r.variant: r.volume_mm3 for r in results if r.ok and r.volume_mm3 is not None
     }
     distinct = sorted(set(round(v, 1) for v in all_vols.values()))
 
@@ -126,14 +124,18 @@ def _build_parser() -> argparse.ArgumentParser:
         "propose",
         help="Validate a configurations spec offline; no SW touch.",
     )
-    p.add_argument("--spec", required=True, help="Path to spec JSON with variants block.")
+    p.add_argument(
+        "--spec", required=True, help="Path to spec JSON with variants block."
+    )
     p.set_defaults(func=_run_propose)
 
     p = subs.add_parser(
         "materialize",
         help="Build one .sldprt per variant with volume verification.",
     )
-    p.add_argument("--spec", required=True, help="Path to spec JSON with variants block.")
+    p.add_argument(
+        "--spec", required=True, help="Path to spec JSON with variants block."
+    )
     p.add_argument(
         "--output-dir",
         dest="output_dir",

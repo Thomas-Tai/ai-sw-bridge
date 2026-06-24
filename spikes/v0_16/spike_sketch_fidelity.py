@@ -19,6 +19,7 @@ surfaced for a decision rather than fought blindly).
 
 Non-destructive: own blank Parts, never saves, closes own docs.
 """
+
 from __future__ import annotations
 
 import json
@@ -122,15 +123,18 @@ def probe_spline_closed(sw: Any) -> dict[str, Any]:
     # 1: does a CreateClosedSpline-style member exist on the sketch manager?
     doc, sm, title = _fresh(sw)
     try:
-        names = [n for n in ("CreateClosedSpline", "CreateClosedSpline2",
-                             "CreateSpline3")
-                 if hasattr(sm, n)]
+        names = [
+            n
+            for n in ("CreateClosedSpline", "CreateClosedSpline2", "CreateSpline3")
+            if hasattr(sm, n)
+        ]
         rec["sketchmgr_closed_members_present"] = names
     except Exception as e:  # noqa: BLE001
         rec["member_probe_error"] = repr(e)
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
 
@@ -138,16 +142,19 @@ def probe_spline_closed(sw: Any) -> dict[str, Any]:
     doc, sm, title = _fresh(sw)
     try:
         seg = sm.CreateSpline2(_vt_r8(pts), False)
-        seg_members = [n for n in ("IGetSplineParams", "SetEnds", "Closed",
-                                   "IsClosed", "SetClosed")
-                       if hasattr(seg, n)]
+        seg_members = [
+            n
+            for n in ("IGetSplineParams", "SetEnds", "Closed", "IsClosed", "SetClosed")
+            if hasattr(seg, n)
+        ]
         rec["spline_seg_members_present"] = seg_members
         rec["spline_seg_type"] = type(seg).__name__
     except Exception as e:  # noqa: BLE001
         rec["spline_inspect_error"] = repr(e)
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
 
@@ -161,7 +168,8 @@ def probe_spline_closed(sw: Any) -> dict[str, Any]:
         rec["geometric_close_error"] = repr(e)
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
 
@@ -223,7 +231,8 @@ def probe_text_format(sw: Any) -> dict[str, Any]:
         rec["text_error"] = repr(e)
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     height_applied = (

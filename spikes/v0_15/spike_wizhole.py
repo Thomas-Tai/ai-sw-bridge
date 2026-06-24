@@ -87,12 +87,12 @@ from ai_sw_bridge.sw_com import get_sw_app, get_active_doc, SW_DOC_PART  # noqa:
 # ---------------------------------------------------------------------------
 # Box geometry (metres)
 # ---------------------------------------------------------------------------
-BOX_W_M = 0.020   # 20 mm x 20 mm footprint
+BOX_W_M = 0.020  # 20 mm x 20 mm footprint
 BOX_H_M = 0.020
-BOX_D_M = 0.010   # 10 mm tall — +z face at z=0.010
+BOX_D_M = 0.010  # 10 mm tall — +z face at z=0.010
 
 # Sketch-point placement for the test hole (sketch coords on +z face)
-HOLE_U_M = 0.005   # 5 mm from centre → part X = 5 mm, Y = 0, Z = 10 mm
+HOLE_U_M = 0.005  # 5 mm from centre → part X = 5 mm, Y = 0, Z = 10 mm
 
 # Candidate standard strings to probe against the install's Toolbox DB.
 # The bridge handler will need the exact strings the install accepts.
@@ -114,7 +114,7 @@ CANDIDATE_STANDARDS = [
 HOLE_TYPE_CANDIDATES = list(range(0, 8))
 
 # swEndConditions_e candidates for the depth probe.
-END_COND_THROUGH_ALL_CANDIDATES = [1, 2]   # probe both; 2 is typical swEndCondThroughAll
+END_COND_THROUGH_ALL_CANDIDATES = [1, 2]  # probe both; 2 is typical swEndCondThroughAll
 END_COND_BLIND = 0
 
 
@@ -140,8 +140,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-        BOX_W_M / 2,  BOX_H_M / 2,  0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -149,14 +153,33 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, END_COND_BLIND, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        END_COND_BLIND,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
-        feat = fm.FeatureExtrusion2(*base_args, False)   # 23-arg
+        feat = fm.FeatureExtrusion2(*base_args, False)  # 23-arg
     except Exception:
-        feat = fm.FeatureExtrusion2(*base_args)           # 22-arg fallback
+        feat = fm.FeatureExtrusion2(*base_args)  # 22-arg fallback
     if feat is None:
         return {"built": False, "error": "FeatureExtrusion2 returned None"}
     return {"built": True, "feature_name": getattr(feat, "Name", None)}
@@ -165,6 +188,7 @@ def _build_box(doc: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # swFmHoleWzd discovery
 # ---------------------------------------------------------------------------
+
 
 def _is_wizhole_data(data: Any) -> bool:
     """Discriminate an IWizardHoleFeatureData* object from other CreateDefinition
@@ -211,11 +235,13 @@ def scan_swFmHoleWzd(fm: Any, scan_range: int = 128) -> dict[str, Any]:
                 default_std = data.Standard
             except Exception:
                 default_std = None
-            candidates.append({
-                "int_value": v,
-                "Standard_default": default_std,
-                "elapsed_ms": elapsed,
-            })
+            candidates.append(
+                {
+                    "int_value": v,
+                    "Standard_default": default_std,
+                    "elapsed_ms": elapsed,
+                }
+            )
             if winning_int is None:
                 winning_int = v
                 winning_data = data
@@ -233,6 +259,7 @@ def scan_swFmHoleWzd(fm: Any, scan_range: int = 128) -> dict[str, Any]:
 # IWizardHoleFeatureData2 property probes
 # ---------------------------------------------------------------------------
 
+
 def _probe_prop_rw(data: Any, prop: str, write_val: Any) -> dict[str, Any]:
     """Read then write-back a single property on the data object."""
     rec: dict[str, Any] = {"prop": prop}
@@ -242,11 +269,14 @@ def _probe_prop_rw(data: Any, prop: str, write_val: Any) -> dict[str, Any]:
         read_val = getattr(data, prop)
         rec["read_status"] = "OK"
         rec["read_type"] = _type_tag(read_val)
-        rec["read_value"] = (read_val if not isinstance(read_val, (bytes, bytearray))
-                             else read_val.hex())
+        rec["read_value"] = (
+            read_val if not isinstance(read_val, (bytes, bytearray)) else read_val.hex()
+        )
     except pywintypes.com_error as e:
         rec["read_status"] = "COM_ERROR"
-        rec["read_error"] = f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+        rec["read_error"] = (
+            f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+        )
     except Exception as e:
         rec["read_status"] = "PY_EXCEPTION"
         rec["read_error"] = f"{type(e).__name__}: {e}"
@@ -259,11 +289,16 @@ def _probe_prop_rw(data: Any, prop: str, write_val: Any) -> dict[str, Any]:
         # Read-back to confirm
         read_back = getattr(data, prop)
         rec["write_status"] = "OK"
-        rec["write_readback"] = (read_back if not isinstance(read_back, (bytes, bytearray))
-                                 else read_back.hex())
+        rec["write_readback"] = (
+            read_back
+            if not isinstance(read_back, (bytes, bytearray))
+            else read_back.hex()
+        )
     except pywintypes.com_error as e:
         rec["write_status"] = "COM_ERROR"
-        rec["write_error"] = f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+        rec["write_error"] = (
+            f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+        )
     except Exception as e:
         rec["write_status"] = "PY_EXCEPTION"
         rec["write_error"] = f"{type(e).__name__}: {e}"
@@ -289,7 +324,9 @@ def probe_data_object_props(data: Any) -> dict[str, Any]:
                 rec["read_error"] = f"{type(e).__name__}: {e}"
         except pywintypes.com_error as e:
             rec["status"] = "COM_ERROR"
-            rec["error"] = f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+            rec["error"] = (
+                f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+            )
         except Exception as e:
             rec["status"] = "PY_EXCEPTION"
             rec["error"] = f"{type(e).__name__}: {e}"
@@ -297,18 +334,18 @@ def probe_data_object_props(data: Any) -> dict[str, Any]:
 
     props = [
         # (property_name, test_write_value)
-        ("HoleType",      2),          # swWzdHole = simple drill (typically 2)
-        ("Standard",      "ANSI Metric"),
-        ("FastenerType",  "Socket Head Cap Screw"),
-        ("Size",          "M6"),
-        ("EndCondition",  END_COND_BLIND),   # blind — safe default
-        ("Depth",         0.010),            # 10 mm
-        ("DrillAngle",    0.0),
-        ("ThreadDepth",   0.008),            # 8 mm
-        ("CsinkAngle",    1.5707963),        # 90° in radians (π/2)
-        ("CsinkDiameter", 0.012),            # 12 mm
+        ("HoleType", 2),  # swWzdHole = simple drill (typically 2)
+        ("Standard", "ANSI Metric"),
+        ("FastenerType", "Socket Head Cap Screw"),
+        ("Size", "M6"),
+        ("EndCondition", END_COND_BLIND),  # blind — safe default
+        ("Depth", 0.010),  # 10 mm
+        ("DrillAngle", 0.0),
+        ("ThreadDepth", 0.008),  # 8 mm
+        ("CsinkAngle", 1.5707963),  # 90° in radians (π/2)
+        ("CsinkDiameter", 0.012),  # 12 mm
         ("CounterBoreDiameter", 0.010),
-        ("CounterBoreDepth",    0.005),
+        ("CounterBoreDepth", 0.005),
     ]
     prop_results = [_probe_prop_rw(data, name, val) for name, val in props]
 
@@ -325,6 +362,7 @@ def probe_data_object_props(data: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Standards DB probe
 # ---------------------------------------------------------------------------
+
 
 def probe_standard_strings(data: Any) -> dict[str, Any]:
     """Try setting data.Standard to each candidate string and record which work.
@@ -347,7 +385,9 @@ def probe_standard_strings(data: Any) -> dict[str, Any]:
             accepted.append(std)
         except pywintypes.com_error as e:
             rec["status"] = "COM_ERROR"
-            rec["error"] = f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+            rec["error"] = (
+                f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+            )
         except Exception as e:
             rec["status"] = "PY_EXCEPTION"
             rec["error"] = f"{type(e).__name__}: {e}"
@@ -364,6 +404,7 @@ def probe_standard_strings(data: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Placement probe: face + sketch-point selection
 # ---------------------------------------------------------------------------
+
 
 def _place_sketch_point_on_top_face(doc: Any) -> dict[str, Any]:
     """Open a 2D sketch on the +z face, drop one point, close it.
@@ -383,7 +424,7 @@ def _place_sketch_point_on_top_face(doc: Any) -> dict[str, Any]:
 
     sm = doc.SketchManager
     sm.InsertSketch(True)
-    sm.CreatePoint(HOLE_U_M, 0.0, 0.0)   # sketch coords (5 mm, 0) → part (5,0,10) mm
+    sm.CreatePoint(HOLE_U_M, 0.0, 0.0)  # sketch coords (5 mm, 0) → part (5,0,10) mm
     sm.InsertSketch(True)
 
     # Name the placement sketch for later re-selection.
@@ -406,7 +447,9 @@ def _place_sketch_point_on_top_face(doc: Any) -> dict[str, Any]:
     # Get the sketch point entity via the sketch manager and use Select2(append, mark).
     sk_entity_select: dict[str, Any] = {}
     try:
-        sk_feat2 = doc.GetEntityByName("SK_WizHole_Pos", 26)  # swSelectType_e.swSelSKETCHES=26
+        sk_feat2 = doc.GetEntityByName(
+            "SK_WizHole_Pos", 26
+        )  # swSelectType_e.swSelSKETCHES=26
     except Exception:
         sk_feat2 = None
     if sk_feat2 is None:
@@ -423,7 +466,7 @@ def _place_sketch_point_on_top_face(doc: Any) -> dict[str, Any]:
             if pts:
                 pt = pts[0]
                 try:
-                    ok_pt = pt.Select2(True, 0)   # Append=True, Mark=0 (no Callout)
+                    ok_pt = pt.Select2(True, 0)  # Append=True, Mark=0 (no Callout)
                     sk_entity_select["Select2_append"] = ok_pt
                 except Exception as e:
                     sk_entity_select["Select2_error"] = f"{type(e).__name__}: {e}"
@@ -465,6 +508,7 @@ def _place_sketch_point_on_top_face(doc: Any) -> dict[str, Any]:
 # CreateFeature probe
 # ---------------------------------------------------------------------------
 
+
 def probe_create_feature(fm: Any, data: Any, doc: Any) -> dict[str, Any]:
     """Attempt to materialize the wizard hole via CreateFeature(data).
 
@@ -476,11 +520,11 @@ def probe_create_feature(fm: Any, data: Any, doc: Any) -> dict[str, Any]:
     # Configure data for a simple M6 through-all drill hole on ANSI Metric.
     # These are best-effort defaults — the prop-probe established what works.
     try:
-        data.HoleType = 2              # swWzdHole (probe value — simple drill)
+        data.HoleType = 2  # swWzdHole (probe value — simple drill)
         data.Standard = "ANSI Metric"
         data.FastenerType = "Hex Bolt"
         data.Size = "M6"
-        data.EndCondition = 1          # probe: might be swEndCondThroughAll
+        data.EndCondition = 1  # probe: might be swEndCondThroughAll
     except Exception as e:
         rec["data_setup_error"] = f"{type(e).__name__}: {e}"
 
@@ -523,6 +567,7 @@ def probe_create_feature(fm: Any, data: Any, doc: Any) -> dict[str, Any]:
 # Top-level COM run
 # ---------------------------------------------------------------------------
 
+
 def run_com(skip_build: bool) -> dict[str, Any]:
     sw = get_sw_app()
     doc = _ensure_part_doc(sw)
@@ -531,7 +576,11 @@ def run_com(skip_build: bool) -> dict[str, Any]:
     if not skip_build:
         build_rec.update(_build_box(doc))
         if not build_rec.get("built"):
-            return {"overall": "FAIL", "reason": "box did not build", "build": build_rec}
+            return {
+                "overall": "FAIL",
+                "reason": "box did not build",
+                "build": build_rec,
+            }
         try:
             doc.EditRebuild3
         except Exception:
@@ -620,6 +669,7 @@ def run_com(skip_build: bool) -> dict[str, Any]:
 # VBA oracle (early-binding)
 # ---------------------------------------------------------------------------
 
+
 def emit_vba() -> str:
     """Early-binding oracle for the HoleWizard pipeline.
 
@@ -687,21 +737,27 @@ End Sub
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
-        "--mode", choices=["com", "vba"], default="com",
+        "--mode",
+        choices=["com", "vba"],
+        default="com",
         help="com = drive SW from Python; vba = emit the .bas oracle.",
     )
     p.add_argument(
-        "--skip-build", action="store_true",
+        "--skip-build",
+        action="store_true",
         help="Skip creating the test box; probe the first solid body already present.",
     )
     p.add_argument(
-        "--out", type=Path, default=None,
+        "--out",
+        type=Path,
+        default=None,
         help="Write JSON report to this path instead of stdout.",
     )
     args = p.parse_args()

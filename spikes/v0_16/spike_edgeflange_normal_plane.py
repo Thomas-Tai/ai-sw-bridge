@@ -9,6 +9,7 @@ InsertRefPlane constraint flags: Distance=1, Coincident=2, Angle=4,
 Parallel=8, Perpendicular=16, MidPlane=128. Materialization via
 len(GetFeatures(True)) delta.
 """
+
 from __future__ import annotations
 import argparse, json, sys, time
 from pathlib import Path
@@ -88,9 +89,29 @@ def _build_box(sw):
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.05, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.05,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
     return doc
@@ -166,7 +187,9 @@ def run():
         t_mid = (params[1] + params[2]) / 2.0
         eval_out = icurve.Evaluate(t_mid)
         point = (eval_out[0], eval_out[1], eval_out[2])
-        tangent = (eval_out[3], eval_out[4], eval_out[5]) if len(eval_out) >= 6 else None
+        tangent = (
+            (eval_out[3], eval_out[4], eval_out[5]) if len(eval_out) >= 6 else None
+        )
         result["edge_midpoint"] = list(point)
         result["edge_tangent"] = list(tangent) if tangent else None
         print("[t6] midpoint: %s" % str(point))
@@ -177,7 +200,13 @@ def run():
 
         constraint_probes = [
             ("perp_only", SW_REFPLANE_PERPENDICULAR, 0, 0, 0),
-            ("perp_coincident", SW_REFPLANE_PERPENDICULAR, 0, SW_REFPLANE_COINCIDENT, 0),
+            (
+                "perp_coincident",
+                SW_REFPLANE_PERPENDICULAR,
+                0,
+                SW_REFPLANE_COINCIDENT,
+                0,
+            ),
             ("perp_angle", SW_REFPLANE_PERPENDICULAR, 0, SW_REFPLANE_ANGLE, 90.0),
         ]
 
@@ -220,12 +249,16 @@ def run():
             }
             if mat:
                 for feat_info in _list_features(doc):
-                    if feat_info.get("type") == "RefPlane" and feat_info.get("name", "").startswith("Plane"):
+                    if feat_info.get("type") == "RefPlane" and feat_info.get(
+                        "name", ""
+                    ).startswith("Plane"):
                         entry["plane_name"] = feat_info["name"]
                         break
             probes.append(entry)
-            print("  [%s] c1=%d c2=%d delta=%d mat=%s err=%s" % (
-                probe_name, c1, c2, delta, mat, err))
+            print(
+                "  [%s] c1=%d c2=%d delta=%d mat=%s err=%s"
+                % (probe_name, c1, c2, delta, mat, err)
+            )
 
             if mat and green is None:
                 green = entry
@@ -243,7 +276,11 @@ def run():
                 sk.CreateCornerRectangle(-0.005, -0.005, 0, 0.005, 0.005, 0)
                 doc.InsertSketch2(False)
                 doc.ClearSelection2(True)
-                sketches = [feat_info["name"] for feat_info in _list_features(doc) if feat_info.get("type") == "ProfileFeature"]
+                sketches = [
+                    feat_info["name"]
+                    for feat_info in _list_features(doc)
+                    if feat_info.get("type") == "ProfileFeature"
+                ]
                 result["sketches"] = sketches
                 result["sketch_verified"] = len(sketches) > 1
                 if result["sketch_verified"]:
@@ -261,7 +298,9 @@ def run():
                     )
                 else:
                     result["overall"] = "PARTIAL"
-                    result["interpretation"] = "Plane materialized but sketch not verified."
+                    result["interpretation"] = (
+                        "Plane materialized but sketch not verified."
+                    )
             except Exception as e:
                 result["sketch_error"] = str(e)[:200]
                 result["overall"] = "PARTIAL"
@@ -300,7 +339,9 @@ def main():
         print("wrote %s" % args.out, file=sys.stderr)
     else:
         print(payload)
-    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(result.get("overall"), 1)
+    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":

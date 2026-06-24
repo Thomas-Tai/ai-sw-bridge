@@ -102,11 +102,33 @@ MEMID_HEM_V1 = 91
 MEMID_HEM_V2 = 201
 
 HEM_V1_ARGTYPES = (
-    (3, 1), (3, 1), (11, 1), (5, 1), (5, 1), (5, 1), (5, 1), (5, 1), (13, 1),
+    (3, 1),
+    (3, 1),
+    (11, 1),
+    (5, 1),
+    (5, 1),
+    (5, 1),
+    (5, 1),
+    (5, 1),
+    (13, 1),
 )
 HEM_V2_ARGTYPES = (
-    (3, 1), (3, 1), (11, 1), (5, 1), (5, 1), (5, 1), (5, 1), (5, 1), (13, 1),
-    (11, 1), (3, 1), (3, 1), (11, 1), (5, 1), (5, 1), (5, 1),
+    (3, 1),
+    (3, 1),
+    (11, 1),
+    (5, 1),
+    (5, 1),
+    (5, 1),
+    (5, 1),
+    (5, 1),
+    (13, 1),
+    (11, 1),
+    (3, 1),
+    (3, 1),
+    (11, 1),
+    (5, 1),
+    (5, 1),
+    (5, 1),
 )
 
 
@@ -116,8 +138,10 @@ def _raw_invoke(fm: Any, memid: int, argtypes: tuple, args: tuple) -> Any:
     ret = oleobj.InvokeTypes(memid, 0, 1, (9, 0), argtypes, *args)
     if ret is not None:
         from win32com.client import Dispatch
-        ret = Dispatch(ret, "InsertSheetMetalHem",
-                       "{83A33D38-27C5-11CE-BFD4-00400513BB57}")
+
+        ret = Dispatch(
+            ret, "InsertSheetMetalHem", "{83A33D38-27C5-11CE-BFD4-00400513BB57}"
+        )
     return ret
 
 
@@ -129,13 +153,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:  # noqa: BLE001
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:200],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:200],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _materialized(feat: Any) -> bool:
@@ -167,8 +197,8 @@ def _build_profile(doc: Any) -> dict[str, Any]:
         sk = doc.SketchManager
         sk.InsertSketch(True)
         seg = sk.CreateCornerRectangle(
-            -PROF_W_M / 2, -PROF_H_M / 2, 0.0,
-            PROF_W_M / 2, PROF_H_M / 2, 0.0)
+            -PROF_W_M / 2, -PROF_H_M / 2, 0.0, PROF_W_M / 2, PROF_H_M / 2, 0.0
+        )
         sk.InsertSketch(True)
         out["built"] = seg is not None
         out["sketch"] = "Sketch1"
@@ -258,18 +288,46 @@ def _probe_hem_v1(fm: Any, doc: Any) -> dict[str, Any]:
     out["faces_before"] = faces_before
 
     combos = [
-        ("closed-null-pcba", (
-            SW_HEM_TYPE_CLOSED, SW_HEM_POSITION_OUTSIDE, False,
-            HEM_LENGTH_M, 0.0, 0.0, 0.0, HEM_MITER_GAP_M, None,
-        )),
-        ("open-null-pcba", (
-            SW_HEM_TYPE_OPEN, SW_HEM_POSITION_OUTSIDE, False,
-            HEM_LENGTH_M, HEM_GAP_M, 0.0, 0.0, HEM_MITER_GAP_M, None,
-        )),
+        (
+            "closed-null-pcba",
+            (
+                SW_HEM_TYPE_CLOSED,
+                SW_HEM_POSITION_OUTSIDE,
+                False,
+                HEM_LENGTH_M,
+                0.0,
+                0.0,
+                0.0,
+                HEM_MITER_GAP_M,
+                None,
+            ),
+        ),
+        (
+            "open-null-pcba",
+            (
+                SW_HEM_TYPE_OPEN,
+                SW_HEM_POSITION_OUTSIDE,
+                False,
+                HEM_LENGTH_M,
+                HEM_GAP_M,
+                0.0,
+                0.0,
+                HEM_MITER_GAP_M,
+                None,
+            ),
+        ),
     ]
 
     v1_dispatch_types = (
-        (3, 1), (3, 1), (11, 1), (5, 1), (5, 1), (5, 1), (5, 1), (5, 1), (9, 1),
+        (3, 1),
+        (3, 1),
+        (11, 1),
+        (5, 1),
+        (5, 1),
+        (5, 1),
+        (5, 1),
+        (5, 1),
+        (9, 1),
     )
 
     attempts: list[dict[str, Any]] = []
@@ -280,7 +338,8 @@ def _probe_hem_v1(fm: Any, doc: Any) -> dict[str, Any]:
 
         if feat is None and rec.get("status") == "EXCEPTION":
             rec_raw, feat = _capture(
-                lambda: _raw_invoke(fm, MEMID_HEM_V1, HEM_V1_ARGTYPES, args))
+                lambda: _raw_invoke(fm, MEMID_HEM_V1, HEM_V1_ARGTYPES, args)
+            )
             rec_raw["route"] = "raw-InvokeTypes(VT_UNKNOWN)"
             rec_raw["combo"] = label
             attempts.append(rec)
@@ -288,7 +347,8 @@ def _probe_hem_v1(fm: Any, doc: Any) -> dict[str, Any]:
 
             if feat is None and rec.get("status") == "EXCEPTION":
                 rec_disp, feat = _capture(
-                    lambda: _raw_invoke(fm, MEMID_HEM_V1, v1_dispatch_types, args))
+                    lambda: _raw_invoke(fm, MEMID_HEM_V1, v1_dispatch_types, args)
+                )
                 rec_disp["route"] = "raw-InvokeTypes(VT_DISPATCH)"
                 rec_disp["combo"] = label
                 attempts.append(rec)
@@ -323,16 +383,30 @@ def _probe_hem_v2(fm: Any, doc: Any) -> dict[str, Any]:
     out["faces_before"] = faces_before
 
     args = (
-        SW_HEM_TYPE_CLOSED, SW_HEM_POSITION_OUTSIDE, False,
-        HEM_LENGTH_M, 0.0, 0.0, 0.0, HEM_MITER_GAP_M, None,
-        True, 0, 0, False, 0.0, 0.0, 0.0,
+        SW_HEM_TYPE_CLOSED,
+        SW_HEM_POSITION_OUTSIDE,
+        False,
+        HEM_LENGTH_M,
+        0.0,
+        0.0,
+        0.0,
+        HEM_MITER_GAP_M,
+        None,
+        True,
+        0,
+        0,
+        False,
+        0.0,
+        0.0,
+        0.0,
     )
     rec, feat = _capture(lambda: fm.InsertSheetMetalHem2(*args))
     rec["route"] = "makepy"
 
     if feat is None and rec.get("status") == "EXCEPTION":
         rec_raw, feat = _capture(
-            lambda: _raw_invoke(fm, MEMID_HEM_V2, HEM_V2_ARGTYPES, args))
+            lambda: _raw_invoke(fm, MEMID_HEM_V2, HEM_V2_ARGTYPES, args)
+        )
         rec_raw["route"] = "raw-InvokeTypes(VT_UNKNOWN)"
         out["makepy_attempt"] = rec
         rec = rec_raw
@@ -387,8 +461,11 @@ def run() -> dict[str, Any]:
         base = _build_base_flange(doc, fm, mod)
         result["base_flange"] = base
         if base.get("overall") != "PASS":
-            return {**result, "overall": "FAIL",
-                    "reason": "base flange (proven pipeline) failed"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "base flange (proven pipeline) failed",
+            }
 
         try:
             doc.ForceRebuild3(False)
@@ -398,8 +475,11 @@ def run() -> dict[str, Any]:
         edges = _find_live_edges(doc, mod)
         result["live_edges"] = len(edges)
         if not edges:
-            return {**result, "overall": "FAIL",
-                    "reason": "no live edges after base flange"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "no live edges after base flange",
+            }
 
         try:
             doc.ClearSelection2(True)
@@ -429,20 +509,20 @@ def run() -> dict[str, Any]:
             hem_v2 = _probe_hem_v2(fm, doc)
             result["hem_v2"] = hem_v2
         else:
-            result["hem_v2"] = {"overall": "SKIPPED",
-                                "reason": "v1 PASS — v2 not needed"}
+            result["hem_v2"] = {
+                "overall": "SKIPPED",
+                "reason": "v1 PASS — v2 not needed",
+            }
 
         hem_overall = hem_v1.get("overall") or result.get("hem_v2", {}).get("overall")
         if hem_overall and "PASS" in hem_overall:
             save_path = Path(tempfile.mkdtemp(prefix="hem_w59_")) / "hem_verify.sldprt"
             faces_before_save = _count_faces(doc)
-            save_rec, _ = _capture(lambda: doc.SaveAs3(
-                str(save_path), 0, 1))
+            save_rec, _ = _capture(lambda: doc.SaveAs3(str(save_path), 0, 1))
             result["persistence"] = {"save": save_rec, "path": str(save_path)}
             if save_rec.get("status") == "OK":
                 _close_all(sw)
-                reopen_rec, reopened = _capture(
-                    lambda: sw.OpenDoc(str(save_path), 1))
+                reopen_rec, reopened = _capture(lambda: sw.OpenDoc(str(save_path), 1))
                 result["persistence"]["reopen"] = reopen_rec
                 if reopen_rec.get("status") == "OK" and reopened is not None:
                     actual = reopened[0] if isinstance(reopened, tuple) else reopened
@@ -457,7 +537,8 @@ def run() -> dict[str, Any]:
                     faces_rebuilt = _count_faces(actual)
                     result["persistence"]["faces_after_rebuild"] = faces_rebuilt
                     result["persistence"]["delta_survived"] = (
-                        faces_rebuilt >= faces_before_save)
+                        faces_rebuilt >= faces_before_save
+                    )
                 else:
                     result["persistence"]["survived"] = False
             else:
@@ -474,20 +555,24 @@ def run() -> dict[str, Any]:
         if persisted is False:
             result["overall"] = "PARTIAL-PERSIST"
             result["interpretation"] = (
-                "Hem v1 materializes + face delta but DID NOT survive save→reopen.")
+                "Hem v1 materializes + face delta but DID NOT survive save→reopen."
+            )
         else:
             result["overall"] = "PASS"
             result["interpretation"] = (
-                "Hem v1 materializes + face delta + survived save→reopen → handler ships.")
+                "Hem v1 materializes + face delta + survived save→reopen → handler ships."
+            )
     elif "PASS" in v2:
         if persisted is False:
             result["overall"] = "PARTIAL-PERSIST"
             result["interpretation"] = (
-                "Hem v2 materializes + face delta but DID NOT survive save→reopen.")
+                "Hem v2 materializes + face delta but DID NOT survive save→reopen."
+            )
         else:
             result["overall"] = "PASS-v2"
             result["interpretation"] = (
-                "Hem v1 FAIL but v2 PASS + persisted → handler uses v2.")
+                "Hem v1 FAIL but v2 PASS + persisted → handler uses v2."
+            )
     elif v1 == "FAIL" and v2 == "FAIL":
         result["overall"] = "FAIL"
         result["interpretation"] = "Both v1 and v2 FAIL → hem unreachable."
@@ -550,8 +635,9 @@ End Sub
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--mode", choices=["com", "vba"], default="com")
     p.add_argument("--out", type=Path, default=None)
     args = p.parse_args()
@@ -571,9 +657,9 @@ def main() -> int:
         sys.stderr.write(f"wrote {args.out}\n")
     else:
         sys.stdout.write(payload + "\n")
-    return {"PASS": 0, "PASS-v2": 0, "PARTIAL": 2,
-            "PARTIAL-PERSIST": 2, "FAIL": 1}.get(
-        result.get("overall"), 1)
+    return {"PASS": 0, "PASS-v2": 0, "PARTIAL": 2, "PARTIAL-PERSIST": 2, "FAIL": 1}.get(
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":

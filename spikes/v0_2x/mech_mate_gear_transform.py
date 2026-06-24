@@ -15,6 +15,7 @@ Discriminator — feed inputs whose persisted form differs between H1 and H2:
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/mech_mate_gear_transform.py
 """
+
 from __future__ import annotations
 
 import json
@@ -68,7 +69,9 @@ def _leg(sw: Any, mod: Any, enum_val: int, num: float, den: float) -> dict[str, 
     if mate is None or isinstance(mate, int):
         r["error"] = "CREATEMATE_NONE"
         return r
-    asm_path = str(Path(t1._results_tmp(), f"geartx_{int(num)}_{int(den)}_{os.getpid()}.SLDASM"))
+    asm_path = str(
+        Path(t1._results_tmp(), f"geartx_{int(num)}_{int(den)}_{os.getpid()}.SLDASM")
+    )
     save_ok = typed(asm, "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0)
     if int(save_ok) != 0:
         r["error"] = f"SAVE_FAILED({save_ok})"
@@ -96,16 +99,22 @@ def main() -> int:
         for num, den in _INPUTS:
             leg = _leg(sw, mod, enum_val, num, den)
             result["legs"].append(leg)
-            print(f"[tx] set=({num},{den}) reopened={leg.get('reopened')} "
-                  f"H1={leg.get('h1_transposed')} H2={leg.get('h2_canonical')} "
-                  f"err={leg.get('error')}")
+            print(
+                f"[tx] set=({num},{den}) reopened={leg.get('reopened')} "
+                f"H1={leg.get('h1_transposed')} H2={leg.get('h2_canonical')} "
+                f"err={leg.get('error')}"
+            )
         h1 = [l for l in result["legs"] if isinstance(l.get("reopened"), dict)]
         if h1 and all(l.get("h1_transposed") for l in h1):
             result["verdict"] = "H1_TRANSPOSED_SETTER"
-            result["fix"] = "value-swap: assign GearRatioNumerator=requested_den, GearRatioDenominator=requested_num"
+            result["fix"] = (
+                "value-swap: assign GearRatioNumerator=requested_den, GearRatioDenominator=requested_num"
+            )
         elif h1 and all(l.get("h2_canonical") for l in h1):
             result["verdict"] = "H2_CANONICALIZE"
-            result["fix"] = "ratio stored num<=den; direction not in num/den order — needs Reverse-flag investigation"
+            result["fix"] = (
+                "ratio stored num<=den; direction not in num/den order — needs Reverse-flag investigation"
+            )
         else:
             result["verdict"] = "MIXED"
         try:

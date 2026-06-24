@@ -4,6 +4,7 @@ Builds base part manually (pre-built), then runs the assembly lifecycle
 which builds the lid part from a part_spec JSON and places both components
 with a coincident mate.
 """
+
 import json
 import os
 import sys
@@ -66,11 +67,13 @@ results = {
     "errors": [],
 }
 
+
 def gate(name: str, ok: bool, detail: str = ""):
     results["gates"][name] = {"ok": ok, "detail": detail}
     status = "PASS" if ok else "FAIL"
     print(f"  [{status}] {name}: {detail}")
     return ok
+
 
 print("=" * 60)
 print("Slice-8b PAE: real part_spec build-then-place")
@@ -124,8 +127,11 @@ commit_ok = commit_result.get("ok", False)
 
 # Robustness guard: check if assembly was saved even if commit raised
 asm_on_disk = os.path.isfile(OUTPUT_ASM)
-gate("commit", commit_ok or asm_on_disk,
-     f"ok={commit_ok}, asm_on_disk={asm_on_disk}, state={commit_result.get('state')}")
+gate(
+    "commit",
+    commit_ok or asm_on_disk,
+    f"ok={commit_ok}, asm_on_disk={asm_on_disk}, state={commit_result.get('state')}",
+)
 
 if not commit_ok and not asm_on_disk:
     results["errors"].append(f"commit failed: {commit_result.get('error')}")
@@ -143,15 +149,22 @@ comp_count = commit_result.get("component_count", 0)
 gate("component_count", comp_count == 2, f"count={comp_count}")
 
 # Gate: both real B-rep (assembly saved = components placed)
-gate("assembly_saved", asm_on_disk, f"path={OUTPUT_ASM}, size={os.path.getsize(OUTPUT_ASM) if asm_on_disk else 0}")
+gate(
+    "assembly_saved",
+    asm_on_disk,
+    f"path={OUTPUT_ASM}, size={os.path.getsize(OUTPUT_ASM) if asm_on_disk else 0}",
+)
 
 # Gate: lid was built by lifecycle from part_spec
 built_specs = commit_result.get("built_part_specs", {})
 lid_built = "lid" in built_specs
 lid_path = built_specs.get("lid", {}).get("save_as", "")
 lid_on_disk = os.path.isfile(lid_path) if lid_path else False
-gate("lid_built_by_lifecycle", lid_built and lid_on_disk,
-     f"path={lid_path}, on_disk={lid_on_disk}")
+gate(
+    "lid_built_by_lifecycle",
+    lid_built and lid_on_disk,
+    f"path={lid_path}, on_disk={lid_on_disk}",
+)
 
 # Gate: mate materialized
 mate_count = commit_result.get("mate_count", 0)
@@ -160,13 +173,17 @@ gate("mate_materialized", mate_count >= 1, f"mate_count={mate_count}")
 # Gate: manifest round-trips
 manifest = commit_result.get("manifest")
 manifest_ok = manifest is not None and "components" in manifest
-gate("manifest_roundtrip", manifest_ok,
-     f"components={len(manifest.get('components', [])) if manifest else 0}, "
-     f"mates={len(manifest.get('mates', [])) if manifest else 0}")
+gate(
+    "manifest_roundtrip",
+    manifest_ok,
+    f"components={len(manifest.get('components', [])) if manifest else 0}, "
+    f"mates={len(manifest.get('mates', [])) if manifest else 0}",
+)
 
 # Gate: feature_add gate rejects "assembly"
 print("\n--- Step 5: feature_add gate rejection ---")
 from ai_sw_bridge.mutate import sw_propose_feature_add
+
 reject_spec = {
     "kind": "assembly",
     "name": "should_reject",
@@ -174,8 +191,11 @@ reject_spec = {
 }
 reject_result = sw_propose_feature_add(reject_spec)
 reject_ok = not reject_result.get("ok", True)
-gate("feature_add_rejects_assembly", reject_ok,
-     f"rejected={reject_ok}, error={reject_result.get('error', 'none')}")
+gate(
+    "feature_add_rejects_assembly",
+    reject_ok,
+    f"rejected={reject_ok}, error={reject_result.get('error', 'none')}",
+)
 
 # Summary
 print("\n" + "=" * 60)

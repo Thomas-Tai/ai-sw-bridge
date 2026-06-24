@@ -17,6 +17,7 @@ not a layer-name string we hoped for.
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/dxf_flat_bends_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -229,15 +230,17 @@ def main() -> int:
         golden.write_text(dxf_text, encoding="utf-8")
         out["evidence_dxf"] = str(golden)
 
-        green = (
-            len(bend_lines) == _PHYSICAL_BEND_COUNT
-            and len(outline_lines) >= 4
-        )
+        green = len(bend_lines) == _PHYSICAL_BEND_COUNT and len(outline_lines) >= 4
         out["ok"] = bool(green)
         out["verdict"] = "GREEN" if green else "NO-GO"
         print(
             "[w48pae] %s: BEND-layer lines=%d (expected %d), outline lines=%d"
-            % (out["verdict"], len(bend_lines), _PHYSICAL_BEND_COUNT, len(outline_lines))
+            % (
+                out["verdict"],
+                len(bend_lines),
+                _PHYSICAL_BEND_COUNT,
+                len(outline_lines),
+            )
         )
     except Exception as exc:
         out["error"] = f"{type(exc).__name__}: {exc}"

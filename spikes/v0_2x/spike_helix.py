@@ -132,7 +132,10 @@ def main() -> int:
             "start_angle_deg": HELIX_START_ANGLE_DEG,
             "clockwise": HELIX_CLOCKWISE,
         },
-        "mode_a": {"status": "QUARANTINED", "reason": "no swFeatureNameID for helix in SW2024 swconst"},
+        "mode_a": {
+            "status": "QUARANTINED",
+            "reason": "no swFeatureNameID for helix in SW2024 swconst",
+        },
     }
     sw = None
     doc = None
@@ -168,7 +171,15 @@ def main() -> int:
         null_callout = VARIANT(pythoncom.VT_DISPATCH, None)
         try:
             sel_ok = doc.Extension.SelectByID2(
-                sketch_name, "SKETCH", 0.0, 0.0, 0.0, False, 0, null_callout, 0,
+                sketch_name,
+                "SKETCH",
+                0.0,
+                0.0,
+                0.0,
+                False,
+                0,
+                null_callout,
+                0,
             )
             mode_b_diag["select_sketch"] = bool(sel_ok)
         except Exception as e:
@@ -178,16 +189,16 @@ def main() -> int:
         if sel_ok:
             try:
                 doc.InsertHelix(
-                    True,                               # ConstantPitch
-                    False,                              # Reverse
-                    False,                              # Dimension
-                    HELIX_CLOCKWISE,                    # Clockwise
+                    True,  # ConstantPitch
+                    False,  # Reverse
+                    False,  # Dimension
+                    HELIX_CLOCKWISE,  # Clockwise
                     SW_HELIX_DEFINED_BY_PITCH_AND_REV,  # DefinedBy
-                    pitch_m,                            # Pitch (m)
-                    HELIX_REVOLUTIONS,                  # Revolution
-                    height_m,                           # Height (m)
-                    start_angle_rad,                    # StartAngle (rad)
-                    0.0,                                # Diameter (0 = use sketch)
+                    pitch_m,  # Pitch (m)
+                    HELIX_REVOLUTIONS,  # Revolution
+                    height_m,  # Height (m)
+                    start_angle_rad,  # StartAngle (rad)
+                    0.0,  # Diameter (0 = use sketch)
                 )
                 mode_b_diag["insert_helix_called"] = True
             except Exception as e:

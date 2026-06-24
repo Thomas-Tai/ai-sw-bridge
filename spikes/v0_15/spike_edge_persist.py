@@ -124,10 +124,17 @@ def run() -> dict[str, Any]:
 
     # 1. Capture the edge persist token via the shipped helper.
     token = earlybind.read_persist_reference(doc, edge0)
-    result["capture"] = {"ok": token is not None, "byte_len": len(token) if token else None}
+    result["capture"] = {
+        "ok": token is not None,
+        "byte_len": len(token) if token else None,
+    }
     if token is None:
         _close(sw, doc, result)
-        return {**result, "overall": "FAIL", "reason": "read_persist_reference(edge) returned None"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": "read_persist_reference(edge) returned None",
+        }
 
     # 2. Rebuild, then resolve the token on the rebuilt doc.
     try:
@@ -146,8 +153,11 @@ def run() -> dict[str, Any]:
     }
     if not res.ok or res.entity is None:
         _close(sw, doc, result)
-        return {**result, "overall": "FAIL",
-                "reason": f"edge token did not resolve (status {res.status_name})"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": f"edge token did not resolve (status {res.status_name})",
+        }
 
     # 3. Identity check: resolved edge geometry should match the snapshot.
     # GetStartVertex/GetEndVertex throw com_error late-bound on this build; the
@@ -169,10 +179,12 @@ def run() -> dict[str, Any]:
     if match and result["selectable"]:
         overall, reason = "PASS", (
             "edge persist token resolves after rebuild, matches geometry, and is "
-            "selectable -- edge capture (E1) is viable")
+            "selectable -- edge capture (E1) is viable"
+        )
     elif res.ok:
         overall, reason = "PARTIAL", (
-            "edge token resolves but geometry-match / selectability is inconclusive")
+            "edge token resolves but geometry-match / selectability is inconclusive"
+        )
     else:
         overall, reason = "FAIL", "edge token did not resolve"
     result["overall"] = overall
@@ -189,8 +201,9 @@ def _close(sw: Any, doc: Any, result: dict[str, Any]) -> None:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--out", type=Path, default=None)
     args = p.parse_args()
 

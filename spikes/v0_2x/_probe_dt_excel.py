@@ -5,6 +5,7 @@ SetEntryText can't build a blank table. The canonical route is EditTable2()
 whether the Excel-OLE design-table route works out-of-process (the W36 wall
 class) or drives distinct configs.
 """
+
 from __future__ import annotations
 
 import sys
@@ -58,7 +59,9 @@ def main() -> int:
 
     part = next(iter(ARTIFACTS.glob("W53_dt_test*.SLDPRT")), None)
     ret = tsw.OpenDoc6(str(part), 1, 1, "", 0, 0)
-    mdoc2 = typed_qi(ret[0] if isinstance(ret, tuple) else ret, "IModelDoc2", module=mod)
+    mdoc2 = typed_qi(
+        ret[0] if isinstance(ret, tuple) else ret, "IModelDoc2", module=mod
+    )
     mdoc2.ForceRebuild3(True)
 
     mdoc2.InsertFamilyTableNew()
@@ -91,10 +94,10 @@ def main() -> int:
     # SW layout (from the dump): A1=title, ROW 2 = parameter header (B2+),
     # column A from row 3 = config names (A3="First Instance"), values B3+.
     try:
-        ws.Cells(2, 2).Value = HEADER          # B2 = parameter header
+        ws.Cells(2, 2).Value = HEADER  # B2 = parameter header
         for i, (cn, val) in enumerate(CONFIGS):
-            ws.Cells(3 + i, 1).Value = cn      # A3, A4 = config names
-            ws.Cells(3 + i, 2).Value = val     # B3, B4 = values
+            ws.Cells(3 + i, 1).Value = cn  # A3, A4 = config names
+            ws.Cells(3 + i, 2).Value = val  # B3, B4 = values
         print(f"wrote header B2={HEADER!r}, configs at A3+/B3+: {CONFIGS}")
     except Exception as exc:
         print(f"cell write err: {exc!r}")
@@ -123,8 +126,10 @@ def main() -> int:
     print(f"distinct: {distinct}")
     if len(distinct) < 2 or len(names) < 2:
         print("=== NO-GO: not discriminated ===")
-        try: sw.CloseAllDocuments(True)
-        except Exception: pass
+        try:
+            sw.CloseAllDocuments(True)
+        except Exception:
+            pass
         return 2
 
     save_path = str(ARTIFACTS / "W53_dt_pop.SLDPRT")
@@ -132,16 +137,22 @@ def main() -> int:
     sw.CloseAllDocuments(True)
     time.sleep(0.5)
     ret2 = tsw.OpenDoc6(save_path, 1, 1, "", 0, 0)
-    mdoc2b = typed_qi(ret2[0] if isinstance(ret2, tuple) else ret2, "IModelDoc2", module=mod)
+    mdoc2b = typed_qi(
+        ret2[0] if isinstance(ret2, tuple) else ret2, "IModelDoc2", module=mod
+    )
     names2 = list(mdoc2b.GetConfigurationNames() or [])
     vols2 = _per_config_vol(mdoc2b)
     distinct2 = sorted({round(v, 1) for v in vols2.values() if v is not None})
     print(f"\nreopen configs: {names2}")
     print(f"reopen volumes: {vols2}")
     print(f"reopen distinct: {distinct2}")
-    try: sw.CloseAllDocuments(True)
-    except Exception: pass
-    print(f"\n=== {'GREEN' if len(distinct2) >= 2 else 'PARTIAL (in-session only)'} ===")
+    try:
+        sw.CloseAllDocuments(True)
+    except Exception:
+        pass
+    print(
+        f"\n=== {'GREEN' if len(distinct2) >= 2 else 'PARTIAL (in-session only)'} ==="
+    )
     return 0 if len(distinct2) >= 2 else 3
 
 

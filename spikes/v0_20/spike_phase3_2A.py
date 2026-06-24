@@ -71,6 +71,7 @@ def typelib_audit() -> bool:
         return False
 
     from win32com.client import dynamic
+
     try:
         sw = dynamic.Dispatch(pythoncom.GetActiveObject("SldWorks.Application"))
     except Exception:
@@ -78,6 +79,7 @@ def typelib_audit() -> bool:
 
     # Find assembly template
     import glob
+
     asm_templates = glob.glob(
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
     )
@@ -136,22 +138,41 @@ def typelib_audit() -> bool:
         try:
             md = typed_asm.CreateMateData(enum_val)
             if md is None:
-                iface_audit[mate_name] = {"interface": iface_name, "error": "CreateMateData None"}
+                iface_audit[mate_name] = {
+                    "interface": iface_name,
+                    "error": "CreateMateData None",
+                }
                 continue
             typed_mate = typed_qi(md, iface_name, module=mod)
             props = [
-                p for p in dir(typed_mate)
+                p
+                for p in dir(typed_mate)
                 if not p.startswith("_")
                 and p not in ("MateAlignment", "EntitiesToMate", "ErrorStatus")
             ]
             key_props = [
-                p for p in props
-                if any(kw in p.lower() for kw in [
-                    "angle", "distance", "align", "lock", "flip",
-                    "abs", "limit", "min", "max", "variation",
-                    "width", "tab", "selection", "constraint",
-                    "tangent",
-                ])
+                p
+                for p in props
+                if any(
+                    kw in p.lower()
+                    for kw in [
+                        "angle",
+                        "distance",
+                        "align",
+                        "lock",
+                        "flip",
+                        "abs",
+                        "limit",
+                        "min",
+                        "max",
+                        "variation",
+                        "width",
+                        "tab",
+                        "selection",
+                        "constraint",
+                        "tangent",
+                    ]
+                )
             ]
             iface_audit[mate_name] = {
                 "interface": iface_name,
@@ -197,7 +218,11 @@ def run_mate_pae() -> bool:
     from ai_sw_bridge.com.sw_type_info import wrapper_module
     from ai_sw_bridge.com.earlybind import typed, typed_extension, typed_qi
     from ai_sw_bridge.sw_com import get_sw_app
-    from ai_sw_bridge.assembly.handlers import create_mate, verify_mates, place_components
+    from ai_sw_bridge.assembly.handlers import (
+        create_mate,
+        verify_mates,
+        place_components,
+    )
 
     mod = wrapper_module()
     sw = get_sw_app()
@@ -251,6 +276,7 @@ def run_mate_pae() -> bool:
     }
 
     import tempfile
+
     _tmp = Path(tempfile.gettempdir())
     _ts = int(time.time())
     PART_A_PATH = str(_tmp / f"phase3_{_ts}_a.SLDPRT")
@@ -267,8 +293,11 @@ def run_mate_pae() -> bool:
     for label, path in [("A", PART_A_PATH), ("B", PART_B_PATH)]:
         print(f"  Building Part {label}...")
         r = part_build(PART_SPEC, save_as=path, save_format="current", no_dim=True)
-        gate(f"build_part_{label.lower()}", r.ok and os.path.isfile(path),
-             f"ok={r.ok}, features={r.features_built}")
+        gate(
+            f"build_part_{label.lower()}",
+            r.ok and os.path.isfile(path),
+            f"ok={r.ok}, features={r.features_built}",
+        )
 
     if not os.path.isfile(PART_A_PATH) or not os.path.isfile(PART_B_PATH):
         gate("parts_built", False, "Part build failed")
@@ -282,7 +311,9 @@ def run_mate_pae() -> bool:
         print(f"  OpenDoc6({part_path}): ret type={type(ret).__name__}")
         if isinstance(ret, tuple):
             doc = ret[0]
-            print(f"    tuple[0]={type(doc).__name__ if doc else None}, tuple[1:]={ret[1:]}")
+            print(
+                f"    tuple[0]={type(doc).__name__ if doc else None}, tuple[1:]={ret[1:]}"
+            )
         else:
             doc = ret
             print(f"    doc={type(doc).__name__ if doc else None}")
@@ -318,17 +349,25 @@ def run_mate_pae() -> bool:
                     try:
                         pid_bytes = ext.GetPersistReference3(face)
                         if pid_bytes:
-                            persist_id = base64.b64encode(bytes(pid_bytes)).decode("ascii")
+                            persist_id = base64.b64encode(bytes(pid_bytes)).decode(
+                                "ascii"
+                            )
                     except Exception:
                         pass
-                    face_list.append({
-                        "face_idx": idx,
-                        "is_cylinder": is_cyl,
-                        "is_plane": is_plane,
-                        "normal": [round(n, 6) for n in normal],
-                        "centroid": [round(cx * 1000, 3), round(cy * 1000, 3), round(cz * 1000, 3)],
-                        "persist_id": persist_id,
-                    })
+                    face_list.append(
+                        {
+                            "face_idx": idx,
+                            "is_cylinder": is_cyl,
+                            "is_plane": is_plane,
+                            "normal": [round(n, 6) for n in normal],
+                            "centroid": [
+                                round(cx * 1000, 3),
+                                round(cy * 1000, 3),
+                                round(cz * 1000, 3),
+                            ],
+                            "persist_id": persist_id,
+                        }
+                    )
                 except Exception:
                     pass
             return face_list
@@ -338,8 +377,12 @@ def run_mate_pae() -> bool:
 
     faces_a = probe_faces(PART_A_PATH)
     faces_b = probe_faces(PART_B_PATH)
-    print(f"  Part A: {len(faces_a)} faces ({sum(1 for f in faces_a if f['is_cylinder'])} cylindrical)")
-    print(f"  Part B: {len(faces_b)} faces ({sum(1 for f in faces_b if f['is_cylinder'])} cylindrical)")
+    print(
+        f"  Part A: {len(faces_a)} faces ({sum(1 for f in faces_a if f['is_cylinder'])} cylindrical)"
+    )
+    print(
+        f"  Part B: {len(faces_b)} faces ({sum(1 for f in faces_b if f['is_cylinder'])} cylindrical)"
+    )
 
     def find_planar(faces, normal_target, z_approx=None):
         for f in faces:
@@ -365,12 +408,14 @@ def run_mate_pae() -> bool:
     face_a_right = find_planar(faces_a, [1, 0, 0])
     face_a_front = find_planar(faces_a, [0, 1, 0])
 
-    gate("probe_faces",
-         all([face_a_cyl, face_b_right, face_a_right, face_a_front]),
-         f"cyl_A={face_a_cyl is not None}, "
-         f"right_A={face_a_right is not None}, "
-         f"right_B={face_b_right is not None}, "
-         f"front_A={face_a_front is not None}")
+    gate(
+        "probe_faces",
+        all([face_a_cyl, face_b_right, face_a_right, face_a_front]),
+        f"cyl_A={face_a_cyl is not None}, "
+        f"right_A={face_a_right is not None}, "
+        f"right_B={face_b_right is not None}, "
+        f"front_A={face_a_front is not None}",
+    )
 
     if not all([face_a_cyl, face_b_right, face_a_right, face_a_front]):
         gate("face_selection", False, "Could not find required faces")
@@ -381,6 +426,7 @@ def run_mate_pae() -> bool:
 
     # Open assembly
     import glob
+
     asm_templates = glob.glob(
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
     )
@@ -397,8 +443,11 @@ def run_mate_pae() -> bool:
     ]
 
     placed, place_err = place_components(sw, asm_doc, components, mod=mod)
-    gate("place_components", place_err is None,
-         f"placed={len(placed)}, error={place_err}")
+    gate(
+        "place_components",
+        place_err is None,
+        f"placed={len(placed)}, error={place_err}",
+    )
     if place_err is not None:
         return False
 
@@ -421,13 +470,18 @@ def run_mate_pae() -> bool:
 
     mate_feat, mate_err = create_mate(asm_doc, placed, tangent_spec, mod=mod)
     tangent_ok = mate_feat is not None and mate_err is None
-    gate("create_tangent_mate", tangent_ok,
-         f"feat={mate_feat is not None}, error={mate_err}")
-    results["per_mate_results"].append({
-        "type": "tangent",
-        "created": tangent_ok,
-        "error": mate_err,
-    })
+    gate(
+        "create_tangent_mate",
+        tangent_ok,
+        f"feat={mate_feat is not None}, error={mate_err}",
+    )
+    results["per_mate_results"].append(
+        {
+            "type": "tangent",
+            "created": tangent_ok,
+            "error": mate_err,
+        }
+    )
 
     # Angle mate: two non-parallel planar faces (right + front), 45 degrees
     angle_spec = {
@@ -440,14 +494,19 @@ def run_mate_pae() -> bool:
 
     mate_feat2, mate_err2 = create_mate(asm_doc, placed, angle_spec, mod=mod)
     angle_ok = mate_feat2 is not None and mate_err2 is None
-    gate("create_angle_mate_45deg", angle_ok,
-         f"feat={mate_feat2 is not None}, error={mate_err2}")
-    results["per_mate_results"].append({
-        "type": "angle",
-        "value_deg": 45.0,
-        "created": angle_ok,
-        "error": mate_err2,
-    })
+    gate(
+        "create_angle_mate_45deg",
+        angle_ok,
+        f"feat={mate_feat2 is not None}, error={mate_err2}",
+    )
+    results["per_mate_results"].append(
+        {
+            "type": "angle",
+            "value_deg": 45.0,
+            "created": angle_ok,
+            "error": mate_err2,
+        }
+    )
 
     # --- verify_mates ---
     print("\n--- Step 5: verify_mates ---")
@@ -460,12 +519,17 @@ def run_mate_pae() -> bool:
     results["verify_mates_raw"] = vm
     print(f"  verify_mates returned {len(vm)} mates:")
     for m in vm:
-        print(f"    {m['name']}: type={m['type']}, solved={m['solved']}, "
-              f"error_code={m['error_code']}, suppressed={m['suppressed']}")
+        print(
+            f"    {m['name']}: type={m['type']}, solved={m['solved']}, "
+            f"error_code={m['error_code']}, suppressed={m['suppressed']}"
+        )
 
     all_solved = len(vm) > 0 and all(m.get("solved") for m in vm)
-    gate("verify_mates_all_solved", all_solved,
-         f"total={len(vm)}, solved={sum(1 for m in vm if m.get('solved'))}")
+    gate(
+        "verify_mates_all_solved",
+        all_solved,
+        f"total={len(vm)}, solved={sum(1 for m in vm if m.get('solved'))}",
+    )
 
     # Cleanup
     try:
@@ -487,7 +551,9 @@ def main() -> int:
         typelib_ok = typelib_audit()
         if not typelib_ok:
             results["overall"] = "WALL"
-            results["verdict"] = "Typelib audit failed — enum values or interfaces not confirmed"
+            results["verdict"] = (
+                "Typelib audit failed — enum values or interfaces not confirmed"
+            )
             save_results()
             return 1
 

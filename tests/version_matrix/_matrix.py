@@ -12,6 +12,7 @@ Revision constants (from ``spec._version_resolver``)::
 
 See docs/sw_version_matrix_runner.md for how W0 enables the N-1 run.
 """
+
 from __future__ import annotations
 
 import os

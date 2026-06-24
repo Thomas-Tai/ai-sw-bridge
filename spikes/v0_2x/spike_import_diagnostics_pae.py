@@ -16,6 +16,7 @@ live fixtures:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_import_diagnostics_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -52,7 +53,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -95,36 +98,51 @@ def main() -> int:
     client = SolidWorksClient()
     try:
         # A: facade seam
-        gate("facade_seam", hasattr(client.observe, "import_diagnostics"),
-             f"client.observe.import_diagnostics present="
-             f"{hasattr(client.observe, 'import_diagnostics')}")
+        gate(
+            "facade_seam",
+            hasattr(client.observe, "import_diagnostics"),
+            f"client.observe.import_diagnostics present="
+            f"{hasattr(client.observe, 'import_diagnostics')}",
+        )
 
         # B: healthy native solid
         _close_all(sw)
         fx.build_block(sw)  # 40x30x10, becomes the active doc
         rb = client.observe.import_diagnostics()
         results["healthy"] = rb
-        ok_b = (rb.get("ok") and rb.get("clean") is True
-                and rb.get("solid_body_count") == 1
-                and rb.get("surface_body_count") == 0
-                and rb.get("total_fault_count") == 0)
-        gate("healthy_solid", bool(ok_b),
-             f"ok={rb.get('ok')} clean={rb.get('clean')} "
-             f"solid={rb.get('solid_body_count')} surface={rb.get('surface_body_count')} "
-             f"faults={rb.get('total_fault_count')} "
-             f"import_status={rb.get('import_diagnosis_status')} err={rb.get('error')}")
+        ok_b = (
+            rb.get("ok")
+            and rb.get("clean") is True
+            and rb.get("solid_body_count") == 1
+            and rb.get("surface_body_count") == 0
+            and rb.get("total_fault_count") == 0
+        )
+        gate(
+            "healthy_solid",
+            bool(ok_b),
+            f"ok={rb.get('ok')} clean={rb.get('clean')} "
+            f"solid={rb.get('solid_body_count')} surface={rb.get('surface_body_count')} "
+            f"faults={rb.get('total_fault_count')} "
+            f"import_status={rb.get('import_diagnosis_status')} err={rb.get('error')}",
+        )
 
         # C: part with a surface (sheet) body
         _close_all(sw)
         _build_surface_part(sw)  # becomes the active doc
         rc = client.observe.import_diagnostics()
         results["surface"] = rc
-        ok_c = (rc.get("ok") and rc.get("surface_body_count", 0) >= 1
-                and rc.get("clean") is False)
-        gate("surface_body", bool(ok_c),
-             f"ok={rc.get('ok')} clean={rc.get('clean')} "
-             f"solid={rc.get('solid_body_count')} surface={rc.get('surface_body_count')} "
-             f"faults={rc.get('total_fault_count')} err={rc.get('error')}")
+        ok_c = (
+            rc.get("ok")
+            and rc.get("surface_body_count", 0) >= 1
+            and rc.get("clean") is False
+        )
+        gate(
+            "surface_body",
+            bool(ok_c),
+            f"ok={rc.get('ok')} clean={rc.get('clean')} "
+            f"solid={rc.get('solid_body_count')} surface={rc.get('surface_body_count')} "
+            f"faults={rc.get('total_fault_count')} err={rc.get('error')}",
+        )
     finally:
         _close_all(sw)
         pythoncom.CoUninitialize()

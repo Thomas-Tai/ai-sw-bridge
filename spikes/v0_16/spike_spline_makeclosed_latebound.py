@@ -15,6 +15,7 @@ Four routes, each on its own fresh open spline:
 
 Non-destructive: own blank Parts, never saves, closes own docs.
 """
+
 from __future__ import annotations
 
 import json
@@ -77,7 +78,8 @@ def run() -> dict[str, Any]:
         rec["overall"] = "FAIL"
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     report["R1_raw_latebound"] = rec
@@ -97,7 +99,8 @@ def run() -> dict[str, Any]:
         rec["overall"] = "FAIL"
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     report["R2_castto"] = rec
@@ -116,7 +119,8 @@ def run() -> dict[str, Any]:
         rec["overall"] = "FAIL"
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     report["R3_earlybound"] = rec
@@ -140,13 +144,16 @@ def run() -> dict[str, Any]:
         rec["error"] = repr(e)
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     report["R4_getidsofnames"] = rec
 
     routes = ("R1_raw_latebound", "R2_castto", "R3_earlybound")
-    report["any_makeclosed_works"] = any(report[r].get("overall") == "PASS" for r in routes)
+    report["any_makeclosed_works"] = any(
+        report[r].get("overall") == "PASS" for r in routes
+    )
     report["overall"] = "PASS" if report["any_makeclosed_works"] else "FAIL"
     return report
 

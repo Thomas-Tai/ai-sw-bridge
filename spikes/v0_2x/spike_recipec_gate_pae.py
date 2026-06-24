@@ -22,6 +22,7 @@ the saved path (the feature-add lifecycle reopens by path).
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_recipec_gate_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -58,7 +59,10 @@ import ai_sw_bridge.mutate as mutate_mod  # noqa: E402
 
 _OUT = _HERE.parent / "_results" / "recipec_gate_pae.json"
 _WORK = _HERE.parent / "_results" / "recipec_work"
-results: dict[str, Any] = {"pae": "recipec_pattern_registry_migration_gate", "gates": {}}
+results: dict[str, Any] = {
+    "pae": "recipec_pattern_registry_migration_gate",
+    "gates": {},
+}
 
 _PATTERN_KINDS = ("linear_pattern", "circular_pattern", "mirror_feature")
 
@@ -70,7 +74,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -90,10 +96,29 @@ def _build_seed_part(sw: Any, path: str) -> bool:
     doc.SketchManager.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
     doc.SketchManager.InsertSketch(True)
     f = fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.01, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0.0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.01,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0.0,
+        0.0,
+        False,
     )
     if f:
         f.Name = "Box_Seed"
@@ -101,7 +126,7 @@ def _build_seed_part(sw: Any, path: str) -> bool:
     # Axis1 = Front Plane x Right Plane
     doc.ClearSelection2(True)
     fp = rp = None
-    for feat in (fm.GetFeatures(True) or []):
+    for feat in fm.GetFeatures(True) or []:
         n = feat.Name
         n = n() if callable(n) else n
         if n == "Front Plane":
@@ -117,8 +142,9 @@ def _build_seed_part(sw: Any, path: str) -> bool:
     return os.path.isfile(path)
 
 
-def _lifecycle(client: Any, name: str, seed_path: str, feature: dict, target: dict,
-               sw: Any) -> None:
+def _lifecycle(
+    client: Any, name: str, seed_path: str, feature: dict, target: dict, sw: Any
+) -> None:
     try:
         sw.CloseAllDocuments(True)
     except Exception:
@@ -133,10 +159,12 @@ def _lifecycle(client: Any, name: str, seed_path: str, feature: dict, target: di
     com = client.mutate.commit_feature_add(pid)
     results[f"{name}_dry_run"] = dry
     results[f"{name}_commit"] = com
-    gate(f"{name}_lifecycle",
-         bool(prop.get("ok")) and bool(dry.get("ok")) and bool(com.get("ok")),
-         f"propose={prop.get('ok')} dry_run={dry.get('ok')} commit={com.get('ok')} "
-         f"(executed through HANDLER_REGISTRY) err={com.get('error') or dry.get('error')}")
+    gate(
+        f"{name}_lifecycle",
+        bool(prop.get("ok")) and bool(dry.get("ok")) and bool(com.get("ok")),
+        f"propose={prop.get('ok')} dry_run={dry.get('ok')} commit={com.get('ok')} "
+        f"(executed through HANDLER_REGISTRY) err={com.get('error') or dry.get('error')}",
+    )
 
 
 def main() -> int:
@@ -158,14 +186,24 @@ def main() -> int:
             gate("registry_seam", False, f"features.patterns import failed: {exc}")
             raise SystemExit(_finish())
         registered = all(k in HANDLER_REGISTRY for k in _PATTERN_KINDS)
-        in_features = all(hasattr(patterns_mod, f"create_{k}") for k in (
-            "linear_pattern", "circular_pattern", "mirror_feature"))
-        gone_from_mutate = not any(hasattr(mutate_mod, n) for n in (
-            "_create_linear_pattern", "_create_circular_pattern", "_create_mirror_feature"))
-        gate("registry_seam",
-             registered and in_features and gone_from_mutate,
-             f"registered={registered} in_features={in_features} "
-             f"removed_from_mutate={gone_from_mutate}")
+        in_features = all(
+            hasattr(patterns_mod, f"create_{k}")
+            for k in ("linear_pattern", "circular_pattern", "mirror_feature")
+        )
+        gone_from_mutate = not any(
+            hasattr(mutate_mod, n)
+            for n in (
+                "_create_linear_pattern",
+                "_create_circular_pattern",
+                "_create_mirror_feature",
+            )
+        )
+        gate(
+            "registry_seam",
+            registered and in_features and gone_from_mutate,
+            f"registered={registered} in_features={in_features} "
+            f"removed_from_mutate={gone_from_mutate}",
+        )
 
         # ── Fixture: saved seed part (Box_Seed + Axis1) ──
         seed_path = str(_WORK / "recipec_seed.SLDPRT")
@@ -176,16 +214,35 @@ def main() -> int:
         client = SolidWorksClient()
 
         # ── B/C/D: each pattern through propose -> dry_run -> commit (registry) ──
-        _lifecycle(client, "linear", seed_path,
-                   {"type": "linear_pattern", "spacing_mm": 5.0, "count": 3},
-                   {"seed": "Box_Seed", "direction": {"x": 0, "y": 10, "z": 10}}, sw)
-        _lifecycle(client, "circular", seed_path,
-                   {"type": "circular_pattern", "count": 4, "angle_deg": 360,
-                    "equal_spacing": True},
-                   {"seed": "Box_Seed", "axis": "Axis1"}, sw)
-        _lifecycle(client, "mirror", seed_path,
-                   {"type": "mirror_feature"},
-                   {"seed": "Box_Seed", "plane": "Right Plane"}, sw)
+        _lifecycle(
+            client,
+            "linear",
+            seed_path,
+            {"type": "linear_pattern", "spacing_mm": 5.0, "count": 3},
+            {"seed": "Box_Seed", "direction": {"x": 0, "y": 10, "z": 10}},
+            sw,
+        )
+        _lifecycle(
+            client,
+            "circular",
+            seed_path,
+            {
+                "type": "circular_pattern",
+                "count": 4,
+                "angle_deg": 360,
+                "equal_spacing": True,
+            },
+            {"seed": "Box_Seed", "axis": "Axis1"},
+            sw,
+        )
+        _lifecycle(
+            client,
+            "mirror",
+            seed_path,
+            {"type": "mirror_feature"},
+            {"seed": "Box_Seed", "plane": "Right Plane"},
+            sw,
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

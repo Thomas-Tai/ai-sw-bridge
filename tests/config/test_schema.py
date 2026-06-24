@@ -25,9 +25,7 @@ class TestVariantsBlockSchema:
 
     def test_overrides_schema_is_object_with_string_values(self) -> None:
         assert VARIANT_OVERRIDE_SCHEMA["type"] == "object"
-        assert VARIANT_OVERRIDE_SCHEMA["additionalProperties"] == {
-            "type": "string"
-        }
+        assert VARIANT_OVERRIDE_SCHEMA["additionalProperties"] == {"type": "string"}
 
     def test_valid_variants_block(self) -> None:
         block = [
@@ -46,9 +44,7 @@ class TestVariantsBlockSchema:
 
     def test_missing_name_rejected(self) -> None:
         with pytest.raises(jsonschema.ValidationError):
-            jsonschema.validate(
-                [{"overrides": {"X": "1"}}], VARIANTS_BLOCK_SCHEMA
-            )
+            jsonschema.validate([{"overrides": {"X": "1"}}], VARIANTS_BLOCK_SCHEMA)
 
     def test_additional_properties_rejected(self) -> None:
         with pytest.raises(jsonschema.ValidationError):

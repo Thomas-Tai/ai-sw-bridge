@@ -1,4 +1,5 @@
 """Probe faces from base part - simplified: just normals + persist_id."""
+
 import json
 import os
 import sys
@@ -58,12 +59,28 @@ try:
             face_info = {
                 "face_idx": idx,
                 "body_id": 0,
-                "normal": [round(normal[0], 6), round(normal[1], 6), round(normal[2], 6)],
-                "centroid": [round(cx * 1000, 3), round(cy * 1000, 3), round(cz * 1000, 3)],
+                "normal": [
+                    round(normal[0], 6),
+                    round(normal[1], 6),
+                    round(normal[2], 6),
+                ],
+                "centroid": [
+                    round(cx * 1000, 3),
+                    round(cy * 1000, 3),
+                    round(cz * 1000, 3),
+                ],
                 "area_mm2": round(area * 1e6, 2),
                 "bbox": [
-                    [round(bbox[0] * 1000, 3), round(bbox[1] * 1000, 3), round(bbox[2] * 1000, 3)],
-                    [round(bbox[3] * 1000, 3), round(bbox[4] * 1000, 3), round(bbox[5] * 1000, 3)],
+                    [
+                        round(bbox[0] * 1000, 3),
+                        round(bbox[1] * 1000, 3),
+                        round(bbox[2] * 1000, 3),
+                    ],
+                    [
+                        round(bbox[3] * 1000, 3),
+                        round(bbox[4] * 1000, 3),
+                        round(bbox[5] * 1000, 3),
+                    ],
                 ],
                 "is_surface": False,
             }
@@ -74,10 +91,12 @@ try:
             face_info["fingerprint"] = hashlib.sha256(fp_str.encode()).hexdigest()[:16]
 
             face_data_list.append(face_info)
-            print(f"  Face {idx}: normal={[round(x,3) for x in normal]}, "
-                  f"centroid_mm={[round(x,1) for x in face_info['centroid']]}, "
-                  f"area={face_info['area_mm2']:.1f}mm2, "
-                  f"persist={'yes' if persist_id else 'no'}")
+            print(
+                f"  Face {idx}: normal={[round(x,3) for x in normal]}, "
+                f"centroid_mm={[round(x,1) for x in face_info['centroid']]}, "
+                f"area={face_info['area_mm2']:.1f}mm2, "
+                f"persist={'yes' if persist_id else 'no'}"
+            )
 
         except Exception as exc:
             print(f"  Face {idx}: ERROR: {exc}")

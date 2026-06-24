@@ -77,8 +77,20 @@ SW_FAST_ANSI_METRIC_TAP_DRILLS = 41
 SW_END_BLIND = 0
 
 INIT_COMBOS = (
-    (SW_WZD_HOLE, SW_STD_ANSI_METRIC, SW_FAST_ANSI_METRIC_DRILL_SIZES, "6.0", SW_END_BLIND),
-    (SW_WZD_HOLE, SW_STD_ANSI_METRIC, SW_FAST_ANSI_METRIC_TAP_DRILLS, "M6", SW_END_BLIND),
+    (
+        SW_WZD_HOLE,
+        SW_STD_ANSI_METRIC,
+        SW_FAST_ANSI_METRIC_DRILL_SIZES,
+        "6.0",
+        SW_END_BLIND,
+    ),
+    (
+        SW_WZD_HOLE,
+        SW_STD_ANSI_METRIC,
+        SW_FAST_ANSI_METRIC_TAP_DRILLS,
+        "M6",
+        SW_END_BLIND,
+    ),
 )
 
 
@@ -145,9 +157,28 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
@@ -193,7 +224,11 @@ def _select_point(doc: Any, pt: Any) -> dict[str, Any]:
     except Exception:  # noqa: BLE001
         pass
     # (a) select via the SketchPoint object directly.
-    for meth, args in (("Select4", (False, None)), ("Select2", (False, 0)), ("Select", (False,))):
+    for meth, args in (
+        ("Select4", (False, None)),
+        ("Select2", (False, 0)),
+        ("Select", (False,)),
+    ):
         m = getattr(pt, meth, None)
         if m is None:
             continue
@@ -239,13 +274,21 @@ def run() -> dict[str, Any]:
         pt = place.pop("_pt", None)
         result["place_point"] = place
         if not place.get("ok"):
-            return {**result, "overall": "FAIL", "reason": "could not create sketch point"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "could not create sketch point",
+            }
 
         fm = doc.FeatureManager
         def_rec, data = _capture(lambda: fm.CreateDefinition(SW_FM_HOLE_WZD))
         result["create_definition_25"] = def_rec
         if data is None:
-            return {**result, "overall": "FAIL", "reason": "CreateDefinition(25) returned None"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "CreateDefinition(25) returned None",
+            }
 
         qi_rec, fd = _capture(lambda: typed_qi(data, IFACE, module=mod))
         result["typed_qi"] = qi_rec
@@ -285,9 +328,15 @@ def run() -> dict[str, Any]:
 
     # --- Verdict -------------------------------------------------------------
     if not acquired:
-        overall, interp = "FAIL", "typed_qi(IWizardHoleFeatureData2) acquisition failed."
+        overall, interp = (
+            "FAIL",
+            "typed_qi(IWizardHoleFeatureData2) acquisition failed.",
+        )
     elif not init_ok:
-        overall, interp = "INIT-FAIL", "every InitializeHole combo raised (wrong table args)."
+        overall, interp = (
+            "INIT-FAIL",
+            "every InitializeHole combo raised (wrong table args).",
+        )
     elif create_rec.get("materialized"):
         overall = "PASS"
         interp = (

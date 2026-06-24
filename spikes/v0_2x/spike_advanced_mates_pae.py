@@ -12,6 +12,7 @@ mate persists (no over-defined / suppressed feature).
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_advanced_mates_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -80,8 +81,9 @@ def _reopen_mate_names(sw: Any, mod: Any, path: str) -> list[str]:
     return out
 
 
-def _leg(sw: Any, mod: Any, *, name: str, comps: list[dict], mate: dict,
-         expect_type: str) -> None:
+def _leg(
+    sw: Any, mod: Any, *, name: str, comps: list[dict], mate: dict, expect_type: str
+) -> None:
     ctx = _place(sw, mod, comps)
     if "error" in ctx:
         gate(f"{name}_place", False, ctx["error"])
@@ -106,8 +108,11 @@ def _leg(sw: Any, mod: Any, *, name: str, comps: list[dict], mate: dict,
         gate(f"{name}_save", False, repr(exc))
     if saved:
         names = _reopen_mate_names(sw, mod, path)
-        gate(f"{name}_reopen_persists", expect_type in " ".join(names),
-             f"reopen_mates={names}")
+        gate(
+            f"{name}_reopen_persists",
+            expect_type in " ".join(names),
+            f"reopen_mates={names}",
+        )
     try:
         sw.CloseAllDocuments(True)
     except Exception:
@@ -128,10 +133,20 @@ def main() -> int:
         b = P._build("pae_sym_b", P._cube("pae_sym_b", 10.0))
         if "error" not in a and "error" not in b:
             _leg(
-                sw, mod, name="symmetric",
+                sw,
+                mod,
+                name="symmetric",
                 comps=[
-                    {"id": "a", "part": a["path"], "transform": {"xyz_mm": [-50, 0, 0]}},
-                    {"id": "b", "part": b["path"], "transform": {"xyz_mm": [50, 30, 0]}},
+                    {
+                        "id": "a",
+                        "part": a["path"],
+                        "transform": {"xyz_mm": [-50, 0, 0]},
+                    },
+                    {
+                        "id": "b",
+                        "part": b["path"],
+                        "transform": {"xyz_mm": [50, 30, 0]},
+                    },
                 ],
                 mate={
                     "type": "symmetric",
@@ -149,16 +164,23 @@ def main() -> int:
         pb = P._build("pae_pc_b", P._plate("pae_pc_b"))
         if "error" not in pa and "error" not in pb:
             _leg(
-                sw, mod, name="profile_center",
+                sw,
+                mod,
+                name="profile_center",
                 comps=[
                     {"id": "a", "part": pa["path"], "transform": {"xyz_mm": [0, 0, 0]}},
-                    {"id": "b", "part": pb["path"], "transform": {"xyz_mm": [0, 0, 40]}},
+                    {
+                        "id": "b",
+                        "part": pb["path"],
+                        "transform": {"xyz_mm": [0, 0, 40]},
+                    },
                 ],
                 mate={
                     "type": "profile_center",
                     "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
                     "b": {"component": "b", "face_ref": {"normal": [0, 0, 1]}},
-                    "offset_mm": 0.0, "lock_rotation": False,
+                    "offset_mm": 0.0,
+                    "lock_rotation": False,
                 },
                 expect_type="MateProfileCenter",
             )
@@ -172,9 +194,12 @@ def main() -> int:
         pythoncom.CoUninitialize()
 
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
-         f"{len(results['gates'])}")
+    gate(
+        "OVERALL",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
+        f"{len(results['gates'])}",
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")

@@ -3,6 +3,7 @@
 NO mutation. Just reports what the typelib declares for these APIs.
 Run with the bridge's venv.
 """
+
 from __future__ import annotations
 
 TLB_PATH = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\sldworks.tlb"
@@ -118,13 +119,24 @@ def main() -> None:
     print("\n=== IDrawingDoc full member dump (filtering dim-related) ===")
     if "IDrawingDoc" in focus_members:
         members = focus_members["IDrawingDoc"]
-        dim_related = [m for m in members if "dim" in m.lower() or "dim" in m.lower() or "ord" in m.lower() or "base" in m.lower()]
+        dim_related = [
+            m
+            for m in members
+            if "dim" in m.lower()
+            or "dim" in m.lower()
+            or "ord" in m.lower()
+            or "base" in m.lower()
+        ]
         print(f"  ({len(dim_related)} dim-related): {dim_related}")
 
     print("\n=== IModelDoc2 full member dump (filtering dim-related) ===")
     if "IModelDoc2" in focus_members:
         members = focus_members["IModelDoc2"]
-        dim_related = [m for m in members if "dim" in m.lower() or "ord" in m.lower() or "base" in m.lower()]
+        dim_related = [
+            m
+            for m in members
+            if "dim" in m.lower() or "ord" in m.lower() or "base" in m.lower()
+        ]
         print(f"  ({len(dim_related)} dim-related): {dim_related}")
 
 

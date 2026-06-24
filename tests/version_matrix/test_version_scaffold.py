@@ -7,6 +7,7 @@ OFFLINE — no seat, no COM calls.  Verifies:
      non-silent reason when AI_SW_BRIDGE_N1_REVISION is absent.
   4. The skip reason text is informative (names the env var and the doc).
 """
+
 from __future__ import annotations
 
 import pytest

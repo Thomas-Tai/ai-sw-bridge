@@ -1,6 +1,7 @@
 """
 Search for IExplodeStepWizard or alternative explode step creation.
 """
+
 import pythoncom
 from win32com.client import gencache, dynamic
 import winreg
@@ -8,6 +9,7 @@ import re
 from pathlib import Path
 
 SW_LIBID = "{83A33D31-27C5-11CE-BFD4-00400513BB57}"
+
 
 def _sw_tlb_path():
     try:
@@ -32,6 +34,7 @@ def _sw_tlb_path():
                 continue
     return None
 
+
 def search_explode_wizard():
     pythoncom.CoInitialize()
     try:
@@ -46,9 +49,9 @@ def search_explode_wizard():
         with open(gen_file, "r") as f:
             content = f.read()
 
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Searching for explode wizard interfaces:")
-        print("="*80)
+        print("=" * 80)
 
         # Search for Wizard-related classes
         for pattern in ["Wizard", "Explode", "IExplode"]:
@@ -56,9 +59,9 @@ def search_explode_wizard():
                 print(f"  Found: {match.group()}")
 
         # Search for CreateExplodeStepWizard or similar methods
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Searching for explode creation methods:")
-        print("="*80)
+        print("=" * 80)
 
         for pattern in ["CreateExplode", "AddExplode", "InsertExplode", "NewExplode"]:
             for match in re.finditer(rf"def \w*{pattern}\w*", content):
@@ -66,9 +69,9 @@ def search_explode_wizard():
                 print(f"  Found: {line}")
 
         # Search for any method that takes explode step args
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Searching for ExplodeStep in vtables:")
-        print("="*80)
+        print("=" * 80)
 
         for match in re.finditer(r".*ExplodeStep.*", content):
             line = match.group()
@@ -76,9 +79,9 @@ def search_explode_wizard():
                 print(f"  {line.strip()}")
 
         # Check IExplodeStepWizard interface if it exists
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Checking IExplodeStepWizard:")
-        print("="*80)
+        print("=" * 80)
 
         wizard = getattr(mod, "IExplodeStepWizard", None)
         if wizard:
@@ -90,9 +93,9 @@ def search_explode_wizard():
             print("  IExplodeStepWizard NOT FOUND")
 
         # Check ExplodeStep class
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Checking ExplodeStep class:")
-        print("="*80)
+        print("=" * 80)
 
         es = getattr(mod, "ExplodeStep", None)
         if es:
@@ -106,9 +109,9 @@ def search_explode_wizard():
 
         # Check if CreateExplodedView returns an object (not just bool)
         # by looking at its vtable signature
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("CreateExplodedView signature:")
-        print("="*80)
+        print("=" * 80)
 
         # Find the signature in IAssemblyDoc
         asm_iface = getattr(mod, "IAssemblyDoc", None)
@@ -132,21 +135,23 @@ def search_explode_wizard():
                     print(f"  IModelDoc2.{m[0]}: {m}")
 
         # Search for GetExplodedViews pattern
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("GetExplodedViews patterns:")
-        print("="*80)
+        print("=" * 80)
 
         for match in re.finditer(r".*GetExploded.*", content):
             line = match.group()
             print(f"  {line.strip()}")
 
         # Runtime probe on configuration
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Runtime config probe for step creation:")
-        print("="*80)
+        print("=" * 80)
 
         sw = dynamic.Dispatch("SldWorks.Application")
-        asm_template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        asm_template = (
+            r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        )
         asm = sw.NewDocument(asm_template, 0, 0, 0)
 
         if asm:
@@ -154,7 +159,11 @@ def search_explode_wizard():
 
             # Probe IAssemblyDoc for CreateExplodeStepWizard
             print("\n  IAssemblyDoc methods probe:")
-            for method in ["CreateExplodeStepWizard", "CreateExplodeStep", "InsertExplodeStepWizard"]:
+            for method in [
+                "CreateExplodeStepWizard",
+                "CreateExplodeStep",
+                "InsertExplodeStepWizard",
+            ]:
                 try:
                     dispid = asm._oleobj_.GetIDsOfNames(0, method)
                     print(f"    {method}: FOUND")

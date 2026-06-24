@@ -30,9 +30,7 @@ from pathlib import Path
 from typing import Any
 
 if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(
-        sys.stdout.buffer, encoding="utf-8", errors="replace"
-    )
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
@@ -311,11 +309,14 @@ def run() -> str:
 
 if __name__ == "__main__":
     import traceback
+
     try:
         verdict = run()
     except Exception:
         traceback.print_exc()
-        results["verdict"] = f"FAIL (unhandled exception: {traceback.format_exc()[:200]})"
+        results["verdict"] = (
+            f"FAIL (unhandled exception: {traceback.format_exc()[:200]})"
+        )
         save_results()
         verdict = "FAIL"
     sys.exit(0 if verdict == "PASS" else 1)

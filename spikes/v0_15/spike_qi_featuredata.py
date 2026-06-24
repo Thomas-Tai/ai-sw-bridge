@@ -170,12 +170,19 @@ def _matrix(obj: Any, iids: dict[str, Any], expected: set[str]) -> dict[str, Any
     try:
         src_unk = raw.QueryInterface(pythoncom.IID_IUnknown)
     except Exception as e:  # noqa: BLE001
-        return {"verdict": "ERROR", "reason": f"QI to IUnknown failed: {type(e).__name__}: {e}"}
+        return {
+            "verdict": "ERROR",
+            "reason": f"QI to IUnknown failed: {type(e).__name__}: {e}",
+        }
 
     rows = [_qi_one(raw, src_unk, name, iid) for name, iid in iids.items()]
 
     supported = {r["iface"] for r in rows if r.get("supported") is True}
-    rejected_noiface = {r["iface"] for r in rows if r.get("supported") is False and r.get("is_e_nointerface")}
+    rejected_noiface = {
+        r["iface"]
+        for r in rows
+        if r.get("supported") is False and r.get("is_e_nointerface")
+    }
     unrelated = set(iids) - expected
     expected_present = expected & set(iids)
 
@@ -193,7 +200,9 @@ def _matrix(obj: Any, iids: dict[str, Any], expected: set[str]) -> dict[str, Any
     elif expected_hit and unrelated_rejected:
         verdict = "DISCRIMINATING"  # the sound result
     else:
-        verdict = "INCONCLUSIVE"  # e.g. no unrelated IIDs present, or only-unexpected hits
+        verdict = (
+            "INCONCLUSIVE"  # e.g. no unrelated IIDs present, or only-unexpected hits
+        )
 
     return {
         "verdict": verdict,
@@ -229,23 +238,32 @@ def run(keep_docs: bool) -> dict[str, Any]:
     if missing:
         result["iface_names_not_in_module"] = missing
     if not iids:
-        return {**result, "overall": "ERROR",
-                "reason": "no candidate feature-data interfaces resolved from makepy"}
+        return {
+            **result,
+            "overall": "ERROR",
+            "reason": "no candidate feature-data interfaces resolved from makepy",
+        }
 
     objects: list[dict[str, Any]] = []
     open_docs: list[Any] = []
 
     # --- Object 1: GetDefinition on an EXISTING extrude (acquisition control) ---
     doc1 = _new_blank_part(sw)
-    rec1: dict[str, Any] = {"object": "extrude_GetDefinition",
-                            "path": "IFeature.GetDefinition (existing feature)"}
+    rec1: dict[str, Any] = {
+        "object": "extrude_GetDefinition",
+        "path": "IFeature.GetDefinition (existing feature)",
+    }
     if doc1 is None:
         rec1["result"] = {"verdict": "ERROR", "reason": "NewDocument returned None"}
     else:
         open_docs.append(doc1)
         build = build_single_box(doc1)
         rec1["build"] = build
-        feat = doc1.FeatureByName(build.get("feature_name")) if build.get("built") else None
+        feat = (
+            doc1.FeatureByName(build.get("feature_name"))
+            if build.get("built")
+            else None
+        )
         getdef = None
         if feat is not None:
             try:
@@ -261,18 +279,25 @@ def run(keep_docs: bool) -> dict[str, Any]:
                     getdef = typed(feat, "IFeature", module=mod).GetDefinition()
                     rec1["getdefinition_via"] = "typed IFeature (early-bound)"
                 except Exception as e2:  # noqa: BLE001
-                    rec1["getdefinition_typed_error"] = f"{type(e2).__name__}: {str(e2)[:120]}"
+                    rec1["getdefinition_typed_error"] = (
+                        f"{type(e2).__name__}: {str(e2)[:120]}"
+                    )
         rec1["getdefinition_type"] = _tag(getdef)
         if getdef is None:
-            rec1["result"] = {"verdict": "ERROR", "reason": "GetDefinition returned None"}
+            rec1["result"] = {
+                "verdict": "ERROR",
+                "reason": "GetDefinition returned None",
+            }
         else:
             rec1["result"] = _matrix(getdef, iids, expected={"IExtrudeFeatureData2"})
     objects.append(rec1)
 
     # --- Object 2: CreateDefinition(swFmFillet) (the real OI-1 path) ---
     doc2 = _new_blank_part(sw)
-    rec2: dict[str, Any] = {"object": "fillet_CreateDefinition",
-                            "path": "IFeatureManager.CreateDefinition(swFmFillet)"}
+    rec2: dict[str, Any] = {
+        "object": "fillet_CreateDefinition",
+        "path": "IFeatureManager.CreateDefinition(swFmFillet)",
+    }
     if doc2 is None:
         rec2["result"] = {"verdict": "ERROR", "reason": "NewDocument returned None"}
     else:
@@ -287,12 +312,16 @@ def run(keep_docs: bool) -> dict[str, Any]:
                 rec2["createdefinition_error"] = f"{type(e).__name__}: {str(e)[:120]}"
         rec2["createdefinition_type"] = _tag(data)
         if data is None:
-            rec2["result"] = {"verdict": "ERROR", "reason": "CreateDefinition(swFmFillet) returned None"}
+            rec2["result"] = {
+                "verdict": "ERROR",
+                "reason": "CreateDefinition(swFmFillet) returned None",
+            }
         else:
             # Fillet family is "expected"; shell/draft/wizhole/baseflange/extrude
             # are the unrelated discriminators.
             rec2["result"] = _matrix(
-                data, iids,
+                data,
+                iids,
                 expected={"ISimpleFilletFeatureData2", "IVariableFilletFeatureData2"},
             )
     objects.append(rec2)
@@ -324,35 +353,47 @@ def run(keep_docs: bool) -> dict[str, Any]:
             "QI returns S_OK for unrelated feature-data IIDs -- it does not "
             "discriminate. Same disease as the dispid collision; QueryInterface-"
             "by-IID is NOT a sound acquisition path as-is. Pivot to comtypes or "
-            "behaviour-validation.")
+            "behaviour-validation."
+        )
     elif "NOT_QI_ABLE" in verdicts:
         overall, interp = "NOT_QI_ABLE", (
             "An object rejected even its OWN interface IID -- SW feature-data "
             "interfaces are not QI-able (dispinterface / shared IDispatch). "
-            "QueryInterface is dead for OI-1; pivot to comtypes / behaviour-validation.")
+            "QueryInterface is dead for OI-1; pivot to comtypes / behaviour-validation."
+        )
     elif "DISCRIMINATING" in verdicts:
         overall, interp = "DISCRIMINATING", (
             "QI soundly acquires AND identifies feature-data objects: each answers "
             "its own interface and rejects unrelated IIDs with E_NOINTERFACE. OI-1's "
             "acquisition question is ANSWERED -- adopt QueryInterface-by-IID (IIDs "
-            "from makepy .CLSID) in com.earlybind, then build the rich feature pipeline.")
+            "from makepy .CLSID) in com.earlybind, then build the rich feature pipeline."
+        )
     else:
         overall, interp = "INCONCLUSIVE", (
             "Mixed/inconclusive (e.g. an object errored before the matrix, or no "
             "unrelated IIDs were available to test discrimination). Inspect per-object "
-            "results before drawing an OI-1 conclusion.")
+            "results before drawing an OI-1 conclusion."
+        )
     result["overall"] = overall
     result["interpretation"] = interp
     return result
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--out", type=Path, default=None,
-                   help="Write JSON report to this path instead of stdout.")
-    p.add_argument("--keep-docs", action="store_true",
-                   help="Do not close the spike's own documents at the end.")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Write JSON report to this path instead of stdout.",
+    )
+    p.add_argument(
+        "--keep-docs",
+        action="store_true",
+        help="Do not close the spike's own documents at the end.",
+    )
     args = p.parse_args()
 
     pythoncom.CoInitialize()

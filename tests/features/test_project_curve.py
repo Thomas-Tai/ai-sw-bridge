@@ -49,6 +49,7 @@ def _mock_curve_length(monkeypatch):
 # Fake COM objects
 # ---------------------------------------------------------------------------
 
+
 class _FakeFM:
     """Fake FeatureManager with configurable Mode-A / Mode-B behaviour."""
 
@@ -138,6 +139,7 @@ class _FakeDoc:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _feat(**kw) -> dict:
     """Default valid feature dict."""
     base = {"sketch_name": "Sketch2"}
@@ -174,6 +176,7 @@ def _wire_green(monkeypatch) -> None:
 # Dormant gate — SPIKE_STATUS is UNRUN, kind absent from registry
 # ---------------------------------------------------------------------------
 
+
 class TestRegistryGreenGate:
     def test_spike_status_is_green(self) -> None:
         assert pc.SPIKE_STATUS == "GREEN"
@@ -192,6 +195,7 @@ class TestRegistryGreenGate:
 # ---------------------------------------------------------------------------
 # Validation — runs with SPIKE_STATUS="GREEN"
 # ---------------------------------------------------------------------------
+
 
 class TestValidation:
     def test_feature_not_dict(self, monkeypatch):
@@ -216,7 +220,9 @@ class TestValidation:
         _wire_green(monkeypatch)
         _wire_count(monkeypatch)
         ok, err = create_project_curve(
-            _FakeDoc(), {"sketch_name": ""}, _tgt(),
+            _FakeDoc(),
+            {"sketch_name": ""},
+            _tgt(),
         )
         assert ok is False and "sketch_name" in err
 
@@ -224,7 +230,9 @@ class TestValidation:
         _wire_green(monkeypatch)
         _wire_count(monkeypatch)
         ok, err = create_project_curve(
-            _FakeDoc(), {"sketch_name": 42}, _tgt(),
+            _FakeDoc(),
+            {"sketch_name": 42},
+            _tgt(),
         )
         assert ok is False and "sketch_name" in err
 
@@ -232,6 +240,7 @@ class TestValidation:
 # ---------------------------------------------------------------------------
 # Mode-A green — CreateDefinition + CreateFeature succeed
 # ---------------------------------------------------------------------------
+
 
 class TestModeAQuarantined:
     """Mode-A is quarantined post-seat: v1 spike proved no QI succeeds on
@@ -258,8 +267,10 @@ class TestModeAQuarantined:
         _wire_green(monkeypatch)
         _wire_count(monkeypatch, before=0, after=1)
         doc = _FakeDoc(
-            defn=object(), created_feat=None,
-            has_insert=True, insert_result=object(),
+            defn=object(),
+            created_feat=None,
+            has_insert=True,
+            insert_result=object(),
         )
         ok, note = create_project_curve(doc, _feat(), _tgt())
         assert ok is True
@@ -269,6 +280,7 @@ class TestModeAQuarantined:
 # ---------------------------------------------------------------------------
 # Mode-B green — Insert* or convert-on-face fallback
 # ---------------------------------------------------------------------------
+
 
 class TestModeB:
     def test_green_via_insert_project_curve(self, monkeypatch):
@@ -304,7 +316,9 @@ class TestModeB:
         doc = _FakeDoc(defn=None, has_insert=False)
         doc._features_by_name = {}  # FeatureByName returns None
         ok, err = create_project_curve(
-            doc, _feat(sketch_name="NoSuchSketch"), _tgt(),
+            doc,
+            _feat(sketch_name="NoSuchSketch"),
+            _tgt(),
         )
         assert ok is False
         assert "failed" in err
@@ -313,6 +327,7 @@ class TestModeB:
 # ---------------------------------------------------------------------------
 # Ghost rejection — modes ran but no feature-node delta
 # ---------------------------------------------------------------------------
+
 
 class TestGhostRejection:
     def test_no_node_delta_after_mode_a(self, monkeypatch):
@@ -330,7 +345,9 @@ class TestGhostRejection:
         doc = _FakeDoc(defn=None, has_insert=False)
         doc._features_by_name = {}
         ok, err = create_project_curve(
-            doc, _feat(sketch_name="Missing"), _tgt(),
+            doc,
+            _feat(sketch_name="Missing"),
+            _tgt(),
         )
         assert ok is False
         assert "failed" in err
@@ -341,7 +358,9 @@ class TestGhostRejection:
         doc = _FakeDoc(defn=None, has_insert=False)
         doc._features_by_name = {}
         ok, err = create_project_curve(
-            doc, _feat(sketch_name="Gone"), _tgt(),
+            doc,
+            _feat(sketch_name="Gone"),
+            _tgt(),
         )
         assert ok is False
         assert err is not None
@@ -351,6 +370,7 @@ class TestGhostRejection:
 # ---------------------------------------------------------------------------
 # Never raises
 # ---------------------------------------------------------------------------
+
 
 class TestNeverRaises:
     def test_with_none_inputs_while_dormant(self) -> None:
@@ -375,12 +395,22 @@ class TestNeverRaises:
 # Kind-name disjointness from built-in types
 # ---------------------------------------------------------------------------
 
+
 class TestKindNames:
     def test_project_curve_disjoint_from_builtin_types(self) -> None:
         builtin_kinds = {
-            "fillet_constant_radius", "base_flange", "variable_radius_fillet",
-            "wizard_hole", "shell", "draft", "sweep", "ref_plane",
-            "ref_axis", "coordinate_system", "ref_point", "dome",
+            "fillet_constant_radius",
+            "base_flange",
+            "variable_radius_fillet",
+            "wizard_hole",
+            "shell",
+            "draft",
+            "sweep",
+            "ref_plane",
+            "ref_axis",
+            "coordinate_system",
+            "ref_point",
+            "dome",
             "sweep_cut",
         }
         assert "project_curve" not in builtin_kinds
@@ -389,6 +419,7 @@ class TestKindNames:
 # ---------------------------------------------------------------------------
 # Module-level constants
 # ---------------------------------------------------------------------------
+
 
 class TestConstants:
     def test_ref_curve_id_is_14(self) -> None:
@@ -402,6 +433,7 @@ class TestConstants:
 # ---------------------------------------------------------------------------
 # CURVE geometric gate (W67 P3b)
 # ---------------------------------------------------------------------------
+
 
 class TestCurveGate:
     def test_node_without_arc_length_is_rejected(self, monkeypatch):

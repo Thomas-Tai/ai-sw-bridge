@@ -7,6 +7,7 @@ Both sw_dry_run_feature_add and sw_commit_feature_add refuse to run when the
 target doc is currently active in the SW UI, so we close the part between
 stages. Each stage re-opens the doc on disk by path.
 """
+
 import os, sys, json, time, tempfile, traceback
 from typing import Any
 
@@ -22,7 +23,9 @@ from ai_sw_bridge.mutate import (
 )
 
 PART_TEMPLATE = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.prtdot"
-RESULTS_DIR = r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\ai-sw-bridge\spikes\v0_16\_results"
+RESULTS_DIR = (
+    r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\ai-sw-bridge\spikes\v0_16\_results"
+)
 
 
 def _get_sw():
@@ -61,20 +64,36 @@ def _build_box_and_close(path: str) -> None:
         doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
         doc.InsertSketch2(True)
         sk = doc.SketchManager
-        sk.CreateLine(-0.02, -0.02, 0,  0.02, -0.02, 0)
-        sk.CreateLine( 0.02, -0.02, 0,  0.02,  0.02, 0)
-        sk.CreateLine( 0.02,  0.02, 0, -0.02,  0.02, 0)
-        sk.CreateLine(-0.02,  0.02, 0, -0.02, -0.02, 0)
+        sk.CreateLine(-0.02, -0.02, 0, 0.02, -0.02, 0)
+        sk.CreateLine(0.02, -0.02, 0, 0.02, 0.02, 0)
+        sk.CreateLine(0.02, 0.02, 0, -0.02, 0.02, 0)
+        sk.CreateLine(-0.02, 0.02, 0, -0.02, -0.02, 0)
         doc.InsertSketch2(False)
         fm = doc.FeatureManager
         fm.FeatureExtrusion2(
-            True, False, False,
-            0, 0,
-            0.02, 0.0,
-            False, False, False, False,
-            0.0, 0.0, False, False, False, False,
-            True, True, True,
-            0, 0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            0.02,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
+            False,
         )
         doc.ClearSelection2(True)
         doc.Save()
@@ -118,41 +137,63 @@ def main():
 
     results = []
 
-    results.append(_run_one(
-        "ref_plane",
-        {"type": "ref_plane", "distance_mm": 10.0},
-        {"plane": "Front Plane"},
-        part_path,
-    ))
-    print("[seat] ref_plane ->", results[-1]["steps"].get("commit", {}).get("ok", "FAIL"))
+    results.append(
+        _run_one(
+            "ref_plane",
+            {"type": "ref_plane", "distance_mm": 10.0},
+            {"plane": "Front Plane"},
+            part_path,
+        )
+    )
+    print(
+        "[seat] ref_plane ->", results[-1]["steps"].get("commit", {}).get("ok", "FAIL")
+    )
 
-    results.append(_run_one(
-        "ref_axis",
-        {"type": "ref_axis"},
-        {"planes": ["Front Plane", "Top Plane"]},
-        part_path,
-    ))
-    print("[seat] ref_axis ->", results[-1]["steps"].get("commit", {}).get("ok", "FAIL"))
+    results.append(
+        _run_one(
+            "ref_axis",
+            {"type": "ref_axis"},
+            {"planes": ["Front Plane", "Top Plane"]},
+            part_path,
+        )
+    )
+    print(
+        "[seat] ref_axis ->", results[-1]["steps"].get("commit", {}).get("ok", "FAIL")
+    )
 
-    results.append(_run_one(
-        "coordinate_system",
-        {"type": "coordinate_system", "flip_x": False, "flip_y": False, "flip_z": False},
-        {"origin": "Origin"},
-        part_path,
-    ))
-    print("[seat] coordinate_system ->", results[-1]["steps"].get("commit", {}).get("ok", "FAIL"))
+    results.append(
+        _run_one(
+            "coordinate_system",
+            {
+                "type": "coordinate_system",
+                "flip_x": False,
+                "flip_y": False,
+                "flip_z": False,
+            },
+            {"origin": "Origin"},
+            part_path,
+        )
+    )
+    print(
+        "[seat] coordinate_system ->",
+        results[-1]["steps"].get("commit", {}).get("ok", "FAIL"),
+    )
 
     # Build a box so a vertex exists for ref_point.
     print("[seat] building box for ref_point")
     _build_box_and_close(part_path)
 
-    results.append(_run_one(
-        "ref_point",
-        {"type": "ref_point"},
-        {"point": [0.02, 0.02, 0.02]},
-        part_path,
-    ))
-    print("[seat] ref_point ->", results[-1]["steps"].get("commit", {}).get("ok", "FAIL"))
+    results.append(
+        _run_one(
+            "ref_point",
+            {"type": "ref_point"},
+            {"point": [0.02, 0.02, 0.02]},
+            part_path,
+        )
+    )
+    print(
+        "[seat] ref_point ->", results[-1]["steps"].get("commit", {}).get("ok", "FAIL")
+    )
 
     out_path = os.path.join(RESULTS_DIR, "f0_pae_run.json")
     with open(out_path, "w", encoding="utf-8") as f:

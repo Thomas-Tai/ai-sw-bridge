@@ -142,7 +142,8 @@ def create_configuration(
     if parent:
         try:
             child = typed_qi(
-                doc.GetConfigurationByName(name), "IConfiguration",
+                doc.GetConfigurationByName(name),
+                "IConfiguration",
                 module=wrapper_module(),
             )
             is_derived = bool(_val(child, "IsDerived"))
@@ -192,13 +193,19 @@ def delete_configuration(doc: Any, name: str) -> tuple[bool, str | None]:
             next((n for n in names if n != name), None),
         )
         if fallback is None:
-            return False, f"no fallback configuration to switch to before deleting {name!r}"
+            return (
+                False,
+                f"no fallback configuration to switch to before deleting {name!r}",
+            )
         try:
             switched = doc.ShowConfiguration2(fallback)
         except Exception as exc:
             return False, f"ShowConfiguration2({fallback!r}) raised: {exc!r}"
         if not switched:
-            return False, f"failed to switch active config to {fallback!r} before delete"
+            return (
+                False,
+                f"failed to switch active config to {fallback!r} before delete",
+            )
 
     try:
         ok = bool(doc.DeleteConfiguration2(name))

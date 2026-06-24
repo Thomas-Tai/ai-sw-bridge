@@ -229,9 +229,7 @@ def register(mcp: Any) -> None:
         +x, -x, +y, -y, +z, -z. Part docs only.
         """
         # v0.18 slice: route through the class-based SolidWorksClient.
-        return SolidWorksClient().observe.draft_analysis(
-            pull_direction, min_angle_deg
-        )
+        return SolidWorksClient().observe.draft_analysis(pull_direction, min_angle_deg)
 
     @mcp.tool()
     @com_tool

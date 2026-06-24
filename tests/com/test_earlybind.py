@@ -76,9 +76,7 @@ class TestTyped:
         with pytest.raises(EarlyBindError, match="None"):
             eb.typed(None, "IEntity", module=_fake_module())
 
-    def test_unavailable_module_raises(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_unavailable_module_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(eb, "wrapper_module", lambda: None)
         with pytest.raises(EarlyBindError, match="gen_py wrapper unavailable"):
             eb.typed(_FakeDispatch(), "IEntity")
@@ -214,9 +212,7 @@ class TestTypedQi:
         with pytest.raises(EarlyBindError, match="_oleobj_"):
             eb.typed_qi(_Bare(), "IShellFeatureData", module=_qi_module())
 
-    def test_unavailable_module_raises(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_unavailable_module_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(eb, "wrapper_module", lambda: None)
         obj = _QIDispatch(lambda iid, hint: _FakeRaw())
         with pytest.raises(EarlyBindError, match="unavailable"):

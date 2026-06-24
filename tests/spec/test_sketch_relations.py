@@ -133,10 +133,12 @@ class TestValidation:
             validate_relation({"entities": [0]}, 0)
 
     def test_validate_relations_list(self) -> None:
-        validate_relations([
-            {"type": "horizontal", "entities": [0]},
-            {"type": "equal", "entities": [0, 1]},
-        ])
+        validate_relations(
+            [
+                {"type": "horizontal", "entities": [0]},
+                {"type": "equal", "entities": [0, 1]},
+            ]
+        )
 
     def test_validate_relations_not_a_list(self) -> None:
         with pytest.raises(RelationError, match="must be an array"):
@@ -175,6 +177,7 @@ class _FakeSegment:
         class _Pt:
             X = self._start[0]
             Y = self._start[1]
+
         return _Pt()
 
     @property
@@ -182,6 +185,7 @@ class _FakeSegment:
         class _Pt:
             X = self._end[0]
             Y = self._end[1]
+
         return _Pt()
 
 
@@ -234,8 +238,10 @@ class _FakeDoc:
     @property
     def SketchManager(self) -> Any:
         """SketchManager exists but does NOT have SketchAddConstraints."""
+
         class _NoConstraints:
             pass
+
         return _NoConstraints()
 
 
@@ -249,36 +255,48 @@ class TestApplyRelationsInOpenSketch:
 
     def test_horizontal_applied(self) -> None:
         doc = self._make_doc()
-        result = apply_relations_in_open_sketch(doc, [
-            {"type": "horizontal", "entities": [0]},
-        ])
+        result = apply_relations_in_open_sketch(
+            doc,
+            [
+                {"type": "horizontal", "entities": [0]},
+            ],
+        )
         assert result["ok"] is True
         assert result["relations_applied"] == 1
         assert doc.constraints_applied == ["sgHORIZONTAL2D"]
 
     def test_equal_applied_with_corrected_token(self) -> None:
         doc = self._make_doc()
-        result = apply_relations_in_open_sketch(doc, [
-            {"type": "equal", "entities": [0, 1]},
-        ])
+        result = apply_relations_in_open_sketch(
+            doc,
+            [
+                {"type": "equal", "entities": [0, 1]},
+            ],
+        )
         assert result["ok"] is True
         assert doc.constraints_applied == ["sgSAMELENGTH"]
 
     def test_parallel_applied_with_corrected_token(self) -> None:
         doc = self._make_doc()
-        result = apply_relations_in_open_sketch(doc, [
-            {"type": "parallel", "entities": [0, 1]},
-        ])
+        result = apply_relations_in_open_sketch(
+            doc,
+            [
+                {"type": "parallel", "entities": [0, 1]},
+            ],
+        )
         assert result["ok"] is True
         assert doc.constraints_applied == ["sgPARALLEL"]
 
     def test_multiple_relations(self) -> None:
         doc = self._make_doc(4)
-        result = apply_relations_in_open_sketch(doc, [
-            {"type": "horizontal", "entities": [0]},
-            {"type": "vertical", "entities": [1]},
-            {"type": "equal", "entities": [2, 3]},
-        ])
+        result = apply_relations_in_open_sketch(
+            doc,
+            [
+                {"type": "horizontal", "entities": [0]},
+                {"type": "vertical", "entities": [1]},
+                {"type": "equal", "entities": [2, 3]},
+            ],
+        )
         assert result["ok"] is True
         assert result["relations_applied"] == 3
         assert doc.constraints_applied == [
@@ -289,9 +307,12 @@ class TestApplyRelationsInOpenSketch:
 
     def test_out_of_range_index_fails(self) -> None:
         doc = self._make_doc(2)
-        result = apply_relations_in_open_sketch(doc, [
-            {"type": "horizontal", "entities": [5]},
-        ])
+        result = apply_relations_in_open_sketch(
+            doc,
+            [
+                {"type": "horizontal", "entities": [5]},
+            ],
+        )
         assert result["ok"] is False
         assert result["relations_failed"] == 1
         assert "out of range" in result["errors"][0]
@@ -299,15 +320,21 @@ class TestApplyRelationsInOpenSketch:
     def test_no_segments_fails(self) -> None:
         doc = _FakeDoc([])
         with pytest.raises(RelationError, match="no segments"):
-            apply_relations_in_open_sketch(doc, [
-                {"type": "horizontal", "entities": [0]},
-            ])
+            apply_relations_in_open_sketch(
+                doc,
+                [
+                    {"type": "horizontal", "entities": [0]},
+                ],
+            )
 
     def test_relation_count_increases(self) -> None:
         doc = self._make_doc()
-        result = apply_relations_in_open_sketch(doc, [
-            {"type": "horizontal", "entities": [0]},
-        ])
+        result = apply_relations_in_open_sketch(
+            doc,
+            [
+                {"type": "horizontal", "entities": [0]},
+            ],
+        )
         detail = result["details"][0]
         assert detail["constrained"] is True
         assert detail["relation_count_after"] > detail["relation_count_before"]
@@ -315,9 +342,12 @@ class TestApplyRelationsInOpenSketch:
     def test_selection_uses_raw_select2(self) -> None:
         """Raw seg.Select2 works; typed IEntity.Select2 is NOT attempted."""
         doc = self._make_doc()
-        apply_relations_in_open_sketch(doc, [
-            {"type": "horizontal", "entities": [0]},
-        ])
+        apply_relations_in_open_sketch(
+            doc,
+            [
+                {"type": "horizontal", "entities": [0]},
+            ],
+        )
         # The segment's raw Select2 was called (selected flag set)
         assert doc.GetActiveSketch2.GetSketchSegments[0].selected is True
 
@@ -349,9 +379,7 @@ class TestSchemaIntegration:
 
         fields = FEATURE_FIELDS[stype]
         field_names = [f.name for f in fields]
-        assert "relations" in field_names, (
-            f"{stype} missing 'relations' field"
-        )
+        assert "relations" in field_names, f"{stype} missing 'relations' field"
 
     @pytest.mark.parametrize("stype", SKETCH_TYPES)
     def test_relations_field_is_optional(self, stype: str) -> None:
@@ -360,9 +388,9 @@ class TestSchemaIntegration:
         fields = FEATURE_FIELDS[stype]
         for f in fields:
             if f.name == "relations":
-                assert f.required is False, (
-                    f"{stype} relations field should be optional"
-                )
+                assert (
+                    f.required is False
+                ), f"{stype} relations field should be optional"
 
     def test_relations_spec_schema_has_required_fields(self) -> None:
         assert "sketch" in RELATIONS_SPEC_SCHEMA["properties"]
@@ -396,17 +424,21 @@ class TestValidatorIntegration:
     def test_valid_relations_pass_validation(self) -> None:
         from ai_sw_bridge.spec.validator import validate
 
-        spec = self._make_spec([
-            {"type": "horizontal", "entities": [0]},
-        ])
+        spec = self._make_spec(
+            [
+                {"type": "horizontal", "entities": [0]},
+            ]
+        )
         validate(spec)
 
     def test_unknown_type_fails_validation(self) -> None:
         from ai_sw_bridge.spec.validator import ValidationError, validate
 
-        spec = self._make_spec([
-            {"type": "tangent", "entities": [0, 1]},
-        ])
+        spec = self._make_spec(
+            [
+                {"type": "tangent", "entities": [0, 1]},
+            ]
+        )
         # Schema-level enum catches "tangent" before _check_relations runs.
         with pytest.raises(ValidationError):
             validate(spec)
@@ -416,27 +448,33 @@ class TestValidatorIntegration:
         from ai_sw_bridge.spec.validator import ValidationError, validate
 
         for deferred in ("coincident", "symmetric", "collinear"):
-            spec = self._make_spec([
-                {"type": deferred, "entities": [0, 1]},
-            ])
+            spec = self._make_spec(
+                [
+                    {"type": deferred, "entities": [0, 1]},
+                ]
+            )
             with pytest.raises(ValidationError):
                 validate(spec)
 
     def test_bad_arity_fails_validation(self) -> None:
         from ai_sw_bridge.spec.validator import ValidationError, validate
 
-        spec = self._make_spec([
-            {"type": "equal", "entities": [0]},
-        ])
+        spec = self._make_spec(
+            [
+                {"type": "equal", "entities": [0]},
+            ]
+        )
         with pytest.raises(ValidationError, match="requires 2"):
             validate(spec)
 
     def test_negative_index_fails_validation(self) -> None:
         from ai_sw_bridge.spec.validator import ValidationError, validate
 
-        spec = self._make_spec([
-            {"type": "horizontal", "entities": [-1]},
-        ])
+        spec = self._make_spec(
+            [
+                {"type": "horizontal", "entities": [-1]},
+            ]
+        )
         # Schema-level minimum:0 catches -1 before _check_relations runs.
         with pytest.raises(ValidationError):
             validate(spec)
@@ -444,9 +482,11 @@ class TestValidatorIntegration:
     def test_duplicate_refs_fails_validation(self) -> None:
         from ai_sw_bridge.spec.validator import ValidationError, validate
 
-        spec = self._make_spec([
-            {"type": "equal", "entities": [0, 0]},
-        ])
+        spec = self._make_spec(
+            [
+                {"type": "equal", "entities": [0, 0]},
+            ]
+        )
         with pytest.raises(ValidationError, match="duplicate"):
             validate(spec)
 

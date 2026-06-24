@@ -1,4 +1,5 @@
 """Diagnostic: test all component-selection methods on a fresh assembly."""
+
 from __future__ import annotations
 
 import glob
@@ -31,6 +32,7 @@ def main() -> int:
 
     # Build a simple box part
     from ai_sw_bridge.spec.builder import build as part_build
+
     _tmp = Path(tempfile.gettempdir())
     _ts = int(time.time())
     part_path = str(_tmp / f"diag_box_{_ts}.SLDPRT")
@@ -39,10 +41,14 @@ def main() -> int:
         "schema_version": 1,
         "name": "DiagBox",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 20.0, "height": 10.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 10.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
     r = part_build(spec, save_as=part_path, save_format="current", no_dim=True)
@@ -52,7 +58,9 @@ def main() -> int:
     print(f"Part: {part_path}")
 
     # Create assembly
-    templates = glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT")
+    templates = glob.glob(
+        r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
+    )
     asm_doc = sw.NewDocument(templates[0], 0, 0.1, 0.1)
     if asm_doc is None:
         print("Assembly creation failed")
@@ -97,9 +105,18 @@ def main() -> int:
 
     # Test all selection methods
     tests = [
-        ("SelectByID2 COMPONENT", lambda: ext.SelectByID2(cn, "COMPONENT", 0, 0, 0, False, 0, None, 0)),
-        ("SelectByID2 no-type", lambda: ext.SelectByID2(cn, "", 0, 0, 0, False, 0, None, 0)),
-        ("SelectByID2 REFERENCE", lambda: ext.SelectByID2(cn, "REFERENCE", 0, 0, 0, False, 0, None, 0)),
+        (
+            "SelectByID2 COMPONENT",
+            lambda: ext.SelectByID2(cn, "COMPONENT", 0, 0, 0, False, 0, None, 0),
+        ),
+        (
+            "SelectByID2 no-type",
+            lambda: ext.SelectByID2(cn, "", 0, 0, 0, False, 0, None, 0),
+        ),
+        (
+            "SelectByID2 REFERENCE",
+            lambda: ext.SelectByID2(cn, "REFERENCE", 0, 0, 0, False, 0, None, 0),
+        ),
         ("SelectByID COMPONENT", lambda: asm_doc.SelectByID(cn, "COMPONENT", 0, 0, 0)),
         ("SelectByID no-type", lambda: asm_doc.SelectByID(cn, "", 0, 0, 0)),
         ("IComponent2.Select4(False,0)", lambda: comp.Select4(False, 0)),
@@ -136,7 +153,9 @@ def main() -> int:
                     if sc and sc > 0:
                         obj = sel_mgr.GetSelectedObject6(1, -1)
                         sel_type = f" sel_type={type(obj).__name__}"
-                    print(f"  IFeature.Select2(False,4): ok={ok}{sel_type} sel_count={sc}")
+                    print(
+                        f"  IFeature.Select2(False,4): ok={ok}{sel_type} sel_count={sc}"
+                    )
                 except Exception as e:
                     print(f"  IFeature.Select2(False,4): EXC {type(e).__name__}: {e}")
                 break

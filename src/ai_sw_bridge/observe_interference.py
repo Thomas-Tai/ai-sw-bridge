@@ -71,7 +71,9 @@ def read_interference(asm_doc: Any, mod: Any = None) -> dict[str, Any]:
     try:
         mgr_typed = typed(mgr, "IInterferenceDetectionMgr", module=mod)
         # Configure options for clean physical interference detection
-        mgr_typed.TreatCoincidenceAsInterference = False  # Coincident faces ≠ interference
+        mgr_typed.TreatCoincidenceAsInterference = (
+            False  # Coincident faces ≠ interference
+        )
         mgr_typed.ShowIgnoredInterferences = False
         mgr_typed.TreatSubAssembliesAsComponents = True
         mgr_typed.IncludeMultibodyPartInterferences = True
@@ -131,7 +133,9 @@ def read_interference(asm_doc: Any, mod: Any = None) -> dict[str, Any]:
 
 
 def _read_single_interference(
-    intf_obj: Any, mod: Any, idx: int,
+    intf_obj: Any,
+    mod: Any,
+    idx: int,
 ) -> dict[str, Any]:
     """Read one ``IInterference`` object: Volume + Components."""
     entry: dict[str, Any] = {
@@ -216,7 +220,9 @@ def _sw_get_interference_impl(doc: Any) -> dict[str, Any]:
         return result
 
     if doc_type != SW_DOC_ASSEMBLY:
-        result["error"] = f"interference detection requires assembly document (got type {doc_type})"
+        result["error"] = (
+            f"interference detection requires assembly document (got type {doc_type})"
+        )
         return result
 
     mod = wrapper_module()
@@ -231,4 +237,3 @@ def _sw_get_interference_impl(doc: Any) -> dict[str, Any]:
         result["ok"] = True
 
     return result
-

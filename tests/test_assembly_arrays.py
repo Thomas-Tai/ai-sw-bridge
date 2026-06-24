@@ -27,6 +27,7 @@ from ai_sw_bridge.assembly.arrays import (
 
 # ---- Helpers ---------------------------------------------------------------
 
+
 def _approx(a: float, b: float, tol: float = 1e-6) -> bool:
     return abs(a - b) < tol
 
@@ -102,7 +103,14 @@ class TestLinearArray:
 class TestCircularArray:
     def test_instance_count(self) -> None:
         result = expand_circular_array(
-            "bolt", {"part": "b.sldprt"}, 6, 50.0, [0, 0, 1], [0, 0, 0], 360.0, [0, 0, 0]
+            "bolt",
+            {"part": "b.sldprt"},
+            6,
+            50.0,
+            [0, 0, 1],
+            [0, 0, 0],
+            360.0,
+            [0, 0, 0],
         )
         assert len(result) == 6
 
@@ -138,20 +146,27 @@ class TestCircularArray:
             delta = abs(angles[i + 1] - angles[i])
             # Normalize to [0, 360]
             delta = delta % 360
-            assert _approx(min(delta, 360 - delta), 90.0, tol=1.0), (
-                f"angular sep between {i} and {i+1}: {delta}°"
-            )
+            assert _approx(
+                min(delta, 360 - delta), 90.0, tol=1.0
+            ), f"angular sep between {i} and {i+1}: {delta}°"
 
     def test_instance_at_center_offset(self) -> None:
         """Circle centered at (10, 20, 30): all instances at radius from center."""
         result = expand_circular_array(
-            "b", {"part": "b.sldprt"}, 3, 25.0, [0, 0, 1], [10, 20, 30], 360.0, [0, 0, 0]
+            "b",
+            {"part": "b.sldprt"},
+            3,
+            25.0,
+            [0, 0, 1],
+            [10, 20, 30],
+            360.0,
+            [0, 0, 0],
         )
         for c in result:
             xyz = c["transform"]["xyz_mm"]
             dx = xyz[0] - 10
             dy = xyz[1] - 20
-            r = math.sqrt(dx ** 2 + dy ** 2)
+            r = math.sqrt(dx**2 + dy**2)
             assert _approx(r, 25.0, tol=1e-4)
             assert _approx(xyz[2], 30.0, tol=1e-4)
 
@@ -186,7 +201,14 @@ class TestCircularArray:
     def test_zero_axis_raises(self) -> None:
         with pytest.raises(ValueError, match="zero-length"):
             expand_circular_array(
-                "b", {"part": "b.sldprt"}, 2, 10.0, [0, 0, 0], [0, 0, 0], 360.0, [0, 0, 0]
+                "b",
+                {"part": "b.sldprt"},
+                2,
+                10.0,
+                [0, 0, 0],
+                [0, 0, 0],
+                360.0,
+                [0, 0, 0],
             )
 
 
@@ -196,16 +218,17 @@ class TestCircularArray:
 class TestRotationMath:
     def test_identity(self) -> None:
         m = _rpy_to_matrix(0, 0, 0)
-        assert _vec_approx([m[i][j] for i in range(3) for j in range(3)],
-                           [1, 0, 0, 0, 1, 0, 0, 0, 1])
+        assert _vec_approx(
+            [m[i][j] for i in range(3) for j in range(3)], [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        )
 
     def test_rpy_roundtrip(self) -> None:
         for rpy in [(30, 45, 60), (0, 0, 90), (-10, 20, -30), (90, 0, 0)]:
             m = _rpy_to_matrix(*rpy)
             recovered = _matrix_to_rpy(m)
-            assert _vec_approx(recovered, list(rpy), tol=1e-4), (
-                f"rpy={rpy}, recovered={recovered}"
-            )
+            assert _vec_approx(
+                recovered, list(rpy), tol=1e-4
+            ), f"rpy={rpy}, recovered={recovered}"
 
     def test_axis_rotation_z90(self) -> None:
         """R(z, 90°) should rotate +X to +Y."""
@@ -224,11 +247,18 @@ class TestRotationMath:
 
 class TestExpandArrays:
     def test_linear_expansion(self) -> None:
-        arrays = [{
-            "id": "rail", "type": "linear", "part": "r.sldprt",
-            "count": 3, "spacing_mm": 40.0, "direction": [1, 0, 0],
-            "base_xyz_mm": [0, 0, 0], "base_rpy_deg": [0, 0, 0],
-        }]
+        arrays = [
+            {
+                "id": "rail",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 3,
+                "spacing_mm": 40.0,
+                "direction": [1, 0, 0],
+                "base_xyz_mm": [0, 0, 0],
+                "base_rpy_deg": [0, 0, 0],
+            }
+        ]
         expanded, err = expand_component_arrays(arrays, set())
         assert err is None
         assert len(expanded) == 3
@@ -236,30 +266,47 @@ class TestExpandArrays:
         assert expanded[2]["id"] == "rail_2"
 
     def test_circular_expansion(self) -> None:
-        arrays = [{
-            "id": "bolt", "type": "circular", "part": "b.sldprt",
-            "count": 4, "radius_mm": 50.0, "axis": [0, 0, 1],
-            "center_xyz_mm": [0, 0, 0], "angle_deg": 360.0,
-        }]
+        arrays = [
+            {
+                "id": "bolt",
+                "type": "circular",
+                "part": "b.sldprt",
+                "count": 4,
+                "radius_mm": 50.0,
+                "axis": [0, 0, 1],
+                "center_xyz_mm": [0, 0, 0],
+                "angle_deg": 360.0,
+            }
+        ]
         expanded, err = expand_component_arrays(arrays, set())
         assert err is None
         assert len(expanded) == 4
 
     def test_id_collision_rejected(self) -> None:
-        arrays = [{
-            "id": "rail", "type": "linear", "part": "r.sldprt",
-            "count": 2, "spacing_mm": 10.0, "direction": [1, 0, 0],
-        }]
+        arrays = [
+            {
+                "id": "rail",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 2,
+                "spacing_mm": 10.0,
+                "direction": [1, 0, 0],
+            }
+        ]
         # "rail_0" already exists
         expanded, err = expand_component_arrays(arrays, {"rail_0"})
         assert err is not None
         assert "collides" in err
 
     def test_unknown_type_rejected(self) -> None:
-        arrays = [{
-            "id": "x", "type": "spiral", "part": "x.sldprt",
-            "count": 2,
-        }]
+        arrays = [
+            {
+                "id": "x",
+                "type": "spiral",
+                "part": "x.sldprt",
+                "count": 2,
+            }
+        ]
         expanded, err = expand_component_arrays(arrays, set())
         assert err is not None
         assert "unknown type" in err
@@ -267,12 +314,20 @@ class TestExpandArrays:
     def test_mixed_linear_circular(self) -> None:
         arrays = [
             {
-                "id": "rail", "type": "linear", "part": "r.sldprt",
-                "count": 3, "spacing_mm": 40.0, "direction": [1, 0, 0],
+                "id": "rail",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 3,
+                "spacing_mm": 40.0,
+                "direction": [1, 0, 0],
             },
             {
-                "id": "bolt", "type": "circular", "part": "b.sldprt",
-                "count": 4, "radius_mm": 50.0, "axis": [0, 0, 1],
+                "id": "bolt",
+                "type": "circular",
+                "part": "b.sldprt",
+                "count": 4,
+                "radius_mm": 50.0,
+                "axis": [0, 0, 1],
                 "angle_deg": 360.0,
             },
         ]
@@ -284,20 +339,31 @@ class TestExpandArrays:
         assert "bolt_3" in ids
 
     def test_part_spec_array(self) -> None:
-        arrays = [{
-            "id": "a", "type": "linear", "part_spec": "a.json",
-            "count": 2, "spacing_mm": 10.0, "direction": [1, 0, 0],
-        }]
+        arrays = [
+            {
+                "id": "a",
+                "type": "linear",
+                "part_spec": "a.json",
+                "count": 2,
+                "spacing_mm": 10.0,
+                "direction": [1, 0, 0],
+            }
+        ]
         expanded, err = expand_component_arrays(arrays, set())
         assert err is None
         assert expanded[0]["part_spec"] == "a.json"
         assert "part" not in expanded[0]
 
     def test_no_part_raises(self) -> None:
-        arrays = [{
-            "id": "x", "type": "linear",
-            "count": 2, "spacing_mm": 10.0, "direction": [1, 0, 0],
-        }]
+        arrays = [
+            {
+                "id": "x",
+                "type": "linear",
+                "count": 2,
+                "spacing_mm": 10.0,
+                "direction": [1, 0, 0],
+            }
+        ]
         expanded, err = expand_component_arrays(arrays, set())
         assert err is not None
         assert "no part" in err

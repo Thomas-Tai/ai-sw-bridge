@@ -1,6 +1,8 @@
 """Diagnostic: test VARIANT marshaling for edge flange edges."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "v0_15"))
 
@@ -62,8 +64,7 @@ try:
     print("\n=== Test 1: VARIANT to Edges property ===")
     try:
         edge_var = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            live_edges
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, live_edges
         )
         print(f"  VARIANT created: {type(edge_var).__name__}")
         efl.Edges = edge_var
@@ -83,8 +84,7 @@ try:
         efl2.BendRadius = 0.002
         efl2.UseDefaultBendRadius = False
         edge_var2 = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            live_edges
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, live_edges
         )
         efl2.AddEdges(edge_var2)
         count = efl2.GetEdgeCount()
@@ -104,8 +104,7 @@ try:
         efl3.UseDefaultBendRadius = False
         raw_ptrs = [e._oleobj_ for e in live_edges]
         edge_var3 = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            raw_ptrs
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, raw_ptrs
         )
         efl3.Edges = edge_var3
         count = efl3.GetEdgeCount()

@@ -184,7 +184,10 @@ class TestApply:
         doc = _FakeDoc(sk)
         res = chamfer_mod._apply(doc, sk, {"dist1_mm": 5, "entities": [0, 5]})
         assert res["ok"] is False
-        assert "out of range" in res["error"] or "could not select segment 5" in res["error"]
+        assert (
+            "out of range" in res["error"]
+            or "could not select segment 5" in res["error"]
+        )
         assert doc.SketchManager.chamfer_calls == []  # never fired
 
     def test_unselectable_segment_fails_without_calling_chamfer(self) -> None:

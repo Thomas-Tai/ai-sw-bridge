@@ -9,6 +9,7 @@ Hypothesis (per DEFERRED / WAVE6_SEAT_DISPATCH section 6 T1):
 
 DoD: a Rib feature materializes (feature-count delta + GetTypeName2 == Rib).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -114,21 +115,41 @@ def _build_box(sw):
     sk = doc.SketchManager
     # L-shape: vertical wall 0..10mm x, 0..40mm y; horizontal base 0..40mm x, 0..10mm y
     # Draw as a closed L-profile using lines
-    sk.CreateLine(0, 0, 0, 0.04, 0, 0)       # bottom: (0,0) -> (40,0)
+    sk.CreateLine(0, 0, 0, 0.04, 0, 0)  # bottom: (0,0) -> (40,0)
     sk.CreateLine(0.04, 0, 0, 0.04, 0.01, 0)  # right base: (40,0) -> (40,10)
     sk.CreateLine(0.04, 0.01, 0, 0.01, 0.01, 0)  # inner base top: (40,10) -> (10,10)
     sk.CreateLine(0.01, 0.01, 0, 0.01, 0.04, 0)  # inner wall right: (10,10) -> (10,40)
     sk.CreateLine(0.01, 0.04, 0, 0, 0.04, 0)  # top wall: (10,40) -> (0,40)
-    sk.CreateLine(0, 0.04, 0, 0, 0, 0)        # left wall: (0,40) -> (0,0)
+    sk.CreateLine(0, 0.04, 0, 0, 0, 0)  # left wall: (0,40) -> (0,0)
     doc.InsertSketch2(False)
     doc.ClearSelection2(True)
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
     # Mid-plane extrusion, 10mm total (5mm each side of Right Plane)
     fm.FeatureExtrusion3(
-        True, False, False, 6, 0, 0.005, 0.005,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        6,
+        0,
+        0.005,
+        0.005,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
     return doc
@@ -219,10 +240,10 @@ def run():
         result["features_before"] = _list_features(doc)
 
         sel_variants = [
-            ("sketch_mark0",      lambda: _select_sketch(doc, mark=0)),
-            ("sketch_mark1",      lambda: _select_sketch(doc, mark=1)),
-            ("sketch_mark4",      lambda: _select_sketch(doc, mark=4)),
-            ("sketch_active",     lambda: _activate_sketch(doc)),
+            ("sketch_mark0", lambda: _select_sketch(doc, mark=0)),
+            ("sketch_mark1", lambda: _select_sketch(doc, mark=1)),
+            ("sketch_mark4", lambda: _select_sketch(doc, mark=4)),
+            ("sketch_active", lambda: _activate_sketch(doc)),
         ]
 
         # Corrected arg semantics per SW2024 typelib dump (W0 handoff):
@@ -233,18 +254,54 @@ def run():
         # Key insight: arg4 (ReverseMaterialDir) controls whether rib extrudes
         # INTO the host body or out into empty space. Must try both.
         arg_variants = [
-            ("probe_A_fwd_5mm",  (True, False, 0.005, 0, False, False, False, 0.0, True, False)),
-            ("probe_B_rev_5mm",  (True, False, 0.005, 0, True,  False, False, 0.0, True, False)),
-            ("probe_C_fwd_2mm",  (True, False, 0.002, 0, False, False, False, 0.0, True, False)),
-            ("probe_D_rev_2mm",  (True, False, 0.002, 0, True,  False, False, 0.0, True, False)),
-            ("probe_E_1sided_fwd", (False, False, 0.005, 0, False, False, False, 0.0, True, False)),
-            ("probe_F_1sided_rev", (False, False, 0.005, 0, True,  False, False, 0.0, True, False)),
-            ("probe_G_parallel_fwd", (True, False, 0.005, 0, False, False, False, 0.0, False, False)),
-            ("probe_H_parallel_rev", (True, False, 0.005, 0, True,  False, False, 0.0, False, False)),
-            ("probe_I_revThk_fwd", (True, True,  0.005, 0, False, False, False, 0.0, True, False)),
-            ("probe_J_revThk_rev", (True, True,  0.005, 0, True,  False, False, 0.0, True, False)),
-            ("probe_K_draft_fwd",  (True, False, 0.005, 0, False, True,  True,  0.0873, True, False)),
-            ("probe_L_draft_rev",  (True, False, 0.005, 0, True,  True,  True,  0.0873, True, False)),
+            (
+                "probe_A_fwd_5mm",
+                (True, False, 0.005, 0, False, False, False, 0.0, True, False),
+            ),
+            (
+                "probe_B_rev_5mm",
+                (True, False, 0.005, 0, True, False, False, 0.0, True, False),
+            ),
+            (
+                "probe_C_fwd_2mm",
+                (True, False, 0.002, 0, False, False, False, 0.0, True, False),
+            ),
+            (
+                "probe_D_rev_2mm",
+                (True, False, 0.002, 0, True, False, False, 0.0, True, False),
+            ),
+            (
+                "probe_E_1sided_fwd",
+                (False, False, 0.005, 0, False, False, False, 0.0, True, False),
+            ),
+            (
+                "probe_F_1sided_rev",
+                (False, False, 0.005, 0, True, False, False, 0.0, True, False),
+            ),
+            (
+                "probe_G_parallel_fwd",
+                (True, False, 0.005, 0, False, False, False, 0.0, False, False),
+            ),
+            (
+                "probe_H_parallel_rev",
+                (True, False, 0.005, 0, True, False, False, 0.0, False, False),
+            ),
+            (
+                "probe_I_revThk_fwd",
+                (True, True, 0.005, 0, False, False, False, 0.0, True, False),
+            ),
+            (
+                "probe_J_revThk_rev",
+                (True, True, 0.005, 0, True, False, False, 0.0, True, False),
+            ),
+            (
+                "probe_K_draft_fwd",
+                (True, False, 0.005, 0, False, True, True, 0.0873, True, False),
+            ),
+            (
+                "probe_L_draft_rev",
+                (True, False, 0.005, 0, True, True, True, 0.0873, True, False),
+            ),
         ]
 
         probes = []
@@ -313,8 +370,7 @@ def run():
                 "Open-sketch-on-face hypothesis tested with 5 selection variants "
                 "and 11 arg tuples. Next: check SW API docs for exact InsertRib "
                 "semantics or try with the sketch line as a SELECTED ENTITY "
-                "(not just the sketch feature)."
-                % len(probes)
+                "(not just the sketch feature)." % len(probes)
             )
     finally:
         _try_close(sw, doc)
@@ -337,9 +393,10 @@ def main():
         print("wrote %s" % args.out, file=sys.stderr)
     else:
         print(payload)
-    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(result.get("overall"), 1)
+    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

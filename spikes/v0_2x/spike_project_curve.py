@@ -105,10 +105,22 @@ _NODE_TYPE_TOKENS = ("refcurve", "projectedcurve", "ref_curve")
 # ---------------------------------------------------------------------------
 
 _VT_NAMES = {
-    0: "VT_EMPTY", 2: "VT_I2", 3: "VT_I4", 4: "VT_R4", 5: "VT_R8",
-    8: "VT_BSTR", 9: "VT_DISPATCH", 11: "VT_BOOL", 12: "VT_VARIANT",
-    13: "VT_UNKNOWN", 16: "VT_I1", 17: "VT_UI1", 19: "VT_UI4", 24: "VT_VOID",
-    26: "VT_PTR", 27: "VT_SAFEARRAY",
+    0: "VT_EMPTY",
+    2: "VT_I2",
+    3: "VT_I4",
+    4: "VT_R4",
+    5: "VT_R8",
+    8: "VT_BSTR",
+    9: "VT_DISPATCH",
+    11: "VT_BOOL",
+    12: "VT_VARIANT",
+    13: "VT_UNKNOWN",
+    16: "VT_I1",
+    17: "VT_UI1",
+    19: "VT_UI4",
+    24: "VT_VOID",
+    26: "VT_PTR",
+    27: "VT_SAFEARRAY",
 }
 
 
@@ -152,8 +164,10 @@ def _funcdesc(info: Any, f_idx: int) -> dict[str, Any]:
 # O1 typelib walks
 # ---------------------------------------------------------------------------
 
+
 def _walk_interface_methods(
-    iface_name: str, tokens: tuple[str, ...],
+    iface_name: str,
+    tokens: tuple[str, ...],
 ) -> dict[str, Any]:
     """Walk sldworks.tlb for *iface_name*, dump FUNCDESCs matching *tokens*."""
     report: dict[str, Any] = {
@@ -231,6 +245,7 @@ def _walk_swconst_enums(tokens: tuple[str, ...]) -> dict[str, Any]:
 # Feature-node detection
 # ---------------------------------------------------------------------------
 
+
 def _walk_features(doc: Any) -> list[Any]:
     """Headless-reliable feature-tree walk via ``IFeatureManager.GetFeatures(False)``.
 
@@ -294,6 +309,7 @@ def _get_feature_types(doc: Any) -> list[dict[str, str]]:
 # Topology measurement
 # ---------------------------------------------------------------------------
 
+
 def _get_bodies(doc: Any) -> list[Any]:
     try:
         bodies = doc.GetBodies2(0, True)
@@ -321,6 +337,7 @@ def _total_volume_m3(doc: Any) -> float | None:
 # CreateDefinition probe (side-effect-free)
 # ---------------------------------------------------------------------------
 
+
 def _probe_createdefinition(sw: Any, template: str) -> dict[str, Any]:
     """Probe CreateDefinition(14) and CreateDefinition(61) for ref-curve QI."""
     out: dict[str, Any] = {}
@@ -330,8 +347,10 @@ def _probe_createdefinition(sw: Any, template: str) -> dict[str, Any]:
         return out
     try:
         fm = doc.FeatureManager
-        for label, id_ in [("swFmRefCurve", _SW_FM_REF_CURVE),
-                           ("swFmReferenceCurve", _SW_FM_REFERENCE_CURVE)]:
+        for label, id_ in [
+            ("swFmRefCurve", _SW_FM_REF_CURVE),
+            ("swFmReferenceCurve", _SW_FM_REFERENCE_CURVE),
+        ]:
             entry: dict[str, Any] = {"id": id_, "label": label}
             try:
                 obj = fm.CreateDefinition(id_)
@@ -364,6 +383,7 @@ def _probe_createdefinition(sw: Any, template: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Mode-A seat fire
 # ---------------------------------------------------------------------------
+
 
 def _probe_mode_a(doc: Any) -> dict[str, Any]:
     """Mode-A: CreateDefinition(14) → QI → CreateFeature."""
@@ -433,11 +453,16 @@ def _probe_mode_a(doc: Any) -> dict[str, Any]:
 # Mode-B seat fire
 # ---------------------------------------------------------------------------
 
+
 def _probe_mode_b_insert(doc: Any) -> dict[str, Any]:
     """Mode-B(a): probe Insert* methods with 'Project' on doc and FM."""
     result: dict[str, Any] = {"mode": "B-insert"}
-    candidates = ("InsertProjectCurve", "InsertProjectedCurve",
-                  "InsertRefCurve", "InsertProjectedCurve2")
+    candidates = (
+        "InsertProjectCurve",
+        "InsertProjectedCurve",
+        "InsertRefCurve",
+        "InsertProjectedCurve2",
+    )
     probes: dict[str, Any] = {}
     for name in candidates:
         for target_label, obj in [("doc", doc), ("FM", doc.FeatureManager)]:
@@ -448,13 +473,15 @@ def _probe_mode_b_insert(doc: Any) -> dict[str, Any]:
                 continue
             try:
                 ret = fn()
-                probes[key] = {"called": True, "return": type(ret).__name__ if ret else None}
+                probes[key] = {
+                    "called": True,
+                    "return": type(ret).__name__ if ret else None,
+                }
             except Exception as e:
                 probes[key] = {"called": True, "error": f"{type(e).__name__}: {e}"}
     result["probes"] = probes
     result["any_succeeded"] = any(
-        isinstance(v, dict) and v.get("return") is not None
-        for v in probes.values()
+        isinstance(v, dict) and v.get("return") is not None for v in probes.values()
     )
     return result
 
@@ -507,6 +534,7 @@ def _probe_mode_b_convert(sw: Any, doc: Any, sketch_name: str) -> dict[str, Any]
 # ---------------------------------------------------------------------------
 # Main run
 # ---------------------------------------------------------------------------
+
 
 def run() -> dict[str, Any]:
     result: dict[str, Any] = {
@@ -606,11 +634,13 @@ def run() -> dict[str, Any]:
 
     a_reopen = (
         mode_a_result.get("save_reopen", {}).get("ref_curve_survived", False)
-        if a_ok else False
+        if a_ok
+        else False
     )
     b_reopen = (
         mode_b_convert.get("save_reopen", {}).get("ref_curve_survived", False)
-        if b_convert_ok else False
+        if b_convert_ok
+        else False
     )
 
     if a_ok or b_convert_ok:
@@ -652,6 +682,7 @@ def run() -> dict[str, Any]:
 # Save → reopen
 # ---------------------------------------------------------------------------
 
+
 def _save_reopen(sw: Any, doc: Any) -> dict[str, Any]:
     """Save → close → reopen; verify the ref-curve node survives."""
     result: dict[str, Any] = {}
@@ -671,6 +702,7 @@ def _save_reopen(sw: Any, doc: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # I/O
 # ---------------------------------------------------------------------------
+
 
 def _scrub(o: Any) -> Any:
     if isinstance(o, dict):
@@ -704,9 +736,7 @@ def main() -> int:
     else:
         print(payload)
 
-    return {"PASS": 0, "PARTIAL": 2, "LEAD": 3, "FAIL": 1}.get(
-        result.get("overall"), 1
-    )
+    return {"PASS": 0, "PARTIAL": 2, "LEAD": 3, "FAIL": 1}.get(result.get("overall"), 1)
 
 
 if __name__ == "__main__":

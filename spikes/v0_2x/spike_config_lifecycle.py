@@ -29,7 +29,10 @@ sys.path.insert(0, str(_SRC))
 
 RESULTS_PATH = (
     Path(__file__).resolve().parents[2]
-    / "spikes" / "v0_2x" / "_results" / "config_lifecycle.json"
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "config_lifecycle.json"
 )
 results: dict[str, Any] = {
     "spike": "w74_config_lifecycle",
@@ -64,13 +67,30 @@ def run() -> str:
     tsw = typed(sw, "ISldWorks", module=mod)
     tmp = tempfile.mkdtemp(prefix="w74_")
     part = os.path.join(tmp, "W74.SLDPRT")
-    part_build({
-        "schema_version": 1, "name": "W74", "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "width": 20.0, "height": 20.0},
-            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
-        ],
-    }, save_as=part, save_format="current", no_dim=True)
+    part_build(
+        {
+            "schema_version": 1,
+            "name": "W74",
+            "features": [
+                {
+                    "type": "sketch_rectangle_on_plane",
+                    "name": "SK",
+                    "plane": "Front",
+                    "width": 20.0,
+                    "height": 20.0,
+                },
+                {
+                    "type": "boss_extrude_blind",
+                    "name": "EX",
+                    "sketch": "SK",
+                    "depth": 10.0,
+                },
+            ],
+        },
+        save_as=part,
+        save_format="current",
+        no_dim=True,
+    )
     tsw.OpenDoc6(part, 1, 1, "", 0, 0)
     doc = sw.ActiveDoc  # raw late-bound active doc (production contract)
 
@@ -86,8 +106,9 @@ def run() -> str:
     gate("A_create_base", okA, str(noteA))
 
     # B. derived child
-    okB, noteB = create_configuration(doc, "Child_W72", parent="Base_W72",
-                                      description="child")
+    okB, noteB = create_configuration(
+        doc, "Child_W72", parent="Base_W72", description="child"
+    )
     gate("B_create_derived", okB, str(noteB))
     gate("B_child_in_names", "Child_W72" in names(), f"names={names()}")
 
@@ -97,13 +118,17 @@ def run() -> str:
     present_before = "ToDelete" in names()
     okC2, noteC2 = delete_configuration(doc, "ToDelete")
     gate("C_delete_todelete", okC2, str(noteC2))
-    gate("C_todelete_gone", present_before and "ToDelete" not in names(),
-         f"names={names()}")
+    gate(
+        "C_todelete_gone",
+        present_before and "ToDelete" not in names(),
+        f"names={names()}",
+    )
 
     # D. fail-closed on missing config
     okD, noteD = delete_configuration(doc, "DoesNotExist")
-    gate("D_missing_failclosed", okD is False and "not present" in str(noteD),
-         str(noteD))
+    gate(
+        "D_missing_failclosed", okD is False and "not present" in str(noteD), str(noteD)
+    )
 
     results["final_names"] = list(names())
     try:
@@ -112,32 +137,43 @@ def run() -> str:
         pass
 
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
-         f"{len(results['gates'])}")
+    gate(
+        "OVERALL",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
+        f"{len(results['gates'])}",
+    )
     return "GREEN" if all_pass else "PARTIAL"
 
 
 def main() -> int:
     import pythoncom
+
     pythoncom.CoInitialize()
     try:
         verdict = run()
     except Exception as exc:
         import traceback
-        results["gates"]["UNEXPECTED"] = {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}
+
+        results["gates"]["UNEXPECTED"] = {
+            "ok": False,
+            "detail": f"{type(exc).__name__}: {exc}",
+        }
         results["traceback"] = traceback.format_exc()
         verdict = "WALL"
     finally:
         try:
             import win32com.client as w32
+
             w32.Dispatch("SldWorks.Application").CloseAllDocuments(True)
         except Exception:
             pass
         pythoncom.CoUninitialize()
     results["verdict"] = verdict
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(results, indent=2, default=str), encoding="utf-8"
+    )
     print(f"\nVerdict: {verdict}  (wrote {RESULTS_PATH})")
     return 0 if verdict == "GREEN" else 1
 

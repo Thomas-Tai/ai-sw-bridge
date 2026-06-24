@@ -186,9 +186,9 @@ class TestVersionFeatureMatrix:
             tag = rec["sw_version"]
             assert tag in SUPPORTED_VERSIONS
             if should_skip(tag, feature):
-                assert not expected_ok, (
-                    f"expected ok=False for skipped cell ({tag}, {feature})"
-                )
+                assert (
+                    not expected_ok
+                ), f"expected ok=False for skipped cell ({tag}, {feature})"
 
 
 # ---------------------------------------------------------------------------

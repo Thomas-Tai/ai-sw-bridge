@@ -163,8 +163,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-        BOX_W_M / 2, BOX_H_M / 2, 0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -172,9 +176,28 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
@@ -197,7 +220,7 @@ def _select_edges(doc: Any) -> dict[str, Any]:
     except Exception:  # noqa: BLE001
         pass
     picks: list[dict[str, Any]] = []
-    for (x, y, z) in TOP_EDGES:
+    for x, y, z in TOP_EDGES:
         rec, ok = _capture(lambda x=x, y=y, z=z: doc.SelectByID("", "EDGE", x, y, z))
         rec["xyz"] = (x, y, z)
         rec["selected"] = bool(ok)
@@ -210,9 +233,14 @@ def _probe_per_item_radii(fd: Any) -> dict[str, Any]:
     may not be populated until edges are bound; record whatever happens."""
     out: dict[str, Any] = {}
     cnt_rec, count = _capture(lambda: fd.FilletItemsCount)
-    out["FilletItemsCount"] = {**cnt_rec, "value": count if isinstance(count, int) else None}
+    out["FilletItemsCount"] = {
+        **cnt_rec,
+        "value": count if isinstance(count, int) else None,
+    }
     if not isinstance(count, int) or count <= 0:
-        out["note"] = "no fillet items to set (expected if items bind after CreateFeature)"
+        out["note"] = (
+            "no fillet items to set (expected if items bind after CreateFeature)"
+        )
         return out
     sets: list[dict[str, Any]] = []
     for i in range(min(count, len(PER_EDGE_RADII_M))):
@@ -265,7 +293,11 @@ def run() -> dict[str, Any]:
         def_rec, data = _capture(lambda: fm.CreateDefinition(SW_FM_FILLET))
         result["create_definition_1"] = def_rec
         if data is None:
-            return {**result, "overall": "FAIL", "reason": "CreateDefinition(1) returned None"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "CreateDefinition(1) returned None",
+            }
 
         qi_rec, fd = _capture(lambda: typed_qi(data, IFACE, module=mod))
         result["typed_qi"] = qi_rec
@@ -290,7 +322,8 @@ def run() -> dict[str, Any]:
             # Read IsMultipleRadius back before creating.
             rb_rec, multi_readback = _capture(lambda: fd.IsMultipleRadius)
             result["is_multiple_radius_readback"] = {
-                **rb_rec, "value": bool(multi_readback) if multi_readback is not None else None
+                **rb_rec,
+                "value": bool(multi_readback) if multi_readback is not None else None,
             }
 
             feat_rec, feat = _capture(lambda: fm.CreateFeature(data))

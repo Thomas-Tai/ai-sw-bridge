@@ -50,7 +50,9 @@ _CUT_STUB = (
 
 
 def create_cosmetic_thread(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Insert a cosmetic thread annotation on a cylindrical face.
 
@@ -69,7 +71,9 @@ def create_cosmetic_thread(
 
 
 def create_cut_thread(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Insert a cut thread (helical sweep cut) on a cylindrical face.
 

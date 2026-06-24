@@ -23,6 +23,7 @@ BRANCHING (per W0 directive):
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/mech_mate_screw_calibration_v2.py
 """
+
 from __future__ import annotations
 
 import json
@@ -61,7 +62,9 @@ def _entities_variant(f1: Any, f2: Any) -> Any:
     return w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (f1, f2))
 
 
-def _add_concentric(typed_asm: Any, mod: Any, conc_enum: int, f1: Any, f2: Any) -> dict[str, Any]:
+def _add_concentric(
+    typed_asm: Any, mod: Any, conc_enum: int, f1: Any, f2: Any
+) -> dict[str, Any]:
     """Add a concentric mate over the two cyl faces (establishes the axis)."""
     out: dict[str, Any] = {}
     cmd = typed_asm.CreateMateData(conc_enum)
@@ -141,7 +144,9 @@ def _matrix_leg_concentric(
         r["T1_post_solve"] = ti1.RevolutionVal
     except Exception as exc:  # noqa: BLE001
         r["T1_post_solve"] = f"read failed: {exc!r}"
-    asm_path = str(Path(t1._results_tmp(), f"screwcc_{int(pitch*1e6)}_{os.getpid()}.SLDASM"))
+    asm_path = str(
+        Path(t1._results_tmp(), f"screwcc_{int(pitch*1e6)}_{os.getpid()}.SLDASM")
+    )
     save_ok = typed(asm, "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0)
     if int(save_ok) != 0:
         r["error"] = f"SAVE_FAILED({save_ok})"
@@ -175,9 +180,11 @@ def main() -> int:
         for pitch in _PITCHES:
             row = _matrix_leg_concentric(sw, mod, screw_enum, conc_enum, pitch)
             result["matrix"].append(row)
-            print(f"[cc] pitch={pitch} conc={row.get('concentric', {}).get('created')} "
-                  f"T0={row.get('T0_post_set')} T1={row.get('T1_post_solve')} "
-                  f"T2={row.get('T2_post_reopen')} err={row.get('error')}")
+            print(
+                f"[cc] pitch={pitch} conc={row.get('concentric', {}).get('created')} "
+                f"T0={row.get('T0_post_set')} T1={row.get('T1_post_solve')} "
+                f"T2={row.get('T2_post_reopen')} err={row.get('error')}"
+            )
         result["verdict"] = cal._verdict(result["matrix"])
         try:
             sw.CloseAllDocuments(True)

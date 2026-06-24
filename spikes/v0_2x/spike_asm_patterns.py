@@ -201,7 +201,9 @@ def _create_ref_axis(asm_doc: Any, mod: Any) -> dict[str, Any]:
         return {"ok": False, "error": f"{type(e).__name__}: {e}"[:200]}
 
 
-def _select_component(doc: Any, mod: Any, comp_name: str, mark: int, append: bool) -> dict[str, Any]:
+def _select_component(
+    doc: Any, mod: Any, comp_name: str, mark: int, append: bool
+) -> dict[str, Any]:
     """Select a component in the assembly by tree-name via IFeature.Select2.
 
     Seat-proven W22 diag: SelectByID2 "COMPONENT" returns False for assembly
@@ -234,7 +236,9 @@ def _select_component(doc: Any, mod: Any, comp_name: str, mark: int, append: boo
     return result
 
 
-def _select_entity(doc: Any, mod: Any, name: str, entity_type: str, mark: int, append: bool) -> dict[str, Any]:
+def _select_entity(
+    doc: Any, mod: Any, name: str, entity_type: str, mark: int, append: bool
+) -> dict[str, Any]:
     """Select a non-component entity (edge, axis, plane) with a mark."""
     result: dict[str, Any] = {}
     ext = typed(doc.Extension, "IModelDocExtension", module=mod)
@@ -354,16 +358,28 @@ def _probe_linear(
     pattern_count = 3
     try:
         feat = fm.FeatureLinearPattern5(
-            pattern_count, spacing_m, 1, 0.0,  # Num1, Spacing1, Num2, Spacing2
-            False, False,  # FlipDir1, FlipDir2
-            "", "",  # DName1, DName2
-            False, False,  # GeometryPattern, VaryInstance
-            False, False,  # HasOffset1, HasOffset2
-            False, False,  # CtrlByNum1, CtrlByNum2
-            False, False,  # FromCentroid1, FromCentroid2
-            False, False,  # RevOffset1, RevOffset2
-            0.0, 0.0,  # Offset1, Offset2
-            False, False,  # D2PatternSeedOnly, SyncSubAssemblies
+            pattern_count,
+            spacing_m,
+            1,
+            0.0,  # Num1, Spacing1, Num2, Spacing2
+            False,
+            False,  # FlipDir1, FlipDir2
+            "",
+            "",  # DName1, DName2
+            False,
+            False,  # GeometryPattern, VaryInstance
+            False,
+            False,  # HasOffset1, HasOffset2
+            False,
+            False,  # CtrlByNum1, CtrlByNum2
+            False,
+            False,  # FromCentroid1, FromCentroid2
+            False,
+            False,  # RevOffset1, RevOffset2
+            0.0,
+            0.0,  # Offset1, Offset2
+            False,
+            False,  # D2PatternSeedOnly, SyncSubAssemblies
         )
         result["create_feature"] = {
             "is_none": feat is None,
@@ -390,7 +406,9 @@ def _probe_linear(
         if feats:
             for f in feats:
                 tn = _type_name(f)
-                if tn and ("LPattern" in tn or "LocalLPattern" in tn or "LinearPattern" in tn):
+                if tn and (
+                    "LPattern" in tn or "LocalLPattern" in tn or "LinearPattern" in tn
+                ):
                     pattern_type = tn
                     pattern_name = _feat_name(f)
                     break
@@ -417,14 +435,18 @@ def _probe_linear(
             result["instance_verified"] = True
         else:
             result["verdict"] = "PARTIAL"
-            result["note"] = f"pattern created but delta={delta} (expected {expected_delta})"
+            result["note"] = (
+                f"pattern created but delta={delta} (expected {expected_delta})"
+            )
         if feat is None or isinstance(feat, int):
             result["success_signal_contract"] = "COUNT_DELTA"
         else:
             result["success_signal_contract"] = "RETURN_VALUE"
     elif pattern_type and delta == 0:
         result["verdict"] = "NO-GO"
-        result["failure_point"] = "pattern feature created but 0 component instances added (hollow)"
+        result["failure_point"] = (
+            "pattern feature created but 0 component instances added (hollow)"
+        )
     else:
         result["verdict"] = "NO-GO"
         result["failure_point"] = (
@@ -467,7 +489,10 @@ def _probe_circular(
                 sel_mgr = doc.SelectionManager
                 sel_mgr.SetSelectedObjectMark(1, 1, 0)
                 axis_selected = True
-                result["axis_select_alt"] = {"method": "SelectByID 'Axis 1'", "ok": True}
+                result["axis_select_alt"] = {
+                    "method": "SelectByID 'Axis 1'",
+                    "ok": True,
+                }
         except Exception:
             pass
 
@@ -532,7 +557,11 @@ def _probe_circular(
         if feats:
             for f in feats:
                 tn = _type_name(f)
-                if tn and ("CirPattern" in tn or "LocalCirPattern" in tn or "CircularPattern" in tn):
+                if tn and (
+                    "CirPattern" in tn
+                    or "LocalCirPattern" in tn
+                    or "CircularPattern" in tn
+                ):
                     pattern_type = tn
                     pattern_name = _feat_name(f)
                     break
@@ -559,14 +588,18 @@ def _probe_circular(
             result["instance_verified"] = True
         else:
             result["verdict"] = "PARTIAL"
-            result["note"] = f"pattern created but delta={delta} (expected {expected_delta})"
+            result["note"] = (
+                f"pattern created but delta={delta} (expected {expected_delta})"
+            )
         if feat is None or isinstance(feat, int):
             result["success_signal_contract"] = "COUNT_DELTA"
         else:
             result["success_signal_contract"] = "RETURN_VALUE"
     elif pattern_type and delta == 0:
         result["verdict"] = "NO-GO"
-        result["failure_point"] = "pattern feature created but 0 component instances added (hollow)"
+        result["failure_point"] = (
+            "pattern feature created but 0 component instances added (hollow)"
+        )
     else:
         result["verdict"] = "NO-GO"
         result["failure_point"] = (
@@ -577,7 +610,11 @@ def _probe_circular(
 
 
 def _probe_mirror(
-    asm_doc: Any, typed_asm: Any, fm: Any, mod: Any, comp_name: str,
+    asm_doc: Any,
+    typed_asm: Any,
+    fm: Any,
+    mod: Any,
+    comp_name: str,
     asm_path: str,
 ) -> dict[str, Any]:
     """Mirror components: mirror plane + seed component → MirrorComponents2."""
@@ -603,7 +640,10 @@ def _probe_mirror(
         if ok:
             sel_mgr = doc.SelectionManager
             plane_entity = sel_mgr.GetSelectedObject6(1, -1)
-            result["plane_select"] = {"ok": True, "entity_type": type(plane_entity).__name__ if plane_entity else "None"}
+            result["plane_select"] = {
+                "ok": True,
+                "entity_type": type(plane_entity).__name__ if plane_entity else "None",
+            }
         else:
             result["plane_select"] = {"ok": False}
     except Exception as e:
@@ -653,9 +693,7 @@ def _probe_mirror(
     raw_comp = seed_comp._oleobj_
 
     # VARIANT(VT_ARRAY|VT_DISPATCH) with raw PyIDispatch
-    comp_array = w32.VARIANT(
-        pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (raw_comp,)
-    )
+    comp_array = w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (raw_comp,))
 
     try:
         ret = typed_asm.MirrorComponents(
@@ -825,13 +863,19 @@ def run() -> dict[str, Any]:
     # Need fresh assembly (linear pattern changed component state)
     asm_doc2 = _create_assembly(sw_app, mod)
     if asm_doc2 is None:
-        result["circular_pattern"] = {"verdict": "NO-GO", "failure_point": "could not create second assembly"}
+        result["circular_pattern"] = {
+            "verdict": "NO-GO",
+            "failure_point": "could not create second assembly",
+        }
     else:
         typed_asm2 = typed(asm_doc2, "IAssemblyDoc", module=mod)
         fm2 = asm_doc2.FeatureManager
         placed2 = _place_seed(sw_app, asm_doc2, part_path, mod)
         if "error" in placed2:
-            result["circular_pattern"] = {"verdict": "NO-GO", "failure_point": f"seed2 placement: {placed2['error']}"}
+            result["circular_pattern"] = {
+                "verdict": "NO-GO",
+                "failure_point": f"seed2 placement: {placed2['error']}",
+            }
         else:
             comp_name2 = placed2["name"]
             axis2 = _create_ref_axis(asm_doc2, mod)
@@ -844,17 +888,25 @@ def run() -> dict[str, Any]:
     print("--- MIRROR COMPONENTS ---", file=sys.stderr)
     asm_doc3 = _create_assembly(sw_app, mod)
     if asm_doc3 is None:
-        result["mirror_components"] = {"verdict": "NO-GO", "failure_point": "could not create third assembly"}
+        result["mirror_components"] = {
+            "verdict": "NO-GO",
+            "failure_point": "could not create third assembly",
+        }
     else:
         typed_asm3 = typed(asm_doc3, "IAssemblyDoc", module=mod)
         fm3 = asm_doc3.FeatureManager
         placed3 = _place_seed(sw_app, asm_doc3, part_path, mod)
         if "error" in placed3:
-            result["mirror_components"] = {"verdict": "NO-GO", "failure_point": f"seed3 placement: {placed3['error']}"}
+            result["mirror_components"] = {
+                "verdict": "NO-GO",
+                "failure_point": f"seed3 placement: {placed3['error']}",
+            }
         else:
             comp_name3 = placed3["name"]
             asm_path3 = str(_tmp / f"w22_mirror_asm_{_ts}.SLDASM")
-            mirror = _probe_mirror(asm_doc3, typed_asm3, fm3, mod, comp_name3, asm_path3)
+            mirror = _probe_mirror(
+                asm_doc3, typed_asm3, fm3, mod, comp_name3, asm_path3
+            )
             result["mirror_components"] = mirror
             print(f"  mirror verdict: {mirror.get('verdict')}", file=sys.stderr)
         _try_close(sw_app, asm_doc3)

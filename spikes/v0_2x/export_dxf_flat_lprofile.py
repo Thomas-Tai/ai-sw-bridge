@@ -21,6 +21,7 @@ Pipeline:
 
 Output: spikes/v0_2x/_results/export_dxf_flat_lprofile.json
 """
+
 from __future__ import annotations
 
 import json
@@ -186,7 +187,9 @@ def _set_depth_props(fd: Any) -> dict[str, Any]:
                 setattr(fd, nm, _DEPTH_M)
                 report["depth_set"].append(nm)
         except Exception as exc:
-            report.setdefault("set_errors", {})[nm] = f"{type(exc).__name__}: {exc}"[:80]
+            report.setdefault("set_errors", {})[nm] = f"{type(exc).__name__}: {exc}"[
+                :80
+            ]
     # also dump a sampling of attribute names for diagnosis
     try:
         report["attrs_seen"] = [a for a in dir(fd) if not a.startswith("_")][:60]
@@ -198,8 +201,11 @@ def _set_depth_props(fd: Any) -> dict[str, Any]:
 def main() -> int:
     pythoncom.CoInitialize()
     out: dict[str, Any] = {
-        "wave": "W42", "step": "lprofile_rescue", "format": "dxf_flat",
-        "ok": False, "verdict": "FAIL",
+        "wave": "W42",
+        "step": "lprofile_rescue",
+        "format": "dxf_flat",
+        "ok": False,
+        "verdict": "FAIL",
         "flat_plate_faces": _FLAT_PLATE_FACES,
         "flat_plate_baseline_entities": _FLAT_PLATE_BASELINE_ENTITIES,
     }
@@ -233,7 +239,10 @@ def main() -> int:
         # The open-profile extrude depth is the D1 END CONDITION (introspected):
         # D1EndConditionType = swEndCondBlind(0), D1EndConditionDistance = depth.
         depth_set: dict[str, Any] = {}
-        for nm, val in (("D1EndConditionType", 0), ("D1EndConditionDistance", _DEPTH_M)):
+        for nm, val in (
+            ("D1EndConditionType", 0),
+            ("D1EndConditionDistance", _DEPTH_M),
+        ):
             try:
                 setattr(fd, nm, val)
                 depth_set[nm] = val
@@ -254,8 +263,10 @@ def main() -> int:
         out["brep"] = m
         bent = m["bodies"] >= 1 and m["faces"] > _FLAT_PLATE_FACES
         out["bend_exists_in_3d"] = bent
-        print("[lp] brep: bodies=%s vol=%s faces=%s cyl_faces=%s -> bent=%s"
-              % (m["bodies"], m["vol_mm3"], m["faces"], m["cyl_faces"], bent))
+        print(
+            "[lp] brep: bodies=%s vol=%s faces=%s cyl_faces=%s -> bent=%s"
+            % (m["bodies"], m["vol_mm3"], m["faces"], m["cyl_faces"], bent)
+        )
         if not bent:
             out["error"] = (
                 f"B-rep GATE FAILED: faces={m['faces']} (<= flat-plate 6) -> the "
@@ -286,8 +297,10 @@ def main() -> int:
         print("[lp] outline bbox: %s (folded face=60mm, unrolled~86mm)" % bbox)
         ent = _parse_dxf_entities(_dxf_text)
         out["dxf_verify"] = {
-            "entity_count": ent["entity_count"], "entity_types": ent["entity_types"],
-            "layers": ent["layers"], "has_bend_layer": ent["has_bend_layer"],
+            "entity_count": ent["entity_count"],
+            "entity_types": ent["entity_types"],
+            "layers": ent["layers"],
+            "has_bend_layer": ent["has_bend_layer"],
             "file_size_bytes": dxf_path.stat().st_size,
         }
         # Persist the flat DXF as a committable golden fixture for the offline test.
@@ -309,8 +322,10 @@ def main() -> int:
             "are NOT emitted by ExportFlatPatternView (opt 0-7) — deferred "
             "sub-scope (drawing flat-pattern view, W33 route)."
         )
-        print("[lp] %s: unroll_proven=%s (long=%.2f short=%.2f) bend_lines=%s"
-              % (out["verdict"], unrolled, span_long, span_short, ent["has_bend_layer"]))
+        print(
+            "[lp] %s: unroll_proven=%s (long=%.2f short=%.2f) bend_lines=%s"
+            % (out["verdict"], unrolled, span_long, span_short, ent["has_bend_layer"])
+        )
 
     except SystemExit:
         raise

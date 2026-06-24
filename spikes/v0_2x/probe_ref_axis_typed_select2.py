@@ -17,6 +17,7 @@ sel_count==2 and materializes a RefAxis:
 Each candidate runs on a FRESH typed reopen.
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/probe_ref_axis_typed_select2.py
 """
+
 from __future__ import annotations
 
 import json
@@ -59,9 +60,31 @@ def _build_box(sw: Any, path: str) -> bool:
     sm.InsertSketch(True)
     sm.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
     sm.InsertSketch(True)
-    fm.FeatureExtrusion3(True, False, False, 0, 0, 0.01, 0.0,
-                         False, False, False, False, 0.0, 0.0,
-                         False, False, False, False, True, True, True, 0.0, 0.0, False)
+    fm.FeatureExtrusion3(
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.01,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0.0,
+        0.0,
+        False,
+    )
     doc.ForceRebuild3(False)
     doc.SaveAs3(path, 0, 0)
     sw.CloseAllDocuments(True)
@@ -79,7 +102,7 @@ def _open_typed(sw: Any, path: str) -> Any:
 
 
 def _has_refaxis(doc: Any) -> bool:
-    for f in (doc.FeatureManager.GetFeatures(False) or []):
+    for f in doc.FeatureManager.GetFeatures(False) or []:
         for attr in ("GetTypeName2", "GetTypeName"):
             try:
                 v = getattr(f, attr)
@@ -149,8 +172,11 @@ def main() -> int:
             ax = doc.InsertAxis2(True)
             doc.ForceRebuild3(False)
             out["C_typed_ext_bare_none"] = {
-                "r2": bool(r2), "sel_count": cnt, "insertaxis_ret": repr(ax),
-                "refaxis_node": _has_refaxis(doc)}
+                "r2": bool(r2),
+                "sel_count": cnt,
+                "insertaxis_ret": repr(ax),
+                "refaxis_node": _has_refaxis(doc),
+            }
         except Exception as exc:  # noqa: BLE001
             out["C_typed_ext_bare_none"] = {"exc": repr(exc)}
         finally:
@@ -162,15 +188,19 @@ def main() -> int:
             doc.ClearSelection2(True)
             doc.SelectByID(p1, "PLANE", 0, 0, 0)
             ext_lb = w32dyn.Dispatch(doc.Extension)
-            r2 = ext_lb.SelectByID2(p2, "PLANE", 0, 0, 0, True, 0,
-                                    VARIANT(pythoncom.VT_DISPATCH, None), 0)
+            r2 = ext_lb.SelectByID2(
+                p2, "PLANE", 0, 0, 0, True, 0, VARIANT(pythoncom.VT_DISPATCH, None), 0
+            )
             cnt = _sel_count(doc)
             ax = doc.InsertAxis2(True)
             doc.ForceRebuild3(False)
             out["D_latebound_ext_variant"] = {
-                "r2": bool(r2), "sel_count": cnt, "insertaxis_ret": repr(ax),
+                "r2": bool(r2),
+                "sel_count": cnt,
+                "insertaxis_ret": repr(ax),
                 "refaxis_node": _has_refaxis(doc),
-                "ext_lb_type": type(ext_lb).__name__}
+                "ext_lb_type": type(ext_lb).__name__,
+            }
         except Exception as exc:  # noqa: BLE001
             out["D_latebound_ext_variant"] = {"exc": repr(exc)}
         finally:
@@ -189,9 +219,14 @@ def main() -> int:
             ax = doc.InsertAxis2(True)
             doc.ForceRebuild3(False)
             out["E_feature_walk_select2"] = {
-                "f1_found": f1 is not None, "f2_found": f2 is not None,
-                "r1": r1, "r2": r2, "sel_count": cnt,
-                "insertaxis_ret": repr(ax), "refaxis_node": _has_refaxis(doc)}
+                "f1_found": f1 is not None,
+                "f2_found": f2 is not None,
+                "r1": r1,
+                "r2": r2,
+                "sel_count": cnt,
+                "insertaxis_ret": repr(ax),
+                "refaxis_node": _has_refaxis(doc),
+            }
         except Exception as exc:  # noqa: BLE001
             out["E_feature_walk_select2"] = {"exc": repr(exc)}
         finally:

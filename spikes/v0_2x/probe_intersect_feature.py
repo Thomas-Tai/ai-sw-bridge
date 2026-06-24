@@ -22,6 +22,7 @@ Any None / silent no-op (feat returned but dVol==0 and dBody==0) = the wall.
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/probe_intersect_feature.py
 """
+
 from __future__ import annotations
 
 import json
@@ -56,8 +57,30 @@ _SW_SOLID = 0
 def _extrude(doc: Any, sketch: str, depth_m: float, *, merge: bool) -> None:
     fx._select_feature(doc, sketch)
     doc.FeatureManager.FeatureExtrusion2(
-        True, False, False, 0, 0, depth_m, 0.0, False, False, False, False,
-        0, 0, False, False, False, False, merge, True, True, 0, 0, False)
+        True,
+        False,
+        False,
+        0,
+        0,
+        depth_m,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0,
+        0,
+        False,
+        False,
+        False,
+        False,
+        merge,
+        True,
+        True,
+        0,
+        0,
+        False,
+    )
     doc.ClearSelection2(True)
 
 
@@ -154,8 +177,10 @@ def main() -> int:
                 tb0.Select(False, 0)
                 tb1.Select(True, 0)
                 r = call()
-                out[f"pre::{label}"] = {"region_count": _region_count(r),
-                                        "type": type(r).__name__}
+                out[f"pre::{label}"] = {
+                    "region_count": _region_count(r),
+                    "type": type(r).__name__,
+                }
                 if r is not None and regions is None:
                     regions = r
             except Exception as e:  # noqa: BLE001
@@ -166,7 +191,10 @@ def main() -> int:
         if regions is not None:
             for label, excl in (
                 ("excl=None", None),
-                ("excl=VARIANT_empty", VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [])),
+                (
+                    "excl=VARIANT_empty",
+                    VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, []),
+                ),
             ):
                 try:
                     feat = fm.PostIntersect(excl, False, False)  # Merge=F, Consume=F
@@ -178,7 +206,8 @@ def main() -> int:
                         except Exception:
                             tn = "<type?>"
                     out[f"post::{label}"] = {
-                        "feat": feat is not None, "type_name": tn,
+                        "feat": feat is not None,
+                        "type_name": tn,
                         "solid_after": _solid_count(doc),
                         "d_bodies": _solid_count(doc) - body_before,
                     }

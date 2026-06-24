@@ -22,6 +22,7 @@ layer is present).
 
 Output: spikes/v0_2x/_results/export_dxf_flat_s2.json
 """
+
 from __future__ import annotations
 
 import json
@@ -77,7 +78,9 @@ def _body_metrics(doc: Any, mod: Any) -> dict[str, Any]:
         rec: dict[str, Any] = {}
         try:
             mp = b.GetMassProperties(1.0)
-            rec["volume_mm3"] = round(float(mp[3]) * 1e9, 3) if mp and len(mp) > 3 else None
+            rec["volume_mm3"] = (
+                round(float(mp[3]) * 1e9, 3) if mp and len(mp) > 3 else None
+            )
         except Exception:
             rec["volume_mm3"] = None
         fc = None
@@ -139,9 +142,14 @@ def main() -> int:
         # --- AXIS-1 checkpoint: metrics BEFORE the edge flange ---
         before = _body_metrics(doc, mod)
         out["brep_before"] = before
-        print("[s2] before: bodies=%s vol=%s faces=%s" % (
-            before.get("body_count"), before.get("total_volume_mm3"),
-            before.get("total_faces")))
+        print(
+            "[s2] before: bodies=%s vol=%s faces=%s"
+            % (
+                before.get("body_count"),
+                before.get("total_volume_mm3"),
+                before.get("total_faces"),
+            )
+        )
 
         # --- Capture a BENDABLE boundary edge (W7 _find_bendable_edges) ---
         edge_ref, edge_diag = _capture_edge_ref(doc, mod)
@@ -167,14 +175,19 @@ def main() -> int:
         # --- AXIS-1 checkpoint: metrics AFTER + the GATING assertion ---
         after = _body_metrics(doc, mod)
         out["brep_after"] = after
-        d_vol = round((after.get("total_volume_mm3") or 0)
-                      - (before.get("total_volume_mm3") or 0), 3)
+        d_vol = round(
+            (after.get("total_volume_mm3") or 0)
+            - (before.get("total_volume_mm3") or 0),
+            3,
+        )
         d_faces = (after.get("total_faces") or 0) - (before.get("total_faces") or 0)
         out["brep_delta"] = {"volume_mm3": d_vol, "faces": d_faces}
         bend_in_3d = d_vol > 0 and d_faces > 0
         out["bend_exists_in_3d"] = bend_in_3d
-        print("[s2] AXIS1 checkpoint: d_vol=%s d_faces=%s -> bend_in_3d=%s"
-              % (d_vol, d_faces, bend_in_3d))
+        print(
+            "[s2] AXIS1 checkpoint: d_vol=%s d_faces=%s -> bend_in_3d=%s"
+            % (d_vol, d_faces, bend_in_3d)
+        )
         if not bend_in_3d:
             out["error"] = (
                 "B-rep checkpoint FAILED: the edge flange did not change the "
@@ -201,7 +214,9 @@ def main() -> int:
             raise SystemExit(_finish(out))
 
         # --- Verify-the-BYTES vs the flat-plate baseline ---
-        ent = _parse_dxf_entities(dxf_path.read_text(encoding="utf-8", errors="replace"))
+        ent = _parse_dxf_entities(
+            dxf_path.read_text(encoding="utf-8", errors="replace")
+        )
         out["dxf_verify"] = {
             "entities_section_found": ent["entities_section_found"],
             "entity_count": ent["entity_count"],
@@ -215,13 +230,21 @@ def main() -> int:
         grew = ent["entity_count"] > _FLAT_PLATE_BASELINE_ENTITIES
         out["entity_count_exceeds_flat_plate"] = grew
         out["ok"] = bool(
-            exp.ok and ent["entities_section_found"]
-            and (grew or ent["has_bend_layer"])
+            exp.ok and ent["entities_section_found"] and (grew or ent["has_bend_layer"])
         )
         out["verdict"] = "GREEN" if out["ok"] else "NO-GO"
-        print("[s2] %s: entities=%d(>%d=%s) bend_layer=%s size=%d layers=%s" % (
-            out["verdict"], ent["entity_count"], _FLAT_PLATE_BASELINE_ENTITIES,
-            grew, ent["has_bend_layer"], dxf_path.stat().st_size, ent["layers"]))
+        print(
+            "[s2] %s: entities=%d(>%d=%s) bend_layer=%s size=%d layers=%s"
+            % (
+                out["verdict"],
+                ent["entity_count"],
+                _FLAT_PLATE_BASELINE_ENTITIES,
+                grew,
+                ent["has_bend_layer"],
+                dxf_path.stat().st_size,
+                ent["layers"],
+            )
+        )
 
     except SystemExit:
         raise

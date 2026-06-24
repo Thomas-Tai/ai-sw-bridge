@@ -45,7 +45,10 @@ from .observe import (
     _sw_min_wall_thickness_impl,
     _sw_get_enabled_addins_impl,
 )
-from .observe_bbox import _sw_get_assembly_bbox_from_doc_impl, _sw_get_bbox_from_doc_impl
+from .observe_bbox import (
+    _sw_get_assembly_bbox_from_doc_impl,
+    _sw_get_bbox_from_doc_impl,
+)
 from .observe_clearance import (
     _sw_analyze_stackup_impl,
     _sw_get_clearance_impl,
@@ -116,7 +119,8 @@ class SolidWorksObserverFacade:
         if doc is None:
             return dict(_NO_DOC)
         return _sw_analyze_stackup_impl(
-            doc, component_names, check_endpoints=check_endpoints)
+            doc, component_names, check_endpoints=check_endpoints
+        )
 
     def interference(self, *, doc: Any = None) -> dict[str, Any]:
         """Detect physical interferences in the active (or given) assembly (W27/E4)."""
@@ -274,7 +278,9 @@ class SolidWorksObserverFacade:
         filename: str | None = None,
     ) -> dict[str, Any]:
         """Capture the active SW viewport to a PNG on disk."""
-        return _sw_screenshot_impl(width=width, height=height, fit_view=fit_view, filename=filename)
+        return _sw_screenshot_impl(
+            width=width, height=height, fit_view=fit_view, filename=filename
+        )
 
     def mate_errors(self) -> dict[str, Any]:
         """Walk an assembly's mate set and report status per mate."""
@@ -460,9 +466,7 @@ class SolidWorksMutatorFacade:
             proposal_id=proposal_id, output_path=output_path, part_paths=part_paths
         )
 
-    def edit_assembly(
-        self, manifest_path: str, op: dict[str, Any]
-    ) -> dict[str, Any]:
+    def edit_assembly(self, manifest_path: str, op: dict[str, Any]) -> dict[str, Any]:
         """Edit an assembly via its manifest sidecar."""
         return _sw_edit_assembly_impl(manifest_path=manifest_path, op=op)
 
@@ -528,6 +532,7 @@ class SolidWorksClient:
         """The makepy wrapper module used by ``typed()`` (acquired on first use)."""
         if self._mod is None:
             from .com.sw_type_info import wrapper_module
+
             self._mod = wrapper_module()
         return self._mod
 

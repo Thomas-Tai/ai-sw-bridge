@@ -28,10 +28,12 @@ def _drawing_spec(**overrides: object) -> dict:
 class TestDrawingSchemaValidation:
     def test_accepts_minimal(self) -> None:
         import jsonschema
+
         jsonschema.validate(_drawing_spec(), DRAWING_SPEC_SCHEMA)
 
     def test_accepts_with_sheet(self) -> None:
         import jsonschema
+
         jsonschema.validate(
             _drawing_spec(sheet={"template_size": "A3"}),
             DRAWING_SPEC_SCHEMA,
@@ -39,6 +41,7 @@ class TestDrawingSchemaValidation:
 
     def test_rejects_missing_kind(self) -> None:
         import jsonschema
+
         spec = _drawing_spec()
         del spec["kind"]
         with pytest.raises(jsonschema.ValidationError):
@@ -46,11 +49,13 @@ class TestDrawingSchemaValidation:
 
     def test_rejects_wrong_kind(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(kind="part"), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_missing_model(self) -> None:
         import jsonschema
+
         spec = _drawing_spec()
         del spec["model"]
         with pytest.raises(jsonschema.ValidationError):
@@ -58,11 +63,13 @@ class TestDrawingSchemaValidation:
 
     def test_rejects_empty_views(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(views=[]), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_unknown_view(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _drawing_spec(views=["front", "xray"]),
@@ -71,6 +78,7 @@ class TestDrawingSchemaValidation:
 
     def test_rejects_unknown_sheet_size(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _drawing_spec(sheet={"template_size": "XXL"}),
@@ -84,25 +92,30 @@ class TestDrawingSchemaValidation:
 class TestDrawingSemanticValidation:
     def test_accepts_valid(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(_drawing_spec())
 
     def test_rejects_wrong_kind(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         with pytest.raises(ValueError, match="kind"):
             validate_drawing_spec(_drawing_spec(kind="part"))
 
     def test_rejects_empty_name(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         with pytest.raises(ValueError, match="name"):
             validate_drawing_spec(_drawing_spec(name=""))
 
     def test_rejects_empty_model(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         with pytest.raises(ValueError, match="model"):
             validate_drawing_spec(_drawing_spec(model=""))
 
     def test_rejects_empty_views(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         with pytest.raises(ValueError, match="views"):
             validate_drawing_spec(_drawing_spec(views=[]))
 
@@ -113,12 +126,14 @@ class TestDrawingSemanticValidation:
 class TestDrawingDryRun:
     def test_rejects_missing_model(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import dry_run_drawing
+
         result = dry_run_drawing(_drawing_spec(model="/nonexistent/path.sldasm"))
         assert result["ok"] is False
         assert "not found" in result["error"]
 
     def test_accepts_existing_model(self, tmp_path) -> None:
         from ai_sw_bridge.drawing.lifecycle import dry_run_drawing
+
         model = tmp_path / "test.sldasm"
         model.write_text("dummy")
         result = dry_run_drawing(_drawing_spec(model=str(model)))
@@ -132,6 +147,7 @@ class TestDrawingPropose:
     def test_propose_accepts_valid(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         result = _sw_propose_drawing_impl(_drawing_spec())
         assert result["ok"] is True
         assert result["proposal_id"] is not None
@@ -140,13 +156,18 @@ class TestDrawingPropose:
     def test_propose_rejects_schema_error(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         result = _sw_propose_drawing_impl({"kind": "part", "name": "x"})
         assert result["ok"] is False
         assert "schema" in result["error"]
 
     def test_dry_run_rejects_missing_model(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import _sw_propose_drawing_impl, _sw_dry_run_drawing_impl
+        from ai_sw_bridge.mutate import (
+            _sw_propose_drawing_impl,
+            _sw_dry_run_drawing_impl,
+        )
+
         p = _sw_propose_drawing_impl(_drawing_spec(model="/nonexistent.sldasm"))
         assert p["ok"] is True
         d = _sw_dry_run_drawing_impl(p["proposal_id"])
@@ -155,7 +176,11 @@ class TestDrawingPropose:
 
     def test_dry_run_accepts_existing(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import _sw_propose_drawing_impl, _sw_dry_run_drawing_impl
+        from ai_sw_bridge.mutate import (
+            _sw_propose_drawing_impl,
+            _sw_dry_run_drawing_impl,
+        )
+
         model = tmp_path / "test.sldasm"
         model.write_text("dummy")
         p = _sw_propose_drawing_impl(_drawing_spec(model=str(model)))
@@ -165,7 +190,11 @@ class TestDrawingPropose:
 
     def test_commit_rejects_without_dry_run(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-        from ai_sw_bridge.mutate import _sw_propose_drawing_impl, _sw_commit_drawing_impl
+        from ai_sw_bridge.mutate import (
+            _sw_propose_drawing_impl,
+            _sw_commit_drawing_impl,
+        )
+
         p = _sw_propose_drawing_impl(_drawing_spec())
         c = _sw_commit_drawing_impl(p["proposal_id"], str(tmp_path / "out.SLDDRW"))
         assert c["ok"] is False
@@ -178,12 +207,14 @@ class TestDrawingPropose:
 class TestViewMapping:
     def test_all_standard_views_resolve(self) -> None:
         from ai_sw_bridge.drawing.formats import resolve_format
+
         for name in ("front", "top", "right", "isometric"):
             fmt = resolve_format(name)
             assert fmt.view_name.startswith("*")
 
     def test_unknown_view_raises(self) -> None:
         from ai_sw_bridge.drawing.formats import resolve_format
+
         with pytest.raises(ValueError, match="Unknown"):
             resolve_format("xray")
 
@@ -201,6 +232,7 @@ class TestDrawingCli:
         )
         import argparse
         from ai_sw_bridge.cli.drawing import _run_propose
+
         args = argparse.Namespace(spec=str(spec_file))
         result = _run_propose(args)
         assert result["ok"] is True
@@ -212,32 +244,29 @@ class TestDrawingCli:
 class TestDimensionsSchema:
     def test_accepts_dimensions_true(self) -> None:
         import jsonschema
-        jsonschema.validate(
-            _drawing_spec(dimensions=True), DRAWING_SPEC_SCHEMA
-        )
+
+        jsonschema.validate(_drawing_spec(dimensions=True), DRAWING_SPEC_SCHEMA)
 
     def test_accepts_dimensions_false(self) -> None:
         import jsonschema
-        jsonschema.validate(
-            _drawing_spec(dimensions=False), DRAWING_SPEC_SCHEMA
-        )
+
+        jsonschema.validate(_drawing_spec(dimensions=False), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_dimensions_string(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
-            jsonschema.validate(
-                _drawing_spec(dimensions="yes"), DRAWING_SPEC_SCHEMA
-            )
+            jsonschema.validate(_drawing_spec(dimensions="yes"), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_dimensions_int(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
-            jsonschema.validate(
-                _drawing_spec(dimensions=1), DRAWING_SPEC_SCHEMA
-            )
+            jsonschema.validate(_drawing_spec(dimensions=1), DRAWING_SPEC_SCHEMA)
 
     def test_dimensions_optional(self) -> None:
         import jsonschema
+
         jsonschema.validate(_drawing_spec(), DRAWING_SPEC_SCHEMA)
 
 
@@ -245,6 +274,7 @@ class TestDimensionsPropose:
     def test_propose_with_dimensions_true(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         result = _sw_propose_drawing_impl(_drawing_spec(dimensions=True))
         assert result["ok"] is True
         assert result["kind"] == "drawing"
@@ -252,6 +282,7 @@ class TestDimensionsPropose:
     def test_propose_with_dimensions_false(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         result = _sw_propose_drawing_impl(_drawing_spec(dimensions=False))
         assert result["ok"] is True
 
@@ -262,23 +293,28 @@ class TestDimensionsPropose:
 class TestBomSchema:
     def test_accepts_bom_true(self) -> None:
         import jsonschema
+
         jsonschema.validate(_drawing_spec(bom=True), DRAWING_SPEC_SCHEMA)
 
     def test_accepts_bom_false(self) -> None:
         import jsonschema
+
         jsonschema.validate(_drawing_spec(bom=False), DRAWING_SPEC_SCHEMA)
 
     def test_bom_optional_absent(self) -> None:
         import jsonschema
+
         jsonschema.validate(_drawing_spec(), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_bom_string(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(bom="yes"), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_bom_int(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(bom=1), DRAWING_SPEC_SCHEMA)
 
@@ -286,28 +322,34 @@ class TestBomSchema:
 class TestBomSemanticValidation:
     def test_accepts_bom_true_with_sldasm(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(_drawing_spec(model="asm.sldasm", bom=True))
 
     def test_accepts_bom_false_with_sldprt(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(_drawing_spec(model="part.sldprt", bom=False))
 
     def test_accepts_bom_absent_with_sldprt(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(_drawing_spec(model="part.sldprt"))
 
     def test_rejects_bom_true_with_sldprt(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         with pytest.raises(ValueError, match="assembly model"):
             validate_drawing_spec(_drawing_spec(model="part.sldprt", bom=True))
 
     def test_rejects_bom_true_with_uppercase_sldprt(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         with pytest.raises(ValueError, match="assembly model"):
             validate_drawing_spec(_drawing_spec(model="Part.SLDPRT", bom=True))
 
     def test_rejects_bom_non_bool(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         with pytest.raises(ValueError, match="bom must be a boolean"):
             validate_drawing_spec(_drawing_spec(bom="yes"))
 
@@ -318,32 +360,38 @@ class TestBomSemanticValidation:
 class TestHoleTableSchema:
     def test_accepts_hole_table_true(self) -> None:
         import jsonschema
+
         jsonschema.validate(_drawing_spec(hole_table=True), DRAWING_SPEC_SCHEMA)
 
     def test_accepts_hole_table_false(self) -> None:
         import jsonschema
+
         jsonschema.validate(_drawing_spec(hole_table=False), DRAWING_SPEC_SCHEMA)
 
     def test_hole_table_optional_absent(self) -> None:
         import jsonschema
+
         jsonschema.validate(_drawing_spec(), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_hole_table_string(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
-            jsonschema.validate(
-                _drawing_spec(hole_table="yes"), DRAWING_SPEC_SCHEMA
-            )
+            jsonschema.validate(_drawing_spec(hole_table="yes"), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_hole_table_int(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(hole_table=1), DRAWING_SPEC_SCHEMA)
 
     def test_accepts_per_sheet_hole_table(self) -> None:
         import jsonschema
+
         spec = {
-            "kind": "drawing", "name": "ht", "model": "p.sldprt",
+            "kind": "drawing",
+            "name": "ht",
+            "model": "p.sldprt",
             "sheets": [{"views": ["front"], "hole_table": True}],
         }
         jsonschema.validate(spec, DRAWING_SPEC_SCHEMA)
@@ -353,14 +401,17 @@ class TestHoleTableSemanticValidation:
     def test_hole_table_on_sldprt_ok(self) -> None:
         """Unlike BOM, a hole table works on a part (no .sldasm requirement)."""
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(_drawing_spec(model="part.sldprt", hole_table=True))
 
     def test_hole_table_on_sldasm_ok(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(_drawing_spec(model="asm.sldasm", hole_table=True))
 
     def test_propose_accepts_hole_table(self) -> None:
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         result = _sw_propose_drawing_impl(
             _drawing_spec(model="part.sldprt", hole_table=True)
         )
@@ -373,43 +424,56 @@ class TestHoleTableSemanticValidation:
 class TestTableClusterSchema:
     def test_accepts_each_flag_true(self) -> None:
         import jsonschema
+
         for flag in ("revision_table", "general_table", "weldment_table"):
             jsonschema.validate(_drawing_spec(**{flag: True}), DRAWING_SPEC_SCHEMA)
 
     def test_accepts_all_three_together(self) -> None:
         import jsonschema
+
         jsonschema.validate(
             _drawing_spec(
-                revision_table=True, general_table=True, weldment_table=True,
+                revision_table=True,
+                general_table=True,
+                weldment_table=True,
             ),
             DRAWING_SPEC_SCHEMA,
         )
 
     def test_rejects_non_bool(self) -> None:
         import jsonschema
+
         for flag in ("revision_table", "general_table", "weldment_table"):
             with pytest.raises(jsonschema.ValidationError):
-                jsonschema.validate(
-                    _drawing_spec(**{flag: "yes"}), DRAWING_SPEC_SCHEMA
-                )
+                jsonschema.validate(_drawing_spec(**{flag: "yes"}), DRAWING_SPEC_SCHEMA)
 
     def test_accepts_per_sheet_flags(self) -> None:
         import jsonschema
+
         spec = {
-            "kind": "drawing", "name": "tc", "model": "p.sldprt",
-            "sheets": [{
-                "views": ["front"], "revision_table": True,
-                "general_table": True, "weldment_table": True,
-            }],
+            "kind": "drawing",
+            "name": "tc",
+            "model": "p.sldprt",
+            "sheets": [
+                {
+                    "views": ["front"],
+                    "revision_table": True,
+                    "general_table": True,
+                    "weldment_table": True,
+                }
+            ],
         }
         jsonschema.validate(spec, DRAWING_SPEC_SCHEMA)
 
     def test_propose_accepts_cluster_on_part(self) -> None:
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         result = _sw_propose_drawing_impl(
             _drawing_spec(
                 model="part.sldprt",
-                revision_table=True, general_table=True, weldment_table=True,
+                revision_table=True,
+                general_table=True,
+                weldment_table=True,
             )
         )
         assert result["ok"] is True
@@ -419,23 +483,22 @@ class TestBomPropose:
     def test_propose_bom_true_with_sldasm(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         result = _sw_propose_drawing_impl(_drawing_spec(model="asm.sldasm", bom=True))
         assert result["ok"] is True
 
-    def test_propose_bom_true_with_sldprt_fails(
-        self, tmp_path, monkeypatch
-    ) -> None:
+    def test_propose_bom_true_with_sldprt_fails(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         result = _sw_propose_drawing_impl(_drawing_spec(model="part.sldprt", bom=True))
         assert result["ok"] is False
         assert "assembly model" in result["error"]
 
-    def test_propose_bom_false_with_sldprt_ok(
-        self, tmp_path, monkeypatch
-    ) -> None:
+    def test_propose_bom_false_with_sldprt_ok(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         result = _sw_propose_drawing_impl(_drawing_spec(model="part.sldprt", bom=False))
         assert result["ok"] is True
 
@@ -462,6 +525,7 @@ class TestSectionDetailSchema:
 
     def test_accepts_section_object(self) -> None:
         import jsonschema
+
         jsonschema.validate(
             _drawing_spec(views=["front", _SECTION_VIEW]),
             DRAWING_SPEC_SCHEMA,
@@ -469,6 +533,7 @@ class TestSectionDetailSchema:
 
     def test_accepts_detail_object(self) -> None:
         import jsonschema
+
         jsonschema.validate(
             _drawing_spec(views=["front", _DETAIL_VIEW]),
             DRAWING_SPEC_SCHEMA,
@@ -476,6 +541,7 @@ class TestSectionDetailSchema:
 
     def test_accepts_mixed_views(self) -> None:
         import jsonschema
+
         jsonschema.validate(
             _drawing_spec(views=["front", _SECTION_VIEW, _DETAIL_VIEW]),
             DRAWING_SPEC_SCHEMA,
@@ -484,6 +550,7 @@ class TestSectionDetailSchema:
     def test_accepts_section_without_cut(self) -> None:
         # Schema does NOT enforce cut presence -- that's semantic validation
         import jsonschema
+
         spec = dict(_SECTION_VIEW)
         del spec["cut"]
         jsonschema.validate(
@@ -494,37 +561,56 @@ class TestSectionDetailSchema:
     def test_accepts_detail_minimal(self) -> None:
         # center and radius are optional at schema level
         import jsonschema
+
         jsonschema.validate(
-            _drawing_spec(views=["front", {"type": "detail", "name": "B", "parent": "front"}]),
+            _drawing_spec(
+                views=["front", {"type": "detail", "name": "B", "parent": "front"}]
+            ),
             DRAWING_SPEC_SCHEMA,
         )
 
     def test_rejects_unknown_type(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
-                _drawing_spec(views=["front", {"type": "auxiliary", "name": "C", "parent": "front"}]),
+                _drawing_spec(
+                    views=[
+                        "front",
+                        {"type": "auxiliary", "name": "C", "parent": "front"},
+                    ]
+                ),
                 DRAWING_SPEC_SCHEMA,
             )
 
     def test_rejects_missing_name(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
-                _drawing_spec(views=["front", {"type": "section", "parent": "front", "cut": "vertical"}]),
+                _drawing_spec(
+                    views=[
+                        "front",
+                        {"type": "section", "parent": "front", "cut": "vertical"},
+                    ]
+                ),
                 DRAWING_SPEC_SCHEMA,
             )
 
     def test_rejects_missing_parent(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
-                _drawing_spec(views=["front", {"type": "section", "name": "A", "cut": "vertical"}]),
+                _drawing_spec(
+                    views=["front", {"type": "section", "name": "A", "cut": "vertical"}]
+                ),
                 DRAWING_SPEC_SCHEMA,
             )
 
     def test_rejects_extra_properties(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _drawing_spec(views=["front", {**_SECTION_VIEW, "unknown_key": 99}]),
@@ -533,6 +619,7 @@ class TestSectionDetailSchema:
 
     def test_rejects_invalid_cut_value(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _drawing_spec(views=["front", {**_SECTION_VIEW, "cut": "diagonal"}]),
@@ -541,6 +628,7 @@ class TestSectionDetailSchema:
 
     def test_rejects_center_wrong_length(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _drawing_spec(views=["front", {**_DETAIL_VIEW, "center": [0.5]}]),
@@ -549,6 +637,7 @@ class TestSectionDetailSchema:
 
     def test_rejects_negative_radius(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _drawing_spec(views=["front", {**_DETAIL_VIEW, "radius": -1.0}]),
@@ -557,6 +646,7 @@ class TestSectionDetailSchema:
 
     def test_rejects_zero_radius(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _drawing_spec(views=["front", {**_DETAIL_VIEW, "radius": 0}]),
@@ -569,51 +659,60 @@ class TestSectionDetailSemanticValidation:
 
     def test_accepts_section_with_valid_parent(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(_drawing_spec(views=["front", _SECTION_VIEW]))
 
     def test_accepts_detail_with_valid_parent(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(_drawing_spec(views=["front", _DETAIL_VIEW]))
 
     def test_accepts_mixed_views(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(
             _drawing_spec(views=["front", "top", _SECTION_VIEW, _DETAIL_VIEW])
         )
 
     def test_accepts_horizontal_cut(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         v = {**_SECTION_VIEW, "cut": "horizontal"}
         validate_drawing_spec(_drawing_spec(views=["front", v]))
 
     def test_accepts_detail_without_center_radius(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(
-            _drawing_spec(views=["front", {"type": "detail", "name": "B", "parent": "front"}])
+            _drawing_spec(
+                views=["front", {"type": "detail", "name": "B", "parent": "front"}]
+            )
         )
 
     def test_rejects_forward_ref_parent(self) -> None:
         # section comes before its parent string view
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         with pytest.raises(ValueError, match="earlier"):
-            validate_drawing_spec(
-                _drawing_spec(views=[_SECTION_VIEW, "front"])
-            )
+            validate_drawing_spec(_drawing_spec(views=[_SECTION_VIEW, "front"]))
 
     def test_rejects_unknown_parent(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         v = {**_SECTION_VIEW, "parent": "bottom"}
         with pytest.raises(ValueError, match="earlier"):
             validate_drawing_spec(_drawing_spec(views=["front", v]))
 
     def test_rejects_section_without_cut(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         v = {k: val for k, val in _SECTION_VIEW.items() if k != "cut"}
         with pytest.raises(ValueError, match="cut"):
             validate_drawing_spec(_drawing_spec(views=["front", v]))
 
     def test_rejects_section_invalid_cut(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         v = {**_SECTION_VIEW, "cut": "diagonal"}
         with pytest.raises(ValueError, match="cut"):
             validate_drawing_spec(_drawing_spec(views=["front", v]))
@@ -621,26 +720,28 @@ class TestSectionDetailSemanticValidation:
     def test_rejects_section_of_section(self) -> None:
         # derived view cannot reference another derived view as parent
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         sec2 = {"type": "section", "name": "B", "parent": "A", "cut": "horizontal"}
         with pytest.raises(ValueError, match="earlier"):
-            validate_drawing_spec(
-                _drawing_spec(views=["front", _SECTION_VIEW, sec2])
-            )
+            validate_drawing_spec(_drawing_spec(views=["front", _SECTION_VIEW, sec2]))
 
     def test_rejects_detail_bad_center_length(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         v = {**_DETAIL_VIEW, "center": [0.5]}
         with pytest.raises(ValueError, match="center"):
             validate_drawing_spec(_drawing_spec(views=["front", v]))
 
     def test_rejects_detail_negative_radius(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         v = {**_DETAIL_VIEW, "radius": -0.1}
         with pytest.raises(ValueError, match="radius"):
             validate_drawing_spec(_drawing_spec(views=["front", v]))
 
     def test_rejects_non_string_non_dict_entry(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         with pytest.raises(ValueError, match="string or object"):
             validate_drawing_spec(_drawing_spec(views=["front", 42]))
 
@@ -651,23 +752,22 @@ class TestSectionDetailPropose:
     def test_propose_section_ok(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
-        result = _sw_propose_drawing_impl(
-            _drawing_spec(views=["front", _SECTION_VIEW])
-        )
+
+        result = _sw_propose_drawing_impl(_drawing_spec(views=["front", _SECTION_VIEW]))
         assert result["ok"] is True
         assert result["kind"] == "drawing"
 
     def test_propose_detail_ok(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
-        result = _sw_propose_drawing_impl(
-            _drawing_spec(views=["front", _DETAIL_VIEW])
-        )
+
+        result = _sw_propose_drawing_impl(_drawing_spec(views=["front", _DETAIL_VIEW]))
         assert result["ok"] is True
 
     def test_propose_mixed_views_ok(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         result = _sw_propose_drawing_impl(
             _drawing_spec(views=["front", "top", _SECTION_VIEW, _DETAIL_VIEW])
         )
@@ -676,9 +776,8 @@ class TestSectionDetailPropose:
     def test_propose_forward_ref_fails(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
-        result = _sw_propose_drawing_impl(
-            _drawing_spec(views=[_SECTION_VIEW, "front"])
-        )
+
+        result = _sw_propose_drawing_impl(_drawing_spec(views=[_SECTION_VIEW, "front"]))
         assert result["ok"] is False
         assert "earlier" in result["error"]
 
@@ -695,6 +794,7 @@ _SURFACE_FINISH = {
 class TestAnnotationsSchema:
     def test_accepts_annotations(self) -> None:
         import jsonschema
+
         jsonschema.validate(
             _drawing_spec(annotations=_SURFACE_FINISH),
             DRAWING_SPEC_SCHEMA,
@@ -702,6 +802,7 @@ class TestAnnotationsSchema:
 
     def test_accepts_annotations_multi_entry(self) -> None:
         import jsonschema
+
         multi = {
             "surface_finish": [
                 {"view": "front", "x": 0.1, "y": 0.1},
@@ -718,6 +819,7 @@ class TestAnnotationsSchema:
 
     def test_rejects_annotations_missing_view(self) -> None:
         import jsonschema
+
         bad = {"surface_finish": [{"x": 0.1, "y": 0.1}]}
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
@@ -727,6 +829,7 @@ class TestAnnotationsSchema:
 
     def test_rejects_annotations_missing_x(self) -> None:
         import jsonschema
+
         bad = {"surface_finish": [{"view": "front", "y": 0.1}]}
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
@@ -736,6 +839,7 @@ class TestAnnotationsSchema:
 
     def test_rejects_annotations_unknown_key(self) -> None:
         import jsonschema
+
         bad = {
             "surface_finish": [
                 {"view": "front", "x": 0.1, "y": 0.1, "color": "red"},
@@ -749,30 +853,30 @@ class TestAnnotationsSchema:
 
     def test_annotations_optional(self) -> None:
         import jsonschema
+
         jsonschema.validate(_drawing_spec(), DRAWING_SPEC_SCHEMA)
 
 
 class TestAnnotationsSemanticValidation:
     def test_accepts_known_view(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
-        validate_drawing_spec(
-            _drawing_spec(annotations=_SURFACE_FINISH)
-        )
+
+        validate_drawing_spec(_drawing_spec(annotations=_SURFACE_FINISH))
 
     def test_rejects_unknown_view(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         bad = {
             "surface_finish": [
                 {"view": "xray", "x": 0.1, "y": 0.1},
             ]
         }
         with pytest.raises(ValueError, match="no matching view"):
-            validate_drawing_spec(
-                _drawing_spec(annotations=bad)
-            )
+            validate_drawing_spec(_drawing_spec(annotations=bad))
 
     def test_accepts_derived_view_name(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         annot = {
             "surface_finish": [
                 {"view": "A", "x": 0.1, "y": 0.1},
@@ -787,46 +891,39 @@ class TestAnnotationsSemanticValidation:
 
     def test_rejects_non_dict_annotations(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         with pytest.raises(ValueError, match="must be a dict"):
-            validate_drawing_spec(
-                _drawing_spec(annotations="surface_finish")
-            )
+            validate_drawing_spec(_drawing_spec(annotations="surface_finish"))
 
     def test_rejects_empty_surface_finish(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         bad = {"surface_finish": []}
         with pytest.raises(ValueError, match="non-empty"):
-            validate_drawing_spec(
-                _drawing_spec(annotations=bad)
-            )
+            validate_drawing_spec(_drawing_spec(annotations=bad))
 
 
 class TestAnnotationsPropose:
     def test_propose_with_annotations(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
-        result = _sw_propose_drawing_impl(
-            _drawing_spec(annotations=_SURFACE_FINISH)
-        )
+
+        result = _sw_propose_drawing_impl(_drawing_spec(annotations=_SURFACE_FINISH))
         assert result["ok"] is True
         assert result["kind"] == "drawing"
 
-    def test_propose_rejects_unknown_view(
-        self, tmp_path, monkeypatch
-    ) -> None:
+    def test_propose_rejects_unknown_view(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_drawing_impl
+
         bad = {
             "surface_finish": [
                 {"view": "xray", "x": 0.1, "y": 0.1},
             ]
         }
-        result = _sw_propose_drawing_impl(
-            _drawing_spec(annotations=bad)
-        )
+        result = _sw_propose_drawing_impl(_drawing_spec(annotations=bad))
         assert result["ok"] is False
         assert "no matching view" in result["error"]
-
 
 
 # ---- W70: note (general text) annotations ----
@@ -837,10 +934,12 @@ _NOTE = {"note": [{"view": "front", "x": 0.15, "y": 0.15, "text": "DEBURR ALL ED
 class TestNoteAnnotationsSchema:
     def test_accepts_note(self) -> None:
         import jsonschema
+
         jsonschema.validate(_drawing_spec(annotations=_NOTE), DRAWING_SPEC_SCHEMA)
 
     def test_accepts_note_alongside_surface_finish(self) -> None:
         import jsonschema
+
         both = {
             "surface_finish": [{"view": "front", "x": 0.1, "y": 0.1, "text": "3.2"}],
             "note": [{"view": "top", "x": 0.2, "y": 0.2, "text": "TYP."}],
@@ -852,19 +951,26 @@ class TestNoteAnnotationsSchema:
 
     def test_rejects_note_missing_text(self) -> None:
         import jsonschema
+
         bad = {"note": [{"view": "front", "x": 0.1, "y": 0.1}]}
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_note_empty_text(self) -> None:
         import jsonschema
+
         bad = {"note": [{"view": "front", "x": 0.1, "y": 0.1, "text": ""}]}
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_note_unknown_key(self) -> None:
         import jsonschema
-        bad = {"note": [{"view": "front", "x": 0.1, "y": 0.1, "text": "x", "font": "Arial"}]}
+
+        bad = {
+            "note": [
+                {"view": "front", "x": 0.1, "y": 0.1, "text": "x", "font": "Arial"}
+            ]
+        }
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
 
@@ -872,22 +978,26 @@ class TestNoteAnnotationsSchema:
 class TestNoteAnnotationsSemanticValidation:
     def test_accepts_known_view(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(_drawing_spec(annotations=_NOTE))
 
     def test_rejects_unknown_view(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         bad = {"note": [{"view": "xray", "x": 0.1, "y": 0.1, "text": "hi"}]}
         with pytest.raises(ValueError, match="no matching view"):
             validate_drawing_spec(_drawing_spec(annotations=bad))
 
     def test_rejects_empty_text_semantic(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         bad = {"note": [{"view": "front", "x": 0.1, "y": 0.1, "text": ""}]}
         with pytest.raises(ValueError, match="text must be a non-empty string"):
             validate_drawing_spec(_drawing_spec(annotations=bad))
 
     def test_rejects_empty_note_array(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         bad = {"note": []}
         with pytest.raises(ValueError, match="note must be a non-empty array"):
             validate_drawing_spec(_drawing_spec(annotations=bad))
@@ -954,9 +1064,11 @@ class TestApplyNoteAnnotations:
         # Offline, patch typed_qi to identity so the fake annotation passes through.
         import ai_sw_bridge.com.earlybind as eb
         import ai_sw_bridge.com.sw_type_info as sti
+
         monkeypatch.setattr(eb, "typed_qi", lambda obj, iface, module=None: obj)
         monkeypatch.setattr(sti, "wrapper_module", lambda: None)
         from ai_sw_bridge.drawing.lifecycle import _apply_note_annotations
+
         ddoc = _FakeDrawingDocNote()
         mdoc2 = _FakeMdoc2Note(return_none=return_none)
         placed = {"front": _FakeView("front"), "top": _FakeView("top")}
@@ -976,10 +1088,12 @@ class TestApplyNoteAnnotations:
     def test_multi_entry_both_views(self, monkeypatch) -> None:
         res, _, mdoc2 = self._run(
             monkeypatch,
-            {"note": [
-                {"view": "front", "x": 0.1, "y": 0.1, "text": "A"},
-                {"view": "top", "x": 0.2, "y": 0.2, "text": "B"},
-            ]},
+            {
+                "note": [
+                    {"view": "front", "x": 0.1, "y": 0.1, "text": "A"},
+                    {"view": "top", "x": 0.2, "y": 0.2, "text": "B"},
+                ]
+            },
         )
         assert res["count"] == 2 and res["ok"] is True
         assert mdoc2.insert_calls == ["A", "B"]
@@ -1019,10 +1133,14 @@ _ENTITY_ATTACHED = {"datum_tag": [{"view": "front", "x": 0.1, "y": 0.1}]}
 class TestEntityAttachedAnnotationsSchema:
     def test_accepts_datum_tag(self) -> None:
         import jsonschema
-        jsonschema.validate(_drawing_spec(annotations=_ENTITY_ATTACHED), DRAWING_SPEC_SCHEMA)
+
+        jsonschema.validate(
+            _drawing_spec(annotations=_ENTITY_ATTACHED), DRAWING_SPEC_SCHEMA
+        )
 
     def test_accepts_all_three_together(self) -> None:
         import jsonschema
+
         block = {
             "datum_tag": [{"view": "front", "x": 0.1, "y": 0.1}],
             "weld_symbol": [{"view": "top", "x": 0.2, "y": 0.2}],
@@ -1035,18 +1153,21 @@ class TestEntityAttachedAnnotationsSchema:
 
     def test_rejects_datum_tag_missing_y(self) -> None:
         import jsonschema
+
         bad = {"datum_tag": [{"view": "front", "x": 0.1}]}
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_weld_unknown_key(self) -> None:
         import jsonschema
+
         bad = {"weld_symbol": [{"view": "front", "x": 0.1, "y": 0.1, "z": 0.0}]}
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
 
     def test_balloon_accepts_style_size(self) -> None:
         import jsonschema
+
         ok = {"balloon": [{"view": "front", "x": 0.1, "y": 0.1, "style": 3, "size": 5}]}
         jsonschema.validate(_drawing_spec(annotations=ok), DRAWING_SPEC_SCHEMA)
 
@@ -1054,16 +1175,19 @@ class TestEntityAttachedAnnotationsSchema:
 class TestEntityAttachedSemanticValidation:
     def test_accepts_known_view(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         validate_drawing_spec(_drawing_spec(annotations=_ENTITY_ATTACHED))
 
     def test_rejects_unknown_view(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         bad = {"weld_symbol": [{"view": "xray", "x": 0.1, "y": 0.1}]}
         with pytest.raises(ValueError, match="no matching view"):
             validate_drawing_spec(_drawing_spec(annotations=bad))
 
     def test_rejects_empty_balloon_array(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         bad = {"balloon": []}
         with pytest.raises(ValueError, match="balloon must be a non-empty array"):
             validate_drawing_spec(_drawing_spec(annotations=bad))
@@ -1143,28 +1267,52 @@ _EA_LANES = [
 
 
 class TestApplyEntityAttachedAnnotation:
-    def _run(self, monkeypatch, kind, iface, insert_name, annot,
-             *, return_none=False, edges=1, configure_name=None):
+    def _run(
+        self,
+        monkeypatch,
+        kind,
+        iface,
+        insert_name,
+        annot,
+        *,
+        return_none=False,
+        edges=1,
+        configure_name=None,
+    ):
         # typed_qi resolves the specific iface (raw dispatch -> MEMBERNOTFOUND
         # on 32.1); offline, patch to identity so the fakes pass through.
         import ai_sw_bridge.com.earlybind as eb
         import ai_sw_bridge.com.sw_type_info as sti
+
         monkeypatch.setattr(eb, "typed_qi", lambda obj, iface, module=None: obj)
         monkeypatch.setattr(sti, "wrapper_module", lambda: None)
         from ai_sw_bridge.drawing import lifecycle
+
         insert_fn = getattr(lifecycle, insert_name)
         configure_fn = getattr(lifecycle, configure_name) if configure_name else None
         ddoc = _FakeDrawingDocNote()
         mdoc2 = _FakeMdoc2EA(return_none=return_none)
-        placed = {"front": _FakeEAView("front", edges=edges),
-                  "top": _FakeEAView("top", edges=edges)}
+        placed = {
+            "front": _FakeEAView("front", edges=edges),
+            "top": _FakeEAView("top", edges=edges),
+        }
         res = lifecycle._apply_entity_attached_annotation(
-            ddoc, mdoc2, annot, placed, 0, kind=kind, iface=iface,
-            insert=insert_fn, configure=configure_fn)
+            ddoc,
+            mdoc2,
+            annot,
+            placed,
+            0,
+            kind=kind,
+            iface=iface,
+            insert=insert_fn,
+            configure=configure_fn,
+        )
         return res, ddoc, mdoc2
 
     @pytest.mark.parametrize("kind,iface,insert_name,com_name", _EA_LANES)
-    def test_inserts_and_positions(self, monkeypatch, kind, iface, insert_name, com_name) -> None:
+    def test_inserts_and_positions(
+        self, monkeypatch, kind, iface, insert_name, com_name
+    ) -> None:
         annot = {kind: [{"view": "front", "x": 0.11, "y": 0.22}]}
         res, ddoc, mdoc2 = self._run(monkeypatch, kind, iface, insert_name, annot)
         assert res["ok"] is True and res["count"] == 1 and not res["errors"]
@@ -1173,7 +1321,9 @@ class TestApplyEntityAttachedAnnotation:
         assert ddoc.activated == ["front"]
 
     @pytest.mark.parametrize("kind,iface,insert_name,com_name", _EA_LANES)
-    def test_no_edge_is_error(self, monkeypatch, kind, iface, insert_name, com_name) -> None:
+    def test_no_edge_is_error(
+        self, monkeypatch, kind, iface, insert_name, com_name
+    ) -> None:
         annot = {kind: [{"view": "front", "x": 0.1, "y": 0.1}]}
         res, _, mdoc2 = self._run(monkeypatch, kind, iface, insert_name, annot, edges=0)
         assert res["ok"] is False and res["count"] == 0
@@ -1181,31 +1331,43 @@ class TestApplyEntityAttachedAnnotation:
         assert mdoc2.calls == []  # insert never attempted without a selection
 
     @pytest.mark.parametrize("kind,iface,insert_name,com_name", _EA_LANES)
-    def test_insert_none_is_error(self, monkeypatch, kind, iface, insert_name, com_name) -> None:
+    def test_insert_none_is_error(
+        self, monkeypatch, kind, iface, insert_name, com_name
+    ) -> None:
         annot = {kind: [{"view": "front", "x": 0.1, "y": 0.1}]}
-        res, _, mdoc2 = self._run(monkeypatch, kind, iface, insert_name, annot, return_none=True)
+        res, _, mdoc2 = self._run(
+            monkeypatch, kind, iface, insert_name, annot, return_none=True
+        )
         assert res["ok"] is False and res["count"] == 0
         assert "returned None" in res["errors"][0]
 
     def test_unplaced_view_is_error(self, monkeypatch) -> None:
         annot = {"datum_tag": [{"view": "ghost", "x": 0.1, "y": 0.1}]}
-        res, _, mdoc2 = self._run(monkeypatch, "datum_tag", "IDatumTag", "_insert_datum_tag", annot)
+        res, _, mdoc2 = self._run(
+            monkeypatch, "datum_tag", "IDatumTag", "_insert_datum_tag", annot
+        )
         assert res["ok"] is False and res["count"] == 0
         assert "was not placed" in res["errors"][0]
         assert mdoc2.calls == []
 
     def test_no_key_is_noop_ok(self, monkeypatch) -> None:
         annot = {"note": [{"view": "front", "x": 0, "y": 0, "text": "x"}]}
-        res, _, mdoc2 = self._run(monkeypatch, "balloon", "INote", "_insert_balloon", annot)
+        res, _, mdoc2 = self._run(
+            monkeypatch, "balloon", "INote", "_insert_balloon", annot
+        )
         assert res["ok"] is True and res["count"] == 0
         assert mdoc2.calls == []
 
     def test_multi_entry_two_views(self, monkeypatch) -> None:
-        annot = {"weld_symbol": [
-            {"view": "front", "x": 0.1, "y": 0.1},
-            {"view": "top", "x": 0.2, "y": 0.2},
-        ]}
-        res, ddoc, mdoc2 = self._run(monkeypatch, "weld_symbol", "IWeldSymbol", "_insert_weld_symbol", annot)
+        annot = {
+            "weld_symbol": [
+                {"view": "front", "x": 0.1, "y": 0.1},
+                {"view": "top", "x": 0.2, "y": 0.2},
+            ]
+        }
+        res, ddoc, mdoc2 = self._run(
+            monkeypatch, "weld_symbol", "IWeldSymbol", "_insert_weld_symbol", annot
+        )
         assert res["count"] == 2 and res["ok"] is True
         assert mdoc2.calls == ["InsertWeldSymbol3", "InsertWeldSymbol3"]
         assert ddoc.activated == ["front", "top"]
@@ -1214,22 +1376,30 @@ class TestApplyEntityAttachedAnnotation:
 class TestGtolAnnotationsSchema:
     def test_accepts_gtol(self) -> None:
         import jsonschema
+
         ok = {"geometric_tolerance": [{"view": "front", "x": 0.1, "y": 0.1}]}
         jsonschema.validate(_drawing_spec(annotations=ok), DRAWING_SPEC_SCHEMA)
 
     def test_accepts_gtol_tolerance(self) -> None:
         import jsonschema
-        ok = {"geometric_tolerance": [{"view": "front", "x": 0.1, "y": 0.1, "tolerance": "0.05"}]}
+
+        ok = {
+            "geometric_tolerance": [
+                {"view": "front", "x": 0.1, "y": 0.1, "tolerance": "0.05"}
+            ]
+        }
         jsonschema.validate(_drawing_spec(annotations=ok), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_gtol_missing_y(self) -> None:
         import jsonschema
+
         bad = {"geometric_tolerance": [{"view": "front", "x": 0.1}]}
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_drawing_spec(annotations=bad), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_gtol_unknown_view(self) -> None:
         from ai_sw_bridge.drawing.lifecycle import validate_drawing_spec
+
         bad = {"geometric_tolerance": [{"view": "xray", "x": 0.1, "y": 0.1}]}
         with pytest.raises(ValueError, match="no matching view"):
             validate_drawing_spec(_drawing_spec(annotations=bad))
@@ -1239,11 +1409,19 @@ class TestApplyGtolAnnotation(TestApplyEntityAttachedAnnotation):
     """GTOL reuses the generic handler + a configure hook (SetFrameValues)."""
 
     def test_inserts_configures_positions(self, monkeypatch) -> None:
-        annot = {"geometric_tolerance": [
-            {"view": "front", "x": 0.16, "y": 0.16, "tolerance": "0.05"}]}
+        annot = {
+            "geometric_tolerance": [
+                {"view": "front", "x": 0.16, "y": 0.16, "tolerance": "0.05"}
+            ]
+        }
         res, ddoc, mdoc2 = self._run(
-            monkeypatch, "geometric_tolerance", "IGtol", "_insert_gtol", annot,
-            configure_name="_configure_gtol")
+            monkeypatch,
+            "geometric_tolerance",
+            "IGtol",
+            "_insert_gtol",
+            annot,
+            configure_name="_configure_gtol",
+        )
         assert res["ok"] is True and res["count"] == 1 and not res["errors"]
         assert mdoc2.calls == ["InsertGtol"]
         # configure hook set frame-1 content, THEN placement happened
@@ -1253,16 +1431,27 @@ class TestApplyGtolAnnotation(TestApplyEntityAttachedAnnotation):
     def test_default_tolerance_when_omitted(self, monkeypatch) -> None:
         annot = {"geometric_tolerance": [{"view": "front", "x": 0.1, "y": 0.1}]}
         res, _, mdoc2 = self._run(
-            monkeypatch, "geometric_tolerance", "IGtol", "_insert_gtol", annot,
-            configure_name="_configure_gtol")
+            monkeypatch,
+            "geometric_tolerance",
+            "IGtol",
+            "_insert_gtol",
+            annot,
+            configure_name="_configure_gtol",
+        )
         assert res["ok"] is True
         assert mdoc2.objs[0].frame_values == (1, "0.1", "", "", "", "")
 
     def test_no_edge_is_error_no_insert(self, monkeypatch) -> None:
         annot = {"geometric_tolerance": [{"view": "front", "x": 0.1, "y": 0.1}]}
         res, _, mdoc2 = self._run(
-            monkeypatch, "geometric_tolerance", "IGtol", "_insert_gtol", annot,
-            configure_name="_configure_gtol", edges=0)
+            monkeypatch,
+            "geometric_tolerance",
+            "IGtol",
+            "_insert_gtol",
+            annot,
+            configure_name="_configure_gtol",
+            edges=0,
+        )
         assert res["ok"] is False and res["count"] == 0
         assert "no projected edge" in res["errors"][0]
         assert mdoc2.calls == []

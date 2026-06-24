@@ -69,7 +69,10 @@ def _select_seed(doc: Any, seed_name: str) -> bool:
 
 
 def _select_sketch(
-    doc: Any, sketch_name: str, *, append: bool = True,
+    doc: Any,
+    sketch_name: str,
+    *,
+    append: bool = True,
 ) -> tuple[bool, int]:
     """Select the reference sketch, trying mark=1 then mark=2.
 
@@ -105,11 +108,15 @@ def _fire(doc: Any, use_centroid: bool, geom_patt: bool) -> Any | None:
         if callable(method):
             result = method(use_centroid, geom_patt)
         else:
-            logger.warning("[fire] FeatureSketchDrivenPattern is not callable: %r", method)
+            logger.warning(
+                "[fire] FeatureSketchDrivenPattern is not callable: %r", method
+            )
             return None
         logger.warning(
             "[fire] FeatureSketchDrivenPattern(%r, %r) -> %r",
-            use_centroid, geom_patt, result,
+            use_centroid,
+            geom_patt,
+            result,
         )
         return result
     except Exception as e:
@@ -118,7 +125,9 @@ def _fire(doc: Any, use_centroid: bool, geom_patt: bool) -> Any | None:
 
 
 def create_sketch_driven_pattern(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Create a sketch-driven pattern from a seed feature + reference sketch.
 
@@ -192,6 +201,7 @@ def create_sketch_driven_pattern(
         f"(delta_faces={d_faces}, delta_vol_mm3={d_vol:.3f}); "
         f"seed={seed_name!r}, sketch={sketch_name!r}, sketch_mark={mark_used}"
     )
+
 
 # Registration is via the sanctioned ``_register_lane`` gate in
 # ``features/__init__.py`` (W67 Phase-4 fail-loud path) — not a module-level

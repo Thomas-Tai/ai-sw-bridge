@@ -36,7 +36,9 @@ results: dict[str, Any] = {
 
 def save_results() -> None:
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(results, indent=2, default=str), encoding="utf-8"
+    )
 
 
 def run() -> None:
@@ -54,7 +56,7 @@ def run() -> None:
 
     # Close all docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -73,10 +75,14 @@ def run() -> None:
         "schema_version": 1,
         "name": "TolDiag3Box",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 25.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 15.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 25.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 15.0},
         ],
     }
     r = part_build(spec, save_as=PART_PATH, save_format="current", no_dim=False)
@@ -127,7 +133,9 @@ def run() -> None:
     drawing_doc = typed_qi(doc_raw, "IDrawingDoc", module=mod)
     drw_mdoc2 = typed_qi(doc_raw, "IModelDoc2", module=mod)
 
-    view_raw = drawing_doc.CreateDrawViewFromModelView3(PART_PATH, "*Front", 0.15, 0.15, 0.0)
+    view_raw = drawing_doc.CreateDrawViewFromModelView3(
+        PART_PATH, "*Front", 0.15, 0.15, 0.0
+    )
     front_view = typed_qi(view_raw, "IView", module=mod)
     drawing_doc.InsertModelAnnotations3(0, -1, True, False, True, 0)
 
@@ -157,7 +165,10 @@ def run() -> None:
     drw_post_tol = drw_dim.GetToleranceType()
     drw_post_vals = drw_dim.GetToleranceValues()
     print(f"  Drawing dim after set: type={drw_post_tol}, vals={drw_post_vals}")
-    results["tests"]["drw_dim_after_set"] = {"tol_type": drw_post_tol, "tol_vals": str(drw_post_vals)}
+    results["tests"]["drw_dim_after_set"] = {
+        "tol_type": drw_post_tol,
+        "tol_vals": str(drw_post_vals),
+    }
 
     # Now check PART's dimension via Parameter() - is it affected?
     print("\n--- Checking if PART's dimension is affected ---")
@@ -174,7 +185,9 @@ def run() -> None:
                 "matches_drw": part_tol == drw_post_tol,
             }
             # Key test: if part's dim matches drawing's, they're the same object
-            if part_tol == SW_TOL_SYMMETRIC and (part_vals is not None and len(part_vals) >= 2):
+            if part_tol == SW_TOL_SYMMETRIC and (
+                part_vals is not None and len(part_vals) >= 2
+            ):
                 print("  YES! Drawing's dim IS the PART's dim (tolerance propagates)")
         else:
             print("  Parameter() returned None")

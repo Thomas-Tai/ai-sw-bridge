@@ -19,6 +19,7 @@ ActivateDoc3 the part to the foreground, ForceRebuild3, THEN SaveAs3-STL.
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_tessellation_probe.py
 """
+
 from __future__ import annotations
 
 import json
@@ -60,7 +61,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _export_stl(doc: Any, name: str, out_dir: Path, binary: bool = True) -> int:
-    reqs = [ExportRequest(format="stl", output_dir=out_dir, filename=name, binary=binary)]
+    reqs = [
+        ExportRequest(format="stl", output_dir=out_dir, filename=name, binary=binary)
+    ]
     try:
         export_all(doc, reqs, name)
     except Exception as exc:  # noqa: BLE001
@@ -121,19 +124,26 @@ def main() -> int:
         results["log"]["part_path"] = part_path
 
         # ── A. CONTROL: standalone SILENT open, no activate -> ghost ──────
-        so = tsw.OpenDoc6(part_path, 1, 1, "", 0, 0)   # swDocPART, Silent
+        so = tsw.OpenDoc6(part_path, 1, 1, "", 0, 0)  # swDocPART, Silent
         sdoc = _unwrap(so)
-        bytes_silent = _export_stl(sdoc, "A_silent", out_dir) if sdoc is not None else -1
+        bytes_silent = (
+            _export_stl(sdoc, "A_silent", out_dir) if sdoc is not None else -1
+        )
         results["log"]["stl_bytes_silent"] = bytes_silent
-        gate("ghost_control", bytes_silent == 0,
-             f"silent-open STL = {bytes_silent} bytes (expect 0 ghost)")
+        gate(
+            "ghost_control",
+            bytes_silent == 0,
+            f"silent-open STL = {bytes_silent} bytes (expect 0 ghost)",
+        )
         try:
             sw.CloseAllDocuments(True)
         except Exception:
             pass
 
         # ── B. THE FIX: NON-SILENT open + ActivateDoc3 + ForceRebuild3 ────
-        no = tsw.OpenDoc6(part_path, 1, 0, "", 0, 0)   # swDocPART, options=0 (non-silent)
+        no = tsw.OpenDoc6(
+            part_path, 1, 0, "", 0, 0
+        )  # swDocPART, options=0 (non-silent)
         ndoc = _unwrap(no)
         open_ok = ndoc is not None
         title = resolve(ndoc, "GetTitle") if open_ok else None
@@ -151,8 +161,11 @@ def main() -> int:
             results["log"]["activate_error"] = repr(exc)
         # Prefer the freshly-activated pointer if returned, else the opened one.
         active_doc = adoc if adoc is not None else ndoc
-        gate("activate_open", open_ok and activate_ok,
-             f"non-silent open + ActivateDoc3('{title}') ok={open_ok and activate_ok}")
+        gate(
+            "activate_open",
+            open_ok and activate_ok,
+            f"non-silent open + ActivateDoc3('{title}') ok={open_ok and activate_ok}",
+        )
 
         # Force graphics triangles to be computed.
         try:
@@ -161,18 +174,30 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             results["log"]["force_rebuild"] = repr(exc)
 
-        bytes_activated = _export_stl(active_doc, "B_activated", out_dir) \
-            if active_doc is not None else -1
+        bytes_activated = (
+            _export_stl(active_doc, "B_activated", out_dir)
+            if active_doc is not None
+            else -1
+        )
         results["log"]["stl_bytes_activated"] = bytes_activated
-        gate("activated_export", bytes_activated > 0,
-             f"activated STL = {bytes_activated} bytes (expect >0)")
+        gate(
+            "activated_export",
+            bytes_activated > 0,
+            f"activated STL = {bytes_activated} bytes (expect >0)",
+        )
 
         # ── C. STABILITY: re-export the same activated doc ────────────────
-        bytes_reexport = _export_stl(active_doc, "C_reexport", out_dir) \
-            if active_doc is not None else -1
+        bytes_reexport = (
+            _export_stl(active_doc, "C_reexport", out_dir)
+            if active_doc is not None
+            else -1
+        )
         results["log"]["stl_bytes_reexport"] = bytes_reexport
-        gate("reexport_stable", bytes_reexport > 0,
-             f"re-export STL = {bytes_reexport} bytes (expect >0)")
+        gate(
+            "reexport_stable",
+            bytes_reexport > 0,
+            f"re-export STL = {bytes_reexport} bytes (expect >0)",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

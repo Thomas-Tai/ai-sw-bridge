@@ -29,21 +29,34 @@ from typing import Any
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
-RESULTS_PATH = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "observe_massprops_cube.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "observe_massprops_cube.json"
+)
 
-_EXPECT_VOL_MM3 = 1000.0   # 10^3
-_EXPECT_AREA_MM2 = 600.0   # 6 faces * 10^2
+_EXPECT_VOL_MM3 = 1000.0  # 10^3
+_EXPECT_AREA_MM2 = 600.0  # 6 faces * 10^2
 _TOL = 1e-6
 
 
 def _build_cube(part_path: str) -> bool:
     """Build a 10 x 10 x 10 mm cube and leave it as the active doc."""
     from ai_sw_bridge.spec.builder import build as part_build
+
     spec = {
         "schema_version": 1,
         "name": "W71_Cube",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front", "width": 10.0, "height": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 10.0,
+                "height": 10.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
@@ -58,11 +71,16 @@ def main() -> int:
     from ai_sw_bridge.observe import sw_get_volume
     from ai_sw_bridge.sw_com import get_sw_app
 
-    result: dict[str, Any] = {"spike": "w71_observe_massprops_cube", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    result: dict[str, Any] = {
+        "spike": "w71_observe_massprops_cube",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
 
     # ignore_cleanup_errors: the cube .SLDPRT is held open by SW until we close
     # it; close docs in finally first, but tolerate the OS-level unlink race.
-    with tempfile.TemporaryDirectory(prefix="w71_cube_", ignore_cleanup_errors=True) as tmp:
+    with tempfile.TemporaryDirectory(
+        prefix="w71_cube_", ignore_cleanup_errors=True
+    ) as tmp:
         part_path = os.path.join(tmp, "W71_Cube.sldprt")
         if not _build_cube(part_path):
             result["overall"] = "ERROR"

@@ -26,8 +26,7 @@ sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
 RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results"
-    / "drawing_multisheet_sig_probe.json"
+    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_multisheet_sig_probe.json"
 )
 
 
@@ -41,10 +40,12 @@ def main() -> None:
     mod = wrapper_module()
     sw = w32.Dispatch("SldWorks.Application")
 
-    drwdots = sorted(set(
-        glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT")
-        + glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.drwdot")
-    ))
+    drwdots = sorted(
+        set(
+            glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT")
+            + glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.drwdot")
+        )
+    )
     template_path = drwdots[0]
 
     doc_raw = typed(sw, "ISldWorks", module=mod).NewDocument(
@@ -60,20 +61,24 @@ def main() -> None:
     def try_call(label: str, fn: Any, args: tuple) -> None:
         try:
             ok = fn(*args)
-            results["attempts"].append({
-                "label": label,
-                "args": list(args),
-                "ok": bool(ok),
-                "returned": type(ok).__name__ if ok is not None else "None",
-                "error": None,
-            })
+            results["attempts"].append(
+                {
+                    "label": label,
+                    "args": list(args),
+                    "ok": bool(ok),
+                    "returned": type(ok).__name__ if ok is not None else "None",
+                    "error": None,
+                }
+            )
         except Exception as e:
-            results["attempts"].append({
-                "label": label,
-                "args": list(args),
-                "ok": False,
-                "error": f"{type(e).__name__}: {e}",
-            })
+            results["attempts"].append(
+                {
+                    "label": label,
+                    "args": list(args),
+                    "ok": False,
+                    "error": f"{type(e).__name__}: {e}",
+                }
+            )
 
     # --- NewSheet(name) variants ---
     try_call("NewSheet(name)", drawing_doc.NewSheet, ("SigProbeA",))
@@ -144,10 +149,12 @@ def main() -> None:
             ("SigProbeSetup", 1, 8, 1.0, 1.0, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
         )
     except Exception as e:
-        results["attempts"].append({
-            "label": "SetupSheet5(attr)",
-            "error": f"{type(e).__name__}: {e}",
-        })
+        results["attempts"].append(
+            {
+                "label": "SetupSheet5(attr)",
+                "error": f"{type(e).__name__}: {e}",
+            }
+        )
 
     # Close
     try:
@@ -166,7 +173,9 @@ def main() -> None:
     ok_count = sum(1 for a in results["attempts"] if a["ok"])
     print(f"OK: {ok_count}/{len(results['attempts'])}")
     for a in results["attempts"]:
-        print(f"  {'PASS' if a['ok'] else 'FAIL'} {a['label']}: {a.get('error') or ('ok=' + str(a.get('ok')))}")
+        print(
+            f"  {'PASS' if a['ok'] else 'FAIL'} {a['label']}: {a.get('error') or ('ok=' + str(a.get('ok')))}"
+        )
 
 
 if __name__ == "__main__":

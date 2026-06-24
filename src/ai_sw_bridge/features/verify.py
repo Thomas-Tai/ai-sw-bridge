@@ -119,7 +119,8 @@ def bodies(doc: Any, body_type: int, visible_only: bool) -> list[Any] | None:
     """
     try:
         src = (
-            doc if hasattr(doc, "GetBodies2")
+            doc
+            if hasattr(doc, "GetBodies2")
             else typed(doc, "IPartDoc", module=wrapper_module())
         )
         result = src.GetBodies2(body_type, visible_only)
@@ -634,9 +635,7 @@ def gate_boolean_intersect(
     to true disjoint volume; for the canonical 2-box fixture Δvol = −overlap).
     A silent no-op leaves both unchanged and fails closed.
     """
-    return node_materialized and (
-        d_solid_count != 0 or abs(d_vol_mm3) > VOL_EPS_MM3
-    )
+    return node_materialized and (d_solid_count != 0 or abs(d_vol_mm3) > VOL_EPS_MM3)
 
 
 def gate_curve(d_nodes: int, total_len_mm: float | None) -> bool:

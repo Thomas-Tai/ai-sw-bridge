@@ -33,7 +33,9 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # _feature_spike_fixtures
 
-RESULTS_PATH = Path(__file__).resolve().parents[1] / "_results" / "probe_refgeo_siblings_oop.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[1] / "_results" / "probe_refgeo_siblings_oop.json"
+)
 
 import pythoncom  # noqa: E402
 from win32com.client import VARIANT  # noqa: E402
@@ -146,7 +148,10 @@ def _probe_ref_point(sw: Any) -> dict[str, Any]:
 
 def _probe_ref_plane_normal_to_edge(sw: Any) -> dict[str, Any]:
     """D: _create_ref_plane normal-to-edge via durable edge_ref."""
-    out: dict[str, Any] = {"handler": "_create_ref_plane", "path": "normal-to-edge edge_ref"}
+    out: dict[str, Any] = {
+        "handler": "_create_ref_plane",
+        "path": "normal-to-edge edge_ref",
+    }
     doc = build_block(sw)
     try:
         before = _count_nodes(doc)
@@ -188,7 +193,9 @@ def _probe_ref_plane_normal_to_edge(sw: Any) -> dict[str, Any]:
 
 def _probe_select_entity(sw: Any) -> dict[str, Any]:
     """E: select_entity() directly on a live face — the shared mechanism."""
-    out: dict[str, Any] = {"mechanism": "select_entity -> IEntity.Select2 (callout-free)"}
+    out: dict[str, Any] = {
+        "mechanism": "select_entity -> IEntity.Select2 (callout-free)"
+    }
     doc = build_block(sw)
     try:
         face = _pick(doc, "FACE", BOX_W_M / 2, 0.0, BOX_D_M / 2)

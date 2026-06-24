@@ -65,10 +65,12 @@ def _legacy_spec(**overrides: Any) -> dict[str, Any]:
 class TestMultiSheetSchema:
     def test_accepts_two_sheets(self) -> None:
         import jsonschema
+
         jsonschema.validate(_multi_sheet_spec(), DRAWING_SPEC_SCHEMA)
 
     def test_accepts_single_sheet_array(self) -> None:
         import jsonschema
+
         jsonschema.validate(
             _multi_sheet_spec(sheets=[{"views": ["front"]}]),
             DRAWING_SPEC_SCHEMA,
@@ -76,13 +78,13 @@ class TestMultiSheetSchema:
 
     def test_rejects_empty_sheets_array(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
-            jsonschema.validate(
-                _multi_sheet_spec(sheets=[]), DRAWING_SPEC_SCHEMA
-            )
+            jsonschema.validate(_multi_sheet_spec(sheets=[]), DRAWING_SPEC_SCHEMA)
 
     def test_rejects_sheet_without_views(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _multi_sheet_spec(
@@ -93,12 +95,12 @@ class TestMultiSheetSchema:
 
     def test_rejects_unknown_template_size(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _multi_sheet_spec(
                     sheets=[
-                        {"name": "A", "views": ["front"],
-                         "template_size": "LETTER"}
+                        {"name": "A", "views": ["front"], "template_size": "LETTER"}
                     ]
                 ),
                 DRAWING_SPEC_SCHEMA,
@@ -106,6 +108,7 @@ class TestMultiSheetSchema:
 
     def test_rejects_unknown_view_string(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _multi_sheet_spec(sheets=[{"views": ["front", "xray"]}]),
@@ -114,18 +117,18 @@ class TestMultiSheetSchema:
 
     def test_rejects_unknown_extra_key_on_sheet(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _multi_sheet_spec(
-                    sheets=[
-                        {"views": ["front"], "orientation": "landscape"}
-                    ]
+                    sheets=[{"views": ["front"], "orientation": "landscape"}]
                 ),
                 DRAWING_SPEC_SCHEMA,
             )
 
     def test_legacy_views_still_accepted(self) -> None:
         import jsonschema
+
         jsonschema.validate(_legacy_spec(), DRAWING_SPEC_SCHEMA)
 
 
@@ -135,41 +138,29 @@ class TestMultiSheetSchema:
 class TestMultiSheetValidatorMode:
     def test_rejects_both_modes_set(self) -> None:
         with pytest.raises(ValueError, match="mutually exclusive"):
-            validate_drawing_spec(
-                _multi_sheet_spec(views=["front"])
-            )
+            validate_drawing_spec(_multi_sheet_spec(views=["front"]))
 
     def test_rejects_neither_mode(self) -> None:
         with pytest.raises(ValueError, match="must declare"):
-            validate_drawing_spec(
-                {"kind": "drawing", "name": "x", "model": "x.sldasm"}
-            )
+            validate_drawing_spec({"kind": "drawing", "name": "x", "model": "x.sldasm"})
 
     def test_rejects_sheet_key_with_sheets_array(self) -> None:
         with pytest.raises(ValueError, match="sheet"):
-            validate_drawing_spec(
-                _multi_sheet_spec(sheet={"template_size": "A3"})
-            )
+            validate_drawing_spec(_multi_sheet_spec(sheet={"template_size": "A3"}))
 
     def test_rejects_top_level_dimensions_with_sheets(self) -> None:
         with pytest.raises(ValueError, match="dimensions"):
-            validate_drawing_spec(
-                _multi_sheet_spec(dimensions=True)
-            )
+            validate_drawing_spec(_multi_sheet_spec(dimensions=True))
 
     def test_rejects_top_level_bom_with_sheets(self) -> None:
         with pytest.raises(ValueError, match="bom"):
-            validate_drawing_spec(
-                _multi_sheet_spec(bom=True)
-            )
+            validate_drawing_spec(_multi_sheet_spec(bom=True))
 
     def test_rejects_empty_sheets_array(self) -> None:
         # Schema rejects this too, but the validator provides a clear message
         # if the schema layer is bypassed.
         with pytest.raises(ValueError, match="sheets"):
-            validate_drawing_spec(
-                _multi_sheet_spec(sheets=[])
-            )
+            validate_drawing_spec(_multi_sheet_spec(sheets=[]))
 
     def test_rejects_duplicate_sheet_names(self) -> None:
         with pytest.raises(ValueError, match="duplicates"):
@@ -184,9 +175,7 @@ class TestMultiSheetValidatorMode:
 
     def test_accepts_unnamed_sheets(self) -> None:
         validate_drawing_spec(
-            _multi_sheet_spec(
-                sheets=[{"views": ["front"]}, {"views": ["top"]}]
-            )
+            _multi_sheet_spec(sheets=[{"views": ["front"]}, {"views": ["top"]}])
         )
 
 
@@ -253,9 +242,7 @@ class TestMultiSheetViewValidation:
     def test_rejects_unknown_view_in_sheet(self) -> None:
         with pytest.raises(ValueError, match="unknown view"):
             validate_drawing_spec(
-                _multi_sheet_spec(
-                    sheets=[{"views": ["front", "xray"]}]
-                )
+                _multi_sheet_spec(sheets=[{"views": ["front", "xray"]}])
             )
 
     def test_bom_on_part_rejected_per_sheet(self) -> None:
@@ -277,9 +264,7 @@ class TestMultiSheetViewValidation:
 
 class TestNormalizeSheets:
     def test_legacy_mode_returns_one_sheet(self) -> None:
-        sheets = _normalize_sheets(
-            _legacy_spec(sheet={"template_size": "A2"})
-        )
+        sheets = _normalize_sheets(_legacy_spec(sheet={"template_size": "A2"}))
         assert len(sheets) == 1
         assert sheets[0]["name"] is None
         assert sheets[0]["template_size"] == "A2"
@@ -305,9 +290,7 @@ class TestNormalizeSheets:
         assert sheets[1]["views"] == ["front"]
 
     def test_multisheet_fills_defaults(self) -> None:
-        sheets = _normalize_sheets(
-            _multi_sheet_spec(sheets=[{"views": ["front"]}])
-        )
+        sheets = _normalize_sheets(_multi_sheet_spec(sheets=[{"views": ["front"]}]))
         assert sheets[0]["name"] is None
         assert sheets[0]["template_size"] is None
         assert sheets[0]["dimensions"] is False
@@ -334,6 +317,9 @@ class TestDryRunMultiSheet:
         result = dry_run_drawing(_legacy_spec(model=str(model)))
         assert result["ok"] is True
         assert result["views_requested"] == [
-            "front", "top", "right", "isometric",
+            "front",
+            "top",
+            "right",
+            "isometric",
         ]
         assert "sheets_requested" not in result

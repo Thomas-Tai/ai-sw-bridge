@@ -32,44 +32,44 @@ from .face_resolver import resolve_component_face
 # Phase-2 values (CONCENTRIC, PERPENDICULAR, PARALLEL, DISTANCE) are from
 # SolidWorks API documentation and will be empirically verified during PAE.
 MATE_TYPE_ENUMS = {
-    "coincident": 0,       # swMateCOINCIDENT (Phase-1 anchor)
-    "concentric": 1,       # swMateCONCENTRIC
-    "perpendicular": 2,    # swMatePERPENDICULAR
-    "parallel": 3,         # swMatePARALLEL
-    "tangent": 4,          # swMateTANGENT (not in Phase-2 scope)
-    "distance": 5,         # swMateDISTANCE
-    "angle": 6,            # swMateANGLE (not in Phase-2 scope)
-    "width": 11,           # swMateWIDTH (two-reference-set, W12)
+    "coincident": 0,  # swMateCOINCIDENT (Phase-1 anchor)
+    "concentric": 1,  # swMateCONCENTRIC
+    "perpendicular": 2,  # swMatePERPENDICULAR
+    "parallel": 3,  # swMatePARALLEL
+    "tangent": 4,  # swMateTANGENT (not in Phase-2 scope)
+    "distance": 5,  # swMateDISTANCE
+    "angle": 6,  # swMateANGLE (not in Phase-2 scope)
+    "width": 11,  # swMateWIDTH (two-reference-set, W12)
     # Mechanical/kinematic mates (W46 Tier-1) — typelib-verified from
     # swconst.tlb v32 (NOT API-doc guesses: gear was 10 not the doc's 12;
     # 12=LOCKTOSKETCH would silently misfire).
-    "gear": 10,            # swMateGEAR
+    "gear": 10,  # swMateGEAR
     # NOTE: screw (swMateSCREW=17) is FROZEN — the pitch parameter is not
     # controllable out-of-process (clamps to the 1 mm kernel default via all
     # three characterized paths). See docs/DEFERRED.md "W46 screw mate".
     # Mechanical mates (W47 Tier-2) — asymmetric reference sets, typelib-verified.
-    "rackpinion": 13,      # swMateRACKPINION
-    "camfollower": 9,      # swMateCAMFOLLOWER
+    "rackpinion": 13,  # swMateRACKPINION
+    "camfollower": 9,  # swMateCAMFOLLOWER
     # Mechanical mates (W48 Tier-3) — limit/compound, typelib-verified (v32).
-    "slot": 21,            # swMateSLOT
-    "hinge": 22,           # swMateHINGE
+    "slot": 21,  # swMateSLOT
+    "hinge": 22,  # swMateHINGE
     # Advanced mates (W75) — vanguard pair, probe-cracked + reopen-proven.
-    "symmetric": 8,        # swMateSYMMETRIC
+    "symmetric": 8,  # swMateSYMMETRIC
     "profile_center": 24,  # swMatePROFILECENTER
     # Mechanical linkage (W75b) — couples two translations; faithful ratio.
     "linear_coupler": 18,  # swMateLINEARCOUPLER
 }
 
 # swRackPinionMateDistanceOptions_e (swconst.tlb): gates how DiameterVal reads.
-_RP_PINION_PITCH_DIA = 0     # swPinionPitchDiameter
+_RP_PINION_PITCH_DIA = 0  # swPinionPitchDiameter
 _RP_RACK_TRAVEL_PER_REV = 1  # swRackTravelPerRevolution
 
 # swSlotMateConstraintOptions_e (swconst.tlb v32) — the slot's positional mode.
 _SLOT_CONSTRAINT_ENUMS = {
-    "free": 0,       # swSlotMateConstraintOption_Free
-    "centered": 1,   # swSlotMateConstraintOption_Centered
-    "distance": 2,   # swSlotMateConstraintOption_Distance
-    "percent": 3,    # swSlotMateConstraintOption_Percent
+    "free": 0,  # swSlotMateConstraintOption_Free
+    "centered": 1,  # swSlotMateConstraintOption_Centered
+    "distance": 2,  # swSlotMateConstraintOption_Distance
+    "percent": 3,  # swSlotMateConstraintOption_Percent
 }
 
 # swHingeMateEntityType_e (swconst.tlb v32) — the hinge's EntitiesToMate PROPPUT
@@ -131,8 +131,12 @@ def _resolve_symmetry_plane(asm_doc: Any, plane_name: Any) -> Any | None:
 
 
 def _rpy_to_transform(
-    roll_deg: float, pitch_deg: float, yaw_deg: float,
-    tx_m: float, ty_m: float, tz_m: float,
+    roll_deg: float,
+    pitch_deg: float,
+    yaw_deg: float,
+    tx_m: float,
+    ty_m: float,
+    tz_m: float,
 ) -> list[float]:
     """Build 16-element SW IMathTransform array: R = Rz . Ry . Rx, row-major.
 
@@ -149,11 +153,22 @@ def _rpy_to_transform(
     cz, sz = math.cos(rz), math.sin(rz)
 
     return [
-        cz * cy, cz * sy * sx - sz * cx, cz * sy * cx + sz * sx,
-        sz * cy, sz * sy * sx + cz * cx, sz * sy * cx - cz * sx,
-        -sy,     cy * sx,               cy * cx,
-        tx_m, ty_m, tz_m,
-        1.0, 0.0, 0.0, 0.0,
+        cz * cy,
+        cz * sy * sx - sz * cx,
+        cz * sy * cx + sz * sx,
+        sz * cy,
+        sz * sy * sx + cz * cx,
+        sz * sy * cx - cz * sx,
+        -sy,
+        cy * sx,
+        cy * cx,
+        tx_m,
+        ty_m,
+        tz_m,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
     ]
 
 
@@ -251,12 +266,14 @@ def place_components(
             try:
                 mu = typed(sw.GetMathUtility, "IMathUtility", module=mod)
                 arr = _rpy_to_transform(
-                    float(rpy[0]), float(rpy[1]), float(rpy[2]),
-                    x_m, y_m, z_m,
+                    float(rpy[0]),
+                    float(rpy[1]),
+                    float(rpy[2]),
+                    x_m,
+                    y_m,
+                    z_m,
                 )
-                varr = w32.VARIANT(
-                    pythoncom.VT_ARRAY | pythoncom.VT_R8, tuple(arr)
-                )
+                varr = w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, tuple(arr))
                 xform = mu.CreateTransform(varr)
                 comp_typed = typed_qi(comp, "IComponent2", module=mod)
                 comp_typed.Transform2 = xform
@@ -297,9 +314,7 @@ def _create_width_mate(
             comp = placed.get(cid)
             if comp is None:
                 return [], f"{label}[{j}]: component {cid!r} not placed"
-            resolution = resolve_component_face(
-                asm_doc, comp, ref["face_ref"], mod=mod
-            )
+            resolution = resolve_component_face(asm_doc, comp, ref["face_ref"], mod=mod)
             if not resolution.ok:
                 return [], (
                     f"{label}[{j}]: face unresolved on {cid!r} "
@@ -321,9 +336,7 @@ def _create_width_mate(
         if mate_data is None:
             return None, "CreateMateData(11) returned None"
 
-        w_iface = typed_qi(
-            mate_data, "IWidthMateFeatureData", module=mod
-        )
+        w_iface = typed_qi(mate_data, "IWidthMateFeatureData", module=mod)
 
         width_arr = w32.VARIANT(
             pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
@@ -377,6 +390,7 @@ def _create_linear_coupler_mate(
     Ratio round-trips FAITHFULLY (probe-proven: no gear-style transpose), so the
     setters are 1:1.  ``reverse`` flips the coupled direction.
     """
+
     def _resolve_side(side: str) -> tuple[Any, Any, str | None]:
         ref = mate_spec[side]
         cid = ref["component"]
@@ -385,10 +399,14 @@ def _create_linear_coupler_mate(
             return None, None, f"{side}: component {cid!r} not placed"
         resolution = resolve_component_face(asm_doc, comp, ref["face_ref"], mod=mod)
         if not resolution.ok:
-            return None, None, (
-                f"{side}: entity unresolved on {cid!r} (method="
-                f"{resolution.method}, error={resolution.error}) — linear_coupler "
-                f"needs a LINEAR entity (e.g. face_ref {{\"linear_edge\": true}})"
+            return (
+                None,
+                None,
+                (
+                    f"{side}: entity unresolved on {cid!r} (method="
+                    f"{resolution.method}, error={resolution.error}) — linear_coupler "
+                    f'needs a LINEAR entity (e.g. face_ref {{"linear_edge": true}})'
+                ),
             )
         return resolution.entity, comp, None
 
@@ -466,9 +484,7 @@ def _create_hinge_mate(
             comp = placed.get(cid)
             if comp is None:
                 return [], f"{label}[{j}]: component {cid!r} not placed"
-            resolution = resolve_component_face(
-                asm_doc, comp, ref["face_ref"], mod=mod
-            )
+            resolution = resolve_component_face(asm_doc, comp, ref["face_ref"], mod=mod)
             if not resolution.ok:
                 return [], (
                     f"{label}[{j}]: face unresolved on {cid!r} "
@@ -908,9 +924,8 @@ def verify_mates(
                     pass
 
             # Solved = not suppressed AND (no error flag OR error_code == 0)
-            mate_result["solved"] = (
-                not mate_result["suppressed"]
-                and (not has_error or mate_result["error_code"] == 0)
+            mate_result["solved"] = not mate_result["suppressed"] and (
+                not has_error or mate_result["error_code"] == 0
             )
 
             results.append(mate_result)
@@ -998,9 +1013,7 @@ def mirror_components(
         raw_plane = plane_entity._oleobj_
         raw_comp = comp._oleobj_
 
-        comp_array = VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (raw_comp,)
-        )
+        comp_array = VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (raw_comp,))
 
         name_modifier = pat.get("name_modifier", 0)
 
@@ -1124,9 +1137,7 @@ def create_exploded_view(
         direction = step_spec.get("direction", "front")
         plane_name = _DIRECTION_TO_PLANE.get(direction)
         if plane_name is None:
-            return step_count, (
-                f"step[{i}]: unknown direction {direction!r}"
-            )
+            return step_count, (f"step[{i}]: unknown direction {direction!r}")
 
         dist_mm = step_spec.get("distance_mm", 50.0)
         dist_m = float(dist_mm) / 1000.0
@@ -1147,20 +1158,14 @@ def create_exploded_view(
                 f"step[{i}]: Select2 failed on {comp_ids[0]!r}: {exc!r}"
             )
         if not sel_ok:
-            return step_count, (
-                f"step[{i}]: Select2 returned False on {comp_ids[0]!r}"
-            )
+            return step_count, (f"step[{i}]: Select2 returned False on {comp_ids[0]!r}")
 
         # Append direction reference plane with mark=0
         dir_ref = f"{plane_name}@{asm_name}"
         try:
-            sel_dir = model_ext.SelectByID2(
-                dir_ref, "PLANE", 0, 0, 0, True, 0, None, 0
-            )
+            sel_dir = model_ext.SelectByID2(dir_ref, "PLANE", 0, 0, 0, True, 0, None, 0)
         except Exception as exc:
-            return step_count, (
-                f"step[{i}]: SelectByID2({dir_ref!r}) raised: {exc!r}"
-            )
+            return step_count, (f"step[{i}]: SelectByID2({dir_ref!r}) raised: {exc!r}")
 
         # Verify 2-entity selection
         try:
@@ -1175,18 +1180,12 @@ def create_exploded_view(
 
         # Create explode step
         try:
-            step = typed_config.AddExplodeStep(
-                dist_m, reverse, False, False
-            )
+            step = typed_config.AddExplodeStep(dist_m, reverse, False, False)
         except Exception as exc:
-            return step_count, (
-                f"step[{i}]: AddExplodeStep raised: {exc!r}"
-            )
+            return step_count, (f"step[{i}]: AddExplodeStep raised: {exc!r}")
 
         if step is None or step == 0:
-            return step_count, (
-                f"step[{i}]: AddExplodeStep returned None/0"
-            )
+            return step_count, (f"step[{i}]: AddExplodeStep returned None/0")
 
         step_count += 1
 

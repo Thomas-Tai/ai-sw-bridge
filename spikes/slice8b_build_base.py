@@ -1,4 +1,5 @@
 """Build the BASE part (pre-built, not via lifecycle) for slice-8b PAE."""
+
 import json
 import os
 import sys
@@ -53,6 +54,7 @@ if os.path.isfile(SAVE_TO):
 
     # Open the part and capture manifest
     from ai_sw_bridge.sw_com import get_sw_app
+
     sw = get_sw_app()
     doc = sw.OpenDoc6(SAVE_TO, 1, 1, "", 0, "")[0]  # 1=part doc
     if doc is None:
@@ -64,8 +66,10 @@ if os.path.isfile(SAVE_TO):
         faces = manifest.faces
         print(f"\nManifest captured: {len(faces)} faces")
         for i, face in enumerate(faces):
-            print(f"  Face {i}: normal={face.get('normal')}, centroid={face.get('centroid')}, "
-                  f"fingerprint={face.get('fingerprint')[:12]}..., area={face.get('area_mm2'):.1f}mm2")
+            print(
+                f"  Face {i}: normal={face.get('normal')}, centroid={face.get('centroid')}, "
+                f"fingerprint={face.get('fingerprint')[:12]}..., area={face.get('area_mm2'):.1f}mm2"
+            )
 
         # Save manifest for reference
         manifest_path = SAVE_TO.replace(".SLDPRT", "_manifest.json")

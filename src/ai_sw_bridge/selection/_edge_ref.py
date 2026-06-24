@@ -22,6 +22,7 @@ import base64
 from dataclasses import dataclass
 from typing import Any
 
+
 def _b64_decode(s: str) -> bytes:
     pad = "=" * (-len(s) % 4)
     return base64.urlsafe_b64decode(s + pad)

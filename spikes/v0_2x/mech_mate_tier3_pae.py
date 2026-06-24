@@ -17,6 +17,7 @@ direction, two cylinders for the hinge). Reuses the Tier-1/2/3 spike helpers.
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/mech_mate_tier3_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -69,8 +70,9 @@ def _slot_leg(sw: Any, mod: Any) -> dict[str, Any]:
     if "error" in plate or "error" in pin:
         r["error"] = plate.get("error") or pin.get("error")
         return r
-    ctx = _place(sw, mod, [("plate", plate["path"], [0, 0, 0]),
-                           ("pin", pin["path"], [0, 0, 40])])
+    ctx = _place(
+        sw, mod, [("plate", plate["path"], [0, 0, 0]), ("pin", pin["path"], [0, 0, 40])]
+    )
     if "error" in ctx:
         r["error"] = ctx["error"]
         return r
@@ -90,14 +92,12 @@ def _slot_leg(sw: Any, mod: Any) -> dict[str, Any]:
     if int(typed(ctx["asm"], "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0)) != 0:
         r["error"] = "SAVE_FAILED"
         return r
-    rb = t2._read_back(sw, mod, asm_path, "ISlotMateFeatureData",
-                       ("Constraint", "MateAlignment"))
+    rb = t2._read_back(
+        sw, mod, asm_path, "ISlotMateFeatureData", ("Constraint", "MateAlignment")
+    )
     r["persist"] = rb
     vals = rb.get("read_back", {})
-    r["ok"] = (
-        "Slot" in rb.get("mate_feature_type", "")
-        and vals.get("Constraint") == 1
-    )
+    r["ok"] = "Slot" in rb.get("mate_feature_type", "") and vals.get("Constraint") == 1
     r["verdict"] = "GREEN" if r["ok"] else "NO-GO"
     return r
 
@@ -109,8 +109,7 @@ def _hinge_leg(sw: Any, mod: Any) -> dict[str, Any]:
     if "error" in a or "error" in b:
         r["error"] = a.get("error") or b.get("error")
         return r
-    ctx = _place(sw, mod, [("a", a["path"], [0, 0, 0]),
-                           ("b", b["path"], [0, 0, 40])])
+    ctx = _place(sw, mod, [("a", a["path"], [0, 0, 0]), ("b", b["path"], [0, 0, 40])])
     if "error" in ctx:
         r["error"] = ctx["error"]
         return r
@@ -138,13 +137,15 @@ def _hinge_leg(sw: Any, mod: Any) -> dict[str, Any]:
     if int(typed(ctx["asm"], "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0)) != 0:
         r["error"] = "SAVE_FAILED"
         return r
-    rb = t2._read_back(sw, mod, asm_path, "IHingeMateFeatureData",
-                       ("Angle", "MaxVal", "MinVal", "MateAlignment"))
-    r["persist"] = rb
-    r["ok"] = (
-        "Hinge" in rb.get("mate_feature_type", "")
-        and "read_back" in rb
+    rb = t2._read_back(
+        sw,
+        mod,
+        asm_path,
+        "IHingeMateFeatureData",
+        ("Angle", "MaxVal", "MinVal", "MateAlignment"),
     )
+    r["persist"] = rb
+    r["ok"] = "Hinge" in rb.get("mate_feature_type", "") and "read_back" in rb
     r["verdict"] = "GREEN" if r["ok"] else "NO-GO"
     return r
 

@@ -76,7 +76,9 @@ def _curve_length_mm(node: Any) -> float | None:
 
 
 def create_spiral(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Insert a flat spiral reference curve on a pre-selected sketch circle.
 
@@ -127,7 +129,15 @@ def create_spiral(
     try:
         null_callout = VARIANT(pythoncom.VT_DISPATCH, None)
         sel_ok = _latebound(doc.Extension).SelectByID2(
-            sketch, "SKETCH", 0.0, 0.0, 0.0, False, 0, null_callout, 0,
+            sketch,
+            "SKETCH",
+            0.0,
+            0.0,
+            0.0,
+            False,
+            0,
+            null_callout,
+            0,
         )
         if not sel_ok:
             return False, f"could not select sketch {sketch!r}"
@@ -137,16 +147,16 @@ def create_spiral(
     # InsertHelix in SPIRAL mode: ConstantPitch=False (arg 1) + DefinedBy=3.
     try:
         ldoc.InsertHelix(
-            False,                          # ConstantPitch — MUST be False for spiral
-            False,                          # Reverse
-            False,                          # Dimension
-            clockwise,                      # Clockwise
-            _SW_HELIX_DEFINED_BY_SPIRAL,    # DefinedBy = 3 (spiral)
-            pitch_m,                        # Pitch (m) — radial growth per rev
-            revolutions,                    # Revolution
-            height_m,                       # Height (m) — ignored for spiral
-            start_angle_rad,                # StartAngle (rad)
-            0.0,                            # Diameter (0 = use sketch circle)
+            False,  # ConstantPitch — MUST be False for spiral
+            False,  # Reverse
+            False,  # Dimension
+            clockwise,  # Clockwise
+            _SW_HELIX_DEFINED_BY_SPIRAL,  # DefinedBy = 3 (spiral)
+            pitch_m,  # Pitch (m) — radial growth per rev
+            revolutions,  # Revolution
+            height_m,  # Height (m) — ignored for spiral
+            start_angle_rad,  # StartAngle (rad)
+            0.0,  # Diameter (0 = use sketch circle)
         )
     except Exception as e:  # noqa: BLE001
         return False, f"InsertHelix (spiral) raised: {e}"

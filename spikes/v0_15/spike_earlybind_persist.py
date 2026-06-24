@@ -177,7 +177,11 @@ def run() -> dict[str, Any]:
     }
     result["read"] = read
     if pid is None:
-        return {"overall": "FAIL", "reason": "GetPersistReference3 returned None", **result}
+        return {
+            "overall": "FAIL",
+            "reason": "GetPersistReference3 returned None",
+            **result,
+        }
 
     rebuilt = True
     try:
@@ -212,29 +216,40 @@ def run() -> dict[str, Any]:
 
     if resolved and resolve.get("selectable") is True:
         overall = "PASS"
-        interp = ("EARLY binding clears the OUT-param wall: persist write-back "
-                  "resolves the entity (errCode=0) AND it is selectable, after a "
-                  "rebuild. Durable selection is viable out-of-process in Python "
-                  "via typed-interface wrappers; no in-process .NET add-in needed.")
+        interp = (
+            "EARLY binding clears the OUT-param wall: persist write-back "
+            "resolves the entity (errCode=0) AND it is selectable, after a "
+            "rebuild. Durable selection is viable out-of-process in Python "
+            "via typed-interface wrappers; no in-process .NET add-in needed."
+        )
     elif resolved:
         overall = "PASS"
-        interp = ("EARLY binding clears the OUT-param wall: write-back resolves "
-                  "the entity (errCode=0). Selectability via typed IEntity needs "
-                  "the same direct-wrap; not a binding blocker.")
+        interp = (
+            "EARLY binding clears the OUT-param wall: write-back resolves "
+            "the entity (errCode=0). Selectability via typed IEntity needs "
+            "the same direct-wrap; not a binding blocker."
+        )
     else:
         overall = "FAIL"
-        interp = ("write-back returned no object even under early binding -> the "
-                  "wall is the API, not the marshaler; in-process is the path.")
+        interp = (
+            "write-back returned no object even under early binding -> the "
+            "wall is the API, not the marshaler; in-process is the path."
+        )
     result["overall"] = overall
     result["interpretation"] = interp
     return result
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--out", type=Path, default=None,
-                   help="Write JSON report to this path instead of stdout.")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Write JSON report to this path instead of stdout.",
+    )
     args = p.parse_args()
 
     pythoncom.CoInitialize()

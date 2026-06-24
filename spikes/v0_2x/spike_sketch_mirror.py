@@ -41,7 +41,9 @@ def main() -> int:
     try:
         register(OP)
         doc = fx.new_part(sw)
-        sketch, n0, ents, cl = fx.build_mirror_seed_sketch(doc)  # ("Sketch1", 3, [1,2], 0)
+        sketch, n0, ents, cl = fx.build_mirror_seed_sketch(
+            doc
+        )  # ("Sketch1", 3, [1,2], 0)
         params = {"entities": ents, "centerline": cl}
         res = apply_sketch_edit(doc, sketch, "sketch_mirror", params)
 
@@ -53,11 +55,7 @@ def main() -> int:
         verdict = (
             "PASS"
             if (res["ok"] and delta_ok and survived)
-            else (
-                "NO_OP"
-                if res["call_ok"] and res["segment_delta"] == 0
-                else "FAIL"
-            )
+            else ("NO_OP" if res["call_ok"] and res["segment_delta"] == 0 else "FAIL")
         )
         print(
             json.dumps(

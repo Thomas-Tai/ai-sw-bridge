@@ -215,15 +215,31 @@ def test_up_to_surface_rejects_forward_target_ref() -> None:
         "schema_version": 1,
         "name": "ForwardTargetSpec",
         "features": [
-            {"type": "sketch_circle_on_plane", "name": "SK_A",
-             "plane": "Front", "diameter": 25.0},
-            {"type": "sketch_circle_on_plane", "name": "SK_B",
-             "plane": "Front", "diameter": 10.0},
+            {
+                "type": "sketch_circle_on_plane",
+                "name": "SK_A",
+                "plane": "Front",
+                "diameter": 25.0,
+            },
+            {
+                "type": "sketch_circle_on_plane",
+                "name": "SK_B",
+                "plane": "Front",
+                "diameter": 10.0,
+            },
             # UpBoss references EX_A, declared AFTER it -> forward target_ref.
-            {"type": "boss_extrude_up_to_surface", "name": "UpBoss",
-             "sketch": "SK_B", "target_ref": {"of_feature": "EX_A", "face": "+z"}},
-            {"type": "boss_extrude_blind", "name": "EX_A",
-             "sketch": "SK_A", "depth": 10.0},
+            {
+                "type": "boss_extrude_up_to_surface",
+                "name": "UpBoss",
+                "sketch": "SK_B",
+                "target_ref": {"of_feature": "EX_A", "face": "+z"},
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_A",
+                "sketch": "SK_A",
+                "depth": 10.0,
+            },
         ],
     }
     with pytest.raises(ValidationError) as exc:

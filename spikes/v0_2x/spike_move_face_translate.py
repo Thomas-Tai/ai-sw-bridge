@@ -55,12 +55,8 @@ sys.path.insert(0, str(_V15))
 WORKTREE = Path(__file__).resolve().parents[2]
 RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "move_face_translate.json"
 
-SLDWORKS_TLB = Path(
-    r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\sldworks.tlb"
-)
-SWCONST_TLB = Path(
-    r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\swconst.tlb"
-)
+SLDWORKS_TLB = Path(r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\sldworks.tlb")
+SWCONST_TLB = Path(r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\swconst.tlb")
 
 SW_DEFAULT_TEMPLATE_PART = 8
 
@@ -73,14 +69,33 @@ TRANSLATE_DX_M = 0.030
 COPY_OFFSET_X_M = 0.060
 
 VT_MAP = {
-    0: "VT_EMPTY", 2: "VT_I2", 3: "VT_I4", 4: "VT_R4", 5: "VT_R8",
-    6: "VT_CY", 7: "VT_DATE", 8: "VT_BSTR", 9: "VT_DISPATCH",
-    10: "VT_ERROR", 11: "VT_BOOL", 12: "VT_VARIANT", 13: "VT_UNKNOWN",
-    16: "VT_I1", 17: "VT_UI1", 18: "VT_UI2", 19: "VT_UI4",
-    22: "VT_INT", 23: "VT_UINT", 24: "VT_VOID", 26: "VT_LPSTR",
+    0: "VT_EMPTY",
+    2: "VT_I2",
+    3: "VT_I4",
+    4: "VT_R4",
+    5: "VT_R8",
+    6: "VT_CY",
+    7: "VT_DATE",
+    8: "VT_BSTR",
+    9: "VT_DISPATCH",
+    10: "VT_ERROR",
+    11: "VT_BOOL",
+    12: "VT_VARIANT",
+    13: "VT_UNKNOWN",
+    16: "VT_I1",
+    17: "VT_UI1",
+    18: "VT_UI2",
+    19: "VT_UI4",
+    22: "VT_INT",
+    23: "VT_UINT",
+    24: "VT_VOID",
+    26: "VT_LPSTR",
 }
 INVKIND_NAMES = {
-    1: "FUNCTION", 2: "PROPERTYGET", 4: "PROPERTYPUT", 8: "PROPERTYPUTREF",
+    1: "FUNCTION",
+    2: "PROPERTYGET",
+    4: "PROPERTYPUT",
+    8: "PROPERTYPUTREF",
 }
 
 
@@ -157,21 +172,21 @@ def _walk_insert_move_face3(tlb: Any) -> dict[str, Any]:
                 params: list[dict[str, Any]] = []
                 for p_idx in range(len(fd.args) if fd.args else 0):
                     p_name = (
-                        param_names[p_idx]
-                        if p_idx < len(param_names)
-                        else f"p{p_idx}"
+                        param_names[p_idx] if p_idx < len(param_names) else f"p{p_idx}"
                     )
                     if fd.args and p_idx < len(fd.args):
                         arg = fd.args[p_idx]
                         tdesc = arg[0] if arg else None
                         flags = int(arg[1]) if arg and len(arg) > 1 else 0
                         default = arg[2] if arg and len(arg) > 2 else None
-                        params.append({
-                            "name": p_name,
-                            "type": _decode_tdesc(tdesc),
-                            "flags": _decode_param_flags(flags),
-                            "default": default,
-                        })
+                        params.append(
+                            {
+                                "name": p_name,
+                                "type": _decode_tdesc(tdesc),
+                                "flags": _decode_param_flags(flags),
+                                "default": default,
+                            }
+                        )
                     else:
                         params.append({"name": p_name, "type": "unknown"})
 
@@ -179,18 +194,21 @@ def _walk_insert_move_face3(tlb: Any) -> dict[str, Any]:
                 # `rettype` (a tuple, [0]=tdesc — same shape as args[i]).
                 ret_type = (
                     _decode_tdesc(fd.rettype[0])
-                    if isinstance(fd.rettype, tuple) else "unknown"
+                    if isinstance(fd.rettype, tuple)
+                    else "unknown"
                 )
                 invkind = INVKIND_NAMES.get(fd.invkind, str(fd.invkind))
 
-                matching.append({
-                    "name": mname,
-                    "memid": memid,
-                    "invkind": invkind,
-                    "cParams": (len(fd.args) if fd.args else 0),
-                    "return_type": ret_type,
-                    "params": params,
-                })
+                matching.append(
+                    {
+                        "name": mname,
+                        "memid": memid,
+                        "invkind": invkind,
+                        "cParams": (len(fd.args) if fd.args else 0),
+                        "return_type": ret_type,
+                        "params": params,
+                    }
+                )
             except Exception as exc:
                 matching.append({"error": f"f_idx={f_idx}: {exc!r}"})
 
@@ -256,14 +274,28 @@ def _sketch_rect_at(doc: Any, w: float, h: float, cx: float, cy: float) -> None:
 def _extrude(doc: Any, depth_m: float) -> Any:
     fm = doc.FeatureManager
     return fm.FeatureExtrusion3(
-        True, False, False,
-        0, 0,
-        depth_m, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        0, 0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        depth_m,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
         False,
     )
 
@@ -333,7 +365,8 @@ def _bbox_vol(bb: list[float]) -> float:
 
 
 def _bbox_deltas(
-    before: list[float], after: list[float],
+    before: list[float],
+    after: list[float],
 ) -> dict[str, float]:
     return {
         "dx_min_m": after[0] - before[0],
@@ -373,6 +406,7 @@ def _select_faces(doc: Any) -> dict[str, Any]:
     """
     from ai_sw_bridge.com.earlybind import typed
     from ai_sw_bridge.com.sw_type_info import wrapper_module
+
     mod = wrapper_module()
 
     # SINGLE +X FACE: moving ALL faces is degenerate (no reference geometry
@@ -390,7 +424,8 @@ def _select_faces(doc: Any) -> dict[str, Any]:
     except Exception as exc:
         return {"error": f"GetBodies2 failed: {exc!r}", "selected_count": 0}
     body_list = (
-        list(bodies) if isinstance(bodies, (list, tuple))
+        list(bodies)
+        if isinstance(bodies, (list, tuple))
         else [bodies] if bodies else []
     )
     if not body_list:
@@ -401,8 +436,7 @@ def _select_faces(doc: Any) -> dict[str, Any]:
     except Exception as exc:
         return {"error": f"GetFaces failed: {exc!r}", "selected_count": 0}
     face_list = (
-        list(faces) if isinstance(faces, (list, tuple))
-        else [faces] if faces else []
+        list(faces) if isinstance(faces, (list, tuple)) else [faces] if faces else []
     )
 
     target = None
@@ -411,19 +445,26 @@ def _select_faces(doc: Any) -> dict[str, Any]:
         try:
             gb = f.GetBox
             box = [float(v) for v in (gb() if callable(gb) else gb)]
-            is_plus_x = (abs(box[0] - part_xmax) < 1e-4
-                         and abs(box[3] - part_xmax) < 1e-4)
-            detail.append({"face_idx": i, "box_x": [box[0], box[3]],
-                           "is_plus_x": is_plus_x})
+            is_plus_x = (
+                abs(box[0] - part_xmax) < 1e-4 and abs(box[3] - part_xmax) < 1e-4
+            )
+            detail.append(
+                {"face_idx": i, "box_x": [box[0], box[3]], "is_plus_x": is_plus_x}
+            )
             if is_plus_x and target is None:
                 target = f
         except Exception as exc:
-            detail.append({"face_idx": i,
-                           "exception": f"{type(exc).__name__}: {exc!r}"[:120]})
+            detail.append(
+                {"face_idx": i, "exception": f"{type(exc).__name__}: {exc!r}"[:120]}
+            )
 
     if target is None:
-        return {"error": "could not identify +X face", "selected_count": 0,
-                "face_count": len(face_list), "detail": detail}
+        return {
+            "error": "could not identify +X face",
+            "selected_count": 0,
+            "face_count": len(face_list),
+            "detail": detail,
+        }
 
     try:
         doc.ClearSelection2(True)
@@ -432,17 +473,25 @@ def _select_faces(doc: Any) -> dict[str, Any]:
     try:
         ok = bool(typed(target, "IEntity", module=mod).Select2(False, 0))
     except Exception as exc:
-        return {"error": f"Select2 failed: {exc!r}", "selected_count": 0,
-                "detail": detail}
-    return {"selected_count": 1 if ok else 0, "face_count": len(face_list),
-            "target": "+X face", "detail": detail}
+        return {
+            "error": f"Select2 failed: {exc!r}",
+            "selected_count": 0,
+            "detail": detail,
+        }
+    return {
+        "selected_count": 1 if ok else 0,
+        "face_count": len(face_list),
+        "target": "+X face",
+        "detail": detail,
+    }
 
 
 # ── InsertMoveFace3 call builder ──────────────────────────────────────
 
 
 def _build_imf3_args(
-    sig: dict[str, Any], move_type_val: int,
+    sig: dict[str, Any],
+    move_type_val: int,
 ) -> list[Any]:
     """Build positional args for a TRANSLATE ``InsertMoveFace3`` call.
 
@@ -467,15 +516,16 @@ def _build_imf3_args(
     # VT-substring matching silently falls through to the default (the bug
     # that wrapped every scalar as VT_EMPTY → SW no-op). Names are exact.
     by_name: dict[str, Any] = {
-        "movetype": move_type_val,                                  # I4 (1=translate)
-        "reversedir": False,                                        # BOOL
-        "angle": 0.0,                                               # R8 (rotate only)
-        "distance": 0.0,                                            # R8
-        "translationparams": VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8,
-                                     [TRANSLATE_DX_M, 0.0, 0.0]),    # +30 mm X vector
-        "rotationparams": VARIANT(pythoncom.VT_EMPTY, None),        # unused for translate
-        "endconditiontype": 0,                                      # I4
-        "offsetdistance": 0.0,                                      # R8
+        "movetype": move_type_val,  # I4 (1=translate)
+        "reversedir": False,  # BOOL
+        "angle": 0.0,  # R8 (rotate only)
+        "distance": 0.0,  # R8
+        "translationparams": VARIANT(
+            pythoncom.VT_ARRAY | pythoncom.VT_R8, [TRANSLATE_DX_M, 0.0, 0.0]
+        ),  # +30 mm X vector
+        "rotationparams": VARIANT(pythoncom.VT_EMPTY, None),  # unused for translate
+        "endconditiontype": 0,  # I4
+        "offsetdistance": 0.0,  # R8
     }
     args: list[Any] = []
     for p in sig.get("params", []):
@@ -487,7 +537,9 @@ def _build_imf3_args(
 
 
 def _probe_move_face(
-    doc: Any, sig: dict[str, Any], move_type_val: int,
+    doc: Any,
+    sig: dict[str, Any],
+    move_type_val: int,
 ) -> dict[str, Any]:
     """Call InsertMoveFace3 with verified args and measure the effect."""
     out: dict[str, Any] = {}
@@ -510,9 +562,7 @@ def _probe_move_face(
         elapsed = (time.perf_counter() - t0) * 1000.0
         out["call_ok"] = False
         out["error"] = f"{type(exc).__name__}: {exc!r}"
-        out["hresult"] = (
-            f"{exc.hresult:#010x}" if hasattr(exc, "hresult") else None
-        )
+        out["hresult"] = f"{exc.hresult:#010x}" if hasattr(exc, "hresult") else None
         out["elapsed_ms"] = round(elapsed, 2)
 
     try:
@@ -605,8 +655,11 @@ def _fallback_sketch_offset(sw: Any) -> dict[str, Any]:
     if before_bb is None:
         out["error"] = "bbox unreadable on fresh fixture"
         return out
-    out["before"] = {"bbox": before_bb, "volume_mm3": before_vol,
-                     "body_count": before_n}
+    out["before"] = {
+        "bbox": before_bb,
+        "volume_mm3": before_vol,
+        "body_count": before_n,
+    }
 
     # Author the offset copy: rectangle centred at X=+OFFSET on Front Plane,
     # extruded in +Z by the box depth → an identical cube shifted +X.
@@ -629,8 +682,7 @@ def _fallback_sketch_offset(sw: Any) -> dict[str, Any]:
     after_bb = _get_bbox(doc)
     after_vol = _get_volume(doc)
     after_n = _solid_body_count(doc)
-    out["after"] = {"bbox": after_bb, "volume_mm3": after_vol,
-                    "body_count": after_n}
+    out["after"] = {"bbox": after_bb, "volume_mm3": after_vol, "body_count": after_n}
     if before_bb and after_bb:
         out["bbox_delta"] = _bbox_deltas(before_bb, after_bb)
     if before_vol is not None and after_vol is not None:
@@ -644,8 +696,12 @@ def _fallback_sketch_offset(sw: Any) -> dict[str, Any]:
     vol_ratio = (after_vol / before_vol) if (before_vol and after_vol) else None
     vol_ok = vol_ratio is not None and abs(vol_ratio - 2.0) < 0.02
     out["checks"] = {
-        "count_ok": count_ok, "xmax_ok": xmax_ok, "vol_ok": vol_ok,
-        "xmax_delta_mm": round(xmax_delta * 1000, 3) if xmax_delta is not None else None,
+        "count_ok": count_ok,
+        "xmax_ok": xmax_ok,
+        "vol_ok": vol_ok,
+        "xmax_delta_mm": (
+            round(xmax_delta * 1000, 3) if xmax_delta is not None else None
+        ),
         "vol_ratio": round(vol_ratio, 4) if vol_ratio is not None else None,
     }
     out["verdict"] = "GREEN" if (count_ok and xmax_ok and vol_ok) else "RED"
@@ -664,6 +720,7 @@ def run() -> dict[str, Any]:
     }
 
     import pythoncom
+
     try:
         pythoncom.CoInitialize()
     except Exception:
@@ -704,7 +761,8 @@ def run() -> dict[str, Any]:
                 break
     if translate_val is None:
         all_members = {
-            k: v for k, v in enum_report.items()
+            k: v
+            for k, v in enum_report.items()
             if k not in ("path", "loadable", "error")
         }
         output["translate_value_not_found"] = True
@@ -713,9 +771,7 @@ def run() -> dict[str, Any]:
             for k, v in all_members.items():
                 if isinstance(v, int) and v == 0:
                     translate_val = int(v)
-                    output["translate_fallback"] = (
-                        f"using {k}={v} (zero-valued member)"
-                    )
+                    output["translate_fallback"] = f"using {k}={v} (zero-valued member)"
                     break
     output["move_type_translate_value"] = translate_val
 
@@ -725,9 +781,7 @@ def run() -> dict[str, Any]:
         return output
     if translate_val is None:
         output["overall"] = "FAIL"
-        output["failure_point"] = (
-            "swMoveFaceType_e translate value not determinable"
-        )
+        output["failure_point"] = "swMoveFaceType_e translate value not determinable"
         return output
 
     from spike_earlybind_persist import connect_running_sw
@@ -745,8 +799,7 @@ def run() -> dict[str, Any]:
 
     print("=== W59 move_face_translate spike ===", file=sys.stderr)
     print(
-        f"  InsertMoveFace3: {sig.get('cParams')} params on "
-        f"{sig.get('interface')}",
+        f"  InsertMoveFace3: {sig.get('cParams')} params on " f"{sig.get('interface')}",
         file=sys.stderr,
     )
     print(
@@ -755,9 +808,7 @@ def run() -> dict[str, Any]:
     )
 
     build = _build_fixture(sw)
-    output["fixture"] = {
-        k: v for k, v in build.items() if k != "doc"
-    }
+    output["fixture"] = {k: v for k, v in build.items() if k != "doc"}
     if not build.get("built"):
         output["overall"] = "FAIL"
         output["failure_point"] = "fixture build failed"
@@ -807,10 +858,11 @@ def run() -> dict[str, Any]:
         output["reopen"] = {"bbox": reopen_bb, "volume_mm3": reopen_vol}
         if before_bb and reopen_bb:
             output["reopen_bbox_delta"] = _bbox_deltas(
-                before_bb, reopen_bb,
+                before_bb,
+                reopen_bb,
             )
 
-    dx_mm = (TRANSLATE_DX_M * 1000)
+    dx_mm = TRANSLATE_DX_M * 1000
     if before_bb and after_bb:
         deltas = _bbox_deltas(before_bb, after_bb)
         dx_actual = deltas["dx_max_m"]
@@ -821,8 +873,10 @@ def run() -> dict[str, Any]:
         )
 
         off_axis_max = max(
-            abs(deltas["dy_min_m"]), abs(deltas["dy_max_m"]),
-            abs(deltas["dz_min_m"]), abs(deltas["dz_max_m"]),
+            abs(deltas["dy_min_m"]),
+            abs(deltas["dy_max_m"]),
+            abs(deltas["dz_min_m"]),
+            abs(deltas["dz_max_m"]),
         )
         x_shift_ok = (
             abs(dx_actual - TRANSLATE_DX_M) < 0.001
@@ -880,9 +934,7 @@ def run() -> dict[str, Any]:
         if abs(re_dx - TRANSLATE_DX_M) < 0.001:
             output["persistence"] = "CONFIRMED"
         else:
-            output["persistence"] = (
-                f"LOST (reopen dx={re_dx * 1000:.2f} mm)"
-            )
+            output["persistence"] = f"LOST (reopen dx={re_dx * 1000:.2f} mm)"
     elif output.get("verdict") == "DEFORM":
         output["persistence"] = "N/A_DEFORM"
 
@@ -901,7 +953,8 @@ def _scrub(o: Any) -> Any:
 def main() -> int:
     result = run()
     payload = json.dumps(
-        _scrub(result), indent=2,
+        _scrub(result),
+        indent=2,
         default=lambda o: f"<{type(o).__name__}>",
     )
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -909,7 +962,10 @@ def main() -> int:
     print(f"wrote {RESULTS_PATH}", file=sys.stderr)
     print(payload)
     return {
-        "PASS": 0, "DEFORM": 2, "FAIL": 1, "UNKNOWN": 1,
+        "PASS": 0,
+        "DEFORM": 2,
+        "FAIL": 1,
+        "UNKNOWN": 1,
     }.get(result.get("overall"), 1)
 
 

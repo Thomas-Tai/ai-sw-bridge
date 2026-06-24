@@ -25,8 +25,18 @@ from typing import Any
 _SRC = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_SRC))
 
-RESULTS_PATH = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "drawing_table_cluster_pae.json"
-results: dict[str, Any] = {"pae": "w71_drawing_table_cluster", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"), "gates": {}}
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "drawing_table_cluster_pae.json"
+)
+results: dict[str, Any] = {
+    "pae": "w71_drawing_table_cluster",
+    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    "gates": {},
+}
 
 
 def gate(name: str, ok: bool, detail: str = "") -> bool:
@@ -37,11 +47,18 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 def _build_block(path: str) -> bool:
     from ai_sw_bridge.spec.builder import build as part_build
+
     spec = {
-        "schema_version": 1, "name": "W71_TblBlock",
+        "schema_version": 1,
+        "name": "W71_TblBlock",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "width": 60.0, "height": 40.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 60.0,
+                "height": 40.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
@@ -57,12 +74,24 @@ def _build_weldment(sw: Any, path: str, mod: Any) -> tuple[bool, str]:
     so the part carries a populated cut-list folder."""
     from ai_sw_bridge.com.earlybind import typed, typed_qi
     from ai_sw_bridge.spec.builder import build as part_build
+
     spec = {
-        "schema_version": 1, "name": "W71_Weldment",
+        "schema_version": 1,
+        "name": "W71_Weldment",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "width": 20.0, "height": 20.0},
-            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 120.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 20.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX",
+                "sketch": "SK",
+                "depth": 120.0,
+            },
         ],
     }
     r = part_build(spec, save_as=path, save_format="current", no_dim=True)
@@ -94,12 +123,17 @@ def _build_weldment(sw: Any, path: str, mod: Any) -> tuple[bool, str]:
         sw.CloseDoc(t)
     except Exception:
         pass
-    return weld_ok, ("weldment feature ok" if weld_ok else "InsertWeldmentFeature returned None")
+    return weld_ok, (
+        "weldment feature ok" if weld_ok else "InsertWeldmentFeature returned None"
+    )
 
 
-def _reopen_table_types(sw: Any, part_path: str, drw_path: str, mod: Any) -> dict[int, int]:
+def _reopen_table_types(
+    sw: Any, part_path: str, drw_path: str, mod: Any
+) -> dict[int, int]:
     """Reopen the drawing and tally table annotations by swTableAnnotationType_e."""
     from ai_sw_bridge.com.earlybind import typed, typed_qi
+
     tsw = typed(sw, "ISldWorks", module=mod)
     try:
         tsw.OpenDoc6(part_path, 1, 1, "", 0, 0)
@@ -162,8 +196,11 @@ def run() -> str:
 
     def _commit(part_path: str, drw_path: str, flags: dict) -> dict:
         spec = {
-            "kind": "drawing", "name": "tbl", "model": part_path,
-            "views": ["front", "top"], "sheet": {"template_size": "A2"},
+            "kind": "drawing",
+            "name": "tbl",
+            "model": part_path,
+            "views": ["front", "top"],
+            "sheet": {"template_size": "A2"},
             **flags,
         }
         dp = sw_propose_drawing(spec)
@@ -179,10 +216,16 @@ def run() -> str:
         return "WALL"
     dcA = _commit(block, drwA, {"revision_table": True, "general_table": True})
     gate("commit_A", dcA.get("ok", False), str(dcA.get("error") or ""))
-    gate("revision_inserted", dcA.get("revision_table_inserted") is True,
-         f"flag={dcA.get('revision_table_inserted')}")
-    gate("general_inserted", dcA.get("general_table_inserted") is True,
-         f"flag={dcA.get('general_table_inserted')}")
+    gate(
+        "revision_inserted",
+        dcA.get("revision_table_inserted") is True,
+        f"flag={dcA.get('revision_table_inserted')}",
+    )
+    gate(
+        "general_inserted",
+        dcA.get("general_table_inserted") is True,
+        f"flag={dcA.get('general_table_inserted')}",
+    )
     if dcA.get("ok"):
         typesA = _reopen_table_types(sw, block, drwA, mod)
         results["reopen_types_A"] = {str(k): v for k, v in typesA.items()}
@@ -201,8 +244,11 @@ def run() -> str:
     if weld_ok:
         dcB = _commit(weld, drwB, {"weldment_table": True})
         gate("commit_B", dcB.get("ok", False), str(dcB.get("error") or ""))
-        gate("weldment_inserted", dcB.get("weldment_table_inserted") is True,
-             f"flag={dcB.get('weldment_table_inserted')}")
+        gate(
+            "weldment_inserted",
+            dcB.get("weldment_table_inserted") is True,
+            f"flag={dcB.get('weldment_table_inserted')}",
+        )
         if dcB.get("ok"):
             typesB = _reopen_table_types(sw, weld, drwB, mod)
             results["reopen_types_B"] = {str(k): v for k, v in typesB.items()}
@@ -213,29 +259,39 @@ def run() -> str:
         pass
 
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL_GREEN", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/{len(results['gates'])}")
+    gate(
+        "OVERALL_GREEN",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/{len(results['gates'])}",
+    )
     return "GREEN" if all_pass else "PARTIAL"
 
 
 def main() -> int:
     import pythoncom
+
     pythoncom.CoInitialize()
     try:
         verdict = run()
     except Exception as exc:
-        results["gates"]["UNEXPECTED"] = {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}
+        results["gates"]["UNEXPECTED"] = {
+            "ok": False,
+            "detail": f"{type(exc).__name__}: {exc}",
+        }
         verdict = "WALL"
     finally:
         try:
             import win32com.client as w32
+
             w32.Dispatch("SldWorks.Application").CloseAllDocuments(True)
         except Exception:
             pass
         pythoncom.CoUninitialize()
     results["verdict"] = verdict
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(results, indent=2, default=str), encoding="utf-8"
+    )
     print(f"\nVerdict: {verdict}  (wrote {RESULTS_PATH})")
     return 0 if verdict == "GREEN" else 1
 

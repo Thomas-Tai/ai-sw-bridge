@@ -3,6 +3,7 @@
 The previous test showed InsertModelAnnotations3 also created 0 dims, which
 suggests the view might not have visible geometry. Let's verify the view state.
 """
+
 from __future__ import annotations
 
 import glob
@@ -63,10 +64,29 @@ def main() -> None:
     skm.InsertSketch(True)
 
     mdoc2.FeatureManager.FeatureExtrusion2(
-        True, False, False, 1, 0, 0.02, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        1,
+        0,
+        0.02,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
 
     mdoc2.EditRebuild3()
@@ -84,7 +104,9 @@ def main() -> None:
     drw_mdoc2 = typed(drw_raw, "IModelDoc2", module=mod)
 
     # Create view
-    view_raw = drawing_doc.CreateDrawViewFromModelView3(part_path, "*Front", 0.1, 0.15, 0.0)
+    view_raw = drawing_doc.CreateDrawViewFromModelView3(
+        part_path, "*Front", 0.1, 0.15, 0.0
+    )
     if view_raw is None or isinstance(view_raw, int):
         result["error"] = f"CreateDrawViewFromModelView3 returned {view_raw}"
         print(json.dumps(result, indent=2))
@@ -109,7 +131,9 @@ def main() -> None:
             for e in entities[:5]:  # First 5
                 try:
                     et = typed_qi(e, "IEntity", module=mod)
-                    entity_types.append(et.GetType())  # 0=body, 1=face, 2=edge, 3=vertex
+                    entity_types.append(
+                        et.GetType()
+                    )  # 0=body, 1=face, 2=edge, 3=vertex
                 except Exception:
                     entity_types.append("unknown")
             result["entity_types"] = entity_types
@@ -155,7 +179,9 @@ def main() -> None:
     # Save and check file size
     drw_mdoc2.SaveAs3(drw_path, 0, 2)
     result["drw_path"] = drw_path
-    result["drw_file_size_bytes"] = os.path.getsize(drw_path) if os.path.isfile(drw_path) else 0
+    result["drw_file_size_bytes"] = (
+        os.path.getsize(drw_path) if os.path.isfile(drw_path) else 0
+    )
 
     # Cleanup
     t = drw_mdoc2.GetTitle

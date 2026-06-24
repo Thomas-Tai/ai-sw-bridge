@@ -42,9 +42,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_annot_pae.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_annot_pae.json"
 
 results: dict[str, Any] = {
     "pae": "w53_drawing_annotation",
@@ -124,9 +122,7 @@ def _funcdesc_method(obj: Any, method_name: str) -> dict[str, Any]:
             if names and names[0] == method_name:
                 info["memid"] = memid
                 info["arity"] = len(func_desc[2]) if func_desc[2] else 0
-                info["arg_types"] = [
-                    str(a) for a in (func_desc[2] or [])
-                ]
+                info["arg_types"] = [str(a) for a in (func_desc[2] or [])]
                 info["return_type"] = str(func_desc[8]) if func_desc[8] else "void"
                 info["invkind"] = func_desc[4]
                 info["names"] = list(names)
@@ -224,21 +220,21 @@ def _independent_reopen_verify(
                 v = typed_qi(v_raw, "IView", module=mod)
                 vname = v.GetName2() or ""
                 counts = _count_annotations_by_type(v, mod, typed_qi)
-                sf = counts.get(7, 0)    # swSFSymbol (surface finish)
+                sf = counts.get(7, 0)  # swSFSymbol (surface finish)
                 gtol = counts.get(5, 0)  # swGTol
                 weld = counts.get(8, 0)  # swWeldSymbol
                 result["total_sf"] += sf
                 result["total_gtol"] += gtol
                 result["total_weld"] += weld
-                result["per_view"].append({
-                    "view": vname,
-                    "annotation_types": {
-                        str(k): val for k, val in counts.items()
-                    },
-                    "surface_finish": sf,
-                    "gtol": gtol,
-                    "weld": weld,
-                })
+                result["per_view"].append(
+                    {
+                        "view": vname,
+                        "annotation_types": {str(k): val for k, val in counts.items()},
+                        "surface_finish": sf,
+                        "gtol": gtol,
+                        "weld": weld,
+                    }
+                )
             except Exception as exc:
                 result["errors"].append(f"view enumeration: {exc!r}")
 
@@ -298,9 +294,7 @@ def _try_candidate(
 
     # Get annotation count BEFORE
     before_counts = _count_annotations_by_type(view, mod, typed_qi)
-    candidate["dims_before"] = {
-        str(k): v for k, v in before_counts.items()
-    }
+    candidate["dims_before"] = {str(k): v for k, v in before_counts.items()}
 
     try:
         result = insert_fn(ext_obj)
@@ -318,9 +312,7 @@ def _try_candidate(
         pass
 
     after_counts = _count_annotations_by_type(view, mod, typed_qi)
-    candidate["dims_immediate"] = {
-        str(k): v for k, v in after_counts.items()
-    }
+    candidate["dims_immediate"] = {str(k): v for k, v in after_counts.items()}
 
     # Step 4: Save → Close → Reopen → Count
     try:
@@ -329,6 +321,7 @@ def _try_candidate(
         doc_title = mdoc2.GetTitle
         doc_title = doc_title() if callable(doc_title) else doc_title
         from ai_sw_bridge.sw_com import get_sw_app
+
         sw = get_sw_app()
         mdoc2.SaveAs3(drawing_path, 0, 2)
         sw.CloseDoc(doc_title)
@@ -342,7 +335,7 @@ def _try_candidate(
     candidate["dims_reopen"] = reopen_result
 
     # Step 5: Verdict
-    sf_after = after_counts.get(7, 0)   # swSFSymbol
+    sf_after = after_counts.get(7, 0)  # swSFSymbol
     sf_before = before_counts.get(7, 0)
     sf_reopen = reopen_result.get("total_sf", 0)
 
@@ -413,9 +406,7 @@ def main() -> int:
         }
 
         try:
-            commit_result = commit_drawing(
-                sw, spec, drawing_path, mod=mod
-            )
+            commit_result = commit_drawing(sw, spec, drawing_path, mod=mod)
         except Exception as exc:
             gate("create_drawing", False, f"{type(exc).__name__}: {exc}")
             save_results()
@@ -506,8 +497,11 @@ def main() -> int:
             if c1["verdict"] == "GREEN":
                 results["green_candidate"] = c1["name"]
             gate(
-                "surface_finish_GREEN" if c1["verdict"] == "GREEN"
-                else "surface_finish_WALL",
+                (
+                    "surface_finish_GREEN"
+                    if c1["verdict"] == "GREEN"
+                    else "surface_finish_WALL"
+                ),
                 c1["verdict"] == "GREEN",
                 c1.get("detail", c1.get("insert_error", "")),
             )
@@ -555,11 +549,13 @@ def main() -> int:
                     results["green_candidate"] = c3["name"]
                     gate("weld_GREEN", True, c3.get("detail", ""))
             except Exception as exc:
-                results["candidates"].append({
-                    "name": "InsertWeldSymbol2",
-                    "verdict": "ERROR",
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
+                results["candidates"].append(
+                    {
+                        "name": "InsertWeldSymbol2",
+                        "verdict": "ERROR",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
 
             # Candidate 4: InsertHoleTable2 (on IView, not Extension)
             print(f"\n  [4/4] InsertHoleTable2 (on IView)")
@@ -568,31 +564,22 @@ def main() -> int:
                 "verdict": "UNKNOWN",
             }
             try:
-                c4["funcdesc"] = _funcdesc_method(
-                    first_view, "InsertHoleTable2"
+                c4["funcdesc"] = _funcdesc_method(first_view, "InsertHoleTable2")
+                print(
+                    f"    FUNCDESC(InsertHoleTable2): "
+                    f"{json.dumps(c4['funcdesc'], default=str)}"
                 )
-                print(f"    FUNCDESC(InsertHoleTable2): "
-                      f"{json.dumps(c4['funcdesc'], default=str)}")
 
-                before = _count_annotations_by_type(
-                    first_view, mod, typed_qi
-                )
-                ht_result = first_view.InsertHoleTable2(
-                    False, 0.0, 0.0, 1, "", ""
-                )
+                before = _count_annotations_by_type(first_view, mod, typed_qi)
+                ht_result = first_view.InsertHoleTable2(False, 0.0, 0.0, 1, "", "")
                 c4["insert_return"] = repr(ht_result)
                 c4["insert_return_type"] = type(ht_result).__name__
 
-                after = _count_annotations_by_type(
-                    first_view, mod, typed_qi
-                )
+                after = _count_annotations_by_type(first_view, mod, typed_qi)
                 c4["dims_before"] = {str(k): v for k, v in before.items()}
-                c4["dims_immediate"] = {
-                    str(k): v for k, v in after.items()
-                }
+                c4["dims_immediate"] = {str(k): v for k, v in after.items()}
 
-                if (ht_result is not None
-                        and not isinstance(ht_result, int)):
+                if ht_result is not None and not isinstance(ht_result, int):
                     c4["verdict"] = "GREEN"
                     c4["detail"] = (
                         f"InsertHoleTable2 returned {type(ht_result).__name__}"

@@ -46,7 +46,11 @@ VERIFY_CLASS = verify.FeatureClass.ADDITIVE_SOLID
 
 # swHemTypes_e / swHemPositionTypes_e — O1-sourced (W55 swconst.tlb dump).
 _HEM_TYPES: dict[str, int] = {
-    "open": 0, "closed": 1, "teardrop": 2, "rolled": 3, "double": 4,
+    "open": 0,
+    "closed": 1,
+    "teardrop": 2,
+    "rolled": 3,
+    "double": 4,
 }
 _HEM_POSITIONS: dict[str, int] = {"inside": 0, "outside": 1}
 
@@ -57,7 +61,9 @@ def _metrics(doc: Any) -> tuple[int, float]:
     return verify.solid_metrics(doc)
 
 
-def _enum(value: Any, table: dict[str, int], name: str) -> tuple[int | None, str | None]:
+def _enum(
+    value: Any, table: dict[str, int], name: str
+) -> tuple[int | None, str | None]:
     """Map a string token (or accept a raw int) to its enum value, fail-closed."""
     if isinstance(value, bool):  # bool is an int subclass — reject explicitly
         return None, f"{name} must be a string or int, got bool"
@@ -123,7 +129,10 @@ def create_hem(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]
     res = resolve_edge_ref(doc, ref)
     edge = getattr(res, "entity", None)
     if edge is None:
-        return False, f"edge_ref did not resolve to a live edge ({getattr(res, 'note', '')})"
+        return (
+            False,
+            f"edge_ref did not resolve to a live edge ({getattr(res, 'note', '')})",
+        )
 
     faces_before, vol_before = _metrics(doc)
     if faces_before == 0:
@@ -140,8 +149,14 @@ def create_hem(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]
         fm = doc.FeatureManager
         pcba_null = VARIANT(pythoncom.VT_DISPATCH, None)  # Tactic 1 (v5-proven)
         fm.InsertSheetMetalHem(
-            hem_type, position, reverse,
-            length_m, gap_m, angle_rad, radius_m, miter_gap_m,
+            hem_type,
+            position,
+            reverse,
+            length_m,
+            gap_m,
+            angle_rad,
+            radius_m,
+            miter_gap_m,
             pcba_null,
         )
         doc.ForceRebuild3(False)

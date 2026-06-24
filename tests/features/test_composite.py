@@ -68,14 +68,16 @@ class _FakeDoc:
 # --- helpers ----------------------------------------------------------------
 
 
-def _wire(monkeypatch, *, select_ok=True,
-          nodes_before=3, nodes_after=4, select_calls=None):
+def _wire(
+    monkeypatch, *, select_ok=True, nodes_before=3, nodes_after=4, select_calls=None
+):
     """Patch select_entity + _count_feature_nodes on the lane module.
 
     ``select_calls`` (optional): a list the helper appends ``(edge, append, mark)``
     tuples to so tests can assert the selection-mark contract (mark=1 for
     the "Edges to join" list box).
     """
+
     def fake_select(e, append=False, mark=0):
         if select_calls is not None:
             select_calls.append((e, append, mark))

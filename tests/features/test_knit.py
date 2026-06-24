@@ -146,7 +146,9 @@ class TestEffectGate:
         """3 sheets → 1 sheet → PASS."""
         _wire(monkeypatch, sheet_counts=(3, 1), areas=(3600.0, 3600.0))
         ok, _ = create_knit(
-            _FakeDoc(), {}, {"body_refs": _body_refs("S1", "S2", "S3")},
+            _FakeDoc(),
+            {},
+            {"body_refs": _body_refs("S1", "S2", "S3")},
         )
         assert ok is True
 
@@ -175,7 +177,9 @@ class TestGhostTrap:
         """Sheet count unchanged → knit did nothing → FAIL."""
         _wire(monkeypatch, sheet_counts=(2, 2), areas=(2400.0, 2400.0))
         ok, err = create_knit(
-            _FakeDoc(), {}, {"body_refs": _body_refs("S1", "S2")},
+            _FakeDoc(),
+            {},
+            {"body_refs": _body_refs("S1", "S2")},
         )
         assert ok is False
         assert "did not merge" in err
@@ -184,7 +188,9 @@ class TestGhostTrap:
         """Sheet count went UP → something else happened → FAIL."""
         _wire(monkeypatch, sheet_counts=(2, 3), areas=(2400.0, 3600.0))
         ok, err = create_knit(
-            _FakeDoc(), {}, {"body_refs": _body_refs("S1", "S2")},
+            _FakeDoc(),
+            {},
+            {"body_refs": _body_refs("S1", "S2")},
         )
         assert ok is False
         assert "did not merge" in err
@@ -193,7 +199,9 @@ class TestGhostTrap:
         """Sheets merged but result has zero area → W42 surface ghost."""
         _wire(monkeypatch, sheet_counts=(2, 1), areas=(2400.0, 0.0))
         ok, err = create_knit(
-            _FakeDoc(), {}, {"body_refs": _body_refs("S1", "S2")},
+            _FakeDoc(),
+            {},
+            {"body_refs": _body_refs("S1", "S2")},
         )
         assert ok is False
         assert "did not merge" in err
@@ -244,11 +252,11 @@ class TestRecipePin:
         assert ok
         args = doc.FeatureManager.calls[0]
         assert len(args) == 5
-        assert args[0] is True     # use_gap_filters default
-        assert args[1] is False    # try_to_form_solid default
-        assert args[2] is False    # merge_entities default
-        assert args[3] == pytest.approx(1e-7)   # 0.0001 mm -> m
-        assert args[4] == pytest.approx(1e-7)   # 0.0001 mm -> m
+        assert args[0] is True  # use_gap_filters default
+        assert args[1] is False  # try_to_form_solid default
+        assert args[2] is False  # merge_entities default
+        assert args[3] == pytest.approx(1e-7)  # 0.0001 mm -> m
+        assert args[4] == pytest.approx(1e-7)  # 0.0001 mm -> m
 
     def test_custom_params(self, monkeypatch):
         _wire(
@@ -272,11 +280,11 @@ class TestRecipePin:
         )
         assert ok
         args = doc.FeatureManager.calls[0]
-        assert args[0] is False    # use_gap_filters off
-        assert args[1] is True     # try_to_form_solid on
-        assert args[2] is True     # merge_entities on
-        assert args[3] == pytest.approx(1e-5)   # 0.01 mm -> m
-        assert args[4] == pytest.approx(5e-5)   # 0.05 mm -> m
+        assert args[0] is False  # use_gap_filters off
+        assert args[1] is True  # try_to_form_solid on
+        assert args[2] is True  # merge_entities on
+        assert args[3] == pytest.approx(1e-5)  # 0.01 mm -> m
+        assert args[4] == pytest.approx(5e-5)  # 0.05 mm -> m
 
 
 # --- selection contract (mark=1, VARIANT-null callout, append pattern) -----
@@ -291,11 +299,11 @@ class TestSelectionContract:
         calls = doc.Extension.calls
         assert len(calls) == 2
         # First: Append=False, Mark=1
-        assert calls[0][5] is False    # append
-        assert calls[0][6] == 1        # mark
+        assert calls[0][5] is False  # append
+        assert calls[0][6] == 1  # mark
         # Second: Append=True, Mark=1
-        assert calls[1][5] is True     # append
-        assert calls[1][6] == 1        # mark
+        assert calls[1][5] is True  # append
+        assert calls[1][6] == 1  # mark
 
     def test_callout_null_is_variant_dispatch(self, monkeypatch):
         _wire(monkeypatch)
@@ -310,14 +318,16 @@ class TestSelectionContract:
         _wire(monkeypatch, sheet_counts=(3, 1), areas=(3600.0, 3600.0))
         doc = _FakeDoc()
         ok, _ = create_knit(
-            doc, {}, {"body_refs": _body_refs("S1", "S2", "S3")},
+            doc,
+            {},
+            {"body_refs": _body_refs("S1", "S2", "S3")},
         )
         assert ok
         calls = doc.Extension.calls
         assert len(calls) == 3
-        assert calls[0][5] is False   # first: no append
-        assert calls[1][5] is True    # second: append
-        assert calls[2][5] is True    # third: append
+        assert calls[0][5] is False  # first: no append
+        assert calls[1][5] is True  # second: append
+        assert calls[2][5] is True  # third: append
 
     def test_clear_selection_called_before_select(self, monkeypatch):
         _wire(monkeypatch)
@@ -340,7 +350,9 @@ class TestValidation:
 
     def test_empty_body_refs_name_rejected(self):
         ok, err = create_knit(
-            _FakeDoc(), {}, {"body_refs": [{"name": ""}, {"name": "S2"}]},
+            _FakeDoc(),
+            {},
+            {"body_refs": [{"name": ""}, {"name": "S2"}]},
         )
         assert ok is False and "name" in err
 
@@ -348,7 +360,9 @@ class TestValidation:
         """A single body_ref is not enough → falls through to auto-discover."""
         _wire(monkeypatch, sheet_counts=(1, 1))  # only 1 sheet
         ok, err = create_knit(
-            _FakeDoc(), {}, {"body_refs": [{"name": "S1"}]},
+            _FakeDoc(),
+            {},
+            {"body_refs": [{"name": "S1"}]},
         )
         # Auto-discover fails with <2 sheet bodies
         assert ok is False and "sheet bod" in err
@@ -406,6 +420,7 @@ class TestNeverRaise:
 class TestRegistryGate:
     def test_kind_registered_when_green(self):
         from ai_sw_bridge.features import HANDLER_REGISTRY
+
         assert kn.SPIKE_STATUS == "GREEN"
         assert "knit" in HANDLER_REGISTRY
         assert HANDLER_REGISTRY["knit"] is kn.create_knit

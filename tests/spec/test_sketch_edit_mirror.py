@@ -64,9 +64,15 @@ class _FakeDoc:
 
     def SketchMirror(self) -> None:
         self.mirror_calls += 1
-        self._sketch._add_segments(len([
-            s for s in self._sketch._segments if s.select_calls and s.idx != self._centerline_idx
-        ]))
+        self._sketch._add_segments(
+            len(
+                [
+                    s
+                    for s in self._sketch._segments
+                    if s.select_calls and s.idx != self._centerline_idx
+                ]
+            )
+        )
 
     _centerline_idx: int = -1
 

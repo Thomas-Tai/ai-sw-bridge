@@ -14,6 +14,7 @@ SaveAs3-STL writes 0 bytes while returning NoError. Proves the fix:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_lightweight_resolution.py
 """
+
 from __future__ import annotations
 
 import json
@@ -45,7 +46,11 @@ import spike_advanced_mates_probe as P  # noqa: E402
 import mech_mate_tier1_gear_screw as t1  # noqa: E402
 
 _OUT = _HERE.parent / "_results" / "lightweight_resolution.json"
-results: dict[str, Any] = {"probe": "w78_lightweight_resolution", "gates": {}, "log": {}}
+results: dict[str, Any] = {
+    "probe": "w78_lightweight_resolution",
+    "gates": {},
+    "log": {},
+}
 
 
 def gate(name: str, ok: bool, detail: str = "") -> bool:
@@ -69,7 +74,9 @@ def _name2(comp: Any) -> str:
 
 def _export_stl(doc: Any, name: str, out_dir: Path, binary: bool = True) -> int:
     """Export doc to out_dir/name.stl; return the byte count (0 = ghost/missing)."""
-    reqs = [ExportRequest(format="stl", output_dir=out_dir, filename=name, binary=binary)]
+    reqs = [
+        ExportRequest(format="stl", output_dir=out_dir, filename=name, binary=binary)
+    ]
     try:
         export_all(doc, reqs, name)
     except Exception:
@@ -79,7 +86,9 @@ def _export_stl(doc: Any, name: str, out_dir: Path, binary: bool = True) -> int:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -136,11 +145,17 @@ def main() -> int:
 
         # 3. STL before resolve (in-context part-doc)
         pdoc_before = typed(target, "IComponent2", module=mod).GetModelDoc2()
-        bytes_before = _export_stl(pdoc_before, f"{tname}_before", out_dir) \
-            if pdoc_before is not None else -1
+        bytes_before = (
+            _export_stl(pdoc_before, f"{tname}_before", out_dir)
+            if pdoc_before is not None
+            else -1
+        )
         results["log"]["stl_bytes_before"] = bytes_before
-        gate("ghost_before_resolve", bytes_before == 0,
-             f"in-context STL before resolve = {bytes_before} bytes (expect 0 ghost)")
+        gate(
+            "ghost_before_resolve",
+            bytes_before == 0,
+            f"in-context STL before resolve = {bytes_before} bytes (expect 0 ghost)",
+        )
 
         # 4. resolve all lightweight
         try:
@@ -155,26 +170,37 @@ def main() -> int:
         after = _suppression(target, mod)
         results["log"]["suppression_after"] = after
         print(f"  suppression(after)  = {after}")
-        gate("state_changed", before != after,
-             f"suppression {before} -> {after}")
+        gate("state_changed", before != after, f"suppression {before} -> {after}")
 
         # 6. STL after resolve (in-context)
         pdoc_after = typed(target, "IComponent2", module=mod).GetModelDoc2()
-        bytes_incontext = _export_stl(pdoc_after, f"{tname}_incontext", out_dir) \
-            if pdoc_after is not None else -1
+        bytes_incontext = (
+            _export_stl(pdoc_after, f"{tname}_incontext", out_dir)
+            if pdoc_after is not None
+            else -1
+        )
         results["log"]["stl_bytes_incontext"] = bytes_incontext
-        gate("incontext_after_resolve", bytes_incontext > 0,
-             f"in-context STL after resolve = {bytes_incontext} bytes (expect >0)")
+        gate(
+            "incontext_after_resolve",
+            bytes_incontext > 0,
+            f"in-context STL after resolve = {bytes_incontext} bytes (expect >0)",
+        )
 
         # 7. STL after resolve (standalone open of the part file)
         part_path = resolve(pdoc_after, "GetPathName")
         so = tsw.OpenDoc6(str(part_path), 1, 1, "", 0, 0)
         sdoc = so[0] if isinstance(so, tuple) else so
-        bytes_standalone = _export_stl(sdoc, f"{tname}_standalone", out_dir) \
-            if sdoc is not None else -1
+        bytes_standalone = (
+            _export_stl(sdoc, f"{tname}_standalone", out_dir)
+            if sdoc is not None
+            else -1
+        )
         results["log"]["stl_bytes_standalone"] = bytes_standalone
-        gate("standalone_after_resolve", bytes_standalone > 0,
-             f"standalone STL after resolve = {bytes_standalone} bytes (expect >0)")
+        gate(
+            "standalone_after_resolve",
+            bytes_standalone > 0,
+            f"standalone STL after resolve = {bytes_standalone} bytes (expect >0)",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

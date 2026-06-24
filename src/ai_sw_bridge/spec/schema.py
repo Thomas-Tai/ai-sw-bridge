@@ -158,8 +158,7 @@ DRAWING_BLOCK_SCHEMA: dict[str, Any] = {
         },
     },
     "description": (
-        "Optional drawing-generation block. Validated-but-inert in this "
-        "release."
+        "Optional drawing-generation block. Validated-but-inert in this " "release."
     ),
 }
 

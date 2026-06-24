@@ -44,7 +44,9 @@ logger = logging.getLogger("ai_sw_bridge.features.project_curve")
 # Flipped to "GREEN" by W0 after the seat spike fires and a mode produces
 # a reference-curve node surviving save->reopen. While "UNRUN", the
 # handler exists but is NOT registered in HANDLER_REGISTRY.
-SPIKE_STATUS = "GREEN"  # Mode-B-insert fired clean + survived save->reopen on live seat (W62)
+SPIKE_STATUS = (
+    "GREEN"  # Mode-B-insert fired clean + survived save->reopen on live seat (W62)
+)
 
 # Verify class (W67): CURVE — witnessed by a ref-curve-node count delta. NOTE
 # (Phase-3 finding): node presence is trusted without a geometric scalar;
@@ -71,7 +73,10 @@ def _count_feature_nodes(doc: Any) -> int:
     walk bounded at ``_FEATURE_TREE_WALK_LIMIT``; ``GetFeatures(False)`` is the
     W62-canonical substrate — ``FirstFeature`` is unreachable out-of-process)."""
     return verify.count_nodes_by_type(
-        doc, _NODE_TYPE_TOKENS, match="substring", limit=_FEATURE_TREE_WALK_LIMIT,
+        doc,
+        _NODE_TYPE_TOKENS,
+        match="substring",
+        limit=_FEATURE_TREE_WALK_LIMIT,
     )
 
 
@@ -177,7 +182,9 @@ def _try_mode_b_insert(doc: Any, feature: dict, target: dict) -> Any | None:
         result = ips2(reverse_int) if callable(ips2) else None
         logger.warning(
             "[B-insert] InsertProjectedSketch2(%d) callable=%s -> %r",
-            reverse_int, callable(ips2), result,
+            reverse_int,
+            callable(ips2),
+            result,
         )
         if result:
             return result
@@ -252,7 +259,9 @@ def _try_mode_b_convert(doc: Any, feature: dict, target: dict) -> bool:
 
 
 def create_project_curve(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Project a sketch curve onto a face -> 3D reference curve. Fail-closed.
 
@@ -322,7 +331,10 @@ def create_project_curve(
     # the projected curve must carry real arc length (seat-proven 40.0 mm via
     # the RefCurve → IReferenceCurve.GetSegments head).
     new_node = verify.newest_node_by_type(
-        doc, _NODE_TYPE_TOKENS, match="substring", limit=_FEATURE_TREE_WALK_LIMIT,
+        doc,
+        _NODE_TYPE_TOKENS,
+        match="substring",
+        limit=_FEATURE_TREE_WALK_LIMIT,
     )
     length_mm = _curve_length_mm(new_node)
     if verify.gate_curve(d_nodes, length_mm):

@@ -39,8 +39,7 @@ sys.path.insert(0, str(repo_root / "src"))
 # repo_root is the worktree root (.claude/worktrees/aisw-W29); the main checkout
 # that holds the committed captures/ fixtures is parents[2] of that.
 SOURCE_PART = (
-    repo_root.parents[2]
-    / "captures" / "v0_10_validation" / "filleted_box.SLDPRT"
+    repo_root.parents[2] / "captures" / "v0_10_validation" / "filleted_box.SLDPRT"
 )
 
 
@@ -101,8 +100,15 @@ def run() -> dict:
     commit = commit_properties(sw, spec)
     result["commit_result"] = {
         k: commit.get(k)
-        for k in ("ok", "count_before", "count_after", "saved", "summary",
-                  "errors", "read_back")
+        for k in (
+            "ok",
+            "count_before",
+            "count_after",
+            "saved",
+            "summary",
+            "errors",
+            "read_back",
+        )
     }
     result["gates"]["G3_commit_ok"] = bool(commit.get("ok"))
 
@@ -132,10 +138,9 @@ def run() -> dict:
         "props_set": commit2.get("props_set", []),
     }
     # PartNo already exists -> must be skipped, original value preserved
-    result["gates"]["G6_overwrite_false_skip"] = (
-        any(s.get("name") == "PartNo" for s in skipped)
-        and not commit2.get("props_set")
-    )
+    result["gates"]["G6_overwrite_false_skip"] = any(
+        s.get("name") == "PartNo" for s in skipped
+    ) and not commit2.get("props_set")
 
     # G7 doc-type / ext fail-closed at propose --------------------------------
     result["stages"].append("fail_closed")

@@ -139,9 +139,17 @@ _CTRL_PT_METHODS = (
 )
 
 _VT_MAP = {
-    0: "VT_EMPTY", 2: "VT_I2", 3: "VT_I4", 4: "VT_R4", 5: "VT_R8",
-    9: "VT_DISPATCH", 11: "VT_BOOL", 12: "VT_VARIANT", 13: "VT_UNKNOWN",
-    29: "VT_ARRAY|VT_I4", 0x2005: "VT_ARRAY|VT_R8",
+    0: "VT_EMPTY",
+    2: "VT_I2",
+    3: "VT_I4",
+    4: "VT_R4",
+    5: "VT_R8",
+    9: "VT_DISPATCH",
+    11: "VT_BOOL",
+    12: "VT_VARIANT",
+    13: "VT_UNKNOWN",
+    29: "VT_ARRAY|VT_I4",
+    0x2005: "VT_ARRAY|VT_R8",
 }
 
 
@@ -233,9 +241,7 @@ def dump_summary(dump: dict[str, Any]) -> str:
             lines.append(f"    {m['name']}({params}) -> {m['return_type']}")
         lines.append("  Properties:")
         for p in iface["properties"]:
-            invkind_label = {3: "get", 4: "put", 8: "putref"}.get(
-                p.get("invkind"), "?"
-            )
+            invkind_label = {3: "get", 4: "put", 8: "putref"}.get(p.get("invkind"), "?")
             lines.append(f"    [{invkind_label}] {p['name']} -> {p['return_type']}")
         lines.append("")
 
@@ -284,13 +290,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:200],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:200],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _build_box(doc: Any) -> dict[str, Any]:
@@ -299,8 +311,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-        BOX_W_M / 2, BOX_H_M / 2, 0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -308,9 +324,28 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
@@ -353,6 +388,7 @@ def run_pae() -> dict[str, Any]:
     result["module"] = getattr(mod, "__name__", str(mod)) if mod else None
 
     import win32com.client
+
     sw = win32com.client.Dispatch("SldWorks.Application")
     try:
         result["sw_revision"] = str(sw.RevisionNumber)
@@ -378,9 +414,7 @@ def run_pae() -> dict[str, Any]:
         if data is None:
             return {**result, "overall": "FAIL", "reason": "CreateDefinition None"}
 
-        simple_rec, simple = _capture(
-            lambda: typed_qi(data, SIMPLE_IFACE, module=mod)
-        )
+        simple_rec, simple = _capture(lambda: typed_qi(data, SIMPLE_IFACE, module=mod))
         result["typed_qi_simple"] = simple_rec
         if simple is None:
             return {**result, "overall": "FAIL", "reason": "typed_qi(simple) failed"}
@@ -411,7 +445,9 @@ def run_pae() -> dict[str, Any]:
         result["default_radius_set"] = dr_rec
 
         cp_set_rec, _ = _capture(
-            lambda: var.SetControlPointRadiusAtIndex(0, CTRL_PT_LOCATION, CTRL_PT_RADIUS_M)
+            lambda: var.SetControlPointRadiusAtIndex(
+                0, CTRL_PT_LOCATION, CTRL_PT_RADIUS_M
+            )
         )
         result["set_control_point"] = cp_set_rec
 
@@ -420,9 +456,7 @@ def run_pae() -> dict[str, Any]:
         result["n_control_points"] = cp_count
 
         if cp_count is not None and cp_count > 0:
-            cp_read_rec, cp_data = _capture(
-                lambda: var.GetControlPointRadiusAtIndex(0)
-            )
+            cp_read_rec, cp_data = _capture(lambda: var.GetControlPointRadiusAtIndex(0))
             result["read_control_point_0"] = cp_read_rec
             result["control_point_0_data"] = (
                 list(cp_data) if isinstance(cp_data, tuple) else str(cp_data)
@@ -445,6 +479,7 @@ def run_pae() -> dict[str, Any]:
 
             # --- Save→reopen survival (R3 persistence check) ----------------
             import tempfile, os
+
             save_path = os.path.join(tempfile.gettempdir(), "varfil_ctrlpts_pae.sldprt")
             save_rec, _ = _capture(lambda: doc.SaveAs3(save_path, 0, 0))
             result["save"] = save_rec
@@ -459,9 +494,7 @@ def run_pae() -> dict[str, Any]:
 
             if reopened is not None and not isinstance(reopened, int):
                 reopen_fm = reopened.FeatureManager
-                features_rec, features = _capture(
-                    lambda: reopen_fm.GetFeatures(True)
-                )
+                features_rec, features = _capture(lambda: reopen_fm.GetFeatures(True))
                 if features:
                     for f in features:
                         try:
@@ -469,7 +502,9 @@ def run_pae() -> dict[str, Any]:
                         except Exception:
                             tname = None
                         if tname and "Fillet" in str(tname):
-                            rdefn_rec, rdefn_raw = _capture(lambda f=f: f.GetDefinition())
+                            rdefn_rec, rdefn_raw = _capture(
+                                lambda f=f: f.GetDefinition()
+                            )
                             rvar_rec, rvar = _capture(
                                 lambda: typed_qi(rdefn_raw, VAR_IFACE, module=mod)
                             )
@@ -486,7 +521,8 @@ def run_pae() -> dict[str, Any]:
                                     )
                                     result["reopen_ctrl_pt_0"] = rread_rec
                                     result["reopen_ctrl_pt_0_data"] = (
-                                        list(rdata) if isinstance(rdata, tuple)
+                                        list(rdata)
+                                        if isinstance(rdata, tuple)
                                         else str(rdata)
                                     )
                             break
@@ -516,6 +552,7 @@ def main() -> int:
 
     if args.mode == "dump":
         import pythoncom
+
         pythoncom.CoInitialize()
         try:
             dump = dump_typelib(args.tlb)
@@ -523,7 +560,9 @@ def main() -> int:
             pythoncom.CoUninitialize()
         print(dump_summary(dump))
         if args.out is not None:
-            args.out.write_text(json.dumps(dump, indent=2, default=str), encoding="utf-8")
+            args.out.write_text(
+                json.dumps(dump, indent=2, default=str), encoding="utf-8"
+            )
             print(f"\nwrote {args.out}", file=sys.stderr)
         return 0
 

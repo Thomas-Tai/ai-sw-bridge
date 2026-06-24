@@ -69,14 +69,26 @@ class _FakeSweepCutExt:
         self.select_calls: list[tuple] = []
         self._ret = ret
 
-    def SelectByID2(self, name: str, t: str, x: float, y: float, z: float,
-                     append: bool, mark: int, callout: Any, sd: int) -> bool:
+    def SelectByID2(
+        self,
+        name: str,
+        t: str,
+        x: float,
+        y: float,
+        z: float,
+        append: bool,
+        mark: int,
+        callout: Any,
+        sd: int,
+    ) -> bool:
         self.select_calls.append((name, t, append, mark))
         return self._ret
 
 
 class _FakeSweepCutFm:
-    def __init__(self, create_feat_ret: Any = object(), *, materializes: bool = True) -> None:
+    def __init__(
+        self, create_feat_ret: Any = object(), *, materializes: bool = True
+    ) -> None:
         self.create_def_calls: list[int] = []
         self.create_feat_calls: list = []
         self._feat_ret = create_feat_ret
@@ -143,7 +155,9 @@ class TestDryRunSweepCut:
             ("Sketch2", "SKETCH", True, 4),
         ]
 
-    def test_noop_when_create_feature_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_noop_when_create_feature_returns_none(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         fm = _FakeSweepCutFm(create_feat_ret=None)
         doc = _FakeSweepCutDoc(fm)
         _patch_com_imports(monkeypatch)
@@ -207,17 +221,21 @@ class TestWrapStub:
 
 class TestBoundaryBossStub:
     def test_propose_validates(self) -> None:
-        ok, err = _validate_boundary_target({
-            "dir1_profiles": ["Sketch1"],
-            "dir2_profiles": ["Sketch2"],
-        })
+        ok, err = _validate_boundary_target(
+            {
+                "dir1_profiles": ["Sketch1"],
+                "dir2_profiles": ["Sketch2"],
+            }
+        )
         assert ok is True
 
     def test_rejects_empty_dir1(self) -> None:
-        ok, err = _validate_boundary_target({
-            "dir1_profiles": [],
-            "dir2_profiles": ["Sketch2"],
-        })
+        ok, err = _validate_boundary_target(
+            {
+                "dir1_profiles": [],
+                "dir2_profiles": ["Sketch2"],
+            }
+        )
         assert ok is False and "dir1_profiles" in err
 
 
@@ -231,9 +249,7 @@ def _validate_sweep_cut_target(target: dict) -> tuple[bool, str | None]:
     return True, None
 
 
-def _create_sweep_cut(
-    doc: Any, target: dict
-) -> tuple[bool, str | None]:
+def _create_sweep_cut(doc: Any, target: dict) -> tuple[bool, str | None]:
     """Create a sweep-cut feature.  # SEAT-PENDING (W0)
 
     Mirror of _create_sweep (swFmSweep=17) with swFmSweepCut=18.
@@ -386,7 +402,9 @@ class TestProposeRefPlane:
         assert r["proposal_id"] is not None
         assert r["error"] is None
 
-    def test_valid_edge_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_valid_edge_ref(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         # Normal-to-edge variant: a durable edge_ref, no plane/distance_mm.
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
@@ -400,7 +418,9 @@ class TestProposeRefPlane:
         assert r["proposal_id"] is not None
         assert r["error"] is None
 
-    def test_rejects_missing_plane(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_missing_plane(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -412,7 +432,9 @@ class TestProposeRefPlane:
         assert r["ok"] is False
         assert "plane" in r["error"]
 
-    def test_rejects_non_positive_distance(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_non_positive_distance(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -439,7 +461,9 @@ class TestProposeRefAxis:
         assert r["proposal_id"] is not None
         assert r["error"] is None
 
-    def test_rejects_wrong_plane_count(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_wrong_plane_count(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -515,12 +539,12 @@ class TestCreateRefAxisOOPContract:
         append_calls = [c for c in doc.Extension.select2_calls if c[2] is True]
         assert append_calls, "expected an append SelectByID2 for plane 2"
         callout = append_calls[-1][4]
-        assert callout is not None, (
-            "callout is a bare None — walls 'Type mismatch arg 8' OOP"
-        )
-        assert isinstance(callout, VARIANT), (
-            f"callout must be a VARIANT null, got {type(callout).__name__}"
-        )
+        assert (
+            callout is not None
+        ), "callout is a bare None — walls 'Type mismatch arg 8' OOP"
+        assert isinstance(
+            callout, VARIANT
+        ), f"callout must be a VARIANT null, got {type(callout).__name__}"
         assert callout.varianttype == pythoncom.VT_DISPATCH
         assert callout.value is None
 
@@ -558,6 +582,7 @@ class TestCreateCoordinateSystemDurable:
     @staticmethod
     def _ref(token: bytes) -> dict:
         import base64
+
         return {"persist_id": base64.urlsafe_b64encode(token).decode().rstrip("=")}
 
     def _patch_resolve_select(self, monkeypatch, *, resolves=True):
@@ -655,7 +680,12 @@ class TestProposeCoordinateSystem:
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
         r = _sw_propose_feature_add_impl(
             str(doc_file),
-            {"type": "coordinate_system", "flip_x": False, "flip_y": False, "flip_z": False},
+            {
+                "type": "coordinate_system",
+                "flip_x": False,
+                "flip_y": False,
+                "flip_z": False,
+            },
             {"origin": "Origin"},
         )
         assert r["ok"] is True
@@ -670,20 +700,30 @@ class TestProposeRefPoint:
     path still walls but is retained as a non-advertised fallback.
     """
 
-    def test_valid_face_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_valid_face_ref(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
         r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "ref_point"},
-            {"face_ref": {"normal": [0, 0, 1], "centroid": [0, 0, 0.02], "area_mm2": 1600.0}},
+            {
+                "face_ref": {
+                    "normal": [0, 0, 1],
+                    "centroid": [0, 0, 0.02],
+                    "area_mm2": 1600.0,
+                }
+            },
         )
         assert r["ok"] is True
         assert r["proposal_id"] is not None
         assert r["error"] is None
 
-    def test_rejects_empty_face_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_empty_face_ref(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -695,7 +735,9 @@ class TestProposeRefPoint:
         assert r["ok"] is False
         assert "face_ref" in r["error"]
 
-    def test_rejects_missing_target(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_missing_target(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -750,25 +792,33 @@ class TestCreateRefPointHandler:
         # Recipe-C cut #4: mutate no longer imports resolve_manifest_face/select_entity;
         # _create_ref_point lives in ref_geometry — patch only there.
         monkeypatch.setattr(
-            ref_geometry, "resolve_manifest_face",
+            ref_geometry,
+            "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(sentinel_face),
         )
         monkeypatch.setattr(ref_geometry, "select_entity", lambda e: True)
-        ok, err = ref_geometry._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "top"}})
+        ok, err = ref_geometry._create_ref_point(
+            doc, {"type": "ref_point"}, {"face_ref": {"role": "top"}}
+        )
         assert ok is True
         assert err is None
         # type 4 = swRefPointTypeInCentreOfFace
         assert fm.calls == [(4, 0, 0.0, 1)]
 
-    def test_face_ref_unresolved_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_face_ref_unresolved_fails_soft(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         doc = _FakeRefPointDoc(_FakeRefPointFm())
         # Recipe-C cut #4: patch only on ref_geometry.
         monkeypatch.setattr(
-            ref_geometry, "resolve_manifest_face",
+            ref_geometry,
+            "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(None, method="none"),
         )
         monkeypatch.setattr(ref_geometry, "select_entity", lambda e: True)
-        ok, err = ref_geometry._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "x"}})
+        ok, err = ref_geometry._create_ref_point(
+            doc, {"type": "ref_point"}, {"face_ref": {"role": "x"}}
+        )
         assert ok is False
         assert "unresolved" in err
 
@@ -776,11 +826,14 @@ class TestCreateRefPointHandler:
         doc = _FakeRefPointDoc(_FakeRefPointFm())
         # Recipe-C cut #4: patch only on ref_geometry.
         monkeypatch.setattr(
-            ref_geometry, "resolve_manifest_face",
+            ref_geometry,
+            "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(object()),
         )
         monkeypatch.setattr(ref_geometry, "select_entity", lambda e: False)
-        ok, err = ref_geometry._create_ref_point(doc, {"type": "ref_point"}, {"face_ref": {"role": "x"}})
+        ok, err = ref_geometry._create_ref_point(
+            doc, {"type": "ref_point"}, {"face_ref": {"role": "x"}}
+        )
         assert ok is False
         assert "could not select" in err
 
@@ -851,7 +904,8 @@ class TestCreateDomeHandler:
             return False
 
         monkeypatch.setattr(
-            advanced_shapes, "resolve_manifest_face",
+            advanced_shapes,
+            "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(sentinel),
         )
         monkeypatch.setattr(advanced_shapes, "select_entity", _sel)
@@ -863,25 +917,39 @@ class TestCreateDomeHandler:
         # 10 mm -> 0.01 m height, forward, round.
         assert doc.insert_args == (pytest.approx(0.01), False, False)
 
-    def test_face_ref_no_delta_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_face_ref_no_delta_fails_soft(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         doc = _FakeDomeDoc(will_materialize=False)
         monkeypatch.setattr(
-            advanced_shapes, "resolve_manifest_face",
+            advanced_shapes,
+            "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(object()),
         )
-        monkeypatch.setattr(advanced_shapes, "select_entity", lambda e, *, append=False, mark=0: True)
-        ok, err = advanced_shapes._create_dome(doc, {"type": "dome"}, {"face_ref": {"role": "x"}})
+        monkeypatch.setattr(
+            advanced_shapes, "select_entity", lambda e, *, append=False, mark=0: True
+        )
+        ok, err = advanced_shapes._create_dome(
+            doc, {"type": "dome"}, {"face_ref": {"role": "x"}}
+        )
         assert ok is False
         assert "did not add a feature" in err
 
-    def test_face_ref_unresolved_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_face_ref_unresolved_fails_soft(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         doc = _FakeDomeDoc()
         monkeypatch.setattr(
-            advanced_shapes, "resolve_manifest_face",
+            advanced_shapes,
+            "resolve_manifest_face",
             lambda d, fr: _FakeRefResolution(None, method="none"),
         )
-        monkeypatch.setattr(advanced_shapes, "select_entity", lambda e, *, append=False, mark=0: True)
-        ok, err = advanced_shapes._create_dome(doc, {"type": "dome"}, {"face_ref": {"role": "x"}})
+        monkeypatch.setattr(
+            advanced_shapes, "select_entity", lambda e, *, append=False, mark=0: True
+        )
+        ok, err = advanced_shapes._create_dome(
+            doc, {"type": "dome"}, {"face_ref": {"role": "x"}}
+        )
         assert ok is False
         assert "unresolved" in err
 
@@ -960,7 +1028,8 @@ class TestCreateRefPlaneNormalToEdge:
         # Recipe-C cut #4: mutate no longer imports resolve_edge_ref/select_entity;
         # patch only on ref_geometry (where the handler lives).
         monkeypatch.setattr(
-            ref_geometry, "resolve_edge_ref",
+            ref_geometry,
+            "resolve_edge_ref",
             lambda d, ref: _FakeRefResolution(edge),
         )
 
@@ -982,16 +1051,22 @@ class TestCreateRefPlaneNormalToEdge:
         # Coincident=4 (vertex slot), Perpendicular=2 (edge slot).
         assert doc.insert_args == (4, 0, 2, 0, 0, 0)
 
-    def test_edge_ref_no_delta_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_edge_ref_no_delta_fails_soft(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _patch_com_imports(monkeypatch)
         doc = _FakeEdgePlaneDoc(will_materialize=False)
         edge = _FakeEdge(object())
         # Recipe-C cut #4: patch only on ref_geometry.
         monkeypatch.setattr(
-            ref_geometry, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
+            ref_geometry,
+            "resolve_edge_ref",
+            lambda d, ref: _FakeRefResolution(edge),
         )
         monkeypatch.setattr(
-            ref_geometry, "select_entity", lambda e, *, append=False, mark=0: True,
+            ref_geometry,
+            "select_entity",
+            lambda e, *, append=False, mark=0: True,
         )
         ok, err = ref_geometry._create_ref_plane(
             doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
@@ -999,12 +1074,15 @@ class TestCreateRefPlaneNormalToEdge:
         assert ok is False
         assert "did not materialize" in err
 
-    def test_edge_ref_unresolved_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_edge_ref_unresolved_fails_soft(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _patch_com_imports(monkeypatch)
         doc = _FakeEdgePlaneDoc()
         # Recipe-C cut #4: patch only on ref_geometry.
         monkeypatch.setattr(
-            ref_geometry, "resolve_edge_ref",
+            ref_geometry,
+            "resolve_edge_ref",
             lambda d, ref: _FakeRefResolution(None, method="none"),
         )
         ok, err = ref_geometry._create_ref_plane(
@@ -1013,13 +1091,17 @@ class TestCreateRefPlaneNormalToEdge:
         assert ok is False
         assert "unresolved" in err
 
-    def test_edge_ref_no_start_vertex_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_edge_ref_no_start_vertex_fails_soft(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _patch_com_imports(monkeypatch)
         doc = _FakeEdgePlaneDoc()
         edge = _FakeEdge(None)  # GetStartVertex -> None
         # Recipe-C cut #4: patch only on ref_geometry.
         monkeypatch.setattr(
-            ref_geometry, "resolve_edge_ref", lambda d, ref: _FakeRefResolution(edge),
+            ref_geometry,
+            "resolve_edge_ref",
+            lambda d, ref: _FakeRefResolution(edge),
         )
         ok, err = ref_geometry._create_ref_plane(
             doc, {"type": "ref_plane"}, {"edge_ref": _VALID_EDGE_REF}
@@ -1085,8 +1167,11 @@ class _FakeEFFm:
 
     def InsertSheetMetalEdgeFlange2(self, *a):  # noqa: N802
         self._doc.flange_args = a
-        if (self._doc._will_materialize and self._doc._plane_built
-                and self._doc._sketch_built):
+        if (
+            self._doc._will_materialize
+            and self._doc._plane_built
+            and self._doc._sketch_built
+        ):
             self._doc._feats.append(_FF("Edge-Flange1", "EdgeFlange"))
         return None
 
@@ -1096,7 +1181,10 @@ class _FakeEdgeFlangeDoc:
     bump the feature list; the flange only materializes when plane+sketch exist."""
 
     def __init__(self, *, will_materialize: bool = True) -> None:
-        self._feats = [_FF("Sketch1", "ProfileFeature"), _FF("Base-Flange1", "SMBaseFlange")]
+        self._feats = [
+            _FF("Sketch1", "ProfileFeature"),
+            _FF("Base-Flange1", "SMBaseFlange"),
+        ]
         self._will_materialize = will_materialize
         self._plane_built = False
         self._sketch_built = False
@@ -1127,8 +1215,10 @@ class _FakeEdgeFlangeDoc:
 
 _EF_TARGET = {
     "edge_ref": {
-        "persist_id": "AAAA", "start": [0.0, 0.0, 0.0],
-        "end": [0.0, 0.0, 0.05], "length": 0.05,
+        "persist_id": "AAAA",
+        "start": [0.0, 0.0, 0.0],
+        "end": [0.0, 0.0, 0.05],
+        "length": 0.05,
     }
 }
 
@@ -1176,7 +1266,8 @@ class TestCreateEdgeFlangeHandler:
         doc = _FakeEdgeFlangeDoc()
         _patch_com_imports(monkeypatch)
         monkeypatch.setattr(
-            flanges, "resolve_edge_ref",
+            flanges,
+            "resolve_edge_ref",
             lambda d, ref: _FakeRefResolution(None, method="none"),
         )
         ok, err = flanges._create_edge_flange(
@@ -1213,7 +1304,9 @@ class TestProposeEdgeFlange:
     def test_edge_flange_is_not_advertised(self) -> None:
         assert "edge_flange" not in mutate._SUPPORTED_FEATURE_TYPES
 
-    def test_propose_fails_closed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_propose_fails_closed(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -1235,8 +1328,11 @@ class TestCreateSweepCutHandler:
     success, so materialization is read from GetFeatures(True), not the return.
     """
 
-    def test_green_delta_with_none_return(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_green_delta_with_none_return(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from ai_sw_bridge.features import sweep as sweep_mod
+
         _patch_com_imports(monkeypatch)
         # CreateFeature returns None but the feature count bumps -> GREEN.
         fm = _FakeSweepCutFm(create_feat_ret=None, materializes=True)
@@ -1250,6 +1346,7 @@ class TestCreateSweepCutHandler:
 
     def test_no_delta_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from ai_sw_bridge.features import sweep as sweep_mod
+
         _patch_com_imports(monkeypatch)
         # CreateFeature returns a non-None object but NO feature appears (the
         # path didn't pierce the solid) -> must still fail on the delta.
@@ -1263,10 +1360,13 @@ class TestCreateSweepCutHandler:
 
     def test_missing_path_fails_soft(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from ai_sw_bridge.features import sweep as sweep_mod
+
         _patch_com_imports(monkeypatch)
         fm = _FakeSweepCutFm()
         doc = _FakeSweepCutDoc(fm)
-        ok, err = sweep_mod._create_sweep_cut(doc, {"type": "sweep_cut"}, {"profile": "Sketch2"})
+        ok, err = sweep_mod._create_sweep_cut(
+            doc, {"type": "sweep_cut"}, {"profile": "Sketch2"}
+        )
         assert ok is False
         assert "profile" in err and "path" in err
 
@@ -1289,7 +1389,9 @@ class TestProposeSweepCut_Advertised:
         assert r["proposal_id"] is not None
         assert r["error"] is None
 
-    def test_rejects_missing_path(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_missing_path(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -1319,7 +1421,9 @@ class TestProposeLoft:
         assert "unsupported feature type" in r["error"]
         assert "loft" in r["error"]
 
-    def test_rejects_single_profile(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_single_profile(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -1355,20 +1459,30 @@ class TestProposeDome:
     """W6 T2: dome advertised via durable face_ref. Production-handler PAE GREEN
     (spike e44711f). Legacy face-coord path is a non-advertised fallback."""
 
-    def test_valid_face_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_valid_face_ref(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
         r = _sw_propose_feature_add_impl(
             str(doc_file),
             {"type": "dome", "distance_mm": 10.0},
-            {"face_ref": {"normal": [0, 0, 1], "centroid": [0, 0, 0.02], "area_mm2": 1600.0}},
+            {
+                "face_ref": {
+                    "normal": [0, 0, 1],
+                    "centroid": [0, 0, 0.02],
+                    "area_mm2": 1600.0,
+                }
+            },
         )
         assert r["ok"] is True
         assert r["proposal_id"] is not None
         assert r["error"] is None
 
-    def test_rejects_empty_face_ref(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_empty_face_ref(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -1380,7 +1494,9 @@ class TestProposeDome:
         assert r["ok"] is False
         assert "face_ref" in r["error"]
 
-    def test_rejects_missing_target(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_missing_target(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -1428,7 +1544,9 @@ class TestProposeBoundaryBoss:
         assert "unsupported feature type" in r["error"]
         assert "boundary_boss" in r["error"]
 
-    def test_rejects_empty_dir1(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_empty_dir1(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeWave5Doc(str(doc_file)))
@@ -1440,4 +1558,3 @@ class TestProposeBoundaryBoss:
         assert r["ok"] is False
         assert "unsupported feature type" in r["error"]
         assert "boundary_boss" in r["error"]
-

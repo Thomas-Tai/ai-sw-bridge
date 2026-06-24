@@ -100,9 +100,7 @@ def _capture(fn: Any, label: str = "") -> dict[str, Any]:
         return {
             "status": "COM_ERROR",
             "hresult": (
-                f"{e.hresult:#010x}"
-                if hasattr(e, "hresult") and e.hresult
-                else None
+                f"{e.hresult:#010x}" if hasattr(e, "hresult") and e.hresult else None
             ),
             "description": getattr(e, "strerror", str(e))[:200],
             "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
@@ -205,20 +203,28 @@ def _load_dimxpert_typelib(tlb_path: str) -> dict[str, Any]:
 
     la = tlb.GetLibAttr()
     lib_name, lib_doc, _, _ = tlb.GetDocumentation(-1)
-    result.update({
-        "status": "LOADED",
-        "lib_name": lib_name,
-        "lib_doc": lib_doc,
-        "libid": str(la[0]),
-        "lcid": la[1],
-        "major": la[3],
-        "minor": la[4],
-        "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
-    })
+    result.update(
+        {
+            "status": "LOADED",
+            "lib_name": lib_name,
+            "lib_doc": lib_doc,
+            "libid": str(la[0]),
+            "lcid": la[1],
+            "major": la[3],
+            "minor": la[4],
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
+    )
 
     TYPEKIND_NAMES = {
-        0: "ENUM", 1: "RECORD", 2: "MODULE", 3: "INTERFACE",
-        4: "DISPATCH", 5: "COCLASS", 6: "ALIAS", 7: "UNION",
+        0: "ENUM",
+        1: "RECORD",
+        2: "MODULE",
+        3: "INTERFACE",
+        4: "DISPATCH",
+        5: "COCLASS",
+        6: "ALIAS",
+        7: "UNION",
     }
 
     interfaces: list[dict[str, Any]] = []
@@ -246,13 +252,15 @@ def _load_dimxpert_typelib(tlb_path: str) -> dict[str, Any]:
                 pass
 
         if "dimxpert" in name.lower() or "DimXpert" in name:
-            interfaces.append({
-                "name": name,
-                "doc": doc,
-                "typekind": TYPEKIND_NAMES.get(ta.typekind, str(ta.typekind)),
-                "member_count": len(members),
-                "members": members,
-            })
+            interfaces.append(
+                {
+                    "name": name,
+                    "doc": doc,
+                    "typekind": TYPEKIND_NAMES.get(ta.typekind, str(ta.typekind)),
+                    "member_count": len(members),
+                    "members": members,
+                }
+            )
 
     result["total_type_infos"] = n
     result["dimxpert_interfaces"] = interfaces
@@ -266,8 +274,10 @@ def _ensure_dimxpert_module(
     info: dict[str, Any] = {}
     try:
         mod = gencache.EnsureModule(
-            lib_info["libid"], lib_info["lcid"],
-            lib_info["major"], lib_info["minor"],
+            lib_info["libid"],
+            lib_info["lcid"],
+            lib_info["major"],
+            lib_info["minor"],
         )
         if mod is None:
             info["status"] = "EnsureModule returned None"
@@ -284,14 +294,14 @@ def _ensure_dimxpert_module(
 # DimXpertManager probe
 # ---------------------------------------------------------------------------
 
+
 def _get_dimxpert_manager(doc: Any) -> dict[str, Any]:
     """Probe IModelDoc2.GetDimXpertManager across invocation forms."""
     probes: list[dict[str, Any]] = []
 
     forms = [
         ("GetDimXpertManager('')", lambda: doc.GetDimXpertManager("")),
-        ("GetDimXpertManager('Default')",
-         lambda: doc.GetDimXpertManager("Default")),
+        ("GetDimXpertManager('Default')", lambda: doc.GetDimXpertManager("Default")),
     ]
 
     mgr = None
@@ -374,14 +384,10 @@ def _probe_annotation_enumeration(mgr: Any) -> dict[str, Any]:
     result: dict[str, Any] = {}
 
     count_cap = _capture(lambda: mgr.GetAnnotationCount())
-    result["GetAnnotationCount"] = {
-        k: v for k, v in count_cap.items() if k != "_val"
-    }
+    result["GetAnnotationCount"] = {k: v for k, v in count_cap.items() if k != "_val"}
 
     annots_cap = _capture(lambda: mgr.GetAnnotations())
-    result["GetAnnotations"] = {
-        k: v for k, v in annots_cap.items() if k != "_val"
-    }
+    result["GetAnnotations"] = {k: v for k, v in annots_cap.items() if k != "_val"}
 
     annotations: list[dict[str, Any]] = []
     annots = annots_cap.get("_val")
@@ -390,14 +396,17 @@ def _probe_annotation_enumeration(mgr: Any) -> dict[str, Any]:
         for i, annot in enumerate(items[:5]):
             entry: dict[str, Any] = {"index": i, "type": _tag(annot)}
             for attr in [
-                "Type", "Name", "GetID", "GetFeature", "GetAnnotationType",
+                "Type",
+                "Name",
+                "GetID",
+                "GetFeature",
+                "GetAnnotationType",
             ]:
                 cap = _capture(lambda a=annot, at=attr: getattr(a, at))
                 if cap["status"] == "OK":
                     val = cap.get("_val")
                     entry[attr] = (
-                        repr(val)[:80] if not callable(val)
-                        else f"<method {attr}>"
+                        repr(val)[:80] if not callable(val) else f"<method {attr}>"
                     )
             annotations.append(entry)
     result["annotations"] = annotations
@@ -440,40 +449,42 @@ def _probe_dimxpert_on_dimension(doc: Any) -> dict[str, Any]:
         }
 
         for attr in [
-            "GetDimension", "Tolerance", "SetTolerance",
-            "GetToleranceType", "SetToleranceType",
-            "GetToleranceValue", "SetToleranceValue",
-            "GetMaxValue", "GetMinValue",
+            "GetDimension",
+            "Tolerance",
+            "SetTolerance",
+            "GetToleranceType",
+            "SetToleranceType",
+            "GetToleranceValue",
+            "SetToleranceValue",
+            "GetMaxValue",
+            "GetMinValue",
         ]:
             cap = _capture(lambda d=disp_dim, a=attr: getattr(d, a))
             if cap["status"] == "OK":
                 val = cap.get("_val")
-                dd[attr] = (
-                    repr(val)[:80] if not callable(val)
-                    else f"<method {attr}>"
-                )
+                dd[attr] = repr(val)[:80] if not callable(val) else f"<method {attr}>"
             else:
                 dd[attr] = cap["status"]
 
         dim_cap = _capture(lambda d=disp_dim: d.GetDimension(None))
-        dd["GetDimension(None)"] = {
-            k: v for k, v in dim_cap.items() if k != "_val"
-        }
+        dd["GetDimension(None)"] = {k: v for k, v in dim_cap.items() if k != "_val"}
         if dim_cap.get("_val") is not None:
             dim = dim_cap["_val"]
             if isinstance(dim, (tuple, list)):
                 dim = dim[0]
             idim: dict[str, Any] = {"type": _tag(dim)}
             for attr in [
-                "Tolerance", "SetTolerance", "GetSystemValue",
-                "GetUserValueIn", "SystemValue", "Value",
+                "Tolerance",
+                "SetTolerance",
+                "GetSystemValue",
+                "GetUserValueIn",
+                "SystemValue",
+                "Value",
             ]:
                 cap = _capture(lambda d=dim, a=attr: getattr(d, a))
                 if cap["status"] == "OK":
                     val = cap.get("_val")
-                    idim[attr] = (
-                        repr(val)[:80] if not callable(val) else "<method>"
-                    )
+                    idim[attr] = repr(val)[:80] if not callable(val) else "<method>"
             dd["IDimension"] = idim
 
         result["first_display_dimension"] = dd
@@ -487,6 +498,7 @@ def _probe_dimxpert_on_dimension(doc: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Top-level run
 # ---------------------------------------------------------------------------
+
 
 def run(skip_build: bool = False) -> dict[str, Any]:
     result: dict[str, Any] = {"binding": "hybrid (late + optional early)"}
@@ -520,13 +532,15 @@ def run(skip_build: bool = False) -> dict[str, Any]:
         result["doc_acquisition"] = "used existing ActiveDoc"
     if doc is None:
         return {
-            **result, "overall": "FAIL",
+            **result,
+            "overall": "FAIL",
             "reason": "no active document and NewDocument returned None",
         }
     doc_type = doc.GetType() if callable(getattr(doc, "GetType", None)) else doc.GetType
     if doc_type != SW_DOC_PART:
         return {
-            **result, "overall": "FAIL",
+            **result,
+            "overall": "FAIL",
             "reason": f"active doc not a Part (GetType={doc_type})",
         }
 
@@ -535,7 +549,8 @@ def run(skip_build: bool = False) -> dict[str, Any]:
         result["build"] = build
         if not build.get("built"):
             return {
-                **result, "overall": "FAIL",
+                **result,
+                "overall": "FAIL",
                 "reason": "test part did not build",
             }
 
@@ -568,9 +583,7 @@ def run(skip_build: bool = False) -> dict[str, Any]:
 
     # --- 7. Verdict ----------------------------------------------------------
     has_manager = mgr is not None
-    annot_count_ok = (
-        annot_probe.get("GetAnnotationCount", {}).get("status") == "OK"
-    )
+    annot_count_ok = annot_probe.get("GetAnnotationCount", {}).get("status") == "OK"
     has_dynamic_members = bool(iface_probe.get("dynamic_members"))
     has_dim_tol = tol_probe.get("first_display_dimension") is not None
 
@@ -659,11 +672,14 @@ def main() -> int:
     )
     p.add_argument("--mode", choices=["com", "vba"], default="com")
     p.add_argument(
-        "--skip-build", action="store_true",
+        "--skip-build",
+        action="store_true",
         help="Probe the active part without building a test box.",
     )
     p.add_argument(
-        "--out", type=Path, default=None,
+        "--out",
+        type=Path,
+        default=None,
         help="Write JSON report to this path instead of stdout.",
     )
     args = p.parse_args()

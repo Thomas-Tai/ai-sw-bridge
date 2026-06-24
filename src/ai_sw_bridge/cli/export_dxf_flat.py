@@ -411,9 +411,7 @@ def main() -> int:
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     result_path = output_dir / "export_dxf_flat.json"
-    result_path.write_text(
-        json.dumps(result, indent=2, default=str), encoding="utf-8"
-    )
+    result_path.write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")
     print(f"Result written to {result_path}", file=sys.stderr)
 
     return 0 if result.get("ok") else 1

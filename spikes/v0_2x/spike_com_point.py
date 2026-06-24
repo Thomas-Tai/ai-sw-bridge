@@ -53,7 +53,13 @@ BOX_W_M = 0.040  # 40 mm
 BOX_H_M = 0.030  # 30 mm
 BOX_D_M = 0.010  # 10 mm
 
-SAVE_PATH = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_artifacts" / "com_point_test.sldprt"
+SAVE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_artifacts"
+    / "com_point_test.sldprt"
+)
 
 
 def _title(d: Any) -> Any:
@@ -77,8 +83,12 @@ def _build_block(doc: Any) -> dict[str, Any]:
         sk = doc.SketchManager
         sk.InsertSketch(True)
         sk.CreateCornerRectangle(
-            -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-            BOX_W_M / 2, BOX_H_M / 2, 0.0,
+            -BOX_W_M / 2,
+            -BOX_H_M / 2,
+            0.0,
+            BOX_W_M / 2,
+            BOX_H_M / 2,
+            0.0,
         )
         sk.InsertSketch(True)
         out["sketch"] = "Sketch1"
@@ -88,14 +98,29 @@ def _build_block(doc: Any) -> dict[str, Any]:
 
     try:
         feat = fm.FeatureExtrusion3(
-            True, False, False,
-            0, 0,
-            BOX_D_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOX_D_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
+            False,
         )
         out["extrude"] = feat is not None
         out["extrude_materialized"] = feat is not None and not isinstance(feat, int)
@@ -244,7 +269,9 @@ def main() -> None:
     verdict = result.get("overall", "NO-GO")
     print(f"verdict: {verdict}", file=sys.stderr)
     if result.get("confirmed"):
-        print(f"confirmed: {json.dumps(result['confirmed'], indent=2)}", file=sys.stderr)
+        print(
+            f"confirmed: {json.dumps(result['confirmed'], indent=2)}", file=sys.stderr
+        )
     print(f"results written to {RESULTS_PATH}", file=sys.stderr)
 
 

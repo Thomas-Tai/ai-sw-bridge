@@ -40,6 +40,7 @@ SW_START_SKETCH_PLANE = 0
 
 def connect_running_sw() -> Any:
     from win32com.client import dynamic
+
     try:
         return dynamic.Dispatch(pythoncom.GetActiveObject("SldWorks.Application"))
     except Exception:
@@ -60,11 +61,29 @@ def build_box(doc: Any) -> bool:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
@@ -171,7 +190,9 @@ def run() -> dict[str, Any]:
     result["typed_bound_getsaveflag"] = probe_getsaveflag(tdocB, "typed_after_save")
 
     # -- Also probe GetSaveFlag on the raw late-bound docB (before close) ---
-    result["raw_docB_getsaveflag"] = probe_getsaveflag(docB, "raw_docB_after_typed_save")
+    result["raw_docB_getsaveflag"] = probe_getsaveflag(
+        docB, "raw_docB_after_typed_save"
+    )
 
     # -- Negative probe on late-bound doc -----------------------------------
     bad_path = r"Q:\invalid\fail.SLDPRT"
@@ -218,7 +239,9 @@ def main() -> int:
     finally:
         pythoncom.CoUninitialize()
 
-    out_path = args.out or Path(__file__).parent / "_results" / "saveas3_binding_compare.json"
+    out_path = (
+        args.out or Path(__file__).parent / "_results" / "saveas3_binding_compare.json"
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")
     print(f"wrote {out_path}", file=sys.stderr)

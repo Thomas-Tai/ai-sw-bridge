@@ -23,6 +23,7 @@ Recipe:
 Usage:
     python spikes/v0_19/assembly_p1_pae.py
 """
+
 from __future__ import annotations
 
 import base64
@@ -81,9 +82,29 @@ def _build_box_and_save(sw: Any, part_path: str, mod: Any) -> dict[str, Any]:
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.05, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.05,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
     doc.SaveAs3(part_path, 0, 2)
@@ -94,7 +115,9 @@ def _build_box_and_save(sw: Any, part_path: str, mod: Any) -> dict[str, Any]:
     return out
 
 
-def _capture_planar_face(sw: Any, part_path: str, target_normal: tuple, mod: Any) -> dict:
+def _capture_planar_face(
+    sw: Any, part_path: str, target_normal: tuple, mod: Any
+) -> dict:
     """Open a saved part, find the planar face whose normal best matches
     target_normal, return a manifest face_ref dict for it.
 
@@ -333,7 +356,9 @@ def main() -> int:
                         if n < 1:
                             brep_ok = False
                     except Exception as exc:
-                        comp_brep.append({"error": f"{type(exc).__name__}: {exc}"[:200]})
+                        comp_brep.append(
+                            {"error": f"{type(exc).__name__}: {exc}"[:200]}
+                        )
                         brep_ok = False
             out["component_brep"] = comp_brep
 
@@ -352,10 +377,12 @@ def main() -> int:
                     while sub is not None:
                         try:
                             sf = typed(sub, "IFeature", module=mod)
-                            mate_feats.append({
-                                "name": sf.Name,
-                                "type": sf.GetTypeName2(),
-                            })
+                            mate_feats.append(
+                                {
+                                    "name": sf.Name,
+                                    "type": sf.GetTypeName2(),
+                                }
+                            )
                         except Exception:
                             pass
                         try:
@@ -436,6 +463,7 @@ def main() -> int:
 
     except Exception as exc:
         import traceback
+
         out["error"] = traceback.format_exc()
         out["ok"] = False
         print("[pae] EXCEPTION: %s" % exc)

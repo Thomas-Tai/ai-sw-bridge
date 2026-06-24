@@ -51,17 +51,42 @@ def _capture(fn):
         result = fn()
         return {"status": "OK"}, result
     except Exception as exc:
-        return {"status": "ERR", "type": type(exc).__name__,
-                "message": str(exc)[:200]}, None
+        return {
+            "status": "ERR",
+            "type": type(exc).__name__,
+            "message": str(exc)[:200],
+        }, None
 
 
 _VT_NAMES = {
-    0: "VT_EMPTY", 1: "VT_NULL", 2: "VT_I2", 3: "VT_I4", 4: "VT_R4",
-    5: "VT_R8", 6: "VT_CY", 7: "VT_DATE", 8: "VT_BSTR", 9: "VT_DISPATCH",
-    10: "VT_ERROR", 11: "VT_BOOL", 12: "VT_VARIANT", 13: "VT_UNKNOWN",
-    14: "VT_DECIMAL", 16: "VT_I1", 17: "VT_UI1", 18: "VT_UI2", 19: "VT_UI4",
-    20: "VT_I8", 21: "VT_UI8", 22: "VT_INT", 23: "VT_UINT", 24: "VT_VOID",
-    25: "VT_HRESULT", 26: "VT_PTR", 27: "VT_SAFEARRAY", 29: "VT_USERDEFINED",
+    0: "VT_EMPTY",
+    1: "VT_NULL",
+    2: "VT_I2",
+    3: "VT_I4",
+    4: "VT_R4",
+    5: "VT_R8",
+    6: "VT_CY",
+    7: "VT_DATE",
+    8: "VT_BSTR",
+    9: "VT_DISPATCH",
+    10: "VT_ERROR",
+    11: "VT_BOOL",
+    12: "VT_VARIANT",
+    13: "VT_UNKNOWN",
+    14: "VT_DECIMAL",
+    16: "VT_I1",
+    17: "VT_UI1",
+    18: "VT_UI2",
+    19: "VT_UI4",
+    20: "VT_I8",
+    21: "VT_UI8",
+    22: "VT_INT",
+    23: "VT_UINT",
+    24: "VT_VOID",
+    25: "VT_HRESULT",
+    26: "VT_PTR",
+    27: "VT_SAFEARRAY",
+    29: "VT_USERDEFINED",
 }
 
 
@@ -105,10 +130,14 @@ def _dump_typelib_members():
                     flags = elem[1]
                     default = elem[2] if len(elem) > 2 else None
                     flag_parts = []
-                    if flags & 1: flag_parts.append("in")
-                    if flags & 2: flag_parts.append("out")
-                    if flags & 8: flag_parts.append("retval")
-                    if flags & 0x40: flag_parts.append("optional")
+                    if flags & 1:
+                        flag_parts.append("in")
+                    if flags & 2:
+                        flag_parts.append("out")
+                    if flags & 8:
+                        flag_parts.append("retval")
+                    if flags & 0x40:
+                        flag_parts.append("optional")
                     arg_info = {
                         "name": arg_names[ai] if ai < len(arg_names) else f"arg{ai}",
                         "vt": _vt_name(vt_type),
@@ -119,12 +148,21 @@ def _dump_typelib_members():
                         arg_info["default"] = str(default)
                     args_info.append(arg_info)
                 ret_vt = _vt_name(fd.retType)
-                inv_kind = {1: "method", 2: "propget", 4: "propput",
-                            8: "propputref"}.get(fd.invkind, str(fd.invkind))
-                members.append({
-                    "name": mem_name, "invkind": inv_kind,
-                    "return_vt": ret_vt, "args": args_info, "dispid": fd.memid,
-                })
+                inv_kind = {
+                    1: "method",
+                    2: "propget",
+                    4: "propput",
+                    8: "propputref",
+                }.get(fd.invkind, str(fd.invkind))
+                members.append(
+                    {
+                        "name": mem_name,
+                        "invkind": inv_kind,
+                        "return_vt": ret_vt,
+                        "args": args_info,
+                        "dispid": fd.memid,
+                    }
+                )
             except Exception as exc:
                 members.append({"error": str(exc)[:100], "func_index": f})
         for v in range(ta.cVars):
@@ -132,10 +170,14 @@ def _dump_typelib_members():
                 vd = info.GetVarDesc(v)
                 names = info.GetNames(vd.memid)
                 var_name = names[0] if names else f"var_{vd.memid}"
-                members.append({
-                    "name": var_name, "kind": "variable",
-                    "vt": _vt_name(vd.varkind), "dispid": vd.memid,
-                })
+                members.append(
+                    {
+                        "name": var_name,
+                        "kind": "variable",
+                        "vt": _vt_name(vd.varkind),
+                        "dispid": vd.memid,
+                    }
+                )
             except Exception:
                 pass
         out[name] = members
@@ -158,9 +200,29 @@ def _build_box(sw):
     doc.InsertSketch2(False)
     fm = doc.FeatureManager
     fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.02, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.02,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
     return doc
@@ -202,9 +264,13 @@ def _probe_scalar_reads(mp):
 def _probe_member_enum(mp, mp_typed):
     out = {"late_bound": [], "typed": []}
     probe_names = (
-        "PrincipalAxesOfInertia", "GetMomentOfInertia",
-        "Moments", "RadiusOfGyration", "MomentOfInertia",
-        "GetPrincipalAxesOfInertia", "GetPrincipalMomentsOfInertia",
+        "PrincipalAxesOfInertia",
+        "GetMomentOfInertia",
+        "Moments",
+        "RadiusOfGyration",
+        "MomentOfInertia",
+        "GetPrincipalAxesOfInertia",
+        "GetPrincipalMomentsOfInertia",
         "GetRadiiOfGyration",
     )
     for name in probe_names:
@@ -253,34 +319,84 @@ def _probe_marshaling(mp, mp_typed, com_center):
     for tn, t in targets:
         for mn in METHODS:
             rec, val = _capture(lambda t=t, m=mn: getattr(t, m)(com_center))
-            results.append({"variant": "plain_list", "target": tn, "method": mn, **rec, "value_preview": _preview(val)})
+            results.append(
+                {
+                    "variant": "plain_list",
+                    "target": tn,
+                    "method": mn,
+                    **rec,
+                    "value_preview": _preview(val),
+                }
+            )
     tup = tuple(com_center)
     for tn, t in targets:
         for mn in METHODS:
             rec, val = _capture(lambda t=t, m=mn: getattr(t, m)(tup))
-            results.append({"variant": "plain_tuple", "target": tn, "method": mn, **rec, "value_preview": _preview(val)})
+            results.append(
+                {
+                    "variant": "plain_tuple",
+                    "target": tn,
+                    "method": mn,
+                    **rec,
+                    "value_preview": _preview(val),
+                }
+            )
     try:
         var_arr = w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, com_center)
         for tn, t in targets:
             for mn in METHODS:
                 rec, val = _capture(lambda t=t, m=mn, v=var_arr: getattr(t, m)(v))
-                results.append({"variant": "VARIANT(VT_ARRAY|VT_R8,list)", "target": tn, "method": mn, **rec, "value_preview": _preview(val)})
+                results.append(
+                    {
+                        "variant": "VARIANT(VT_ARRAY|VT_R8,list)",
+                        "target": tn,
+                        "method": mn,
+                        **rec,
+                        "value_preview": _preview(val),
+                    }
+                )
     except Exception as exc:
-        results.append({"variant": "VARIANT(VT_ARRAY|VT_R8,list)", "construction_error": f"{type(exc).__name__}: {exc}"[:200]})
+        results.append(
+            {
+                "variant": "VARIANT(VT_ARRAY|VT_R8,list)",
+                "construction_error": f"{type(exc).__name__}: {exc}"[:200],
+            }
+        )
     try:
         inner = [w32.VARIANT(pythoncom.VT_R8, v) for v in com_center]
         var_varr = w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_VARIANT, inner)
         for tn, t in targets:
             for mn in METHODS:
                 rec, val = _capture(lambda t=t, m=mn, v=var_varr: getattr(t, m)(v))
-                results.append({"variant": "VARIANT(VT_ARRAY|VT_VARIANT,[VT_R8])", "target": tn, "method": mn, **rec, "value_preview": _preview(val)})
+                results.append(
+                    {
+                        "variant": "VARIANT(VT_ARRAY|VT_VARIANT,[VT_R8])",
+                        "target": tn,
+                        "method": mn,
+                        **rec,
+                        "value_preview": _preview(val),
+                    }
+                )
     except Exception as exc:
-        results.append({"variant": "VARIANT(VT_ARRAY|VT_VARIANT,[VT_R8])", "construction_error": f"{type(exc).__name__}: {exc}"[:200]})
+        results.append(
+            {
+                "variant": "VARIANT(VT_ARRAY|VT_VARIANT,[VT_R8])",
+                "construction_error": f"{type(exc).__name__}: {exc}"[:200],
+            }
+        )
     for tn, t in targets:
         for mn in METHODS:
             c = list(com_center)
             rec, val = _capture(lambda t=t, m=mn, c=c: getattr(t, m)(c[0], c[1], c[2]))
-            results.append({"variant": "3_separate_floats", "target": tn, "method": mn, **rec, "value_preview": _preview(val)})
+            results.append(
+                {
+                    "variant": "3_separate_floats",
+                    "target": tn,
+                    "method": mn,
+                    **rec,
+                    "value_preview": _preview(val),
+                }
+            )
     try:
         v0 = w32.VARIANT(pythoncom.VT_R8, com_center[0])
         v1 = w32.VARIANT(pythoncom.VT_R8, com_center[1])
@@ -288,43 +404,110 @@ def _probe_marshaling(mp, mp_typed, com_center):
         for tn, t in targets:
             for mn in METHODS:
                 rec, val = _capture(lambda t=t, m=mn: getattr(t, m)(v0, v1, v2))
-                results.append({"variant": "3_separate_VARIANT(VT_R8)", "target": tn, "method": mn, **rec, "value_preview": _preview(val)})
+                results.append(
+                    {
+                        "variant": "3_separate_VARIANT(VT_R8)",
+                        "target": tn,
+                        "method": mn,
+                        **rec,
+                        "value_preview": _preview(val),
+                    }
+                )
     except Exception as exc:
-        results.append({"variant": "3_separate_VARIANT(VT_R8)", "construction_error": f"{type(exc).__name__}: {exc}"[:200]})
+        results.append(
+            {
+                "variant": "3_separate_VARIANT(VT_R8)",
+                "construction_error": f"{type(exc).__name__}: {exc}"[:200],
+            }
+        )
     try:
         sa = pythoncom.SafeArrayCreate(pythoncom.VT_R8, 1, (0, 2))
         if sa is not None:
-            for i, v in enumerate(com_center): sa[i] = v
+            for i, v in enumerate(com_center):
+                sa[i] = v
             for tn, t in targets:
                 for mn in METHODS:
                     rec, val = _capture(lambda t=t, m=mn, s=sa: getattr(t, m)(s))
-                    results.append({"variant": "SafeArray(VT_R8)", "target": tn, "method": mn, **rec, "value_preview": _preview(val)})
+                    results.append(
+                        {
+                            "variant": "SafeArray(VT_R8)",
+                            "target": tn,
+                            "method": mn,
+                            **rec,
+                            "value_preview": _preview(val),
+                        }
+                    )
         else:
-            results.append({"variant": "SafeArray(VT_R8)", "construction_error": "SafeArrayCreate returned None"})
+            results.append(
+                {
+                    "variant": "SafeArray(VT_R8)",
+                    "construction_error": "SafeArrayCreate returned None",
+                }
+            )
     except Exception as exc:
-        results.append({"variant": "SafeArray(VT_R8)", "construction_error": f"{type(exc).__name__}: {exc}"[:200]})
+        results.append(
+            {
+                "variant": "SafeArray(VT_R8)",
+                "construction_error": f"{type(exc).__name__}: {exc}"[:200],
+            }
+        )
     PROP_NAMES = METHODS + ("Moments", "RadiusOfGyration", "MomentOfInertia")
     for tn, t in targets:
         for pn in PROP_NAMES:
             rec, val = _capture(lambda t=t, p=pn: getattr(t, p))
-            results.append({"variant": "property_get_no_args", "target": tn, "property": pn, **rec, "value_type": type(val).__name__ if val is not None else "None", "value_preview": _preview(val)})
+            results.append(
+                {
+                    "variant": "property_get_no_args",
+                    "target": tn,
+                    "property": pn,
+                    **rec,
+                    "value_type": type(val).__name__ if val is not None else "None",
+                    "value_preview": _preview(val),
+                }
+            )
     try:
         var_tup = w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, tuple(com_center))
         for tn, t in targets:
             for mn in METHODS:
                 rec, val = _capture(lambda t=t, m=mn, v=var_tup: getattr(t, m)(v))
-                results.append({"variant": "VARIANT(VT_ARRAY|VT_R8,tuple)", "target": tn, "method": mn, **rec, "value_preview": _preview(val)})
+                results.append(
+                    {
+                        "variant": "VARIANT(VT_ARRAY|VT_R8,tuple)",
+                        "target": tn,
+                        "method": mn,
+                        **rec,
+                        "value_preview": _preview(val),
+                    }
+                )
     except Exception as exc:
-        results.append({"variant": "VARIANT(VT_ARRAY|VT_R8,tuple)", "construction_error": f"{type(exc).__name__}: {exc}"[:200]})
+        results.append(
+            {
+                "variant": "VARIANT(VT_ARRAY|VT_R8,tuple)",
+                "construction_error": f"{type(exc).__name__}: {exc}"[:200],
+            }
+        )
     try:
         VT_BR = pythoncom.VT_ARRAY | pythoncom.VT_R8 | pythoncom.VT_BYREF
         var_br = w32.VARIANT(VT_BR, com_center)
         for tn, t in targets:
             for mn in METHODS:
                 rec, val = _capture(lambda t=t, m=mn, v=var_br: getattr(t, m)(v))
-                results.append({"variant": "VARIANT(VT_ARRAY|VT_R8|VT_BYREF)", "target": tn, "method": mn, **rec, "value_preview": _preview(val)})
+                results.append(
+                    {
+                        "variant": "VARIANT(VT_ARRAY|VT_R8|VT_BYREF)",
+                        "target": tn,
+                        "method": mn,
+                        **rec,
+                        "value_preview": _preview(val),
+                    }
+                )
     except Exception as exc:
-        results.append({"variant": "VARIANT(VT_ARRAY|VT_R8|VT_BYREF)", "construction_error": f"{type(exc).__name__}: {exc}"[:200]})
+        results.append(
+            {
+                "variant": "VARIANT(VT_ARRAY|VT_R8|VT_BYREF)",
+                "construction_error": f"{type(exc).__name__}: {exc}"[:200],
+            }
+        )
     return results
 
 
@@ -365,16 +548,32 @@ def run():
         result["center_of_rotation_m"] = com
         print("[spike] marshaling probes (10 variants)...")
         result["marshaling_probes"] = _probe_marshaling(mp, mp_typed, com)
-        greens = [p for p in result["marshaling_probes"] if p.get("status") == "OK" and p.get("value_preview") != "None"]
+        greens = [
+            p
+            for p in result["marshaling_probes"]
+            if p.get("status") == "OK" and p.get("value_preview") != "None"
+        ]
         result["green_count"] = len(greens)
-        result["green_variants"] = [{"variant": p["variant"], "target": p.get("target"), "method": p.get("method", p.get("property", "?")), "preview": p["value_preview"]} for p in greens]
+        result["green_variants"] = [
+            {
+                "variant": p["variant"],
+                "target": p.get("target"),
+                "method": p.get("method", p.get("property", "?")),
+                "preview": p["value_preview"],
+            }
+            for p in greens
+        ]
         if greens:
             result["overall"] = "GREEN"
             n = len(greens)
-            result["interpretation"] = f"{n} marshaling variant(s) returned data. W0 can wire tensor reads."
+            result["interpretation"] = (
+                f"{n} marshaling variant(s) returned data. W0 can wire tensor reads."
+            )
         else:
             result["overall"] = "WALL"
-            result["interpretation"] = "No marshaling variant succeeded. VARIANT(VT_ARRAY|VT_R8) wall persists."
+            result["interpretation"] = (
+                "No marshaling variant succeeded. VARIANT(VT_ARRAY|VT_R8) wall persists."
+            )
     finally:
         _try_close(sw, doc)
     return result

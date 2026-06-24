@@ -8,6 +8,7 @@ Part geometry:
   - 30x30x10mm box base (planar faces for distance/parallel/perpendicular)
   - 5mm radius x 10mm tall cylindrical boss on top (for concentric)
 """
+
 import json
 import os
 import sys
@@ -28,11 +29,13 @@ results = {
     "errors": [],
 }
 
+
 def gate(name, ok, detail=""):
     results["gates"][name] = {"ok": ok, "detail": detail}
     status = "PASS" if ok else "FAIL"
     print(f"  [{status}] {name}: {detail}")
     return ok
+
 
 print("=" * 70)
 print("Phase-2 Completion PAE: Four Mate Types")
@@ -93,11 +96,16 @@ for label, path in [("A", PART_A_PATH), ("B", PART_B_PATH)]:
     print(f"  Building Part {label}...")
     try:
         r = part_build(PART_SPEC, save_as=path, save_format="current", no_dim=True)
-        gate(f"build_part_{label.lower()}", r.ok and os.path.isfile(path),
-             f"ok={r.ok}, features={r.features_built}")
+        gate(
+            f"build_part_{label.lower()}",
+            r.ok and os.path.isfile(path),
+            f"ok={r.ok}, features={r.features_built}",
+        )
     except Exception as exc:
         on_disk = os.path.isfile(path)
-        gate(f"build_part_{label.lower()}", on_disk, f"raised: {exc}, on_disk={on_disk}")
+        gate(
+            f"build_part_{label.lower()}", on_disk, f"raised: {exc}, on_disk={on_disk}"
+        )
 
 if not os.path.isfile(PART_A_PATH) or not os.path.isfile(PART_B_PATH):
     results["errors"].append("Part build failed")
@@ -115,6 +123,7 @@ from ai_sw_bridge.com.sw_type_info import wrapper_module
 sw = get_sw_app()
 mod = wrapper_module()
 tsw = typed(sw, "ISldWorks", module=mod)
+
 
 def probe_faces(part_path):
     """Probe all faces, returning list of face dicts with is_cylinder flag."""
@@ -158,14 +167,20 @@ def probe_faces(part_path):
                 except Exception:
                     pass
 
-                face_list.append({
-                    "face_idx": idx,
-                    "is_cylinder": is_cyl,
-                    "is_plane": is_plane,
-                    "normal": [round(n, 6) for n in normal],
-                    "centroid": [round(cx * 1000, 3), round(cy * 1000, 3), round(cz * 1000, 3)],
-                    "persist_id": persist_id,
-                })
+                face_list.append(
+                    {
+                        "face_idx": idx,
+                        "is_cylinder": is_cyl,
+                        "is_plane": is_plane,
+                        "normal": [round(n, 6) for n in normal],
+                        "centroid": [
+                            round(cx * 1000, 3),
+                            round(cy * 1000, 3),
+                            round(cz * 1000, 3),
+                        ],
+                        "persist_id": persist_id,
+                    }
+                )
             except Exception:
                 pass
         return face_list
@@ -173,10 +188,16 @@ def probe_faces(part_path):
         title = doc.GetTitle() if callable(doc.GetTitle) else doc.GetTitle
         sw.CloseDoc(title)
 
+
 faces_a = probe_faces(PART_A_PATH)
 faces_b = probe_faces(PART_B_PATH)
-print(f"  Part A: {len(faces_a)} faces ({sum(1 for f in faces_a if f['is_cylinder'])} cylindrical)")
-print(f"  Part B: {len(faces_b)} faces ({sum(1 for f in faces_b if f['is_cylinder'])} cylindrical)")
+print(
+    f"  Part A: {len(faces_a)} faces ({sum(1 for f in faces_a if f['is_cylinder'])} cylindrical)"
+)
+print(
+    f"  Part B: {len(faces_b)} faces ({sum(1 for f in faces_b if f['is_cylinder'])} cylindrical)"
+)
+
 
 def find_planar(faces, normal_target, z_approx=None):
     for f in faces:
@@ -191,11 +212,13 @@ def find_planar(faces, normal_target, z_approx=None):
                 return f
     return None
 
+
 def find_cylindrical(faces):
     for f in faces:
         if f["is_cylinder"]:
             return f
     return None
+
 
 face_a_top = find_planar(faces_a, [0, 0, 1], z_approx=10)
 face_a_right = find_planar(faces_a, [1, 0, 0])
@@ -205,13 +228,18 @@ face_b_right = find_planar(faces_b, [1, 0, 0])
 face_a_cyl = find_cylindrical(faces_a)
 face_b_cyl = find_cylindrical(faces_b)
 
-gate("probe_faces",
-     all([face_a_top, face_b_bottom, face_a_right, face_b_right, face_a_cyl, face_b_cyl]),
-     f"planar={all([face_a_top, face_b_bottom, face_a_right, face_b_right])}, "
-     f"cyl_A={face_a_cyl is not None}, cyl_B={face_b_cyl is not None}")
+gate(
+    "probe_faces",
+    all(
+        [face_a_top, face_b_bottom, face_a_right, face_b_right, face_a_cyl, face_b_cyl]
+    ),
+    f"planar={all([face_a_top, face_b_bottom, face_a_right, face_b_right])}, "
+    f"cyl_A={face_a_cyl is not None}, cyl_B={face_b_cyl is not None}",
+)
 
 # Step 3: Assembly spec with all four mate types
 print("\n--- Step 3: Assembly spec ---")
+
 
 def make_face_ref(face_data):
     """Build a face_ref dict from probed face data."""
@@ -221,6 +249,7 @@ def make_face_ref(face_data):
     if face_data.get("persist_id"):
         ref["persist_id"] = face_data["persist_id"]
     return ref
+
 
 ASSEMBLY_SPEC = {
     "kind": "assembly",
@@ -252,7 +281,10 @@ ASSEMBLY_SPEC = {
         },
         {
             "type": "perpendicular",
-            "a": {"component": "part_a", "face_ref": make_face_ref(face_a_front or face_a_right)},
+            "a": {
+                "component": "part_a",
+                "face_ref": make_face_ref(face_a_front or face_a_right),
+            },
             "b": {"component": "part_b", "face_ref": make_face_ref(face_b_right)},
         },
         {
@@ -300,14 +332,23 @@ commit_result = sw_commit_assembly(proposal_id, OUTPUT_ASM)
 commit_ok = commit_result.get("ok", False)
 asm_on_disk = os.path.isfile(OUTPUT_ASM)
 commit_error = commit_result.get("error", "")
-gate("commit", commit_ok or asm_on_disk,
-     f"ok={commit_ok}, on_disk={asm_on_disk}, error={commit_error[:200] if commit_error else 'none'}")
+gate(
+    "commit",
+    commit_ok or asm_on_disk,
+    f"ok={commit_ok}, on_disk={asm_on_disk}, error={commit_error[:200] if commit_error else 'none'}",
+)
 
 if commit_ok or asm_on_disk:
-    gate("component_count", commit_result.get("component_count", 0) == 2,
-         f"count={commit_result.get('component_count')}")
-    gate("mate_count", commit_result.get("mate_count", 0) >= 4,
-         f"count={commit_result.get('mate_count')}")
+    gate(
+        "component_count",
+        commit_result.get("component_count", 0) == 2,
+        f"count={commit_result.get('component_count')}",
+    )
+    gate(
+        "mate_count",
+        commit_result.get("mate_count", 0) >= 4,
+        f"count={commit_result.get('mate_count')}",
+    )
 
 # Step 5: verify_mates() — the new pass bar
 print("\n--- Step 5: verify_mates() ---")
@@ -370,16 +411,24 @@ if os.path.isfile(OUTPUT_ASM):
         per_mate = verify_mates(asm_doc, mod=mod)
         results["per_mate_results"] = per_mate
 
-        gate("verify_mates_nonempty", len(per_mate) >= 4,
-             f"found {len(per_mate)} mates")
+        gate(
+            "verify_mates_nonempty", len(per_mate) >= 4, f"found {len(per_mate)} mates"
+        )
 
-        all_solved = len(per_mate) >= 4 and all(m.get("solved", False) for m in per_mate)
-        gate("all_mates_solved", all_solved,
-             f"solved={[m.get('solved') for m in per_mate]}, "
-             f"types={[m.get('type') for m in per_mate]}")
+        all_solved = len(per_mate) >= 4 and all(
+            m.get("solved", False) for m in per_mate
+        )
+        gate(
+            "all_mates_solved",
+            all_solved,
+            f"solved={[m.get('solved') for m in per_mate]}, "
+            f"types={[m.get('type') for m in per_mate]}",
+        )
 
         for m in per_mate:
-            print(f"    {m['name']:20} {m['type']:20} error={m['error_code']} solved={m['solved']}")
+            print(
+                f"    {m['name']:20} {m['type']:20} error={m['error_code']} solved={m['solved']}"
+            )
     else:
         gate("verify_mates_nonempty", False, "could not open assembly doc")
         gate("all_mates_solved", False, "no assembly doc")
@@ -388,7 +437,9 @@ if os.path.isfile(OUTPUT_ASM):
 print("\n" + "=" * 70)
 all_pass = all(g["ok"] for g in results["gates"].values())
 print(f"OVERALL: {'ALL GATES PASS' if all_pass else 'SOME GATES FAILED'}")
-print(f"Gates: {sum(1 for g in results['gates'].values() if g['ok'])}/{len(results['gates'])} passed")
+print(
+    f"Gates: {sum(1 for g in results['gates'].values() if g['ok'])}/{len(results['gates'])} passed"
+)
 print("=" * 70)
 
 results["assembly_path"] = OUTPUT_ASM

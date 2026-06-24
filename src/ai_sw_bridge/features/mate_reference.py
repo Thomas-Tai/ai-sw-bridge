@@ -71,8 +71,8 @@ SPIKE_STATUS = "GREEN"  # seat-proven: InsertMateReference2 → 'MateReferenceGr
 VERIFY_CLASS = verify.FeatureClass.REF_NODE
 
 # swMateReferenceType_e / swMateReferenceAlignment_e defaults (reflected).
-_REF_TYPE_DEFAULT = 0   # swMateReferenceType_default
-_REF_ALIGN_ANY = 0      # swMateReferenceAlignment_Any
+_REF_TYPE_DEFAULT = 0  # swMateReferenceType_default
+_REF_ALIGN_ANY = 0  # swMateReferenceAlignment_Any
 
 
 def _count_feature_nodes(doc: Any) -> int:
@@ -112,7 +112,9 @@ def _resolve_entity_ref(doc: Any, ref: Any) -> Any:
         logger.warning("[mate_reference] typed(IEntity) failed, passing raw: %r", exc)
         return ent
     except Exception as exc:
-        logger.warning("[mate_reference] typed(IEntity) unexpected, passing raw: %r", exc)
+        logger.warning(
+            "[mate_reference] typed(IEntity) unexpected, passing raw: %r", exc
+        )
         return ent
 
 
@@ -149,7 +151,9 @@ def _try_mode_b(doc: Any, feature: dict, target: dict) -> bool | None:
     by_role: dict[str, Any] = {}
     for i, ent_spec in enumerate(entities):
         if not isinstance(ent_spec, dict):
-            logger.warning("[mate_reference] mode_b: entity[%d] not a dict, skipping", i)
+            logger.warning(
+                "[mate_reference] mode_b: entity[%d] not a dict, skipping", i
+            )
             continue
         role = ent_spec.get("role", "primary")
         if role not in ("primary", "secondary", "tertiary"):
@@ -157,11 +161,15 @@ def _try_mode_b(doc: Any, feature: dict, target: dict) -> bool | None:
             continue
         ref = ent_spec.get("ref")
         if ref is None:
-            logger.warning("[mate_reference] mode_b: entity[%d] (%s) has no ref", i, role)
+            logger.warning(
+                "[mate_reference] mode_b: entity[%d] (%s) has no ref", i, role
+            )
             return None
         ent = _resolve_entity_ref(doc, ref)
         if ent is None:
-            logger.warning("[mate_reference] mode_b: entity[%d] (%s) unresolved", i, role)
+            logger.warning(
+                "[mate_reference] mode_b: entity[%d] (%s) unresolved", i, role
+            )
             return None
         by_role[role] = ent
 
@@ -187,27 +195,33 @@ def _try_mode_b(doc: Any, feature: dict, target: dict) -> bool | None:
     try:
         fm_typed = typed_qi(fm, "IFeatureManager", module=wrapper_module())
     except EarlyBindError as exc:
-        logger.warning("[mate_reference] mode_b: typed_qi(IFeatureManager) E_NOINTERFACE: %r", exc)
+        logger.warning(
+            "[mate_reference] mode_b: typed_qi(IFeatureManager) E_NOINTERFACE: %r", exc
+        )
     except Exception as exc:
-        logger.warning("[mate_reference] mode_b: typed_qi(IFeatureManager) failed: %r", exc)
+        logger.warning(
+            "[mate_reference] mode_b: typed_qi(IFeatureManager) failed: %r", exc
+        )
     target_fm = fm_typed if fm_typed is not None else fm
 
     try:
         feat = target_fm.InsertMateReference2(
-            name,                 # 0  name
-            primary,              # 1  primary entity
-            _REF_TYPE_DEFAULT,    # 2  primary type
-            _REF_ALIGN_ANY,       # 3  primary alignment
-            False,                # 4  primary align-axes
-            secondary,            # 5  secondary entity (or null)
-            _REF_TYPE_DEFAULT,    # 6  secondary type
-            _REF_ALIGN_ANY,       # 7  secondary alignment
-            False,                # 8  secondary align-axes
-            tertiary,             # 9  tertiary entity (or null)
-            _REF_TYPE_DEFAULT,    # 10 tertiary type
-            _REF_ALIGN_ANY,       # 11 tertiary alignment
+            name,  # 0  name
+            primary,  # 1  primary entity
+            _REF_TYPE_DEFAULT,  # 2  primary type
+            _REF_ALIGN_ANY,  # 3  primary alignment
+            False,  # 4  primary align-axes
+            secondary,  # 5  secondary entity (or null)
+            _REF_TYPE_DEFAULT,  # 6  secondary type
+            _REF_ALIGN_ANY,  # 7  secondary alignment
+            False,  # 8  secondary align-axes
+            tertiary,  # 9  tertiary entity (or null)
+            _REF_TYPE_DEFAULT,  # 10 tertiary type
+            _REF_ALIGN_ANY,  # 11 tertiary alignment
         )
-        logger.warning("[mate_reference] mode_b: InsertMateReference2 returned %r", feat)
+        logger.warning(
+            "[mate_reference] mode_b: InsertMateReference2 returned %r", feat
+        )
     except Exception as exc:
         logger.warning("[mate_reference] mode_b: InsertMateReference2 raised %r", exc)
         return None
@@ -276,7 +290,9 @@ def _create_mate_reference_inner(
         ok, note = _verify(doc, before)
         if ok:
             return True, f"mode_a ({note})"
-        logger.warning("[mate_reference] mode_a reported success but verify failed: %s", note)
+        logger.warning(
+            "[mate_reference] mode_a reported success but verify failed: %s", note
+        )
 
     result_b = _try_mode_b(doc, feature, target)
     if result_b is None:

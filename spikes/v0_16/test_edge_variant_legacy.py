@@ -1,6 +1,8 @@
 """Test: InsertSheetMetalEdgeFlange with VARIANT edge parameter."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "v0_15"))
 
@@ -48,14 +50,18 @@ try:
     print(f"Live edge type: {type(live_edge).__name__}")
 
     # Create VARIANT with edge
-    edge_var = win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [live_edge])
+    edge_var = win32com.client.VARIANT(
+        pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [live_edge]
+    )
     print(f"Edge VARIANT: {edge_var}")
 
     # Test: pass VARIANT as first parameter
     print("")
     print("=== VARIANT as first param ===")
     try:
-        feat2 = fm.InsertSheetMetalEdgeFlange(edge_var, False, False, 0.002, False, False, 0, 0)
+        feat2 = fm.InsertSheetMetalEdgeFlange(
+            edge_var, False, False, 0.002, False, False, 0, 0
+        )
         if feat2:
             print(f"  SUCCESS: {feat2.Name}")
         else:
@@ -67,7 +73,9 @@ try:
     print("")
     print("=== VARIANT as third param ===")
     try:
-        feat3 = fm.InsertSheetMetalEdgeFlange(1.5708, False, edge_var, 0.002, False, False, 0, 0)
+        feat3 = fm.InsertSheetMetalEdgeFlange(
+            1.5708, False, edge_var, 0.002, False, False, 0, 0
+        )
         if feat3:
             print(f"  SUCCESS: {feat3.Name}")
         else:

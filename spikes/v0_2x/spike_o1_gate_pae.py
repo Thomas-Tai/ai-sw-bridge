@@ -13,6 +13,7 @@ Verifies the worker-ported O1 batch end-to-end on the live seat:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_o1_gate_pae.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -61,11 +62,17 @@ def _under_warnings_as_errors(fn) -> tuple[dict[str, Any], bool, str]:
         try:
             return fn(), True, ""
         except PendingDeprecationWarning as exc:  # noqa: BLE001
-            return {"ok": False}, False, f"internal PendingDeprecationWarning leaked: {exc}"
+            return (
+                {"ok": False},
+                False,
+                f"internal PendingDeprecationWarning leaked: {exc}",
+            )
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -88,11 +95,17 @@ def main() -> int:
             gate("draft_clean", False, cube["error"])
             raise SystemExit(_finish())
         ns_draft = argparse.Namespace(pull_direction="top", min_angle=1.0)
-        rep, clean, why = _under_warnings_as_errors(lambda: cli_observe._run_draft(ns_draft))
+        rep, clean, why = _under_warnings_as_errors(
+            lambda: cli_observe._run_draft(ns_draft)
+        )
         results["draft_report"] = rep
-        gate("draft_clean", clean and bool(rep.get("ok")),
-             why or f"ok={rep.get('ok')} faces_total={rep.get('faces_total')} "
-             f"(class-routed, no deprecation warning)")
+        gate(
+            "draft_clean",
+            clean and bool(rep.get("ok")),
+            why
+            or f"ok={rep.get('ok')} faces_total={rep.get('faces_total')} "
+            f"(class-routed, no deprecation warning)",
+        )
 
         # ── B: interference via the client (overlapping assembly active) ──
         sw.CloseAllDocuments(True)
@@ -112,12 +125,17 @@ def main() -> int:
             gate("interference_clean", False, err)
             raise SystemExit(_finish())
         rep2, clean2, why2 = _under_warnings_as_errors(
-            lambda: cli_observe._run_interference(argparse.Namespace()))
+            lambda: cli_observe._run_interference(argparse.Namespace())
+        )
         results["interference_report"] = rep2
         cnt = rep2.get("interference_count")
-        gate("interference_clean", clean2 and bool(rep2.get("ok")),
-             why2 or f"ok={rep2.get('ok')} interference_count={cnt} "
-             f"(class-routed, no deprecation warning)")
+        gate(
+            "interference_clean",
+            clean2 and bool(rep2.get("ok")),
+            why2
+            or f"ok={rep2.get('ok')} interference_count={cnt} "
+            f"(class-routed, no deprecation warning)",
+        )
 
         # ── C: the legacy free function STILL warns (external back-compat) ─
         doc = get_active_doc(get_sw_app())
@@ -125,10 +143,13 @@ def main() -> int:
             warnings.simplefilter("always")
             legacy = sw_get_interference(doc)
         warned = any(issubclass(w.category, PendingDeprecationWarning) for w in caught)
-        gate("shim_warns",
-             warned and bool(legacy.get("ok"))
-             and legacy.get("interference_count") == cnt,
-             f"legacy warned={warned}, same_count={legacy.get('interference_count') == cnt}")
+        gate(
+            "shim_warns",
+            warned
+            and bool(legacy.get("ok"))
+            and legacy.get("interference_count") == cnt,
+            f"legacy warned={warned}, same_count={legacy.get('interference_count') == cnt}",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

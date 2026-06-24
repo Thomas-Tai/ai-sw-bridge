@@ -139,13 +139,15 @@ def _independent_reopen_verify(
                 errors.append(f"Get4({name}) raised {exc!r}")
                 continue
             match = exists and pvalue == expected
-            read_back.append({
-                "name": name,
-                "exists": exists,
-                "expected": expected,
-                "value": pvalue,
-                "match": match,
-            })
+            read_back.append(
+                {
+                    "name": name,
+                    "exists": exists,
+                    "expected": expected,
+                    "value": pvalue,
+                    "match": match,
+                }
+            )
             if not match:
                 errors.append(
                     f"reopen mismatch {name}: expected {expected!r}, "
@@ -184,8 +186,9 @@ def run() -> int:
     # --- Gate 1: build minimal part ---
     print("\n--- Building minimal part ---")
     built = _build_minimal_part(PART_PATH)
-    if not gate("1_part_built", built and os.path.isfile(PART_PATH),
-                f"part={PART_PATH}"):
+    if not gate(
+        "1_part_built", built and os.path.isfile(PART_PATH), f"part={PART_PATH}"
+    ):
         save_results()
         return 1
 
@@ -200,8 +203,11 @@ def run() -> int:
         "title_block": TITLE_BLOCK,
     }
     prop = sw_propose_drawing(spec)
-    if not gate("2_propose_ok", bool(prop.get("ok")),
-                prop.get("error") or f"pid={prop.get('proposal_id')}"):
+    if not gate(
+        "2_propose_ok",
+        bool(prop.get("ok")),
+        prop.get("error") or f"pid={prop.get('proposal_id')}",
+    ):
         save_results()
         return 1
     pid = prop["proposal_id"]
@@ -209,8 +215,9 @@ def run() -> int:
     # --- Gate 3: dry_run ---
     print("\n--- Dry run ---")
     dry = sw_dry_run_drawing(pid)
-    if not gate("3_dry_run_ok", bool(dry.get("ok")),
-                dry.get("error") or "model present"):
+    if not gate(
+        "3_dry_run_ok", bool(dry.get("ok")), dry.get("error") or "model present"
+    ):
         save_results()
         return 1
 
@@ -226,15 +233,21 @@ def run() -> int:
         "title_block_verify": commit.get("title_block_verify"),
         "error": commit.get("error"),
     }
-    if not gate("4_commit_ok", bool(commit.get("ok")),
-                commit.get("error") or f"drawing={DRAW_PATH}"):
+    if not gate(
+        "4_commit_ok",
+        bool(commit.get("ok")),
+        commit.get("error") or f"drawing={DRAW_PATH}",
+    ):
         save_results()
         return 1
 
     # --- Gate 5: file-on-disk ---
     print("\n--- File-on-disk check ---")
-    if not gate("5_file_exists", os.path.isfile(DRAW_PATH),
-                f"size={os.path.getsize(DRAW_PATH)} B"):
+    if not gate(
+        "5_file_exists",
+        os.path.isfile(DRAW_PATH),
+        f"size={os.path.getsize(DRAW_PATH)} B",
+    ):
         save_results()
         return 1
 
@@ -243,18 +256,23 @@ def run() -> int:
     time.sleep(0.5)
     indep = _independent_reopen_verify(DRAW_PATH, TITLE_BLOCK)
     results["independent_verify"] = indep
-    if not gate("6_independent_reopen",
-                bool(indep.get("ok")),
-                "; ".join(indep.get("errors", [])) or
-                f"{len(indep.get('read_back', []))} fields match"):
+    if not gate(
+        "6_independent_reopen",
+        bool(indep.get("ok")),
+        "; ".join(indep.get("errors", []))
+        or f"{len(indep.get('read_back', []))} fields match",
+    ):
         save_results()
         return 1
 
     # --- Gate 7: every field matches (the load-bearing no-op trap gate) ---
     read_back = indep.get("read_back", [])
     per_field_ok = all(rb.get("match") for rb in read_back)
-    if not gate("7_all_fields_match", per_field_ok and len(read_back) == len(TITLE_BLOCK),
-                f"matched {sum(rb['match'] for rb in read_back)}/{len(TITLE_BLOCK)}"):
+    if not gate(
+        "7_all_fields_match",
+        per_field_ok and len(read_back) == len(TITLE_BLOCK),
+        f"matched {sum(rb['match'] for rb in read_back)}/{len(TITLE_BLOCK)}",
+    ):
         save_results()
         return 1
 

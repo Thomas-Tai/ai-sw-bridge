@@ -32,9 +32,9 @@ class TestDrawingFormats:
 
     def test_every_format_has_view_name(self) -> None:
         for name, fmt in DRAWING_FORMATS.items():
-            assert fmt.view_name.startswith("*"), (
-                f"{name} view_name should start with * (SW standard view prefix)"
-            )
+            assert fmt.view_name.startswith(
+                "*"
+            ), f"{name} view_name should start with * (SW standard view prefix)"
 
     def test_every_format_has_description(self) -> None:
         for name, fmt in DRAWING_FORMATS.items():
@@ -55,9 +55,9 @@ class TestDrawingFormats:
     def test_no_format_confirmed_yet(self) -> None:
         """All formats ship unconfirmed — seat confirmation is a SEAT task."""
         for name, fmt in DRAWING_FORMATS.items():
-            assert not fmt.seat_confirmed, (
-                f"{name} is marked confirmed but no seat session has run"
-            )
+            assert (
+                not fmt.seat_confirmed
+            ), f"{name} is marked confirmed but no seat session has run"
 
     def test_default_positions_are_positive(self) -> None:
         for name, fmt in DRAWING_FORMATS.items():

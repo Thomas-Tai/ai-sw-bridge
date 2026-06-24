@@ -32,6 +32,7 @@ its own doc by title. Prereq: SOLIDWORKS running.
 
 Usage:  .venv-py310\Scripts\python spikes\v0_16\spike_material_v2.py
 """
+
 from __future__ import annotations
 
 import json
@@ -78,12 +79,35 @@ def _build_box(doc: Any) -> dict[str, Any]:
         return {"built": False, "error": "could not select Front Plane"}
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                             BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base, False)
     except Exception:  # noqa: BLE001
@@ -171,8 +195,8 @@ def _set_and_readback(doc: Any, db: str, name: str) -> dict[str, Any]:
         if isinstance(rb, (tuple, list)) and len(rb) >= 2:
             rec["db_readback"] = rb[0]
             rec["name_readback"] = rb[1]
-            rec["roundtrip_db_match"] = (str(rb[0]) == db)
-            rec["roundtrip_name_match"] = (str(rb[1]) == name)
+            rec["roundtrip_db_match"] = str(rb[0]) == db
+            rec["roundtrip_name_match"] = str(rb[1]) == name
         else:
             rec["get_raw"] = str(rb)
     except pywintypes.com_error as e:
@@ -228,13 +252,18 @@ def run() -> dict[str, Any]:
     post = result["density_post"].get("density_kg_m3")
     rt = result["assign"].get("roundtrip_name_match") is True
     density_moved = (
-        pre is not None and post is not None
+        pre is not None
+        and post is not None
         and abs(float(post) - float(pre)) > _DENSITY_DELTA_THRESHOLD
     )
     result["density_delta"] = {
-        "pre_kg_m3": pre, "post_kg_m3": post,
+        "pre_kg_m3": pre,
+        "post_kg_m3": post,
         "moved": density_moved,
-        "post_is_material_like": (post is not None and abs(float(post) - _FALLBACK_DENSITY_KG_M3) > _DENSITY_DELTA_THRESHOLD),
+        "post_is_material_like": (
+            post is not None
+            and abs(float(post) - _FALLBACK_DENSITY_KG_M3) > _DENSITY_DELTA_THRESHOLD
+        ),
     }
     if rt and density_moved:
         result["overall"] = "PASS"
@@ -244,7 +273,7 @@ def run() -> dict[str, Any]:
         result["overall"] = "FAIL"
     result["interpretation"] = {
         "PASS": "typed read-back + typed mass-props both clear the late-bind wall; "
-                "density flows from the assigned material -> wire library-material path into material.py.",
+        "density flows from the assigned material -> wire library-material path into material.py.",
         "PARTIAL": "read-back clean but density did not move -> custom-property fallback only.",
         "FAIL": "typed read-back itself errored -> deeper than marshaling.",
     }[result["overall"]]

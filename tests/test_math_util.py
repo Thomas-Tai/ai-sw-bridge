@@ -106,7 +106,7 @@ class TestCreateTransformFromMoves:
         mu.create_transform_from_moves(0.01, 0.02, 0.03)
         method, data = fake.calls[0]
         assert method == "CreateTransform"
-        assert data[3] == 0.01   # tx
-        assert data[7] == 0.02   # ty
+        assert data[3] == 0.01  # tx
+        assert data[7] == 0.02  # ty
         assert data[11] == 0.03  # tz
-        assert data[0] == 1.0    # r00
+        assert data[0] == 1.0  # r00

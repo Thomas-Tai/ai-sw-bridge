@@ -2,6 +2,7 @@
 
 Comprehensive search, not filtered by exact name match.
 """
+
 from __future__ import annotations
 
 TLB_PATH = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\sldworks.tlb"
@@ -67,14 +68,16 @@ def main() -> None:
                         params = []
                         for p in fd.args:
                             params.append(decode_vt(p))
-                        dim_methods.append({
-                            "name": mname,
-                            "memid": memid,
-                            "inv": fd.invkind,
-                            "params": params,
-                            "pnames": param_names,
-                            "ret": ret_vt,
-                        })
+                        dim_methods.append(
+                            {
+                                "name": mname,
+                                "memid": memid,
+                                "inv": fd.invkind,
+                                "params": params,
+                                "pnames": param_names,
+                                "ret": ret_vt,
+                            }
+                        )
             except Exception:
                 continue
 

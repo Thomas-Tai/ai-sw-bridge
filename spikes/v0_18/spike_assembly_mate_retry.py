@@ -22,6 +22,7 @@ Recipe:
 Usage:
     python spikes/v0_18/spike_assembly_mate_retry.py
 """
+
 from __future__ import annotations
 
 import json
@@ -108,9 +109,29 @@ def run() -> dict[str, Any]:
     doc.ClearSelection2(True)
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     doc.FeatureManager.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.05, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.05,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
     doc.SaveAs3(part_path, 0, 2)
@@ -236,8 +257,7 @@ def run() -> dict[str, Any]:
                 "The legacy AddMate5 path WALLs (ErrorStatus=4) because it needs "
                 "assembly-context faces; the modern feature-data path accepts "
                 "component-context faces via the same SAFEARRAY marshaling that "
-                "cracked edge flange in Wave-7."
-                % (mate_name, mate_type, error_status)
+                "cracked edge flange in Wave-7." % (mate_name, mate_type, error_status)
             )
         else:
             result["overall"] = "WALL"
@@ -279,7 +299,8 @@ def main() -> int:
     print("wrote %s" % out)
     print("overall: %s" % result.get("overall"))
     return {"GREEN": 0, "WALL": 2, "PARTIAL": 2, "FAIL": 1}.get(
-        result.get("overall"), 1)
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":

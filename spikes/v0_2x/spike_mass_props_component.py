@@ -16,6 +16,7 @@ Witness:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_mass_props_component.py
 """
+
 from __future__ import annotations
 
 import json
@@ -45,7 +46,11 @@ from ai_sw_bridge.observe_inertia import sw_get_inertia  # noqa: E402
 import spike_advanced_mates_probe as P  # noqa: E402
 
 _OUT = _HERE.parent / "_results" / "mass_props_component.json"
-results: dict[str, Any] = {"probe": "w78_mass_props_component", "gates": {}, "links": {}}
+results: dict[str, Any] = {
+    "probe": "w78_mass_props_component",
+    "gates": {},
+    "links": {},
+}
 
 
 def gate(name: str, ok: bool, detail: str = "") -> bool:
@@ -103,7 +108,9 @@ def _trace(t: Any) -> float:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -140,33 +147,43 @@ def main() -> int:
         lb = _link_props(placed["b"], mod)
         results["links"] = {"a": la, "b": lb}
 
-        gate("per_component_mass",
-             bool(la.get("ok")) and bool(lb.get("ok"))
-             and (la.get("mass_kg") or 0) > 0 and (lb.get("mass_kg") or 0) > 0,
-             f"mass_a={la.get('mass_kg')} mass_b={lb.get('mass_kg')} "
-             f"errA={la.get('error')} errB={lb.get('error')}")
+        gate(
+            "per_component_mass",
+            bool(la.get("ok"))
+            and bool(lb.get("ok"))
+            and (la.get("mass_kg") or 0) > 0
+            and (lb.get("mass_kg") or 0) > 0,
+            f"mass_a={la.get('mass_kg')} mass_b={lb.get('mass_kg')} "
+            f"errA={la.get('error')} errB={lb.get('error')}",
+        )
 
         # Volume ratio 30^3 / 20^3 = 3.375 — density cancels, proves the read is
         # per-component, not a shared/active-doc answer.
         ratio = None
         if la.get("mass_kg") and lb.get("mass_kg"):
             ratio = lb["mass_kg"] / la["mass_kg"]
-        gate("mass_discriminates",
-             ratio is not None and abs(ratio - 3.375) < 0.05,
-             f"mass_b/mass_a={ratio} (expect 3.375)")
+        gate(
+            "mass_discriminates",
+            ratio is not None and abs(ratio - 3.375) < 0.05,
+            f"mass_b/mass_a={ratio} (expect 3.375)",
+        )
 
-        gate("inertia_nonzero",
-             _trace(la.get("inertia_tensor_kg_m2")) > 0
-             and _trace(lb.get("inertia_tensor_kg_m2")) > 0,
-             f"trA={_trace(la.get('inertia_tensor_kg_m2')):.3e} "
-             f"trB={_trace(lb.get('inertia_tensor_kg_m2')):.3e}")
+        gate(
+            "inertia_nonzero",
+            _trace(la.get("inertia_tensor_kg_m2")) > 0
+            and _trace(lb.get("inertia_tensor_kg_m2")) > 0,
+            f"trA={_trace(la.get('inertia_tensor_kg_m2')):.3e} "
+            f"trB={_trace(lb.get('inertia_tensor_kg_m2')):.3e}",
+        )
 
         # Each component's CoM is in its OWN frame: centered in X/Y, z = side/2.
         cza = (la.get("center_of_mass_mm") or [0, 0, 0])[2]
         czb = (lb.get("center_of_mass_mm") or [0, 0, 0])[2]
-        gate("com_per_part_frame",
-             abs(cza - 10.0) < 0.5 and abs(czb - 15.0) < 0.5,
-             f"com_z_a={cza} (expect 10) com_z_b={czb} (expect 15)")
+        gate(
+            "com_per_part_frame",
+            abs(cza - 10.0) < 0.5 and abs(czb - 15.0) < 0.5,
+            f"com_z_a={cza} (expect 10) com_z_b={czb} (expect 15)",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

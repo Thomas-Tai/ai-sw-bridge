@@ -107,13 +107,15 @@ def _dump_funcdesc(info: Any, func_idx: int) -> dict[str, Any] | None:
         for j, a in enumerate(args):
             vt = a[0]
             aname = arg_names[j] if j < len(arg_names) else f"arg{j}"
-            arg_details.append({
-                "index": j,
-                "name": aname,
-                "vt_code": vt if isinstance(vt, int) else vt[0],
-                "vt_label": _vt_label(vt),
-                "is_pointer": isinstance(vt, tuple),
-            })
+            arg_details.append(
+                {
+                    "index": j,
+                    "name": aname,
+                    "vt_code": vt if isinstance(vt, int) else vt[0],
+                    "vt_label": _vt_label(vt),
+                    "is_pointer": isinstance(vt, tuple),
+                }
+            )
         ret_vt = fd.rettype[0] if fd.rettype else 24
         return {
             "method": method_name,
@@ -191,19 +193,23 @@ def _scan_typelib(tlb_path: str) -> dict[str, Any]:
                 continue
 
         if iface_has_weld:
-            result["all_weld_ifaces"].append({
-                "interface": iface_name,
-                "doc": iface_doc,
-                "methods": weld_methods,
-            })
+            result["all_weld_ifaces"].append(
+                {
+                    "interface": iface_name,
+                    "doc": iface_doc,
+                    "methods": weld_methods,
+                }
+            )
             result["weld_candidates"].extend(weld_methods)
 
         if iface_has_datum:
-            result["all_datum_ifaces"].append({
-                "interface": iface_name,
-                "doc": iface_doc,
-                "methods": datum_methods,
-            })
+            result["all_datum_ifaces"].append(
+                {
+                    "interface": iface_name,
+                    "doc": iface_doc,
+                    "methods": datum_methods,
+                }
+            )
             result["datum_candidates"].extend(datum_methods)
 
     return result
@@ -230,31 +236,36 @@ def _derive_conclusions(scan: dict[str, Any]) -> dict[str, Any]:
     }
 
     for c in scan["weld_candidates"]:
-        conclusions["weld"]["all_candidates_summary"].append({
-            "interface": c.get("interface", "?"),
-            "method": c.get("method", "?"),
-            "cParams": c.get("cParams", "?"),
-            "invkind": c.get("invkind_label", "?"),
-            "return_vt": c.get("return_vt_label", "?"),
-            "arg_vts": [a["vt_label"] for a in c.get("args", [])],
-        })
+        conclusions["weld"]["all_candidates_summary"].append(
+            {
+                "interface": c.get("interface", "?"),
+                "method": c.get("method", "?"),
+                "cParams": c.get("cParams", "?"),
+                "invkind": c.get("invkind_label", "?"),
+                "return_vt": c.get("return_vt_label", "?"),
+                "arg_vts": [a["vt_label"] for a in c.get("args", [])],
+            }
+        )
 
     for c in scan["datum_candidates"]:
-        conclusions["datum"]["all_candidates_summary"].append({
-            "interface": c.get("interface", "?"),
-            "method": c.get("method", "?"),
-            "cParams": c.get("cParams", "?"),
-            "invkind": c.get("invkind_label", "?"),
-            "return_vt": c.get("return_vt_label", "?"),
-            "arg_vts": [a["vt_label"] for a in c.get("args", [])],
-        })
+        conclusions["datum"]["all_candidates_summary"].append(
+            {
+                "interface": c.get("interface", "?"),
+                "method": c.get("method", "?"),
+                "cParams": c.get("cParams", "?"),
+                "invkind": c.get("invkind_label", "?"),
+                "return_vt": c.get("return_vt_label", "?"),
+                "arg_vts": [a["vt_label"] for a in c.get("args", [])],
+            }
+        )
 
     # Identify the best weld SYMBOL insert candidate — must be
     # InsertWeldSymbol* (not InsertWeldment*, InsertStructuralWeld*,
     # InsertCosmeticWeld*, InsertWeldTable, etc.). Prefer IModelDoc2 over
     # IModelDoc, and higher version numbers (3 > 2 > 1).
     weld_sym_inserts = [
-        c for c in scan["weld_candidates"]
+        c
+        for c in scan["weld_candidates"]
         if c.get("method", "").startswith("InsertWeldSymbol")
         and not c.get("method", "").startswith("II")
         and c.get("invkind") == 1
@@ -289,15 +300,16 @@ def _derive_conclusions(scan: dict[str, Any]) -> dict[str, Any]:
             f"authoritative."
         )
     else:
-        conclusions["weld"]["reasoning"] = (
-            "No InsertWeldSymbol* method found in sldworks.tlb."
-        )
+        conclusions["weld"][
+            "reasoning"
+        ] = "No InsertWeldSymbol* method found in sldworks.tlb."
 
     # Identify the best datum TAG insert candidate — must be
     # InsertDatumTag* (not InsertDatumTargetSymbol*, which is a different
     # annotation type). Prefer IModelDoc2 over IModelDoc.
     datum_tag_inserts = [
-        c for c in scan["datum_candidates"]
+        c
+        for c in scan["datum_candidates"]
         if c.get("method", "").startswith("InsertDatumTag")
         and not c.get("method", "").startswith("II")
         and c.get("invkind") == 1
@@ -335,9 +347,9 @@ def _derive_conclusions(scan: dict[str, Any]) -> dict[str, Any]:
             f"must be pre-selected via SelectByID2 (W55-B empirical finding)."
         )
     else:
-        conclusions["datum"]["reasoning"] = (
-            "No InsertDatumTag* method found in sldworks.tlb."
-        )
+        conclusions["datum"][
+            "reasoning"
+        ] = "No InsertDatumTag* method found in sldworks.tlb."
 
     return conclusions
 
@@ -358,53 +370,67 @@ def main() -> int:
         )
         return 1
 
-    print(f"\n  typelib: {scan['typelib']['name']} "
-          f"v{scan['typelib']['major']}.{scan['typelib']['minor']}")
+    print(
+        f"\n  typelib: {scan['typelib']['name']} "
+        f"v{scan['typelib']['major']}.{scan['typelib']['minor']}"
+    )
     print(f"  total type infos: {scan['typelib']['total_type_infos']}")
 
     print(f"\n--- WELD candidates ---")
-    print(f"  {len(scan['weld_candidates'])} method(s) across "
-          f"{len(scan['all_weld_ifaces'])} interface(s)")
+    print(
+        f"  {len(scan['weld_candidates'])} method(s) across "
+        f"{len(scan['all_weld_ifaces'])} interface(s)"
+    )
     for iface_info in scan["all_weld_ifaces"]:
         print(f"\n  [{iface_info['interface']}]")
         for m in iface_info["methods"]:
             args_str = ", ".join(
                 f"{a['name']}:{a['vt_label']}" for a in m.get("args", [])
             )
-            print(f"    {m['invkind_label']} {m['method']}"
-                  f"({args_str}) -> {m['return_vt_label']}")
+            print(
+                f"    {m['invkind_label']} {m['method']}"
+                f"({args_str}) -> {m['return_vt_label']}"
+            )
 
     print(f"\n--- DATUM candidates ---")
-    print(f"  {len(scan['datum_candidates'])} method(s) across "
-          f"{len(scan['all_datum_ifaces'])} interface(s)")
+    print(
+        f"  {len(scan['datum_candidates'])} method(s) across "
+        f"{len(scan['all_datum_ifaces'])} interface(s)"
+    )
     for iface_info in scan["all_datum_ifaces"]:
         print(f"\n  [{iface_info['interface']}]")
         for m in iface_info["methods"]:
             args_str = ", ".join(
                 f"{a['name']}:{a['vt_label']}" for a in m.get("args", [])
             )
-            print(f"    {m['invkind_label']} {m['method']}"
-                  f"({args_str}) -> {m['return_vt_label']}")
+            print(
+                f"    {m['invkind_label']} {m['method']}"
+                f"({args_str}) -> {m['return_vt_label']}"
+            )
 
     conclusions = _derive_conclusions(scan)
 
     print(f"\n--- CONCLUSIONS ---")
     wc = conclusions["weld"]["chosen"]
     if wc:
-        print(f"  WELD: {wc['interface']}.{wc['method']}"
-              f"  cParams={wc['cParams']}"
-              f"  args={wc['arg_vts']}"
-              f"  ret={wc['return_vt']}")
+        print(
+            f"  WELD: {wc['interface']}.{wc['method']}"
+            f"  cParams={wc['cParams']}"
+            f"  args={wc['arg_vts']}"
+            f"  ret={wc['return_vt']}"
+        )
     else:
         print(f"  WELD: NO Insert* candidate found")
     print(f"    {conclusions['weld']['reasoning']}")
 
     dc = conclusions["datum"]["chosen"]
     if dc:
-        print(f"  DATUM: {dc['interface']}.{dc['method']}"
-              f"  cParams={dc['cParams']}"
-              f"  args={dc['arg_vts']}"
-              f"  ret={dc['return_vt']}")
+        print(
+            f"  DATUM: {dc['interface']}.{dc['method']}"
+            f"  cParams={dc['cParams']}"
+            f"  args={dc['arg_vts']}"
+            f"  ret={dc['return_vt']}"
+        )
     else:
         print(f"  DATUM: NO Insert* candidate found")
     print(f"    {conclusions['datum']['reasoning']}")
@@ -422,9 +448,7 @@ def main() -> int:
     }
 
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(
-        json.dumps(output, indent=2, default=str), encoding="utf-8"
-    )
+    RESULTS_PATH.write_text(json.dumps(output, indent=2, default=str), encoding="utf-8")
     print(f"\n  wrote {RESULTS_PATH}")
     return 0
 

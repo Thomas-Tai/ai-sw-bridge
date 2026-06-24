@@ -188,9 +188,7 @@ _CHAMFER_TYPES = ("angle_distance", "distance_distance", "vertex")
 # features/dress_up.py and features/advanced_shapes.py (Recipe-C cut #4).
 
 
-def _apply_feature(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _apply_feature(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Dispatch a feature-add proposal to its per-type build pipeline.
 
     Shared by dry-run and commit so the two paths can never diverge. Returns
@@ -715,9 +713,7 @@ def _sw_propose_feature_add_impl(
             if chamfer_type == "angle_distance":
                 angle_deg = feature.get("angle_deg", 45.0)
                 if not isinstance(angle_deg, (int, float)) or not (0 < angle_deg < 90):
-                    result["error"] = (
-                        f"angle_deg must be in (0, 90), got {angle_deg!r}"
-                    )
+                    result["error"] = f"angle_deg must be in (0, 90), got {angle_deg!r}"
                     return result
             elif chamfer_type == "distance_distance":
                 d2 = feature.get("distance2_mm")
@@ -744,9 +740,7 @@ def _sw_propose_feature_add_impl(
             for pname in ("thickness_mm", "bend_radius_mm"):
                 pval = feature.get(pname)
                 if not isinstance(pval, (int, float)) or pval <= 0:
-                    result["error"] = (
-                        f"{pname} must be a positive number, got {pval!r}"
-                    )
+                    result["error"] = f"{pname} must be a positive number, got {pval!r}"
                     return result
         elif feat_type == "wizard_hole":
             # Shape-only checks here; the standard/fastener/size are validated
@@ -773,7 +767,9 @@ def _sw_propose_feature_add_impl(
             if depth_mm is not None and (
                 not isinstance(depth_mm, (int, float)) or depth_mm <= 0
             ):
-                result["error"] = f"depth_mm must be a positive number, got {depth_mm!r}"
+                result["error"] = (
+                    f"depth_mm must be a positive number, got {depth_mm!r}"
+                )
                 return result
         elif feat_type == "shell":
             thickness_mm = feature.get("thickness_mm")
@@ -785,7 +781,9 @@ def _sw_propose_feature_add_impl(
         elif feat_type == "draft":
             angle_deg = feature.get("angle_deg")
             if not isinstance(angle_deg, (int, float)) or angle_deg <= 0:
-                result["error"] = f"angle_deg must be a positive number, got {angle_deg!r}"
+                result["error"] = (
+                    f"angle_deg must be a positive number, got {angle_deg!r}"
+                )
                 return result
             prop = feature.get("propagation", "none")
             if prop not in _DRAFT_PROPAGATION:
@@ -813,7 +811,11 @@ def _sw_propose_feature_add_impl(
                 )
                 return result
             for k, es in enumerate(edge_specs):
-                if not isinstance(es, dict) or not isinstance(es.get("ref"), dict) or not es["ref"]:
+                if (
+                    not isinstance(es, dict)
+                    or not isinstance(es.get("ref"), dict)
+                    or not es["ref"]
+                ):
                     result["error"] = f"edges[{k}] must contain a non-empty 'ref' dict"
                     return result
                 r = es.get("radius_mm")
@@ -854,7 +856,11 @@ def _sw_propose_feature_add_impl(
         # A shell removes a non-empty list of faces.
         if feat_type == "shell":
             faces = target.get("faces")
-            if not isinstance(faces, list) or not faces or not all(_is_coord(f) for f in faces):
+            if (
+                not isinstance(faces, list)
+                or not faces
+                or not all(_is_coord(f) for f in faces)
+            ):
                 result["error"] = (
                     "shell target.faces must be a non-empty list of [x,y,z] coords"
                 )
@@ -863,10 +869,16 @@ def _sw_propose_feature_add_impl(
         # A draft needs a neutral face + a non-empty list of faces to draft.
         if feat_type == "draft":
             if not _is_coord(target.get("neutral_face")):
-                result["error"] = "draft target.neutral_face must be a 3-element [x,y,z]"
+                result["error"] = (
+                    "draft target.neutral_face must be a 3-element [x,y,z]"
+                )
                 return result
             faces = target.get("faces")
-            if not isinstance(faces, list) or not faces or not all(_is_coord(f) for f in faces):
+            if (
+                not isinstance(faces, list)
+                or not faces
+                or not all(_is_coord(f) for f in faces)
+            ):
                 result["error"] = (
                     "draft target.faces must be a non-empty list of [x,y,z] coords"
                 )
@@ -886,7 +898,9 @@ def _sw_propose_feature_add_impl(
         if feat_type == "ref_plane":
             if target.get("edge_ref") is not None:
                 if not isinstance(target.get("edge_ref"), dict):
-                    result["error"] = "ref_plane target.edge_ref must be a DurableEdgeRef dict"
+                    result["error"] = (
+                        "ref_plane target.edge_ref must be a DurableEdgeRef dict"
+                    )
                     return result
             else:
                 if not isinstance(target.get("plane"), str) or not target.get("plane"):
@@ -897,14 +911,18 @@ def _sw_propose_feature_add_impl(
                     return result
                 dist = feature.get("distance_mm")
                 if not isinstance(dist, (int, float)) or dist <= 0:
-                    result["error"] = f"ref_plane distance_mm must be a positive number, got {dist!r}"
+                    result["error"] = (
+                        f"ref_plane distance_mm must be a positive number, got {dist!r}"
+                    )
                     return result
 
         # Wave-5: ref_axis needs two plane names.
         if feat_type == "ref_axis":
             planes = target.get("planes")
             if not isinstance(planes, list) or len(planes) != 2:
-                result["error"] = "ref_axis target.planes must be a 2-element list of plane names"
+                result["error"] = (
+                    "ref_axis target.planes must be a 2-element list of plane names"
+                )
                 return result
 
         # Wave-5 / W5.3 Epic B: ref_point accepts a durable face-ref
@@ -938,7 +956,9 @@ def _sw_propose_feature_add_impl(
         if feat_type == "loft":
             profiles = target.get("profiles")
             if not isinstance(profiles, list) or len(profiles) < 2:
-                result["error"] = "loft target.profiles must be a list of >=2 sketch names"
+                result["error"] = (
+                    "loft target.profiles must be a list of >=2 sketch names"
+                )
                 return result
 
         # Wave-5: rib needs a sketch name.
@@ -967,20 +987,30 @@ def _sw_propose_feature_add_impl(
         # Wave-7: edge_flange takes a durable edge_ref + positive height_mm;
         # angle_deg (0,180) and radius_mm default if absent.
         if feat_type == "edge_flange":
-            if not isinstance(target.get("edge_ref"), dict) or not target.get("edge_ref"):
-                result["error"] = "edge_flange target.edge_ref must be a DurableEdgeRef dict"
+            if not isinstance(target.get("edge_ref"), dict) or not target.get(
+                "edge_ref"
+            ):
+                result["error"] = (
+                    "edge_flange target.edge_ref must be a DurableEdgeRef dict"
+                )
                 return result
             h = feature.get("height_mm")
             if not isinstance(h, (int, float)) or h <= 0:
-                result["error"] = f"edge_flange height_mm must be a positive number, got {h!r}"
+                result["error"] = (
+                    f"edge_flange height_mm must be a positive number, got {h!r}"
+                )
                 return result
             ang = feature.get("angle_deg", 90.0)
             if not isinstance(ang, (int, float)) or not (0 < ang < 180):
-                result["error"] = f"edge_flange angle_deg must be in (0, 180), got {ang!r}"
+                result["error"] = (
+                    f"edge_flange angle_deg must be in (0, 180), got {ang!r}"
+                )
                 return result
             rad = feature.get("radius_mm", 2.0)
             if not isinstance(rad, (int, float)) or rad <= 0:
-                result["error"] = f"edge_flange radius_mm must be a positive number, got {rad!r}"
+                result["error"] = (
+                    f"edge_flange radius_mm must be a positive number, got {rad!r}"
+                )
                 return result
 
         # Wave-5: wrap needs sketch + face.
@@ -998,56 +1028,80 @@ def _sw_propose_feature_add_impl(
             for key in ("dir1_profiles", "dir2_profiles"):
                 val = target.get(key)
                 if not isinstance(val, list) or not val:
-                    result["error"] = f"boundary_boss target.{key} must be a non-empty list"
+                    result["error"] = (
+                        f"boundary_boss target.{key} must be a non-empty list"
+                    )
                     return result
 
         # W21: linear_pattern — seed + direction + spacing_mm + count.
         if feat_type == "linear_pattern":
             if not isinstance(target.get("seed"), str) or not target.get("seed"):
-                result["error"] = "linear_pattern target.seed must be a non-empty feature name"
+                result["error"] = (
+                    "linear_pattern target.seed must be a non-empty feature name"
+                )
                 return result
             direction = target.get("direction")
             if not isinstance(direction, dict):
-                result["error"] = "linear_pattern target.direction must be a dict with x, y, z"
+                result["error"] = (
+                    "linear_pattern target.direction must be a dict with x, y, z"
+                )
                 return result
             for k in ("x", "y", "z"):
                 v = direction.get(k)
                 if not isinstance(v, (int, float)):
-                    result["error"] = f"linear_pattern target.direction.{k} must be a number"
+                    result["error"] = (
+                        f"linear_pattern target.direction.{k} must be a number"
+                    )
                     return result
             spacing = feature.get("spacing_mm")
             if not isinstance(spacing, (int, float)) or spacing <= 0:
-                result["error"] = f"linear_pattern spacing_mm must be a positive number, got {spacing!r}"
+                result["error"] = (
+                    f"linear_pattern spacing_mm must be a positive number, got {spacing!r}"
+                )
                 return result
             cnt = feature.get("count")
             if not isinstance(cnt, int) or cnt < 2:
-                result["error"] = f"linear_pattern count must be an integer >= 2, got {cnt!r}"
+                result["error"] = (
+                    f"linear_pattern count must be an integer >= 2, got {cnt!r}"
+                )
                 return result
 
         # W21: circular_pattern — seed + axis + count + angle/equal_spacing.
         if feat_type == "circular_pattern":
             if not isinstance(target.get("seed"), str) or not target.get("seed"):
-                result["error"] = "circular_pattern target.seed must be a non-empty feature name"
+                result["error"] = (
+                    "circular_pattern target.seed must be a non-empty feature name"
+                )
                 return result
             if not isinstance(target.get("axis"), str) or not target.get("axis"):
-                result["error"] = "circular_pattern target.axis must be a non-empty axis name"
+                result["error"] = (
+                    "circular_pattern target.axis must be a non-empty axis name"
+                )
                 return result
             cnt = feature.get("count")
             if not isinstance(cnt, int) or cnt < 2:
-                result["error"] = f"circular_pattern count must be an integer >= 2, got {cnt!r}"
+                result["error"] = (
+                    f"circular_pattern count must be an integer >= 2, got {cnt!r}"
+                )
                 return result
             angle = feature.get("angle_deg", 360.0)
             if not isinstance(angle, (int, float)) or angle <= 0:
-                result["error"] = f"circular_pattern angle_deg must be a positive number, got {angle!r}"
+                result["error"] = (
+                    f"circular_pattern angle_deg must be a positive number, got {angle!r}"
+                )
                 return result
 
         # W21: mirror_feature — seed + plane.
         if feat_type == "mirror_feature":
             if not isinstance(target.get("seed"), str) or not target.get("seed"):
-                result["error"] = "mirror_feature target.seed must be a non-empty feature name"
+                result["error"] = (
+                    "mirror_feature target.seed must be a non-empty feature name"
+                )
                 return result
             if not isinstance(target.get("plane"), str) or not target.get("plane"):
-                result["error"] = "mirror_feature target.plane must be a non-empty plane name"
+                result["error"] = (
+                    "mirror_feature target.plane must be a non-empty plane name"
+                )
                 return result
 
         # W41: delete_body — body_index or body_name.
@@ -1056,7 +1110,9 @@ def _sw_propose_feature_add_impl(
             body_name = target.get("body_name")
             if body_name is not None:
                 if not isinstance(body_name, str) or not body_name:
-                    result["error"] = "delete_body target.body_name must be a non-empty string"
+                    result["error"] = (
+                        "delete_body target.body_name must be a non-empty string"
+                    )
                     return result
             elif body_index is not None:
                 if not isinstance(body_index, int) or body_index < 0:
@@ -1101,7 +1157,10 @@ def _sw_propose_feature_add_impl(
 
         # W41: split — body + cutting entity.
         if feat_type == "split":
-            if target.get("cutting_plane") is None and target.get("cutting_surface") is None:
+            if (
+                target.get("cutting_plane") is None
+                and target.get("cutting_surface") is None
+            ):
                 result["error"] = (
                     "split target must contain 'cutting_plane' or 'cutting_surface'"
                 )
@@ -1301,9 +1360,7 @@ def _sw_commit_assembly_impl(
     return result
 
 
-def _sw_edit_assembly_impl(
-    manifest_path: str, op: dict[str, Any]
-) -> dict[str, Any]:
+def _sw_edit_assembly_impl(manifest_path: str, op: dict[str, Any]) -> dict[str, Any]:
     """Core: edit an assembly via its manifest sidecar (v0.18 implementation).
 
     Internal callers (the ``SolidWorksClient.mutate`` facade) call this
@@ -1355,9 +1412,7 @@ def _sw_edit_assembly_impl(
     try:
         validate_assembly(new_spec)
     except AssemblyValidationError as exc:
-        result["error"] = (
-            f"edited spec failed validation: {exc.message}"
-        )
+        result["error"] = f"edited spec failed validation: {exc.message}"
         return result
 
     propose = _sw_propose_assembly_impl(new_spec)
@@ -2001,9 +2056,7 @@ def _sw_batch_feature_add_impl(
                     "target": target,
                 }
                 manifest["skipped"] = _skipped_from(i + 1)
-                manifest["error"] = (
-                    f"batch halted at {i}/{total} ({kind}): {note}"
-                )
+                manifest["error"] = f"batch halted at {i}/{total} ({kind}): {note}"
                 break
             manifest["committed"].append({"index": i, "kind": kind, "note": note})
             manifest["committed_count"] += 1

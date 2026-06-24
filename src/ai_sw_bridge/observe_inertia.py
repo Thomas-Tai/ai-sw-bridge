@@ -78,6 +78,7 @@ def read_inertia(mp: Any, mod: Any = None) -> dict[str, Any]:
     # Typed wrapper for the inertia-tensor read.
     if mod is None:
         from .com.sw_type_info import wrapper_module
+
         mod = wrapper_module()
 
     try:
@@ -147,6 +148,7 @@ def _sw_get_inertia_impl(doc: Any) -> dict[str, Any]:
     try:
         from .com.earlybind import typed
         from .com.sw_type_info import wrapper_module
+
         mod = wrapper_module()
         text = typed(ext, "IModelDocExtension", module=mod)
         mp = text.CreateMassProperty  # property-get
@@ -164,5 +166,3 @@ def _sw_get_inertia_impl(doc: Any) -> dict[str, Any]:
     result.update(inertia)
     result["ok"] = True
     return result
-
-

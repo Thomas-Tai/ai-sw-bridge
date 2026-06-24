@@ -53,16 +53,29 @@ def create_test_part(sw_app, temp_dir: Path) -> tuple:
 
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,         # 1-3
-        0, 0,                       # 4-5
-        0.020, 0.0,                 # 6-7
-        False, False, False, False, # 8-11
-        0.0, 0.0,                   # 12-13
-        False, False, False, False, # 14-17
-        True, True, True,           # 18-20
-        0,                          # 21
-        0.0,                        # 22  PropagateFeatureToParts
-        False,                      # 23  CornerExtendType
+        True,
+        False,
+        False,  # 1-3
+        0,
+        0,  # 4-5
+        0.020,
+        0.0,  # 6-7
+        False,
+        False,
+        False,
+        False,  # 8-11
+        0.0,
+        0.0,  # 12-13
+        False,
+        False,
+        False,
+        False,  # 14-17
+        True,
+        True,
+        True,  # 18-20
+        0,  # 21
+        0.0,  # 22  PropagateFeatureToParts
+        False,  # 23  CornerExtendType
     )
     if feat is None:
         raise RuntimeError("Boss extrusion failed")
@@ -79,9 +92,12 @@ def create_test_part(sw_app, temp_dir: Path) -> tuple:
 def parse_step_file(path: Path) -> dict:
     """Parse STEP file and verify real geometry."""
     result = {
-        "format": "STEP", "path": str(path),
-        "verdict": "NO-GO", "size_bytes": 0,
-        "counts": {}, "error": None,
+        "format": "STEP",
+        "path": str(path),
+        "verdict": "NO-GO",
+        "size_bytes": 0,
+        "counts": {},
+        "error": None,
     }
 
     if not path.exists():
@@ -114,8 +130,10 @@ def parse_step_file(path: Path) -> dict:
     cs = text.count("CLOSED_SHELL")
 
     result["counts"] = {
-        "CARTESIAN_POINT": cp, "ADVANCED_FACE": af,
-        "MANIFOLD_SOLID_BREP": ms, "CLOSED_SHELL": cs,
+        "CARTESIAN_POINT": cp,
+        "ADVANCED_FACE": af,
+        "MANIFOLD_SOLID_BREP": ms,
+        "CLOSED_SHELL": cs,
     }
 
     if cp < 4:
@@ -132,9 +150,12 @@ def parse_step_file(path: Path) -> dict:
 def parse_iges_file(path: Path) -> dict:
     """Parse IGES file (80-column card format) and verify real geometry."""
     result = {
-        "format": "IGES", "path": str(path),
-        "verdict": "NO-GO", "size_bytes": 0,
-        "counts": {}, "error": None,
+        "format": "IGES",
+        "path": str(path),
+        "verdict": "NO-GO",
+        "size_bytes": 0,
+        "counts": {},
+        "error": None,
     }
 
     if not path.exists():
@@ -168,9 +189,12 @@ def parse_iges_file(path: Path) -> dict:
     s_lines = [l for l in lines if len(l) >= 73 and l[72] == "S"]
 
     result["counts"] = {
-        "S_lines": len(s_lines), "G_lines": len(g_lines),
-        "D_lines": len(d_lines), "P_lines": len(p_lines),
-        "T_lines": len(t_lines), "DE_entities": de_count,
+        "S_lines": len(s_lines),
+        "G_lines": len(g_lines),
+        "D_lines": len(d_lines),
+        "P_lines": len(p_lines),
+        "T_lines": len(t_lines),
+        "DE_entities": de_count,
     }
 
     if de_count < 1:
@@ -187,9 +211,13 @@ def parse_iges_file(path: Path) -> dict:
 def parse_stl_file(path: Path) -> dict:
     """Parse STL (ASCII or binary) and verify triangle count."""
     result = {
-        "format": "STL", "path": str(path),
-        "verdict": "NO-GO", "size_bytes": 0,
-        "counts": {}, "error": None, "mode": None,
+        "format": "STL",
+        "path": str(path),
+        "verdict": "NO-GO",
+        "size_bytes": 0,
+        "counts": {},
+        "error": None,
+        "mode": None,
     }
 
     if not path.exists():
@@ -278,7 +306,8 @@ def export_and_verify(doc, temp_dir: Path) -> dict:
             err_code = int(err) if err is not None else 0
         except Exception as exc:
             results["formats"][fmt_name] = {
-                "format": fmt_name, "extension": ext,
+                "format": fmt_name,
+                "extension": ext,
                 "verdict": "NO-GO",
                 "error": f"SaveAs3 raised {type(exc).__name__}: {exc}",
             }
@@ -286,7 +315,8 @@ def export_and_verify(doc, temp_dir: Path) -> dict:
 
         if err_code != 0:
             results["formats"][fmt_name] = {
-                "format": fmt_name, "extension": ext,
+                "format": fmt_name,
+                "extension": ext,
                 "verdict": "NO-GO",
                 "error": f"SaveAs3 returned error code {err_code}",
             }
@@ -327,7 +357,11 @@ def main():
     try:
         rev = sw_app.RevisionNumber()
     except Exception:
-        rev = sw_app.RevisionNumber if not callable(getattr(sw_app, 'RevisionNumber', None)) else '?'
+        rev = (
+            sw_app.RevisionNumber
+            if not callable(getattr(sw_app, "RevisionNumber", None))
+            else "?"
+        )
     print(f"SW app acquired (rev: {rev})")
 
     results = {"formats": {}, "summary": {}, "errors": []}
@@ -350,6 +384,7 @@ def main():
     except Exception as exc:
         results["errors"].append(f"Spike failed: {type(exc).__name__}: {exc}")
         import traceback
+
         results["traceback"] = traceback.format_exc()
         print(f"! Spike failed: {exc}")
         print(results.get("traceback", ""))

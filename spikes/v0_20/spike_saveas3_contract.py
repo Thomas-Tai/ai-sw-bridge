@@ -84,11 +84,29 @@ def build_box(doc: Any) -> dict[str, Any]:
 
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
@@ -210,19 +228,25 @@ def run() -> dict[str, Any]:
     pb = result["probe_bad"]
 
     good_ret_truthy = (
-        not pg["raised"]
-        and pg["return_int"] is not None
-        and pg["return_int"] != 0
+        not pg["raised"] and pg["return_int"] is not None and pg["return_int"] != 0
     )
     good_file_ok = pg["file_exists"] and pg.get("file_size_bytes", 0) > 0
     good_flag_clean = pg["get_save_flag"] is False
 
     bad_no_file = not pb["file_exists"]
-    bad_fail_signal = pb["raised"] or (
-        pb["return_int"] is not None and pb["return_int"] == 0
-    ) or (pb["return_value"] in ("False", "None", "0"))
+    bad_fail_signal = (
+        pb["raised"]
+        or (pb["return_int"] is not None and pb["return_int"] == 0)
+        or (pb["return_value"] in ("False", "None", "0"))
+    )
 
-    if good_ret_truthy and good_file_ok and good_flag_clean and bad_no_file and bad_fail_signal:
+    if (
+        good_ret_truthy
+        and good_file_ok
+        and good_flag_clean
+        and bad_no_file
+        and bad_fail_signal
+    ):
         result["overall"] = "CONFIRMED"
         result["verdict"] = (
             "SaveAs3 returns bool-TRUE (int 1) on success, bool-FALSE (int 0) or "
@@ -259,7 +283,9 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
-        "--out", type=Path, default=None,
+        "--out",
+        type=Path,
+        default=None,
         help="Write JSON report to this path (default: _results/saveas3_contract.json).",
     )
     args = p.parse_args()

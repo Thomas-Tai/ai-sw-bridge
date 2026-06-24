@@ -22,7 +22,9 @@ import traceback
 from typing import Any
 
 import _sketch_edit_fixtures as fx
-from ai_sw_bridge.spec.sketch_editing import apply_sketch_edit  # OP auto-registered via package import
+from ai_sw_bridge.spec.sketch_editing import (
+    apply_sketch_edit,
+)  # OP auto-registered via package import
 
 
 def _build_offset_circle_sketch(doc: Any) -> tuple[str, int]:
@@ -51,7 +53,11 @@ def main() -> int:
         verdict = (
             "PASS"
             if (res["ok"] and delta_ok and survived)
-            else ("NO_OP" if res.get("call_ok") and res.get("segment_delta") == 0 else "FAIL")
+            else (
+                "NO_OP"
+                if res.get("call_ok") and res.get("segment_delta") == 0
+                else "FAIL"
+            )
         )
         print(
             json.dumps(
@@ -70,7 +76,11 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001 — spike top-level guard
         print(
             json.dumps(
-                {"verdict": "ERROR", "error": f"{type(exc).__name__}: {exc}", "tb": traceback.format_exc()},
+                {
+                    "verdict": "ERROR",
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "tb": traceback.format_exc(),
+                },
                 default=str,
             )
         )

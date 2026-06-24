@@ -63,17 +63,41 @@ def _find_hole_template() -> str:
 
 def build_two_hole_part(path: str) -> bool:
     from ai_sw_bridge.spec.builder import build as part_build
+
     spec = {
-        "schema_version": 1, "name": "W71_HoleTbl",
+        "schema_version": 1,
+        "name": "W71_HoleTbl",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK_Base",
-             "plane": "Front", "width": 40.0, "height": 40.0},
-            {"type": "boss_extrude_blind", "name": "EX_Base", "sketch": "SK_Base", "depth": 10.0},
-            {"type": "sketch_circle_on_face", "name": "SK_H1", "of_feature": "EX_Base",
-             "face": "+z", "diameter": 6.0, "center": {"u": -10.0, "v": 0.0}},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Base",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 40.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Base",
+                "sketch": "SK_Base",
+                "depth": 10.0,
+            },
+            {
+                "type": "sketch_circle_on_face",
+                "name": "SK_H1",
+                "of_feature": "EX_Base",
+                "face": "+z",
+                "diameter": 6.0,
+                "center": {"u": -10.0, "v": 0.0},
+            },
             {"type": "cut_extrude_through_all", "name": "CUT_H1", "sketch": "SK_H1"},
-            {"type": "sketch_circle_on_face", "name": "SK_H2", "of_feature": "EX_Base",
-             "face": "+z", "diameter": 6.0, "center": {"u": 10.0, "v": 0.0}},
+            {
+                "type": "sketch_circle_on_face",
+                "name": "SK_H2",
+                "of_feature": "EX_Base",
+                "face": "+z",
+                "diameter": 6.0,
+                "center": {"u": 10.0, "v": 0.0},
+            },
             {"type": "cut_extrude_through_all", "name": "CUT_H2", "sketch": "SK_H2"},
         ],
     }
@@ -88,9 +112,11 @@ def _typed_views(drw_doc: Any, mod: Any) -> list[Any]:
     """All views (typed IView) via GetFirstView/GetNextView."""
     from ai_sw_bridge.com.earlybind import typed_qi
     from ai_sw_bridge.drawing.lifecycle import _SW_VIEW_ENTITY_EDGE  # noqa: F401
+
     out = []
     try:
         from ai_sw_bridge.com.earlybind import typed
+
         drw_typed = typed(drw_doc, "IDrawingDoc", module=mod)
         v = drw_typed.GetFirstView()
         while v is not None:
@@ -146,8 +172,11 @@ def run() -> dict[str, Any]:
 
     # Drawing with front + top views (one of them shows holes as circles).
     drawing_spec = {
-        "kind": "drawing", "name": "hole_tbl", "model": part_path,
-        "views": ["front", "top"], "sheet": {"template_size": "A3"},
+        "kind": "drawing",
+        "name": "hole_tbl",
+        "model": part_path,
+        "views": ["front", "top"],
+        "sheet": {"template_size": "A3"},
     }
     dp = sw_propose_drawing(drawing_spec)
     if not dp.get("ok"):
@@ -219,11 +248,18 @@ def run() -> dict[str, Any]:
             else:
                 err = None
             valid = ann is not None and not isinstance(ann, int)
-            result["attempts"].append({
-                "view": vname, "n_edges": n_edges, "n_verts": len(verts),
-                "strategy": strat, "origin_selected": ok_origin,
-                "ret_repr": repr(ann)[:50], "valid": valid, "error": err,
-            })
+            result["attempts"].append(
+                {
+                    "view": vname,
+                    "n_edges": n_edges,
+                    "n_verts": len(verts),
+                    "strategy": strat,
+                    "origin_selected": ok_origin,
+                    "ret_repr": repr(ann)[:50],
+                    "valid": valid,
+                    "error": err,
+                }
+            )
             if valid:
                 placed = ann
                 placed_view_name = vname
@@ -317,17 +353,21 @@ def _scrub(o: Any) -> Any:
 
 def main() -> int:
     import pythoncom
+
     pythoncom.CoInitialize()
     try:
         result = run()
     finally:
         try:
             import win32com.client as w32
+
             w32.Dispatch("SldWorks.Application").CloseAllDocuments(True)
         except Exception:
             pass
         pythoncom.CoUninitialize()
-    payload = json.dumps(_scrub(result), indent=2, default=lambda o: f"<{type(o).__name__}>")
+    payload = json.dumps(
+        _scrub(result), indent=2, default=lambda o: f"<{type(o).__name__}>"
+    )
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     RESULTS_PATH.write_text(payload, encoding="utf-8")
     print(f"wrote {RESULTS_PATH}", file=sys.stderr)

@@ -56,9 +56,7 @@ class TestConfigResult:
         assert "error" not in d
 
     def test_to_dict_failure(self) -> None:
-        r = ConfigResult(
-            variant="Small", ok=False, error="SEAT-gated"
-        )
+        r = ConfigResult(variant="Small", ok=False, error="SEAT-gated")
         d = r.to_dict()
         assert d["error"] == "SEAT-gated"
         assert d["ok"] is False

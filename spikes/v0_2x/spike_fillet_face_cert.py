@@ -78,6 +78,7 @@ def _find_feature_type(doc: Any, substr: str) -> str | None:
 def run() -> dict:
     result: dict = {"spike_id": "W68_fillet_face_cert"}
     from ai_sw_bridge.sw_com import get_sw_app
+
     sw = get_sw_app()
     if sw is None:
         return {**result, "overall": "ERROR", "reason": "get_sw_app None"}
@@ -86,7 +87,11 @@ def run() -> dict:
         doc = build_block(sw)
         pair = _block_face_refs(doc)
         if pair is None:
-            return {**result, "overall": "ERROR", "reason": "could not capture block faces"}
+            return {
+                **result,
+                "overall": "ERROR",
+                "reason": "could not capture block faces",
+            }
 
         fm = doc.FeatureManager
         data = fm.CreateDefinition(_SW_FM_FILLET)
@@ -109,7 +114,11 @@ def run() -> dict:
             bind.append(rec)
         result["bind"] = bind
         if any(b.get("count_after") != 1 for b in bind):
-            return {**result, "overall": "FAIL", "reason": "face-sets did not bind (count != 1)"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "face-sets did not bind (count != 1)",
+            }
 
         vol_before = _volume_mm3(doc)
         result["vol_before_mm3"] = round(vol_before, 6)
@@ -158,7 +167,9 @@ def run() -> dict:
             result["reopen_error"] = f"{type(exc).__name__}: {exc}"
 
         # verdict — type witness from the returned handle OR the tree walk
-        tname = (result.get("returned_feature_type") or result.get("tree_fillet_type") or "").lower()
+        tname = (
+            result.get("returned_feature_type") or result.get("tree_fillet_type") or ""
+        ).lower()
         type_ok = "fillet" in tname
         reopen_vol = result.get("vol_after_reopen_mm3")
         reopen_preserved = (
@@ -192,12 +203,19 @@ def main() -> None:
     try:
         result = run()
     except Exception as exc:  # noqa: BLE001
-        result = {"spike_id": "W68_fillet_face_cert", "overall": "ERROR",
-                  "reason": repr(exc), "trace": traceback.format_exc()}
+        result = {
+            "spike_id": "W68_fillet_face_cert",
+            "overall": "ERROR",
+            "reason": repr(exc),
+            "trace": traceback.format_exc(),
+        }
     finally:
         pythoncom.CoUninitialize()
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(result, indent=2, default=lambda o: f"<{type(o).__name__}>"), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(result, indent=2, default=lambda o: f"<{type(o).__name__}>"),
+        encoding="utf-8",
+    )
     print(f"overall: {result.get('overall')}", file=sys.stderr)
     print(f"finding: {result.get('finding')}", file=sys.stderr)
     print(f"results -> {RESULTS_PATH}", file=sys.stderr)

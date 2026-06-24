@@ -37,6 +37,7 @@ class TestPropertiesSpecSchema:
             "properties": {"PartNo": "BRK-001"},
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
     def test_valid_full_spec(self) -> None:
@@ -51,6 +52,7 @@ class TestPropertiesSpecSchema:
             "overwrite": False,
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
     def test_missing_kind_fails(self) -> None:
@@ -59,6 +61,7 @@ class TestPropertiesSpecSchema:
             "properties": {"PartNo": "BRK-001"},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -69,6 +72,7 @@ class TestPropertiesSpecSchema:
             "properties": {"PartNo": "BRK-001"},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -78,6 +82,7 @@ class TestPropertiesSpecSchema:
             "properties": {"PartNo": "BRK-001"},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -90,6 +95,7 @@ class TestPropertiesSpecSchema:
             "model": "/path/to/part.SLDPRT",
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)  # schema-valid now
         with pytest.raises(ValueError, match="at least one"):
             validate_properties_spec(spec)
@@ -101,6 +107,7 @@ class TestPropertiesSpecSchema:
             "properties": {},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -112,6 +119,7 @@ class TestPropertiesSpecSchema:
             "properties": {"Count": 42},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -123,6 +131,7 @@ class TestPropertiesSpecSchema:
             "properties": {"Meta": {"nested": "value"}},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -140,6 +149,7 @@ class TestTypedPropertySchema:
             "properties": {"Note": {"type": "text", "value": "hello"}},
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
     def test_typed_number_passes(self) -> None:
@@ -149,6 +159,7 @@ class TestTypedPropertySchema:
             "properties": {"Weight": {"type": "number", "value": "42.5"}},
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
     def test_typed_date_passes(self) -> None:
@@ -158,6 +169,7 @@ class TestTypedPropertySchema:
             "properties": {"Created": {"type": "date", "value": "2024-06-15"}},
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
     def test_typed_yes_no_passes(self) -> None:
@@ -167,6 +179,7 @@ class TestTypedPropertySchema:
             "properties": {"Approved": {"type": "yes_no", "value": "Yes"}},
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
     def test_mixed_plain_and_typed_passes(self) -> None:
@@ -180,6 +193,7 @@ class TestTypedPropertySchema:
             },
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
     def test_invalid_type_enum_fails(self) -> None:
@@ -189,6 +203,7 @@ class TestTypedPropertySchema:
             "properties": {"X": {"type": "boolean", "value": "true"}},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -199,6 +214,7 @@ class TestTypedPropertySchema:
             "properties": {"X": {"type": "number"}},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -209,6 +225,7 @@ class TestTypedPropertySchema:
             "properties": {"X": {"value": "42"}},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -219,6 +236,7 @@ class TestTypedPropertySchema:
             "properties": {"X": {"type": "text", "value": ""}},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -229,6 +247,7 @@ class TestTypedPropertySchema:
             "properties": {"X": {"type": "text", "value": "hi", "extra": 1}},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -247,6 +266,7 @@ class TestConfigAndDeleteSchema:
             "properties": {"PartNo": "BRK-001"},
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
         validate_properties_spec(spec)
 
@@ -258,6 +278,7 @@ class TestConfigAndDeleteSchema:
             "delete": ["Old1", "Old2"],
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
         validate_properties_spec(spec)
 
@@ -270,6 +291,7 @@ class TestConfigAndDeleteSchema:
             "delete": ["Temp"],
         }
         import jsonschema
+
         jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
         validate_properties_spec(spec)
 
@@ -289,6 +311,7 @@ class TestConfigAndDeleteSchema:
             "delete": ["X", "X"],
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -299,6 +322,7 @@ class TestConfigAndDeleteSchema:
             "delete": [""],
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 
@@ -310,6 +334,7 @@ class TestConfigAndDeleteSchema:
             "properties": {"A": "b"},
         }
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, PROPERTIES_SPEC_SCHEMA)
 

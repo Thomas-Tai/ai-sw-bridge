@@ -105,23 +105,34 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--assembly", required=True, help="Path to the .SLDASM.")
     p.add_argument("--mate", required=True, help="Name of the distance mate to drive.")
     p.add_argument(
-        "--step-mm", dest="step_mm", type=float, default=2.0,
+        "--step-mm",
+        dest="step_mm",
+        type=float,
+        default=2.0,
         help="Monotonic step-out increment in mm (default: 2.0).",
     )
     p.add_argument(
-        "--max-iters", dest="max_iters", type=int, default=20,
+        "--max-iters",
+        dest="max_iters",
+        type=int,
+        default=20,
         help="Iteration ceiling before fail-closed revert (default: 20).",
     )
     p.add_argument(
-        "--direction", choices=("out", "in"), default="out",
+        "--direction",
+        choices=("out", "in"),
+        default="out",
         help="'out' increases the mate value (default), 'in' decreases it.",
     )
     p.add_argument(
-        "--save", action="store_true",
+        "--save",
+        action="store_true",
         help="Persist the model on success (default: dry-run, no save).",
     )
     p.add_argument(
-        "--output-dir", dest="output_dir", default="_results",
+        "--output-dir",
+        dest="output_dir",
+        default="_results",
         help="Directory for the result JSON (default: _results).",
     )
     p.set_defaults(func=_run_resolve)

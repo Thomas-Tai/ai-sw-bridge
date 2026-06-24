@@ -5,6 +5,7 @@ Non-destructive: own boxes in temp .sldprt files; proposals to a temp dir.
 
 Usage:  .venv-py310\Scripts\python spikes\v0_16\_seatcheck_shell_draft_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -43,8 +44,30 @@ def _build_box(doc: Any) -> bool:
     sk.CreateCornerRectangle(-W / 2, -H / 2, 0.0, W / 2, H / 2, 0.0)
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base = (True, False, False, 0, 0, D, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        D,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base, False)
     except Exception:  # noqa: BLE001
@@ -72,15 +95,24 @@ def _pae(path: str, feature: dict, target: dict) -> dict[str, Any]:
         return out
     pid = prop["proposal_id"]
     dry = mutate.sw_dry_run_feature_add(pid)
-    out["dry_run"] = {"ok": dry.get("ok"), "state": dry.get("state"),
-                      "result": dry.get("dry_run_result"), "error": dry.get("error")}
+    out["dry_run"] = {
+        "ok": dry.get("ok"),
+        "state": dry.get("state"),
+        "result": dry.get("dry_run_result"),
+        "error": dry.get("error"),
+    }
     if not dry.get("ok"):
         out["overall"] = "FAIL-DRYRUN"
         return out
     commit = mutate.sw_commit_feature_add(pid)
-    out["commit"] = {"ok": commit.get("ok"), "doc_saved": commit.get("doc_saved"),
-                     "error": commit.get("error")}
-    out["overall"] = "PASS" if (commit.get("ok") and commit.get("doc_saved")) else "PARTIAL"
+    out["commit"] = {
+        "ok": commit.get("ok"),
+        "doc_saved": commit.get("doc_saved"),
+        "error": commit.get("error"),
+    }
+    out["overall"] = (
+        "PASS" if (commit.get("ok") and commit.get("doc_saved")) else "PARTIAL"
+    )
     return out
 
 
@@ -105,15 +137,19 @@ def main() -> int:
             report["draft"] = _pae(
                 draft_path,
                 {"type": "draft", "angle_deg": 5.0, "propagation": "none"},
-                {"neutral_face": [0.0, 0.0, 0.0],     # bottom plane
-                 "faces": [[W / 2, 0.0, D / 2]]},     # +X side face midpoint
+                {
+                    "neutral_face": [0.0, 0.0, 0.0],  # bottom plane
+                    "faces": [[W / 2, 0.0, D / 2]],
+                },  # +X side face midpoint
             )
         else:
             report["draft"] = {"overall": "FAIL-BUILD"}
 
         sv = report["shell"].get("overall")
         dv = report["draft"].get("overall")
-        report["overall"] = "PASS" if (sv == "PASS" and dv == "PASS") else f"shell={sv} draft={dv}"
+        report["overall"] = (
+            "PASS" if (sv == "PASS" and dv == "PASS") else f"shell={sv} draft={dv}"
+        )
         code = 0 if report["overall"] == "PASS" else 2
         return _emit(report, code)
     finally:

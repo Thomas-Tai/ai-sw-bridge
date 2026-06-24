@@ -7,6 +7,7 @@ script retries once with the first valid size.
 
 Usage:  .venv-py310\Scripts\python spikes\v0_16\_seatcheck_wizhole_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -34,15 +35,15 @@ BOX_W_M = 0.020
 BOX_H_M = 0.020
 BOX_D_M = 0.010
 
-FACE = [0.0, 0.0, BOX_D_M]       # world coord to pick the top face
-POINT = [0.003, 0.002, 0.0]      # sketch-local point on that face
+FACE = [0.0, 0.0, BOX_D_M]  # world coord to pick the top face
+POINT = [0.003, 0.002, 0.0]  # sketch-local point on that face
 
 FEATURE = {
     "type": "wizard_hole",
     "hole_type": "hole",
     "standard": "ANSI Metric",
     "fastener_type": "Drill sizes",
-    "size": "Ø6.0",              # may be corrected from the dry-run error
+    "size": "Ø6.0",  # may be corrected from the dry-run error
     "end_condition": "blind",
     "depth_mm": 6.0,
 }
@@ -58,12 +59,35 @@ def _build_box(doc: Any) -> bool:
         return False
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                             BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base, False)
     except Exception:  # noqa: BLE001
@@ -105,21 +129,27 @@ def main() -> int:
             pid = prop["proposal_id"]
             dry = mutate.sw_dry_run_feature_add(pid)
             report[f"dry_run_{attempt}"] = {
-                "ok": dry.get("ok"), "state": dry.get("state"),
-                "result": dry.get("dry_run_result"), "error": dry.get("error"),
+                "ok": dry.get("ok"),
+                "state": dry.get("state"),
+                "result": dry.get("dry_run_result"),
+                "error": dry.get("error"),
                 "size_tried": feature["size"],
             }
             if dry.get("ok"):
                 commit = mutate.sw_commit_feature_add(pid)
-                report["commit"] = {"ok": commit.get("ok"),
-                                    "doc_saved": commit.get("doc_saved"),
-                                    "error": commit.get("error")}
+                report["commit"] = {
+                    "ok": commit.get("ok"),
+                    "doc_saved": commit.get("doc_saved"),
+                    "error": commit.get("error"),
+                }
                 ok = bool(commit.get("ok") and commit.get("doc_saved"))
                 report["overall"] = "PASS" if ok else "PARTIAL"
                 report["final_size"] = feature["size"]
                 return _emit(report, 0 if ok else 2)
             # invalid size? retry with a valid one from the error.
-            err = (dry.get("dry_run_result") or {}).get("error") or dry.get("error") or ""
+            err = (
+                (dry.get("dry_run_result") or {}).get("error") or dry.get("error") or ""
+            )
             valid = _valid_sizes_from_error(err)
             report[f"valid_sizes_{attempt}"] = valid
             if valid:

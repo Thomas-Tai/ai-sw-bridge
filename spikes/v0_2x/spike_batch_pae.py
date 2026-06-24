@@ -18,6 +18,7 @@ seat-proven registry kinds:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_batch_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -56,7 +57,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -104,8 +107,11 @@ def main() -> int:
     client = SolidWorksClient()
     _RESULTS.mkdir(parents=True, exist_ok=True)
     try:
-        gate("facade_seam", hasattr(client.mutate, "batch"),
-             f"present={hasattr(client.mutate, 'batch')}")
+        gate(
+            "facade_seam",
+            hasattr(client.mutate, "batch"),
+            f"present={hasattr(client.mutate, 'batch')}",
+        )
 
         # A: green transaction across 3 distinct materializations.
         path_a = _RESULTS / "batch_pae_green.sldprt"
@@ -114,48 +120,69 @@ def main() -> int:
         # ref_plane (SelectByID2+_latebound), scale (IBody2.Select), com_point
         # (typed_qi IFeatureManager).
         green_props = [
-            {"feature": {"type": "ref_plane", "distance_mm": 25.0},
-             "target": {"plane": "Front Plane"}},
+            {
+                "feature": {"type": "ref_plane", "distance_mm": 25.0},
+                "target": {"plane": "Front Plane"},
+            },
             {"feature": {"type": "scale", "scale_factor": 1.5}, "target": {}},
             {"feature": {"type": "com_point"}, "target": {}},
         ]
         ra = client.mutate.batch(str(path_a), green_props)
         results["green_txn"] = ra
         nodes_after = _reopen_node_count(sw, path_a)
-        ok_a = (ra.get("ok") is True and ra.get("committed_count") == 3
-                and ra.get("doc_saved") is True and ra.get("fault") is None
-                and ra.get("skipped") == []
-                and (nodes_after - nodes_before) >= 3)
-        gate("green_txn", bool(ok_a),
-             f"ok={ra.get('ok')} committed={ra.get('committed_count')} "
-             f"saved={ra.get('doc_saved')} kinds={[c.get('kind') for c in ra.get('committed', [])]} "
-             f"nodes {nodes_before}->{nodes_after} (Δ≥3) err={ra.get('error')}")
+        ok_a = (
+            ra.get("ok") is True
+            and ra.get("committed_count") == 3
+            and ra.get("doc_saved") is True
+            and ra.get("fault") is None
+            and ra.get("skipped") == []
+            and (nodes_after - nodes_before) >= 3
+        )
+        gate(
+            "green_txn",
+            bool(ok_a),
+            f"ok={ra.get('ok')} committed={ra.get('committed_count')} "
+            f"saved={ra.get('doc_saved')} kinds={[c.get('kind') for c in ra.get('committed', [])]} "
+            f"nodes {nodes_before}->{nodes_after} (Δ≥3) err={ra.get('error')}",
+        )
 
         # B: live fail-fast — middle proposal fails, greens persist, tail skipped.
         path_b = _RESULTS / "batch_pae_failfast.sldprt"
         _build_block_to_disk(sw, path_b)
         ff_props = [
-            {"feature": {"type": "ref_plane", "distance_mm": 25.0},
-             "target": {"plane": "Front Plane"}},     # green
-            {"feature": {"type": "ref_plane", "distance_mm": 10.0},
-             "target": {"plane": "NoSuchPlane"}},      # <- handler returns False
+            {
+                "feature": {"type": "ref_plane", "distance_mm": 25.0},
+                "target": {"plane": "Front Plane"},
+            },  # green
+            {
+                "feature": {"type": "ref_plane", "distance_mm": 10.0},
+                "target": {"plane": "NoSuchPlane"},
+            },  # <- handler returns False
             {"feature": {"type": "com_point"}, "target": {}},  # skipped
         ]
         rb = client.mutate.batch(str(path_b), ff_props)
         results["fail_fast"] = rb
         fault = rb.get("fault") or {}
-        ok_b = (rb.get("ok") is False and rb.get("committed_count") == 1
-                and rb.get("attempted") == 2 and rb.get("halted_at") == 1
-                and fault.get("index") == 1 and fault.get("stage") == "apply"
-                and fault.get("kind") == "ref_plane"
-                and fault.get("target") == ff_props[1]["target"]
-                and [s.get("kind") for s in rb.get("skipped", [])] == ["com_point"]
-                and rb.get("doc_saved") is True)
-        gate("fail_fast", bool(ok_b),
-             f"ok={rb.get('ok')} committed={rb.get('committed_count')} "
-             f"halted_at={rb.get('halted_at')} fault.kind={fault.get('kind')} "
-             f"fault.stage={fault.get('stage')} skipped={[s.get('kind') for s in rb.get('skipped', [])]} "
-             f"saved={rb.get('doc_saved')} err={rb.get('error')}")
+        ok_b = (
+            rb.get("ok") is False
+            and rb.get("committed_count") == 1
+            and rb.get("attempted") == 2
+            and rb.get("halted_at") == 1
+            and fault.get("index") == 1
+            and fault.get("stage") == "apply"
+            and fault.get("kind") == "ref_plane"
+            and fault.get("target") == ff_props[1]["target"]
+            and [s.get("kind") for s in rb.get("skipped", [])] == ["com_point"]
+            and rb.get("doc_saved") is True
+        )
+        gate(
+            "fail_fast",
+            bool(ok_b),
+            f"ok={rb.get('ok')} committed={rb.get('committed_count')} "
+            f"halted_at={rb.get('halted_at')} fault.kind={fault.get('kind')} "
+            f"fault.stage={fault.get('stage')} skipped={[s.get('kind') for s in rb.get('skipped', [])]} "
+            f"saved={rb.get('doc_saved')} err={rb.get('error')}",
+        )
     finally:
         _close_all(sw)
         pythoncom.CoUninitialize()

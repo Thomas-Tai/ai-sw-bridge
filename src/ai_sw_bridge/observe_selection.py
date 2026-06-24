@@ -47,26 +47,26 @@ logger = logging.getLogger(__name__)
 # read-back: EDGE→1, FACE→2, VERTEX→3, PLANE→4, BODYFEATURE→22, SOLIDBODY→76.
 SELECT_TYPE_NAMES: dict[int, str] = {
     0: "nothing",
-    1: "edge",            # swSelEDGES (seat-verified: EDGE select → 1)
-    2: "face",            # swSelFACES (seat-verified: FACE select → 2)
-    3: "vertex",          # swSelVERTICES (seat-verified)
-    4: "datum_plane",     # swSelDATUMPLANES (seat-verified: PLANE select → 4)
-    5: "datum_axis",      # swSelDATUMAXES
-    6: "datum_point",     # swSelDATUMPOINTS
-    7: "ole_item",        # swSelOLEITEMS
-    8: "attribute",       # swSelATTRIBUTES
-    9: "sketch",          # swSelSKETCHES
+    1: "edge",  # swSelEDGES (seat-verified: EDGE select → 1)
+    2: "face",  # swSelFACES (seat-verified: FACE select → 2)
+    3: "vertex",  # swSelVERTICES (seat-verified)
+    4: "datum_plane",  # swSelDATUMPLANES (seat-verified: PLANE select → 4)
+    5: "datum_axis",  # swSelDATUMAXES
+    6: "datum_point",  # swSelDATUMPOINTS
+    7: "ole_item",  # swSelOLEITEMS
+    8: "attribute",  # swSelATTRIBUTES
+    9: "sketch",  # swSelSKETCHES
     10: "sketch_segment",  # swSelSKETCHSEGS
-    11: "sketch_point",   # swSelSKETCHPOINTS
-    12: "component",      # swSelCOMPONENTS
-    13: "sheet",          # swSelSHEETS
-    14: "block_inst",     # swSelBLOCKINST
-    20: "bodies",         # swSelBODIES (generic)
-    22: "body_feature",   # swSelBODYFEATURES (seat-verified: BODYFEATURE → 22)
-    29: "dimensions",     # swSelDIMENSIONS
-    31: "notes",          # swSelNOTES
-    76: "solid_body",     # swSelSOLIDBODIES (seat-verified: SOLIDBODY → 76)
-    98: "everything",     # swSelEVERYTHING
+    11: "sketch_point",  # swSelSKETCHPOINTS
+    12: "component",  # swSelCOMPONENTS
+    13: "sheet",  # swSelSHEETS
+    14: "block_inst",  # swSelBLOCKINST
+    20: "bodies",  # swSelBODIES (generic)
+    22: "body_feature",  # swSelBODYFEATURES (seat-verified: BODYFEATURE → 22)
+    29: "dimensions",  # swSelDIMENSIONS
+    31: "notes",  # swSelNOTES
+    76: "solid_body",  # swSelSOLIDBODIES (seat-verified: SOLIDBODY → 76)
+    98: "everything",  # swSelEVERYTHING
 }
 
 
@@ -231,5 +231,3 @@ def _sw_get_selection_impl(doc: Any) -> dict[str, Any]:
         result["ok"] = True
 
     return result
-
-

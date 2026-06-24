@@ -57,14 +57,20 @@ class _FakeDoc:
         self.rebuilt = True
 
 
-def _wire(monkeypatch, *, entity: object = None, select_ok: bool = True,
-          metrics=((6, 4800.0), (14, 5903.84))) -> None:
+def _wire(
+    monkeypatch,
+    *,
+    entity: object = None,
+    select_ok: bool = True,
+    metrics=((6, 4800.0), (14, 5903.84)),
+) -> None:
     """Patch resolve/select/metrics seams on the hem lane module."""
     ent = object() if entity is None else entity
     if entity is False:  # explicit "unresolved" sentinel
         ent = None
     monkeypatch.setattr(
-        hem, "resolve_edge_ref",
+        hem,
+        "resolve_edge_ref",
         lambda doc, ref: type("R", (), {"entity": ent, "note": "test"})(),
     )
     monkeypatch.setattr(hem, "select_entity", lambda e, mark=0: select_ok)
@@ -81,6 +87,7 @@ def _wire(monkeypatch, *, entity: object = None, select_ok: bool = True,
 
 # --- enum mapper -----------------------------------------------------------
 
+
 class TestEnumMapping:
     def test_maps_strings_ints_and_rejects_garbage(self):
         assert hem._enum("closed", hem._HEM_TYPES, "hem_type") == (1, None)
@@ -94,12 +101,14 @@ class TestEnumMapping:
 
 # --- happy path + recipe pin ----------------------------------------------
 
+
 class TestEffectGate:
     def test_green_hem_closed(self, monkeypatch):
         _wire(monkeypatch)
         doc = _FakeDoc()
         ok, err = create_hem(
-            doc, {"hem_type": "closed", "position": "inside", "length_mm": 10},
+            doc,
+            {"hem_type": "closed", "position": "inside", "length_mm": 10},
             {"edge_ref": _edge_ref()},
         )
         assert (ok, err) == (True, None)
@@ -110,29 +119,36 @@ class TestEffectGate:
         doc = _FakeDoc()
         ok, err = create_hem(
             doc,
-            {"hem_type": "closed", "position": "inside", "length_mm": 10,
-             "angle_deg": 90, "radius_mm": 2, "miter_gap_mm": 1},
+            {
+                "hem_type": "closed",
+                "position": "inside",
+                "length_mm": 10,
+                "angle_deg": 90,
+                "radius_mm": 2,
+                "miter_gap_mm": 1,
+            },
             {"edge_ref": _edge_ref()},
         )
         assert ok, err
         args = doc.FeatureManager.calls[0]
         assert len(args) == 9
-        assert args[0] == 1            # hem_type closed
-        assert args[1] == 0            # position inside
-        assert args[2] is False        # reverse default
-        assert args[3] == pytest.approx(0.010)              # 10 mm -> m
-        assert args[5] == pytest.approx(math.radians(90))   # 90 deg -> rad
-        assert args[6] == pytest.approx(0.002)              # radius 2 mm -> m
-        assert args[7] == pytest.approx(0.001)              # miter 1 mm -> m
+        assert args[0] == 1  # hem_type closed
+        assert args[1] == 0  # position inside
+        assert args[2] is False  # reverse default
+        assert args[3] == pytest.approx(0.010)  # 10 mm -> m
+        assert args[5] == pytest.approx(math.radians(90))  # 90 deg -> rad
+        assert args[6] == pytest.approx(0.002)  # radius 2 mm -> m
+        assert args[7] == pytest.approx(0.001)  # miter 1 mm -> m
         pcba = args[8]
-        assert pcba.varianttype == pythoncom.VT_DISPATCH    # Tactic-1 null coercion
+        assert pcba.varianttype == pythoncom.VT_DISPATCH  # Tactic-1 null coercion
         assert pcba.value is None
 
     def test_int_enums_pass_through(self, monkeypatch):
         _wire(monkeypatch)
         doc = _FakeDoc()
         ok, err = create_hem(
-            doc, {"hem_type": 2, "position": 1, "length_mm": 5},
+            doc,
+            {"hem_type": 2, "position": 1, "length_mm": 5},
             {"edge_ref": _edge_ref()},
         )
         assert ok, err
@@ -153,6 +169,7 @@ class TestEffectGate:
 
 
 # --- fail-closed contract --------------------------------------------------
+
 
 class TestValidation:
     def test_missing_edge_ref_rejected(self):
@@ -178,25 +195,27 @@ class TestValidation:
 
     def test_bad_hem_type_rejected(self):
         ok, err = create_hem(
-            _FakeDoc(), {"hem_type": "bogus", "length_mm": 10}, {"edge_ref": _edge_ref()}
+            _FakeDoc(),
+            {"hem_type": "bogus", "length_mm": 10},
+            {"edge_ref": _edge_ref()},
         )
         assert ok is False and "hem_type" in err
 
     def test_bad_position_rejected(self):
         ok, err = create_hem(
-            _FakeDoc(), {"position": "sideways", "length_mm": 10},
+            _FakeDoc(),
+            {"position": "sideways", "length_mm": 10},
             {"edge_ref": _edge_ref()},
         )
         assert ok is False and "position" in err
 
     def test_nonpositive_length_rejected(self):
-        ok, err = create_hem(
-            _FakeDoc(), {"length_mm": 0}, {"edge_ref": _edge_ref()}
-        )
+        ok, err = create_hem(_FakeDoc(), {"length_mm": 0}, {"edge_ref": _edge_ref()})
         assert ok is False and "length_mm" in err
 
 
 # --- registry dispatch — hem auto-advertised -------------------------------
+
 
 class TestRegistryDispatch:
     def test_kind_in_handler_registry(self):

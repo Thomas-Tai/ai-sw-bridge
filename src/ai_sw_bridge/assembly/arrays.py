@@ -35,7 +35,9 @@ def _normalize(v: list[float]) -> list[float]:
     return [v[0] / length, v[1] / length, v[2] / length]
 
 
-def _rotation_matrix_about_axis(axis: list[float], angle_rad: float) -> list[list[float]]:
+def _rotation_matrix_about_axis(
+    axis: list[float], angle_rad: float
+) -> list[list[float]]:
     """Rodrigues' rotation formula: R(axis, θ) as 3×3 matrix.
 
     axis must be a unit vector.
@@ -46,8 +48,8 @@ def _rotation_matrix_about_axis(axis: list[float], angle_rad: float) -> list[lis
     t = 1.0 - c
 
     return [
-        [t * ax * ax + c,     t * ax * ay - s * az, t * ax * az + s * ay],
-        [t * ax * ay + s * az, t * ay * ay + c,     t * ay * az - s * ax],
+        [t * ax * ax + c, t * ax * ay - s * az, t * ax * az + s * ay],
+        [t * ax * ay + s * az, t * ay * ay + c, t * ay * az - s * ax],
         [t * ax * az - s * ay, t * ay * az + s * ax, t * az * az + c],
     ]
 
@@ -55,12 +57,13 @@ def _rotation_matrix_about_axis(axis: list[float], angle_rad: float) -> list[lis
 def _mat_mul(a: list[list[float]], b: list[list[float]]) -> list[list[float]]:
     """3×3 matrix multiply: a · b."""
     return [
-        [sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)]
-        for i in range(3)
+        [sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)] for i in range(3)
     ]
 
 
-def _rpy_to_matrix(roll_deg: float, pitch_deg: float, yaw_deg: float) -> list[list[float]]:
+def _rpy_to_matrix(
+    roll_deg: float, pitch_deg: float, yaw_deg: float
+) -> list[list[float]]:
     """Build rotation matrix R = Rz(yaw) · Ry(pitch) · Rx(roll).
 
     Matches the W13 convention in handlers._rpy_to_transform.
@@ -76,7 +79,7 @@ def _rpy_to_matrix(roll_deg: float, pitch_deg: float, yaw_deg: float) -> list[li
     return [
         [cz * cy, cz * sy * sx - sz * cx, cz * sy * cx + sz * sx],
         [sz * cy, sz * sy * sx + cz * cx, sz * sy * cx - cz * sx],
-        [-sy,     cy * sx,               cy * cx],
+        [-sy, cy * sx, cy * cx],
     ]
 
 
@@ -271,7 +274,9 @@ def expand_component_arrays(
 
         if atype == "linear":
             instances = expand_linear_array(
-                array_id, part, count,
+                array_id,
+                part,
+                count,
                 spacing_mm=arr["spacing_mm"],
                 direction=arr["direction"],
                 base_xyz_mm=arr.get("base_xyz_mm", [0.0, 0.0, 0.0]),
@@ -279,7 +284,9 @@ def expand_component_arrays(
             )
         elif atype == "circular":
             instances = expand_circular_array(
-                array_id, part, count,
+                array_id,
+                part,
+                count,
                 radius_mm=arr["radius_mm"],
                 axis=arr["axis"],
                 center_xyz_mm=arr.get("center_xyz_mm", [0.0, 0.0, 0.0]),

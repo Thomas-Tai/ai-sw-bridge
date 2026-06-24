@@ -16,6 +16,7 @@ docs/DEFERRED.md Wave-41).  The fail-closed tests pin that propose rejects them
 with "unsupported feature type" so a regression can't silently re-advertise a
 non-materializing kind (the edge-flange / loft precedent).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -161,7 +162,9 @@ class TestDeleteBodyHandler:
         assert ">= 2 bodies" in err
 
     def test_missing_target_rejected(self, _patch_helpers: None) -> None:
-        ok, err = body_ops._create_delete_body(_two_bodies(), {"type": "delete_body"}, {})
+        ok, err = body_ops._create_delete_body(
+            _two_bodies(), {"type": "delete_body"}, {}
+        )
         assert ok is False
         assert "body_index" in err and "body_name" in err
 
@@ -212,7 +215,9 @@ class TestProposeDeleteBody:
         assert "delete_body" in features.HANDLER_REGISTRY
         assert "delete_body" not in mutate._SUPPORTED_FEATURE_TYPES
 
-    def test_propose_accepts_body_index(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_propose_accepts_body_index(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
@@ -223,7 +228,9 @@ class TestProposeDeleteBody:
         assert r["proposal_id"] is not None
         assert r["error"] is None
 
-    def test_propose_accepts_body_name(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_propose_accepts_body_name(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
@@ -232,7 +239,9 @@ class TestProposeDeleteBody:
         )
         assert r["ok"] is True
 
-    def test_propose_rejects_missing_target(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_propose_rejects_missing_target(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
@@ -244,7 +253,9 @@ class TestProposeDeleteBody:
         assert r["ok"] is False
         assert "body_index" in r["error"] and "body_name" in r["error"]
 
-    def test_propose_rejects_negative_index(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_propose_rejects_negative_index(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
@@ -267,7 +278,9 @@ class TestCombineSplitFailClosed:
         assert "split" not in mutate._SUPPORTED_FEATURE_TYPES
         assert "split" not in features.HANDLER_REGISTRY
 
-    def test_propose_combine_fails_closed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_propose_combine_fails_closed(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))
@@ -279,7 +292,9 @@ class TestCombineSplitFailClosed:
         assert r["ok"] is False
         assert "unsupported feature type" in r["error"]
 
-    def test_propose_split_fails_closed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_propose_split_fails_closed(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         _patch_propose(monkeypatch, tmp_path, _FakeProposeDoc(str(doc_file)))

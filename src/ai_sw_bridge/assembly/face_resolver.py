@@ -83,9 +83,7 @@ def _resolve_via_persist(
         pad = "=" * (-len(persist_b64) % 4)
         persist_id = base64.urlsafe_b64decode(persist_b64 + pad)
     except Exception as exc:
-        return ComponentFaceResolution(
-            None, "unresolved", f"bad persist_id: {exc}"
-        )
+        return ComponentFaceResolution(None, "unresolved", f"bad persist_id: {exc}")
 
     try:
         ext = typed_extension(asm_doc, module=mod)
@@ -145,9 +143,7 @@ def _resolve_via_fingerprint(
     try:
         bodies = component.GetBodies(0)
         if not bodies:
-            return ComponentFaceResolution(
-                None, "unresolved", "no bodies on component"
-            )
+            return ComponentFaceResolution(None, "unresolved", "no bodies on component")
         body = bodies[0] if isinstance(bodies, (list, tuple)) else bodies
     except Exception as exc:
         return ComponentFaceResolution(
@@ -168,7 +164,9 @@ def _resolve_via_fingerprint(
             try:
                 iedge = typed(edge, "IEdge", module=mod) if mod is not None else edge
                 curve = iedge.GetCurve()
-                icurve = typed(curve, "ICurve", module=mod) if mod is not None else curve
+                icurve = (
+                    typed(curve, "ICurve", module=mod) if mod is not None else curve
+                )
                 if icurve.IsLine():
                     return ComponentFaceResolution(edge, "fingerprint")
             except Exception:
@@ -233,7 +231,8 @@ def _resolve_via_fingerprint(
         if best_planar is not None and best_dot > 0.5:
             return ComponentFaceResolution(best_planar, "fingerprint")
         return ComponentFaceResolution(
-            None, "unresolved",
+            None,
+            "unresolved",
             f"no planar face aligned with planar_normal (best dot={best_dot:.3f})",
         )
 
@@ -280,9 +279,10 @@ def _resolve_via_fingerprint(
                 else:
                     centroid = list(face.Normal)  # fallback
                 if centroid is not None:
-                    dist = sum(
-                        (a - b) ** 2 for a, b in zip(target_centroid, centroid)
-                    ) ** 0.5
+                    dist = (
+                        sum((a - b) ** 2 for a, b in zip(target_centroid, centroid))
+                        ** 0.5
+                    )
                     score += dist * 0.001
             except Exception:
                 pass

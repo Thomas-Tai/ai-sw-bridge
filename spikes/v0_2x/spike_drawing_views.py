@@ -20,9 +20,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_views.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_views.json"
 
 results: dict[str, Any] = {
     "spike": "w16_drawing_views",
@@ -63,7 +61,7 @@ def run() -> str:
 
     # Close all docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 d.CloseDoc
             except Exception:
@@ -84,10 +82,19 @@ def run() -> str:
             "schema_version": 1,
             "name": f"View{label.upper()}",
             "features": [
-                {"type": "sketch_rectangle_on_plane", "name": "SK",
-                 "plane": "Front", "width": w, "height": 20.0},
-                {"type": "boss_extrude_blind", "name": "EX",
-                 "sketch": "SK", "depth": 10.0},
+                {
+                    "type": "sketch_rectangle_on_plane",
+                    "name": "SK",
+                    "plane": "Front",
+                    "width": w,
+                    "height": 20.0,
+                },
+                {
+                    "type": "boss_extrude_blind",
+                    "name": "EX",
+                    "sketch": "SK",
+                    "depth": 10.0,
+                },
             ],
         }
         r = part_build(spec, save_as=path, save_format="current", no_dim=True)
@@ -100,7 +107,9 @@ def run() -> str:
     # Build assembly
     print("\n--- Building assembly ---")
     from ai_sw_bridge.mutate import (
-        sw_propose_assembly, sw_dry_run_assembly, sw_commit_assembly,
+        sw_propose_assembly,
+        sw_dry_run_assembly,
+        sw_commit_assembly,
     )
 
     ASM_PATH = str(_tmp / f"w16_views_{_ts}.SLDASM")
@@ -124,8 +133,7 @@ def run() -> str:
     p = sw_propose_assembly(asm_spec)
     d = sw_dry_run_assembly(p["proposal_id"])
     c = sw_commit_assembly(p["proposal_id"], ASM_PATH)
-    gate("assembly_commit", c.get("ok", False),
-         f"mates={c.get('mate_count')}")
+    gate("assembly_commit", c.get("ok", False), f"mates={c.get('mate_count')}")
 
     if not c.get("ok"):
         save_results()
@@ -133,7 +141,7 @@ def run() -> str:
 
     # Close all docs for clean drawing creation
     try:
-        for doc in (sw.GetDocuments() or []):
+        for doc in sw.GetDocuments() or []:
             try:
                 doc.CloseDoc
             except Exception:
@@ -144,9 +152,8 @@ def run() -> str:
     # Create drawing
     print("\n--- Creating drawing ---")
     import glob
-    drwdots = glob.glob(
-        r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT"
-    )
+
+    drwdots = glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT")
     if not drwdots:
         drwdots = glob.glob(
             r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.drwdot"
@@ -164,8 +171,11 @@ def run() -> str:
 
     # Create drawing
     doc_raw = sw.NewDocument(template, 0, 0.420, 0.297)  # A3 landscape
-    gate("drawing_create", doc_raw is not None,
-         f"type={type(doc_raw).__name__ if doc_raw else None}")
+    gate(
+        "drawing_create",
+        doc_raw is not None,
+        f"type={type(doc_raw).__name__ if doc_raw else None}",
+    )
 
     if doc_raw is None:
         save_results()
@@ -173,13 +183,17 @@ def run() -> str:
 
     try:
         drawing_doc = typed_qi(doc_raw, "IDrawingDoc", module=mod)
-        gate("drawing_qi", drawing_doc is not None,
-             f"type={type(drawing_doc).__name__}")
+        gate(
+            "drawing_qi", drawing_doc is not None, f"type={type(drawing_doc).__name__}"
+        )
 
         # Check initial sheet/views
         sheets = drawing_doc.GetSheetNames()
-        gate("initial_sheets", sheets is not None and len(sheets) > 0,
-             f"sheets={list(sheets) if sheets else []}")
+        gate(
+            "initial_sheets",
+            sheets is not None and len(sheets) > 0,
+            f"sheets={list(sheets) if sheets else []}",
+        )
 
         # --- Characterize view creation ---
         print("\n--- View creation characterization ---")
@@ -197,19 +211,19 @@ def run() -> str:
                     model_path, view_name, x, y, 0.0
                 )
                 view_ok = view is not None and not isinstance(view, int)
-                gate(f"view_{view_name.lstrip('*')}", view_ok,
-                     f"type={type(view).__name__ if view else None}")
+                gate(
+                    f"view_{view_name.lstrip('*')}",
+                    view_ok,
+                    f"type={type(view).__name__ if view else None}",
+                )
                 if view_ok:
                     created_views.append(view_name)
             except Exception as e:
-                gate(f"view_{view_name.lstrip('*')}", False,
-                     f"raised: {str(e)[:100]}")
+                gate(f"view_{view_name.lstrip('*')}", False, f"raised: {str(e)[:100]}")
 
         results["characterization"]["model_path"] = model_path
         results["characterization"]["created_views"] = created_views
-        results["characterization"]["api_method"] = (
-            "CreateDrawViewFromModelView3"
-        )
+        results["characterization"]["api_method"] = "CreateDrawViewFromModelView3"
 
         # Check total view count
         try:
@@ -226,8 +240,7 @@ def run() -> str:
                         v = typed(next_v, "IView", module=mod) if next_v else None
                     except Exception:
                         break
-                gate("view_count", view_count > 0,
-                     f"count={view_count}")
+                gate("view_count", view_count > 0, f"count={view_count}")
                 results["characterization"]["view_count"] = view_count
             else:
                 gate("view_count", False, "GetFirstView returned None")
@@ -239,18 +252,17 @@ def run() -> str:
         DRW_PATH = str(_tmp / f"w16_views_{_ts}.SLDDRW")
         try:
             doc_raw.SaveAs3(DRW_PATH, 0, 2)
-            gate("drawing_save", os.path.isfile(DRW_PATH),
-                 f"path={DRW_PATH}")
+            gate("drawing_save", os.path.isfile(DRW_PATH), f"path={DRW_PATH}")
         except Exception as e:
             gate("drawing_save", False, f"raised: {str(e)[:100]}")
 
         # Overall
-        all_pass = (
-            len(created_views) > 0
-            and os.path.isfile(DRW_PATH)
+        all_pass = len(created_views) > 0 and os.path.isfile(DRW_PATH)
+        gate(
+            "OVERALL",
+            all_pass,
+            f"views_created={len(created_views)}, saved={os.path.isfile(DRW_PATH)}",
         )
-        gate("OVERALL", all_pass,
-             f"views_created={len(created_views)}, saved={os.path.isfile(DRW_PATH)}")
 
         return "GREEN" if all_pass else "PARTIAL"
 

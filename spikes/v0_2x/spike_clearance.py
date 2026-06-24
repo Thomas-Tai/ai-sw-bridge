@@ -55,8 +55,10 @@ SW_DOC_ASSEMBLY = 2
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
+
 def _find_asm_template() -> str | None:
     import glob
+
     for pat in [
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT",
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.asmdot",
@@ -68,6 +70,7 @@ def _find_asm_template() -> str | None:
 
 def _find_part_template() -> str | None:
     import glob
+
     for pat in [
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.PRTDOT",
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\part.prtdot",
@@ -84,20 +87,28 @@ def _retry(fn, *args, retries=3, delay=5, label=""):
             return fn(*args)
         except Exception as exc:
             if attempt < retries - 1:
-                print(f"  [{label}] Attempt {attempt+1} failed: {exc!r}, retrying in {delay}s …")
+                print(
+                    f"  [{label}] Attempt {attempt+1} failed: {exc!r}, retrying in {delay}s …"
+                )
                 time.sleep(delay)
             else:
                 raise
 
 
-def _make_block_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, str | None]:
+def _make_block_part(
+    sw_typed: Any, mod: Any, path: str
+) -> tuple[Any | None, str | None]:
     """Create a 20mm cube part. Returns (doc, error)."""
     try:
         doc = _retry(
             sw_typed.NewDocument,
             _find_part_template(),
-            0, 0, 0,
-            retries=3, delay=5, label="part_new",
+            0,
+            0,
+            0,
+            retries=3,
+            delay=5,
+            label="part_new",
         )
         if doc is None:
             return None, "NewDocument(part) returned None"
@@ -113,13 +124,28 @@ def _make_block_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, st
         dt.ClearSelection2(True)
         dt.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
         feat = dt.FeatureManager.FeatureExtrusion2(
-            True, False, False, 0, 0,
-            BOX_SIZE_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOX_SIZE_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
             False,
         )
         if feat is None:
@@ -140,9 +166,12 @@ def _close_all(sw_typed: Any) -> None:
 
 
 def _build_assembly(
-    sw_typed: Any, mod: Any,
-    part_path: str, asm_template: str,
-    gap_m: float, label: str,
+    sw_typed: Any,
+    mod: Any,
+    part_path: str,
+    asm_template: str,
+    gap_m: float,
+    label: str,
 ) -> tuple[Any, Any, Any, list[Any], str | None]:
     """Open new assembly, place two copies of *part_path* with *gap_m* between faces.
 
@@ -194,8 +223,12 @@ def _build_assembly(
     print(f"  [{label}] Component A placed")
 
     # Component B at (BOX_SIZE + gap) — nearest faces are gap apart
-    offset_m = BOX_SIZE_M + gap_m  # Box extends from -10mm to +10mm, so B center at 10+gap+10 = 20+gap
-    print(f"  [{label}] AddComponent4(B) at {offset_m*1000:.0f}mm (faces {gap_m*1000:.0f}mm apart) …")
+    offset_m = (
+        BOX_SIZE_M + gap_m
+    )  # Box extends from -10mm to +10mm, so B center at 10+gap+10 = 20+gap
+    print(
+        f"  [{label}] AddComponent4(B) at {offset_m*1000:.0f}mm (faces {gap_m*1000:.0f}mm apart) …"
+    )
     try:
         comp_b = asm_typed.AddComponent4(part_path, "", offset_m, 0.0, 0.0)
     except Exception as exc:
@@ -214,7 +247,9 @@ def _build_assembly(
     return asm_doc, asm_typed, doc_typed, [comp_a, comp_b], None
 
 
-def _select_components_direct(comps: list[Any], doc_typed: Any) -> tuple[bool, list[str]]:
+def _select_components_direct(
+    comps: list[Any], doc_typed: Any
+) -> tuple[bool, list[str]]:
     """Select components via IComponent2.Select2 directly.
 
     This is the preferred method for selecting components.
@@ -256,7 +291,9 @@ def _get_component_feature(comp: Any) -> Any | None:
         return None
 
 
-def _select_components_via_feature(doc_typed: Any, comps: list[Any], mod: Any) -> tuple[bool, list[str]]:
+def _select_components_via_feature(
+    doc_typed: Any, comps: list[Any], mod: Any
+) -> tuple[bool, list[str]]:
     """Select components via IFeature.Select2 on their tree features.
 
     W22 lesson: SelectByID2(name, "COMPONENT") returns False → use IFeature.Select2.
@@ -303,7 +340,9 @@ def _get_body_faces(body: Any) -> list[Any]:
     return faces
 
 
-def _find_nearest_face_pair(comps: list[Any], gap_direction: str = "x") -> tuple[Any | None, Any | None]:
+def _find_nearest_face_pair(
+    comps: list[Any], gap_direction: str = "x"
+) -> tuple[Any | None, Any | None]:
     """Find face pair most likely to be the minimum-distance pair.
 
     For gap in X direction:
@@ -355,7 +394,9 @@ def _find_nearest_face_pair(comps: list[Any], gap_direction: str = "x") -> tuple
     return face_a, face_b
 
 
-def _select_components_via_faces(doc_typed: Any, comps: list[Any]) -> tuple[bool, list[str]]:
+def _select_components_via_faces(
+    doc_typed: Any, comps: list[Any]
+) -> tuple[bool, list[str]]:
     """Select a face on each component body via IEntity.Select2.
 
     Alternative to feature-based selection — pick nearest face pair.
@@ -412,7 +453,12 @@ def _probe_typelib_for_minimum_distance(mod: Any) -> dict[str, Any]:
         if hasattr(mod, "IMeasure"):
             measure_cls = mod.IMease
             # Check for minimum-distance related attributes
-            for attr in ["MinimumDistance", "NormalDistance", "IsParallel", "PerpendicularDistance"]:
+            for attr in [
+                "MinimumDistance",
+                "NormalDistance",
+                "IsParallel",
+                "PerpendicularDistance",
+            ]:
                 result["members_checked"].append(attr)
                 if hasattr(measure_cls, attr):
                     result["found_minimum_distance"] = True
@@ -424,15 +470,25 @@ def _probe_typelib_for_minimum_distance(mod: Any) -> dict[str, Any]:
     # Also check the dispatch interface by inspecting members
     try:
         import win32com.client
+
         # IMeasure dispatch ID lookup
         # Known members from SW API:
         # Distance, DeltaX, DeltaY, DeltaZ, Angle, ArcLength, Area, Perimeter
         # We need to check if there's a dedicated minimum-distance property
         known_members = [
-            "Distance", "DeltaX", "DeltaY", "DeltaZ",
-            "Angle", "ArcLength", "Area", "Perimeter",
-            "MinimumDistance", "NormalDistance", "PerpendicularDistance",
-            "IsParallel", "IsPerpendicular",
+            "Distance",
+            "DeltaX",
+            "DeltaY",
+            "DeltaZ",
+            "Angle",
+            "ArcLength",
+            "Area",
+            "Perimeter",
+            "MinimumDistance",
+            "NormalDistance",
+            "PerpendicularDistance",
+            "IsParallel",
+            "IsPerpendicular",
         ]
         result["members_checked"] = known_members
         result["notes"].append("Checked against known SW API members list")
@@ -442,7 +498,9 @@ def _probe_typelib_for_minimum_distance(mod: Any) -> dict[str, Any]:
     return result
 
 
-def _measure_distance(doc_typed: Any, mod: Any, label: str) -> tuple[float | None, list[str]]:
+def _measure_distance(
+    doc_typed: Any, mod: Any, label: str
+) -> tuple[float | None, list[str]]:
     """Run IMeasure on currently selected entities.
 
     Returns (distance_mm, errors).
@@ -511,6 +569,7 @@ def _measure_distance(doc_typed: Any, mod: Any, label: str) -> tuple[float | Non
 
 # ── Main ──────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     pythoncom.CoInitialize()
     sw = get_sw_app()
@@ -524,7 +583,11 @@ def main() -> None:
 
     result: dict[str, Any] = {
         "verdict": "PENDING",
-        "gap_10mm_fixture": {"measured_mm": None, "expected_mm": 10.0, "selection_method": None},
+        "gap_10mm_fixture": {
+            "measured_mm": None,
+            "expected_mm": 10.0,
+            "selection_method": None,
+        },
         "gap_25mm_fixture": {"measured_mm": None, "expected_mm": 25.0},
         "overlap_fixture": {"measured_mm": None, "expected_mm": 0.0},
         "touching_fixture": {"measured_mm": None, "expected_mm": 0.0},
@@ -568,8 +631,12 @@ def main() -> None:
         # ── Step 2: 10mm gap assembly ──────────────────────────────────
         print("[S1] Building 10mm gap assembly …")
         asm1_doc, asm1_typed, doc1_typed, comps1, build_err1 = _build_assembly(
-            sw_typed, mod, part_path, asm_templ,
-            GAP_10MM_M, "gap10mm",
+            sw_typed,
+            mod,
+            part_path,
+            asm_templ,
+            GAP_10MM_M,
+            "gap10mm",
         )
         if build_err1:
             result["errors"].append(f"gap_10mm build: {build_err1}")
@@ -592,9 +659,13 @@ def main() -> None:
 
             # Try selection via features as fallback
             print("[S1] Trying IFeature.Select2 …")
-            ok_feat, feat_errors = _select_components_via_feature(doc1_typed, comps1, mod)
+            ok_feat, feat_errors = _select_components_via_feature(
+                doc1_typed, comps1, mod
+            )
             if ok_feat:
-                dist_mm, dist_errors = _measure_distance(doc1_typed, mod, "gap10mm_feat")
+                dist_mm, dist_errors = _measure_distance(
+                    doc1_typed, mod, "gap10mm_feat"
+                )
                 if result["gap_10mm_fixture"]["measured_mm"] is None:
                     result["gap_10mm_fixture"]["measured_mm"] = dist_mm
                     result["gap_10mm_fixture"]["selection_method"] = "IFeature.Select2"
@@ -608,10 +679,14 @@ def main() -> None:
                 print("[S1] Trying face-based selection …")
                 ok_face, face_errors = _select_components_via_faces(doc1_typed, comps1)
                 if ok_face:
-                    dist_mm, dist_errors = _measure_distance(doc1_typed, mod, "gap10mm_face")
+                    dist_mm, dist_errors = _measure_distance(
+                        doc1_typed, mod, "gap10mm_face"
+                    )
                     if result["gap_10mm_fixture"]["measured_mm"] is None:
                         result["gap_10mm_fixture"]["measured_mm"] = dist_mm
-                        result["gap_10mm_fixture"]["selection_method"] = "IEntity.Select2 (faces)"
+                        result["gap_10mm_fixture"][
+                            "selection_method"
+                        ] = "IEntity.Select2 (faces)"
                     result["errors"].extend(dist_errors)
                     print(f"[S1] Face selection: distance = {dist_mm}mm")
                 else:
@@ -628,8 +703,12 @@ def main() -> None:
         # ── Step 3: 25mm gap assembly ──────────────────────────────────
         print("[S1] Building 25mm gap assembly …")
         asm2_doc, asm2_typed, doc2_typed, comps2, build_err2 = _build_assembly(
-            sw_typed, mod, part_path, asm_templ,
-            GAP_25MM_M, "gap25mm",
+            sw_typed,
+            mod,
+            part_path,
+            asm_templ,
+            GAP_25MM_M,
+            "gap25mm",
         )
         if build_err2:
             result["errors"].append(f"gap_25mm build: {build_err2}")
@@ -642,16 +721,22 @@ def main() -> None:
         if method == "IComponent2.Select2":
             ok_direct2, direct_errors2 = _select_components_direct(comps2, doc2_typed)
             if ok_direct2:
-                dist_mm2, dist_errors2 = _measure_distance(doc2_typed, mod, "gap25mm_direct")
+                dist_mm2, dist_errors2 = _measure_distance(
+                    doc2_typed, mod, "gap25mm_direct"
+                )
                 result["gap_25mm_fixture"]["measured_mm"] = dist_mm2
                 result["errors"].extend(dist_errors2)
                 print(f"[S1] 25mm Direct selection: distance = {dist_mm2}mm")
             else:
                 result["errors"].extend(direct_errors2)
         elif method == "IFeature.Select2":
-            ok_feat2, feat_errors2 = _select_components_via_feature(doc2_typed, comps2, mod)
+            ok_feat2, feat_errors2 = _select_components_via_feature(
+                doc2_typed, comps2, mod
+            )
             if ok_feat2:
-                dist_mm2, dist_errors2 = _measure_distance(doc2_typed, mod, "gap25mm_feat")
+                dist_mm2, dist_errors2 = _measure_distance(
+                    doc2_typed, mod, "gap25mm_feat"
+                )
                 result["gap_25mm_fixture"]["measured_mm"] = dist_mm2
                 result["errors"].extend(dist_errors2)
                 print(f"[S1] 25mm Feature selection: distance = {dist_mm2}mm")
@@ -660,7 +745,9 @@ def main() -> None:
         else:
             ok_face2, face_errors2 = _select_components_via_faces(doc2_typed, comps2)
             if ok_face2:
-                dist_mm2, dist_errors2 = _measure_distance(doc2_typed, mod, "gap25mm_face")
+                dist_mm2, dist_errors2 = _measure_distance(
+                    doc2_typed, mod, "gap25mm_face"
+                )
                 result["gap_25mm_fixture"]["measured_mm"] = dist_mm2
                 result["errors"].extend(dist_errors2)
                 print(f"[S1] 25mm Face selection: distance = {dist_mm2}mm")
@@ -678,8 +765,12 @@ def main() -> None:
         print("[S1] Building overlap assembly (faces overlap by 5mm) …")
         overlap_offset_m = -0.005  # Negative = overlap
         asm3_doc, asm3_typed, doc3_typed, comps3, build_err3 = _build_assembly(
-            sw_typed, mod, part_path, asm_templ,
-            overlap_offset_m, "overlap",
+            sw_typed,
+            mod,
+            part_path,
+            asm_templ,
+            overlap_offset_m,
+            "overlap",
         )
         if build_err3:
             result["errors"].append(f"overlap build: {build_err3}")
@@ -687,27 +778,39 @@ def main() -> None:
         else:
             method = result["gap_10mm_fixture"]["selection_method"]
             if method == "IComponent2.Select2":
-                ok_direct3, direct_errors3 = _select_components_direct(comps3, doc3_typed)
+                ok_direct3, direct_errors3 = _select_components_direct(
+                    comps3, doc3_typed
+                )
                 if ok_direct3:
-                    dist_mm3, dist_errors3 = _measure_distance(doc3_typed, mod, "overlap_direct")
+                    dist_mm3, dist_errors3 = _measure_distance(
+                        doc3_typed, mod, "overlap_direct"
+                    )
                     result["overlap_fixture"]["measured_mm"] = dist_mm3
                     result["errors"].extend(dist_errors3)
                     print(f"[S1] Overlap Direct selection: distance = {dist_mm3}mm")
                 else:
                     result["errors"].extend(direct_errors3)
             elif method == "IFeature.Select2":
-                ok_feat3, feat_errors3 = _select_components_via_feature(doc3_typed, comps3, mod)
+                ok_feat3, feat_errors3 = _select_components_via_feature(
+                    doc3_typed, comps3, mod
+                )
                 if ok_feat3:
-                    dist_mm3, dist_errors3 = _measure_distance(doc3_typed, mod, "overlap_feat")
+                    dist_mm3, dist_errors3 = _measure_distance(
+                        doc3_typed, mod, "overlap_feat"
+                    )
                     result["overlap_fixture"]["measured_mm"] = dist_mm3
                     result["errors"].extend(dist_errors3)
                     print(f"[S1] Overlap Feature selection: distance = {dist_mm3}mm")
                 else:
                     result["errors"].extend(feat_errors3)
             else:
-                ok_face3, face_errors3 = _select_components_via_faces(doc3_typed, comps3)
+                ok_face3, face_errors3 = _select_components_via_faces(
+                    doc3_typed, comps3
+                )
                 if ok_face3:
-                    dist_mm3, dist_errors3 = _measure_distance(doc3_typed, mod, "overlap_face")
+                    dist_mm3, dist_errors3 = _measure_distance(
+                        doc3_typed, mod, "overlap_face"
+                    )
                     result["overlap_fixture"]["measured_mm"] = dist_mm3
                     result["errors"].extend(dist_errors3)
                     print(f"[S1] Overlap Face selection: distance = {dist_mm3}mm")
@@ -724,35 +827,51 @@ def main() -> None:
         # Touching = 0mm gap
         print("[S1] Building touching assembly (faces flush) …")
         asm4_doc, asm4_typed, doc4_typed, comps4, build_err4 = _build_assembly(
-            sw_typed, mod, part_path, asm_templ,
-            0.0, "touching",  # Zero gap = faces touching
+            sw_typed,
+            mod,
+            part_path,
+            asm_templ,
+            0.0,
+            "touching",  # Zero gap = faces touching
         )
         if build_err4:
             result["errors"].append(f"touching build: {build_err4}")
         else:
             method = result["gap_10mm_fixture"]["selection_method"]
             if method == "IComponent2.Select2":
-                ok_direct4, direct_errors4 = _select_components_direct(comps4, doc4_typed)
+                ok_direct4, direct_errors4 = _select_components_direct(
+                    comps4, doc4_typed
+                )
                 if ok_direct4:
-                    dist_mm4, dist_errors4 = _measure_distance(doc4_typed, mod, "touching_direct")
+                    dist_mm4, dist_errors4 = _measure_distance(
+                        doc4_typed, mod, "touching_direct"
+                    )
                     result["touching_fixture"]["measured_mm"] = dist_mm4
                     result["errors"].extend(dist_errors4)
                     print(f"[S1] Touching Direct selection: distance = {dist_mm4}mm")
                 else:
                     result["errors"].extend(direct_errors4)
             elif method == "IFeature.Select2":
-                ok_feat4, feat_errors4 = _select_components_via_feature(doc4_typed, comps4, mod)
+                ok_feat4, feat_errors4 = _select_components_via_feature(
+                    doc4_typed, comps4, mod
+                )
                 if ok_feat4:
-                    dist_mm4, dist_errors4 = _measure_distance(doc4_typed, mod, "touching_feat")
+                    dist_mm4, dist_errors4 = _measure_distance(
+                        doc4_typed, mod, "touching_feat"
+                    )
                     result["touching_fixture"]["measured_mm"] = dist_mm4
                     result["errors"].extend(dist_errors4)
                     print(f"[S1] Touching Feature selection: distance = {dist_mm4}mm")
                 else:
                     result["errors"].extend(feat_errors4)
             else:
-                ok_face4, face_errors4 = _select_components_via_faces(doc4_typed, comps4)
+                ok_face4, face_errors4 = _select_components_via_faces(
+                    doc4_typed, comps4
+                )
                 if ok_face4:
-                    dist_mm4, dist_errors4 = _measure_distance(doc4_typed, mod, "touching_face")
+                    dist_mm4, dist_errors4 = _measure_distance(
+                        doc4_typed, mod, "touching_face"
+                    )
                     result["touching_fixture"]["measured_mm"] = dist_mm4
                     result["errors"].extend(dist_errors4)
                     print(f"[S1] Touching Face selection: distance = {dist_mm4}mm")

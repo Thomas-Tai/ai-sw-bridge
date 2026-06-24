@@ -28,9 +28,7 @@ from pathlib import Path
 from typing import Any
 
 if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(
-        sys.stdout.buffer, encoding="utf-8", errors="replace"
-    )
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
@@ -114,7 +112,18 @@ def _build_test_part(sw: Any, part_path: str) -> bool:
 
 def _parse_dxf_entities(dxf_path: str) -> dict[str, int]:
     """Parse a DXF file and count entity types."""
-    entity_types = ["LINE", "LWPOLYLINE", "POLYLINE", "CIRCLE", "ARC", "SPLINE", "ELLIPSE", "POINT", "TEXT", "MTEXT"]
+    entity_types = [
+        "LINE",
+        "LWPOLYLINE",
+        "POLYLINE",
+        "CIRCLE",
+        "ARC",
+        "SPLINE",
+        "ELLIPSE",
+        "POINT",
+        "TEXT",
+        "MTEXT",
+    ]
     counts: dict[str, int] = {et: 0 for et in entity_types}
     total_entities = 0
 
@@ -208,7 +217,11 @@ def run() -> str:
 
     drawing_result = commit_drawing(sw, drawing_spec, drawing_output_path)
     if not drawing_result.get("ok", False):
-        gate("drawing_build", False, f"commit_drawing failed: {drawing_result.get('error', 'unknown')}")
+        gate(
+            "drawing_build",
+            False,
+            f"commit_drawing failed: {drawing_result.get('error', 'unknown')}",
+        )
         results["verdict"] = "FAIL (drawing build failed)"
         save_results()
         return "FAIL"
@@ -252,7 +265,11 @@ def run() -> str:
 
     export_results = export_all(doc_m2, [req], f"w33_pae_dxf_{_ts}")
     if not export_results or len(export_results) != 1:
-        gate("export_call", False, f"expected 1 result, got {len(export_results) if export_results else 0}")
+        gate(
+            "export_call",
+            False,
+            f"expected 1 result, got {len(export_results) if export_results else 0}",
+        )
         results["verdict"] = "FAIL"
         try:
             sw.CloseDoc(drawing_path)
@@ -294,7 +311,11 @@ def run() -> str:
     results["entity_counts"]["drawing"] = counts
     total_geo = counts.get("_total_geometry", 0)
     line_count = counts.get("LINE", 0)
-    gate("entity_count", total_geo >= 4 or line_count >= 4, f"total={total_geo}, lines={line_count}")
+    gate(
+        "entity_count",
+        total_geo >= 4 or line_count >= 4,
+        f"total={total_geo}, lines={line_count}",
+    )
 
     # Close drawing
     try:
@@ -355,7 +376,11 @@ def run() -> str:
 
     # The export should fail-closed with a doc-type mismatch error
     if r_part.ok:
-        gate("part_dxf_rejected", False, f"Part→DXF succeeded unexpectedly! path={r_part.path}")
+        gate(
+            "part_dxf_rejected",
+            False,
+            f"Part→DXF succeeded unexpectedly! path={r_part.path}",
+        )
         results["verdict"] = "FAIL (Part→DXF should be rejected)"
         results["doc_type_rejection"] = {
             "expected": "ValueError with doc-type mismatch",
@@ -384,7 +409,11 @@ def run() -> str:
 
     # Verify no DXF was created for part
     if Path(dxf_part_path).exists():
-        gate("part_dxf_not_created", False, f"DXF file created despite rejection: {dxf_part_path}")
+        gate(
+            "part_dxf_not_created",
+            False,
+            f"DXF file created despite rejection: {dxf_part_path}",
+        )
         results["verdict"] = "FAIL (Part→DXF created file despite rejection)"
         try:
             sw.CloseDoc(part_path)
@@ -406,11 +435,15 @@ def run() -> str:
     print("\n--- Verdict ---")
 
     drawing_ok = results["gates"].get("entity_count", {}).get("ok", False)
-    doc_type_ok = results["gates"].get("part_dxf_rejected", {}).get("ok", True) and results["gates"].get("part_dxf_error_msg", {}).get("ok", False)
+    doc_type_ok = results["gates"].get("part_dxf_rejected", {}).get(
+        "ok", True
+    ) and results["gates"].get("part_dxf_error_msg", {}).get("ok", False)
 
     if drawing_ok and doc_type_ok:
         results["verdict"] = "PASS"
-        print(">>> VERDICT: PASS (DXF export production path works + doc-type fail-closed)")
+        print(
+            ">>> VERDICT: PASS (DXF export production path works + doc-type fail-closed)"
+        )
     else:
         fail_reasons = []
         if not drawing_ok:
@@ -429,8 +462,11 @@ if __name__ == "__main__":
         verdict = run()
     except Exception:
         import traceback
+
         traceback.print_exc()
-        results["verdict"] = f"FAIL (unhandled exception: {traceback.format_exc()[:200]})"
+        results["verdict"] = (
+            f"FAIL (unhandled exception: {traceback.format_exc()[:200]})"
+        )
         save_results()
         verdict = "FAIL"
     sys.exit(0 if verdict in ("PASS", "GREEN") else 1)

@@ -152,7 +152,11 @@ def _apply(doc: Any, sk: Any, params: dict) -> dict:
         bool(params.get("num_x_dim", False)),
         bool(params.get("num_y_dim", False)),
     )
-    return {"ok": bool(ret), "raw_return": ret, "seeds_selected": len(params["entities"])}
+    return {
+        "ok": bool(ret),
+        "raw_return": ret,
+        "seeds_selected": len(params["entities"]),
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -33,21 +33,53 @@ from typing import Any
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
-RESULTS_PATH = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "observe_feature_statistics.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "observe_feature_statistics.json"
+)
 
 
 def _build_fixture(part_path: str) -> bool:
     """Block + 2 through-holes -> 1 solid body, multi-feature tree."""
     from ai_sw_bridge.spec.builder import build as part_build
+
     spec = {
         "schema_version": 1,
         "name": "W71_Stats",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK_Base", "plane": "Front", "width": 40.0, "height": 30.0},
-            {"type": "boss_extrude_blind", "name": "EX_Base", "sketch": "SK_Base", "depth": 20.0},
-            {"type": "sketch_circle_on_face", "name": "SK_H1", "of_feature": "EX_Base", "face": "+z", "diameter": 8.0, "center": {"u": -10.0, "v": 0.0}},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Base",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 30.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Base",
+                "sketch": "SK_Base",
+                "depth": 20.0,
+            },
+            {
+                "type": "sketch_circle_on_face",
+                "name": "SK_H1",
+                "of_feature": "EX_Base",
+                "face": "+z",
+                "diameter": 8.0,
+                "center": {"u": -10.0, "v": 0.0},
+            },
             {"type": "cut_extrude_through_all", "name": "CUT_H1", "sketch": "SK_H1"},
-            {"type": "sketch_circle_on_face", "name": "SK_H2", "of_feature": "EX_Base", "face": "+z", "diameter": 8.0, "center": {"u": 10.0, "v": 0.0}},
+            {
+                "type": "sketch_circle_on_face",
+                "name": "SK_H2",
+                "of_feature": "EX_Base",
+                "face": "+z",
+                "diameter": 8.0,
+                "center": {"u": 10.0, "v": 0.0},
+            },
             {"type": "cut_extrude_through_all", "name": "CUT_H2", "sketch": "SK_H2"},
         ],
     }
@@ -62,9 +94,14 @@ def main() -> int:
     from ai_sw_bridge.observe import sw_get_feature_statistics
     from ai_sw_bridge.sw_com import get_sw_app
 
-    result: dict[str, Any] = {"spike": "w71_feature_statistics", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    result: dict[str, Any] = {
+        "spike": "w71_feature_statistics",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
 
-    with tempfile.TemporaryDirectory(prefix="w71_stats_", ignore_cleanup_errors=True) as tmp:
+    with tempfile.TemporaryDirectory(
+        prefix="w71_stats_", ignore_cleanup_errors=True
+    ) as tmp:
         part_path = os.path.join(tmp, "W71_Stats.sldprt")
         if not _build_fixture(part_path):
             result["overall"] = "ERROR"

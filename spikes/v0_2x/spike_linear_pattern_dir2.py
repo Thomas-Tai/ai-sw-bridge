@@ -34,7 +34,13 @@ from _feature_spike_fixtures import build_block, connect, top_face  # noqa: E402
 from ai_sw_bridge.features import verify  # noqa: E402
 from ai_sw_bridge import mutate  # noqa: E402
 
-RESULTS_PATH = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "linear_pattern_dir2.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "linear_pattern_dir2.json"
+)
 
 _BLIND = 0
 
@@ -47,7 +53,9 @@ def _feat_name(feat: Any) -> str | None:
         return None
 
 
-def _build_seed_boss(doc: Any, cx: float, cy: float, r: float = 0.003, h: float = 0.005) -> str | None:
+def _build_seed_boss(
+    doc: Any, cx: float, cy: float, r: float = 0.003, h: float = 0.005
+) -> str | None:
     """Build a boss (radius r, height h) at sketch (cx,cy) on the top face.
     Returns the boss feature name."""
     try:
@@ -61,8 +69,29 @@ def _build_seed_boss(doc: Any, cx: float, cy: float, r: float = 0.003, h: float 
         if seed_sketch is not None:
             seed_sketch.Select2(False, 0)
         boss = doc.FeatureManager.FeatureExtrusion2(
-            True, False, False, _BLIND, 0, h, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0, False,
+            True,
+            False,
+            False,
+            _BLIND,
+            0,
+            h,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
+            False,
         )
         doc.ClearSelection2(True)
         return _feat_name(boss) if boss is not None else None
@@ -109,8 +138,8 @@ def _target_dir2(doc: Any) -> dict | None:
         return None
     return {
         "seed": seed,
-        "direction": {"x": 0.0, "y": 15.0, "z": 10.0},    # +Y-side top edge -> X dir
-        "direction2": {"x": 20.0, "y": 0.0, "z": 10.0},   # +X-side top edge -> Y dir
+        "direction": {"x": 0.0, "y": 15.0, "z": 10.0},  # +Y-side top edge -> X dir
+        "direction2": {"x": 20.0, "y": 0.0, "z": 10.0},  # +X-side top edge -> Y dir
     }
 
 
@@ -122,20 +151,39 @@ def _target_multiseed(doc: Any) -> dict | None:
         return None
     return {
         "seeds": [s1, s2],
-        "direction": {"x": 20.0, "y": 0.0, "z": 10.0},    # +X-side top edge -> Y dir
+        "direction": {"x": 20.0, "y": 0.0, "z": 10.0},  # +X-side top edge -> Y dir
     }
 
 
 def run() -> dict[str, Any]:
-    result: dict[str, Any] = {"spike": "linear_pattern_dir2", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    result: dict[str, Any] = {
+        "spike": "linear_pattern_dir2",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
     sw = connect()
     try:
         result["sw_revision"] = str(sw.RevisionNumber)
     except Exception:
         result["sw_revision"] = "<unreadable>"
 
-    a = _probe("dir2", sw, {"type": "linear_pattern", "count": 2, "spacing_mm": 10.0, "count2": 2, "spacing2_mm": 8.0}, _target_dir2)
-    b = _probe("multiseed", sw, {"type": "linear_pattern", "count": 2, "spacing_mm": 10.0}, _target_multiseed)
+    a = _probe(
+        "dir2",
+        sw,
+        {
+            "type": "linear_pattern",
+            "count": 2,
+            "spacing_mm": 10.0,
+            "count2": 2,
+            "spacing2_mm": 8.0,
+        },
+        _target_dir2,
+    )
+    b = _probe(
+        "multiseed",
+        sw,
+        {"type": "linear_pattern", "count": 2, "spacing_mm": 10.0},
+        _target_multiseed,
+    )
     result["dir2"] = a
     result["multiseed"] = b
     both = a.get("verdict") == "GO" and b.get("verdict") == "GO"

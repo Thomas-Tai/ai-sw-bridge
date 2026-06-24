@@ -44,6 +44,7 @@ import pythoncom
 from win32com.client import VARIANT
 
 from _feature_spike_fixtures import build_block
+
 # reuse the lane spike's fixtures/capture helpers (importing does not run main)
 from spike_fillet_face_fullround import (
     _block_face_refs,
@@ -86,8 +87,12 @@ def _resolve(doc: Any, refs: list[dict]) -> list[Any]:
 
 
 def _bind_and_create(
-    doc: Any, fm: Any, type_id: int, which_list: tuple[int, ...],
-    refs: list[dict], method: str,
+    doc: Any,
+    fm: Any,
+    type_id: int,
+    which_list: tuple[int, ...],
+    refs: list[dict],
+    method: str,
 ) -> dict:
     rec: dict = {"method": method}
     try:
@@ -99,7 +104,9 @@ def _bind_and_create(
     if method == "preselect_marks":
         faces = _resolve(doc, refs)
         for i, (face, which) in enumerate(zip(faces, which_list)):
-            if not hasattr(face, "Select2") and not callable(getattr(face, "Select2", None)):
+            if not hasattr(face, "Select2") and not callable(
+                getattr(face, "Select2", None)
+            ):
                 pass
             try:
                 select_entity(face, append=(i > 0), mark=which)
@@ -119,13 +126,19 @@ def _bind_and_create(
     if method != "preselect_marks":
         faces = _resolve(doc, refs)
         for face, which in zip(faces, which_list):
-            s: dict = {"which": which, "face_ok": not (face is None or isinstance(face, str))}
+            s: dict = {
+                "which": which,
+                "face_ok": not (face is None or isinstance(face, str)),
+            }
             s["count_before"] = _safe(lambda w=which: fd.GetFaceCount(w))
             try:
                 if method in ("access_setfaces",):
                     fd.SetFaces(which, [face])
                 elif method in ("setfaces_variant",):
-                    fd.SetFaces(which, VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [face]))
+                    fd.SetFaces(
+                        which,
+                        VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [face]),
+                    )
                 elif method in ("access_isetfaces", "isetfaces_plain"):
                     fd.ISetFaces(which, 1, [face])
                 s["set_exc"] = None
@@ -136,15 +149,21 @@ def _bind_and_create(
     else:
         # readback what pre-selection populated
         for which in which_list:
-            rec["sets"].append({
-                "which": which,
-                "count_after": _safe(lambda w=which: fd.GetFaceCount(w)),
-            })
+            rec["sets"].append(
+                {
+                    "which": which,
+                    "count_after": _safe(lambda w=which: fd.GetFaceCount(w)),
+                }
+            )
 
     vol_before = _volume_mm3(doc)
     feat = _safe(lambda: fm.CreateFeature(fd))
     rec["feature_return"] = (feat if isinstance(feat, str) else repr(feat))[:90]
-    rec["feature_ok"] = not isinstance(feat, str) and feat is not None and not isinstance(feat, (int, bool))
+    rec["feature_ok"] = (
+        not isinstance(feat, str)
+        and feat is not None
+        and not isinstance(feat, (int, bool))
+    )
 
     if method.startswith("access_"):
         _safe(lambda: fd.ReleaseSelectionAccess())
@@ -172,7 +191,9 @@ _METHODS = (
 )
 
 
-def _run_type(doc: Any, fm: Any, type_id: int, which_list: tuple[int, ...], refs: list[dict]) -> dict:
+def _run_type(
+    doc: Any, fm: Any, type_id: int, which_list: tuple[int, ...], refs: list[dict]
+) -> dict:
     out: dict = {"type_id": type_id, "which_list": list(which_list), "attempts": []}
     for method in _METHODS:
         rec = _bind_and_create(doc, fm, type_id, which_list, refs, method)
@@ -186,6 +207,7 @@ def _run_type(doc: Any, fm: Any, type_id: int, which_list: tuple[int, ...], refs
 def run() -> dict:
     result: dict = {"spike_id": "W68_fillet_diag"}
     from ai_sw_bridge.sw_com import get_sw_app
+
     sw = get_sw_app()
     if sw is None:
         return {**result, "overall": "ERROR", "reason": "get_sw_app None"}
@@ -209,7 +231,9 @@ def run() -> dict:
             if triple is None:
                 result["full_round"] = {"error": "could not capture slab faces"}
             else:
-                result["full_round"] = _run_type(doc_b, fm_b, 3, (3, 4, 5), list(triple))
+                result["full_round"] = _run_type(
+                    doc_b, fm_b, 3, (3, 4, 5), list(triple)
+                )
 
         result["overall"] = "DONE"
         result["face_winner"] = result.get("face", {}).get("WINNER", "NONE")
@@ -227,14 +251,24 @@ def main() -> None:
     try:
         result = run()
     except Exception as exc:  # noqa: BLE001
-        result = {"spike_id": "W68_fillet_diag", "overall": "ERROR", "reason": repr(exc),
-                  "trace": traceback.format_exc()}
+        result = {
+            "spike_id": "W68_fillet_diag",
+            "overall": "ERROR",
+            "reason": repr(exc),
+            "trace": traceback.format_exc(),
+        }
     finally:
         pythoncom.CoUninitialize()
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(result, indent=2, default=lambda o: f"<{type(o).__name__}>"), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(result, indent=2, default=lambda o: f"<{type(o).__name__}>"),
+        encoding="utf-8",
+    )
     print(f"overall: {result.get('overall')}", file=sys.stderr)
-    print(f"face_winner: {result.get('face_winner')}  full_round_winner: {result.get('full_round_winner')}", file=sys.stderr)
+    print(
+        f"face_winner: {result.get('face_winner')}  full_round_winner: {result.get('full_round_winner')}",
+        file=sys.stderr,
+    )
     print(f"results -> {RESULTS_PATH}", file=sys.stderr)
 
 

@@ -37,9 +37,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_multisheet.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_multisheet.json"
 
 results: dict[str, Any] = {
     "spike": "w23_drawing_multisheet",
@@ -199,15 +197,15 @@ def _try_newsheet(
         try:
             ok = doc.NewSheet3(
                 sheet_name,
-                paper_size,         # PaperSize (I4)
-                TEMPLATE_CUSTOM,    # TemplateIn (I4) -- custom size
-                1.0,                # Scale1 (R8)
-                1.0,                # Scale2 (R8)
-                True,               # FirstAngle (BOOL)
-                "",                 # TemplateName (BSTR)
-                width_m,            # Width (R8, metres)
-                height_m,           # Height (R8, metres)
-                "",                 # PropertyViewName (BSTR)
+                paper_size,  # PaperSize (I4)
+                TEMPLATE_CUSTOM,  # TemplateIn (I4) -- custom size
+                1.0,  # Scale1 (R8)
+                1.0,  # Scale2 (R8)
+                True,  # FirstAngle (BOOL)
+                "",  # TemplateName (BSTR)
+                width_m,  # Width (R8, metres)
+                height_m,  # Height (R8, metres)
+                "",  # PropertyViewName (BSTR)
             )
             return {
                 "method_used": "NewSheet3",
@@ -222,23 +220,28 @@ def _try_newsheet(
                 ),
             }
         except Exception as e:
-            attempts.append({
-                "method": "NewSheet3",
-                "via": label,
-                "arity": 10,
-                "error": f"{type(e).__name__}: {e}",
-            })
+            attempts.append(
+                {
+                    "method": "NewSheet3",
+                    "via": label,
+                    "arity": 10,
+                    "error": f"{type(e).__name__}: {e}",
+                }
+            )
 
     for label, doc in (("typed", drawing_doc), ("raw", raw_doc)):
         # --- NewSheet2: 9 args ---
         try:
             ok = doc.NewSheet2(
                 sheet_name,
-                paper_size, TEMPLATE_CUSTOM,
-                1.0, 1.0,
+                paper_size,
+                TEMPLATE_CUSTOM,
+                1.0,
+                1.0,
                 True,
                 "",
-                width_m, height_m,
+                width_m,
+                height_m,
             )
             return {
                 "method_used": "NewSheet2",
@@ -253,26 +256,35 @@ def _try_newsheet(
                 ),
             }
         except Exception as e:
-            attempts.append({
-                "method": "NewSheet2",
-                "via": label,
-                "arity": 9,
-                "error": f"{type(e).__name__}: {e}",
-            })
+            attempts.append(
+                {
+                    "method": "NewSheet2",
+                    "via": label,
+                    "arity": 9,
+                    "error": f"{type(e).__name__}: {e}",
+                }
+            )
 
     for label, doc in (("typed", drawing_doc), ("raw", raw_doc)):
         # --- NewSheet4: 16 args (adds zone margins/row/col) ---
         try:
             ok = doc.NewSheet4(
                 sheet_name,
-                paper_size, TEMPLATE_CUSTOM,
-                1.0, 1.0,
+                paper_size,
+                TEMPLATE_CUSTOM,
+                1.0,
+                1.0,
                 True,
                 "",
-                width_m, height_m,
-                "",                 # PropertyViewName
-                0.0, 0.0, 0.0, 0.0, # zone margins
-                0, 0,               # zone row/col
+                width_m,
+                height_m,
+                "",  # PropertyViewName
+                0.0,
+                0.0,
+                0.0,
+                0.0,  # zone margins
+                0,
+                0,  # zone row/col
             )
             return {
                 "method_used": "NewSheet4",
@@ -286,20 +298,24 @@ def _try_newsheet(
                 ),
             }
         except Exception as e:
-            attempts.append({
-                "method": "NewSheet4",
-                "via": label,
-                "arity": 16,
-                "error": f"{type(e).__name__}: {e}",
-            })
+            attempts.append(
+                {
+                    "method": "NewSheet4",
+                    "via": label,
+                    "arity": 16,
+                    "error": f"{type(e).__name__}: {e}",
+                }
+            )
 
     for label, doc in (("typed", drawing_doc), ("raw", raw_doc)):
         # --- NewSheet: 5 args, returns LPDISPATCH (ISheet) not BOOL ---
         try:
             raw_sheet = doc.NewSheet(
                 sheet_name,
-                paper_size, TEMPLATE_CUSTOM,
-                1.0, 1.0,
+                paper_size,
+                TEMPLATE_CUSTOM,
+                1.0,
+                1.0,
             )
             # NewSheet returns an ISheet dispatch (not BOOL) -- a non-None
             # non-int return means success.
@@ -317,12 +333,14 @@ def _try_newsheet(
                 ),
             }
         except Exception as e:
-            attempts.append({
-                "method": "NewSheet",
-                "via": label,
-                "arity": 5,
-                "error": f"{type(e).__name__}: {e}",
-            })
+            attempts.append(
+                {
+                    "method": "NewSheet",
+                    "via": label,
+                    "arity": 5,
+                    "error": f"{type(e).__name__}: {e}",
+                }
+            )
 
     return {
         "method_used": None,
@@ -381,11 +399,13 @@ def _per_sheet_view_counts(drawing_doc: Any, mod: Any) -> list[dict[str, Any]]:
             except Exception as e:
                 vnames = [f"<GetViews error: {e}>"]
                 vc = -1
-            counts.append({
-                "name": name,
-                "view_count": vc,
-                "view_names": vnames,
-            })
+            counts.append(
+                {
+                    "name": name,
+                    "view_count": vc,
+                    "view_names": vnames,
+                }
+            )
         except Exception as e:
             counts.append({"name": name, "error": f"ISheet probe failed: {e}"})
     return counts
@@ -589,9 +609,9 @@ def run() -> str:
             counts_by_name[s["name"]] = s["view_count"]
 
     expected = {
-        names1[0]: 1,       # sheet 1: only the Front view
-        "DetailSheet": 1,   # sheet 2: only the Top view
-        "Overview": 1,      # sheet 3: only the Isometric view
+        names1[0]: 1,  # sheet 1: only the Front view
+        "DetailSheet": 1,  # sheet 2: only the Top view
+        "Overview": 1,  # sheet 3: only the Isometric view
     }
     routing_ok = True
     for name, want in expected.items():
@@ -646,7 +666,9 @@ if __name__ == "__main__":
         verdict = run()
     except Exception:
         traceback.print_exc()
-        results["verdict"] = f"NO-GO (unhandled exception: {traceback.format_exc()[:200]})"
+        results["verdict"] = (
+            f"NO-GO (unhandled exception: {traceback.format_exc()[:200]})"
+        )
         save_results()
         verdict = "NO-GO"
     sys.exit(0 if verdict == "GO" else 1)

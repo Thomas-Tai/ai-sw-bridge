@@ -31,6 +31,7 @@ Stages (each fail-soft — a fixture wall on one does not block the others):
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/mech_mate_tier3_slot_hinge.py
 """
+
 from __future__ import annotations
 
 import json
@@ -79,7 +80,7 @@ _HINGE_IFACE = ("IHingeMateFeatureData", "IHingeMateFeatureData2")
 # SetEntitiesToMate(1,ent)...) all returned CreateMate->None.
 _HINGE_CONCENTRIC = 0  # swHingeMateEntityType_Concentric
 _HINGE_COINCIDENT = 1  # swHingeMateEntityType_Coincident
-_HINGE_ANGLE = 2       # swHingeMateEntityType_Angle (limit reference)
+_HINGE_ANGLE = 2  # swHingeMateEntityType_Angle (limit reference)
 
 
 # ---------------------------------------------------------------------------
@@ -91,8 +92,13 @@ def _pin_spec(name: str) -> dict[str, Any]:
         "schema_version": 1,
         "name": name,
         "features": [
-            {"type": "sketch_circle_on_plane", "name": "SK", "plane": "Front",
-             "diameter": 8.0, "center": {"x": 0.0, "y": 0.0}},
+            {
+                "type": "sketch_circle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "diameter": 8.0,
+                "center": {"x": 0.0, "y": 0.0},
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 30.0},
         ],
     }
@@ -105,20 +111,41 @@ def _slot_plate_spec(name: str) -> dict[str, Any]:
         "schema_version": 1,
         "name": name,
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK_PLATE", "plane": "Front",
-             "center": {"x": 0.0, "y": 0.0}, "width": 80.0, "height": 40.0},
-            {"type": "boss_extrude_blind", "name": "EX_PLATE", "sketch": "SK_PLATE",
-             "depth": 10.0},
-            {"type": "sketch_slot", "name": "SK_SLOT", "plane": "Front",
-             "center": {"x": 0.0, "y": 0.0}, "length": 40.0, "width": 12.0,
-             "angle_deg": 0.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_PLATE",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "width": 80.0,
+                "height": 40.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_PLATE",
+                "sketch": "SK_PLATE",
+                "depth": 10.0,
+            },
+            {
+                "type": "sketch_slot",
+                "name": "SK_SLOT",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "length": 40.0,
+                "width": 12.0,
+                "angle_deg": 0.0,
+            },
             # Two-direction blind cut (15 mm each way) carves the slot through
             # the 10 mm plate regardless of which half-space the boss occupies —
             # the single-direction through-all removed no material in BOTH flip
             # senses, so direction was never the issue; this sidesteps it AND
             # discriminates (a still-None here indicts the slot PROFILE).
-            {"type": "cut_extrude_two_direction", "name": "CUT_SLOT",
-             "sketch": "SK_SLOT", "depth": 15.0, "depth2": 15.0},
+            {
+                "type": "cut_extrude_two_direction",
+                "name": "CUT_SLOT",
+                "sketch": "SK_SLOT",
+                "depth": 15.0,
+                "depth2": 15.0,
+            },
         ],
     }
 
@@ -161,8 +188,9 @@ def _cap_face_by_normal_z(comp: Any, mod: Any, want_positive: bool) -> Any | Non
     return None
 
 
-def _place_pair_at(sw: Any, mod: Any, p1: dict, p2: dict,
-                   xyz2: list[float]) -> dict[str, Any]:
+def _place_pair_at(
+    sw: Any, mod: Any, p1: dict, p2: dict, xyz2: list[float]
+) -> dict[str, Any]:
     """Place two parts in a fresh assembly; second at xyz2 (mm)."""
     asm_template = _find_assembly_template()
     if asm_template is None:
@@ -238,9 +266,16 @@ def _introspect(sw: Any, mod: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # STAGE B — hinge solve + angle-limit persistence.
 # ---------------------------------------------------------------------------
-def _hinge_attempt(typed_asm: Any, mod: Any, enum_val: int,
-                   a_cyl: Any, b_cyl: Any, a_cap: Any, b_cap: Any,
-                   align: int) -> dict[str, Any]:
+def _hinge_attempt(
+    typed_asm: Any,
+    mod: Any,
+    enum_val: int,
+    a_cyl: Any,
+    b_cyl: Any,
+    a_cap: Any,
+    b_cap: Any,
+    align: int,
+) -> dict[str, Any]:
     """One hinge attempt via the ROLE-KEYED entity protocol (the run-2 fix):
     EntitiesToMate[Concentric=0] = (a_cyl,b_cyl); EntitiesToMate[Coincident=1] =
     (a_cap,b_cap). makepy surfaces the EntityType-keyed PROPPUT as
@@ -257,10 +292,14 @@ def _hinge_attempt(typed_asm: Any, mod: Any, enum_val: int,
             return out
         iface_name, ti = bound
         out["iface_name"] = iface_name
-        ti.SetEntitiesToMate(_HINGE_CONCENTRIC, w32.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (a_cyl, b_cyl)))
-        ti.SetEntitiesToMate(_HINGE_COINCIDENT, w32.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (a_cap, b_cap)))
+        ti.SetEntitiesToMate(
+            _HINGE_CONCENTRIC,
+            w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (a_cyl, b_cyl)),
+        )
+        ti.SetEntitiesToMate(
+            _HINGE_COINCIDENT,
+            w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (a_cap, b_cap)),
+        )
         try:
             ti.MateAlignment = align
         except Exception:  # noqa: BLE001
@@ -268,8 +307,9 @@ def _hinge_attempt(typed_asm: Any, mod: Any, enum_val: int,
         mate = typed_asm.CreateMate(md)
         if mate is None or isinstance(mate, int):
             try:
-                out["error_status"] = typed_qi(md, "IMateFeatureData",
-                                               module=mod).ErrorStatus
+                out["error_status"] = typed_qi(
+                    md, "IMateFeatureData", module=mod
+                ).ErrorStatus
             except Exception:  # noqa: BLE001
                 pass
             out["error"] = "CREATEMATE_NONE"
@@ -308,8 +348,10 @@ def _leg_hinge(sw: Any, mod: Any) -> dict[str, Any]:
     a_cap = _cap_face_by_normal_z(ctx["a"], mod, want_positive=True)
     b_cap = _cap_face_by_normal_z(ctx["b"], mod, want_positive=False)
     r["entities_found"] = {
-        "a_cyl": a_cyl is not None, "b_cyl": b_cyl is not None,
-        "a_cap": a_cap is not None, "b_cap": b_cap is not None,
+        "a_cyl": a_cyl is not None,
+        "b_cyl": b_cyl is not None,
+        "a_cap": a_cap is not None,
+        "b_cap": b_cap is not None,
     }
     if None in (a_cyl, b_cyl, a_cap, b_cap):
         r["status"] = "ENTITY_RESOLUTION_FAILED"
@@ -321,14 +363,21 @@ def _leg_hinge(sw: Any, mod: Any) -> dict[str, Any]:
     matrix: list[dict[str, Any]] = []
     winner: dict[str, Any] | None = None
     for aval, aname in align_names.items():
-        att = _hinge_attempt(typed_asm, mod, enum_val,
-                             a_cyl, b_cyl, a_cap, b_cap, aval)
-        matrix.append({"align": aname, "ok": att["ok"],
-                       "error": att.get("error"),
-                       "error_status": att.get("error_status")})
+        att = _hinge_attempt(typed_asm, mod, enum_val, a_cyl, b_cyl, a_cap, b_cap, aval)
+        matrix.append(
+            {
+                "align": aname,
+                "ok": att["ok"],
+                "error": att.get("error"),
+                "error_status": att.get("error_status"),
+            }
+        )
         if att["ok"] and winner is None:
-            winner = {"align": aname, "feature": att["feature"],
-                      "iface_name": att["iface_name"]}
+            winner = {
+                "align": aname,
+                "feature": att["feature"],
+                "iface_name": att["iface_name"],
+            }
             break
     r["matrix"] = matrix
     if winner is None:
@@ -345,11 +394,17 @@ def _leg_hinge(sw: Any, mod: Any) -> dict[str, Any]:
         if int(save_ok) != 0:
             r["status"] = "SAVE_FAILED"
             return r
-        rb = t2._read_back(sw, mod, asm_path, winner["iface_name"],
-                           ("Angle", "MaxVal", "MinVal", "MateAlignment"))
+        rb = t2._read_back(
+            sw,
+            mod,
+            asm_path,
+            winner["iface_name"],
+            ("Angle", "MaxVal", "MinVal", "MateAlignment"),
+        )
         r["persist"] = rb
-        r["status"] = ("SOLVED_PERSISTED" if "read_back" in rb
-                       else "SOLVED_READBACK_UNVERIFIED")
+        r["status"] = (
+            "SOLVED_PERSISTED" if "read_back" in rb else "SOLVED_READBACK_UNVERIFIED"
+        )
     except Exception as exc:  # noqa: BLE001
         r["status"] = "EXCEPTION"
         r["error"] = f"{exc!r}\n{traceback.format_exc()}"
@@ -380,8 +435,10 @@ def _leg_slot(sw: Any, mod: Any) -> dict[str, Any]:
     # Slot side: a cylindrical face of the plate = an arc end of the slot cut.
     slot_face = t1._first_cyl_face(ctx["a"], mod)
     pin_face = t1._first_cyl_face(ctx["b"], mod)
-    r["entities_found"] = {"slot_cyl_face": slot_face is not None,
-                           "pin_cyl_face": pin_face is not None}
+    r["entities_found"] = {
+        "slot_cyl_face": slot_face is not None,
+        "pin_cyl_face": pin_face is not None,
+    }
     if slot_face is None or pin_face is None:
         r["status"] = "ENTITY_RESOLUTION_FAILED"
         return r
@@ -426,13 +483,18 @@ def _leg_slot(sw: Any, mod: Any) -> dict[str, Any]:
         if int(save_ok) != 0:
             r["status"] = "SAVE_FAILED"
             return r
-        rb = t2._read_back(sw, mod, asm_path, iface_name,
-                           ("Constraint", "MateAlignment"))
+        rb = t2._read_back(
+            sw, mod, asm_path, iface_name, ("Constraint", "MateAlignment")
+        )
         r["persist"] = rb
         if "read_back" in rb:
             got = rb["read_back"].get("Constraint")
-            holds = (got == _SLOT_CENTERED)
-            r["status"] = "SOLVED_CONSTRAINT_PERSISTED" if holds else "SOLVED_CONSTRAINT_TRANSFORMED"
+            holds = got == _SLOT_CENTERED
+            r["status"] = (
+                "SOLVED_CONSTRAINT_PERSISTED"
+                if holds
+                else "SOLVED_CONSTRAINT_TRANSFORMED"
+            )
         else:
             r["status"] = "SOLVED_READBACK_UNVERIFIED"
     except Exception as exc:  # noqa: BLE001

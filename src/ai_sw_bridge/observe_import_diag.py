@@ -46,22 +46,42 @@ from .sw_com import (
 # swFaultEntityErrorCode_e (SW2024 DLL, build 32.1.0.123) — IFaultEntity.ErrorCode
 # decode. Codes 1-36; the body/face/edge/shell topology fault taxonomy.
 FAULT_CODE_NAMES = {
-    1: "swBodyCorrupt", 2: "swBodyInvalidIdentifiers", 3: "swBodyInsideOut",
-    4: "swBodyRegionsInconsistent", 5: "swEdgeNonPeriodicCurve",
-    6: "swEdgeNonPeriodicNomGeom", 7: "swEdgeVertexNotLie",
-    8: "swEdgeVertexNotLieNomGeom", 9: "swEdgeWrongDir",
-    10: "swEdgeWrongDirNomGeom", 11: "swEdgeSpcurveOutOfTol",
-    12: "swEdgeSpcurveOutOfTolNomGeom", 13: "swEdgeVerticesTouch",
-    14: "swEdgeBadFaceOrder", 15: "swEdgeBadWire", 16: "swFaceBadVertex",
-    17: "swFaceBadEdge", 18: "swFaceBadEdgeOrder", 19: "swFaceNoAccomVertex",
-    20: "swFaceBadLoops", 21: "swFaceSelfIntersecting", 22: "swFaceBadWireframe",
-    23: "swFaceCheckerFailure", 24: "swFaceFaceInconsistency",
-    25: "swGeomStateSelfIntersect", 26: "swGeomDegenerate",
-    27: "swRegionBadShells", 28: "swShellBadTopologyGeometry",
-    29: "swShellIntersect", 30: "swTopolNotG1Continuous",
-    31: "swTopolSizeBoxViolation", 32: "swTopolStateCheckFail",
-    33: "swTopolStateNoGeometry", 34: "swEntityStateInvalid",
-    35: "swTopolMissingGeometry", 36: "swEdgeTouchEdge",
+    1: "swBodyCorrupt",
+    2: "swBodyInvalidIdentifiers",
+    3: "swBodyInsideOut",
+    4: "swBodyRegionsInconsistent",
+    5: "swEdgeNonPeriodicCurve",
+    6: "swEdgeNonPeriodicNomGeom",
+    7: "swEdgeVertexNotLie",
+    8: "swEdgeVertexNotLieNomGeom",
+    9: "swEdgeWrongDir",
+    10: "swEdgeWrongDirNomGeom",
+    11: "swEdgeSpcurveOutOfTol",
+    12: "swEdgeSpcurveOutOfTolNomGeom",
+    13: "swEdgeVerticesTouch",
+    14: "swEdgeBadFaceOrder",
+    15: "swEdgeBadWire",
+    16: "swFaceBadVertex",
+    17: "swFaceBadEdge",
+    18: "swFaceBadEdgeOrder",
+    19: "swFaceNoAccomVertex",
+    20: "swFaceBadLoops",
+    21: "swFaceSelfIntersecting",
+    22: "swFaceBadWireframe",
+    23: "swFaceCheckerFailure",
+    24: "swFaceFaceInconsistency",
+    25: "swGeomStateSelfIntersect",
+    26: "swGeomDegenerate",
+    27: "swRegionBadShells",
+    28: "swShellBadTopologyGeometry",
+    29: "swShellIntersect",
+    30: "swTopolNotG1Continuous",
+    31: "swTopolSizeBoxViolation",
+    32: "swTopolStateCheckFail",
+    33: "swTopolStateNoGeometry",
+    34: "swEntityStateInvalid",
+    35: "swTopolMissingGeometry",
+    36: "swEdgeTouchEdge",
 }
 
 # swBodyType_e
@@ -204,7 +224,9 @@ def _sw_get_import_diagnostics_impl() -> dict[str, Any]:
         # ImportDiagnosis — READ-ONLY (all repair flags False). Status flag only.
         try:
             status = doc.ImportDiagnosis(False, False, False, 0)
-            result["import_diagnosis_status"] = int(status) if status is not None else None
+            result["import_diagnosis_status"] = (
+                int(status) if status is not None else None
+            )
         except Exception as exc:  # noqa: BLE001
             result["errors"].append(f"ImportDiagnosis: {exc!r}")
 

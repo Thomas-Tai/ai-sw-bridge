@@ -32,6 +32,7 @@ from ai_sw_bridge.features.thread import (
 # Cosmetic thread — SEAT-PENDING stub
 # ---------------------------------------------------------------------------
 
+
 class TestCosmeticThreadStub:
     def test_returns_false_with_seat_pending(self) -> None:
         ok, err = create_cosmetic_thread(
@@ -73,6 +74,7 @@ class TestCosmeticThreadStub:
 # ---------------------------------------------------------------------------
 # Cut thread — SEAT-PENDING stub
 # ---------------------------------------------------------------------------
+
 
 class TestCutThreadStub:
     def test_returns_false_with_seat_pending(self) -> None:
@@ -117,6 +119,7 @@ class TestCutThreadStub:
 # Dormant gate + kind disjointness
 # ---------------------------------------------------------------------------
 
+
 class TestDormantGate:
     """While SPIKE_STATUS is UNRUN, handlers are NOT in the registry."""
 
@@ -135,9 +138,18 @@ class TestKindNames:
 
     def test_keys_disjoint_from_builtin_types(self) -> None:
         builtin_kinds = {
-            "fillet_constant_radius", "base_flange", "variable_radius_fillet",
-            "wizard_hole", "shell", "draft", "sweep", "ref_plane",
-            "ref_axis", "coordinate_system", "ref_point", "dome",
+            "fillet_constant_radius",
+            "base_flange",
+            "variable_radius_fillet",
+            "wizard_hole",
+            "shell",
+            "draft",
+            "sweep",
+            "ref_plane",
+            "ref_axis",
+            "coordinate_system",
+            "ref_point",
+            "dome",
             "sweep_cut",
         }
         assert "cosmetic_thread" not in builtin_kinds

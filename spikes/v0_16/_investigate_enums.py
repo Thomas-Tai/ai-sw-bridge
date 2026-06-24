@@ -1,4 +1,5 @@
 """Read-only: dump the enum members the corrected spikes need. NO mutation."""
+
 from __future__ import annotations
 
 TLB_PATH = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\swconst.tlb"

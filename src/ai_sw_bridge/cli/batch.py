@@ -118,7 +118,9 @@ def _build_parser() -> argparse.ArgumentParser:
             "sw_batch_plan tool."
         ),
     )
-    parser.add_argument("file_path", help="Path to the existing .sldprt to commit into.")
+    parser.add_argument(
+        "file_path", help="Path to the existing .sldprt to commit into."
+    )
     parser.add_argument(
         "proposals",
         help="Path to a JSON file: an array of {'feature','target'} proposals "
@@ -157,7 +159,11 @@ def main(argv: "list[str] | None" = None) -> int:
     if not _confirm(args.yes):
         print(
             json.dumps(
-                {"ok": False, "aborted": True, "error": "user declined — no changes made"},
+                {
+                    "ok": False,
+                    "aborted": True,
+                    "error": "user declined — no changes made",
+                },
                 indent=2,
             )
         )

@@ -19,6 +19,7 @@ the Extension late-bound before the callout (candidate D).
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_ref_axis_fix_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -63,7 +64,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -81,9 +84,31 @@ def _build_box_seed(sw: Any, path: str) -> bool:
     sm.InsertSketch(True)
     sm.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
     sm.InsertSketch(True)
-    fm.FeatureExtrusion3(True, False, False, 0, 0, 0.01, 0.0,
-                         False, False, False, False, 0.0, 0.0,
-                         False, False, False, False, True, True, True, 0.0, 0.0, False)
+    fm.FeatureExtrusion3(
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.01,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0.0,
+        0.0,
+        False,
+    )
     doc.ForceRebuild3(False)
     doc.SaveAs3(path, 0, 0)
     return os.path.isfile(path)
@@ -100,7 +125,7 @@ def _refaxis_node_present(sw: Any, path: str) -> bool:
     if doc is None:
         return False
     try:
-        for f in (doc.FeatureManager.GetFeatures(False) or []):
+        for f in doc.FeatureManager.GetFeatures(False) or []:
             for attr in ("GetTypeName2", "GetTypeName"):
                 try:
                     v = getattr(f, attr)
@@ -141,8 +166,8 @@ def main() -> int:
             pass
 
         prop = client.mutate.propose_feature_add(
-            seed, {"type": "ref_axis"},
-            {"planes": ["Front Plane", "Right Plane"]})
+            seed, {"type": "ref_axis"}, {"planes": ["Front Plane", "Right Plane"]}
+        )
         pid = prop.get("proposal_id")
         results["propose"] = prop
         if not pid:
@@ -155,18 +180,28 @@ def main() -> int:
         results["commit"] = com
         node_ok = _refaxis_node_present(sw, seed)
 
-        lifecycle_ok = (bool(prop.get("ok")) and bool(dry.get("ok"))
-                        and bool(com.get("ok")) and node_ok)
-        gate("lifecycle", lifecycle_ok,
-             f"propose={prop.get('ok')} dry_run={dry.get('ok')} "
-             f"commit={com.get('ok')} 'RefAxis'_node={node_ok} "
-             f"err={com.get('error') or dry.get('error')}")
+        lifecycle_ok = (
+            bool(prop.get("ok"))
+            and bool(dry.get("ok"))
+            and bool(com.get("ok"))
+            and node_ok
+        )
+        gate(
+            "lifecycle",
+            lifecycle_ok,
+            f"propose={prop.get('ok')} dry_run={dry.get('ok')} "
+            f"commit={com.get('ok')} 'RefAxis'_node={node_ok} "
+            f"err={com.get('error') or dry.get('error')}",
+        )
 
         dry_err = str(dry.get("error") or "")
         no_typeerror = "can not be converted to a COM object" not in dry_err
-        gate("no_typeerror", no_typeerror,
-             f"dry_run error clean of the marshaling TypeError "
-             f"(error={dry_err[:80]!r})")
+        gate(
+            "no_typeerror",
+            no_typeerror,
+            f"dry_run error clean of the marshaling TypeError "
+            f"(error={dry_err[:80]!r})",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

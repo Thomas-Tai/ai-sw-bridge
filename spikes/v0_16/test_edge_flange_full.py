@@ -1,6 +1,8 @@
 """Diagnostic: full edge flange creation with selection."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "v0_15"))
 
@@ -40,17 +42,17 @@ try:
     bodies = doc.GetBodies2(0, True)
     edges_raw = bodies[0].GetEdges()
     ext = typed_extension(doc, module=mod)
-    
+
     raw_edge = edges_raw[0]
     pid = ext.GetPersistReference3(raw_edge)
     result = ext.GetObjectByPersistReference3(pid)
     live_edge = result[0] if isinstance(result, tuple) else result
-    
+
     # Select the edge
     doc.ClearSelection2(True)
     sel_result = live_edge.Select2(False, 0)
     print(f"Selected edge: {sel_result}")
-    
+
     sel_mgr = doc.SelectionManager
     count = sel_mgr.GetSelectedObjectCount
     print(f"Selection count: {count}")
@@ -59,14 +61,14 @@ try:
     print("\n=== Test 1: InsertSheetMetalEdgeFlange (8 params) ===")
     try:
         feat2 = fm.InsertSheetMetalEdgeFlange(
-            1.5708,     # BendAngle (90 degrees in radians)
-            False,      # ReverseDirection
-            True,       # UseDefaultBendRadius
-            0.002,      # BendRadius
-            False,      # Flipped
-            False,      # UsePositionSchedule
-            0,          # PositionSchedule
-            0           # PositionType
+            1.5708,  # BendAngle (90 degrees in radians)
+            False,  # ReverseDirection
+            True,  # UseDefaultBendRadius
+            0.002,  # BendRadius
+            False,  # Flipped
+            False,  # UsePositionSchedule
+            0,  # PositionSchedule
+            0,  # PositionType
         )
         if feat2:
             print(f"SUCCESS: {feat2.Name}")
@@ -79,12 +81,12 @@ try:
     print("\n=== Test 2: InsertSheetMetalEdgeFlange (6 params) ===")
     try:
         feat3 = fm.InsertSheetMetalEdgeFlange(
-            1.5708,     # BendAngle
-            False,      # ReverseDirection
-            True,       # UseDefaultBendRadius
-            0.002,      # BendRadius
-            False,      # Flipped
-            False       # UsePositionSchedule
+            1.5708,  # BendAngle
+            False,  # ReverseDirection
+            True,  # UseDefaultBendRadius
+            0.002,  # BendRadius
+            False,  # Flipped
+            False,  # UsePositionSchedule
         )
         if feat3:
             print(f"SUCCESS: {feat3.Name}")
@@ -98,17 +100,17 @@ try:
     try:
         doc.ClearSelection2(True)
         live_edge.Select2(False, 0)
-        
+
         efl_data = fm.CreateDefinition(37)
         efl = typed_qi(efl_data, "IEdgeFlangeFeatureData", module=mod)
         efl.BendAngle = 1.5708
         efl.BendRadius = 0.002
         efl.UseDefaultBendRadius = False
-        
+
         # Don't call AddEdges - let it use the selection
         count = efl.GetEdgeCount()
         print(f"Edge count (from selection): {count}")
-        
+
         if count > 0:
             efeat = fm.CreateFeature(efl_data)
             if efeat:

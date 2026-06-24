@@ -3,6 +3,7 @@
 Tests CreateMateData(type) with candidate enum values to verify swMateType_e.
 Anchors on COINCIDENT=0 (Phase-1 proven).
 """
+
 import sys
 import os
 
@@ -38,7 +39,10 @@ sw = win32com.client.Dispatch("SldWorks.Application")
 asm_template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
 if not os.path.exists(asm_template):
     import glob
-    asm_templates = glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT")
+
+    asm_templates = glob.glob(
+        r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
+    )
     if not asm_templates:
         print("ERROR: No assembly template found")
         sys.exit(1)
@@ -80,27 +84,43 @@ try:
                     typed_mate = typed_qi(mate_data, interface_name, module=mod)
 
                     # List key properties
-                    props = [p for p in dir(typed_mate)
-                            if not p.startswith("_") and not p.startswith("I")
-                            and p not in ("MateAlignment", "EntitiesToMate", "ErrorStatus")]
-                    key_props = [p for p in props if any(kw in p.lower()
-                                for kw in ["distance", "angle", "align", "lock", "flip",
-                                          "abs", "limit"])]
+                    props = [
+                        p
+                        for p in dir(typed_mate)
+                        if not p.startswith("_")
+                        and not p.startswith("I")
+                        and p not in ("MateAlignment", "EntitiesToMate", "ErrorStatus")
+                    ]
+                    key_props = [
+                        p
+                        for p in props
+                        if any(
+                            kw in p.lower()
+                            for kw in [
+                                "distance",
+                                "angle",
+                                "align",
+                                "lock",
+                                "flip",
+                                "abs",
+                                "limit",
+                            ]
+                        )
+                    ]
 
                     print(f"    Typed interface: {interface_name}")
-                    print(f"    Key properties: {', '.join(key_props[:8]) if key_props else '(none)'}")
+                    print(
+                        f"    Key properties: {', '.join(key_props[:8]) if key_props else '(none)'}"
+                    )
 
                     typed_interfaces[name] = {
                         "interface": interface_name,
                         "properties": key_props[:10],
-                        "path": "typed"
+                        "path": "typed",
                     }
                 except Exception:
                     print(f"    No typed interface (use base IMateFeatureData)")
-                    typed_interfaces[name] = {
-                        "interface": None,
-                        "path": "base"
-                    }
+                    typed_interfaces[name] = {"interface": None, "path": "base"}
 
             except Exception as e:
                 print(f"    CreateMateData({val}) returned non-mate object: {e}")
@@ -142,8 +162,14 @@ try:
 
     # Save findings
     findings = {
-        "swMateType_e": {name: info["value"] for name, info in verified_enums.items() if info.get("works")},
-        "anchor_verified": verified_enums.get("swMateCOINCIDENT", {}).get("works", False),
+        "swMateType_e": {
+            name: info["value"]
+            for name, info in verified_enums.items()
+            if info.get("works")
+        },
+        "anchor_verified": verified_enums.get("swMateCOINCIDENT", {}).get(
+            "works", False
+        ),
         "interfaces": typed_interfaces,
         "all_candidates": candidate_enums,
     }

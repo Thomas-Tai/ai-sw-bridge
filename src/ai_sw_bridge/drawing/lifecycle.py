@@ -138,11 +138,13 @@ def _create_section_view(
     line.Select2(False, 0)
 
     sec_raw = drawing_doc.CreateSectionViewAt5(
-        sv_x, sv_y, 0.0,
+        sv_x,
+        sv_y,
+        0.0,
         label,  # SectionLabel
-        0,      # Options
-        None,   # ExcludedComponents (VARIANT None = no exclusions)
-        0.0,    # SectionDepth
+        0,  # Options
+        None,  # ExcludedComponents (VARIANT None = no exclusions)
+        0.0,  # SectionDepth
     )
     if sec_raw is None:
         raise RuntimeError("CreateSectionViewAt5 returned None")
@@ -197,16 +199,18 @@ def _create_detail_view(
     circle.Select2(False, 0)
 
     det_raw = drawing_doc.CreateDetailViewAt4(
-        det_x, det_y, 0.0,
-        0,     # Style = swDetailViewStyle_PerStandard
-        2.0,   # Scale1
-        1.0,   # Scale2
-        label, # LabelIn
-        0,     # Showtype
+        det_x,
+        det_y,
+        0.0,
+        0,  # Style = swDetailViewStyle_PerStandard
+        2.0,  # Scale1
+        1.0,  # Scale2
+        label,  # LabelIn
+        0,  # Showtype
         True,  # FullOutline
-        False, # JaggedOutline
-        False, # NoOutline
-        50,    # ShapeIntensity
+        False,  # JaggedOutline
+        False,  # NoOutline
+        50,  # ShapeIntensity
     )
     if det_raw is None:
         raise RuntimeError("CreateDetailViewAt4 returned None")
@@ -251,9 +255,7 @@ def _validate_views_array(
                 )
             vname = v.get("name")
             if not isinstance(vname, str) or not vname:
-                raise ValueError(
-                    f"{path_prefix}[{i}]: name must be a non-empty string"
-                )
+                raise ValueError(f"{path_prefix}[{i}]: name must be a non-empty string")
             parent = v.get("parent")
             if not isinstance(parent, str) or not parent:
                 raise ValueError(
@@ -339,19 +341,14 @@ def _validate_annotations(
     sf_array = annotations.get("surface_finish")
     if sf_array is not None:
         if not isinstance(sf_array, list) or not sf_array:
-            raise ValueError(
-                f"{path}.surface_finish must be a non-empty array"
-            )
+            raise ValueError(f"{path}.surface_finish must be a non-empty array")
         for i, entry in enumerate(sf_array):
             if not isinstance(entry, dict):
-                raise ValueError(
-                    f"{path}.surface_finish[{i}] must be a dict"
-                )
+                raise ValueError(f"{path}.surface_finish[{i}] must be a dict")
             view_name = entry.get("view")
             if not isinstance(view_name, str) or not view_name:
                 raise ValueError(
-                    f"{path}.surface_finish[{i}].view must be a "
-                    f"non-empty string"
+                    f"{path}.surface_finish[{i}].view must be a " f"non-empty string"
                 )
             if view_name not in known_views:
                 raise ValueError(
@@ -369,9 +366,7 @@ def _validate_annotations(
                 raise ValueError(f"{path}.note[{i}] must be a dict")
             view_name = entry.get("view")
             if not isinstance(view_name, str) or not view_name:
-                raise ValueError(
-                    f"{path}.note[{i}].view must be a non-empty string"
-                )
+                raise ValueError(f"{path}.note[{i}].view must be a non-empty string")
             if view_name not in known_views:
                 raise ValueError(
                     f"{path}.note[{i}].view {view_name!r}: "
@@ -380,9 +375,7 @@ def _validate_annotations(
                 )
             text = entry.get("text")
             if not isinstance(text, str) or not text:
-                raise ValueError(
-                    f"{path}.note[{i}].text must be a non-empty string"
-                )
+                raise ValueError(f"{path}.note[{i}].text must be a non-empty string")
 
     # W70: entity-attached annotations (datum_tag / weld_symbol / balloon /
     # geometric_tolerance). Each entry's view must match a placed view (the
@@ -399,9 +392,7 @@ def _validate_annotations(
                 raise ValueError(f"{path}.{kind}[{i}] must be a dict")
             view_name = entry.get("view")
             if not isinstance(view_name, str) or not view_name:
-                raise ValueError(
-                    f"{path}.{kind}[{i}].view must be a non-empty string"
-                )
+                raise ValueError(f"{path}.{kind}[{i}].view must be a non-empty string")
             if view_name not in known_views:
                 raise ValueError(
                     f"{path}.{kind}[{i}].view {view_name!r}: "
@@ -489,9 +480,7 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
             sh_name = sh.get("name")
             if sh_name is not None:
                 if not isinstance(sh_name, str) or not sh_name:
-                    raise ValueError(
-                        f"sheets[{k}].name must be a non-empty string"
-                    )
+                    raise ValueError(f"sheets[{k}].name must be a non-empty string")
                 if sh_name in seen_names:
                     raise ValueError(
                         f"sheets[{k}].name {sh_name!r} duplicates an "
@@ -501,15 +490,10 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
             ts = sh.get("template_size")
             if ts is not None and ts not in SHEET_SIZES:
                 raise ValueError(
-                    f"sheets[{k}].template_size {ts!r} not in "
-                    f"{sorted(SHEET_SIZES)}"
+                    f"sheets[{k}].template_size {ts!r} not in " f"{sorted(SHEET_SIZES)}"
                 )
-            _validate_views_array(
-                sh.get("views", []), path_prefix=f"sheets[{k}].views"
-            )
-            _validate_bom_for_model(
-                sh.get("bom"), model, path=f"sheets[{k}].bom"
-            )
+            _validate_views_array(sh.get("views", []), path_prefix=f"sheets[{k}].views")
+            _validate_bom_for_model(sh.get("bom"), model, path=f"sheets[{k}].bom")
             _validate_annotations(
                 sh.get("annotations"),
                 sh.get("views", []),
@@ -527,9 +511,7 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
             raise ValueError("sheet must be a dict")
         ts = sheet.get("template_size")
         if ts is not None and ts not in SHEET_SIZES:
-            raise ValueError(
-                f"sheet.template_size {ts!r} not in {sorted(SHEET_SIZES)}"
-            )
+            raise ValueError(f"sheet.template_size {ts!r} not in {sorted(SHEET_SIZES)}")
 
     _validate_bom_for_model(spec.get("bom"), model, path="bom")
 
@@ -537,9 +519,7 @@ def validate_drawing_spec(spec: dict[str, Any]) -> None:
     validate_title_block(spec, path="spec")
 
     # W53: annotations (surface-finish symbols)
-    _validate_annotations(
-        spec.get("annotations"), views, path="spec.annotations"
-    )
+    _validate_annotations(spec.get("annotations"), views, path="spec.annotations")
 
 
 def dry_run_drawing(spec: dict[str, Any]) -> dict[str, Any]:
@@ -557,9 +537,7 @@ def dry_run_drawing(spec: dict[str, Any]) -> dict[str, Any]:
     result["model_path"] = model_path
     if "sheets" in spec:
         result["sheets_requested"] = len(spec["sheets"])
-        result["views_per_sheet"] = [
-            len(sh.get("views", [])) for sh in spec["sheets"]
-        ]
+        result["views_per_sheet"] = [len(sh.get("views", [])) for sh in spec["sheets"]]
     else:
         result["views_requested"] = spec.get("views", [])
     result["ok"] = True
@@ -658,17 +636,18 @@ def _retemplate_first_sheet(
         return
     from ..com.earlybind import typed_qi
     from ..com.sw_type_info import wrapper_module
+
     sheet = typed_qi(sheet_raw, "ISheet", module=wrapper_module())
     try:
         sheet.SetProperties2(
             paper_enum if paper_enum is not None else 0,  # PaperSz (I4)
-            _TEMPLATE_CUSTOM,                           # Templ (I4)
-            1.0,                                        # Scale1 (R8)
-            1.0,                                        # Scale2 (R8)
-            True,                                       # FirstAngle (BOOL)
-            width_m,                                    # Width (R8, metres)
-            height_m,                                   # Height (R8, metres)
-            False,                                      # SameCustomPropAsSheetInDocProp (BOOL)
+            _TEMPLATE_CUSTOM,  # Templ (I4)
+            1.0,  # Scale1 (R8)
+            1.0,  # Scale2 (R8)
+            True,  # FirstAngle (BOOL)
+            width_m,  # Width (R8, metres)
+            height_m,  # Height (R8, metres)
+            False,  # SameCustomPropAsSheetInDocProp (BOOL)
         )
     except Exception:
         # Retemplate is best-effort: the sheet size the user asked for may
@@ -750,9 +729,7 @@ def _apply_title_block(
     ext_obj = drawing_mdoc2.Extension
     cpm_raw = ext_obj.CustomPropertyManager("")
     if cpm_raw is None:
-        result["errors"].append(
-            "drawing CustomPropertyManager('') returned None"
-        )
+        result["errors"].append("drawing CustomPropertyManager('') returned None")
         return result
     typed_cpm = typed_qi(cpm_raw, "ICustomPropertyManager", module=mod)
 
@@ -775,9 +752,7 @@ def _apply_title_block(
             result["errors"].append(f"Add3({name}) raised: {exc!r}")
             continue
         if add_result != 0:
-            result["errors"].append(
-                f"Add3({name}) returned {add_result} (expected 0)"
-            )
+            result["errors"].append(f"Add3({name}) returned {add_result} (expected 0)")
             continue
         result["props_set"].append({"name": name, "value": value})
 
@@ -873,9 +848,7 @@ def _verify_title_block(
             try:
                 _resolved, pvalue, _resolved2 = typed_cpm.Get4(name, False)
             except Exception as exc:
-                result["errors"].append(
-                    f"reopen Get4({name}) raised: {exc!r}"
-                )
+                result["errors"].append(f"reopen Get4({name}) raised: {exc!r}")
                 continue
             entry = {
                 "name": name,
@@ -899,9 +872,7 @@ def _verify_title_block(
         except Exception:
             pass
 
-    result["ok"] = not result["errors"] and len(result["read_back"]) == len(
-        title_block
-    )
+    result["ok"] = not result["errors"] and len(result["read_back"]) == len(title_block)
     return result
 
 
@@ -981,20 +952,20 @@ def _apply_surface_finish_annotations(
 
         try:
             insert_ok = mdoc2.InsertSurfaceFinishSymbol2(
-                1,              # SymType: swSFMachining_Req
-                0,              # LeaderType: swNO_LEADER
-                float(x),       # LocX
-                float(y),       # LocY
-                0.0,            # LocZ
-                0,              # LaySymbol: swSFNone
-                0,              # ArrowType
-                "",             # MachAllowance
-                "",             # OtherVals
-                "",             # ProdMethod
-                "",             # SampleLen
-                text,           # MaxRoughness (the spec's finish value)
-                "",             # MinRoughness
-                "",             # RoughnessSpacing
+                1,  # SymType: swSFMachining_Req
+                0,  # LeaderType: swNO_LEADER
+                float(x),  # LocX
+                float(y),  # LocY
+                0.0,  # LocZ
+                0,  # LaySymbol: swSFNone
+                0,  # ArrowType
+                "",  # MachAllowance
+                "",  # OtherVals
+                "",  # ProdMethod
+                "",  # SampleLen
+                text,  # MaxRoughness (the spec's finish value)
+                "",  # MinRoughness
+                "",  # RoughnessSpacing
             )
         except Exception as exc:
             result["errors"].append(
@@ -1011,12 +982,14 @@ def _apply_surface_finish_annotations(
             )
             continue
 
-        result["inserted"].append({
-            "view": view_name,
-            "x": x,
-            "y": y,
-            "text": text,
-        })
+        result["inserted"].append(
+            {
+                "view": view_name,
+                "x": x,
+                "y": y,
+                "text": text,
+            }
+        )
         result["count"] += 1
 
     result["ok"] = not result["errors"]
@@ -1529,7 +1502,8 @@ def _verify_surface_finish_annotations(
                                         continue
                                     try:
                                         ann = typed_qi(
-                                            ann_raw, "IAnnotation",
+                                            ann_raw,
+                                            "IAnnotation",
                                             module=mod,
                                         )
                                         ann_type = ann.GetType()
@@ -1538,10 +1512,12 @@ def _verify_surface_finish_annotations(
                                     except Exception:
                                         continue
                             total_sf_count += sf_count
-                            result["per_view"].append({
-                                "view": vname,
-                                "surface_finish_count": sf_count,
-                            })
+                            result["per_view"].append(
+                                {
+                                    "view": vname,
+                                    "surface_finish_count": sf_count,
+                                }
+                            )
                         except Exception:
                             continue
             except Exception as exc:
@@ -1782,8 +1758,7 @@ def _build_sheet_views(
             placed_views.append(tview)
         except Exception as exc:
             view_errors.append(
-                f"sheet[{sheet_index}].views[{i}] ({vtype} '{vname}'): "
-                f"{exc!r}"
+                f"sheet[{sheet_index}].views[{i}] ({vtype} '{vname}'): " f"{exc!r}"
             )
 
     result["views_placed"] = views_placed
@@ -1874,7 +1849,16 @@ def _build_sheet_views(
 
         try:
             bom_annotation = first_view.InsertBomTable4(
-                False, 0.05, 0.22, 1, 1, "", bom_tmpl, False, 2, False,
+                False,
+                0.05,
+                0.22,
+                1,
+                1,
+                "",
+                bom_tmpl,
+                False,
+                2,
+                False,
             )
         except Exception as exc:
             result["view_errors"].append(
@@ -1882,10 +1866,7 @@ def _build_sheet_views(
             )
             return result
 
-        bom_ok = (
-            bom_annotation is not None
-            and not isinstance(bom_annotation, int)
-        )
+        bom_ok = bom_annotation is not None and not isinstance(bom_annotation, int)
         if not bom_ok:
             result["view_errors"].append(
                 f"sheet[{sheet_index}].bom: InsertBomTable4 returned None"
@@ -1909,12 +1890,13 @@ def _build_sheet_views(
     # ------------------------------------------------------------------
     if sheet_spec.get("hole_table") and views_placed and placed_views:
         ht_ann, ht_err = _insert_hole_table(
-            drawing_doc, placed_views[0], mod=mod, typed_qi=typed_qi,
+            drawing_doc,
+            placed_views[0],
+            mod=mod,
+            typed_qi=typed_qi,
         )
         if ht_ann is None:
-            result["view_errors"].append(
-                f"sheet[{sheet_index}].hole_table: {ht_err}"
-            )
+            result["view_errors"].append(f"sheet[{sheet_index}].hole_table: {ht_err}")
             return result
         result["hole_table_inserted"] = True
 
@@ -1983,10 +1965,28 @@ def _build_sheet_views(
         # geometric_tolerance). GTOL adds a post-type configure hook (frame-1
         # content) so its FCF survives save.
         for kind, iface, insert_fn, configure_fn, result_key in (
-            ("datum_tag", "IDatumTag", _insert_datum_tag, None, "datum_tag_annotations"),
-            ("weld_symbol", "IWeldSymbol", _insert_weld_symbol, None, "weld_symbol_annotations"),
+            (
+                "datum_tag",
+                "IDatumTag",
+                _insert_datum_tag,
+                None,
+                "datum_tag_annotations",
+            ),
+            (
+                "weld_symbol",
+                "IWeldSymbol",
+                _insert_weld_symbol,
+                None,
+                "weld_symbol_annotations",
+            ),
             ("balloon", "INote", _insert_balloon, None, "balloon_annotations"),
-            ("geometric_tolerance", "IGtol", _insert_gtol, _configure_gtol, "gtol_annotations"),
+            (
+                "geometric_tolerance",
+                "IGtol",
+                _insert_gtol,
+                _configure_gtol,
+                "gtol_annotations",
+            ),
         ):
             ea_result = _apply_entity_attached_annotation(
                 drawing_doc,
@@ -2119,22 +2119,20 @@ def commit_drawing(
             if not is_first:
                 requested_name = sheet_spec.get("name") or f"Sheet{idx + 1}"
                 size_name = sheet_spec.get("template_size") or DEFAULT_SHEET_SIZE
-                w, h = SHEET_SIZES.get(
-                    size_name, SHEET_SIZES[DEFAULT_SHEET_SIZE]
-                )
+                w, h = SHEET_SIZES.get(size_name, SHEET_SIZES[DEFAULT_SHEET_SIZE])
                 paper_enum = _PAPER_SIZE_ENUM.get(size_name, 0)
                 try:
                     new_sheet_ok = drawing_doc.NewSheet3(
                         requested_name,
-                        paper_enum,          # PaperSize (I4)
-                        _TEMPLATE_CUSTOM,    # TemplateIn (I4)
-                        1.0,                 # Scale1 (R8)
-                        1.0,                 # Scale2 (R8)
-                        True,                # FirstAngle (BOOL)
-                        "",                  # TemplateName (BSTR)
-                        w,                   # Width (R8, metres)
-                        h,                   # Height (R8, metres)
-                        "",                  # PropertyViewName (BSTR)
+                        paper_enum,  # PaperSize (I4)
+                        _TEMPLATE_CUSTOM,  # TemplateIn (I4)
+                        1.0,  # Scale1 (R8)
+                        1.0,  # Scale2 (R8)
+                        True,  # FirstAngle (BOOL)
+                        "",  # TemplateName (BSTR)
+                        w,  # Width (R8, metres)
+                        h,  # Height (R8, metres)
+                        "",  # PropertyViewName (BSTR)
                     )
                 except Exception as exc:
                     all_errors.append(
@@ -2144,8 +2142,7 @@ def commit_drawing(
                     break
                 if not new_sheet_ok:
                     all_errors.append(
-                        f"sheet[{idx}] NewSheet3({requested_name!r}) "
-                        f"returned False"
+                        f"sheet[{idx}] NewSheet3({requested_name!r}) " f"returned False"
                     )
                     break
                 sheet_names_created.append(requested_name)
@@ -2156,8 +2153,7 @@ def commit_drawing(
                 active_raw = drawing_doc.GetCurrentSheet()
                 active_sheet = (
                     typed_qi(active_raw, "ISheet", module=mod)
-                    if active_raw is not None
-                    and not isinstance(active_raw, int)
+                    if active_raw is not None and not isinstance(active_raw, int)
                     else None
                 )
                 current_name = (
@@ -2253,8 +2249,7 @@ def commit_drawing(
         # W28: Save the MODEL if any tolerance was applied
         # Tolerances are MODEL-OWNED (stored in .SLDPRT/.SLDASM, not .SLDDRW)
         any_tolerance_applied = any(
-            sr.get("tolerance_applied", False)
-            for sr in per_sheet_results
+            sr.get("tolerance_applied", False) for sr in per_sheet_results
         )
         if any_tolerance_applied and model_doc is not None and model_mdoc2 is not None:
             try:
@@ -2328,8 +2323,7 @@ def commit_drawing(
         # surface-finish annotations per view. A zero-count (the W31v2
         # interactive-mode wall) is the trap this gate catches.
         any_annotations = any(
-            sr.get("annotations", {}).get("count", 0) > 0
-            for sr in per_sheet_results
+            sr.get("annotations", {}).get("count", 0) > 0 for sr in per_sheet_results
         )
         if any_annotations:
             try:
@@ -2345,9 +2339,7 @@ def commit_drawing(
                 annot_result = sr.get("annotations", {})
                 for ins in annot_result.get("inserted", []):
                     vname = ins.get("view", "")
-                    expected_counts[vname] = (
-                        expected_counts.get(vname, 0) + 1
-                    )
+                    expected_counts[vname] = expected_counts.get(vname, 0) + 1
 
             sf_verify = _verify_surface_finish_annotations(
                 sw,

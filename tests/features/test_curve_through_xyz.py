@@ -147,7 +147,9 @@ class TestModeB:
         _wire(monkeypatch)
         doc = _FakeDoc()
         ok, _ = create_curve_through_xyz(
-            doc, {}, {"points": [[100.0, 200.0, 300.0], [400.0, 500.0, 600.0]]},
+            doc,
+            {},
+            {"points": [[100.0, 200.0, 300.0], [400.0, 500.0, 600.0]]},
         )
         assert ok is True
         assert doc.point_calls[0] == pytest.approx((0.1, 0.2, 0.3))
@@ -225,7 +227,9 @@ class TestValidation:
 
     def test_one_point_rejected(self):
         ok, err = create_curve_through_xyz(
-            _FakeDoc(), {}, {"points": [[1, 2, 3]]},
+            _FakeDoc(),
+            {},
+            {"points": [[1, 2, 3]]},
         )
         assert ok is False and "points" in err
 
@@ -235,31 +239,41 @@ class TestValidation:
 
     def test_non_list_points_rejected(self):
         ok, err = create_curve_through_xyz(
-            _FakeDoc(), {}, {"points": "not_a_list"},
+            _FakeDoc(),
+            {},
+            {"points": "not_a_list"},
         )
         assert ok is False and "points" in err
 
     def test_point_wrong_length_rejected(self):
         ok, err = create_curve_through_xyz(
-            _FakeDoc(), {}, {"points": [[1, 2], [3, 4, 5]]},
+            _FakeDoc(),
+            {},
+            {"points": [[1, 2], [3, 4, 5]]},
         )
         assert ok is False and "point[0]" in err
 
     def test_point_non_numeric_rejected(self):
         ok, err = create_curve_through_xyz(
-            _FakeDoc(), {}, {"points": [["a", 2, 3], [4, 5, 6]]},
+            _FakeDoc(),
+            {},
+            {"points": [["a", 2, 3], [4, 5, 6]]},
         )
         assert ok is False and "point[0]" in err
 
     def test_feature_not_dict_rejected(self):
         ok, err = create_curve_through_xyz(
-            _FakeDoc(), "not_a_dict", {"points": _PTS_2},
+            _FakeDoc(),
+            "not_a_dict",
+            {"points": _PTS_2},
         )
         assert ok is False and "feature must be a dict" in err
 
     def test_target_not_dict_rejected(self):
         ok, err = create_curve_through_xyz(
-            _FakeDoc(), {}, "not_a_dict",
+            _FakeDoc(),
+            {},
+            "not_a_dict",
         )
         assert ok is False and "target must be a dict" in err
 
@@ -312,9 +326,18 @@ class TestDormantGate:
 class TestKindNames:
     def test_curve_through_xyz_disjoint_from_builtin_types(self):
         builtin_kinds = {
-            "fillet_constant_radius", "base_flange", "variable_radius_fillet",
-            "wizard_hole", "shell", "draft", "sweep", "ref_plane",
-            "ref_axis", "coordinate_system", "ref_point", "dome",
+            "fillet_constant_radius",
+            "base_flange",
+            "variable_radius_fillet",
+            "wizard_hole",
+            "shell",
+            "draft",
+            "sweep",
+            "ref_plane",
+            "ref_axis",
+            "coordinate_system",
+            "ref_point",
+            "dome",
             "sweep_cut",
         }
         assert "curve_through_xyz" not in builtin_kinds

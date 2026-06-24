@@ -128,10 +128,18 @@ def run_spike() -> dict:
     print("=== Building two-block part ===", file=sys.stderr)
     proc = subprocess.run(
         [
-            sys.executable, "-m", "ai_sw_bridge.cli.build",
-            str(spec_path), "--no-dim", "--save-as", str(part_path),
+            sys.executable,
+            "-m",
+            "ai_sw_bridge.cli.build",
+            str(spec_path),
+            "--no-dim",
+            "--save-as",
+            str(part_path),
         ],
-        capture_output=True, text=True, timeout=120, cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        timeout=120,
+        cwd=str(repo_root),
     )
     result["build_rc"] = proc.returncode
     if proc.returncode != 0:
@@ -176,8 +184,10 @@ def run_spike() -> dict:
         result["errors"].append(vol_err)
         _close_doc(sw, mdoc2)
         return result
-    print(f"Baseline: {baseline_vol:.2f} mm³ (expected ~{EXPECTED_VOL_A + EXPECTED_VOL_B})",
-          file=sys.stderr)
+    print(
+        f"Baseline: {baseline_vol:.2f} mm³ (expected ~{EXPECTED_VOL_A + EXPECTED_VOL_B})",
+        file=sys.stderr,
+    )
 
     # Step 3: Discover features (Block_A and Block_B)
     result["stage"] = "find_features"
@@ -211,10 +221,8 @@ def run_spike() -> dict:
     cm = cm_raw() if callable(cm_raw) else cm_raw
     typed_cm = typed_qi(cm, "IConfigurationManager", module=mod)
 
-    cfg_a = typed_cm.AddConfiguration2(
-        "Config_A", "", "", 0, "", "Block_A only", 0)
-    cfg_b = typed_cm.AddConfiguration2(
-        "Config_B", "", "", 0, "", "Block_B only", 0)
+    cfg_a = typed_cm.AddConfiguration2("Config_A", "", "", 0, "", "Block_A only", 0)
+    cfg_b = typed_cm.AddConfiguration2("Config_B", "", "", 0, "", "Block_B only", 0)
 
     result["configs_created"] = {
         "Config_A": cfg_a is not None,
@@ -222,7 +230,8 @@ def run_spike() -> dict:
     }
     if cfg_a is None or cfg_b is None:
         result["errors"].append(
-            f"Config creation failed: A={cfg_a is not None}, B={cfg_b is not None}")
+            f"Config creation failed: A={cfg_a is not None}, B={cfg_b is not None}"
+        )
         _close_doc(sw, mdoc2)
         return result
     print("Configs created: Config_A, Config_B", file=sys.stderr)
@@ -280,8 +289,7 @@ def run_spike() -> dict:
         result["volumes"][cn] = vol
         if vol_err:
             result["warnings"].append(vol_err)
-        print(f"{cn}: {vol:.2f} mm³" if vol else f"{cn}: {vol_err}",
-              file=sys.stderr)
+        print(f"{cn}: {vol:.2f} mm³" if vol else f"{cn}: {vol_err}", file=sys.stderr)
 
     # Step 7: Save, close, reopen, re-measure
     result["stage"] = "save_reopen"
@@ -312,8 +320,10 @@ def run_spike() -> dict:
             result["reopen_volumes"][cn] = vol
             if vol_err:
                 result["warnings"].append(f"reopen {cn}: {vol_err}")
-            print(f"Reopen {cn}: {vol:.2f} mm³" if vol else f"Reopen {cn}: {vol_err}",
-                  file=sys.stderr)
+            print(
+                f"Reopen {cn}: {vol:.2f} mm³" if vol else f"Reopen {cn}: {vol_err}",
+                file=sys.stderr,
+            )
 
         _close_doc(sw, mdoc2b)
     except Exception as exc:
@@ -354,14 +364,16 @@ def run_spike() -> dict:
             )
     else:
         result["errors"].append(
-            f"Missing volume data: Config_A={config_a_vol}, Config_B={config_b_vol}")
+            f"Missing volume data: Config_A={config_a_vol}, Config_B={config_b_vol}"
+        )
 
     return result
 
 
 if __name__ == "__main__":
-    print("=== W36 Configurations Spike S2 (topological suppression) ===",
-          file=sys.stderr)
+    print(
+        "=== W36 Configurations Spike S2 (topological suppression) ===", file=sys.stderr
+    )
     result = run_spike()
 
     out_path = SPIKE_DIR / "_results_W36_S2.json"

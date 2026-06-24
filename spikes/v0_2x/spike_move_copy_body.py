@@ -154,9 +154,7 @@ def _decode_arg(arg_tuple: Any, param_name: str) -> dict[str, Any]:
     }
 
 
-def _walk_sldworks_fm_token_walk(
-    tlb: Any, tokens: tuple[str, ...]
-) -> dict[str, Any]:
+def _walk_sldworks_fm_token_walk(tlb: Any, tokens: tuple[str, ...]) -> dict[str, Any]:
     """Walk sldworks.tlb FUNCDESC for interfaces matching tokens.
 
     Mirrors spike_rib.py's _walk_swconst_typelib pattern adapted for
@@ -189,7 +187,9 @@ def _walk_sldworks_fm_token_walk(
                 param_names = list(names[1:]) if len(names) > 1 else []
                 params: list[dict[str, Any]] = []
                 for p_idx in range(fd.cParams):
-                    p_name = param_names[p_idx] if p_idx < len(param_names) else f"p{p_idx}"
+                    p_name = (
+                        param_names[p_idx] if p_idx < len(param_names) else f"p{p_idx}"
+                    )
                     if fd.args and p_idx < len(fd.args):
                         params.append(_decode_arg(fd.args[p_idx], p_name))
                     else:
@@ -198,14 +198,16 @@ def _walk_sldworks_fm_token_walk(
                 ret_type = _decode_tdesc(fd.elemdescFunc.tdesc)
                 invkind = INVKIND_NAMES.get(fd.invkind, str(fd.invkind))
 
-                matching_members.append({
-                    "name": mname,
-                    "memid": memid,
-                    "invkind": invkind,
-                    "cParams": fd.cParams,
-                    "return_type": ret_type,
-                    "params": params,
-                })
+                matching_members.append(
+                    {
+                        "name": mname,
+                        "memid": memid,
+                        "invkind": invkind,
+                        "cParams": fd.cParams,
+                        "return_type": ret_type,
+                        "params": params,
+                    }
+                )
             except Exception as exc:
                 matching_members.append({"error": f"f_idx={f_idx}: {exc!r}"})
 
@@ -222,8 +224,12 @@ def _sketch_rect_on_front(
     sk = doc.SketchManager
     sk.InsertSketch(True)
     sk.CreateCornerRectangle(
-        cx - w / 2, cy - h / 2, 0.0,
-        cx + w / 2, cy + h / 2, 0.0,
+        cx - w / 2,
+        cy - h / 2,
+        0.0,
+        cx + w / 2,
+        cy + h / 2,
+        0.0,
     )
     sk.InsertSketch(True)
 
@@ -231,14 +237,28 @@ def _sketch_rect_on_front(
 def _extrude_merge(doc: Any, depth_m: float) -> Any:
     fm = doc.FeatureManager
     return fm.FeatureExtrusion3(
-        True, False, False,
-        0, 0,
-        depth_m, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        0, 0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        depth_m,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
         False,
     )
 
@@ -425,8 +445,12 @@ def test_move(sw: Any, sig: dict[str, Any]) -> dict[str, Any]:
 
     try:
         call_result = _call_move_copy(
-            api_obj, method_name, sig,
-            dx=MOVE_DELTA_M, dy=0.0, dz=0.0,
+            api_obj,
+            method_name,
+            sig,
+            dx=MOVE_DELTA_M,
+            dy=0.0,
+            dz=0.0,
             copy=False,
         )
         result["call_result"] = call_result
@@ -509,8 +533,12 @@ def test_copy(sw: Any, sig: dict[str, Any]) -> dict[str, Any]:
 
     try:
         call_result = _call_move_copy(
-            api_obj, method_name, sig,
-            dx=COPY_OFFSET_M, dy=0.0, dz=0.0,
+            api_obj,
+            method_name,
+            sig,
+            dx=COPY_OFFSET_M,
+            dy=0.0,
+            dz=0.0,
             copy=True,
         )
         result["call_result"] = call_result
@@ -651,12 +679,14 @@ def run() -> dict[str, Any]:
 
     try:
         import pythoncom
+
         pythoncom.CoInitialize()
     except Exception:
         pass
 
     try:
         from ai_sw_bridge.sw_com import get_sw_app
+
         sw = get_sw_app()
     except Exception as exc:
         output["error"] = f"could not connect to SW: {exc!r}"
@@ -719,6 +749,7 @@ def _phase1_tlb_dump() -> dict[str, Any]:
     }
     try:
         import pythoncom
+
         tlb = pythoncom.LoadTypeLib(SW_TLB_PATH)
         report["loadable"] = True
     except Exception as exc:

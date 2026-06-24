@@ -98,21 +98,21 @@ from ai_sw_bridge.sw_com import get_sw_app, get_active_doc, SW_DOC_PART  # noqa:
 # ---------------------------------------------------------------------------
 # Box geometry (metres)
 # ---------------------------------------------------------------------------
-BOX_W_M = 0.020   # 20 mm × 20 mm footprint
+BOX_W_M = 0.020  # 20 mm × 20 mm footprint
 BOX_H_M = 0.020
-BOX_D_M = 0.010   # 10 mm tall — +z face at z = 0.010
+BOX_D_M = 0.010  # 10 mm tall — +z face at z = 0.010
 
 # The test fillet will be applied to one bottom edge of the box.
 # Bottom edge: from (-BOX_W_M/2, -BOX_H_M/2, 0) to (+BOX_W_M/2, -BOX_H_M/2, 0)
 # Mid-point coordinate used for SelectByID edge selection:
 EDGE_X_M = 0.0
-EDGE_Y_M = -BOX_H_M / 2   # -0.010
+EDGE_Y_M = -BOX_H_M / 2  # -0.010
 EDGE_Z_M = 0.0
 
 # Per-edge radius values to probe (two entries: start and end of the edge).
 # SW var-radius typically wants [start_radius, end_radius] per edge in meters.
-VARRAD_START_M = 0.002   # 2 mm at start vertex
-VARRAD_END_M   = 0.004   # 4 mm at end vertex
+VARRAD_START_M = 0.002  # 2 mm at start vertex
+VARRAD_END_M = 0.004  # 4 mm at end vertex
 
 # swFilletType_e candidates (probe; docs say swFilletTypeVariable=1).
 FILLET_TYPE_VARIABLE = 1
@@ -141,6 +141,7 @@ def _ensure_part_doc(sw: Any) -> Any:
 # Solid fixture
 # ---------------------------------------------------------------------------
 
+
 def _build_box(doc: Any) -> dict[str, Any]:
     """Insert a 20×20×10 mm Boss-Extrude on the Front Plane.
 
@@ -152,8 +153,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-        BOX_W_M / 2,  BOX_H_M / 2,  0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -161,14 +166,33 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
-        feat = fm.FeatureExtrusion2(*base_args, False)   # 23-arg
+        feat = fm.FeatureExtrusion2(*base_args, False)  # 23-arg
     except Exception:
-        feat = fm.FeatureExtrusion2(*base_args)           # 22-arg fallback
+        feat = fm.FeatureExtrusion2(*base_args)  # 22-arg fallback
     if feat is None:
         return {"built": False, "error": "FeatureExtrusion2 returned None"}
     return {"built": True, "feature_name": getattr(feat, "Name", None)}
@@ -177,6 +201,7 @@ def _build_box(doc: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # IVariableRadiusFilletFeatureData discrimination
 # ---------------------------------------------------------------------------
+
 
 def _is_varfil_data(data: Any) -> bool:
     """Return True if *data* exposes VariableRadiusParameters or
@@ -200,6 +225,7 @@ def _is_varfil_data(data: Any) -> bool:
 # Edge selection
 # ---------------------------------------------------------------------------
 
+
 def _select_bottom_edge(doc: Any) -> dict[str, Any]:
     """Select one bottom edge of the box via coordinate-based SelectByID.
 
@@ -215,7 +241,9 @@ def _select_bottom_edge(doc: Any) -> dict[str, Any]:
         rec["ok"] = ok
     except pywintypes.com_error as e:
         rec["status"] = "COM_ERROR"
-        rec["error"] = f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+        rec["error"] = (
+            f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+        )
     except Exception as e:
         rec["status"] = "PY_EXCEPTION"
         rec["error"] = f"{type(e).__name__}: {e}"
@@ -227,6 +255,7 @@ def _select_bottom_edge(doc: Any) -> dict[str, Any]:
 # IVariableRadiusFilletFeatureData property probes
 # ---------------------------------------------------------------------------
 
+
 def _probe_prop_rw(data: Any, prop: str, write_val: Any) -> dict[str, Any]:
     """Read then write-back a single scalar property on the data object."""
     rec: dict[str, Any] = {"prop": prop}
@@ -236,8 +265,7 @@ def _probe_prop_rw(data: Any, prop: str, write_val: Any) -> dict[str, Any]:
         rec["read_status"] = "OK"
         rec["read_type"] = _type_tag(read_val)
         rec["read_value"] = (
-            read_val if not isinstance(read_val, (bytes, bytearray))
-            else read_val.hex()
+            read_val if not isinstance(read_val, (bytes, bytearray)) else read_val.hex()
         )
     except pywintypes.com_error as e:
         rec["read_status"] = "COM_ERROR"
@@ -255,7 +283,8 @@ def _probe_prop_rw(data: Any, prop: str, write_val: Any) -> dict[str, Any]:
         read_back = getattr(data, prop)
         rec["write_status"] = "OK"
         rec["write_readback"] = (
-            read_back if not isinstance(read_back, (bytes, bytearray))
+            read_back
+            if not isinstance(read_back, (bytes, bytearray))
             else read_back.hex()
         )
     except pywintypes.com_error as e:
@@ -289,8 +318,12 @@ def _safearray_shape(v: Any) -> dict[str, Any]:
     if isinstance(v, (tuple, list)):
         shape["len"] = len(v)
         if len(v) > 0:
-            shape["first"] = float(v[0]) if isinstance(v[0], (int, float)) else repr(v[0])
-            shape["last"]  = float(v[-1]) if isinstance(v[-1], (int, float)) else repr(v[-1])
+            shape["first"] = (
+                float(v[0]) if isinstance(v[0], (int, float)) else repr(v[0])
+            )
+            shape["last"] = (
+                float(v[-1]) if isinstance(v[-1], (int, float)) else repr(v[-1])
+            )
     elif isinstance(v, (bytes, bytearray)):
         shape["byte_len"] = len(v)
         shape["first8_hex"] = bytes(v)[:8].hex()
@@ -315,7 +348,7 @@ def probe_safearray_roundtrip(data: Any) -> dict[str, Any]:
     rec: dict[str, Any] = {}
 
     test_array_tuple = (VARRAD_START_M, VARRAD_END_M)
-    test_array_list  = [VARRAD_START_M, VARRAD_END_M]
+    test_array_list = [VARRAD_START_M, VARRAD_END_M]
 
     # --- read-before-write (baseline) ---
     t0 = time.perf_counter()
@@ -395,7 +428,9 @@ def probe_safearray_roundtrip(data: Any) -> dict[str, Any]:
         )
         attempt["write_elapsed_ms"] = (time.perf_counter() - t0) * 1000.0
     except Exception as e:
-        attempt["write_status"] = "OK" if "not found" not in str(e).lower() else "NOT_FOUND"
+        attempt["write_status"] = (
+            "OK" if "not found" not in str(e).lower() else "NOT_FOUND"
+        )
         attempt["write_error"] = f"{type(e).__name__}: {e}"
         attempt["write_elapsed_ms"] = (time.perf_counter() - t0) * 1000.0
     write_attempts.append(attempt)
@@ -424,7 +459,9 @@ def probe_safearray_roundtrip(data: Any) -> dict[str, Any]:
         )
         attempt["write_elapsed_ms"] = (time.perf_counter() - t0) * 1000.0
     except Exception as e:
-        attempt["write_status"] = "OK" if "not found" not in str(e).lower() else "NOT_FOUND"
+        attempt["write_status"] = (
+            "OK" if "not found" not in str(e).lower() else "NOT_FOUND"
+        )
         attempt["write_error"] = f"{type(e).__name__}: {e}"
         attempt["write_elapsed_ms"] = (time.perf_counter() - t0) * 1000.0
     write_attempts.append(attempt)
@@ -457,12 +494,12 @@ def probe_scalar_props(data: Any) -> dict[str, Any]:
     """Probe read+write of scalar properties on the fillet data object."""
     props = [
         # (property_name, test_write_value)
-        ("Radius",         0.002),          # 2 mm constant fallback radius
-        ("FilletType",     FILLET_TYPE_VARIABLE),
-        ("Propagate",      True),
+        ("Radius", 0.002),  # 2 mm constant fallback radius
+        ("FilletType", FILLET_TYPE_VARIABLE),
+        ("Propagate", True),
         ("TangentPropagation", True),
-        ("SmoothFace",     False),
-        ("ReverseDir",     False),
+        ("SmoothFace", False),
+        ("ReverseDir", False),
     ]
     results = [_probe_prop_rw(data, name, val) for name, val in props]
     all_readable = all(r["read_status"] == "OK" for r in results)
@@ -478,6 +515,7 @@ def probe_scalar_props(data: Any) -> dict[str, Any]:
 # CreateFeature probe
 # ---------------------------------------------------------------------------
 
+
 def probe_create_feature(fm: Any, data: Any, doc: Any) -> dict[str, Any]:
     """Attempt to materialize the var-radius fillet via CreateFeature(data).
 
@@ -487,7 +525,7 @@ def probe_create_feature(fm: Any, data: Any, doc: Any) -> dict[str, Any]:
 
     # Set up data for a variable-radius fillet (best-effort defaults).
     try:
-        data.Radius = VARRAD_START_M          # fallback constant radius
+        data.Radius = VARRAD_START_M  # fallback constant radius
         data.FilletType = FILLET_TYPE_VARIABLE
         data.Propagate = True
     except Exception as e:
@@ -529,6 +567,7 @@ def probe_create_feature(fm: Any, data: Any, doc: Any) -> dict[str, Any]:
 # Top-level COM run
 # ---------------------------------------------------------------------------
 
+
 def run_com(skip_build: bool) -> dict[str, Any]:
     sw = get_sw_app()
     doc = _ensure_part_doc(sw)
@@ -537,7 +576,11 @@ def run_com(skip_build: bool) -> dict[str, Any]:
     if not skip_build:
         build_rec.update(_build_box(doc))
         if not build_rec.get("built"):
-            return {"overall": "FAIL", "reason": "box did not build", "build": build_rec}
+            return {
+                "overall": "FAIL",
+                "reason": "box did not build",
+                "build": build_rec,
+            }
         try:
             doc.EditRebuild3
         except Exception:
@@ -664,6 +707,7 @@ def run_com(skip_build: bool) -> dict[str, Any]:
 # VBA oracle (early-binding)
 # ---------------------------------------------------------------------------
 
+
 def emit_vba() -> str:
     """Early-binding oracle for the SAFEARRAY round-trip.
 
@@ -746,21 +790,27 @@ End Sub
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
-        "--mode", choices=["com", "vba"], default="com",
+        "--mode",
+        choices=["com", "vba"],
+        default="com",
         help="com = drive SW from Python; vba = emit the .bas oracle.",
     )
     p.add_argument(
-        "--skip-build", action="store_true",
+        "--skip-build",
+        action="store_true",
         help="Skip creating the test box; probe the first solid body already present.",
     )
     p.add_argument(
-        "--out", type=Path, default=None,
+        "--out",
+        type=Path,
+        default=None,
         help="Write JSON report to this path instead of stdout.",
     )
     args = p.parse_args()

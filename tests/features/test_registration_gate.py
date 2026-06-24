@@ -19,8 +19,17 @@ from ai_sw_bridge.features import _register_lane
 # The registry reflects exactly the seat-proven lanes
 # ---------------------------------------------------------------------------
 _GREEN_LANES = (
-    "hem", "composite", "helix", "project_curve", "bounding_box", "com_point",
-    "mate_reference", "sketched_bend", "planar_surface", "offset_surface", "knit",
+    "hem",
+    "composite",
+    "helix",
+    "project_curve",
+    "bounding_box",
+    "com_point",
+    "mate_reference",
+    "sketched_bend",
+    "planar_surface",
+    "offset_surface",
+    "knit",
 )
 # Imported for provenance but NOT seat-proven — must stay OUT of the registry.
 _DORMANT_LANES = ("thicken", "move_body", "copy_body")
@@ -74,7 +83,10 @@ class TestRegisterLane:
         assert thicken.SPIKE_STATUS != "GREEN"
         assert move_copy_body.SPIKE_STATUS != "GREEN"
         # True status → dormant skip, never registered.
-        assert _register_lane("thicken", thicken.create_thicken, thicken.SPIKE_STATUS) is False
+        assert (
+            _register_lane("thicken", thicken.create_thicken, thicken.SPIKE_STATUS)
+            is False
+        )
         # A forced non-sentinel status → hard failure (no silent sneak-in).
         with pytest.raises(RuntimeError):
             _register_lane("thicken", thicken.create_thicken, "FORCE")

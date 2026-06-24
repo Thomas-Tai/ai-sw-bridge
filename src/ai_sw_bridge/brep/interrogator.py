@@ -63,7 +63,9 @@ class BrepFace:
     is_surface: bool = False
     is_hidden: bool = False
     persist_id: str = ""  # base64url (no pad) durable token; "" when uncaptured
-    surface_uv: dict = None  # Wave-5 E2: {point_mm, normal} at UV midpoint; None when not evaluated
+    surface_uv: dict = (
+        None  # Wave-5 E2: {point_mm, normal} at UV midpoint; None when not evaluated
+    )
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-serializable form for the manifest brep block.
@@ -690,7 +692,9 @@ def _walk_edges(doc: Any, *, capture: bool) -> list[BrepEdge]:
         if not isinstance(raw, (tuple, list)):
             continue
         for idx, edge in enumerate(raw):
-            be = _probe_edge(edge, body_id=body_id, edge_idx=idx, doc=doc, capture=capture)
+            be = _probe_edge(
+                edge, body_id=body_id, edge_idx=idx, doc=doc, capture=capture
+            )
             if be is not None:
                 edges.append(be)
     return edges

@@ -52,7 +52,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 def save_results() -> None:
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(results, indent=2, default=str), encoding="utf-8"
+    )
     print(f"  wrote {RESULTS_PATH}", file=sys.stderr)
 
 
@@ -77,7 +79,7 @@ def run_tolerance_type(tol_type: str, tol_spec: dict[str, Any]) -> str:
 
     # Close all docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -104,10 +106,14 @@ def run_tolerance_type(tol_type: str, tol_spec: dict[str, Any]) -> str:
         "schema_version": 1,
         "name": f"PaeTol{tol_type.capitalize()}Box",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 25.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 15.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 25.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 15.0},
         ],
     }
 
@@ -260,7 +266,10 @@ def run() -> str:
     # Test all three tolerance types
     tolerance_specs = [
         ("symmetric", {"type": "symmetric", "value": 0.00005}),  # ±0.05mm
-        ("bilateral", {"type": "bilateral", "max": 0.0001, "min": -0.00005}),  # +0.1/-0.05mm
+        (
+            "bilateral",
+            {"type": "bilateral", "max": 0.0001, "min": -0.00005},
+        ),  # +0.1/-0.05mm
         ("limit", {"type": "limit", "max": 0.0001, "min": -0.00005}),
     ]
 

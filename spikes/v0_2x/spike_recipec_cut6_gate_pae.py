@@ -26,6 +26,7 @@ bare-None-on-typed SelectByID2 selections + the auto-pierce anchor flawlessly.
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_recipec_cut6_gate_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -66,10 +67,17 @@ _OUT = _HERE.parent / "_results" / "recipec6_gate_pae.json"
 _WORK = _HERE.parent / "_results" / "recipec6_work"
 results: dict[str, Any] = {"pae": "recipec6_sweep_family_migration_gate", "gates": {}}
 
-_MOVED = ("_SW_FM_SWEEP", "_SW_FM_SWEEP_CUT", "_PIERCE_TOKEN",
-          "_first_arc_center_coords", "_sketch_centroid_coords",
-          "_sketch_to_model_coords", "_apply_auto_pierce",
-          "_create_sweep", "_create_sweep_cut")
+_MOVED = (
+    "_SW_FM_SWEEP",
+    "_SW_FM_SWEEP_CUT",
+    "_PIERCE_TOKEN",
+    "_first_arc_center_coords",
+    "_sketch_centroid_coords",
+    "_sketch_to_model_coords",
+    "_apply_auto_pierce",
+    "_create_sweep",
+    "_create_sweep_cut",
+)
 
 
 def gate(name: str, ok: bool, detail: str = "") -> bool:
@@ -79,7 +87,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -194,9 +204,31 @@ def _build_sweep_cut_seed(sw: Any, path: str) -> tuple[str, str] | None:
     sm.InsertSketch(True)
     sm.CreateCornerRectangle(-0.02, -0.02, 0, 0.02, 0.02, 0)
     sm.InsertSketch(True)
-    fm.FeatureExtrusion3(True, False, False, 0, 0, 0.04, 0.0,
-                         False, False, False, False, 0.0, 0.0,
-                         False, False, False, False, True, True, True, 0.0, 0.0, False)
+    fm.FeatureExtrusion3(
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.04,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0.0,
+        0.0,
+        False,
+    )
     doc.ClearSelection2(True)
     # Path: Top Plane line along part-Z from z=-5..60 (through the box).
     if not ext.SelectByID2("Top Plane", "PLANE", 0, 0, 0, False, 0, None, 0):
@@ -242,20 +274,28 @@ def main() -> int:
         pure_registry = True
         try:
             import ai_sw_bridge.features as _feat
+
             sentinel = {"called": False}
-            _feat.HANDLER_REGISTRY["__probe6__"] = lambda d, f, t: (sentinel.update(called=True) or (True, "reg"))
+            _feat.HANDLER_REGISTRY["__probe6__"] = lambda d, f, t: (
+                sentinel.update(called=True) or (True, "reg")
+            )
             r = mutate_mod._apply_feature("DOC", {"type": "__probe6__"}, {})
             pure_registry = (r == (True, "reg")) and sentinel["called"]
             del _feat.HANDLER_REGISTRY["__probe6__"]
         except Exception as exc:  # noqa: BLE001
             pure_registry = False
             results["pure_registry_probe_exc"] = repr(exc)
-        gate("registry_seam",
-             registered and in_sweep_mod and gone_from_mutate and supported_empty
-             and pure_registry,
-             f"sweep+sweep_cut_GREEN={registered} in_features_sweep={in_sweep_mod} "
-             f"removed_from_mutate={gone_from_mutate} _SUPPORTED_empty={supported_empty} "
-             f"pure_registry_dispatch={pure_registry}")
+        gate(
+            "registry_seam",
+            registered
+            and in_sweep_mod
+            and gone_from_mutate
+            and supported_empty
+            and pure_registry,
+            f"sweep+sweep_cut_GREEN={registered} in_features_sweep={in_sweep_mod} "
+            f"removed_from_mutate={gone_from_mutate} _SUPPORTED_empty={supported_empty} "
+            f"pure_registry_dispatch={pure_registry}",
+        )
 
         client = SolidWorksClient()
 
@@ -275,8 +315,10 @@ def main() -> int:
             except Exception:
                 pass
             prop = client.mutate.propose_feature_add(
-                sweep_seed, {"type": "sweep", "auto_pierce": True},
-                {"profile": prof, "path": pth})
+                sweep_seed,
+                {"type": "sweep", "auto_pierce": True},
+                {"profile": prof, "path": pth},
+            )
             pid = prop.get("proposal_id")
             results["sweep_propose"] = prop
             if not pid:
@@ -287,13 +329,18 @@ def main() -> int:
                 results["sweep_dry_run"], results["sweep_commit"] = dry, com
                 nb, vol = _body_stats(sweep_seed)
                 results["sweep_bodies"], results["sweep_vol_mm3"] = nb, vol
-                gate("sweep_lifecycle",
-                     bool(prop.get("ok")) and bool(dry.get("ok")) and bool(com.get("ok"))
-                     and nb >= 1 and vol > 0,
-                     f"propose={prop.get('ok')} dry_run={dry.get('ok')} "
-                     f"commit={com.get('ok')} bodies={nb} vol_mm3={vol} "
-                     f"(auto-pierce anchored the offset profile; routed via registry) "
-                     f"err={com.get('error') or dry.get('error')}")
+                gate(
+                    "sweep_lifecycle",
+                    bool(prop.get("ok"))
+                    and bool(dry.get("ok"))
+                    and bool(com.get("ok"))
+                    and nb >= 1
+                    and vol > 0,
+                    f"propose={prop.get('ok')} dry_run={dry.get('ok')} "
+                    f"commit={com.get('ok')} bodies={nb} vol_mm3={vol} "
+                    f"(auto-pierce anchored the offset profile; routed via registry) "
+                    f"err={com.get('error') or dry.get('error')}",
+                )
 
         # ── C: sweep_cut full lifecycle (volume drops) ──
         try:
@@ -313,24 +360,36 @@ def main() -> int:
             except Exception:
                 pass
             prop = client.mutate.propose_feature_add(
-                cut_seed, {"type": "sweep_cut"}, {"profile": cprof, "path": cpth})
+                cut_seed, {"type": "sweep_cut"}, {"profile": cprof, "path": cpth}
+            )
             pid = prop.get("proposal_id")
             results["sweepcut_propose"] = prop
             if not pid:
-                gate("sweep_cut_lifecycle", False, f"propose failed: {prop.get('error')}")
+                gate(
+                    "sweep_cut_lifecycle", False, f"propose failed: {prop.get('error')}"
+                )
             else:
                 dry = client.mutate.dry_run_feature_add(pid)
                 com = client.mutate.commit_feature_add(pid)
                 results["sweepcut_dry_run"], results["sweepcut_commit"] = dry, com
                 nb1, vol1 = _body_stats(cut_seed)
-                results["sweepcut_after_bodies"], results["sweepcut_after_vol_mm3"] = nb1, vol1
-                gate("sweep_cut_lifecycle",
-                     bool(prop.get("ok")) and bool(dry.get("ok")) and bool(com.get("ok"))
-                     and nb1 >= 1 and vol0 > 0 and vol1 < vol0,
-                     f"propose={prop.get('ok')} dry_run={dry.get('ok')} "
-                     f"commit={com.get('ok')} vol {vol0} -> {vol1} mm3 "
-                     f"(through-tunnel removed material; routed via registry) "
-                     f"err={com.get('error') or dry.get('error')}")
+                results["sweepcut_after_bodies"], results["sweepcut_after_vol_mm3"] = (
+                    nb1,
+                    vol1,
+                )
+                gate(
+                    "sweep_cut_lifecycle",
+                    bool(prop.get("ok"))
+                    and bool(dry.get("ok"))
+                    and bool(com.get("ok"))
+                    and nb1 >= 1
+                    and vol0 > 0
+                    and vol1 < vol0,
+                    f"propose={prop.get('ok')} dry_run={dry.get('ok')} "
+                    f"commit={com.get('ok')} vol {vol0} -> {vol1} mm3 "
+                    f"(through-tunnel removed material; routed via registry) "
+                    f"err={com.get('error') or dry.get('error')}",
+                )
     finally:
         try:
             sw.CloseAllDocuments(True)

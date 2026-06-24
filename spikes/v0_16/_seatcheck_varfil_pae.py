@@ -6,6 +6,7 @@ Non-destructive: own box in a temp .sldprt; proposals to a temp dir.
 
 Usage:  .venv-py310\Scripts\python spikes\v0_16\_seatcheck_varfil_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -125,7 +126,9 @@ def main() -> int:
 
         build = build_single_box(doc)
         report["build"] = build
-        feat = doc.FeatureByName(build.get("feature_name")) if build.get("built") else None
+        feat = (
+            doc.FeatureByName(build.get("feature_name")) if build.get("built") else None
+        )
         if feat is None:
             report["overall"] = "FAIL-BUILD"
             return _emit(report, 1)
@@ -148,10 +151,12 @@ def main() -> int:
         report["profile_part"] = path
 
         feature = {"type": "variable_radius_fillet"}
-        target = {"edges": [
-            {"ref": refs[0], "radius_mm": R0_MM},
-            {"ref": refs[1], "radius_mm": R1_MM},
-        ]}
+        target = {
+            "edges": [
+                {"ref": refs[0], "radius_mm": R0_MM},
+                {"ref": refs[1], "radius_mm": R1_MM},
+            ]
+        }
 
         prop = mutate.sw_propose_feature_add(path, feature, target)
         report["propose"] = {"ok": prop.get("ok"), "error": prop.get("error")}
@@ -161,26 +166,39 @@ def main() -> int:
             return _emit(report, 1)
 
         dry = mutate.sw_dry_run_feature_add(pid)
-        report["dry_run"] = {"ok": dry.get("ok"), "state": dry.get("state"),
-                             "result": dry.get("dry_run_result"), "error": dry.get("error")}
+        report["dry_run"] = {
+            "ok": dry.get("ok"),
+            "state": dry.get("state"),
+            "result": dry.get("dry_run_result"),
+            "error": dry.get("error"),
+        }
         if not dry.get("ok"):
             report["overall"] = "FAIL-DRYRUN"
             return _emit(report, 1)
 
         commit = mutate.sw_commit_feature_add(pid)
-        report["commit"] = {"ok": commit.get("ok"), "doc_saved": commit.get("doc_saved"),
-                            "error": commit.get("error")}
+        report["commit"] = {
+            "ok": commit.get("ok"),
+            "doc_saved": commit.get("doc_saved"),
+            "error": commit.get("error"),
+        }
         if not commit.get("ok"):
             report["overall"] = "FAIL-COMMIT"
             return _emit(report, 1)
 
         verify = _verify(sw, path)
         report["verify"] = verify
-        radii = sorted(round(float(r), 6) for r in verify.get("radii_m", [])
-                       if isinstance(r, (int, float)))
+        radii = sorted(
+            round(float(r), 6)
+            for r in verify.get("radii_m", [])
+            if isinstance(r, (int, float))
+        )
         expected = sorted({round(R0_MM / 1000, 6), round(R1_MM / 1000, 6)})
-        ok = (verify.get("has_fillet1") and verify.get("fillet_items_count") == 2
-              and radii == expected)
+        ok = (
+            verify.get("has_fillet1")
+            and verify.get("fillet_items_count") == 2
+            and radii == expected
+        )
         report["overall"] = "PASS" if ok else "PARTIAL"
         return _emit(report, 0 if ok else 2)
     finally:

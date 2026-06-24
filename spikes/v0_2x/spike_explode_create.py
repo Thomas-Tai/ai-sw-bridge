@@ -1,6 +1,7 @@
 """
 Find explode step creation method.
 """
+
 import pythoncom
 from win32com.client import gencache, GetActiveObject, dynamic
 import winreg
@@ -8,6 +9,7 @@ import os
 import re
 
 SW_LIBID = "{83A33D31-27C5-11CE-BFD4-00400513BB57}"
+
 
 def _sw_tlb_path() -> str | None:
     try:
@@ -34,6 +36,7 @@ def _sw_tlb_path() -> str | None:
                 continue
     return None
 
+
 def find_creation_method():
     pythoncom.CoInitialize()
     try:
@@ -49,47 +52,51 @@ def find_creation_method():
         with open(gen_file, "r") as f:
             content = f.read()
 
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Searching for explode STEP creation methods:")
-        print("="*80)
+        print("=" * 80)
 
         # Find lines containing CreateExplode or AddExplode
-        for match in re.finditer(r".*(CreateExplode|AddExplode|NewExplode|InsertExplode).*", content):
+        for match in re.finditer(
+            r".*(CreateExplode|AddExplode|NewExplode|InsertExplode).*", content
+        ):
             line = match.group()
             print(f"  {line.strip()}")
 
         # Also search for GetExplodeStepCount and IGetExplodeStep
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Explode step access methods:")
-        print("="*80)
+        print("=" * 80)
         for match in re.finditer(r".*(GetExplodeStep|IGetExplodeStep).*", content):
             line = match.group()
             print(f"  {line.strip()}")
 
         # Search for ExplodeDistance setter
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("ExplodeDistance property:")
-        print("="*80)
+        print("=" * 80)
         for match in re.finditer(r".*ExplodeDistance.*", content):
             line = match.group()
             print(f"  {line.strip()}")
 
         # Search for SetComponents on IExplodeStep
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("SetComponents method:")
-        print("="*80)
+        print("=" * 80)
         for match in re.finditer(r".*SetComponents.*", content):
             line = match.group()
-            if "Explode" in content[max(0, match.start()-100):match.end()+100]:
+            if "Explode" in content[max(0, match.start() - 100) : match.end() + 100]:
                 print(f"  {line.strip()}")
 
         # Now runtime probe for creation method on IConfiguration
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Runtime IDispatch probe on Configuration:")
-        print("="*80)
+        print("=" * 80)
 
         sw = dynamic.Dispatch("SldWorks.Application")
-        template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        template = (
+            r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        )
         asm = sw.NewDocument(template, 0, 0, 0)
 
         if asm:
@@ -106,10 +113,16 @@ def find_creation_method():
             if config:
                 # Probe config for explode step creation
                 config_methods = [
-                    "CreateExplodeStep", "AddExplodeStep", "NewExplodeStep",
-                    "InsertExplodeStep", "GetExplodeStepCount", "IGetExplodeStep",
-                    "GetFirstExplodeStep", "GetNextExplodeStep",
-                    "GetExplodeSteps", "IGetExplodeSteps",
+                    "CreateExplodeStep",
+                    "AddExplodeStep",
+                    "NewExplodeStep",
+                    "InsertExplodeStep",
+                    "GetExplodeStepCount",
+                    "IGetExplodeStep",
+                    "GetFirstExplodeStep",
+                    "GetNextExplodeStep",
+                    "GetExplodeSteps",
+                    "IGetExplodeSteps",
                 ]
 
                 print("\n  IConfiguration methods probe:")
@@ -139,8 +152,12 @@ def find_creation_method():
 
             # Also check assembly directly for step creation
             asm_step_methods = [
-                "CreateExplodeStep", "AddExplodeStep", "NewExplodeStep",
-                "InsertExplodeStep", "GetExplodeStepCount", "IGetExplodeStep",
+                "CreateExplodeStep",
+                "AddExplodeStep",
+                "NewExplodeStep",
+                "InsertExplodeStep",
+                "GetExplodeStepCount",
+                "IGetExplodeStep",
             ]
             print("\n  IAssemblyDoc step methods probe:")
             for name in asm_step_methods:

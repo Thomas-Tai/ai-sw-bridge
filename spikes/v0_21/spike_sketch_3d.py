@@ -17,6 +17,7 @@ the exact failure) and fail-closed — do not fake a pass.
 Prereq: SOLIDWORKS 2024 SP1 running with an open session.
 Usage:  <main-venv>\\python spikes\\v0_21\\spike_sketch_3d.py
 """
+
 from __future__ import annotations
 
 import json
@@ -138,13 +139,15 @@ def _probe_insert3d_sketch_funcdesc() -> dict[str, Any]:
             fd = ti.GetFuncDesc(i)
             names = ti.GetNames(fd[0], fd[6] + 1)  # memid, cParams+1
             if names and "Insert3DSketch" in names:
-                found.append({
-                    "name": names[0],
-                    "dispid": fd[0],
-                    "invoke_kind": fd[3],  # INVOKE_FUNC / INVOKE_PROPERTYGET / etc
-                    "cParams": fd[6],
-                    "paramTypes": [str(p) for p in (fd[7] if fd[7] else [])],
-                })
+                found.append(
+                    {
+                        "name": names[0],
+                        "dispid": fd[0],
+                        "invoke_kind": fd[3],  # INVOKE_FUNC / INVOKE_PROPERTYGET / etc
+                        "cParams": fd[6],
+                        "paramTypes": [str(p) for p in (fd[7] if fd[7] else [])],
+                    }
+                )
         if found:
             rec["status"] = "FOUND"
             rec["funcdescs"] = found
@@ -213,14 +216,20 @@ def _probe_3d_sketch_materialize(sw: Any) -> dict[str, Any]:
             a, b = _3D_POINTS_M[i], _3D_POINTS_M[i + 1]
             try:
                 seg = sm.CreateLine(a[0], a[1], a[2], b[0], b[1], b[2])
-                segments_created.append({
-                    "idx": i, "result_type": type(seg).__name__,
-                    "is_none": seg is None,
-                })
+                segments_created.append(
+                    {
+                        "idx": i,
+                        "result_type": type(seg).__name__,
+                        "is_none": seg is None,
+                    }
+                )
             except Exception as e_seg:  # noqa: BLE001
-                segments_created.append({
-                    "idx": i, "error": repr(e_seg),
-                })
+                segments_created.append(
+                    {
+                        "idx": i,
+                        "error": repr(e_seg),
+                    }
+                )
         rec["segments_created"] = segments_created
 
         after = _seg_count(doc)
@@ -463,19 +472,19 @@ def _probe_sweep_on_3d_path(sw: Any) -> dict[str, Any]:
                 win32com.client.VARIANT(pythoncom.VT_DISPATCH, None),
             )
             sweep_result = fm.InsertProtrusionSwept3(
-                True,   # bPropagateFeature
+                True,  # bPropagateFeature
                 False,  # bForceStartToMatchProfileTangent
-                0,      # nStartConditionType
-                0.0,    # dStartValue
-                0,      # nEndConditionType
-                0.0,    # dEndValue
+                0,  # nStartConditionType
+                0.0,  # dStartValue
+                0,  # nEndConditionType
+                0.0,  # dEndValue
                 False,  # bTwist
-                0.0,    # dTwistAngle
+                0.0,  # dTwistAngle
                 False,  # bReverseTwist
                 False,  # bMergeResult
                 False,  # bUseFeatureScope
                 False,  # bUseAutoSelect
-                0,      # nPathAlignmentType
+                0,  # nPathAlignmentType
             )
         except Exception as e_sweep:  # noqa: BLE001
             sweep_error = repr(e_sweep)

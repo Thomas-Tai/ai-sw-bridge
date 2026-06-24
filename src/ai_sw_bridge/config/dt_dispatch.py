@@ -115,9 +115,7 @@ def insert_design_table(
     volumes = _measure_config_volumes(doc, dt_spec.config_names)
 
     # Step 4: Build results with discrimination check
-    distinct_vols = sorted(set(
-        round(v, 1) for v in volumes.values() if v is not None
-    ))
+    distinct_vols = sorted(set(round(v, 1) for v in volumes.values() if v is not None))
     discriminated = len(distinct_vols) >= 2
 
     results: list[ConfigResult] = []
@@ -129,8 +127,7 @@ def insert_design_table(
         error = None
         if not has_config:
             error = (
-                f"config {row.config_name!r} not found after "
-                f"design table insertion"
+                f"config {row.config_name!r} not found after " f"design table insertion"
             )
         elif vol is None:
             error = f"volume measurement failed for {row.config_name!r}"
@@ -141,12 +138,14 @@ def insert_design_table(
                 f"did not drive geometric distinction"
             )
 
-        results.append(ConfigResult(
-            variant=row.config_name,
-            ok=ok,
-            volume_mm3=vol,
-            error=error,
-        ))
+        results.append(
+            ConfigResult(
+                variant=row.config_name,
+                ok=ok,
+                volume_mm3=vol,
+                error=error,
+            )
+        )
 
     # Human stream
     for r in results:
@@ -212,16 +211,12 @@ def _populate_design_table(
     except AttributeError:
         return {
             "ok": False,
-            "error": (
-                "InsertFamilyTableNew not found on IModelDoc2"
-            ),
+            "error": ("InsertFamilyTableNew not found on IModelDoc2"),
         }
     except Exception as exc:
         return {
             "ok": False,
-            "error": (
-                f"InsertFamilyTableNew raised {type(exc).__name__}: {exc}"
-            ),
+            "error": (f"InsertFamilyTableNew raised {type(exc).__name__}: {exc}"),
         }
 
     try:
@@ -265,27 +260,21 @@ def _populate_design_table(
         for i, row in enumerate(dt_spec.rows):
             ws.Cells(3 + i, 1).Value = row.config_name
             for j, col in enumerate(dt_spec.columns):
-                ws.Cells(3 + i, 2 + j).Value = row.values.get(
-                    col.name, ""
-                )
+                ws.Cells(3 + i, 2 + j).Value = row.values.get(col.name, "")
 
         try:
             dt.UpdateTable(2, True)
         except Exception as exc:
             return {
                 "ok": False,
-                "error": (
-                    f"UpdateTable raised {type(exc).__name__}: {exc}"
-                ),
+                "error": (f"UpdateTable raised {type(exc).__name__}: {exc}"),
             }
         try:
             dt.UpdateModel()
         except Exception as exc:
             return {
                 "ok": False,
-                "error": (
-                    f"UpdateModel raised {type(exc).__name__}: {exc}"
-                ),
+                "error": (f"UpdateModel raised {type(exc).__name__}: {exc}"),
             }
         try:
             dt.Detach()
@@ -298,8 +287,7 @@ def _populate_design_table(
         return {
             "ok": False,
             "error": (
-                f"design table population raised "
-                f"{type(exc).__name__}: {exc}"
+                f"design table population raised " f"{type(exc).__name__}: {exc}"
             ),
         }
 

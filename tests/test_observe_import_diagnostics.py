@@ -41,7 +41,9 @@ class _FakeBody:
     """IBody2 stand-in: Check3 is a PROPERTY returning IFaultEntity (real form);
     set ``check3_raises`` to exercise the fail-soft path."""
 
-    def __init__(self, codes: list[int] | None = None, *, check3_raises: bool = False) -> None:
+    def __init__(
+        self, codes: list[int] | None = None, *, check3_raises: bool = False
+    ) -> None:
         self._fault = _FakeFault(codes or [])
         self._raises = check3_raises
 
@@ -82,8 +84,9 @@ class _FakeDoc:
             return tuple(self._sheets)
         return ()
 
-    def ImportDiagnosis(self, close_gaps: bool, remove_faces: bool,
-                        fix_faces: bool, options: int) -> int:
+    def ImportDiagnosis(
+        self, close_gaps: bool, remove_faces: bool, fix_faces: bool, options: int
+    ) -> int:
         self.import_diag_calls.append((close_gaps, remove_faces, fix_faces, options))
         if self._import_raises:
             raise RuntimeError("ImportDiagnosis boom")
@@ -101,6 +104,7 @@ def patched(monkeypatch):
         monkeypatch.setattr(idiag, "get_sw_app", lambda: object())
         monkeypatch.setattr(idiag, "get_active_doc", lambda sw: doc)
         monkeypatch.setattr(idiag, "resolve", _fake_resolve)
+
     return _apply
 
 
@@ -130,17 +134,24 @@ class TestFaultEnumeration:
         assert r["clean"] is False
         assert r["total_fault_count"] == 2
         assert r["faults_by_code"] == {
-            "swFaceSelfIntersecting": 1, "swBodyInsideOut": 1,
+            "swFaceSelfIntersecting": 1,
+            "swBodyInsideOut": 1,
         }
         assert r["per_body"][0]["body_kind"] == "solid"
         assert r["per_body"][0]["fault_count"] == 2
-        assert set(r["per_body"][0]["codes"]) == {"swFaceSelfIntersecting", "swBodyInsideOut"}
+        assert set(r["per_body"][0]["codes"]) == {
+            "swFaceSelfIntersecting",
+            "swBodyInsideOut",
+        }
 
     def test_faults_aggregated_across_bodies(self, patched):
         patched(_FakeDoc(solids=[_FakeBody([3]), _FakeBody([3, 21])]))
         r = run()
         assert r["total_fault_count"] == 3
-        assert r["faults_by_code"] == {"swBodyInsideOut": 2, "swFaceSelfIntersecting": 1}
+        assert r["faults_by_code"] == {
+            "swBodyInsideOut": 2,
+            "swFaceSelfIntersecting": 1,
+        }
         assert r["clean"] is False
 
 

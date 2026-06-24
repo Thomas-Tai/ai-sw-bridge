@@ -23,9 +23,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "assembly_edit_pae.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "assembly_edit_pae.json"
 
 results: dict[str, Any] = {
     "pae": "w15_assembly_edit",
@@ -72,16 +70,26 @@ def run() -> str:
     PART_B = str(_tmp / f"w15_edit_{_ts}_b.SLDPRT")
 
     for label, path, w in [
-        ("a", PART_A, 40.0), ("b", PART_B, 30.0),
+        ("a", PART_A, 40.0),
+        ("b", PART_B, 30.0),
     ]:
         spec = {
             "schema_version": 1,
             "name": f"Edit{label.upper()}",
             "features": [
-                {"type": "sketch_rectangle_on_plane", "name": "SK",
-                 "plane": "Front", "width": w, "height": 20.0},
-                {"type": "boss_extrude_blind", "name": "EX",
-                 "sketch": "SK", "depth": 10.0},
+                {
+                    "type": "sketch_rectangle_on_plane",
+                    "name": "SK",
+                    "plane": "Front",
+                    "width": w,
+                    "height": 20.0,
+                },
+                {
+                    "type": "boss_extrude_blind",
+                    "name": "EX",
+                    "sketch": "SK",
+                    "depth": 10.0,
+                },
             ],
         }
         r = part_build(spec, save_as=path, save_format="current", no_dim=True)
@@ -113,20 +121,22 @@ def run() -> str:
     ASM_PATH = str(_tmp / f"w15_edit_{_ts}.SLDASM")
 
     p = sw_propose_assembly(initial_spec)
-    gate("initial_propose", p.get("ok", False),
-         f"pid={p.get('proposal_id')}")
+    gate("initial_propose", p.get("ok", False), f"pid={p.get('proposal_id')}")
 
     d = sw_dry_run_assembly(p["proposal_id"])
     gate("initial_dry_run", d.get("ok", False))
 
     c = sw_commit_assembly(p["proposal_id"], ASM_PATH)
-    gate("initial_commit", c.get("ok", False),
-         f"components={c.get('component_count')}, "
-         f"mates={c.get('mate_count')}")
+    gate(
+        "initial_commit",
+        c.get("ok", False),
+        f"components={c.get('component_count')}, " f"mates={c.get('mate_count')}",
+    )
 
     manifest_path = c.get("manifest_path")
-    gate("initial_manifest", manifest_path is not None
-         and os.path.isfile(manifest_path))
+    gate(
+        "initial_manifest", manifest_path is not None and os.path.isfile(manifest_path)
+    )
 
     if not c.get("ok") or not manifest_path:
         save_results()
@@ -144,8 +154,7 @@ def run() -> str:
     }
 
     edit1 = sw_edit_assembly(manifest_path, add_mate_op)
-    gate("edit1_propose", edit1.get("ok", False),
-         f"pid={edit1.get('proposal_id')}")
+    gate("edit1_propose", edit1.get("ok", False), f"pid={edit1.get('proposal_id')}")
 
     if not edit1.get("ok"):
         results["edit1_error"] = edit1.get("error")
@@ -156,26 +165,28 @@ def run() -> str:
     gate("edit1_dry_run", d1.get("ok", False))
 
     c1 = sw_commit_assembly(edit1["proposal_id"], ASM_PATH)
-    gate("edit1_commit", c1.get("ok", False),
-         f"mates={c1.get('mate_count')}")
+    gate("edit1_commit", c1.get("ok", False), f"mates={c1.get('mate_count')}")
 
     # --- Verify edit 1: new mate exists + solved ---
     print("\n--- Verify edit 1 ---")
     m1_path = c1.get("manifest_path")
-    gate("edit1_manifest", m1_path is not None
-         and os.path.isfile(m1_path))
+    gate("edit1_manifest", m1_path is not None and os.path.isfile(m1_path))
 
     if m1_path:
         reloaded = AssemblyManifest.load(Path(m1_path))
         edited_spec = reloaded.to_spec()
-        gate("edit1_lossless",
-             edited_spec == edit1.get("spec", {}),
-             "reloaded spec matches edited spec")
+        gate(
+            "edit1_lossless",
+            edited_spec == edit1.get("spec", {}),
+            "reloaded spec matches edited spec",
+        )
 
         # Check the edited spec has 2 mates
-        gate("edit1_two_mates",
-             len(edited_spec.get("mates", [])) == 2,
-             f"mates={len(edited_spec.get('mates', []))}")
+        gate(
+            "edit1_two_mates",
+            len(edited_spec.get("mates", [])) == 2,
+            f"mates={len(edited_spec.get('mates', []))}",
+        )
 
     # Verify mates on the live assembly
     from ai_sw_bridge.com.earlybind import typed
@@ -194,15 +205,18 @@ def run() -> str:
     if asm_doc:
         try:
             vm = verify_mates(asm_doc, mod=mod)
-            gate("edit1_verify_mates",
-                 len(vm) == 2 and all(m.get("solved") for m in vm),
-                 f"mates={len(vm)}, "
-                 f"solved={sum(1 for m in vm if m.get('solved'))}")
+            gate(
+                "edit1_verify_mates",
+                len(vm) == 2 and all(m.get("solved") for m in vm),
+                f"mates={len(vm)}, " f"solved={sum(1 for m in vm if m.get('solved'))}",
+            )
 
             mate_types = [m["type"] for m in vm]
-            gate("edit1_parallel_mate_exists",
-                 "MateParallel" in mate_types,
-                 f"types={mate_types}")
+            gate(
+                "edit1_parallel_mate_exists",
+                "MateParallel" in mate_types,
+                f"types={mate_types}",
+            )
         finally:
             try:
                 t = asm_doc.GetTitle
@@ -218,33 +232,38 @@ def run() -> str:
     remove_op = {"op": "remove_mate", "index": 1}
 
     edit2 = sw_edit_assembly(m1_path, remove_op)
-    gate("edit2_propose", edit2.get("ok", False),
-         f"pid={edit2.get('proposal_id')}")
+    gate("edit2_propose", edit2.get("ok", False), f"pid={edit2.get('proposal_id')}")
 
     if edit2.get("ok"):
         d2 = sw_dry_run_assembly(edit2["proposal_id"])
         gate("edit2_dry_run", d2.get("ok", False))
 
         c2 = sw_commit_assembly(edit2["proposal_id"], ASM_PATH)
-        gate("edit2_commit", c2.get("ok", False),
-             f"mates={c2.get('mate_count')}")
+        gate("edit2_commit", c2.get("ok", False), f"mates={c2.get('mate_count')}")
 
         m2_path = c2.get("manifest_path")
         if m2_path:
             reloaded2 = AssemblyManifest.load(Path(m2_path))
             edited_spec2 = reloaded2.to_spec()
-            gate("edit2_lossless",
-                 edited_spec2 == edit2.get("spec", {}),
-                 "reloaded spec matches edited spec")
-            gate("edit2_one_mate",
-                 len(edited_spec2.get("mates", [])) == 1,
-                 f"mates={len(edited_spec2.get('mates', []))}")
+            gate(
+                "edit2_lossless",
+                edited_spec2 == edit2.get("spec", {}),
+                "reloaded spec matches edited spec",
+            )
+            gate(
+                "edit2_one_mate",
+                len(edited_spec2.get("mates", [])) == 1,
+                f"mates={len(edited_spec2.get('mates', []))}",
+            )
 
     # --- Overall ---
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL_GREEN", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
-         f"{len(results['gates'])} gates pass")
+    gate(
+        "OVERALL_GREEN",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
+        f"{len(results['gates'])} gates pass",
+    )
 
     return "GREEN" if all_pass else "PARTIAL"
 

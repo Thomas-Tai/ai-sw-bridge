@@ -13,6 +13,7 @@ float. P1/P2 are the centerline endpoints; P3 is the width-defining point.
 This sweeps creationType x lengthType to nail the straight-slot combo.
 Non-destructive: own blank Parts, never saves, closes own docs.
 """
+
 from __future__ import annotations
 
 import json
@@ -54,7 +55,9 @@ def _seg_count(doc: Any) -> int:
         return 1
 
 
-def _sweep(sw: Any, label: str, candidates: list[tuple[str, Callable[[Any, Any], Any]]]) -> dict[str, Any]:
+def _sweep(
+    sw: Any, label: str, candidates: list[tuple[str, Callable[[Any, Any], Any]]]
+) -> dict[str, Any]:
     template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_PART)
     attempts: list[dict[str, Any]] = []
     overall = "FAIL"
@@ -106,17 +109,31 @@ def run() -> dict[str, Any]:
     x3, y3, z3 = 0.015, W / 2.0, 0.0
 
     cands: list[tuple[str, Callable[[Any, Any], Any]]] = []
-    for ct in (0, 1):          # swSketchSlotCreationType_e
-        for lt in (0, 1, 2):   # swSketchSlotLengthType_e
-            cands.append((
-                f"CreateSketchSlot(ct={ct}, lt={lt}, W, P1,P2,P3, AddDim=False, CL=True) [14 scalars]",
-                (lambda c, l: lambda doc, sm: sm.CreateSketchSlot(
-                    int(c), int(l), float(W),
-                    float(x1), float(y1), float(z1),
-                    float(x2), float(y2), float(z2),
-                    float(x3), float(y3), float(z3),
-                    False, True))(ct, lt),
-            ))
+    for ct in (0, 1):  # swSketchSlotCreationType_e
+        for lt in (0, 1, 2):  # swSketchSlotLengthType_e
+            cands.append(
+                (
+                    f"CreateSketchSlot(ct={ct}, lt={lt}, W, P1,P2,P3, AddDim=False, CL=True) [14 scalars]",
+                    (
+                        lambda c, l: lambda doc, sm: sm.CreateSketchSlot(
+                            int(c),
+                            int(l),
+                            float(W),
+                            float(x1),
+                            float(y1),
+                            float(z1),
+                            float(x2),
+                            float(y2),
+                            float(z2),
+                            float(x3),
+                            float(y3),
+                            float(z3),
+                            False,
+                            True,
+                        )
+                    )(ct, lt),
+                )
+            )
     report["sketch_slot"] = _sweep(sw, "sketch_slot", cands)
     report["overall"] = report["sketch_slot"]["overall"]
     return report

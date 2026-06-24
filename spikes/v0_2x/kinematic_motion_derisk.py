@@ -26,6 +26,7 @@ LEG 2 — DRAG PROBE (characterize the interactive route). Dump IAssemblyDoc mem
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/kinematic_motion_derisk.py
 """
+
 from __future__ import annotations
 
 import json
@@ -69,8 +70,14 @@ def _cube_spec(name: str) -> dict[str, Any]:
         "schema_version": 1,
         "name": name,
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "center": {"x": 0.0, "y": 0.0}, "width": 40.0, "height": 40.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "width": 40.0,
+                "height": 40.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 40.0},
         ],
     }
@@ -88,7 +95,7 @@ def _drive_distance(
     asm_doc: Any, mate_feat: Any, mate_name: str, value_m: float, mod: Any
 ) -> str:
     """Set the distance mate's driving value to value_m, rebuild. Returns the
-    route that took ('parameter' / 'modifydefinition') or 'FAIL:...'. """
+    route that took ('parameter' / 'modifydefinition') or 'FAIL:...'."""
     # Route 1: the mate DIMENSION (the classic parametric drive).
     try:
         dim = asm_doc.Parameter(f"D1@{mate_name}")
@@ -160,15 +167,19 @@ def _leg1_parametric_sweep(sw: Any, mod: Any) -> dict[str, Any]:
         vol = 0.0
         for it in inter.get("interferences", []) or []:
             vol += float(it.get("interference_volume_mm3", 0.0) or 0.0)
-        sweep.append({
-            "distance_mm": d_mm,
-            "drive_route": route,
-            "interference_count": inter.get("interference_count", 0),
-            "interference_volume_mm3": round(vol, 1),
-            "expected_overlap_mm3": round(1600.0 * max(0.0, 40.0 - d_mm), 1),
-        })
-        print(f"[kin] d={d_mm:>4} via {route:<16} -> count={sweep[-1]['interference_count']} "
-              f"vol={sweep[-1]['interference_volume_mm3']} (exp {sweep[-1]['expected_overlap_mm3']})")
+        sweep.append(
+            {
+                "distance_mm": d_mm,
+                "drive_route": route,
+                "interference_count": inter.get("interference_count", 0),
+                "interference_volume_mm3": round(vol, 1),
+                "expected_overlap_mm3": round(1600.0 * max(0.0, 40.0 - d_mm), 1),
+            }
+        )
+        print(
+            f"[kin] d={d_mm:>4} via {route:<16} -> count={sweep[-1]['interference_count']} "
+            f"vol={sweep[-1]['interference_volume_mm3']} (exp {sweep[-1]['expected_overlap_mm3']})"
+        )
     r["sweep"] = sweep
     r["drive_routes_used"] = sorted({s["drive_route"] for s in sweep})
 
@@ -178,10 +189,12 @@ def _leg1_parametric_sweep(sw: Any, mod: Any) -> dict[str, Any]:
     v_at_0 = vols[0]
     v_at_40plus = vols[-2] + vols[-1]  # d=40 and d=50 both ~0
     responds = (
-        v_at_0 > 20000.0                       # real overlap at d=0
-        and v_at_40plus < 1000.0               # cleared by d>=40
-        and all(vols[i] >= vols[i + 1] - 50.0  # monotone non-increasing (eps)
-                for i in range(len(vols) - 1))
+        v_at_0 > 20000.0  # real overlap at d=0
+        and v_at_40plus < 1000.0  # cleared by d>=40
+        and all(
+            vols[i] >= vols[i + 1] - 50.0  # monotone non-increasing (eps)
+            for i in range(len(vols) - 1)
+        )
     )
     r["volume_responds_to_position"] = bool(responds)
     r["status"] = "GREEN" if responds else "FROZEN_NO_DRIVE"
@@ -194,6 +207,7 @@ def _leg2_drag_probe(sw: Any, mod: Any) -> dict[str, Any]:
     r: dict[str, Any] = {"leg": "drag_probe", "status": "UNKNOWN"}
     try:
         import glob
+
         path = None
         for p in (r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\sldworks.tlb",):
             if Path(p).exists():
@@ -215,8 +229,13 @@ def _leg2_drag_probe(sw: Any, mod: Any) -> dict[str, Any]:
                     nm = ti.GetNames(fd.memid)
                     if nm:
                         members.append(nm[0])
-        hits = sorted({m for m in members
-                       if any(k in m for k in ("Drag", "Move", "Motion", "GetDrag"))})
+        hits = sorted(
+            {
+                m
+                for m in members
+                if any(k in m for k in ("Drag", "Move", "Motion", "GetDrag"))
+            }
+        )
         r["assembly_drive_members"] = hits
         r["status"] = "DUMPED"
     except Exception as exc:  # noqa: BLE001
@@ -235,9 +254,13 @@ def main() -> int:
         except Exception:  # noqa: BLE001
             pass
         result["legs"]["drag_probe"] = _leg2_drag_probe(sw, mod)
-        print(f"[kin] drag_probe -> {result['legs']['drag_probe'].get('assembly_drive_members')}")
+        print(
+            f"[kin] drag_probe -> {result['legs']['drag_probe'].get('assembly_drive_members')}"
+        )
         result["legs"]["parametric_sweep"] = _leg1_parametric_sweep(sw, mod)
-        print(f"[kin] parametric_sweep -> {result['legs']['parametric_sweep'].get('status')}")
+        print(
+            f"[kin] parametric_sweep -> {result['legs']['parametric_sweep'].get('status')}"
+        )
         try:
             sw.CloseAllDocuments(True)
         except Exception:  # noqa: BLE001

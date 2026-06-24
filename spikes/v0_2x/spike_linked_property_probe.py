@@ -42,11 +42,13 @@ if _SRC not in sys.path:
 
 from _feature_spike_fixtures import _new_part, _select_feature, connect  # noqa: E402
 
-RESULTS_PATH = _REPO_ROOT / "spikes" / "v0_2x" / "_results" / "linked_property_probe.json"
+RESULTS_PATH = (
+    _REPO_ROOT / "spikes" / "v0_2x" / "_results" / "linked_property_probe.json"
+)
 
 _BLIND = 0
-_TEXT = 30       # swCustomInfoText
-_REPLACE = 1     # swCustomPropertyReplaceValue
+_TEXT = 30  # swCustomInfoText
+_REPLACE = 1  # swCustomPropertyReplaceValue
 
 _FILENAME = "W71_Link.SLDPRT"
 
@@ -60,10 +62,29 @@ def build_cube(sw: Any, path: str) -> bool:
     doc.ClearSelection2(True)
     _select_feature(doc, "Sketch1")
     doc.FeatureManager.FeatureExtrusion2(
-        True, False, False, _BLIND, 0,
-        0.010, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        _BLIND,
+        0,
+        0.010,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     doc.ClearSelection2(True)
     err = doc.SaveAs3(path, 0, 0)
@@ -108,7 +129,9 @@ def run() -> dict[str, Any]:
         return result
 
     cpm = typed_qi(
-        model_doc.Extension.CustomPropertyManager(""), "ICustomPropertyManager", module=mod
+        model_doc.Extension.CustomPropertyManager(""),
+        "ICustomPropertyManager",
+        module=mod,
     )
     add_codes = {}
     for name, raw in candidates.items():
@@ -127,16 +150,24 @@ def run() -> dict[str, Any]:
     ret = tsw.OpenDoc6(path, 1, 1, "", 0, 0)
     model_doc2 = ret[0] if isinstance(ret, tuple) else ret
     cpm2 = typed_qi(
-        model_doc2.Extension.CustomPropertyManager(""), "ICustomPropertyManager", module=mod
+        model_doc2.Extension.CustomPropertyManager(""),
+        "ICustomPropertyManager",
+        module=mod,
     )
 
     any_resolved = False
     for name, raw in candidates.items():
-        entry: dict[str, Any] = {"name": name, "input": raw, "add_code": add_codes.get(name)}
+        entry: dict[str, Any] = {
+            "name": name,
+            "input": raw,
+            "add_code": add_codes.get(name),
+        }
         try:
             tup = cpm2.Get4(name, False)
             # pywin32 returns (resolvedFlag, ValOut, ResolvedValOut)
-            entry["get4_raw_tuple"] = [str(x) for x in tup] if isinstance(tup, tuple) else str(tup)
+            entry["get4_raw_tuple"] = (
+                [str(x) for x in tup] if isinstance(tup, tuple) else str(tup)
+            )
             if isinstance(tup, tuple) and len(tup) >= 3:
                 flag, val_out, resolved_out = tup[0], tup[1], tup[2]
                 entry["stored_value"] = val_out
@@ -160,7 +191,9 @@ def run() -> dict[str, Any]:
 
     result["any_zero_code_resolution"] = any_resolved
     result["overall"] = "RESOLVES" if any_resolved else "NO_RESOLVE"
-    resolved_names = [p["name"] for p in result["probes"] if p.get("ZERO_CODE_RESOLVES")]
+    resolved_names = [
+        p["name"] for p in result["probes"] if p.get("ZERO_CODE_RESOLVES")
+    ]
     result["finding"] = (
         f"zero-code link resolution: {'YES' if any_resolved else 'NO'}; "
         f"resolved={resolved_names}"
@@ -186,7 +219,9 @@ def main() -> int:
         except Exception:
             pass
         pythoncom.CoUninitialize()
-    payload = json.dumps(_scrub(result), indent=2, default=lambda o: f"<{type(o).__name__}>")
+    payload = json.dumps(
+        _scrub(result), indent=2, default=lambda o: f"<{type(o).__name__}>"
+    )
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     RESULTS_PATH.write_text(payload, encoding="utf-8")
     print(f"wrote {RESULTS_PATH}", file=sys.stderr)

@@ -196,14 +196,19 @@ def _is_e_nointerface(rec: dict[str, Any]) -> bool:
 # Box fixture (own document; mirrors spike_varfil._build_box)
 # ---------------------------------------------------------------------------
 
+
 def _build_box(doc: Any) -> dict[str, Any]:
     if not doc.SelectByID("Front Plane", "PLANE", 0.0, 0.0, 0.0):
         return {"built": False, "error": "could not select Front Plane"}
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-        BOX_W_M / 2, BOX_H_M / 2, 0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -211,9 +216,28 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)  # 23-arg
@@ -233,15 +257,14 @@ def _select_target_edge(doc: Any) -> dict[str, Any]:
         doc.ClearSelection2(True)
     except Exception:  # noqa: BLE001
         pass
-    rec, _ = _capture(
-        lambda: doc.SelectByID("", "EDGE", EDGE_X_M, EDGE_Y_M, EDGE_Z_M)
-    )
+    rec, _ = _capture(lambda: doc.SelectByID("", "EDGE", EDGE_X_M, EDGE_Y_M, EDGE_Z_M))
     return rec
 
 
 # ---------------------------------------------------------------------------
 # The morph probe — the heart of the spike
 # ---------------------------------------------------------------------------
+
 
 def _probe_morph(fm: Any, mod: Any, fillet_type: int) -> dict[str, Any]:
     """For one candidate swFilletType_e value: CreateDefinition → typed_qi
@@ -278,7 +301,9 @@ def _probe_morph(fm: Any, mod: Any, fillet_type: int) -> dict[str, Any]:
         out["_data"] = data  # popped before serialization
         out["_var"] = var
     elif _is_e_nointerface(var_rec):
-        out["note"] = "Initialize ran but object still rejects the variable IID (E_NOINTERFACE)"
+        out["note"] = (
+            "Initialize ran but object still rejects the variable IID (E_NOINTERFACE)"
+        )
     return out
 
 
@@ -296,8 +321,14 @@ def _probe_set_radii(var: Any) -> dict[str, Any]:
 
     array = (VARRAD_START_M, VARRAD_END_M)
     forms = (
-        ("method_SetVariableRadiusParameters", lambda: var.SetVariableRadiusParameters(array)),
-        ("prop_VariableRadiusParameters", lambda: setattr(var, "VariableRadiusParameters", array)),
+        (
+            "method_SetVariableRadiusParameters",
+            lambda: var.SetVariableRadiusParameters(array),
+        ),
+        (
+            "prop_VariableRadiusParameters",
+            lambda: setattr(var, "VariableRadiusParameters", array),
+        ),
     )
     attempts = []
     any_ok = False
@@ -316,6 +347,7 @@ def _probe_set_radii(var: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Top-level run
 # ---------------------------------------------------------------------------
+
 
 def run() -> dict[str, Any]:
     result: dict[str, Any] = {"binding": "hybrid early (com.earlybind.typed_qi)"}
@@ -444,6 +476,7 @@ def run() -> dict[str, Any]:
 # VBA oracle (early binding)
 # ---------------------------------------------------------------------------
 
+
 def emit_vba() -> str:
     return r"""' Spike v0.16 S-VARFIL-QI VBA oracle.
 ' Paste into a Part module with a 20x20x10 mm box on the Front Plane, press F5.
@@ -491,6 +524,7 @@ End Sub
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> int:
     p = argparse.ArgumentParser(

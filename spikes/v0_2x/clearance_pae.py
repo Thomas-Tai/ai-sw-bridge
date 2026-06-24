@@ -44,6 +44,7 @@ TOLERANCE_MM = 0.5
 
 def _find_asm_template() -> str | None:
     import glob
+
     for pat in [
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT",
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.asmdot",
@@ -53,12 +54,16 @@ def _find_asm_template() -> str | None:
     return None
 
 
-def _make_block_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, str | None]:
+def _make_block_part(
+    sw_typed: Any, mod: Any, path: str
+) -> tuple[Any | None, str | None]:
     """Create a 20mm cube part. Returns (doc, error)."""
     try:
         doc = sw_typed.NewDocument(
             r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.PRTDOT",
-            0, 0, 0,
+            0,
+            0,
+            0,
         )
         if doc is None:
             return None, "NewDocument(part) returned None"
@@ -72,13 +77,28 @@ def _make_block_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, st
         dt.ClearSelection2(True)
         dt.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
         feat = dt.FeatureManager.FeatureExtrusion2(
-            True, False, False, 0, 0,
-            BOX_SIZE_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOX_SIZE_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
             False,
         )
         if feat is None:
@@ -114,9 +134,12 @@ def _get_component_names(asm_doc: Any, mod: Any) -> list[str]:
 
 
 def _build_assembly(
-    sw_typed: Any, mod: Any,
-    part_path: str, asm_template: str,
-    gap_m: float, label: str,
+    sw_typed: Any,
+    mod: Any,
+    part_path: str,
+    asm_template: str,
+    gap_m: float,
+    label: str,
 ) -> tuple[Any, Any, list[str], str | None]:
     """Build a 2-component assembly with known gap.
 
@@ -145,7 +168,9 @@ def _build_assembly(
     if comp_b is None or isinstance(comp_b, int):
         return None, None, [], "AddComponent4(B) returned None"
 
-    print(f"  [{label}] Placed A@origin, B@{offset_m*1000:.0f}mm (gap={gap_m*1000:.0f}mm)")
+    print(
+        f"  [{label}] Placed A@origin, B@{offset_m*1000:.0f}mm (gap={gap_m*1000:.0f}mm)"
+    )
 
     doc_typed = typed(asm_doc, "IModelDoc2", module=mod)
     try:
@@ -219,8 +244,12 @@ def main() -> None:
         # ── GAP-10 assembly ─────────────────────────────────────────────
         print("[PAE] Building GAP-10 assembly …")
         asm1_doc, asm1_typed, names1, err1 = _build_assembly(
-            sw_typed, mod, part_path, asm_templ,
-            GAP_10MM_M, "gap10mm",
+            sw_typed,
+            mod,
+            part_path,
+            asm_templ,
+            GAP_10MM_M,
+            "gap10mm",
         )
         if err1:
             result["errors"].append(f"gap10mm_build: {err1}")
@@ -244,14 +273,20 @@ def main() -> None:
             if d1 is not None and abs(d1 - 10.0) < TOLERANCE_MM:
                 result["gap_10mm"]["ok"] = True
 
-        print(f"[PAE] GAP-10: measured={result['gap_10mm']['measured_mm']}mm, "
-              f"ok={result['gap_10mm']['ok']}, error={result['gap_10mm']['error']}")
+        print(
+            f"[PAE] GAP-10: measured={result['gap_10mm']['measured_mm']}mm, "
+            f"ok={result['gap_10mm']['ok']}, error={result['gap_10mm']['error']}"
+        )
 
         # ── GAP-25 assembly ─────────────────────────────────────────────
         print("[PAE] Building GAP-25 assembly …")
         asm2_doc, asm2_typed, names2, err2 = _build_assembly(
-            sw_typed, mod, part_path, asm_templ,
-            GAP_25MM_M, "gap25mm",
+            sw_typed,
+            mod,
+            part_path,
+            asm_templ,
+            GAP_25MM_M,
+            "gap25mm",
         )
         if err2:
             result["errors"].append(f"gap25mm_build: {err2}")
@@ -274,8 +309,10 @@ def main() -> None:
             if d2 is not None and abs(d2 - 25.0) < TOLERANCE_MM:
                 result["gap_25mm"]["ok"] = True
 
-        print(f"[PAE] GAP-25: measured={result['gap_25mm']['measured_mm']}mm, "
-              f"ok={result['gap_25mm']['ok']}, error={result['gap_25mm']['error']}")
+        print(
+            f"[PAE] GAP-25: measured={result['gap_25mm']['measured_mm']}mm, "
+            f"ok={result['gap_25mm']['ok']}, error={result['gap_25mm']['error']}"
+        )
 
         # ── Part doc → fail-closed ──────────────────────────────────────
         # Call sw_get_clearance on part_doc directly — should fail with typed error
@@ -283,26 +320,31 @@ def main() -> None:
         try:
             part_result = sw_get_clearance(part_doc, "nonexistent_a", "nonexistent_b")
             result["part_doc_fail"]["error"] = part_result.get("error")
-            result["part_doc_fail"]["ok"] = (
-                not part_result.get("ok")
-                and "assembly document" in str(part_result.get("error", ""))
-            )
+            result["part_doc_fail"]["ok"] = not part_result.get(
+                "ok"
+            ) and "assembly document" in str(part_result.get("error", ""))
         except Exception as exc:
             result["part_doc_fail"]["error"] = f"exception: {exc!r}"
             result["part_doc_fail"]["ok"] = False
 
-        print(f"[PAE] Part doc: ok={result['part_doc_fail']['ok']}, "
-              f"error={result['part_doc_fail']['error']}")
+        print(
+            f"[PAE] Part doc: ok={result['part_doc_fail']['ok']}, "
+            f"error={result['part_doc_fail']['error']}"
+        )
 
         # ── GATES ───────────────────────────────────────────────────────
         d1 = result["gap_10mm"]["measured_mm"]
         d2 = result["gap_25mm"]["measured_mm"]
 
         gate1 = result["gap_10mm"]["ok"]
-        result["gates"].append(f"gap10mm_matches (==10.0mm +-0.5): {gate1} (measured={d1}mm)")
+        result["gates"].append(
+            f"gap10mm_matches (==10.0mm +-0.5): {gate1} (measured={d1}mm)"
+        )
 
         gate2 = result["gap_25mm"]["ok"]
-        result["gates"].append(f"gap25mm_matches (==25.0mm +-0.5): {gate2} (measured={d2}mm)")
+        result["gates"].append(
+            f"gap25mm_matches (==25.0mm +-0.5): {gate2} (measured={d2}mm)"
+        )
 
         gate3 = d1 is not None and d2 is not None and d1 != d2
         result["gates"].append(f"discrimination (d1 != d2): {gate3} ({d1} vs {d2})")
@@ -310,10 +352,7 @@ def main() -> None:
         gate4 = result["part_doc_fail"]["ok"]
         result["gates"].append(f"part_doc_fail_closed: {gate4}")
 
-        gate5 = (
-            not result["gap_10mm"]["error"]
-            and not result["gap_25mm"]["error"]
-        )
+        gate5 = not result["gap_10mm"]["error"] and not result["gap_25mm"]["error"]
         result["gates"].append(f"no_measurement_errors: {gate5}")
 
         if all([gate1, gate2, gate3, gate4, gate5]):

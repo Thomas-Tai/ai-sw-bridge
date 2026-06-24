@@ -26,6 +26,7 @@ from ai_sw_bridge.features.intersect import create_intersect
 # Fake COM objects
 # ---------------------------------------------------------------------------
 
+
 class _FakeBody:
     """Fake IBody2 — whole-body select is the body's OWN native Select."""
 
@@ -78,6 +79,7 @@ class _FakeDoc:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _wire(
     monkeypatch,
     *,
@@ -120,10 +122,16 @@ def _seq(values):
 # Registration gate — consistent with SPIKE_STATUS (survives UNFIRED→GREEN flip)
 # ---------------------------------------------------------------------------
 
+
 class TestRegistrationGate:
     def test_spike_status_is_a_known_sentinel(self) -> None:
         assert ix.SPIKE_STATUS in {
-            "GREEN", "UNFIRED", "UNRUN", "DEFERRED", "WALLED", "DORMANT",
+            "GREEN",
+            "UNFIRED",
+            "UNRUN",
+            "DEFERRED",
+            "WALLED",
+            "DORMANT",
         }
 
     def test_registration_matches_spike_status(self) -> None:
@@ -139,6 +147,7 @@ class TestRegistrationGate:
 # ---------------------------------------------------------------------------
 # Validation — runs before any COM mutation
 # ---------------------------------------------------------------------------
+
 
 class TestValidation:
     def test_feature_not_dict(self):
@@ -183,6 +192,7 @@ class TestValidation:
 # ---------------------------------------------------------------------------
 # Green path — 2 bodies → 3 regions → Sculpt feature, topology changed
 # ---------------------------------------------------------------------------
+
 
 class TestGreen:
     def test_basic_green(self, monkeypatch):
@@ -248,6 +258,7 @@ class TestGreen:
 # Region handling — the two-phase contract's failure modes
 # ---------------------------------------------------------------------------
 
+
 class TestRegions:
     def test_no_regions_fails(self, monkeypatch):
         _wire(monkeypatch)
@@ -271,6 +282,7 @@ class TestRegions:
 # ---------------------------------------------------------------------------
 # Ghost rejection — the anti-ghost crux
 # ---------------------------------------------------------------------------
+
 
 class TestGhostRejection:
     def test_no_topology_change_rejected(self, monkeypatch):
@@ -323,6 +335,7 @@ class TestGhostRejection:
 # Never raises / disjoint from built-ins
 # ---------------------------------------------------------------------------
 
+
 class TestNeverRaises:
     def test_none_inputs(self):
         for _ in range(5):
@@ -331,4 +344,5 @@ class TestNeverRaises:
 
     def test_kind_disjoint_from_builtins(self):
         from ai_sw_bridge.mutate import _SUPPORTED_FEATURE_TYPES
+
         assert "intersect" not in _SUPPORTED_FEATURE_TYPES

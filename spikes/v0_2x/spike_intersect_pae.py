@@ -19,6 +19,7 @@ Properties[3]).
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_intersect_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -57,7 +58,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -75,8 +78,30 @@ def _close_all(sw: Any) -> None:
 def _extrude(doc: Any, sketch: str, depth_m: float, *, merge: bool) -> None:
     fx._select_feature(doc, sketch)
     doc.FeatureManager.FeatureExtrusion2(
-        True, False, False, 0, 0, depth_m, 0.0, False, False, False, False,
-        0, 0, False, False, False, False, merge, True, True, 0, 0, False)
+        True,
+        False,
+        False,
+        0,
+        0,
+        depth_m,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0,
+        0,
+        False,
+        False,
+        False,
+        False,
+        merge,
+        True,
+        True,
+        0,
+        0,
+        False,
+    )
     doc.ClearSelection2(True)
 
 
@@ -110,10 +135,13 @@ def main() -> int:
     sw = w32.Dispatch("SldWorks.Application")
     _close_all(sw)
     try:
-        gate("facade_seam",
-             callable(ix.create_intersect)
-             and ix.SPIKE_STATUS in {"GREEN", "UNFIRED", "UNRUN", "DEFERRED", "WALLED", "DORMANT"},
-             f"SPIKE_STATUS={ix.SPIKE_STATUS}")
+        gate(
+            "facade_seam",
+            callable(ix.create_intersect)
+            and ix.SPIKE_STATUS
+            in {"GREEN", "UNFIRED", "UNRUN", "DEFERRED", "WALLED", "DORMANT"},
+            f"SPIKE_STATUS={ix.SPIKE_STATUS}",
+        )
 
         # B: no-merge — the probe-proven 2→3 / ΔVol=-8000 contract.
         _close_all(sw)
@@ -123,15 +151,20 @@ def main() -> int:
         ca, va = _measure(doc)
         d_vol = va - vb
         results["no_merge"] = {
-            "ok": ok, "note": note,
-            "count_before": cb, "count_after": ca,
-            "vol_before": vb, "vol_after": va, "d_vol": d_vol,
+            "ok": ok,
+            "note": note,
+            "count_before": cb,
+            "count_after": ca,
+            "vol_before": vb,
+            "vol_after": va,
+            "d_vol": d_vol,
         }
-        gate("no_merge",
-             bool(ok) and cb == 2 and ca == 3
-             and abs(d_vol - (-_OVERLAP_MM3)) < 1.0,
-             f"ok={ok} bodies {cb}→{ca} vol {vb:.1f}→{va:.1f} "
-             f"ΔVol={d_vol:+.1f} (expect -8000) note={note!r}")
+        gate(
+            "no_merge",
+            bool(ok) and cb == 2 and ca == 3 and abs(d_vol - (-_OVERLAP_MM3)) < 1.0,
+            f"ok={ok} bodies {cb}→{ca} vol {vb:.1f}→{va:.1f} "
+            f"ΔVol={d_vol:+.1f} (expect -8000) note={note!r}",
+        )
 
         # C: merge — OBSERVED only (not part of the proven contract).
         _close_all(sw)
@@ -140,12 +173,18 @@ def main() -> int:
         ok2, note2 = ix.create_intersect(doc2, {"merge": True}, {})
         ca2, va2 = _measure(doc2)
         results["merge_obs"] = {
-            "ok": ok2, "note": note2,
-            "count_before": cb2, "count_after": ca2,
-            "vol_before": vb2, "vol_after": va2, "d_vol": va2 - vb2,
+            "ok": ok2,
+            "note": note2,
+            "count_before": cb2,
+            "count_after": ca2,
+            "vol_before": vb2,
+            "vol_after": va2,
+            "d_vol": va2 - vb2,
         }
-        print(f"  [OBS ] merge: ok={ok2} bodies {cb2}→{ca2} "
-              f"vol {vb2:.1f}→{va2:.1f} note={note2!r}")
+        print(
+            f"  [OBS ] merge: ok={ok2} bodies {cb2}→{ca2} "
+            f"vol {vb2:.1f}→{va2:.1f} note={note2!r}"
+        )
     finally:
         _close_all(sw)
         pythoncom.CoUninitialize()

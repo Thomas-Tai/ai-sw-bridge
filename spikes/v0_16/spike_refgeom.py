@@ -61,7 +61,6 @@ Usage
     python spikes/v0_16/spike_refgeom.py --mode vba
 """
 
-
 from __future__ import annotations
 
 import argparse
@@ -96,7 +95,7 @@ SW_REFPLANE_INVALID = 0
 SW_REFPLANE_PARALLEL = 1
 SW_REFPLANE_PERPENDICULAR = 2
 SW_REFPLANE_COINCIDENT = 4
-SW_REFPLANE_OFFSET = 8            # swRefPlaneReferenceConstraint_Distance
+SW_REFPLANE_OFFSET = 8  # swRefPlaneReferenceConstraint_Distance
 SW_REFPLANE_ANGLE = 16
 SW_REFPLANE_TANGENT = 32
 SW_REFPLANE_PROJECT = 64
@@ -187,7 +186,11 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     part_template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_PART)
     part_doc = sw.NewDocument(part_template, 0, 0.0, 0.0)
     if part_doc is None:
-        return {**result, "overall": "FAIL", "reason": "NewDocument(part) returned None"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": "NewDocument(part) returned None",
+        }
 
     build = build_single_box(part_doc)
     result["build"] = build
@@ -206,7 +209,9 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     # 2a. Offset plane: offset from Front Plane.
     part_doc.SelectByID("Front Plane", "PLANE", 0.0, 0.0, 0.0)
     probes["ref_plane_offset"] = _capture(
-        lambda: fm.InsertRefPlane(SW_REFPLANE_OFFSET, 0.05, SW_REFPLANE_INVALID, 0, SW_REFPLANE_INVALID, 0),
+        lambda: fm.InsertRefPlane(
+            SW_REFPLANE_OFFSET, 0.05, SW_REFPLANE_INVALID, 0, SW_REFPLANE_INVALID, 0
+        ),
         "InsertRefPlane(offset from Front)",
     )
 
@@ -274,8 +279,12 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     # --- 6. Read back feature names ----------------------------------------
     feature_names: dict[str, Any] = {}
     for label in (
-        "Plane1", "Plane2", "Plane3", "Plane4",
-        "Axis1", "Axis2",
+        "Plane1",
+        "Plane2",
+        "Plane3",
+        "Plane4",
+        "Axis1",
+        "Axis2",
         "CoordSys1",
         "Point1",
     ):

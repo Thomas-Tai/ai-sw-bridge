@@ -22,7 +22,12 @@ from pathlib import Path
 from typing import Any
 
 from .face_resolver import resolve_component_face
-from .handlers import create_exploded_view, create_mate, mirror_components, place_components
+from .handlers import (
+    create_exploded_view,
+    create_mate,
+    mirror_components,
+    place_components,
+)
 from .storage import AssemblyManifest, ComponentInstance, sha256_of_file
 
 
@@ -59,15 +64,11 @@ def _load_part_spec(spec_path: str) -> dict[str, Any]:
     except json.JSONDecodeError as exc:
         raise ValueError(f"part_spec {spec_path!r}: invalid JSON: {exc}") from exc
     if not isinstance(data, dict):
-        raise ValueError(
-            f"part_spec {spec_path!r}: top-level value must be an object"
-        )
+        raise ValueError(f"part_spec {spec_path!r}: top-level value must be an object")
     try:
         _spec_validate(data, spec_path=p)
     except _SpecValidationError as exc:
-        raise ValueError(
-            f"part_spec {spec_path!r}: validation failed: {exc}"
-        ) from exc
+        raise ValueError(f"part_spec {spec_path!r}: validation failed: {exc}") from exc
     return data
 
 
@@ -173,9 +174,7 @@ def dry_run_assembly(
 
         if part_path is not None:
             if not os.path.isfile(part_path):
-                result["error"] = (
-                    f"component {cid!r}: file not found: {part_path}"
-                )
+                result["error"] = f"component {cid!r}: file not found: {part_path}"
                 return result
             resolved_parts[cid] = part_path
             sources[cid] = source or "part"
@@ -219,16 +218,16 @@ def dry_run_assembly(
                         )
                         return result
                     if not face_ref:
-                        result["error"] = (
-                            f"mate[{i}].{ref_key}[{j}]: empty face_ref"
-                        )
+                        result["error"] = f"mate[{i}].{ref_key}[{j}]: empty face_ref"
                         return result
-                    face_checks.append({
-                        "mate_index": i,
-                        "ref": f"{ref_key}[{j}]",
-                        "component": cid,
-                        "face_ref_keys": sorted(face_ref.keys()),
-                    })
+                    face_checks.append(
+                        {
+                            "mate_index": i,
+                            "ref": f"{ref_key}[{j}]",
+                            "component": cid,
+                            "face_ref_keys": sorted(face_ref.keys()),
+                        }
+                    )
             else:
                 ref = mate.get(ref_key, {})
                 cid = ref.get("component")
@@ -241,12 +240,14 @@ def dry_run_assembly(
                 if not face_ref:
                     result["error"] = f"mate[{i}].{ref_key}: empty face_ref"
                     return result
-                face_checks.append({
-                    "mate_index": i,
-                    "ref": ref_key,
-                    "component": cid,
-                    "face_ref_keys": sorted(face_ref.keys()),
-                })
+                face_checks.append(
+                    {
+                        "mate_index": i,
+                        "ref": ref_key,
+                        "component": cid,
+                        "face_ref_keys": sorted(face_ref.keys()),
+                    }
+                )
 
     result["face_checks"] = face_checks
 
@@ -263,11 +264,13 @@ def dry_run_assembly(
                             f"component {cid!r} not in spec"
                         )
                         return result
-                    ev_checks.append({
-                        "view_index": ev_i,
-                        "step_index": st_i,
-                        "component": cid,
-                    })
+                    ev_checks.append(
+                        {
+                            "view_index": ev_i,
+                            "step_index": st_i,
+                            "component": cid,
+                        }
+                    )
         result["exploded_checks"] = ev_checks
 
     result["ok"] = True
@@ -416,9 +419,7 @@ def commit_assembly(
         # Create mates
         mate_count = 0
         for i, mate_spec in enumerate(spec.get("mates", [])):
-            mate_feat, mate_err = create_mate(
-                asm_doc, placed, mate_spec, mod=mod
-            )
+            mate_feat, mate_err = create_mate(asm_doc, placed, mate_spec, mod=mod)
             if mate_err:
                 result["error"] = f"mate[{i}]: {mate_err}"
                 return result
@@ -450,9 +451,7 @@ def commit_assembly(
                     asm_doc, placed, ev_spec, mod=mod
                 )
                 if ev_err:
-                    result["error"] = (
-                        f"exploded_views[{ev_idx}]: {ev_err}"
-                    )
+                    result["error"] = f"exploded_views[{ev_idx}]: {ev_err}"
                     return result
                 exploded_step_count += ev_steps
 
@@ -480,14 +479,16 @@ def commit_assembly(
                 sw_name = cid
             comp_spec = next(c for c in comp_specs if c["id"] == cid)
             spec_path = built_specs.get(cid, {}).get("spec_path")
-            manifest.components.append(ComponentInstance(
-                id=cid,
-                sw_name=str(sw_name),
-                part_path=resolved[cid],
-                transform=comp_spec.get("transform", {}),
-                part_spec_path=spec_path,
-                part_spec_sha256=sha256_of_file(spec_path),
-            ))
+            manifest.components.append(
+                ComponentInstance(
+                    id=cid,
+                    sw_name=str(sw_name),
+                    part_path=resolved[cid],
+                    transform=comp_spec.get("transform", {}),
+                    part_spec_path=spec_path,
+                    part_spec_sha256=sha256_of_file(spec_path),
+                )
+            )
 
         manifest_path = str(output_path) + ".manifest.json"
         try:

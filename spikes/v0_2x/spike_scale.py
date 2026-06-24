@@ -60,10 +60,29 @@ def build_cube(sw: Any) -> Any:
     doc.ClearSelection2(True)
     _select_feature(doc, "Sketch1")
     doc.FeatureManager.FeatureExtrusion2(
-        True, False, False, _BLIND, 0,
-        0.010, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        _BLIND,
+        0,
+        0.010,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     doc.ClearSelection2(True)
     return doc
@@ -71,6 +90,7 @@ def build_cube(sw: Any) -> Any:
 
 def _vol_mm3(doc: Any) -> float:
     from ai_sw_bridge.features import verify
+
     return verify.solid_volume_mm3(doc)
 
 

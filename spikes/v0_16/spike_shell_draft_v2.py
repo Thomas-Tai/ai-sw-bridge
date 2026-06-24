@@ -80,13 +80,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:  # noqa: BLE001
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:200],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:200],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _as_list(v: Any) -> list:
@@ -100,15 +106,38 @@ def _build_box(doc: Any) -> dict[str, Any]:
         return {"built": False, "error": "select Front Plane failed"}
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    seg = sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                                   BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    seg = sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     if seg is None:
         sk.InsertSketch(True)
         return {"built": False, "error": "CreateCornerRectangle None"}
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base, False)
     except Exception:  # noqa: BLE001
@@ -200,8 +229,11 @@ def _run_shell(sw: Any, mod: Any) -> dict[str, Any]:
         out["faces_after"] = len(_faces(doc))
         out["last_feature_type"] = _last_feature_type(doc)
         shelled = out["faces_after"] > out["faces_before"]
-        out["overall"] = "PASS" if (rec["status"] == "OK" and shelled) else (
-            "PARTIAL" if rec["status"] == "OK" else "FAIL")
+        out["overall"] = (
+            "PASS"
+            if (rec["status"] == "OK" and shelled)
+            else ("PARTIAL" if rec["status"] == "OK" else "FAIL")
+        )
     finally:
         try:
             sw.CloseDoc(_title(doc))
@@ -222,10 +254,14 @@ def _run_draft(sw: Any, mod: Any) -> dict[str, Any]:
             return {**out, "overall": "FAIL", "reason": "box build"}
         faces = _faces(doc)
         out["n_faces"] = len(faces)
-        neutral = _pick(faces, (0, 0, -1))   # bottom face = neutral plane
+        neutral = _pick(faces, (0, 0, -1))  # bottom face = neutral plane
         side = _pick(faces, (1, 0, 0)) or _pick(faces, (0, 1, 0))
         if neutral is None or side is None:
-            return {**out, "overall": "FAIL", "reason": "could not find neutral/side face"}
+            return {
+                **out,
+                "overall": "FAIL",
+                "reason": "could not find neutral/side face",
+            }
         fm = doc.FeatureManager
         # Try a couple of mark conventions for (neutral, draft-face).
         attempts: list[dict[str, Any]] = []
@@ -237,19 +273,31 @@ def _run_draft(sw: Any, mod: Any) -> dict[str, Any]:
                 pass
             sn = select_entity(neutral, append=False, mark=nm_mark)
             sf = select_entity(side, append=True, mark=face_mark)
-            rec, feat = _capture(lambda: fm.InsertMultiFaceDraft(
-                DRAFT_ANGLE_RAD, False, False, SW_FACE_PROP_NONE, False, False))
-            rec.update({"neutral_mark": nm_mark, "face_mark": face_mark,
-                        "sel_neutral": sn, "sel_face": sf,
-                        "materialized": _materialized(feat)})
+            rec, feat = _capture(
+                lambda: fm.InsertMultiFaceDraft(
+                    DRAFT_ANGLE_RAD, False, False, SW_FACE_PROP_NONE, False, False
+                )
+            )
+            rec.update(
+                {
+                    "neutral_mark": nm_mark,
+                    "face_mark": face_mark,
+                    "sel_neutral": sn,
+                    "sel_face": sf,
+                    "materialized": _materialized(feat),
+                }
+            )
             attempts.append(rec)
             if _materialized(feat):
                 rec["feature_name"] = getattr(feat, "Name", None)
                 rec["type_name"] = _type_name(feat)
                 break
         out["attempts"] = attempts
-        out["overall"] = "PASS" if _materialized(feat) else (
-            "PARTIAL" if any(a["status"] == "OK" for a in attempts) else "FAIL")
+        out["overall"] = (
+            "PASS"
+            if _materialized(feat)
+            else ("PARTIAL" if any(a["status"] == "OK" for a in attempts) else "FAIL")
+        )
     finally:
         try:
             sw.CloseDoc(_title(doc))
@@ -270,13 +318,16 @@ def run() -> dict[str, Any]:
     result["draft"] = _run_draft(sw, mod)
     sv = result["shell"].get("overall")
     dv = result["draft"].get("overall")
-    result["overall"] = "PASS" if (sv == "PASS" and dv == "PASS") else f"shell={sv} draft={dv}"
+    result["overall"] = (
+        "PASS" if (sv == "PASS" and dv == "PASS") else f"shell={sv} draft={dv}"
+    )
     return result
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--out", type=Path, default=None)
     args = p.parse_args()
     pythoncom.CoInitialize()

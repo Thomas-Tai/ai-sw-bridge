@@ -28,6 +28,7 @@ Scope (see probe_curve_lanes_typed_txn for the ground-truth classification):
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_curve_lanes_hardening_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -75,7 +76,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -173,10 +176,12 @@ def main() -> int:
     _WORK.mkdir(parents=True, exist_ok=True)
     client = SolidWorksClient()
     try:
-        gate("registry_seam",
-             ("helix" in HANDLER_REGISTRY) and ("curve_through_xyz" in HANDLER_REGISTRY),
-             f"helix={'helix' in HANDLER_REGISTRY} "
-             f"curve_through_xyz={'curve_through_xyz' in HANDLER_REGISTRY}")
+        gate(
+            "registry_seam",
+            ("helix" in HANDLER_REGISTRY) and ("curve_through_xyz" in HANDLER_REGISTRY),
+            f"helix={'helix' in HANDLER_REGISTRY} "
+            f"curve_through_xyz={'curve_through_xyz' in HANDLER_REGISTRY}",
+        )
 
         # B: helix through the typed transaction (the hardening proof)
         seed = str(_WORK / "helix_seed.SLDPRT")
@@ -184,16 +189,27 @@ def main() -> int:
         if not sk:
             gate("helix_txn", False, "circle seed build failed")
         else:
-            r = _drive(client, sw, seed,
-                       {"type": "helix", "pitch_mm": 10.0, "revolutions": 4.0},
-                       {"sketch": sk})
-            arc = _arc_len_on_reopen(sw, seed, ("Helix",), "exact") if r.get("commit") else None
+            r = _drive(
+                client,
+                sw,
+                seed,
+                {"type": "helix", "pitch_mm": 10.0, "revolutions": 4.0},
+                {"sketch": sk},
+            )
+            arc = (
+                _arc_len_on_reopen(sw, seed, ("Helix",), "exact")
+                if r.get("commit")
+                else None
+            )
             ok = bool(r.get("commit")) and arc is not None and arc > 0
-            gate("helix_txn", ok,
-                 f"propose={r.get('propose')} dry_run={r.get('dry_run')} "
-                 f"commit={r.get('commit')} helix_arc_mm={arc} "
-                 f"(_latebound navigated the typed-transaction COM boundary) "
-                 f"err={r.get('commit_err') or r.get('dry_run_err')}")
+            gate(
+                "helix_txn",
+                ok,
+                f"propose={r.get('propose')} dry_run={r.get('dry_run')} "
+                f"commit={r.get('commit')} helix_arc_mm={arc} "
+                f"(_latebound navigated the typed-transaction COM boundary) "
+                f"err={r.get('commit_err') or r.get('dry_run_err')}",
+            )
 
         # C: curve_through_xyz through the typed transaction (immunity baseline)
         seed = str(_WORK / "cxyz_seed.SLDPRT")
@@ -202,13 +218,19 @@ def main() -> int:
         else:
             pts = [[0, 0, 0], [20, 10, 5], [40, 0, 10], [60, 15, 5]]
             r = _drive(client, sw, seed, {"type": "curve_through_xyz"}, {"points": pts})
-            arc = (_arc_len_on_reopen(sw, seed, ("refcurve", "curve"), "substring")
-                   if r.get("commit") else None)
+            arc = (
+                _arc_len_on_reopen(sw, seed, ("refcurve", "curve"), "substring")
+                if r.get("commit")
+                else None
+            )
             ok = bool(r.get("commit")) and arc is not None and arc > 0
-            gate("curve_xyz_txn", ok,
-                 f"propose={r.get('propose')} dry_run={r.get('dry_run')} "
-                 f"commit={r.get('commit')} curve_arc_mm={arc} "
-                 f"err={r.get('commit_err') or r.get('dry_run_err')}")
+            gate(
+                "curve_xyz_txn",
+                ok,
+                f"propose={r.get('propose')} dry_run={r.get('dry_run')} "
+                f"commit={r.get('commit')} curve_arc_mm={arc} "
+                f"err={r.get('commit_err') or r.get('dry_run_err')}",
+            )
     finally:
         _close_all(sw)
         pythoncom.CoUninitialize()

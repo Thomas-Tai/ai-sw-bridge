@@ -85,8 +85,12 @@ def _build_block(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-        BOX_W_M / 2, BOX_H_M / 2, 0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -95,10 +99,28 @@ def _build_block(doc: Any) -> dict[str, Any]:
 
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
@@ -188,7 +210,18 @@ def _direct_api_probe(doc: Any) -> dict[str, Any]:
     before = _count_feature_nodes(doc)
     try:
         feat = fm_t.InsertMateReference2(
-            "DirectProbe", ent, 0, 0, False, None, 0, 0, False, None, 0, 0,
+            "DirectProbe",
+            ent,
+            0,
+            0,
+            False,
+            None,
+            0,
+            0,
+            False,
+            None,
+            0,
+            0,
         )
         out["call_ok"] = True
         out["returned"] = repr(feat)
@@ -240,6 +273,7 @@ def run() -> dict[str, Any]:
             return {**result, "overall": "FAIL", "reason": "no +X face found"}
 
         from ai_sw_bridge.selection.live import capture_persist_id
+
         persist_id = capture_persist_id(doc, face)
         result["persist_id_captured"] = persist_id is not None
         if persist_id is None:

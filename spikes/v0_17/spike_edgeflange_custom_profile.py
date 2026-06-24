@@ -32,6 +32,7 @@ Strategy:
 Usage:
     python spikes/v0_17/spike_edgeflange_custom_profile.py
 """
+
 from __future__ import annotations
 
 import json
@@ -77,19 +78,19 @@ OPT_USE_DEFAULT_RADIUS = 1
 OPT_USE_DEFAULT_RELIEF = 128
 BOOLEAN_OPTIONS = OPT_USE_DEFAULT_RADIUS | OPT_USE_DEFAULT_RELIEF  # 129
 
-POS_MATERIAL_INSIDE = 1      # swFlangePositionTypeMaterialInside
-RELIEF_TEAR = 2              # swSheetMetalReliefTear
-RELIEF_NONE = 4              # swSheetMetalReliefNone
+POS_MATERIAL_INSIDE = 1  # swFlangePositionTypeMaterialInside
+RELIEF_TEAR = 2  # swSheetMetalReliefTear
+RELIEF_NONE = 4  # swSheetMetalReliefNone
 
 FLANGE_ANGLE = math.pi / 2.0  # 90 degrees
-FLANGE_RADIUS = 0.002          # 2mm
-OFFSET_DIST = 0.0              # no offset
+FLANGE_RADIUS = 0.002  # 2mm
+OFFSET_DIST = 0.0  # no offset
 RELIEF_RATIO = 0.5
 RELIEF_WIDTH = 0.0
 RELIEF_DEPTH = 0.0
-SHARP_TYPE = 0                 # default (no enum found)
+SHARP_TYPE = 0  # default (no enum found)
 
-FLANGE_HEIGHT = 0.010          # 10mm profile sketch height
+FLANGE_HEIGHT = 0.010  # 10mm profile sketch height
 
 
 def _feature_count(doc: Any) -> int:
@@ -128,13 +129,15 @@ def _rank_linear_edges(edges: list, mod: Any) -> list[dict]:
         ranked.append(info)
     linear = sorted(
         (r for r in ranked if r["is_line"]),
-        key=lambda r: r["length"], reverse=True,
+        key=lambda r: r["length"],
+        reverse=True,
     )
     return linear or sorted(ranked, key=lambda r: r["length"], reverse=True)
 
 
 def _capture_edge_ref(doc: Any, edge: Any, mod: Any) -> dict:
     from ai_sw_bridge.com.earlybind import read_persist_reference
+
     pid = read_persist_reference(doc, edge)
     if pid is None:
         raise RuntimeError("no persist_id for edge")
@@ -155,7 +158,9 @@ def _capture_edge_ref(doc: Any, edge: Any, mod: Any) -> dict:
 
 
 def _build_normal_plane_and_sketch(
-    doc: Any, edge: Any, mod: Any,
+    doc: Any,
+    edge: Any,
+    mod: Any,
 ) -> dict[str, Any]:
     """Build a normal-to-edge ref plane + profile sketch (Wave-6 proven recipe).
 
@@ -164,6 +169,7 @@ def _build_normal_plane_and_sketch(
     out: dict[str, Any] = {}
 
     from ai_sw_bridge.com.earlybind import read_persist_reference
+
     ext = typed_extension(doc, module=mod)
 
     # Capture persist_id BEFORE any rebuild (edge is live now)
@@ -264,7 +270,11 @@ def _build_normal_plane_and_sketch(
 
 
 def _call_edge_flange(
-    doc: Any, fm: Any, edge: Any, sketch_feature: Any, mod: Any,
+    doc: Any,
+    fm: Any,
+    edge: Any,
+    sketch_feature: Any,
+    mod: Any,
     mark: int,
 ) -> dict[str, Any]:
     """InsertSheetMetalEdgeFlange2 with typelib-verified args + real sketch.
@@ -275,7 +285,9 @@ def _call_edge_flange(
     """
     vt_disp = w32.VARIANT(pythoncom.VT_DISPATCH, None)
     edge_arr = w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (edge,))
-    sketch_arr = w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (sketch_feature,))
+    sketch_arr = w32.VARIANT(
+        pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (sketch_feature,)
+    )
 
     doc.ClearSelection2(True)
     try:
@@ -287,19 +299,19 @@ def _call_edge_flange(
     n_before = _feature_count(doc)
     try:
         ret = fm.InsertSheetMetalEdgeFlange2(
-            edge_arr,       # 1  FlangeEdges (VARIANT SAFEARRAY)
-            sketch_arr,     # 2  SketchFeats (VARIANT SAFEARRAY)
-            BOOLEAN_OPTIONS,# 3  BooleanOptions = 129
-            FLANGE_ANGLE,   # 4  FlangeAngle = pi/2
+            edge_arr,  # 1  FlangeEdges (VARIANT SAFEARRAY)
+            sketch_arr,  # 2  SketchFeats (VARIANT SAFEARRAY)
+            BOOLEAN_OPTIONS,  # 3  BooleanOptions = 129
+            FLANGE_ANGLE,  # 4  FlangeAngle = pi/2
             FLANGE_RADIUS,  # 5  FlangeRadius = 2mm
             POS_MATERIAL_INSIDE,  # 6  BendPosition = 1
-            OFFSET_DIST,    # 7  FlangeOffsetDist = 0
-            RELIEF_TEAR,    # 8  ReliefType = 2
-            RELIEF_RATIO,   # 9  FlangeReliefRatio = 0.5
-            RELIEF_WIDTH,   # 10 FlangeReliefWidth = 0
-            RELIEF_DEPTH,   # 11 FlangeReliefDepth = 0
-            SHARP_TYPE,     # 12 FlangeSharpType = 0
-            vt_disp,        # 13 CustomBendAllowance = VARIANT(None)
+            OFFSET_DIST,  # 7  FlangeOffsetDist = 0
+            RELIEF_TEAR,  # 8  ReliefType = 2
+            RELIEF_RATIO,  # 9  FlangeReliefRatio = 0.5
+            RELIEF_WIDTH,  # 10 FlangeReliefWidth = 0
+            RELIEF_DEPTH,  # 11 FlangeReliefDepth = 0
+            SHARP_TYPE,  # 12 FlangeSharpType = 0
+            vt_disp,  # 13 CustomBendAllowance = VARIANT(None)
         )
         err = None
     except Exception as e:
@@ -350,7 +362,10 @@ def run() -> dict[str, Any]:
         ],
     }
     result["named_arg_vector"] = {
-        "BooleanOptions": {"value": BOOLEAN_OPTIONS, "name": "UseDefaultRadius|UseDefaultRelief"},
+        "BooleanOptions": {
+            "value": BOOLEAN_OPTIONS,
+            "name": "UseDefaultRadius|UseDefaultRelief",
+        },
         "FlangeAngle": {"value": FLANGE_ANGLE, "name": "pi/2 (90 deg)"},
         "FlangeRadius": {"value": FLANGE_RADIUS, "name": "2mm"},
         "BendPosition": {"value": POS_MATERIAL_INSIDE, "name": "MaterialInside"},
@@ -399,6 +414,7 @@ def run() -> dict[str, Any]:
 
         # Step 2b: Capture edge persist_id for re-resolution after sketch build
         from ai_sw_bridge.com.earlybind import read_persist_reference
+
         edge_pid_bytes = read_persist_reference(doc, best_edge)
 
         # Step 3: Normal-to-edge plane + profile sketch
@@ -411,7 +427,11 @@ def run() -> dict[str, Any]:
 
         sketch_name = plane_sk.get("sketch_name")
         if not sketch_name:
-            return {**result, "overall": "FAIL", "reason": "profile sketch name not found"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "profile sketch name not found",
+            }
 
         print("[w7] plane=%s sketch=%s" % (plane_sk.get("plane_name"), sketch_name))
 
@@ -428,7 +448,11 @@ def run() -> dict[str, Any]:
 
         # If GetSelectedObject6 fails, get it from the feature tree
         if sketch_feat is None:
-            feat = doc.FeatureByName(sketch_name) if hasattr(doc, "FeatureByName") else None
+            feat = (
+                doc.FeatureByName(sketch_name)
+                if hasattr(doc, "FeatureByName")
+                else None
+            )
             if feat is not None:
                 sketch_feat = feat
 
@@ -445,7 +469,11 @@ def run() -> dict[str, Any]:
                     continue
 
         if sketch_feat is None:
-            return {**result, "overall": "FAIL", "reason": "could not get sketch feature dispatch"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "could not get sketch feature dispatch",
+            }
 
         result["sketch_feature_type"] = type(sketch_feat).__name__
 
@@ -470,8 +498,10 @@ def run() -> dict[str, Any]:
         for mark in [0, 1]:
             a = _call_edge_flange(doc, fm, fresh_edge, sketch_feat, mod, mark)
             attempts.append(a)
-            print("  mark=%d delta=%d mat=%s err=%s" % (
-                mark, a["delta"], a["materialized"], a.get("error")))
+            print(
+                "  mark=%d delta=%d mat=%s err=%s"
+                % (mark, a["delta"], a["materialized"], a.get("error"))
+            )
             if a["materialized"]:
                 overall = "GREEN"
                 break
@@ -490,11 +520,19 @@ def run() -> dict[str, Any]:
                     n_before = _feature_count(doc)
                     try:
                         ret = fm.InsertSheetMetalEdgeFlange2(
-                            fresh_edge, sketch_feat, BOOLEAN_OPTIONS,
-                            FLANGE_ANGLE, FLANGE_RADIUS,
-                            POS_MATERIAL_INSIDE, OFFSET_DIST,
-                            relief, RELIEF_RATIO, RELIEF_WIDTH, RELIEF_DEPTH,
-                            SHARP_TYPE, vt_disp,
+                            fresh_edge,
+                            sketch_feat,
+                            BOOLEAN_OPTIONS,
+                            FLANGE_ANGLE,
+                            FLANGE_RADIUS,
+                            POS_MATERIAL_INSIDE,
+                            OFFSET_DIST,
+                            relief,
+                            RELIEF_RATIO,
+                            RELIEF_WIDTH,
+                            RELIEF_DEPTH,
+                            SHARP_TYPE,
+                            vt_disp,
                         )
                         err = None
                     except Exception as e:
@@ -529,11 +567,19 @@ def run() -> dict[str, Any]:
                 n_before = _feature_count(doc)
                 try:
                     ret = fm.InsertSheetMetalEdgeFlange2(
-                        fresh_edge, sketch_feat, BOOLEAN_OPTIONS,
-                        FLANGE_ANGLE, FLANGE_RADIUS,
-                        pos, OFFSET_DIST,
-                        RELIEF_TEAR, RELIEF_RATIO, RELIEF_WIDTH, RELIEF_DEPTH,
-                        SHARP_TYPE, vt_disp,
+                        fresh_edge,
+                        sketch_feat,
+                        BOOLEAN_OPTIONS,
+                        FLANGE_ANGLE,
+                        FLANGE_RADIUS,
+                        pos,
+                        OFFSET_DIST,
+                        RELIEF_TEAR,
+                        RELIEF_RATIO,
+                        RELIEF_WIDTH,
+                        RELIEF_DEPTH,
+                        SHARP_TYPE,
+                        vt_disp,
                     )
                     err = None
                 except Exception as e:
@@ -564,7 +610,10 @@ def run() -> dict[str, Any]:
             result["features_after"] = feats
             # Find the flange feature
             for f in feats:
-                if "Flange" in f.get("type", "") or "flange" in f.get("name", "").lower():
+                if (
+                    "Flange" in f.get("type", "")
+                    or "flange" in f.get("name", "").lower()
+                ):
                     if f["type"] != "SMBaseFlange":
                         result["flange_feature"] = f
                         break
@@ -602,7 +651,10 @@ def main() -> int:
     out = RESULTS_DIR / "edgeflange_custom_profile_W7.json"
     out.write_text(payload, encoding="utf-8")
     print("wrote %s" % out)
-    print("overall: %s (%d attempts)" % (result.get("overall"), result.get("attempt_count", 0)))
+    print(
+        "overall: %s (%d attempts)"
+        % (result.get("overall"), result.get("attempt_count", 0))
+    )
     return {"GREEN": 0, "WALL": 2, "FAIL": 1}.get(result.get("overall"), 1)
 
 

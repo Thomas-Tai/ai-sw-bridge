@@ -62,18 +62,18 @@ from typing import Any
 # were +1/+2/+3 guesses off Text=30 and made Add3 return GenericFail=1. The real
 # enum is sparse: Number=3, Double=5, YesOrNo=11, Text=30, Date=64, Equation=105.)
 SW_CUSTOM_INFO_TEXT = 30
-SW_CUSTOM_INFO_NUMBER = 5   # swCustomInfoDouble — Number(3) is int-only, rejects 42.5
+SW_CUSTOM_INFO_NUMBER = 5  # swCustomInfoDouble — Number(3) is int-only, rejects 42.5
 SW_CUSTOM_INFO_DATE = 64
 SW_CUSTOM_INFO_YES_OR_NO = 11
 
 # swCustomPropertyAddOption_e
-SW_CUSTOM_PROP_ADD = 0      # add only, fail if exists
+SW_CUSTOM_PROP_ADD = 0  # add only, fail if exists
 SW_CUSTOM_PROP_REPLACE = 1  # overwrite if exists
 
 # swCustomInfoDeleteResult_e (Delete2 return codes)
-SW_CUSTOM_DELETE_OK = 0           # deleted
+SW_CUSTOM_DELETE_OK = 0  # deleted
 SW_CUSTOM_DELETE_NOT_PRESENT = 1  # nothing to delete (already absent → idempotent OK)
-SW_CUSTOM_DELETE_LINKED = 2       # property is linked → cannot delete (error)
+SW_CUSTOM_DELETE_LINKED = 2  # property is linked → cannot delete (error)
 
 # Property type name -> swCustomInfoType_e int
 SW_CUSTOM_INFO_TYPE_MAP: dict[str, int] = {
@@ -88,9 +88,7 @@ _VALID_PROP_TYPES = frozenset(SW_CUSTOM_INFO_TYPE_MAP)
 _NUMERIC_RE = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$")
 
 _VALID_DATE_RE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}$"
-    r"|^\d{1,2}/\d{1,2}/\d{4}$"
-    r"|^\d{1,2}\.\d{1,2}\.\d{4}$"
+    r"^\d{4}-\d{2}-\d{2}$" r"|^\d{1,2}/\d{1,2}/\d{4}$" r"|^\d{1,2}\.\d{1,2}\.\d{4}$"
 )
 
 
@@ -126,9 +124,7 @@ def resolve_prop_type_and_value(
 
     value = entry.get("value")
     if not isinstance(value, str) or not value:
-        raise ValueError(
-            f"property '{name}' value must be a non-empty string"
-        )
+        raise ValueError(f"property '{name}' value must be a non-empty string")
 
     type_id = SW_CUSTOM_INFO_TYPE_MAP[prop_type]
     return type_id, value, prop_type
@@ -150,6 +146,7 @@ def semantic_prop_match(prop_type: str, expected: str, got: str) -> bool:
             return False
     if prop_type == "date":
         from datetime import datetime
+
         fmts = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%d/%m/%Y")
 
         def _parse(s: str) -> object | None:

@@ -5,6 +5,7 @@ Key geometry: profile circle on a plane that intersects the solid block,
 path line on a different plane that pierces through the solid.
 Materialization via feature-count delta (never trust return value).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -92,9 +93,29 @@ def _build_harness(sw):
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.05, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.05,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
 
@@ -143,7 +164,9 @@ def run():
         # Verify CreateDefinition(18) returns non-null
         try:
             data = fm.CreateDefinition(_SW_FM_SWEEP_CUT)
-            result["create_def"] = "non-null" if data and not isinstance(data, (int, bool)) else "null/int"
+            result["create_def"] = (
+                "non-null" if data and not isinstance(data, (int, bool)) else "null/int"
+            )
             print("[swcut] CreateDefinition(18): %s" % result["create_def"])
         except Exception as e:
             result["create_def"] = "error: %s" % str(e)[:100]
@@ -162,7 +185,9 @@ def run():
             # Select profile (mark=1) then path (mark=4, append)
             sel_p = ext.SelectByID2(profile, "SKETCH", 0, 0, 0, False, 1, None, 0)
             sel_path = ext.SelectByID2(path, "SKETCH", 0, 0, 0, True, 4, None, 0)
-            print("[swcut] %s: profile_sel=%s path_sel=%s" % (geo_name, sel_p, sel_path))
+            print(
+                "[swcut] %s: profile_sel=%s path_sel=%s" % (geo_name, sel_p, sel_path)
+            )
 
             n_before_call = _feature_count(doc)
             try:
@@ -241,9 +266,10 @@ def main():
         print("wrote %s" % args.out, file=sys.stderr)
     else:
         print(payload)
-    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(result.get("overall"), 1)
+    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

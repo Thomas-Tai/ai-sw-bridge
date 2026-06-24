@@ -26,6 +26,7 @@ root cause, per W0's directive:
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/mech_mate_screw_calibration.py
 """
+
 from __future__ import annotations
 
 import json
@@ -151,7 +152,9 @@ def _matrix_leg(sw: Any, mod: Any, enum_val: int, pitch: float) -> dict[str, Any
     except Exception as exc:  # noqa: BLE001
         r["T1_post_solve"] = f"read failed: {exc!r}"
     # Save + reopen for T2.
-    asm_path = str(Path(t1._results_tmp(), f"screwcal_{int(pitch*1e6)}_{os.getpid()}.SLDASM"))
+    asm_path = str(
+        Path(t1._results_tmp(), f"screwcal_{int(pitch*1e6)}_{os.getpid()}.SLDASM")
+    )
     save_ok = typed(asm, "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0)
     if int(save_ok) != 0:
         r["error"] = f"SAVE_FAILED({save_ok})"
@@ -160,7 +163,9 @@ def _matrix_leg(sw: Any, mod: Any, enum_val: int, pitch: float) -> dict[str, Any
     return r
 
 
-def _modify_definition_probe(sw: Any, mod: Any, enum_val: int, pitch: float) -> dict[str, Any]:
+def _modify_definition_probe(
+    sw: Any, mod: Any, enum_val: int, pitch: float
+) -> dict[str, Any]:
     """Option-2 probe: set RevolutionVal via GetDefinition + ModifyDefinition
     AFTER CreateMate, then save->reopen and re-read. Resolves the default-clamp
     branch without a second seat run."""
@@ -202,7 +207,9 @@ def _modify_definition_probe(sw: Any, mod: Any, enum_val: int, pitch: float) -> 
     except Exception as exc:  # noqa: BLE001
         r["modify_error"] = f"{exc!r}"
         return r
-    asm_path = str(Path(t1._results_tmp(), f"screwmod_{int(pitch*1e6)}_{os.getpid()}.SLDASM"))
+    asm_path = str(
+        Path(t1._results_tmp(), f"screwmod_{int(pitch*1e6)}_{os.getpid()}.SLDASM")
+    )
     save_ok = typed(asm, "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0)
     if int(save_ok) != 0:
         r["error"] = f"SAVE_FAILED({save_ok})"
@@ -221,14 +228,23 @@ def _verdict(matrix: list[dict[str, Any]]) -> dict[str, Any]:
     all_one = all(abs(r - 1.0) < 0.05 for r in ratios)
     all_clamp = all(abs(m["T2_post_reopen"] - 0.001) < 1e-6 for m in rows)
     if all_one:
-        return {"class": "CLEAN_ROUNDTRIP", "ratios": ratios,
-                "note": "T2==set for all pitches; the Tier-1 0.002->0.001 was a fluke/diff cause"}
+        return {
+            "class": "CLEAN_ROUNDTRIP",
+            "ratios": ratios,
+            "note": "T2==set for all pitches; the Tier-1 0.002->0.001 was a fluke/diff cause",
+        }
     if all_half:
-        return {"class": "UNIT_TRANSFORM_X2", "ratios": ratios,
-                "note": "T2==0.5*set for all pitches; handler must set pitch_m*2"}
+        return {
+            "class": "UNIT_TRANSFORM_X2",
+            "ratios": ratios,
+            "note": "T2==0.5*set for all pitches; handler must set pitch_m*2",
+        }
     if all_clamp:
-        return {"class": "DEFAULT_CLAMP_1MM", "ratios": ratios,
-                "note": "T2==0.001 regardless of input; pre-create setter ignored -> use ModifyDefinition"}
+        return {
+            "class": "DEFAULT_CLAMP_1MM",
+            "ratios": ratios,
+            "note": "T2==0.001 regardless of input; pre-create setter ignored -> use ModifyDefinition",
+        }
     return {"class": "OTHER", "ratios": ratios, "note": "non-uniform; inspect per-row"}
 
 
@@ -251,14 +267,18 @@ def main() -> int:
         for pitch in _PITCHES:
             row = _matrix_leg(sw, mod, enum_val, pitch)
             result["matrix"].append(row)
-            print(f"[cal] pitch={pitch} -> T0={row.get('T0_post_set')} "
-                  f"T1={row.get('T1_post_solve')} T2={row.get('T2_post_reopen')} "
-                  f"err={row.get('error')}")
+            print(
+                f"[cal] pitch={pitch} -> T0={row.get('T0_post_set')} "
+                f"T1={row.get('T1_post_solve')} T2={row.get('T2_post_reopen')} "
+                f"err={row.get('error')}"
+            )
         result["verdict"] = _verdict(result["matrix"])
         # Inline Option-2 probe (default-clamp resolver) — run regardless to
         # maximize single-seat-run signal.
         result["modify_probe"] = _modify_definition_probe(sw, mod, enum_val, 0.004)
-        print(f"[cal] modify_probe -> {json.dumps(result['modify_probe'], default=str)}")
+        print(
+            f"[cal] modify_probe -> {json.dumps(result['modify_probe'], default=str)}"
+        )
         try:
             sw.CloseAllDocuments(True)
         except Exception:  # noqa: BLE001

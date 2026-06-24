@@ -54,7 +54,7 @@ def read_bbox(part_doc: Any, mod: Any = None) -> dict[str, Any]:
     part_typed = None
     try:
         # If it's already typed IPartDoc, use it directly
-        if hasattr(part_doc, 'GetPartBox'):
+        if hasattr(part_doc, "GetPartBox"):
             part_typed = part_doc
         else:
             # Try to QI to IPartDoc
@@ -168,7 +168,9 @@ def _sw_get_bbox_from_doc_impl(doc: Any) -> dict[str, Any]:
     return result
 
 
-def _transform_point(m: list[float], x: float, y: float, z: float) -> tuple[float, float, float]:
+def _transform_point(
+    m: list[float], x: float, y: float, z: float
+) -> tuple[float, float, float]:
     """Apply a 4×4 row-major transform matrix to a 3D point."""
     tx = m[0] * x + m[1] * y + m[2] * z + m[3]
     ty = m[4] * x + m[5] * y + m[6] * z + m[7]
@@ -187,6 +189,7 @@ def _read_component_transform(comp: Any, mod: Any = None) -> list[float] | None:
     list/tuple is returned verbatim. Raw component first (mock-friendly); typed
     ``IComponent2`` fallback (Transform2 may not resolve on a raw component).
     """
+
     def _as_rowmajor(t: Any) -> list[float] | None:
         if t is None:
             return None
@@ -203,10 +206,22 @@ def _read_component_transform(comp: Any, mod: Any = None) -> list[float] | None:
         if len(ad) < 12:
             return None
         return [
-            ad[0], ad[1], ad[2], ad[9],
-            ad[3], ad[4], ad[5], ad[10],
-            ad[6], ad[7], ad[8], ad[11],
-            0.0, 0.0, 0.0, 1.0,
+            ad[0],
+            ad[1],
+            ad[2],
+            ad[9],
+            ad[3],
+            ad[4],
+            ad[5],
+            ad[10],
+            ad[6],
+            ad[7],
+            ad[8],
+            ad[11],
+            0.0,
+            0.0,
+            0.0,
+            1.0,
         ]
 
     try:
@@ -320,10 +335,14 @@ def read_assembly_bbox(asm_doc: Any, mod: Any = None) -> dict[str, Any]:
             continue
 
         corners = [
-            (bx[0], bx[1], bx[2]), (bx[3], bx[1], bx[2]),
-            (bx[0], bx[4], bx[2]), (bx[3], bx[4], bx[2]),
-            (bx[0], bx[1], bx[5]), (bx[3], bx[1], bx[5]),
-            (bx[0], bx[4], bx[5]), (bx[3], bx[4], bx[5]),
+            (bx[0], bx[1], bx[2]),
+            (bx[3], bx[1], bx[2]),
+            (bx[0], bx[4], bx[2]),
+            (bx[3], bx[4], bx[2]),
+            (bx[0], bx[1], bx[5]),
+            (bx[3], bx[1], bx[5]),
+            (bx[0], bx[4], bx[5]),
+            (bx[3], bx[4], bx[5]),
         ]
 
         for cx, cy, cz in corners:
@@ -424,4 +443,3 @@ def _sw_get_assembly_bbox_from_doc_impl(doc: Any) -> dict[str, Any]:
         result["ok"] = True
 
     return result
-

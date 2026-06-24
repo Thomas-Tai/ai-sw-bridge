@@ -123,13 +123,24 @@ def run(keep_file: bool) -> dict[str, Any]:
     result["capture"] = {"n_edges": len(edges), "n_with_token": len(captured)}
     if not captured:
         _try_close(sw, doc)
-        return {**result, "overall": "FAIL", "reason": "no edge captured a persist token"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": "no edge captured a persist token",
+        }
     edge_ref = DurableEdgeRef.from_manifest_edge(captured[0])
-    result["edge_ref"] = {"start": list(edge_ref.start), "end": list(edge_ref.end),
-                          "has_token": edge_ref.persist_id is not None}
+    result["edge_ref"] = {
+        "start": list(edge_ref.start),
+        "end": list(edge_ref.end),
+        "has_token": edge_ref.persist_id is not None,
+    }
 
     # --- 2. Save -> close ----------------------------------------------------
-    tmp = Path(tempfile.gettempdir()) / "ai-sw-bridge" / "spike_durable_feature_add.sldprt"
+    tmp = (
+        Path(tempfile.gettempdir())
+        / "ai-sw-bridge"
+        / "spike_durable_feature_add.sldprt"
+    )
     tmp.parent.mkdir(parents=True, exist_ok=True)
     if tmp.exists():
         try:
@@ -169,12 +180,18 @@ def run(keep_file: bool) -> dict[str, Any]:
 
     # --- 4. Resolve the durable edge on the reopened doc --------------------
     res = sel_live.resolve_edge_ref(doc2, edge_ref)
-    result["resolve"] = {"method": res.method, "ok": res.entity is not None,
-                         "entity_type": _tag(res.entity)}
+    result["resolve"] = {
+        "method": res.method,
+        "ok": res.entity is not None,
+        "entity_type": _tag(res.entity),
+    }
     if res.entity is None:
         _cleanup(sw, doc2, tmp, keep_file, result)
-        return {**result, "overall": "FAIL",
-                "reason": f"edge ref did not resolve after reopen (method={res.method})"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": f"edge ref did not resolve after reopen (method={res.method})",
+        }
 
     # --- 5. Fillet pipeline on the durable edge -----------------------------
     fm = doc2.FeatureManager
@@ -213,10 +230,12 @@ def run(keep_file: bool) -> dict[str, Any]:
     if materialized:
         overall, reason = "PASS", (
             f"fillet ({type_name!r}) materialized on the durable edge after "
-            "save->close->reopen -- edit-time durable feature-add works end-to-end")
+            "save->close->reopen -- edit-time durable feature-add works end-to-end"
+        )
     elif res.entity is not None:
         overall, reason = "PARTIAL", (
-            "durable edge resolved after reopen but CreateFeature did not materialize")
+            "durable edge resolved after reopen but CreateFeature did not materialize"
+        )
     else:
         overall, reason = "FAIL", "edge did not resolve after reopen"
     result["overall"] = overall
@@ -244,8 +263,9 @@ def _cleanup(sw: Any, doc: Any, tmp: Path, keep: bool, result: dict[str, Any]) -
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--keep-file", action="store_true")
     args = p.parse_args()

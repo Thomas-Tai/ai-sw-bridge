@@ -89,13 +89,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:  # noqa: BLE001
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:200],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:200],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _as_list(v: Any) -> list:
@@ -111,15 +117,38 @@ def _build_box(doc: Any) -> dict[str, Any]:
         return {"built": False, "error": "could not select Front Plane"}
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    seg = sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                                   BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    seg = sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     if seg is None:
         sk.InsertSketch(True)
         return {"built": False, "error": "CreateCornerRectangle None"}
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base, False)
     except Exception:  # noqa: BLE001
@@ -152,7 +181,9 @@ def _place_select_point(doc: Any) -> bool:
     return bool(doc.SelectByID("", "SKETCHPOINT", PT_X, PT_Y, BOX_D_M))
 
 
-def _discover(sw: Any, hole_type: int, standard_substr: str, mod: Any) -> dict[str, Any]:
+def _discover(
+    sw: Any, hole_type: int, standard_substr: str, mod: Any
+) -> dict[str, Any]:
     """Query the standards DB: standards → fastener types → a valid size.
 
     The IHoleStandardsData / IHoleDataTable methods return data through byref
@@ -177,8 +208,7 @@ def _discover(sw: Any, hole_type: int, standard_substr: str, mod: Any) -> dict[s
     arrays = [a for a in _as_list(sret) if isinstance(a, (tuple, list))]
     std_indexes = _as_list(arrays[0]) if len(arrays) >= 1 else []
     std_names = _as_list(arrays[1]) if len(arrays) >= 2 else []
-    out["standards"] = [{"index": i, "name": n}
-                        for i, n in zip(std_indexes, std_names)]
+    out["standards"] = [{"index": i, "name": n} for i, n in zip(std_indexes, std_names)]
 
     # Choose a standard by name substring (else first).
     chosen = None
@@ -198,15 +228,18 @@ def _discover(sw: Any, hole_type: int, standard_substr: str, mod: Any) -> dict[s
     farr = [a for a in _as_list(fret) if isinstance(a, (tuple, list))]
     f_indexes = _as_list(farr[0]) if len(farr) >= 1 else []
     f_names = _as_list(farr[1]) if len(farr) >= 2 else []
-    out["fastener_types"] = [{"index": i, "name": n}
-                             for i, n in zip(f_indexes, f_names)]
+    out["fastener_types"] = [
+        {"index": i, "name": n} for i, n in zip(f_indexes, f_names)
+    ]
     if not out["fastener_types"]:
         return out
     fastener = out["fastener_types"][0]
     out["chosen_fastener"] = fastener
 
     # Table types → table → sizes (the 'Size' column).
-    trec, tret = _capture(lambda: hsd.GetFastenerTableTypes(std_name, fastener["index"]))
+    trec, tret = _capture(
+        lambda: hsd.GetFastenerTableTypes(std_name, fastener["index"])
+    )
     out["GetFastenerTableTypes_raw"] = {**trec, "repr": repr(tret)[:200]}
     tids = [t for a in _as_list(tret) if isinstance(a, (tuple, list)) for t in a]
     table_id = tids[0] if tids else 0
@@ -234,7 +267,9 @@ def _discover(sw: Any, hole_type: int, standard_substr: str, mod: Any) -> dict[s
         rc_vals = [v for v in _as_list(rcount) if isinstance(v, int)]
         nrows = rc_vals[0] if rc_vals else 0
         out["row_count"] = nrows
-        size_col = next((c for c in cols if "size" in str(c).lower()), cols[0] if cols else None)
+        size_col = next(
+            (c for c in cols if "size" in str(c).lower()), cols[0] if cols else None
+        )
         out["size_column"] = size_col
         if size_col is not None:
             for r in range(min(nrows, 40)):
@@ -262,14 +297,20 @@ def run(hole_type: int, standard_substr: str) -> dict[str, Any]:
     fastener = disc.get("chosen_fastener")
     size = disc.get("chosen_size")
     if not std or not fastener or not size:
-        return {**result, "overall": "DISCOVERY-FAIL",
-                "reason": "could not resolve standard/fastener/size from the DB"}
+        return {
+            **result,
+            "overall": "DISCOVERY-FAIL",
+            "reason": "could not resolve standard/fastener/size from the DB",
+        }
 
     std_idx = std["index"]
     fast_idx = fastener["index"]
     result["resolved_args"] = {
-        "generic_hole_type": hole_type, "std_index": std_idx,
-        "fastener_index": fast_idx, "size": size, "end_cond": SW_END_BLIND,
+        "generic_hole_type": hole_type,
+        "std_index": std_idx,
+        "fastener_index": fast_idx,
+        "size": size,
+        "end_cond": SW_END_BLIND,
     }
 
     template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_PART)
@@ -292,7 +333,9 @@ def run(hole_type: int, standard_substr: str) -> dict[str, Any]:
         if data is not None:
             _, fd = _capture(lambda: typed_qi(data, IFACE, module=mod))
             init_rec, _ = _capture(
-                lambda: fd.InitializeHole(hole_type, std_idx, fast_idx, size, SW_END_BLIND)
+                lambda: fd.InitializeHole(
+                    hole_type, std_idx, fast_idx, size, SW_END_BLIND
+                )
             )
             a_rec["InitializeHole"] = init_rec
             if hasattr(fd, "Depth"):
@@ -311,9 +354,24 @@ def run(hole_type: int, standard_substr: str) -> dict[str, Any]:
         if materialized_via is None:
             result["point_selected_b"] = _place_select_point(doc)
             values = (0.0,) * 12
-            args = (hole_type, std_idx, fast_idx, size, SW_END_BLIND,
-                    DIAMETER_M, DEPTH_M, 0.0, *values, "", False, True, False,
-                    False, False, False)
+            args = (
+                hole_type,
+                std_idx,
+                fast_idx,
+                size,
+                SW_END_BLIND,
+                DIAMETER_M,
+                DEPTH_M,
+                0.0,
+                *values,
+                "",
+                False,
+                True,
+                False,
+                False,
+                False,
+                False,
+            )
             hw_rec, feat = _capture(lambda: fm.HoleWizard5(*args))
             b = {**hw_rec, "materialized": _materialized(feat)}
             if _materialized(feat):

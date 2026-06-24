@@ -104,13 +104,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:300],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:300],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _materialized(feat: Any) -> bool:
@@ -156,8 +162,8 @@ def _build_fixture(sw: Any, mod: Any) -> tuple[Any, Any, Any, dict[str, Any]]:
         sk = doc.SketchManager
         sk.InsertSketch(True)
         sk.CreateCornerRectangle(
-            -PROF_W_M / 2, -PROF_H_M / 2, 0.0,
-            PROF_W_M / 2, PROF_H_M / 2, 0.0)
+            -PROF_W_M / 2, -PROF_H_M / 2, 0.0, PROF_W_M / 2, PROF_H_M / 2, 0.0
+        )
         sk.InsertSketch(True)
     except Exception as e:
         diag["sketch_error"] = f"{type(e).__name__}: {e}"[:200]
@@ -194,13 +200,21 @@ def _build_fixture(sw: Any, mod: Any) -> tuple[Any, Any, Any, dict[str, Any]]:
         pass
 
     rec, bodies = _capture(lambda: doc.GetBodies2(SW_BODY_SOLID, True))
-    body_list = list(bodies) if bodies and isinstance(bodies, (list, tuple)) else [bodies] if bodies else []
+    body_list = (
+        list(bodies)
+        if bodies and isinstance(bodies, (list, tuple))
+        else [bodies] if bodies else []
+    )
     if not body_list:
         diag["error"] = "no bodies"
         return doc, fm, None, diag
     body = body_list[0]
     rec, edges_raw = _capture(lambda: body.GetEdges())
-    edge_list = list(edges_raw) if edges_raw and isinstance(edges_raw, (list, tuple)) else [edges_raw] if edges_raw else []
+    edge_list = (
+        list(edges_raw)
+        if edges_raw and isinstance(edges_raw, (list, tuple))
+        else [edges_raw] if edges_raw else []
+    )
     diag["edge_count"] = len(edge_list)
     if not edge_list:
         diag["error"] = "no edges"
@@ -222,6 +236,7 @@ def _build_fixture(sw: Any, mod: Any) -> tuple[Any, Any, Any, dict[str, Any]]:
         pass
     try:
         from ai_sw_bridge.com.earlybind import typed as _typed
+
         _typed(edge, "IEntity", module=mod).Select2(False, 0)
         diag["select2"] = True
     except Exception as e:
@@ -236,9 +251,16 @@ def _build_fixture(sw: Any, mod: Any) -> tuple[Any, Any, Any, dict[str, Any]]:
 
 
 def _hem_scalars() -> tuple:
-    return (HEM_TYPE_CLOSED, HEM_POS_INSIDE, HEM_REVERSE,
-            HEM_DLENGTH_M, HEM_DGAP_M, HEM_DANGLE_RAD,
-            HEM_DRAD_M, HEM_DMITERGAP_M)
+    return (
+        HEM_TYPE_CLOSED,
+        HEM_POS_INSIDE,
+        HEM_REVERSE,
+        HEM_DLENGTH_M,
+        HEM_DGAP_M,
+        HEM_DANGLE_RAD,
+        HEM_DRAD_M,
+        HEM_DMITERGAP_M,
+    )
 
 
 def _tactic_1_makepy_vt_dispatch(fm: Any) -> tuple[dict, Any]:
@@ -258,39 +280,55 @@ def _tactic_2_makepy_vt_error(fm: Any) -> tuple[dict, Any]:
 def _tactic_3_raw_invoke_vt_ptr(fm: Any) -> tuple[dict, Any]:
     """Tactic 3: raw InvokeTypes with VT_PTR at index 8 — literal FUNCDESC type."""
     arg_types = (
-        (VT_I4, 1), (VT_I4, 1), (VT_BOOL, 1),
-        (VT_R8, 1), (VT_R8, 1), (VT_R8, 1),
-        (VT_R8, 1), (VT_R8, 1),
+        (VT_I4, 1),
+        (VT_I4, 1),
+        (VT_BOOL, 1),
+        (VT_R8, 1),
+        (VT_R8, 1),
+        (VT_R8, 1),
+        (VT_R8, 1),
+        (VT_R8, 1),
         (VT_PTR, 1),
     )
     args = _hem_scalars() + (None,)
-    return _capture(lambda: fm._oleobj_.InvokeTypes(
-        MEMID_HEM_V1, 0, 1, (VT_PTR, 0), arg_types, *args))
+    return _capture(
+        lambda: fm._oleobj_.InvokeTypes(
+            MEMID_HEM_V1, 0, 1, (VT_PTR, 0), arg_types, *args
+        )
+    )
 
 
 def _tactic_3b_raw_invoke_vt_dispatch(fm: Any) -> tuple[dict, Any]:
     """Tactic 3b: raw InvokeTypes with VT_DISPATCH at index 8 — edge_flange VT."""
     arg_types = (
-        (VT_I4, 1), (VT_I4, 1), (VT_BOOL, 1),
-        (VT_R8, 1), (VT_R8, 1), (VT_R8, 1),
-        (VT_R8, 1), (VT_R8, 1),
+        (VT_I4, 1),
+        (VT_I4, 1),
+        (VT_BOOL, 1),
+        (VT_R8, 1),
+        (VT_R8, 1),
+        (VT_R8, 1),
+        (VT_R8, 1),
+        (VT_R8, 1),
         (pythoncom.VT_DISPATCH, 1),
     )
     args = _hem_scalars() + (None,)
-    return _capture(lambda: fm._oleobj_.InvokeTypes(
-        MEMID_HEM_V1, 0, 1, (VT_PTR, 0), arg_types, *args))
+    return _capture(
+        lambda: fm._oleobj_.InvokeTypes(
+            MEMID_HEM_V1, 0, 1, (VT_PTR, 0), arg_types, *args
+        )
+    )
 
 
 def _apply_winner_to_v2(fm: Any, tactic_name: str) -> tuple[dict, Any]:
     """Apply the winning v1 tactic to InsertSheetMetalHem2 (memid 201, arity 16)."""
     v2_scalars = _hem_scalars() + (
-        True,   # UseDefaultRelief
-        0,      # ReliefType
-        0,      # ReliefTearTypes
+        True,  # UseDefaultRelief
+        0,  # ReliefType
+        0,  # ReliefTearTypes
         False,  # UseReliefRatio
-        0.0,    # ReliefRatio
-        0.0,    # ReliefWidth
-        0.0,    # ReliefDepth
+        0.0,  # ReliefRatio
+        0.0,  # ReliefWidth
+        0.0,  # ReliefDepth
     )
     if tactic_name == "tactic_1_vt_dispatch":
         vt_null = VARIANT(pythoncom.VT_DISPATCH, None)
@@ -302,28 +340,54 @@ def _apply_winner_to_v2(fm: Any, tactic_name: str) -> tuple[dict, Any]:
         return _capture(lambda: fm.InsertSheetMetalHem2(*args))
     elif tactic_name == "tactic_3_raw_vt_ptr":
         arg_types = (
-            (VT_I4, 1), (VT_I4, 1), (VT_BOOL, 1),
-            (VT_R8, 1), (VT_R8, 1), (VT_R8, 1),
-            (VT_R8, 1), (VT_R8, 1),
+            (VT_I4, 1),
+            (VT_I4, 1),
+            (VT_BOOL, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
             (VT_PTR, 1),
-            (VT_BOOL, 1), (VT_I4, 1), (VT_I4, 1),
-            (VT_BOOL, 1), (VT_R8, 1), (VT_R8, 1), (VT_R8, 1),
+            (VT_BOOL, 1),
+            (VT_I4, 1),
+            (VT_I4, 1),
+            (VT_BOOL, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
         )
         args = v2_scalars + (None,)
-        return _capture(lambda: fm._oleobj_.InvokeTypes(
-            MEMID_HEM_V2, 0, 1, (VT_PTR, 0), arg_types, *args))
+        return _capture(
+            lambda: fm._oleobj_.InvokeTypes(
+                MEMID_HEM_V2, 0, 1, (VT_PTR, 0), arg_types, *args
+            )
+        )
     elif tactic_name == "tactic_3b_raw_vt_dispatch":
         arg_types = (
-            (VT_I4, 1), (VT_I4, 1), (VT_BOOL, 1),
-            (VT_R8, 1), (VT_R8, 1), (VT_R8, 1),
-            (VT_R8, 1), (VT_R8, 1),
+            (VT_I4, 1),
+            (VT_I4, 1),
+            (VT_BOOL, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
             (pythoncom.VT_DISPATCH, 1),
-            (VT_BOOL, 1), (VT_I4, 1), (VT_I4, 1),
-            (VT_BOOL, 1), (VT_R8, 1), (VT_R8, 1), (VT_R8, 1),
+            (VT_BOOL, 1),
+            (VT_I4, 1),
+            (VT_I4, 1),
+            (VT_BOOL, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
+            (VT_R8, 1),
         )
         args = v2_scalars + (None,)
-        return _capture(lambda: fm._oleobj_.InvokeTypes(
-            MEMID_HEM_V2, 0, 1, (VT_PTR, 0), arg_types, *args))
+        return _capture(
+            lambda: fm._oleobj_.InvokeTypes(
+                MEMID_HEM_V2, 0, 1, (VT_PTR, 0), arg_types, *args
+            )
+        )
     return {"status": "SKIPPED", "reason": f"unknown tactic {tactic_name}"}, None
 
 
@@ -394,8 +458,7 @@ def _save_reopen(sw: Any, doc: Any, mod: Any) -> dict[str, Any]:
     return out
 
 
-def _run_tactic(sw: Any, mod: Any, tactic_name: str,
-                tactic_fn: Any) -> dict[str, Any]:
+def _run_tactic(sw: Any, mod: Any, tactic_name: str, tactic_fn: Any) -> dict[str, Any]:
     """Run a single tactic: build fixture, call hem, measure."""
     out: dict[str, Any] = {"tactic": tactic_name}
     doc = None
@@ -514,7 +577,8 @@ def main() -> int:
                 v2_out["vol_mm3_after"] = after2["vol_mm3"]
                 v2_out["delta_faces"] = after2["faces"] - before2["faces"]
                 v2_out["delta_vol_mm3"] = round(
-                    after2["vol_mm3"] - before2["vol_mm3"], 3)
+                    after2["vol_mm3"] - before2["vol_mm3"], 3
+                )
                 v2_out["hem_feature"] = _check_hem_materialized(doc2, mod)
 
                 if v2_out["delta_faces"] > 0 and v2_out["delta_vol_mm3"] != 0:
@@ -552,8 +616,7 @@ def main() -> int:
     res_dir = Path(__file__).resolve().parent / "_results"
     res_dir.mkdir(parents=True, exist_ok=True)
     out_path = res_dir / "hem_v4_results.json"
-    out_path.write_text(
-        json.dumps(out, indent=2, default=str), encoding="utf-8")
+    out_path.write_text(json.dumps(out, indent=2, default=str), encoding="utf-8")
     sys.stderr.write(f"[hem-v4] wrote {out_path}\n")
     sys.stderr.write(f"[hem-v4] VERDICT: {out.get('overall_verdict')}\n")
 

@@ -97,9 +97,7 @@ def _check_components(components: list[dict[str, Any]]) -> None:
                 "component id must be a non-empty string", path
             )
         if cid in seen_ids:
-            raise AssemblyValidationError(
-                f"duplicate component id {cid!r}", path
-            )
+            raise AssemblyValidationError(f"duplicate component id {cid!r}", path)
         seen_ids.add(cid)
 
         has_part = "part" in comp and comp["part"] is not None
@@ -121,9 +119,7 @@ def _check_components(components: list[dict[str, Any]]) -> None:
             _check_transform(transform, cid, path)
 
 
-def _check_transform(
-    transform: Any, cid: str, parent_path: str
-) -> None:
+def _check_transform(transform: Any, cid: str, parent_path: str) -> None:
     path = f"{parent_path}/transform"
     if not isinstance(transform, dict):
         raise AssemblyValidationError(
@@ -155,9 +151,7 @@ def _check_transform(
             )
 
 
-def _check_mates(
-    mates: list[dict[str, Any]], component_ids: set[str]
-) -> None:
+def _check_mates(mates: list[dict[str, Any]], component_ids: set[str]) -> None:
     for i, mate in enumerate(mates):
         path = f"/mates/{i}"
         if not isinstance(mate, dict):
@@ -268,9 +262,7 @@ def _check_mates(
             )
 
         if mtype == "coincident" and alignment is None:
-            raise AssemblyValidationError(
-                "coincident mate requires 'alignment'", path
-            )
+            raise AssemblyValidationError("coincident mate requires 'alignment'", path)
 
         # Advanced mates (W75). symmetric requires a symmetry_plane (RefPlane
         # name); the profile_center scalars (offset_mm/flip/lock_rotation) belong
@@ -314,17 +306,20 @@ def _check_mates(
         value_mm = mate.get("value_mm")
         if mtype == "distance":
             if value_mm is None:
-                raise AssemblyValidationError(
-                    "distance mate requires 'value_mm'", path
-                )
+                raise AssemblyValidationError("distance mate requires 'value_mm'", path)
             if not isinstance(value_mm, (int, float)) or value_mm <= 0:
                 raise AssemblyValidationError(
                     f"distance mate value_mm must be a positive number, got {value_mm!r}",
                     path,
                 )
         elif mtype in (
-            "concentric", "parallel", "perpendicular", "tangent",
-            "symmetric", "profile_center", "linear_coupler",
+            "concentric",
+            "parallel",
+            "perpendicular",
+            "tangent",
+            "symmetric",
+            "profile_center",
+            "linear_coupler",
         ):
             if value_mm is not None:
                 raise AssemblyValidationError(
@@ -340,9 +335,7 @@ def _check_mates(
         if mtype == "angle":
             value_deg = mate.get("value_deg")
             if value_deg is None:
-                raise AssemblyValidationError(
-                    "angle mate requires 'value_deg'", path
-                )
+                raise AssemblyValidationError("angle mate requires 'value_deg'", path)
             if not isinstance(value_deg, (int, float)):
                 raise AssemblyValidationError(
                     f"angle mate value_deg must be a number, got {value_deg!r}",
@@ -360,16 +353,14 @@ def _check_mates(
             ratio = mate.get("ratio")
             if not isinstance(ratio, dict):
                 raise AssemblyValidationError(
-                    "gear mate requires 'ratio' with 'numerator' and "
-                    "'denominator'",
+                    "gear mate requires 'ratio' with 'numerator' and " "'denominator'",
                     path,
                 )
             for key in ("numerator", "denominator"):
                 v = ratio.get(key)
                 if not isinstance(v, (int, float)) or v <= 0:
                     raise AssemblyValidationError(
-                        f"gear ratio {key!r} must be a positive number, "
-                        f"got {v!r}",
+                        f"gear ratio {key!r} must be a positive number, " f"got {v!r}",
                         f"{path}/ratio",
                     )
 
@@ -377,9 +368,7 @@ def _check_mates(
         if mtype == "rackpinion":
             pitch_dia = mate.get("pitch_diameter_mm")
             travel = mate.get("rack_travel_per_rev_mm")
-            provided = [
-                v for v in (pitch_dia, travel) if v is not None
-            ]
+            provided = [v for v in (pitch_dia, travel) if v is not None]
             if len(provided) != 1:
                 raise AssemblyValidationError(
                     "rackpinion mate requires EXACTLY ONE of "
@@ -418,8 +407,7 @@ def _check_mates(
                 pval = mate.get("percent")
                 if not isinstance(pval, (int, float)) or not (0 <= pval <= 100):
                     raise AssemblyValidationError(
-                        "slot 'percent' constraint requires 'percent' in "
-                        "[0, 100]",
+                        "slot 'percent' constraint requires 'percent' in " "[0, 100]",
                         path,
                     )
 
@@ -553,13 +541,9 @@ def _check_component_arrays(
 
         aid = arr.get("id")
         if not isinstance(aid, str) or not aid:
-            raise AssemblyValidationError(
-                "array id must be a non-empty string", path
-            )
+            raise AssemblyValidationError("array id must be a non-empty string", path)
         if aid in seen_array_ids:
-            raise AssemblyValidationError(
-                f"duplicate array id {aid!r}", path
-            )
+            raise AssemblyValidationError(f"duplicate array id {aid!r}", path)
         seen_array_ids.add(aid)
 
         atype = arr.get("type")
@@ -608,7 +592,7 @@ def _check_component_arrays(
                     "linear array direction must be a 3-element numeric array",
                     path,
                 )
-            dlen = math.sqrt(sum(v ** 2 for v in direction))
+            dlen = math.sqrt(sum(v**2 for v in direction))
             if dlen < 1e-12:
                 raise AssemblyValidationError(
                     "linear array direction must be non-zero", path
@@ -633,7 +617,7 @@ def _check_component_arrays(
                     "circular array axis must be a 3-element numeric array",
                     path,
                 )
-            alen = math.sqrt(sum(v ** 2 for v in axis))
+            alen = math.sqrt(sum(v**2 for v in axis))
             if alen < 1e-12:
                 raise AssemblyValidationError(
                     "circular array axis must be non-zero", path
@@ -651,9 +635,7 @@ def _check_component_arrays(
             expanded_ids.add(expanded_id)
 
 
-def _check_exploded_views(
-    views: list[dict[str, Any]], component_ids: set[str]
-) -> None:
+def _check_exploded_views(views: list[dict[str, Any]], component_ids: set[str]) -> None:
     """Validate exploded_views entries.
 
     Checks: name present + unique, steps non-empty, each step has valid

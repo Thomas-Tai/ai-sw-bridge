@@ -144,7 +144,11 @@ def _apply(doc: Any, sk: Any, params: dict) -> dict:
         False,  # AngleDim — no driving angle dimension
         False,  # CreateNumOfInstancesDim
     )
-    return {"ok": bool(ret), "raw_return": ret, "seeds_selected": len(params["entities"])}
+    return {
+        "ok": bool(ret),
+        "raw_return": ret,
+        "seeds_selected": len(params["entities"]),
+    }
 
 
 # ---------------------------------------------------------------------------

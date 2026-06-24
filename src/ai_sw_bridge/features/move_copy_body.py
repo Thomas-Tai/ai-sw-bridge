@@ -92,9 +92,7 @@ def _body_centroid_m(doc: Any) -> tuple[float, float, float] | None:
     return verify.body_centroid_m(doc)
 
 
-def create_move_body(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def create_move_body(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Move a solid body by a commanded translation delta.
 
     SEAT-PENDING (W0): the ``InsertMoveCopyBody2`` call is stubbed.
@@ -163,9 +161,7 @@ def create_move_body(
     )
 
 
-def create_copy_body(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def create_copy_body(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Copy a solid body, optionally translating the copy.
 
     SEAT-PENDING (W0): the ``InsertMoveCopyBody2`` call is stubbed.

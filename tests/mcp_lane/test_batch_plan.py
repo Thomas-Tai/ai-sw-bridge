@@ -57,9 +57,15 @@ def test_tool_forces_dry_run_and_annotates(monkeypatch):
         captured["dry_run"] = dry_run
         # a minimal would-commit manifest
         return {
-            "ok": True, "doc_path": doc_path, "dry_run": dry_run,
-            "doc_saved": False, "committed_count": 2, "committed": [],
-            "fault": None, "skipped": [], "error": None,
+            "ok": True,
+            "doc_path": doc_path,
+            "dry_run": dry_run,
+            "doc_saved": False,
+            "committed_count": 2,
+            "committed": [],
+            "fault": None,
+            "skipped": [],
+            "error": None,
         }
 
     monkeypatch.setattr(_tool_batch, "_sw_batch_feature_add_impl", fake_engine)

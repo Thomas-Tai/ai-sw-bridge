@@ -11,6 +11,7 @@ CREATION WORKFLOW (CONFIRMED):
 Usage:
     .venv-py310/Scripts/python.exe spikes/v0_2x/spike_exploded.py
 """
+
 from __future__ import annotations
 
 import json
@@ -65,8 +66,19 @@ def run() -> dict[str, Any]:
             "schema_version": 1,
             "name": "W32Box",
             "features": [
-                {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front", "width": 10.0, "height": 10.0},
-                {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 5.0},
+                {
+                    "type": "sketch_rectangle_on_plane",
+                    "name": "SK",
+                    "plane": "Front",
+                    "width": 10.0,
+                    "height": 10.0,
+                },
+                {
+                    "type": "boss_extrude_blind",
+                    "name": "EX",
+                    "sketch": "SK",
+                    "depth": 5.0,
+                },
             ],
         }
         br = part_build(box_spec, save_as=part_path, save_format="current", no_dim=True)
@@ -78,12 +90,14 @@ def run() -> dict[str, Any]:
         result["part_path"] = part_path
 
         # === Create assembly ===
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Creating 2-component assembly")
-        print("="*80)
+        print("=" * 80)
 
         typed_sw = typed(sw, "ISldWorks", module=mod)
-        asm_template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        asm_template = (
+            r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        )
 
         asm_doc = sw.NewDocument(asm_template, 0, 0.0, 0.0)
         if asm_doc is None:
@@ -109,9 +123,9 @@ def run() -> dict[str, Any]:
         result["asm_path"] = asm_path
 
         # === CREATE EXPLODED VIEW ===
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("STEP 1: CreateExplodedView")
-        print("="*80)
+        print("=" * 80)
 
         explode_result = {}
 
@@ -126,9 +140,9 @@ def run() -> dict[str, Any]:
                 explode_result["exploded_view_count"] = ev_count
 
                 # === ADD EXPLODE STEP via IConfiguration ===
-                print("\n" + "="*80)
+                print("\n" + "=" * 80)
                 print("STEP 2: IConfiguration.AddExplodeStep")
-                print("="*80)
+                print("=" * 80)
 
                 config = typed_model.GetActiveConfiguration()
                 print(f"  GetActiveConfiguration() = {config}")
@@ -163,8 +177,12 @@ def run() -> dict[str, Any]:
                         related = False
 
                         try:
-                            step = typed_config.AddExplodeStep(distance_m, reverse, rigid, related)
-                            print(f"  AddExplodeStep({distance_m}, {reverse}, {rigid}, {related}) = {step}")
+                            step = typed_config.AddExplodeStep(
+                                distance_m, reverse, rigid, related
+                            )
+                            print(
+                                f"  AddExplodeStep({distance_m}, {reverse}, {rigid}, {related}) = {step}"
+                            )
                             explode_result["step_returned"] = str(step)
 
                             if step is not None and step != 0:
@@ -177,7 +195,10 @@ def run() -> dict[str, Any]:
                                 # Set components
                                 print("\n  Setting components...")
                                 try:
-                                    comps_var = VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [comp_to_explode])
+                                    comps_var = VARIANT(
+                                        pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
+                                        [comp_to_explode],
+                                    )
                                     typed_step.SetComponents(comps_var)
                                     print("    SetComponents OK")
                                     explode_result["set_components"] = "OK"
@@ -194,11 +215,14 @@ def run() -> dict[str, Any]:
                                     print(f"    GetNumOfComponents error: {e}")
 
                             else:
-                                explode_result["step_error"] = f"AddExplodeStep returned {step}"
+                                explode_result["step_error"] = (
+                                    f"AddExplodeStep returned {step}"
+                                )
 
                         except Exception as e:
                             print(f"  AddExplodeStep error: {e}")
                             import traceback
+
                             traceback.print_exc()
                             explode_result["step_error"] = str(e)
 
@@ -211,14 +235,15 @@ def run() -> dict[str, Any]:
             explode_result["error"] = str(e)
             print(f"  Error: {e}")
             import traceback
+
             traceback.print_exc()
 
         result["explode_creation"] = explode_result
 
         # === LIVENESS GATE ===
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("LIVENESS GATE")
-        print("="*80)
+        print("=" * 80)
 
         liveness = {"checked": False, "passed": False}
 
@@ -234,14 +259,16 @@ def run() -> dict[str, Any]:
                 xform_c = comp.Transform2
                 if xform_c:
                     arr_c = xform_c.ArrayData
-                    pos_c = [arr_c[9]*1000, arr_c[10]*1000, arr_c[11]*1000]
+                    pos_c = [arr_c[9] * 1000, arr_c[10] * 1000, arr_c[11] * 1000]
                     print(f"  Collapsed: {pos_c} mm")
                     liveness["collapsed_pos_mm"] = pos_c
 
                 # Show exploded (VARIANT_TRUE = -1)
                 print("\n  ShowExploded2(True)...")
                 try:
-                    ret = asm_doc._oleobj_.InvokeTypes(156, 0, 1, (11, 0), ((11, 1),), -1)
+                    ret = asm_doc._oleobj_.InvokeTypes(
+                        156, 0, 1, (11, 0), ((11, 1),), -1
+                    )
                     print(f"    Result: {ret}")
                     liveness["show_result"] = ret
                 except Exception as e:
@@ -252,13 +279,13 @@ def run() -> dict[str, Any]:
                 xform_e = comp.Transform2
                 if xform_e:
                     arr_e = xform_e.ArrayData
-                    pos_e = [arr_e[9]*1000, arr_e[10]*1000, arr_e[11]*1000]
+                    pos_e = [arr_e[9] * 1000, arr_e[10] * 1000, arr_e[11] * 1000]
                     print(f"  Exploded: {pos_e} mm")
                     liveness["exploded_pos_mm"] = pos_e
 
                     if "collapsed_pos_mm" in liveness:
                         delta = [pos_e[i] - pos_c[i] for i in range(3)]
-                        mag = (delta[0]**2 + delta[1]**2 + delta[2]**2)**0.5
+                        mag = (delta[0] ** 2 + delta[1] ** 2 + delta[2] ** 2) ** 0.5
                         print(f"  Delta: {delta} mm, magnitude: {mag:.3f}")
                         liveness["delta_mm"] = delta
                         liveness["magnitude_mm"] = mag
@@ -285,9 +312,9 @@ def run() -> dict[str, Any]:
 
         # === PERSISTENCE ===
         if liveness.get("passed"):
-            print("\n" + "="*80)
+            print("\n" + "=" * 80)
             print("PERSISTENCE")
-            print("="*80)
+            print("=" * 80)
 
             persist = {"checked": False, "passed": False}
 
@@ -316,7 +343,11 @@ def run() -> dict[str, Any]:
             result["persistence"] = persist
 
         # === Verdict ===
-        if explode_result.get("step_created") and liveness.get("passed") and result.get("persistence", {}).get("passed"):
+        if (
+            explode_result.get("step_created")
+            and liveness.get("passed")
+            and result.get("persistence", {}).get("passed")
+        ):
             result["overall"] = "GREEN"
             result["recipe"] = {
                 "workflow": [
@@ -339,9 +370,13 @@ def run() -> dict[str, Any]:
             if not explode_result.get("view_created"):
                 reasons.append("CreateExplodedView failed")
             if not explode_result.get("step_created"):
-                reasons.append(f"AddExplodeStep: {explode_result.get('step_error', 'unknown')}")
+                reasons.append(
+                    f"AddExplodeStep: {explode_result.get('step_error', 'unknown')}"
+                )
             if not liveness.get("passed"):
-                reasons.append(f"Liveness: magnitude={liveness.get('magnitude_mm', 'N/A')}")
+                reasons.append(
+                    f"Liveness: magnitude={liveness.get('magnitude_mm', 'N/A')}"
+                )
             result["failure_point"] = "; ".join(reasons)
 
         return result
@@ -350,6 +385,7 @@ def run() -> dict[str, Any]:
         result["overall"] = "NO-GO"
         result["failure_point"] = f"Unexpected: {e}"
         import traceback
+
         traceback.print_exc()
         return result
     finally:
@@ -358,13 +394,13 @@ def run() -> dict[str, Any]:
 
 if __name__ == "__main__":
     r = run()
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print(f"FINAL VERDICT: {r.get('overall')}")
     if r.get("overall") == "GREEN":
         print(f"RECIPE: {r.get('recipe')}")
     else:
         print(f"FAILURE: {r.get('failure_point')}")
-    print("="*80)
+    print("=" * 80)
 
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(RESULTS_PATH, "w") as f:

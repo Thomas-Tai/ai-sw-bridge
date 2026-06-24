@@ -135,7 +135,10 @@ class TestAssemblyPipeline:
         spec["components"][0]["part"] = str(part_dir / "a.sldprt")
         spec["components"][1]["part"] = str(part_dir / "b.sldprt")
 
-        from ai_sw_bridge.mutate import _sw_propose_assembly_impl, _sw_dry_run_assembly_impl
+        from ai_sw_bridge.mutate import (
+            _sw_propose_assembly_impl,
+            _sw_dry_run_assembly_impl,
+        )
 
         propose = _sw_propose_assembly_impl(spec)
         assert propose["ok"] is True
@@ -149,7 +152,10 @@ class TestAssemblyPipeline:
     def test_dry_run_rejects_non_assembly(self, tmp_path: Path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path / "proposals"))
 
-        from ai_sw_bridge.mutate import _sw_propose_feature_add_impl, _sw_dry_run_assembly_impl
+        from ai_sw_bridge.mutate import (
+            _sw_propose_feature_add_impl,
+            _sw_dry_run_assembly_impl,
+        )
 
         doc_path = str(tmp_path / "dummy.sldprt")
         Path(doc_path).write_text("fake")
@@ -168,7 +174,10 @@ class TestAssemblyPipeline:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path / "proposals"))
 
         spec = _assembly_spec()
-        from ai_sw_bridge.mutate import _sw_propose_assembly_impl, _sw_commit_assembly_impl
+        from ai_sw_bridge.mutate import (
+            _sw_propose_assembly_impl,
+            _sw_commit_assembly_impl,
+        )
 
         propose = _sw_propose_assembly_impl(spec)
         assert propose["ok"] is True
@@ -217,8 +226,11 @@ class TestDryRunExplodedViews:
             {
                 "name": "Default",
                 "steps": [
-                    {"components": ["nonexistent"], "distance_mm": 50.0,
-                     "direction": "front"},
+                    {
+                        "components": ["nonexistent"],
+                        "distance_mm": 50.0,
+                        "direction": "front",
+                    },
                 ],
             }
         ]

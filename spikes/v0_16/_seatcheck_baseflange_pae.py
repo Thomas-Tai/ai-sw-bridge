@@ -7,6 +7,7 @@ AI_SW_BRIDGE_PROPOSALS so the repo's ./proposals is untouched.
 
 Usage:  .venv-py310\Scripts\python spikes\v0_16\_seatcheck_baseflange_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -88,16 +89,26 @@ def _reopen_and_inspect(sw: Any, path: str) -> dict[str, Any]:
             guard += 1
             try:
                 nm = feat.Name() if callable(feat.Name) else feat.Name
-                tn = feat.GetTypeName2() if callable(feat.GetTypeName2) else feat.GetTypeName2
+                tn = (
+                    feat.GetTypeName2()
+                    if callable(feat.GetTypeName2)
+                    else feat.GetTypeName2
+                )
                 names.append(f"{nm} [{tn}]")
             except Exception:  # noqa: BLE001
                 pass
             try:
-                feat = feat.GetNextFeature() if callable(feat.GetNextFeature) else feat.GetNextFeature
+                feat = (
+                    feat.GetNextFeature()
+                    if callable(feat.GetNextFeature)
+                    else feat.GetNextFeature
+                )
             except Exception:  # noqa: BLE001
                 break
         out["features"] = names
-        out["has_base_flange"] = any("Base-Flange" in n or "SMBaseFlange" in n for n in names)
+        out["has_base_flange"] = any(
+            "Base-Flange" in n or "SMBaseFlange" in n for n in names
+        )
     finally:
         try:
             sw.CloseDoc(_title(doc))
@@ -142,7 +153,9 @@ def main() -> int:
             return _emit(report, 1)
 
         report["verify"] = _reopen_and_inspect(sw, path)
-        ok = bool(report["verify"].get("has_base_flange")) and bool(commit.get("doc_saved"))
+        ok = bool(report["verify"].get("has_base_flange")) and bool(
+            commit.get("doc_saved")
+        )
         report["overall"] = "PASS" if ok else "PARTIAL"
         return _emit(report, 0 if ok else 2)
     finally:

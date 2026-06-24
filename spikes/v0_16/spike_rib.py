@@ -143,13 +143,13 @@ def _walk_swconst_typelib() -> dict[str, Any]:
             members[mname] = vd.value
         enums[name] = members
 
-    for bucket_name, tokens in (
-        ("swFmRib", ("FmRib", "FeatureNameRib")),
-    ):
+    for bucket_name, tokens in (("swFmRib", ("FmRib", "FeatureNameRib")),):
         for ename, members in enums.items():
             for mname, val in members.items():
                 if any(t in mname for t in tokens):
-                    report["discovered"].setdefault(bucket_name, {})[f"{ename}.{mname}"] = val
+                    report["discovered"].setdefault(bucket_name, {})[
+                        f"{ename}.{mname}"
+                    ] = val
     report["enums"] = enums
     return report
 
@@ -176,8 +176,12 @@ def _build_rib_geometry(doc: Any) -> dict[str, Any]:
 
 
 def _route_a(
-    fm: Any, mod: Any, doc: Any, geom: dict[str, Any],
-    rib_const: int | None, rib_const_name: str | None,
+    fm: Any,
+    mod: Any,
+    doc: Any,
+    geom: dict[str, Any],
+    rib_const: int | None,
+    rib_const_name: str | None,
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
         "route": "A - typelib-gated CreateDefinition + typed_qi",
@@ -299,7 +303,9 @@ def _scrub(o: Any) -> Any:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--mode", choices=["com", "vba"], default="com")
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--keep-file", action="store_true")
@@ -314,7 +320,9 @@ def main() -> int:
         result = run(args.keep_file)
     finally:
         pythoncom.CoUninitialize()
-    payload = json.dumps(_scrub(result), indent=2, default=lambda o: f"<{type(o).__name__}>")
+    payload = json.dumps(
+        _scrub(result), indent=2, default=lambda o: f"<{type(o).__name__}>"
+    )
     if args.out is not None:
         args.out.write_text(payload, encoding="utf-8")
     else:

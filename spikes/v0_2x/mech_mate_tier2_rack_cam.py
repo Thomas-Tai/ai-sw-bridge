@@ -29,6 +29,7 @@ GREEN (per leg):
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/mech_mate_tier2_rack_cam.py
 """
+
 from __future__ import annotations
 
 import json
@@ -63,7 +64,7 @@ _RESULTS.mkdir(exist_ok=True)
 _OUT = _RESULTS / "mech_mate_tier2_rack_cam.json"
 
 # swRackPinionMateDistanceOptions_e (swconst.tlb v32, dumped).
-_RP_PINION_PITCH_DIA = 0   # swPinionPitchDiameter
+_RP_PINION_PITCH_DIA = 0  # swPinionPitchDiameter
 _RP_RACK_TRAVEL_PER_REV = 1  # swRackTravelPerRevolution
 
 _RACKPINION_IFACE = ("IRackPinionMateFeatureData", "IRackPinionMateFeatureData2")
@@ -81,8 +82,13 @@ def _follower_spec(name: str) -> dict[str, Any]:
         "schema_version": 1,
         "name": name,
         "features": [
-            {"type": "sketch_circle_on_plane", "name": "SK", "plane": "Front",
-             "diameter": 10.0, "center": {"x": 0.0, "y": 0.0}},
+            {
+                "type": "sketch_circle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "diameter": 10.0,
+                "center": {"x": 0.0, "y": 0.0},
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 30.0},
         ],
     }
@@ -94,8 +100,14 @@ def _rack_spec(name: str) -> dict[str, Any]:
         "schema_version": 1,
         "name": name,
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "center": {"x": 0.0, "y": 0.0}, "width": 100.0, "height": 8.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "width": 100.0,
+                "height": 8.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 8.0},
         ],
     }
@@ -108,8 +120,14 @@ def _cam_spec(name: str) -> dict[str, Any]:
         "schema_version": 1,
         "name": name,
         "features": [
-            {"type": "sketch_ellipse", "name": "SK", "plane": "Front",
-             "center": {"x": 0.0, "y": 0.0}, "major_radius": 25.0, "minor_radius": 15.0},
+            {
+                "type": "sketch_ellipse",
+                "name": "SK",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "major_radius": 25.0,
+                "minor_radius": 15.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
@@ -216,7 +234,9 @@ def _place_pair(sw: Any, mod: Any, p1: dict, p2: dict) -> dict[str, Any]:
     return {"asm": asm, "a": placed.get("a"), "b": placed.get("b")}
 
 
-def _qi_first(mate_data: Any, candidates: tuple[str, ...], mod: Any) -> tuple[str, Any] | None:
+def _qi_first(
+    mate_data: Any, candidates: tuple[str, ...], mod: Any
+) -> tuple[str, Any] | None:
     for cand in candidates:
         try:
             ti = typed_qi(mate_data, cand, module=mod)
@@ -227,8 +247,9 @@ def _qi_first(mate_data: Any, candidates: tuple[str, ...], mod: Any) -> tuple[st
     return None
 
 
-def _read_back(sw: Any, mod: Any, asm_path: str, iface_name: str,
-               props: tuple[str, ...]) -> dict[str, Any]:
+def _read_back(
+    sw: Any, mod: Any, asm_path: str, iface_name: str, props: tuple[str, ...]
+) -> dict[str, Any]:
     out: dict[str, Any] = {}
     try:
         typed_sw = typed(sw, "ISldWorks", module=mod)
@@ -285,8 +306,10 @@ def _leg_rack_pinion(sw: Any, mod: Any) -> dict[str, Any]:
     asm = ctx["asm"]
     rack_edge = _first_linear_edge(ctx["a"], mod)
     pinion_face = _first_cyl_face(ctx["b"], mod)
-    r["entities_found"] = {"rack_linear_edge": rack_edge is not None,
-                           "pinion_cyl_face": pinion_face is not None}
+    r["entities_found"] = {
+        "rack_linear_edge": rack_edge is not None,
+        "pinion_cyl_face": pinion_face is not None,
+    }
     if rack_edge is None or pinion_face is None:
         r["status"] = "ENTITY_RESOLUTION_FAILED"
         return r
@@ -311,7 +334,10 @@ def _leg_rack_pinion(sw: Any, mod: Any) -> dict[str, Any]:
         r["scalars_set"] = {"DiameterType": _RP_PINION_PITCH_DIA, "DiameterVal": 0.020}
         # Echo immediately (T0) to see if the setter holds pre-create.
         try:
-            r["T0_post_set"] = {"DiameterType": ti.DiameterType, "DiameterVal": ti.DiameterVal}
+            r["T0_post_set"] = {
+                "DiameterType": ti.DiameterType,
+                "DiameterVal": ti.DiameterVal,
+            }
         except Exception:  # noqa: BLE001
             pass
         mate = typed_asm.CreateMate(md)
@@ -402,9 +428,29 @@ def _build_cam_handrolled(sw: Any, mod: Any, name: str) -> dict[str, Any]:
         # lookup (GetFeatureCount arity differs on the typed proxy).
         fm = typed(doc.FeatureManager, "IFeatureManager", module=mod)
         args = (
-            True, False, False, 0, 0, 0.010, 0.0,
-            False, False, False, False, 0.0, 0.0,
-            False, False, False, False, True, True, True, 0, 0.0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            0.010,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
+            False,
         )
         feat = fm.FeatureExtrusion2(*args)
         if feat is None:
@@ -444,8 +490,10 @@ def _leg_cam_follower(sw: Any, mod: Any) -> dict[str, Any]:
     asm = ctx["asm"]
     cam_face = _first_nonplanar_face(ctx["a"], mod)
     follower_face = _first_cyl_face(ctx["b"], mod)
-    r["entities_found"] = {"cam_nonplanar_face": cam_face is not None,
-                           "follower_cyl_face": follower_face is not None}
+    r["entities_found"] = {
+        "cam_nonplanar_face": cam_face is not None,
+        "follower_cyl_face": follower_face is not None,
+    }
     if cam_face is None or follower_face is None:
         r["status"] = "ENTITY_RESOLUTION_FAILED"
         return r
@@ -485,7 +533,9 @@ def _leg_cam_follower(sw: Any, mod: Any) -> dict[str, Any]:
         # No scalar — GREEN = the mate persists with its MateAlignment readable.
         rb = _read_back(sw, mod, asm_path, iface_name, ("MateAlignment",))
         r["persist"] = rb
-        r["status"] = "SOLVED_PERSISTED" if "read_back" in rb else "SOLVED_READBACK_UNVERIFIED"
+        r["status"] = (
+            "SOLVED_PERSISTED" if "read_back" in rb else "SOLVED_READBACK_UNVERIFIED"
+        )
     except Exception as exc:  # noqa: BLE001
         r["status"] = "EXCEPTION"
         r["error"] = f"{exc!r}\n{traceback.format_exc()}"

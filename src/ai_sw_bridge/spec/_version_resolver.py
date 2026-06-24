@@ -130,7 +130,9 @@ class VersionedOp:
         """
         if running_major is not None:
             int_keys = sorted(
-                k for k in self._variants if isinstance(k, int) and not isinstance(k, bool)
+                k
+                for k in self._variants
+                if isinstance(k, int) and not isinstance(k, bool)
             )
             # Highest registered major that is <= the running major.
             chosen: int | None = None
@@ -185,7 +187,9 @@ def versioned(op_name: str, key: Any) -> Callable[[ArgBuilder], ArgBuilder]:
     return _decorate
 
 
-def resolve_op(op_name: str, sw: Any = None, running_major: int | None = None) -> ArgBuilder:
+def resolve_op(
+    op_name: str, sw: Any = None, running_major: int | None = None
+) -> ArgBuilder:
     """Convenience: resolve ``op_name``'s arg-builder for the running revision.
 
     Pass ``running_major`` directly (tests/injection) OR pass ``sw`` to have

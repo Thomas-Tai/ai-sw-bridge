@@ -5,6 +5,7 @@ Hypothesis: InsertWrapFeature2 needs a CLOSED sketch on the target face
 reverse, draftAngle, draftType). wrapType: 0=emboss, 1=deboss, 2=scribe.
 Materialization via len(GetFeatures(True)) delta.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -84,9 +85,29 @@ def _build_box(sw):
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.05, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.05,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
     return doc
@@ -157,25 +178,31 @@ def run():
         # Selection variants
         sel_variants = [
             ("sketch_only", lambda: doc.SelectByID("Sketch2", "SKETCH", 0, 0, 0)),
-            ("sketch_then_face", lambda: (
-                doc.SelectByID("Sketch2", "SKETCH", 0, 0, 0) and
-                typed(face, "IEntity", module=mod).Select2(True, 0)
-            )),
-            ("face_then_sketch", lambda: (
-                typed(face, "IEntity", module=mod).Select2(False, 0) and
-                doc.SelectByID("Sketch2", "SKETCH", 0, 0, 0)
-            )),
+            (
+                "sketch_then_face",
+                lambda: (
+                    doc.SelectByID("Sketch2", "SKETCH", 0, 0, 0)
+                    and typed(face, "IEntity", module=mod).Select2(True, 0)
+                ),
+            ),
+            (
+                "face_then_sketch",
+                lambda: (
+                    typed(face, "IEntity", module=mod).Select2(False, 0)
+                    and doc.SelectByID("Sketch2", "SKETCH", 0, 0, 0)
+                ),
+            ),
         ]
 
         # InsertWrapFeature2(wrapType, thickness, reverse, draftAngle, draftType)
         # wrapType: 0=emboss, 1=deboss, 2=scribe
         arg_variants = [
-            ("emboss_1mm",     (0, 0.001, False, 0.0, 0)),
-            ("deboss_1mm",     (1, 0.001, False, 0.0, 0)),
-            ("scribe_1mm",     (2, 0.001, False, 0.0, 0)),
-            ("emboss_2mm",     (0, 0.002, False, 0.0, 0)),
-            ("emboss_rev",     (0, 0.001, True,  0.0, 0)),
-            ("deboss_rev",     (1, 0.001, True,  0.0, 0)),
+            ("emboss_1mm", (0, 0.001, False, 0.0, 0)),
+            ("deboss_1mm", (1, 0.001, False, 0.0, 0)),
+            ("scribe_1mm", (2, 0.001, False, 0.0, 0)),
+            ("emboss_2mm", (0, 0.002, False, 0.0, 0)),
+            ("emboss_rev", (0, 0.001, True, 0.0, 0)),
+            ("deboss_rev", (1, 0.001, True, 0.0, 0)),
         ]
 
         probes = []
@@ -211,7 +238,10 @@ def run():
                             entry["feature_type"] = f["type"]
                             break
                 probes.append(entry)
-                print("  [%s/%s] delta=%d mat=%s err=%s" % (sel_name, arg_name, delta, mat, err))
+                print(
+                    "  [%s/%s] delta=%d mat=%s err=%s"
+                    % (sel_name, arg_name, delta, mat, err)
+                )
                 if mat and green is None:
                     green = entry
                     break
@@ -240,8 +270,7 @@ def run():
             result["overall"] = "WALL"
             result["interpretation"] = (
                 "No sel/arg combo materialized a Wrap across %d probes. "
-                "Closed sketch on face + InsertWrapFeature2 tested."
-                % len(probes)
+                "Closed sketch on face + InsertWrapFeature2 tested." % len(probes)
             )
     finally:
         _try_close(sw, doc)
@@ -264,9 +293,10 @@ def main():
         print("wrote %s" % args.out, file=sys.stderr)
     else:
         print(payload)
-    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(result.get("overall"), 1)
+    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

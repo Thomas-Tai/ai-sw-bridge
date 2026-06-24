@@ -1,6 +1,8 @@
 """Diagnostic: check IEdge selection methods and legacy InsertSheetMetalEdgeFlange."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "v0_15"))
 
@@ -40,7 +42,7 @@ try:
     bodies = doc.GetBodies2(0, True)
     edges_raw = bodies[0].GetEdges()
     ext = typed_extension(doc, module=mod)
-    
+
     typed_edge = None
     for e in edges_raw:
         pid = ext.GetPersistReference3(e)
@@ -54,14 +56,14 @@ try:
                 break
             except:
                 continue
-    
+
     if not typed_edge:
         print("No typed edge available")
         sys.exit(1)
 
     # Check what selection methods exist
     print("\n=== Checking IEdge selection methods ===")
-    for method in ['Select', 'Select2', 'Select3', 'Select4']:
+    for method in ["Select", "Select2", "Select3", "Select4"]:
         if hasattr(typed_edge, method):
             print(f"  {method}: EXISTS")
         else:
@@ -73,7 +75,7 @@ try:
         doc.ClearSelection2(True)
         result = typed_edge.Select2(False, 0)
         print(f"  Select2 result: {result}")
-        
+
         # Check selection count
         sel_mgr = doc.SelectionManager
         count = sel_mgr.GetSelectedObjectCount()
@@ -86,32 +88,31 @@ try:
     try:
         doc.ClearSelection2(True)
         typed_edge.Select2(False, 0)
-        
+
         # Try with VARIANT for the edge array
         edge_var = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            [typed_edge]
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [typed_edge]
         )
-        
+
         feat2 = fm.InsertSheetMetalEdgeFlange(
-            0.002,      # Thickness
-            0.001,      # BendRadius
-            edge_var,   # Edges as VARIANT
-            1.5708,     # BendAngle (90 degrees)
-            False,      # AutoRelease
-            1,          # FlangePosition (1 = Material Inside)
-            False,      # UseDefaultBendRadius
-            0.0,        # Offset
-            0.001,      # ReliefRatio
-            True,       # UseReliefRatio
-            0,          # ReliefType
-            0.001,      # ReliefWidth
-            0.001,      # ReliefDepth
-            False,      # UseGaugeTable
-            "",         # GaugeTablePath
-            False       # OverrideDefaultSheetMetalParameters
+            0.002,  # Thickness
+            0.001,  # BendRadius
+            edge_var,  # Edges as VARIANT
+            1.5708,  # BendAngle (90 degrees)
+            False,  # AutoRelease
+            1,  # FlangePosition (1 = Material Inside)
+            False,  # UseDefaultBendRadius
+            0.0,  # Offset
+            0.001,  # ReliefRatio
+            True,  # UseReliefRatio
+            0,  # ReliefType
+            0.001,  # ReliefWidth
+            0.001,  # ReliefDepth
+            False,  # UseGaugeTable
+            "",  # GaugeTablePath
+            False,  # OverrideDefaultSheetMetalParameters
         )
-        
+
         if feat2:
             print(f"  SUCCESS: {feat2.Name}")
         else:
@@ -124,26 +125,26 @@ try:
     try:
         doc.ClearSelection2(True)
         typed_edge.Select2(False, 0)
-        
+
         feat3 = fm.InsertSheetMetalEdgeFlange(
-            0.002,      # Thickness
-            0.001,      # BendRadius
+            0.002,  # Thickness
+            0.001,  # BendRadius
             [typed_edge],  # Edges as list
-            1.5708,     # BendAngle
-            False,      # AutoRelease
-            1,          # FlangePosition
-            False,      # UseDefaultBendRadius
-            0.0,        # Offset
-            0.001,      # ReliefRatio
-            True,       # UseReliefRatio
-            0,          # ReliefType
-            0.001,      # ReliefWidth
-            0.001,      # ReliefDepth
-            False,      # UseGaugeTable
-            "",         # GaugeTablePath
-            False       # OverrideDefaultSheetMetalParameters
+            1.5708,  # BendAngle
+            False,  # AutoRelease
+            1,  # FlangePosition
+            False,  # UseDefaultBendRadius
+            0.0,  # Offset
+            0.001,  # ReliefRatio
+            True,  # UseReliefRatio
+            0,  # ReliefType
+            0.001,  # ReliefWidth
+            0.001,  # ReliefDepth
+            False,  # UseGaugeTable
+            "",  # GaugeTablePath
+            False,  # OverrideDefaultSheetMetalParameters
         )
-        
+
         if feat3:
             print(f"  SUCCESS: {feat3.Name}")
         else:

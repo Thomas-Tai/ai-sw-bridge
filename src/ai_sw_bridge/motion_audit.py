@@ -63,9 +63,7 @@ def read_mate_value_si(asm_doc: Any, mate_name: str) -> float | None:
         return None
 
 
-def drive_mate_value_si(
-    asm_doc: Any, mate_name: str, value_si: float, mod: Any
-) -> str:
+def drive_mate_value_si(asm_doc: Any, mate_name: str, value_si: float, mod: Any) -> str:
     """Set the driving dimension to ``value_si`` (SI) and rebuild.
 
     Returns ``"parameter"`` on success or ``"FAIL:<reason>"``. The Parameter
@@ -253,7 +251,13 @@ def motion_sweep(
     """
     result: dict[str, Any] = {
         "ok": False,
-        "driver": {"mate": mate_name, "kind": kind, "from": start, "to": stop, "steps": steps},
+        "driver": {
+            "mate": mate_name,
+            "kind": kind,
+            "from": start,
+            "to": stop,
+            "steps": steps,
+        },
         "profile": [],
         "summary": {},
         "restored": False,
@@ -319,8 +323,7 @@ def motion_sweep(
 
     result["profile"] = profile
     result["summary"] = summarize_motion(profile)
-    result["ok"] = (
-        len(profile) == steps
-        and all(not p["drive_route"].startswith("FAIL") for p in profile)
+    result["ok"] = len(profile) == steps and all(
+        not p["drive_route"].startswith("FAIL") for p in profile
     )
     return result

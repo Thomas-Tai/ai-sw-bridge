@@ -103,6 +103,7 @@ def _dump_isldworks_members(targets: tuple[str, ...]) -> dict[str, dict]:
 # fixture: build the 20×30×40 box + export to STEP (W34 proven path)
 # ---------------------------------------------------------------------------
 
+
 def _make_box_and_export_step(sw_app, temp_dir: Path) -> tuple[Path, Path]:
     """Build a centered 20×30×40 mm box, save .SLDPRT + .step. Returns both paths.
 
@@ -124,14 +125,29 @@ def _make_box_and_export_step(sw_app, temp_dir: Path) -> tuple[Path, Path]:
 
     # EX_Box: 40 mm blind extrude (0.040 m)
     feat = doc.FeatureManager.FeatureExtrusion2(
-        True, False, False,
-        0, 0,
-        0.040, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.040,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("FeatureExtrusion2 failed")
@@ -158,8 +174,10 @@ def _make_box_and_export_step(sw_app, temp_dir: Path) -> tuple[Path, Path]:
 # verification — the load-bearing gate
 # ---------------------------------------------------------------------------
 
-def _verify_imported(doc, expected_volume_mm3: float = 24000.0,
-                     rel_tol: float = 0.01) -> dict:
+
+def _verify_imported(
+    doc, expected_volume_mm3: float = 24000.0, rel_tol: float = 0.01
+) -> dict:
     """Confirm real B-rep landed: ≥1 body, volume ≈ expected, faces > 0."""
     from ai_sw_bridge.com.earlybind import typed_qi
 
@@ -245,6 +263,7 @@ def _verify_imported(doc, expected_volume_mm3: float = 24000.0,
 # import call paths — A) early-bound via typed(); B) raw InvokeTypes
 # ---------------------------------------------------------------------------
 
+
 def _import_path_A(sw_app, step_path: Path, import_data) -> tuple:
     """Early-bound path: typed(sw, 'ISldWorks').LoadFile4(...).
 
@@ -296,9 +315,15 @@ def _import_path_B(sw_app, step_path: Path, import_data) -> tuple:
     t0 = time.perf_counter()
     try:
         result = sw_app._oleobj_.InvokeTypes(
-            dispid, 0, pythoncom.DISPATCH_METHOD,
-            ret_type, arg_types,
-            str(step_path), "r", raw_import, 0,
+            dispid,
+            0,
+            pythoncom.DISPATCH_METHOD,
+            ret_type,
+            arg_types,
+            str(step_path),
+            "r",
+            raw_import,
+            0,
         )
     except Exception as exc:
         return None, None, time.perf_counter() - t0, f"{type(exc).__name__}: {exc}"
@@ -319,6 +344,7 @@ def _import_path_B(sw_app, step_path: Path, import_data) -> tuple:
     doc = None
     if doc_disp is not None:
         import win32com.client
+
         try:
             doc = win32com.client.Dispatch(doc_disp)
         except Exception:
@@ -333,6 +359,7 @@ _LOADFILE4_MEMID = None
 # ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
+
 
 def main() -> dict:
     print("=== W40 S1 probe: STEP import via LoadFile4 + GetImportFileData ===")
@@ -431,11 +458,13 @@ def main() -> dict:
         # ---- overall verdict: ship whichever path yields real bodies ----
         a_ok = (
             results["import_A_earlybound"].get("doc_acquired")
-            and results["import_A_earlybound"].get("verify", {}).get("verdict") == "PASS"
+            and results["import_A_earlybound"].get("verify", {}).get("verdict")
+            == "PASS"
         )
         b_ok = (
             results["import_B_invoketypes"].get("doc_acquired")
-            and results["import_B_invoketypes"].get("verify", {}).get("verdict") == "PASS"
+            and results["import_B_invoketypes"].get("verify", {}).get("verdict")
+            == "PASS"
         )
         if a_ok or b_ok:
             results["verdict"] = "PASS"

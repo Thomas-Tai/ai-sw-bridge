@@ -163,7 +163,9 @@ def _exclusion_arg(regions: Any, exclude_regions: list[int]) -> Any:
 
 
 def create_intersect(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Intersect overlapping solid bodies into their mutual regions.
 
@@ -233,7 +235,9 @@ def create_intersect(
     except Exception as exc:
         return False, f"PreIntersect2 raised: {exc!r}"
     region_list = (
-        list(regions) if isinstance(regions, (list, tuple)) else ([regions] if regions else [])
+        list(regions)
+        if isinstance(regions, (list, tuple))
+        else ([regions] if regions else [])
     )
     if not region_list:
         return False, (

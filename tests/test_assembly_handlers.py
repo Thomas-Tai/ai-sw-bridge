@@ -104,14 +104,16 @@ class TestPlaceComponents:
         asm = FakeAssemblyDoc()
 
         mock_typed.side_effect = lambda obj, iface, module=None: (
-            sw if iface == "ISldWorks" else
-            asm if iface == "IAssemblyDoc" else
-            obj
+            sw if iface == "ISldWorks" else asm if iface == "IAssemblyDoc" else obj
         )
 
         components = [
             {"id": "a", "part": "/parts/a.sldprt", "transform": {"xyz_mm": [0, 0, 0]}},
-            {"id": "b", "part": "/parts/b.sldprt", "transform": {"xyz_mm": [100, 0, 0]}},
+            {
+                "id": "b",
+                "part": "/parts/b.sldprt",
+                "transform": {"xyz_mm": [100, 0, 0]},
+            },
         ]
 
         placed, err = place_components(sw, asm, components)
@@ -171,7 +173,9 @@ class TestPlaceComponents:
         asm = FakeAssemblyDoc()
         calls: list[tuple] = []
 
-        def record_add(path: str, config: str, x: float, y: float, z: float) -> FakeComponent:
+        def record_add(
+            path: str, config: str, x: float, y: float, z: float
+        ) -> FakeComponent:
             calls.append((x, y, z))
             return FakeComponent()
 
@@ -342,9 +346,9 @@ class TestCreateMate:
         mock_ifeat.GetTypeName2.return_value = "MateDistance"
 
         mock_typed.side_effect = lambda obj, iface, module=None: (
-            asm if iface == "IAssemblyDoc" else
-            mock_ifeat if iface == "IFeature" else
-            obj
+            asm
+            if iface == "IAssemblyDoc"
+            else mock_ifeat if iface == "IFeature" else obj
         )
 
         placed = {"a": FakeComponent("a-1"), "b": FakeComponent("b-1")}
@@ -391,9 +395,9 @@ class TestCreateMate:
         mock_ifeat.GetTypeName2.return_value = "MateConcentric"
 
         mock_typed.side_effect = lambda obj, iface, module=None: (
-            asm if iface == "IAssemblyDoc" else
-            mock_ifeat if iface == "IFeature" else
-            obj
+            asm
+            if iface == "IAssemblyDoc"
+            else mock_ifeat if iface == "IFeature" else obj
         )
 
         placed = {"a": FakeComponent("a-1"), "b": FakeComponent("b-1")}
@@ -436,9 +440,9 @@ class TestCreateMate:
         mock_ifeat.GetTypeName2.return_value = "MateParallel"
 
         mock_typed.side_effect = lambda obj, iface, module=None: (
-            asm if iface == "IAssemblyDoc" else
-            mock_ifeat if iface == "IFeature" else
-            obj
+            asm
+            if iface == "IAssemblyDoc"
+            else mock_ifeat if iface == "IFeature" else obj
         )
 
         placed = {"a": FakeComponent("a-1"), "b": FakeComponent("b-1")}
@@ -481,9 +485,9 @@ class TestCreateMate:
         mock_ifeat.GetTypeName2.return_value = "MatePerpendicular"
 
         mock_typed.side_effect = lambda obj, iface, module=None: (
-            asm if iface == "IAssemblyDoc" else
-            mock_ifeat if iface == "IFeature" else
-            obj
+            asm
+            if iface == "IAssemblyDoc"
+            else mock_ifeat if iface == "IFeature" else obj
         )
 
         placed = {"a": FakeComponent("a-1"), "b": FakeComponent("b-1")}
@@ -636,7 +640,9 @@ class TestCreateExplodedView:
         model_ext.SelectByID2.return_value = True
 
         typed_model_mock = MagicMock()
-        typed_model_mock.GetActiveConfiguration.return_value = MagicMock(_oleobj_=MagicMock())
+        typed_model_mock.GetActiveConfiguration.return_value = MagicMock(
+            _oleobj_=MagicMock()
+        )
         typed_model_mock.SelectionManager = sel_mgr
         typed_model_mock.Extension = model_ext
         typed_model_mock.ClearSelection2.return_value = True
@@ -715,7 +721,9 @@ class TestCreateExplodedView:
         mock_wm.return_value = MagicMock(IConfiguration=mock_cfg_cls)
 
         typed_model_mock = MagicMock()
-        typed_model_mock.GetActiveConfiguration.return_value = MagicMock(_oleobj_=MagicMock())
+        typed_model_mock.GetActiveConfiguration.return_value = MagicMock(
+            _oleobj_=MagicMock()
+        )
         typed_model_mock.SelectionManager = MagicMock()
         typed_model_mock.Extension = MagicMock()
 
@@ -735,10 +743,14 @@ class TestCreateExplodedView:
 
         # Empty placed dict — component "b" not found
         count, err = create_exploded_view(
-            asm, {},
-            {"name": "X", "steps": [
-                {"components": ["b"], "distance_mm": 50.0, "direction": "front"}
-            ]},
+            asm,
+            {},
+            {
+                "name": "X",
+                "steps": [
+                    {"components": ["b"], "distance_mm": 50.0, "direction": "front"}
+                ],
+            },
         )
 
         assert count == 0
@@ -761,7 +773,9 @@ class TestCreateExplodedView:
         sel_mgr.GetSelectedObjectCount2.return_value = 2
 
         typed_model_mock = MagicMock()
-        typed_model_mock.GetActiveConfiguration.return_value = MagicMock(_oleobj_=MagicMock())
+        typed_model_mock.GetActiveConfiguration.return_value = MagicMock(
+            _oleobj_=MagicMock()
+        )
         typed_model_mock.SelectionManager = sel_mgr
         typed_model_mock.Extension = MagicMock(SelectByID2=MagicMock(return_value=True))
         typed_model_mock.ClearSelection2.return_value = True

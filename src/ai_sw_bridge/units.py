@@ -136,9 +136,7 @@ def convert_spec_units(spec: dict[str, Any], unit: SpecUnit | str) -> dict[str, 
         if isinstance(v, dict) and "rhs" in v:
             return v
         if isinstance(v, bool) or not isinstance(v, (int, float)):
-            raise TypeError(
-                f"length field holds non-numeric value: {v!r}"
-            )
+            raise TypeError(f"length field holds non-numeric value: {v!r}")
         return inch_to_mm(v)
 
     def _walk(node: Any) -> Any:

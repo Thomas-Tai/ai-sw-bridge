@@ -138,9 +138,7 @@ def parse_variants(block: list[dict[str, Any]]) -> list[ConfigVariant]:
 
         raw_overrides = entry.get("overrides", {})
         if not isinstance(raw_overrides, dict):
-            raise ValueError(
-                f"variant {name!r}: 'overrides' must be an object"
-            )
+            raise ValueError(f"variant {name!r}: 'overrides' must be an object")
 
         # Detect nested (multifile) vs flat (locals) overrides.
         # Nested mode requires a CONTAINER value — a dict (deep-merged) or a
@@ -149,9 +147,7 @@ def parse_variants(block: list[dict[str, Any]]) -> list[ConfigVariant]:
         # expression and not a mergeable sub-tree — so it must fall through
         # to the flat branch and hit the "must be a string expression" raise
         # (the P4.1s contract), NOT be silently accepted as a nested override.
-        is_nested = any(
-            isinstance(v, (dict, list)) for v in raw_overrides.values()
-        )
+        is_nested = any(isinstance(v, (dict, list)) for v in raw_overrides.values())
 
         overrides: list[VariantOverride] = []
         spec_overrides: dict[str, Any] = {}
@@ -169,9 +165,7 @@ def parse_variants(block: list[dict[str, Any]]) -> list[ConfigVariant]:
 
         description = entry.get("description", "")
         if not isinstance(description, str):
-            raise ValueError(
-                f"variant {name!r}: 'description' must be a string"
-            )
+            raise ValueError(f"variant {name!r}: 'description' must be a string")
 
         variants.append(
             ConfigVariant(

@@ -82,12 +82,22 @@ class TestOrchestrateSequencing:
 
         env = orchestrate(
             {},
-            stages=[track("features"), track("material"), track("drawing"), track("export")],
+            stages=[
+                track("features"),
+                track("material"),
+                track("drawing"),
+                track("export"),
+            ],
             stderr=io.StringIO(),
         )
         assert env.ok is True
         assert calls == ["features", "material", "drawing", "export"]
-        assert [s["stage"] for s in env.stages] == ["features", "material", "drawing", "export"]
+        assert [s["stage"] for s in env.stages] == [
+            "features",
+            "material",
+            "drawing",
+            "export",
+        ]
         assert env.failed_stage is None
         assert env.failed_detail is None
 
@@ -104,7 +114,11 @@ class TestOrchestrateSequencing:
 
         env = orchestrate(
             {},
-            stages=[track("features", True), track("material", False), track("drawing", True)],
+            stages=[
+                track("features", True),
+                track("material", False),
+                track("drawing", True),
+            ],
             stderr=io.StringIO(),
         )
         assert env.ok is False
@@ -156,7 +170,9 @@ class TestOrchestrateSequencing:
 
         boom.__name__ = "material"
 
-        env = orchestrate({}, stages=[_ok_stage("features"), boom], stderr=io.StringIO())
+        env = orchestrate(
+            {}, stages=[_ok_stage("features"), boom], stderr=io.StringIO()
+        )
         assert env.ok is False
         assert env.failed_stage == "material"
         assert "RuntimeError" in (env.failed_detail or "")
@@ -210,7 +226,9 @@ class TestOrchestrateEnvelope:
             state.material_result = True
             return StageOutcome("material", ok=True)
 
-        env2 = orchestrate({}, stages=[_ok_stage("features"), _mat], stderr=io.StringIO())
+        env2 = orchestrate(
+            {}, stages=[_ok_stage("features"), _mat], stderr=io.StringIO()
+        )
         assert env2.material == {"applied": True}
 
     def test_drawing_payload_serialized_via_to_dict(self) -> None:
@@ -228,7 +246,10 @@ class TestOrchestrateEnvelope:
         ]
 
     def test_to_dict_drops_none_optional_fields(self) -> None:
-        env = OrchestrationEnvelope(ok=True, stages=[{"stage": "features", "ok": True, "skipped": False, "detail": ""}])
+        env = OrchestrationEnvelope(
+            ok=True,
+            stages=[{"stage": "features", "ok": True, "skipped": False, "detail": ""}],
+        )
         wire = env.to_dict()
         assert "failed_stage" not in wire
         assert "build_result" not in wire
@@ -260,7 +281,9 @@ class TestTwoStreamDiscipline:
         out2 = io.StringIO()
         bad_env = OrchestrationEnvelope(
             ok=False,
-            stages=[{"stage": "features", "ok": False, "skipped": False, "detail": "x"}],
+            stages=[
+                {"stage": "features", "ok": False, "skipped": False, "detail": "x"}
+            ],
             failed_stage="features",
             failed_detail="x",
         )

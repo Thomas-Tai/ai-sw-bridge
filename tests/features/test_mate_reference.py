@@ -48,7 +48,7 @@ class _FakeFeatureManager:
     def __init__(self, initial_nodes: list[_FakeFeatureNode] | None = None) -> None:
         self._nodes: list[_FakeFeatureNode] = list(initial_nodes or [])
         self.insert_calls: list[tuple] = []
-        self._insert_result: Any = True        # truthy IFeature stand-in
+        self._insert_result: Any = True  # truthy IFeature stand-in
         self._insert_raises: Exception | None = None
         self._node_to_add: _FakeFeatureNode | None = None
 
@@ -166,11 +166,11 @@ class TestModeBSuccess:
         assert len(fm.insert_calls) == 1
         args = fm.insert_calls[0]
         assert len(args) == 12
-        assert args[0] == "Default"        # name (none supplied)
-        assert _is_real_entity(args[1])    # primary entity present
+        assert args[0] == "Default"  # name (none supplied)
+        assert _is_real_entity(args[1])  # primary entity present
         assert args[2] == 0 and args[3] == 0 and args[4] is False
-        assert not _is_real_entity(args[5])   # secondary nulled
-        assert not _is_real_entity(args[9])   # tertiary nulled
+        assert not _is_real_entity(args[5])  # secondary nulled
+        assert not _is_real_entity(args[9])  # tertiary nulled
 
     def test_three_entities_all_slots(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fm = _FakeFeatureManager(_seed_nodes(5))
@@ -190,11 +190,13 @@ class TestModeBSuccess:
         assert result is True
         args = fm.insert_calls[0]
         assert args[0] == "Tri"
-        assert _is_real_entity(args[1])   # primary  @ 1
-        assert _is_real_entity(args[5])   # secondary @ 5
-        assert _is_real_entity(args[9])   # tertiary  @ 9
+        assert _is_real_entity(args[1])  # primary  @ 1
+        assert _is_real_entity(args[5])  # secondary @ 5
+        assert _is_real_entity(args[9])  # tertiary  @ 9
 
-    def test_two_entities_primary_secondary(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_two_entities_primary_secondary(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         fm = _FakeFeatureManager(_seed_nodes(3))
         doc = _FakeDoc(fm)
         _patch_com(monkeypatch)
@@ -243,14 +245,18 @@ class TestModeBFailure:
         result = mr._try_mode_b(doc, {"type": "mate_reference", "entities": []}, {})
         assert result is None
 
-    def test_entity_without_ref_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_entity_without_ref_returns_none(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _patch_com(monkeypatch)
         doc = _FakeDoc()
         feature = {"type": "mate_reference", "entities": [{"role": "primary"}]}
         result = mr._try_mode_b(doc, feature, {})
         assert result is None
 
-    def test_unresolved_entity_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_unresolved_entity_returns_none(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _patch_com(monkeypatch, resolve_ok=False)
         doc = _FakeDoc()
         feature = {
@@ -273,7 +279,9 @@ class TestModeBFailure:
         assert result is None
         assert fm.insert_calls == []
 
-    def test_insert_exception_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_insert_exception_returns_none(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _patch_com(monkeypatch)
         fm = _FakeFeatureManager(_seed_nodes(3))
         fm._insert_raises = RuntimeError("COM error")
@@ -304,7 +312,9 @@ class TestModeBFailure:
 
 
 class TestEntityResolution:
-    def test_dict_ref_uses_resolve_manifest_face(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_dict_ref_uses_resolve_manifest_face(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         calls = _patch_com(monkeypatch)
         fm = _FakeFeatureManager(_seed_nodes(3))
         doc = _FakeDoc(fm)
@@ -439,7 +449,9 @@ class TestCreateMateReference:
 class TestTypedQiFallback:
     """If typed_qi(IFeatureManager) fails, the raw FeatureManager is used."""
 
-    def test_raw_fm_fallback_when_typed_qi_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_raw_fm_fallback_when_typed_qi_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         fm = _FakeFeatureManager(_seed_nodes(3))
         doc = _FakeDoc(fm)
         _patch_com(monkeypatch)
@@ -485,7 +497,9 @@ class TestNeverRaise:
             FeatureManager = _BrokenFM()
 
         doc = _BrokenDoc()
-        ok, err = mr.create_mate_reference(doc, {"type": "mate_reference", "entities": []}, {})
+        ok, err = mr.create_mate_reference(
+            doc, {"type": "mate_reference", "entities": []}, {}
+        )
         assert ok is False
         assert "unexpected error" in err
 

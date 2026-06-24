@@ -23,6 +23,7 @@ curvature-comb UI check (doc left OPEN unless --close).
 
 Non-destructive: own blank Part, never saves.
 """
+
 from __future__ import annotations
 
 import json
@@ -84,7 +85,9 @@ def run(do_close: bool) -> dict[str, Any]:
         cb = int(_call(sk, "GetSketchContourCount"))
         rec["points_before"], rec["contours_before"] = pb, cb
         try:
-            rec["curve_isclosed_before"] = bool(_call(typed(seg, "ISketchSegment"), "GetCurve").IsClosed())
+            rec["curve_isclosed_before"] = bool(
+                _call(typed(seg, "ISketchSegment"), "GetCurve").IsClosed()
+            )
         except Exception as e:  # noqa: BLE001
             rec["curve_isclosed_before_error"] = repr(e)
 
@@ -98,8 +101,8 @@ def run(do_close: bool) -> dict[str, Any]:
         except Exception as e:  # noqa: BLE001
             rec["curve_isclosed_after_error"] = repr(e)
 
-        rec["point_count_dropped_by_1"] = (pb - pa == 1)
-        rec["contour_formed"] = (ca >= 1)
+        rec["point_count_dropped_by_1"] = pb - pa == 1
+        rec["contour_formed"] = ca >= 1
         rec["weld_evidence"] = rec["point_count_dropped_by_1"] or rec["contour_formed"]
         rec["overall"] = "PASS" if rec["weld_evidence"] else "INVESTIGATE"
     except Exception as e:  # noqa: BLE001
@@ -109,7 +112,8 @@ def run(do_close: bool) -> dict[str, Any]:
         won = rec.get("overall") == "PASS"
         if do_close or not won:
             try:
-                doc.SketchManager.InsertSketch(True); sw.CloseDoc(title)
+                doc.SketchManager.InsertSketch(True)
+                sw.CloseDoc(title)
                 rec["closed_doc"] = True
             except Exception:  # noqa: BLE001
                 rec["closed_doc"] = False

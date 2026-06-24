@@ -79,15 +79,15 @@ from ai_sw_bridge.sw_com import get_sw_app, get_active_doc, SW_DOC_PART  # noqa:
 # ---------------------------------------------------------------------------
 # Box geometry (metres)
 # ---------------------------------------------------------------------------
-BOX_W_M = 0.020   # 20 mm wide  (X)
-BOX_H_M = 0.020   # 20 mm tall  (Y)
-BOX_D_M = 0.010   # 10 mm deep  (Z) — +z face at z=0.010
+BOX_W_M = 0.020  # 20 mm wide  (X)
+BOX_H_M = 0.020  # 20 mm tall  (Y)
+BOX_D_M = 0.010  # 10 mm deep  (Z) — +z face at z=0.010
 
 # Shell wall thickness for the probe call.
-SHELL_THICKNESS_M = 0.002   # 2 mm
+SHELL_THICKNESS_M = 0.002  # 2 mm
 
 # Draft angle for the probe call (radians).
-DRAFT_ANGLE_RAD = math.radians(5.0)   # 5°
+DRAFT_ANGLE_RAD = math.radians(5.0)  # 5°
 
 
 def _type_tag(v: Any) -> str:
@@ -116,8 +116,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-         BOX_W_M / 2,  BOX_H_M / 2,  0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -126,14 +130,33 @@ def _build_box(doc: Any) -> dict[str, Any]:
 
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
-        feat = fm.FeatureExtrusion2(*base_args, False)   # 23-arg
+        feat = fm.FeatureExtrusion2(*base_args, False)  # 23-arg
     except Exception:
-        feat = fm.FeatureExtrusion2(*base_args)           # 22-arg fallback
+        feat = fm.FeatureExtrusion2(*base_args)  # 22-arg fallback
     if feat is None:
         return {"built": False, "error": "FeatureExtrusion2 returned None"}
     return {"built": True, "feature_name": getattr(feat, "Name", None)}
@@ -149,6 +172,7 @@ def _first_body(doc: Any) -> Any:
 # ---------------------------------------------------------------------------
 # InsertFeatureShell probe
 # ---------------------------------------------------------------------------
+
 
 def _probe_shell(fm: Any, doc: Any) -> dict[str, Any]:
     """Probe InsertFeatureShell arity and marshaling.
@@ -216,9 +240,8 @@ def _probe_shell(fm: Any, doc: Any) -> dict[str, Any]:
         if "com_error" not in rec and "py_exception" not in rec:
             rec["reason"] = "InsertFeatureShell returned None"
         else:
-            rec["reason"] = (
-                rec.get("com_error", {}).get("description")
-                or rec.get("py_exception", "unknown error")
+            rec["reason"] = rec.get("com_error", {}).get("description") or rec.get(
+                "py_exception", "unknown error"
             )
 
     return rec
@@ -227,6 +250,7 @@ def _probe_shell(fm: Any, doc: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # InsertDraft2 probe
 # ---------------------------------------------------------------------------
+
 
 def _probe_draft(fm: Any, doc: Any) -> dict[str, Any]:
     """Probe InsertDraft2 arity and marshaling.
@@ -307,13 +331,13 @@ def _probe_draft(fm: Any, doc: Any) -> dict[str, Any]:
 
     # --- Try 7-arg form (expected canonical signature) ---
     args_7 = (
-        DRAFT_ANGLE_RAD,   # Angle (rad)
-        False,             # OtherSide
-        False,             # ReverseDir
-        False,             # StepFace
-        0.0,               # StepFaceThickness
-        True,              # Propagate to tangent faces
-        DRAFT_ANGLE_RAD,   # DraftAngle2 (same angle both sides)
+        DRAFT_ANGLE_RAD,  # Angle (rad)
+        False,  # OtherSide
+        False,  # ReverseDir
+        False,  # StepFace
+        0.0,  # StepFaceThickness
+        True,  # Propagate to tangent faces
+        DRAFT_ANGLE_RAD,  # DraftAngle2 (same angle both sides)
     )
 
     t0 = time.perf_counter()
@@ -360,11 +384,10 @@ def _probe_draft(fm: Any, doc: Any) -> dict[str, Any]:
             pass
     else:
         rec["verdict"] = "FAIL"
-        err = (rec.get("com_error_7arg", {}).get("description")
-               or rec.get("py_exception_7arg", "unknown error"))
-        rec["reason"] = (
-            f"InsertDraft2 returned None in all forms ({err})"
+        err = rec.get("com_error_7arg", {}).get("description") or rec.get(
+            "py_exception_7arg", "unknown error"
         )
+        rec["reason"] = f"InsertDraft2 returned None in all forms ({err})"
 
     return rec
 
@@ -372,6 +395,7 @@ def _probe_draft(fm: Any, doc: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Top-level COM run
 # ---------------------------------------------------------------------------
+
 
 def run_com(skip_build: bool) -> dict[str, Any]:
     sw = get_sw_app()
@@ -446,6 +470,7 @@ def run_com(skip_build: bool) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # VBA oracle (early-binding)
 # ---------------------------------------------------------------------------
+
 
 def emit_vba() -> str:
     """Early-binding oracle for the Shell + Draft round-trips.
@@ -537,22 +562,28 @@ End Sub
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
-        "--mode", choices=["com", "vba"], default="com",
+        "--mode",
+        choices=["com", "vba"],
+        default="com",
         help="com = drive SW from Python; vba = emit the .bas oracle.",
     )
     p.add_argument(
-        "--skip-build", action="store_true",
+        "--skip-build",
+        action="store_true",
         help="Skip creating the initial test box; probe the first solid "
-             "body already present in the active part.",
+        "body already present in the active part.",
     )
     p.add_argument(
-        "--out", type=Path, default=None,
+        "--out",
+        type=Path,
+        default=None,
         help="Write JSON report to this path instead of stdout.",
     )
     args = p.parse_args()

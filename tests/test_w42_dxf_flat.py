@@ -12,6 +12,7 @@ Bend LINES (brake annotation) are deliberately NOT asserted: ExportFlatPatternVi
 (options 0–7) does not emit them — that is a deferred sub-scope routed through a
 drawing flat-pattern view (W33), see docs/DEFERRED.md Wave-42.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -29,8 +30,8 @@ _GOLDEN = Path(__file__).parent / "fixtures" / "W42_L_bracket_flat.dxf"
 # Seat-measured developed boundary of the L-bracket (60+30mm segments, t=2mm,
 # bend R=3mm, depth=40mm). The long span is the UNROLLED developed length.
 _DEV_LONG_MM = 86.28
-_FOLDED_FACE_MM = 60.0   # the largest folded face — what a NON-unfold would emit
-_NAIVE_SUM_MM = 90.0     # 60+30 with no bend deduction
+_FOLDED_FACE_MM = 60.0  # the largest folded face — what a NON-unfold would emit
+_NAIVE_SUM_MM = 90.0  # 60+30 with no bend deduction
 _DEPTH_MM = 40.0
 
 
@@ -38,7 +39,9 @@ class TestDxfFlatDevelopedBoundary:
     """Pin the physical unrolled span — the proof dxf_flat actually unfolds."""
 
     def _bbox(self) -> dict:
-        return parse_dxf_outline_bbox(_GOLDEN.read_text(encoding="utf-8", errors="replace"))
+        return parse_dxf_outline_bbox(
+            _GOLDEN.read_text(encoding="utf-8", errors="replace")
+        )
 
     def test_outline_found(self) -> None:
         assert self._bbox().get("found") is True

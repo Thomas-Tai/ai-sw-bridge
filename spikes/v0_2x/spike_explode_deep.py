@@ -1,12 +1,14 @@
 """
 Deep investigation of explode-related APIs using makepy direct module access.
 """
+
 import pythoncom
 from win32com.client import gencache, GetActiveObject, dynamic
 import winreg
 import os
 
 SW_LIBID = "{83A33D31-27C5-11CE-BFD4-00400513BB57}"
+
 
 def _sw_tlb_path() -> str | None:
     try:
@@ -33,6 +35,7 @@ def _sw_tlb_path() -> str | None:
                 continue
     return None
 
+
 def investigate():
     pythoncom.CoInitialize()
     try:
@@ -45,9 +48,9 @@ def investigate():
         print(f"Module file: {mod.__file__}")
 
         # List all attributes in the module
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("All module attributes containing 'Explode' or 'Explod':")
-        print("="*80)
+        print("=" * 80)
 
         for name in sorted(dir(mod)):
             if "explode" in name.lower() or "explod" in name.lower():
@@ -65,9 +68,9 @@ def investigate():
         # Check the generated module source directly for explode methods
         gen_file = mod.__file__
         if os.path.exists(gen_file):
-            print(f"\n" + "="*80)
+            print(f"\n" + "=" * 80)
             print(f"Scanning generated module source for 'Explod':")
-            print("="*80)
+            print("=" * 80)
             with open(gen_file, "r") as f:
                 content = f.read()
 
@@ -76,23 +79,25 @@ def investigate():
             for i, line in enumerate(lines):
                 if "Explod" in line or "explod" in line.lower():
                     # Print context
-                    start = max(0, i-2)
-                    end = min(len(lines), i+3)
+                    start = max(0, i - 2)
+                    end = min(len(lines), i + 3)
                     for j in range(start, end):
                         marker = ">>>" if j == i else "   "
                         print(f"{marker} {lines[j]}")
                     print()
 
         # Runtime probe using dynamic dispatch (not early bound)
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Runtime IDispatch probe (dynamic dispatch):")
-        print("="*80)
+        print("=" * 80)
 
         sw = dynamic.Dispatch("SldWorks.Application")
         print(f"SW (dynamic): {sw}")
 
         # Create assembly using dynamic dispatch
-        template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        template = (
+            r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        )
 
         # Use ISldWorks.NewDocument
         asm = sw.NewDocument(template, 0, 0, 0)
@@ -106,9 +111,15 @@ def investigate():
 
             # Probe explode methods on assembly
             asm_methods = [
-                "CreateExplodedView", "ShowExploded", "ShowExploded2",
-                "GetExplodedViewCount", "IGetExplodedViews", "GetFirstExplodedView",
-                "CreateExplodeStep", "AddExplodeStep", "InsertExplodeStep",
+                "CreateExplodedView",
+                "ShowExploded",
+                "ShowExploded2",
+                "GetExplodedViewCount",
+                "IGetExplodedViews",
+                "GetFirstExplodedView",
+                "CreateExplodeStep",
+                "AddExplodeStep",
+                "InsertExplodeStep",
             ]
 
             print("\nAssembly IDispatch probe:")
@@ -124,10 +135,17 @@ def investigate():
             if config:
                 print("\nConfiguration IDispatch probe:")
                 config_methods = [
-                    "GetExplodedViews", "GetExplodedView", "GetExplodedViews2",
-                    "CreateExplodedView", "AddExplodeStep", "GetExplodeSteps",
-                    "GetExplodeStepCount", "IGetExplodeSteps", "GetFirstExplodeStep",
-                    "ShowExploded", "ShowExploded2",
+                    "GetExplodedViews",
+                    "GetExplodedView",
+                    "GetExplodedViews2",
+                    "CreateExplodedView",
+                    "AddExplodeStep",
+                    "GetExplodeSteps",
+                    "GetExplodeStepCount",
+                    "IGetExplodeSteps",
+                    "GetFirstExplodeStep",
+                    "ShowExploded",
+                    "ShowExploded2",
                 ]
                 for name in config_methods:
                     try:
@@ -138,13 +156,15 @@ def investigate():
                             print(f"  {name}: NOT FOUND")
 
             # Try calling CreateExplodedView
-            print("\n" + "="*80)
+            print("\n" + "=" * 80)
             print("Calling CreateExplodedView on assembly:")
-            print("="*80)
+            print("=" * 80)
 
             try:
                 result = asm.CreateExplodedView()
-                print(f"  CreateExplodedView() returned: {result} (type={type(result)})")
+                print(
+                    f"  CreateExplodedView() returned: {result} (type={type(result)})"
+                )
 
                 # Now check if there's an exploded view
                 ev_count = asm.GetExplodedViewCount()
@@ -165,8 +185,12 @@ def investigate():
                         if first_view:
                             # Probe this view object for step methods
                             print("\n  ExplodedView object methods:")
-                            for name in ["AddExplodeStep", "GetExplodeStepCount",
-                                        "GetFirstExplodeStep", "IGetExplodeSteps"]:
+                            for name in [
+                                "AddExplodeStep",
+                                "GetExplodeStepCount",
+                                "GetFirstExplodeStep",
+                                "IGetExplodeSteps",
+                            ]:
                                 try:
                                     disp_id = first_view._oleobj_.GetIDsOfNames(0, name)
                                     print(f"    {name}: dispid={disp_id}")

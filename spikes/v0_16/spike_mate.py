@@ -199,7 +199,11 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     asm_template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_ASSEMBLY)
     asm_doc = sw.NewDocument(asm_template, 0, 0.0, 0.0)
     if asm_doc is None:
-        return {**result, "overall": "FAIL", "reason": "NewDocument(assembly) returned None"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": "NewDocument(assembly) returned None",
+        }
 
     result["assembly_opened"] = True
     result["assembly_type"] = _tag(asm_doc)

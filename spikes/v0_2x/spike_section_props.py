@@ -55,26 +55,30 @@ import pythoncom  # noqa: E402
 from ai_sw_bridge.com.earlybind import typed  # noqa: E402
 from ai_sw_bridge.com.sw_type_info import wrapper_module  # noqa: E402
 from ai_sw_bridge.sw_com import get_sw_app, get_active_doc  # noqa: E402
-from ai_sw_bridge.observe_section import read_section_props, sw_get_section_props  # noqa: E402
+from ai_sw_bridge.observe_section import (
+    read_section_props,
+    sw_get_section_props,
+)  # noqa: E402
 
 # Analytic values for a 20 mm × 20 mm square section (see module docstring).
 BOX_SIDE_M = 0.020  # 20 mm
 
-_AREA_M2_ANALYTIC = BOX_SIDE_M ** 2                                     # 4.0e-4 m²
-_CENTROID_Z_M_ANALYTIC = BOX_SIDE_M                                      # 0.020 m (top face)
-_IXX_M4_ANALYTIC = BOX_SIDE_M * BOX_SIDE_M ** 3 / 12                    # 1.333e-8 m⁴
-_JP_M4_ANALYTIC = 2 * _IXX_M4_ANALYTIC                                  # 2.667e-8 m⁴
+_AREA_M2_ANALYTIC = BOX_SIDE_M**2  # 4.0e-4 m²
+_CENTROID_Z_M_ANALYTIC = BOX_SIDE_M  # 0.020 m (top face)
+_IXX_M4_ANALYTIC = BOX_SIDE_M * BOX_SIDE_M**3 / 12  # 1.333e-8 m⁴
+_JP_M4_ANALYTIC = 2 * _IXX_M4_ANALYTIC  # 2.667e-8 m⁴
 
 # Tolerance fractions / absolute values (in mm / mm⁴ after conversion).
-_AREA_TOL_FRAC = 0.01       # 1 %
-_CENTROID_Z_TOL_MM = 0.5    # 0.5 mm absolute
-_IXX_TOL_MM4 = 200.0        # absolute mm⁴ — ~1.5 % of 13333
-_IXY_ABS_MAX_MM4 = 10.0     # must be near zero for a symmetric square
-_JP_TOL_FRAC = 0.01         # 1 %
+_AREA_TOL_FRAC = 0.01  # 1 %
+_CENTROID_Z_TOL_MM = 0.5  # 0.5 mm absolute
+_IXX_TOL_MM4 = 200.0  # absolute mm⁴ — ~1.5 % of 13333
+_IXY_ABS_MAX_MM4 = 10.0  # must be near zero for a symmetric square
+_JP_TOL_FRAC = 0.01  # 1 %
 
 
 def _find_part_template() -> str | None:
     import glob
+
     for pat in [
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.PRTDOT",
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\part.prtdot",
@@ -90,7 +94,9 @@ def _retry(fn, *args, retries: int = 3, delay: float = 5.0, label: str = "") -> 
             return fn(*args)
         except Exception as exc:
             if attempt < retries - 1:
-                print(f"  [{label}] attempt {attempt + 1} failed: {exc!r}, retrying in {delay}s …")
+                print(
+                    f"  [{label}] attempt {attempt + 1} failed: {exc!r}, retrying in {delay}s …"
+                )
                 time.sleep(delay)
             else:
                 raise
@@ -102,8 +108,13 @@ def _make_box_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, str 
     try:
         doc = _retry(
             sw_typed.NewDocument,
-            _find_part_template(), 0, 0, 0,
-            retries=3, delay=5.0, label="NewDocument",
+            _find_part_template(),
+            0,
+            0,
+            0,
+            retries=3,
+            delay=5.0,
+            label="NewDocument",
         )
         if doc is None:
             return None, "NewDocument returned None"
@@ -117,13 +128,29 @@ def _make_box_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, str 
         dt.ClearSelection2(True)
         dt.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
         feat = dt.FeatureManager.FeatureExtrusion2(
-            True, False, False, 0, 0,
-            BOX_SIDE_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOX_SIDE_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
+            False,
         )
         if feat is None:
             return None, "FeatureExtrusion2 returned None"
@@ -230,7 +257,9 @@ def main() -> None:
                 ok_sel2, _ = _select_top_face(doc, mod)
                 if ok_sel2:
                     time.sleep(0.3)
-                    raw = typed(doc, "IModelDoc2", module=mod).Extension.GetSectionProperties2([])
+                    raw = typed(
+                        doc, "IModelDoc2", module=mod
+                    ).Extension.GetSectionProperties2([])
                     print("[S1]   [] form succeeded.")
             except Exception as exc_empty:
                 result["errors"].append(
@@ -258,10 +287,7 @@ def main() -> None:
 
         # ── Step 4: parse via the observe module ──────────────────────────
         props = read_section_props(raw)
-        result["parsed"] = {
-            k: v for k, v in props.items()
-            if k != "errors"
-        }
+        result["parsed"] = {k: v for k, v in props.items() if k != "errors"}
         if props["errors"]:
             result["errors"].extend(props["errors"])
             result["verdict"] = "NO-GO"
@@ -269,8 +295,8 @@ def main() -> None:
             return
 
         # ── Step 5: discriminating checks ─────────────────────────────────
-        area = props["area_mm2"]          # mm²
-        cx = props["centroid_mm"]          # [x_mm, y_mm, z_mm]
+        area = props["area_mm2"]  # mm²
+        cx = props["centroid_mm"]  # [x_mm, y_mm, z_mm]
         ixx = props["ixx_mm4"]
         iyy = props["iyy_mm4"]
         ixy = props["ixy_mm4"]
@@ -289,21 +315,15 @@ def main() -> None:
             and abs(area - area_analytic_mm2) / area_analytic_mm2 < _AREA_TOL_FRAC
         )
         checks["G3_centroid_z"] = (
-            cx is not None
-            and abs(cx[2] - centroid_z_analytic_mm) < _CENTROID_Z_TOL_MM
+            cx is not None and abs(cx[2] - centroid_z_analytic_mm) < _CENTROID_Z_TOL_MM
         )
         checks["G4_ixx"] = (
-            ixx is not None
-            and abs(ixx - ixx_analytic_mm4) < _IXX_TOL_MM4
+            ixx is not None and abs(ixx - ixx_analytic_mm4) < _IXX_TOL_MM4
         )
         checks["G5_iyy"] = (
-            iyy is not None
-            and abs(iyy - ixx_analytic_mm4) < _IXX_TOL_MM4
+            iyy is not None and abs(iyy - ixx_analytic_mm4) < _IXX_TOL_MM4
         )
-        checks["G6_ixy_near_zero"] = (
-            ixy is not None
-            and abs(ixy) < _IXY_ABS_MAX_MM4
-        )
+        checks["G6_ixy_near_zero"] = ixy is not None and abs(ixy) < _IXY_ABS_MAX_MM4
         checks["G7_jp"] = (
             jp is not None
             and abs(jp - jp_analytic_mm4) / jp_analytic_mm4 < _JP_TOL_FRAC
@@ -323,7 +343,9 @@ def main() -> None:
             # Print analytic vs actual for diagnosis.
             print(f"[S1]   area_mm2: got={area:.4f}, expected≈{area_analytic_mm2:.4f}")
             if cx:
-                print(f"[S1]   centroid_z_mm: got={cx[2]:.4f}, expected≈{centroid_z_analytic_mm:.4f}")
+                print(
+                    f"[S1]   centroid_z_mm: got={cx[2]:.4f}, expected≈{centroid_z_analytic_mm:.4f}"
+                )
             print(f"[S1]   ixx_mm4:  got={ixx:.2f}, expected≈{ixx_analytic_mm4:.2f}")
             print(f"[S1]   iyy_mm4:  got={iyy:.2f}, expected≈{ixx_analytic_mm4:.2f}")
             print(f"[S1]   ixy_mm4:  got={ixy:.6f}")
@@ -333,6 +355,7 @@ def main() -> None:
         result["errors"].append(f"top-level: {exc!r}")
         result["verdict"] = "NO-GO"
         import traceback
+
         traceback.print_exc()
     finally:
         try:

@@ -174,7 +174,9 @@ class _FakeDoc:
     def ClearSelection2(self, top_only: bool) -> None:
         self.clear_selection_calls.append(top_only)
 
-    def SelectByID(self, name: str, sel_type: str, x: float, y: float, z: float) -> bool:
+    def SelectByID(
+        self, name: str, sel_type: str, x: float, y: float, z: float
+    ) -> bool:
         self.select_calls.append((name, sel_type, x, y, z))
         return self.select_returns
 
@@ -385,9 +387,7 @@ class TestDryRunFeatureAdd:
         r = _sw_propose_feature_add_impl(doc_path, _VALID_FEATURE, _VALID_TARGET)
         return r["proposal_id"]
 
-    def test_ok_no_save(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_ok_no_save(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "test.sldprt"
         doc.touch()
         fakes = _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
@@ -489,7 +489,11 @@ class TestProposeBaseFlange:
         doc = tmp_path / "test.sldprt"
         doc.touch()
         fakes = _patch_all(
-            monkeypatch, tmp_path, str(doc), None, object(),
+            monkeypatch,
+            tmp_path,
+            str(doc),
+            None,
+            object(),
             data=_FakeBaseFlangeData(),
         )
 
@@ -558,9 +562,7 @@ class TestDryRunBaseFlange:
         doc = tmp_path / "test.sldprt"
         doc.touch()
         bf = _FakeBaseFlangeData()
-        fakes = _patch_all(
-            monkeypatch, tmp_path, str(doc), None, object(), data=bf
-        )
+        fakes = _patch_all(monkeypatch, tmp_path, str(doc), None, object(), data=bf)
         pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
         )["proposal_id"]
@@ -587,9 +589,7 @@ class TestDryRunBaseFlange:
         doc = tmp_path / "test.sldprt"
         doc.touch()
         bf = _FakeBaseFlangeData()
-        fakes = _patch_all(
-            monkeypatch, tmp_path, str(doc), None, object(), data=bf
-        )
+        fakes = _patch_all(monkeypatch, tmp_path, str(doc), None, object(), data=bf)
         fakes["doc"].select_returns = False  # sketch cannot be selected
         pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
@@ -612,9 +612,7 @@ class TestCommitBaseFlange:
         doc = tmp_path / "test.sldprt"
         doc.touch()
         bf = _FakeBaseFlangeData()
-        fakes = _patch_all(
-            monkeypatch, tmp_path, str(doc), None, object(), data=bf
-        )
+        fakes = _patch_all(monkeypatch, tmp_path, str(doc), None, object(), data=bf)
         pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_BASEFLANGE_FEATURE, _VALID_SKETCH_TARGET
         )["proposal_id"]
@@ -715,9 +713,11 @@ class TestDryRunVariableFillet:
         # Record the append flags select_entity is called with.
         # Recipe-C cut #4: _create_variable_fillet moved to dress_up; patch there.
         from ai_sw_bridge.features import dress_up as _du
+
         sel_appends: list[bool] = []
         monkeypatch.setattr(
-            _du, "select_entity",
+            _du,
+            "select_entity",
             lambda e, **kw: (sel_appends.append(kw.get("append", False)), True)[1],
         )
 
@@ -729,7 +729,7 @@ class TestDryRunVariableFillet:
         assert r["ok"] is True
         assert r["state"] == ST_DRY_RUN_OK
         assert fakes["fm"].create_def_calls == [1]  # swFmFillet
-        assert data.init_calls == [0]               # const-radius
+        assert data.init_calls == [0]  # const-radius
         assert data.is_multiple is True
         # First edge append=False, second append=True (accumulate).
         assert sel_appends == [False, True]
@@ -831,6 +831,7 @@ class _FakeSwAppHoles:
 
 def _patch_holes(monkeypatch: pytest.MonkeyPatch, sizes: list[str]) -> None:
     from ai_sw_bridge.features import advanced_shapes as _adv
+
     monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
     monkeypatch.setattr(mutate, "typed_qi", lambda obj, iface, **kw: obj)
     monkeypatch.setattr(mutate, "get_sw_app", lambda: _FakeSwAppHoles(sizes))
@@ -866,7 +867,9 @@ class TestResolveHoleArgs:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_holes(monkeypatch, ["M6"])
-        ok, _, _, err = advanced_shapes._resolve_hole_args(2, "Klingon", "Tap Drills", "M6")
+        ok, _, _, err = advanced_shapes._resolve_hole_args(
+            2, "Klingon", "Tap Drills", "M6"
+        )
         assert ok is False
         assert "not found" in err and "ANSI Metric" in err
 
@@ -882,7 +885,9 @@ class TestResolveHoleArgs:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_holes(monkeypatch, ["M6", "M8", "M10"])
-        ok, _, _, err = advanced_shapes._resolve_hole_args(2, "ISO", "Tap Drills", "M7.5")
+        ok, _, _, err = advanced_shapes._resolve_hole_args(
+            2, "ISO", "Tap Drills", "M7.5"
+        )
         assert ok is False
         assert "M7.5" in err and "M6" in err and "M10" in err
 
@@ -898,7 +903,9 @@ class TestFormatSizeCatalog:
     def test_short_list_is_comma_separated_not_repr(self) -> None:
         # Raw repr would be "['M6', 'M8', 'M10']" with brackets+quotes. The
         # H2 format is a clean comma-separated string.
-        assert advanced_shapes._format_size_catalog(["M6", "M8", "M10"]) == "M6, M8, M10"
+        assert (
+            advanced_shapes._format_size_catalog(["M6", "M8", "M10"]) == "M6, M8, M10"
+        )
 
     def test_long_list_is_truncated_with_total_count(self) -> None:
         sizes = [f"M{i}" for i in range(1, 51)]  # 50 entries, well over limit
@@ -910,14 +917,18 @@ class TestFormatSizeCatalog:
         assert "M21" not in out.split("...")[0]
 
     def test_at_limit_is_not_truncated(self) -> None:
-        sizes = [f"M{i}" for i in range(1, advanced_shapes._SIZE_ERROR_DISPLAY_LIMIT + 1)]
+        sizes = [
+            f"M{i}" for i in range(1, advanced_shapes._SIZE_ERROR_DISPLAY_LIMIT + 1)
+        ]
         out = advanced_shapes._format_size_catalog(sizes)
         assert "..." not in out
         assert "total" not in out
 
     def test_byte_stable_across_calls(self) -> None:
         sizes = ["M6", "M8", "M10", "M12"]
-        assert advanced_shapes._format_size_catalog(sizes) == advanced_shapes._format_size_catalog(sizes)
+        assert advanced_shapes._format_size_catalog(
+            sizes
+        ) == advanced_shapes._format_size_catalog(sizes)
 
 
 class TestResolveHoleArgsH2:
@@ -928,7 +939,9 @@ class TestResolveHoleArgsH2:
     ) -> None:
         sizes = [f"M{i}" for i in range(1, 40)]  # 39 entries
         _patch_holes(monkeypatch, sizes)
-        ok, _, _, err = advanced_shapes._resolve_hole_args(2, "ISO", "Tap Drills", "M999")
+        ok, _, _, err = advanced_shapes._resolve_hole_args(
+            2, "ISO", "Tap Drills", "M999"
+        )
         assert ok is False
         assert "(39 total)" in err
         # The rejected size is named.
@@ -950,7 +963,9 @@ class TestResolveHoleArgsH2:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_holes(monkeypatch, ["M6", "M8", "M10"])
-        ok, _, _, err = advanced_shapes._resolve_hole_args(2, "ISO", "Tap Drills", "M7.5")
+        ok, _, _, err = advanced_shapes._resolve_hole_args(
+            2, "ISO", "Tap Drills", "M7.5"
+        )
         assert ok is False
         # Post-H2: no raw Python list repr (no brackets/quotes around the catalog).
         assert "[" not in err or err.count("[") == err.count("[")  # sanity
@@ -961,20 +976,28 @@ class TestResolveHoleArgsH2:
 
 class TestProposeWizardHole:
     _FEATURE = {
-        "type": "wizard_hole", "hole_type": "hole", "standard": "ANSI Metric",
-        "fastener_type": "Tap Drills", "size": "M8", "end_condition": "blind",
+        "type": "wizard_hole",
+        "hole_type": "hole",
+        "standard": "ANSI Metric",
+        "fastener_type": "Tap Drills",
+        "size": "M8",
+        "end_condition": "blind",
         "depth_mm": 6.0,
     }
     _TARGET = {"face": [0, 0, 0.01], "point": [0.003, 0.002, 0.01]}
 
-    def test_writes_record(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_writes_record(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         r = _sw_propose_feature_add_impl(str(doc), self._FEATURE, self._TARGET)
         assert r["ok"] is True
 
-    def test_rejects_bad_hole_type(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_bad_hole_type(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
@@ -983,7 +1006,9 @@ class TestProposeWizardHole:
         )
         assert r["ok"] is False and "hole_type" in r["error"]
 
-    def test_rejects_bad_target_point(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_rejects_bad_target_point(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
@@ -1000,11 +1025,16 @@ class TestProposeWizardHole:
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         face_ref = {
-            "normal": [0, 0, 1], "centroid": [0, 0, 0.01], "area_mm2": 1600.0,
-            "role_hint": "+z_top", "persist_id": "QUJD",
+            "normal": [0, 0, 1],
+            "centroid": [0, 0, 0.01],
+            "area_mm2": 1600.0,
+            "role_hint": "+z_top",
+            "persist_id": "QUJD",
         }
         r = _sw_propose_feature_add_impl(
-            str(doc), self._FEATURE, {"face_ref": face_ref, "point": [0.003, 0.002, 0.01]}
+            str(doc),
+            self._FEATURE,
+            {"face_ref": face_ref, "point": [0.003, 0.002, 0.01]},
         )
         assert r["ok"] is True
 
@@ -1014,7 +1044,9 @@ class TestProposeWizardHole:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
-        r = _sw_propose_feature_add_impl(str(doc), self._FEATURE, {"point": [0, 0, 0.01]})
+        r = _sw_propose_feature_add_impl(
+            str(doc), self._FEATURE, {"point": [0, 0, 0.01]}
+        )
         assert r["ok"] is False and "face_ref" in r["error"]
 
     def test_rejects_bad_face_ref(
@@ -1087,7 +1119,9 @@ class _FakeWizDoc:
     def ClearSelection2(self, top: bool) -> None:
         pass
 
-    def SelectByID(self, name: str, sel_type: str, x: float, y: float, z: float) -> bool:
+    def SelectByID(
+        self, name: str, sel_type: str, x: float, y: float, z: float
+    ) -> bool:
         return True
 
     def Save(self) -> int:
@@ -1103,8 +1137,12 @@ class _FakeWizDoc:
 
 class TestDryRunWizardHole:
     _FEATURE = {
-        "type": "wizard_hole", "hole_type": "hole", "standard": "ANSI Metric",
-        "fastener_type": "Tap Drills", "size": "M8", "end_condition": "blind",
+        "type": "wizard_hole",
+        "hole_type": "hole",
+        "standard": "ANSI Metric",
+        "fastener_type": "Tap Drills",
+        "size": "M8",
+        "end_condition": "blind",
         "depth_mm": 6.0,
     }
     _TARGET = {"face": [0, 0, 0.01], "point": [0.003, 0.002, 0.01]}
@@ -1113,6 +1151,7 @@ class TestDryRunWizardHole:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         from ai_sw_bridge.features import advanced_shapes as _adv
+
         doc_file = tmp_path / "t.sldprt"
         doc_file.touch()
         monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
@@ -1125,8 +1164,10 @@ class TestDryRunWizardHole:
         # sw also needs OpenDoc6/CloseDoc for the PAE plumbing.
         sw_doc = doc
         monkeypatch.setattr(
-            _FakeSwAppHoles, "OpenDoc6",
-            lambda self, *a: (sw_doc, 0, 0), raising=False,
+            _FakeSwAppHoles,
+            "OpenDoc6",
+            lambda self, *a: (sw_doc, 0, 0),
+            raising=False,
         )
         monkeypatch.setattr(
             _FakeSwAppHoles, "CloseDoc", lambda self, title: None, raising=False
@@ -1142,16 +1183,18 @@ class TestDryRunWizardHole:
         monkeypatch.setattr(_adv, "typed", lambda obj, iface, **kw: obj)
         monkeypatch.setattr(_adv, "get_sw_app", lambda: sw)
 
-        pid = _sw_propose_feature_add_impl(str(doc_file), self._FEATURE, self._TARGET)["proposal_id"]
+        pid = _sw_propose_feature_add_impl(str(doc_file), self._FEATURE, self._TARGET)[
+            "proposal_id"
+        ]
         r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_DRY_RUN_OK
-        assert fm.create_def_calls == [25]            # swFmHoleWzd
+        assert fm.create_def_calls == [25]  # swFmHoleWzd
         # InitializeHole got the DB-resolved indexes + the exact size string.
         assert wizdata.init_args == (2, 1, 41, "M8", 0)
         assert wizdata.depth == pytest.approx(0.006)
-        assert doc.save_calls == []                   # dry-run never saves
+        assert doc.save_calls == []  # dry-run never saves
 
     def test_durable_face_ref_resolves_and_creates(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -1191,25 +1234,34 @@ class TestDryRunWizardHole:
         resolved: list[Any] = []
         face_entity = object()
         monkeypatch.setattr(
-            _adv, "resolve_manifest_face",
-            lambda d, ref, **kw: types.SimpleNamespace(entity=face_entity, method="persist_id"),
+            _adv,
+            "resolve_manifest_face",
+            lambda d, ref, **kw: types.SimpleNamespace(
+                entity=face_entity, method="persist_id"
+            ),
         )
         monkeypatch.setattr(
-            _adv, "select_entity",
+            _adv,
+            "select_entity",
             lambda ent, **kw: resolved.append(ent) or True,
         )
 
         face_ref = {
-            "normal": [0, 0, 1], "centroid": [0, 0, 0.01], "area_mm2": 1600.0,
-            "role_hint": "+z_top", "persist_id": "QUJD",
+            "normal": [0, 0, 1],
+            "centroid": [0, 0, 0.01],
+            "area_mm2": 1600.0,
+            "role_hint": "+z_top",
+            "persist_id": "QUJD",
         }
         target = {"face_ref": face_ref, "point": [0.003, 0.002, 0.01]}
-        pid = _sw_propose_feature_add_impl(str(doc_file), self._FEATURE, target)["proposal_id"]
+        pid = _sw_propose_feature_add_impl(str(doc_file), self._FEATURE, target)[
+            "proposal_id"
+        ]
         r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is True
         assert r["state"] == ST_DRY_RUN_OK
-        assert resolved == [face_entity]              # the resolved face was selected
+        assert resolved == [face_entity]  # the resolved face was selected
         assert fm.create_def_calls == [25]
         assert wizdata.init_args == (2, 1, 41, "M8", 0)
         assert doc.save_calls == []
@@ -1246,20 +1298,29 @@ class TestDryRunWizardHole:
         monkeypatch.setattr(_adv, "get_sw_app", lambda: sw)
         # Face does not resolve — the hole must NOT be created.
         monkeypatch.setattr(
-            _adv, "resolve_manifest_face",
-            lambda d, ref, **kw: types.SimpleNamespace(entity=None, method="unresolved"),
+            _adv,
+            "resolve_manifest_face",
+            lambda d, ref, **kw: types.SimpleNamespace(
+                entity=None, method="unresolved"
+            ),
         )
         monkeypatch.setattr(_adv, "select_entity", lambda ent, **kw: True)
 
-        face_ref = {"normal": [0, 0, 1], "centroid": [0, 0, 0.01],
-                    "area_mm2": 1600.0, "role_hint": "+z_top"}
+        face_ref = {
+            "normal": [0, 0, 1],
+            "centroid": [0, 0, 0.01],
+            "area_mm2": 1600.0,
+            "role_hint": "+z_top",
+        }
         target = {"face_ref": face_ref, "point": [0.003, 0.002, 0.01]}
-        pid = _sw_propose_feature_add_impl(str(doc_file), self._FEATURE, target)["proposal_id"]
+        pid = _sw_propose_feature_add_impl(str(doc_file), self._FEATURE, target)[
+            "proposal_id"
+        ]
         r = _sw_dry_run_feature_add_impl(pid)
 
         assert r["ok"] is False
         assert "unresolved" in (r.get("error") or "")
-        assert fm.create_def_calls == []              # never reached CreateDefinition
+        assert fm.create_def_calls == []  # never reached CreateDefinition
 
 
 # ---------------------------------------------------------------------------
@@ -1387,6 +1448,7 @@ class _FakeSwOpen:
 def _patch_wall2(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, doc: Any) -> Any:
     from ai_sw_bridge.features import dress_up as _du
     from ai_sw_bridge.features import sweep as _sw
+
     monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
     sw = _FakeSwOpen(doc)
     monkeypatch.setattr(mutate, "wrapper_module", lambda: object())
@@ -1413,83 +1475,137 @@ _DRAFT_TARGET = {"neutral_face": [0, 0, 0], "faces": [[0.02, 0, 0.01]]}
 
 
 class TestProposeShellDraft:
-    def test_shell_writes_record(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc = tmp_path / "t.sldprt"; doc.touch()
+    def test_shell_writes_record(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeShellDoc(str(doc), 1))
         r = _sw_propose_feature_add_impl(str(doc), _SHELL_FEATURE, _SHELL_TARGET)
         assert r["ok"] is True
 
-    def test_shell_rejects_bad_thickness(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc = tmp_path / "t.sldprt"; doc.touch()
+    def test_shell_rejects_bad_thickness(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeShellDoc(str(doc), 1))
-        r = _sw_propose_feature_add_impl(str(doc), {**_SHELL_FEATURE, "thickness_mm": 0}, _SHELL_TARGET)
+        r = _sw_propose_feature_add_impl(
+            str(doc), {**_SHELL_FEATURE, "thickness_mm": 0}, _SHELL_TARGET
+        )
         assert r["ok"] is False and "thickness_mm" in r["error"]
 
-    def test_shell_rejects_empty_faces(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc = tmp_path / "t.sldprt"; doc.touch()
+    def test_shell_rejects_empty_faces(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
         _patch_wall2(monkeypatch, tmp_path, _FakeShellDoc(str(doc), 1))
         r = _sw_propose_feature_add_impl(str(doc), _SHELL_FEATURE, {"faces": []})
         assert r["ok"] is False and "faces" in r["error"]
 
-    def test_draft_rejects_bad_angle(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc = tmp_path / "t.sldprt"; doc.touch()
-        _patch_wall2(monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object())))
-        r = _sw_propose_feature_add_impl(str(doc), {**_DRAFT_FEATURE, "angle_deg": -5}, _DRAFT_TARGET)
+    def test_draft_rejects_bad_angle(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_wall2(
+            monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object()))
+        )
+        r = _sw_propose_feature_add_impl(
+            str(doc), {**_DRAFT_FEATURE, "angle_deg": -5}, _DRAFT_TARGET
+        )
         assert r["ok"] is False and "angle_deg" in r["error"]
 
-    def test_draft_rejects_bad_propagation(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc = tmp_path / "t.sldprt"; doc.touch()
-        _patch_wall2(monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object())))
-        r = _sw_propose_feature_add_impl(str(doc), {**_DRAFT_FEATURE, "propagation": "sideways"}, _DRAFT_TARGET)
+    def test_draft_rejects_bad_propagation(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_wall2(
+            monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object()))
+        )
+        r = _sw_propose_feature_add_impl(
+            str(doc), {**_DRAFT_FEATURE, "propagation": "sideways"}, _DRAFT_TARGET
+        )
         assert r["ok"] is False and "propagation" in r["error"]
 
-    def test_draft_rejects_missing_neutral(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc = tmp_path / "t.sldprt"; doc.touch()
-        _patch_wall2(monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object())))
-        r = _sw_propose_feature_add_impl(str(doc), _DRAFT_FEATURE, {"faces": [[0.02, 0, 0.01]]})
+    def test_draft_rejects_missing_neutral(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_wall2(
+            monkeypatch, tmp_path, _FakeDraftDoc(str(doc), _FakeDraftFM(object()))
+        )
+        r = _sw_propose_feature_add_impl(
+            str(doc), _DRAFT_FEATURE, {"faces": [[0.02, 0, 0.01]]}
+        )
         assert r["ok"] is False and "neutral_face" in r["error"]
 
 
 class TestDryRunShell:
-    def test_ok_inserts_shell_no_save(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_ok_inserts_shell_no_save(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         from ai_sw_bridge.features import dress_up as _du
-        doc_file = tmp_path / "t.sldprt"; doc_file.touch()
+
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
         shell_doc = _FakeShellDoc(str(doc_file), 1)  # +1 feature
         _patch_wall2(monkeypatch, tmp_path, shell_doc)
         # Recipe-C cut #4: shell moved to dress_up; patch there (wall2 also blankets it).
         monkeypatch.setattr(_du, "select_entity", lambda e, **kw: True)
-        pid = _sw_propose_feature_add_impl(str(doc_file), _SHELL_FEATURE, _SHELL_TARGET)["proposal_id"]
+        pid = _sw_propose_feature_add_impl(
+            str(doc_file), _SHELL_FEATURE, _SHELL_TARGET
+        )["proposal_id"]
         r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is True and r["state"] == ST_DRY_RUN_OK
         assert shell_doc.shell_calls == [(pytest.approx(0.002), False)]
         assert shell_doc.save_calls == []
 
-    def test_noop_shell_broke(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_noop_shell_broke(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         from ai_sw_bridge.features import dress_up as _du
-        doc_file = tmp_path / "t.sldprt"; doc_file.touch()
+
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
         shell_doc = _FakeShellDoc(str(doc_file), 0)  # no feature added
         _patch_wall2(monkeypatch, tmp_path, shell_doc)
         monkeypatch.setattr(_du, "select_entity", lambda e, **kw: True)
-        pid = _sw_propose_feature_add_impl(str(doc_file), _SHELL_FEATURE, _SHELL_TARGET)["proposal_id"]
+        pid = _sw_propose_feature_add_impl(
+            str(doc_file), _SHELL_FEATURE, _SHELL_TARGET
+        )["proposal_id"]
         r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is False and r["state"] == ST_DRY_RUN_BROKE
         assert "did not add a feature" in r["error"]
 
 
 class TestDryRunDraft:
-    def test_ok_inserts_draft_with_marks_no_save(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_ok_inserts_draft_with_marks_no_save(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         from ai_sw_bridge.features import dress_up as _du
-        doc_file = tmp_path / "t.sldprt"; doc_file.touch()
+
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
         fm = _FakeDraftFM(object())  # materialized feature
         draft_doc = _FakeDraftDoc(str(doc_file), fm)
         _patch_wall2(monkeypatch, tmp_path, draft_doc)
         marks: list[tuple] = []
         # Recipe-C cut #4: draft moved to dress_up; patch there.
         monkeypatch.setattr(
-            _du, "select_entity",
-            lambda e, **kw: (marks.append((kw.get("append", False), kw.get("mark", 0))), True)[1],
+            _du,
+            "select_entity",
+            lambda e, **kw: (
+                marks.append((kw.get("append", False), kw.get("mark", 0))),
+                True,
+            )[1],
         )
-        pid = _sw_propose_feature_add_impl(str(doc_file), _DRAFT_FEATURE, _DRAFT_TARGET)["proposal_id"]
+        pid = _sw_propose_feature_add_impl(
+            str(doc_file), _DRAFT_FEATURE, _DRAFT_TARGET
+        )["proposal_id"]
         r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is True and r["state"] == ST_DRY_RUN_OK
         # neutral plane mark=1 (append False), draft face mark=2 (append True).
@@ -1517,7 +1633,9 @@ class _FakeSweepExt:
 
 
 class _FakeSweepDoc:
-    def __init__(self, path: str, fm: _FakeFeatureManager, ext_ret: bool = True) -> None:
+    def __init__(
+        self, path: str, fm: _FakeFeatureManager, ext_ret: bool = True
+    ) -> None:
         self._path = path
         self.FeatureManager = fm
         self.Extension = _FakeSweepExt(ext_ret)
@@ -1551,32 +1669,60 @@ _SWEEP_TARGET = {"profile": "Sketch1", "path": "Sketch2"}
 
 
 class TestProposeSweep:
-    def test_sweep_writes_record(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc = tmp_path / "t.sldprt"; doc.touch()
-        _patch_wall2(monkeypatch, tmp_path, _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())))
+    def test_sweep_writes_record(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_wall2(
+            monkeypatch,
+            tmp_path,
+            _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())),
+        )
         r = _sw_propose_feature_add_impl(str(doc), _SWEEP_FEATURE, _SWEEP_TARGET)
         assert r["ok"] is True
 
-    def test_sweep_rejects_missing_profile(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc = tmp_path / "t.sldprt"; doc.touch()
-        _patch_wall2(monkeypatch, tmp_path, _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())))
+    def test_sweep_rejects_missing_profile(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_wall2(
+            monkeypatch,
+            tmp_path,
+            _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())),
+        )
         r = _sw_propose_feature_add_impl(str(doc), _SWEEP_FEATURE, {"path": "Sketch2"})
         assert r["ok"] is False and "profile" in r["error"]
 
-    def test_sweep_rejects_missing_path(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc = tmp_path / "t.sldprt"; doc.touch()
-        _patch_wall2(monkeypatch, tmp_path, _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())))
-        r = _sw_propose_feature_add_impl(str(doc), _SWEEP_FEATURE, {"profile": "Sketch1"})
+    def test_sweep_rejects_missing_path(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc = tmp_path / "t.sldprt"
+        doc.touch()
+        _patch_wall2(
+            monkeypatch,
+            tmp_path,
+            _FakeSweepDoc(str(doc), _FakeFeatureManager(object(), object())),
+        )
+        r = _sw_propose_feature_add_impl(
+            str(doc), _SWEEP_FEATURE, {"profile": "Sketch1"}
+        )
         assert r["ok"] is False and "path" in r["error"]
 
 
 class TestDryRunSweep:
-    def test_ok_inserts_sweep_with_marks_no_save(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc_file = tmp_path / "t.sldprt"; doc_file.touch()
+    def test_ok_inserts_sweep_with_marks_no_save(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
         fm = _FakeFeatureManager(object(), object())  # materialized feature
         sweep_doc = _FakeSweepDoc(str(doc_file), fm)
         _patch_wall2(monkeypatch, tmp_path, sweep_doc)
-        pid = _sw_propose_feature_add_impl(str(doc_file), _SWEEP_FEATURE, _SWEEP_TARGET)["proposal_id"]
+        pid = _sw_propose_feature_add_impl(
+            str(doc_file), _SWEEP_FEATURE, _SWEEP_TARGET
+        )["proposal_id"]
         r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is True and r["state"] == ST_DRY_RUN_OK
         assert fm.create_def_calls == [17]
@@ -1587,12 +1733,17 @@ class TestDryRunSweep:
         ]
         assert sweep_doc.save_calls == []
 
-    def test_noop_sweep_broke(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        doc_file = tmp_path / "t.sldprt"; doc_file.touch()
+    def test_noop_sweep_broke(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        doc_file = tmp_path / "t.sldprt"
+        doc_file.touch()
         fm = _FakeFeatureManager(object(), None)  # CreateFeature returns None
         sweep_doc = _FakeSweepDoc(str(doc_file), fm)
         _patch_wall2(monkeypatch, tmp_path, sweep_doc)
-        pid = _sw_propose_feature_add_impl(str(doc_file), _SWEEP_FEATURE, _SWEEP_TARGET)["proposal_id"]
+        pid = _sw_propose_feature_add_impl(
+            str(doc_file), _SWEEP_FEATURE, _SWEEP_TARGET
+        )["proposal_id"]
         r = _sw_dry_run_feature_add_impl(pid)
         assert r["ok"] is False and r["state"] == ST_DRY_RUN_BROKE
         assert "did not materialize" in r["error"]
@@ -1604,9 +1755,7 @@ class TestDryRunSweep:
 
 
 class TestProposalStoreFeatureAdd:
-    def test_facade(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_facade(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         doc = tmp_path / "test.sldprt"
         doc.touch()
         fakes = _patch_all(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
@@ -1747,6 +1896,7 @@ def _patch_chamfer(
     feature: Any,
 ) -> dict[str, Any]:
     from ai_sw_bridge.features import dress_up as _du
+
     monkeypatch.setattr(mutate, "_proposals_dir", lambda: tmp_path / "proposals")
     fm = _FakeChamferFM(feature)
     doc = _FakeChamferDoc(doc_path, fm)
@@ -1760,7 +1910,8 @@ def _patch_chamfer(
     monkeypatch.setattr(_du, "typed", lambda obj, iface, **kw: obj)
     monkeypatch.setattr(_du, "typed_qi", lambda obj, iface, **kw: obj)
     monkeypatch.setattr(
-        _du, "resolve_edge_ref",
+        _du,
+        "resolve_edge_ref",
         lambda doc_, ref, **kw: _FakeRefResolution(entity),
     )
     monkeypatch.setattr(_du, "select_entity", lambda e, **kw: True)
@@ -1768,13 +1919,18 @@ def _patch_chamfer(
 
 
 _VALID_CHAMFER_FEATURE = {"type": "chamfer", "distance_mm": 2.0}
-_VALID_CHAMFER_FEATURE_ANGLE = {"type": "chamfer", "distance_mm": 2.0, "angle_deg": 30.0}
+_VALID_CHAMFER_FEATURE_ANGLE = {
+    "type": "chamfer",
+    "distance_mm": 2.0,
+    "angle_deg": 30.0,
+}
 
 
 def _patch_chamfer_advertised(monkeypatch: pytest.MonkeyPatch) -> None:
     """Temporarily add 'chamfer' to _SUPPORTED_FEATURE_TYPES for testing."""
     monkeypatch.setattr(
-        mutate, "_SUPPORTED_FEATURE_TYPES",
+        mutate,
+        "_SUPPORTED_FEATURE_TYPES",
         mutate._SUPPORTED_FEATURE_TYPES + ("chamfer",),
     )
 
@@ -1783,7 +1939,9 @@ class TestChamferAdvertised:
     def test_in_supported_types(
         self,
     ) -> None:
-        assert "chamfer" in features.HANDLER_REGISTRY  # moved to registry (Recipe-C cut #4)
+        assert (
+            "chamfer" in features.HANDLER_REGISTRY
+        )  # moved to registry (Recipe-C cut #4)
 
     def test_accepted_with_valid_params(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -1791,7 +1949,9 @@ class TestChamferAdvertised:
         doc = tmp_path / "t.sldprt"
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
-        r = _sw_propose_feature_add_impl(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(
+            str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET
+        )
         assert r["ok"] is True
 
 
@@ -1803,7 +1963,9 @@ class TestProposeChamfer:
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
-        r = _sw_propose_feature_add_impl(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(
+            str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET
+        )
         assert r["ok"] is True
 
     def test_rejects_bad_distance(
@@ -1869,7 +2031,9 @@ class TestProposeChamfer:
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
-        r = _sw_propose_feature_add_impl(str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET)
+        r = _sw_propose_feature_add_impl(
+            str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET
+        )
         assert r["ok"] is True
         rec = json.loads(
             (tmp_path / "proposals" / f"{r['proposal_id']}.json").read_text()
@@ -1883,9 +2047,7 @@ class TestDryRunChamfer:
     ) -> None:
         doc = tmp_path / "t.sldprt"
         doc.touch()
-        fakes = _patch_chamfer(
-            monkeypatch, tmp_path, str(doc), _FakeEntity(), object()
-        )
+        fakes = _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
         pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_CHAMFER_FEATURE_ANGLE, _VALID_TARGET
@@ -1908,9 +2070,7 @@ class TestDryRunChamfer:
     ) -> None:
         doc = tmp_path / "t.sldprt"
         doc.touch()
-        fakes = _patch_chamfer(
-            monkeypatch, tmp_path, str(doc), _FakeEntity(), object()
-        )
+        fakes = _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
         pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET
@@ -1927,9 +2087,7 @@ class TestDryRunChamfer:
     ) -> None:
         doc = tmp_path / "t.sldprt"
         doc.touch()
-        fakes = _patch_chamfer(
-            monkeypatch, tmp_path, str(doc), None, object()
-        )
+        fakes = _patch_chamfer(monkeypatch, tmp_path, str(doc), None, object())
         _patch_chamfer_advertised(monkeypatch)
         pid = _sw_propose_feature_add_impl(
             str(doc), _VALID_CHAMFER_FEATURE, _VALID_TARGET
@@ -1954,8 +2112,10 @@ class TestDryRunChamferModes:
         fakes = _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
         feat = {
-            "type": "chamfer", "chamfer_type": "distance_distance",
-            "distance_mm": 2.0, "distance2_mm": 3.0,
+            "type": "chamfer",
+            "chamfer_type": "distance_distance",
+            "distance_mm": 2.0,
+            "distance2_mm": 3.0,
         }
         pid = _sw_propose_feature_add_impl(str(doc), feat, _VALID_TARGET)["proposal_id"]
         r = _sw_dry_run_feature_add_impl(pid)
@@ -1973,8 +2133,11 @@ class TestDryRunChamferModes:
         fakes = _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
         feat = {
-            "type": "chamfer", "chamfer_type": "vertex",
-            "distance_mm": 2.0, "distance2_mm": 2.0, "distance3_mm": 2.0,
+            "type": "chamfer",
+            "chamfer_type": "vertex",
+            "distance_mm": 2.0,
+            "distance2_mm": 2.0,
+            "distance3_mm": 2.0,
         }
         target = {"point": [10.0, 10.0, 10.0]}
         pid = _sw_propose_feature_add_impl(str(doc), feat, target)["proposal_id"]
@@ -1986,7 +2149,12 @@ class TestDryRunChamferModes:
         assert args[6] == pytest.approx(0.002)
         assert args[7] == pytest.approx(0.002)
         # vertex selected by coordinate (mm -> m)
-        assert fakes["doc"].select_by_id_calls[0] == ("VERTEX", pytest.approx(0.010), pytest.approx(0.010), pytest.approx(0.010))
+        assert fakes["doc"].select_by_id_calls[0] == (
+            "VERTEX",
+            pytest.approx(0.010),
+            pytest.approx(0.010),
+            pytest.approx(0.010),
+        )
 
     def test_distance_distance_requires_distance2(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -1995,7 +2163,11 @@ class TestDryRunChamferModes:
         doc.touch()
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
-        feat = {"type": "chamfer", "chamfer_type": "distance_distance", "distance_mm": 2.0}
+        feat = {
+            "type": "chamfer",
+            "chamfer_type": "distance_distance",
+            "distance_mm": 2.0,
+        }
         r = _sw_propose_feature_add_impl(str(doc), feat, _VALID_TARGET)
         assert r["ok"] is False
         assert "distance2_mm" in r["error"]
@@ -2008,10 +2180,15 @@ class TestDryRunChamferModes:
         _patch_chamfer(monkeypatch, tmp_path, str(doc), _FakeEntity(), object())
         _patch_chamfer_advertised(monkeypatch)
         feat = {
-            "type": "chamfer", "chamfer_type": "vertex",
-            "distance_mm": 2.0, "distance2_mm": 2.0, "distance3_mm": 2.0,
+            "type": "chamfer",
+            "chamfer_type": "vertex",
+            "distance_mm": 2.0,
+            "distance2_mm": 2.0,
+            "distance3_mm": 2.0,
         }
-        r = _sw_propose_feature_add_impl(str(doc), feat, _VALID_TARGET)  # edge target, no point
+        r = _sw_propose_feature_add_impl(
+            str(doc), feat, _VALID_TARGET
+        )  # edge target, no point
         assert r["ok"] is False
         assert "point" in r["error"]
 

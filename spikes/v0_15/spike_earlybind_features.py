@@ -112,7 +112,11 @@ sys.path.insert(0, str(_PKG_ROOT))
 
 import pythoncom  # noqa: E402
 
-from ai_sw_bridge.com.earlybind import EarlyBindError, is_early_bound, typed  # noqa: E402
+from ai_sw_bridge.com.earlybind import (
+    EarlyBindError,
+    is_early_bound,
+    typed,
+)  # noqa: E402
 from ai_sw_bridge.com.sw_type_info import wrapper_module  # noqa: E402
 
 # Reuse the proven, binding-agnostic geometry + setup helpers from the original
@@ -162,16 +166,28 @@ def _capture(fn: Callable[[], Any]) -> dict[str, Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val), "_val": val,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "_val": val,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
     except EarlyBindError as e:
-        return {"status": "EARLYBIND_ERROR", "message": str(e),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
-    except Exception as e:  # noqa: BLE001 -- capture com_error + everything for the report
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:200],
-                "hresult": (f"{e.hresult:#010x}" if hasattr(e, "hresult") else None),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+        return {
+            "status": "EARLYBIND_ERROR",
+            "message": str(e),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
+    except (
+        Exception
+    ) as e:  # noqa: BLE001 -- capture com_error + everything for the report
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:200],
+            "hresult": (f"{e.hresult:#010x}" if hasattr(e, "hresult") else None),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
 
 
 def _new_blank_part(sw: Any) -> Any:
@@ -184,9 +200,14 @@ def _new_blank_part(sw: Any) -> Any:
 # Class A -- CreateDefinition -> feature-data interface
 # ---------------------------------------------------------------------------
 
+
 def probe_varfil(sw: Any, mod: Any) -> dict[str, Any]:
-    rec: dict[str, Any] = {"feature": "varfil", "class": "A",
-                           "prior_late_bound_verdict": "FAIL", "iface": "IVariableRadiusFilletFeatureData"}
+    rec: dict[str, Any] = {
+        "feature": "varfil",
+        "class": "A",
+        "prior_late_bound_verdict": "FAIL",
+        "iface": "IVariableRadiusFilletFeatureData",
+    }
     doc = _new_blank_part(sw)
     if doc is None:
         return {**rec, "verdict": "FAIL", "reason": "NewDocument returned None"}
@@ -198,44 +219,68 @@ def probe_varfil(sw: Any, mod: Any) -> dict[str, Any]:
 
     data = fm.CreateDefinition(SW_FM_FILLET)
     if data is None:
-        return {**rec, "verdict": "FAIL", "reason": "CreateDefinition(swFmFillet) returned None"}
+        return {
+            **rec,
+            "verdict": "FAIL",
+            "reason": "CreateDefinition(swFmFillet) returned None",
+        }
     rec["late_bound_has_varrad"] = _is_varfil_data(data)  # expected False (the FAIL)
 
     wrap = _capture(lambda: typed(data, "IVariableRadiusFilletFeatureData", module=mod))
     rec["typed_wrap"] = {k: v for k, v in wrap.items() if k != "_val"}
     if wrap["status"] != "OK":
-        return {**rec, "verdict": "FAIL", "reason": "could not typed-wrap the fillet data object"}
+        return {
+            **rec,
+            "verdict": "FAIL",
+            "reason": "could not typed-wrap the fillet data object",
+        }
     tdata = wrap["_val"]
     rec["early_bound"] = is_early_bound(tdata)
 
     # Is the variable-radius surface now reachable?
-    setup = _capture(lambda: (
-        setattr(tdata, "FilletType", FILLET_TYPE_VARIABLE),
-        setattr(tdata, "Radius", VARRAD_START_M),
-        tdata.SetVariableRadiusParameters((VARRAD_START_M, VARRAD_END_M)),
-    ))
+    setup = _capture(
+        lambda: (
+            setattr(tdata, "FilletType", FILLET_TYPE_VARIABLE),
+            setattr(tdata, "Radius", VARRAD_START_M),
+            tdata.SetVariableRadiusParameters((VARRAD_START_M, VARRAD_END_M)),
+        )
+    )
     rec["varrad_setup"] = {k: v for k, v in setup.items() if k != "_val"}
     rec["interface_reachable"] = setup["status"] == "OK"
 
     sel = _select_bottom_edge(doc)
     rec["edge_selection"] = sel
     if not sel.get("ok"):
-        return {**rec, "verdict": "PARTIAL" if rec["interface_reachable"] else "FAIL",
-                "reason": "interface reachable but edge selection failed; cannot CreateFeature"}
+        return {
+            **rec,
+            "verdict": "PARTIAL" if rec["interface_reachable"] else "FAIL",
+            "reason": "interface reachable but edge selection failed; cannot CreateFeature",
+        }
 
-    tfm = _capture(lambda: typed(fm, "IFeatureManager", module=mod))["_val"] if True else fm
+    tfm = (
+        _capture(lambda: typed(fm, "IFeatureManager", module=mod))["_val"]
+        if True
+        else fm
+    )
     feat = _capture(lambda: (tfm or fm).CreateFeature(tdata))
     rec["create_feature"] = {k: v for k, v in feat.items() if k != "_val"}
     ok = feat["status"] == "OK" and _materialized(feat.get("_val"))
     if ok:
         return {**rec, "verdict": "PASS"}
-    return {**rec, "verdict": "PARTIAL" if rec["interface_reachable"] else "FAIL",
-            "reason": "interface reachable early-bound but CreateFeature did not materialize"}
+    return {
+        **rec,
+        "verdict": "PARTIAL" if rec["interface_reachable"] else "FAIL",
+        "reason": "interface reachable early-bound but CreateFeature did not materialize",
+    }
 
 
 def probe_wizhole(sw: Any, mod: Any) -> dict[str, Any]:
-    rec: dict[str, Any] = {"feature": "wizhole", "class": "A",
-                           "prior_late_bound_verdict": "FAIL", "iface": "IWizardHoleFeatureData2"}
+    rec: dict[str, Any] = {
+        "feature": "wizhole",
+        "class": "A",
+        "prior_late_bound_verdict": "FAIL",
+        "iface": "IWizardHoleFeatureData2",
+    }
     doc = _new_blank_part(sw)
     if doc is None:
         return {**rec, "verdict": "FAIL", "reason": "NewDocument returned None"}
@@ -246,22 +291,38 @@ def probe_wizhole(sw: Any, mod: Any) -> dict[str, Any]:
     fm = doc.FeatureManager
 
     scan = scan_swFmHoleWzd(fm)
-    rec["swFmHoleWzd_scan"] = {"found": scan.get("swFmHoleWzd_found"),
-                              "int": scan.get("swFmHoleWzd_int")}
+    rec["swFmHoleWzd_scan"] = {
+        "found": scan.get("swFmHoleWzd_found"),
+        "int": scan.get("swFmHoleWzd_int"),
+    }
     if not scan.get("swFmHoleWzd_found"):
-        return {**rec, "verdict": "FAIL", "reason": "swFmHoleWzd enum not found by scan"}
+        return {
+            **rec,
+            "verdict": "FAIL",
+            "reason": "swFmHoleWzd enum not found by scan",
+        }
     data = fm.CreateDefinition(scan["swFmHoleWzd_int"])
     if data is None:
-        return {**rec, "verdict": "FAIL", "reason": "CreateDefinition(swFmHoleWzd) returned None"}
+        return {
+            **rec,
+            "verdict": "FAIL",
+            "reason": "CreateDefinition(swFmHoleWzd) returned None",
+        }
 
     wrap = _capture(lambda: typed(data, "IWizardHoleFeatureData2", module=mod))
     rec["typed_wrap"] = {k: v for k, v in wrap.items() if k != "_val"}
     if wrap["status"] != "OK":
-        return {**rec, "verdict": "FAIL", "reason": "could not typed-wrap the wizard-hole data object"}
+        return {
+            **rec,
+            "verdict": "FAIL",
+            "reason": "could not typed-wrap the wizard-hole data object",
+        }
     tdata = wrap["_val"]
     rec["early_bound"] = is_early_bound(tdata)
 
-    setup = _capture(lambda: setattr(tdata, "HoleType", 2))  # swWzdHole -- simple drill probe
+    setup = _capture(
+        lambda: setattr(tdata, "HoleType", 2)
+    )  # swWzdHole -- simple drill probe
     rec["prop_setup"] = {k: v for k, v in setup.items() if k != "_val"}
     rec["interface_reachable"] = setup["status"] == "OK"
 
@@ -275,13 +336,17 @@ def probe_wizhole(sw: Any, mod: Any) -> dict[str, Any]:
     ok = feat["status"] == "OK" and _materialized(feat.get("_val"))
     if ok:
         return {**rec, "verdict": "PASS"}
-    return {**rec, "verdict": "PARTIAL" if rec["interface_reachable"] else "FAIL",
-            "reason": "interface reachable early-bound but CreateFeature did not materialize"}
+    return {
+        **rec,
+        "verdict": "PARTIAL" if rec["interface_reachable"] else "FAIL",
+        "reason": "interface reachable early-bound but CreateFeature did not materialize",
+    }
 
 
 # ---------------------------------------------------------------------------
 # Class B -- direct FeatureManager.Insert* call (typed IFeatureManager)
 # ---------------------------------------------------------------------------
+
 
 def _typed_fm(fm: Any, mod: Any) -> dict[str, Any]:
     wrap = _capture(lambda: typed(fm, "IFeatureManager", module=mod))
@@ -289,8 +354,12 @@ def _typed_fm(fm: Any, mod: Any) -> dict[str, Any]:
 
 
 def probe_shell(sw: Any, mod: Any) -> dict[str, Any]:
-    rec: dict[str, Any] = {"feature": "shell", "class": "B",
-                           "prior_late_bound_verdict": "FAIL", "iface": "IFeatureManager"}
+    rec: dict[str, Any] = {
+        "feature": "shell",
+        "class": "B",
+        "prior_late_bound_verdict": "FAIL",
+        "iface": "IFeatureManager",
+    }
     doc = _new_blank_part(sw)
     if doc is None:
         return {**rec, "verdict": "FAIL", "reason": "NewDocument returned None"}
@@ -310,20 +379,33 @@ def probe_shell(sw: Any, mod: Any) -> dict[str, Any]:
     wrap = _typed_fm(fm, mod)
     rec["typed_wrap"] = {k: v for k, v in wrap.items() if k != "_val"}
     if wrap["status"] != "OK":
-        return {**rec, "verdict": "FAIL", "reason": "could not typed-wrap FeatureManager"}
+        return {
+            **rec,
+            "verdict": "FAIL",
+            "reason": "could not typed-wrap FeatureManager",
+        }
     tfm = wrap["_val"]
     rec["early_bound"] = is_early_bound(tfm)
 
     feat = _capture(lambda: tfm.InsertFeatureShell(SHELL_THICKNESS_M, True))
     rec["insert_shell"] = {k: v for k, v in feat.items() if k != "_val"}
     ok = feat["status"] == "OK" and _materialized(feat.get("_val"))
-    return {**rec, "verdict": "PASS" if ok else "FAIL",
-            "reason": None if ok else "InsertFeatureShell still did not materialize early-bound"}
+    return {
+        **rec,
+        "verdict": "PASS" if ok else "FAIL",
+        "reason": (
+            None if ok else "InsertFeatureShell still did not materialize early-bound"
+        ),
+    }
 
 
 def probe_draft(sw: Any, mod: Any) -> dict[str, Any]:
-    rec: dict[str, Any] = {"feature": "draft", "class": "B",
-                           "prior_late_bound_verdict": "FAIL", "iface": "IFeatureManager"}
+    rec: dict[str, Any] = {
+        "feature": "draft",
+        "class": "B",
+        "prior_late_bound_verdict": "FAIL",
+        "iface": "IFeatureManager",
+    }
     doc = _new_blank_part(sw)
     if doc is None:
         return {**rec, "verdict": "FAIL", "reason": "NewDocument returned None"}
@@ -341,7 +423,11 @@ def probe_draft(sw: Any, mod: Any) -> dict[str, Any]:
     wrap = _typed_fm(fm, mod)
     rec["typed_wrap"] = {k: v for k, v in wrap.items() if k != "_val"}
     if wrap["status"] != "OK":
-        return {**rec, "verdict": "FAIL", "reason": "could not typed-wrap FeatureManager"}
+        return {
+            **rec,
+            "verdict": "FAIL",
+            "reason": "could not typed-wrap FeatureManager",
+        }
     tfm = wrap["_val"]
     rec["early_bound"] = is_early_bound(tfm)
 
@@ -351,15 +437,26 @@ def probe_draft(sw: Any, mod: Any) -> dict[str, Any]:
     if not (feat["status"] == "OK" and _materialized(feat.get("_val"))):
         feat6 = _capture(lambda: tfm.InsertDraft2(*args_7[:6]))
         rec["insert_draft_6arg"] = {k: v for k, v in feat6.items() if k != "_val"}
-        feat = feat6 if (feat6["status"] == "OK" and _materialized(feat6.get("_val"))) else feat
+        feat = (
+            feat6
+            if (feat6["status"] == "OK" and _materialized(feat6.get("_val")))
+            else feat
+        )
     ok = feat["status"] == "OK" and _materialized(feat.get("_val"))
-    return {**rec, "verdict": "PASS" if ok else "FAIL",
-            "reason": None if ok else "InsertDraft2 still did not materialize early-bound"}
+    return {
+        **rec,
+        "verdict": "PASS" if ok else "FAIL",
+        "reason": None if ok else "InsertDraft2 still did not materialize early-bound",
+    }
 
 
 def probe_sheetmetal(sw: Any, mod: Any) -> dict[str, Any]:
-    rec: dict[str, Any] = {"feature": "sheetmetal", "class": "B",
-                           "prior_late_bound_verdict": "FAIL", "iface": "IFeatureManager"}
+    rec: dict[str, Any] = {
+        "feature": "sheetmetal",
+        "class": "B",
+        "prior_late_bound_verdict": "FAIL",
+        "iface": "IFeatureManager",
+    }
     doc = _new_blank_part(sw)
     if doc is None:
         return {**rec, "verdict": "FAIL", "reason": "NewDocument returned None"}
@@ -369,28 +466,57 @@ def probe_sheetmetal(sw: Any, mod: Any) -> dict[str, Any]:
     if not prof.get("built", prof.get("ok", False)):
         # _build_profile_sketch may key its success differently; keep going if a
         # sketch exists, but record what came back.
-        rec["profile_note"] = "profile sketch builder did not report success; attempting anyway"
+        rec["profile_note"] = (
+            "profile sketch builder did not report success; attempting anyway"
+        )
     fm = doc.FeatureManager
 
     wrap = _typed_fm(fm, mod)
     rec["typed_wrap"] = {k: v for k, v in wrap.items() if k != "_val"}
     if wrap["status"] != "OK":
-        return {**rec, "verdict": "FAIL", "reason": "could not typed-wrap FeatureManager"}
+        return {
+            **rec,
+            "verdict": "FAIL",
+            "reason": "could not typed-wrap FeatureManager",
+        }
     tfm = wrap["_val"]
     rec["early_bound"] = is_early_bound(tfm)
 
-    base_11 = (SM_THICKNESS_M, SM_REVERSE, SM_BEND_RADIUS_M, SM_K_FACTOR,
-               SM_RELIEF_TYPE, SM_RELIEF_W_M, SM_RELIEF_D_M, SM_RELIEF_RATIO,
-               SM_AUTO_RELIEF, SM_FORM_FEATURE, SM_MERGE_RESULT)
+    base_11 = (
+        SM_THICKNESS_M,
+        SM_REVERSE,
+        SM_BEND_RADIUS_M,
+        SM_K_FACTOR,
+        SM_RELIEF_TYPE,
+        SM_RELIEF_W_M,
+        SM_RELIEF_D_M,
+        SM_RELIEF_RATIO,
+        SM_AUTO_RELIEF,
+        SM_FORM_FEATURE,
+        SM_MERGE_RESULT,
+    )
     feat = _capture(lambda: tfm.InsertSheetMetalBaseFlange2(*base_11))
     rec["insert_baseflange_11arg"] = {k: v for k, v in feat.items() if k != "_val"}
     if not (feat["status"] == "OK" and _materialized(feat.get("_val"))):
         feat10 = _capture(lambda: tfm.InsertSheetMetalBaseFlange2(*base_11[:10]))
-        rec["insert_baseflange_10arg"] = {k: v for k, v in feat10.items() if k != "_val"}
-        feat = feat10 if (feat10["status"] == "OK" and _materialized(feat10.get("_val"))) else feat
+        rec["insert_baseflange_10arg"] = {
+            k: v for k, v in feat10.items() if k != "_val"
+        }
+        feat = (
+            feat10
+            if (feat10["status"] == "OK" and _materialized(feat10.get("_val")))
+            else feat
+        )
     ok = feat["status"] == "OK" and _materialized(feat.get("_val"))
-    return {**rec, "verdict": "PASS" if ok else "FAIL",
-            "reason": None if ok else "InsertSheetMetalBaseFlange2 still did not materialize early-bound"}
+    return {
+        **rec,
+        "verdict": "PASS" if ok else "FAIL",
+        "reason": (
+            None
+            if ok
+            else "InsertSheetMetalBaseFlange2 still did not materialize early-bound"
+        ),
+    }
 
 
 PROBES: dict[str, Callable[[Any, Any], dict[str, Any]]] = {
@@ -429,8 +555,13 @@ def run(features: list[str]) -> dict[str, Any]:
         try:
             per_feature.append(probe(sw, mod))
         except Exception as e:  # noqa: BLE001 -- a probe must never sink the harness
-            per_feature.append({"feature": name, "verdict": "FAIL",
-                                "harness_error": f"{type(e).__name__}: {e}"})
+            per_feature.append(
+                {
+                    "feature": name,
+                    "verdict": "FAIL",
+                    "harness_error": f"{type(e).__name__}: {e}",
+                }
+            )
     result["features"] = per_feature
 
     verdicts = [f.get("verdict") for f in per_feature]
@@ -442,24 +573,33 @@ def run(features: list[str]) -> dict[str, Any]:
         result["overall"] = "FAIL"
     result["interpretation"] = {
         "PASS": "at least one wave-2 FAIL feature materializes under hybrid early binding "
-                "-> generalize the typed-wrap to that lane; re-classify in the roadmap.",
+        "-> generalize the typed-wrap to that lane; re-classify in the roadmap.",
         "PARTIAL": "typed interface(s) became reachable early-bound but the feature did not "
-                   "materialize -> the wall moved; narrow the probe (selection / arg form).",
+        "materialize -> the wall moved; narrow the probe (selection / arg form).",
         "FAIL": "aggregate FAIL -- but DO NOT read as a clean API-wall verdict; verify it "
-                "is not a methodology artifact (wrong interface/member names, the "
-                "dispid-collision in the direct typed-wrap, or the legacy Insert API). The "
-                "typed feature-data interfaces DO exist -- see the POST-RUN FINDINGS docstring.",
+        "is not a methodology artifact (wrong interface/member names, the "
+        "dispid-collision in the direct typed-wrap, or the legacy Insert API). The "
+        "typed feature-data interfaces DO exist -- see the POST-RUN FINDINGS docstring.",
     }[result["overall"]]
     return result
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--feature", choices=sorted(PROBES), action="append",
-                   help="Probe only this feature (repeatable). Default: all.")
-    p.add_argument("--out", type=Path, default=None,
-                   help="Write JSON report to this path instead of stdout.")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--feature",
+        choices=sorted(PROBES),
+        action="append",
+        help="Probe only this feature (repeatable). Default: all.",
+    )
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Write JSON report to this path instead of stdout.",
+    )
     args = p.parse_args()
     features = args.feature or list(PROBES)
 

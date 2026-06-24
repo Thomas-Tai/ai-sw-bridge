@@ -45,6 +45,7 @@ SW_DOC_PART = 1
 
 def _find_asm_template() -> str | None:
     import glob
+
     for pat in [
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT",
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.asmdot",
@@ -54,12 +55,16 @@ def _find_asm_template() -> str | None:
     return None
 
 
-def _make_block_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, str | None]:
+def _make_block_part(
+    sw_typed: Any, mod: Any, path: str
+) -> tuple[Any | None, str | None]:
     """Create a 20mm cube part. Returns (doc, error)."""
     try:
         doc = sw_typed.NewDocument(
             r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.PRTDOT",
-            0, 0, 0,
+            0,
+            0,
+            0,
         )
         if doc is None:
             return None, "NewDocument(part) returned None"
@@ -73,13 +78,28 @@ def _make_block_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, st
         dt.ClearSelection2(True)
         dt.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
         feat = dt.FeatureManager.FeatureExtrusion2(
-            True, False, False, 0, 0,
-            BOX_SIZE_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOX_SIZE_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
             False,
         )
         if feat is None:
@@ -92,9 +112,12 @@ def _make_block_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, st
 
 
 def _build_assembly(
-    sw_typed: Any, mod: Any,
-    part_path: str, asm_template: str,
-    offset_m: float, label: str,
+    sw_typed: Any,
+    mod: Any,
+    part_path: str,
+    asm_template: str,
+    offset_m: float,
+    label: str,
 ) -> tuple[Any, Any, str | None]:
     """Open new assembly, place two copies of part. Returns (asm_doc, asm_typed, error)."""
     # Pre-open part (MANDATORY)
@@ -168,8 +191,12 @@ def main() -> None:
         # ── OVERLAP assembly ────────────────────────────────────────────
         print("[PAE] Building OVERLAP assembly …")
         asm_doc, asm_typed, err = _build_assembly(
-            sw_typed, mod, part_path, asm_templ,
-            OVERLAP_OFFSET_M, "overlap",
+            sw_typed,
+            mod,
+            part_path,
+            asm_templ,
+            OVERLAP_OFFSET_M,
+            "overlap",
         )
         if err:
             result["errors"].append(f"overlap_build: {err}")
@@ -195,15 +222,21 @@ def main() -> None:
                 result["overlap"]["components"] = inf.get("components", [])
                 break  # first interference
 
-        print(f"[PAE] Overlap: count={result['overlap']['count']}, "
-              f"volume={result['overlap']['volume_mm3']}, "
-              f"components={result['overlap']['components']}")
+        print(
+            f"[PAE] Overlap: count={result['overlap']['count']}, "
+            f"volume={result['overlap']['volume_mm3']}, "
+            f"components={result['overlap']['components']}"
+        )
 
         # ── CLEARANCE assembly ──────────────────────────────────────────
         print("[PAE] Building CLEARANCE assembly …")
         asm_doc2, asm_typed2, err2 = _build_assembly(
-            sw_typed, mod, part_path, asm_templ,
-            CLEARANCE_OFFSET_M, "clearance",
+            sw_typed,
+            mod,
+            part_path,
+            asm_templ,
+            CLEARANCE_OFFSET_M,
+            "clearance",
         )
         if err2:
             result["errors"].append(f"clearance_build: {err2}")

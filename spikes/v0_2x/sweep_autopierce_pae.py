@@ -14,6 +14,7 @@ sketches in 3D.
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/sweep_autopierce_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -168,13 +169,19 @@ def main() -> int:
         except Exception:
             pass
         result["legs"]["happy"] = _leg_happy(sw, mod)
-        print(f"[swp] happy -> {result['legs']['happy'].get('verdict')} "
-              f"vol={result['legs']['happy'].get('volume_mm3')}")
+        print(
+            f"[swp] happy -> {result['legs']['happy'].get('verdict')} "
+            f"vol={result['legs']['happy'].get('volume_mm3')}"
+        )
         result["legs"]["guardrail"] = _leg_guardrail(sw, mod)
-        print(f"[swp] guardrail -> {result['legs']['guardrail'].get('verdict')} "
-              f"err={result['legs']['guardrail'].get('sweep_err')}")
+        print(
+            f"[swp] guardrail -> {result['legs']['guardrail'].get('verdict')} "
+            f"err={result['legs']['guardrail'].get('sweep_err')}"
+        )
         result["overall"] = (
-            "PASS" if all(result["legs"][k].get("ok") for k in result["legs"]) else "FAIL"
+            "PASS"
+            if all(result["legs"][k].get("ok") for k in result["legs"])
+            else "FAIL"
         )
         try:
             sw.CloseAllDocuments(True)

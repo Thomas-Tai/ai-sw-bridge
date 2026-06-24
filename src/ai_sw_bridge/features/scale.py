@@ -115,7 +115,9 @@ def _select_target_body(doc: Any, body_name: str | None) -> bool:
 
 
 def create_scale(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Uniformly scale the part's solid body about its centroid/origin.
 
@@ -152,9 +154,7 @@ def create_scale(
 
     origin = feature.get("origin", "centroid")
     if not isinstance(origin, str) or origin.strip().lower() not in _SCALE_ABOUT:
-        return False, (
-            f"origin {origin!r} not one of {sorted(_SCALE_ABOUT)}"
-        )
+        return False, (f"origin {origin!r} not one of {sorted(_SCALE_ABOUT)}")
     scale_type = _SCALE_ABOUT[origin.strip().lower()]
 
     vol_before = verify.solid_volume_mm3(doc)
@@ -179,7 +179,7 @@ def create_scale(
         return False, f"InsertScale raised: {exc!r}"
 
     vol_after = verify.solid_volume_mm3(doc)
-    expected_ratio = scale_factor ** 3
+    expected_ratio = scale_factor**3
     d_vol = vol_after - vol_before
 
     if verify.gate_volume_transform(vol_before, vol_after, expected_ratio):
@@ -195,6 +195,7 @@ def create_scale(
         f"(vol {vol_before:.3f}→{vol_after:.3f} mm3, ratio={actual_ratio:.4f}, "
         f"expected {expected_ratio:.4f}); factor={scale_factor}, origin={origin!r}"
     )
+
 
 # Registration is via the sanctioned ``_register_lane`` gate in
 # ``features/__init__.py`` (W67 Phase-4 fail-loud path) — not a module-level

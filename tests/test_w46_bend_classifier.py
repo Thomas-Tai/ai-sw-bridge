@@ -12,6 +12,7 @@ captured from the live seat (``W42_L_bracket_flat_bends.dxf``): 5 LINE entities
 spanning the full 40 mm width strictly between ymin and ymax — is the single
 90° bend. The proof is the EXTRACTED interior segment, not a layer-name string.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

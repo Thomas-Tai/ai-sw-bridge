@@ -12,6 +12,7 @@ face AND the cam-follower mate (MateCamTangent) solves + persists through save/r
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/sketch_ellipse_cam_confirm.py
 """
+
 from __future__ import annotations
 
 import json
@@ -42,8 +43,11 @@ _OUT = _RESULTS / "sketch_ellipse_cam_confirm.json"
 
 
 def main() -> int:
-    out: dict[str, Any] = {"spike_id": "sketch_ellipse_cam_confirm", "ok": False,
-                           "verdict": "FAIL"}
+    out: dict[str, Any] = {
+        "spike_id": "sketch_ellipse_cam_confirm",
+        "ok": False,
+        "verdict": "FAIL",
+    }
     sw = None
     try:
         sw = get_sw_app()
@@ -65,8 +69,14 @@ def main() -> int:
             out["error"] = follower["error"]
             return _finish(out)
 
-        ctx = t2pae._place(sw, mod, [("cam", cam["path"], [0, 0, 0]),
-                                     ("follower", follower["path"], [60, 0, 0])])
+        ctx = t2pae._place(
+            sw,
+            mod,
+            [
+                ("cam", cam["path"], [0, 0, 0]),
+                ("follower", follower["path"], [60, 0, 0]),
+            ],
+        )
         if "error" in ctx:
             out["error"] = ctx["error"]
             return _finish(out)
@@ -75,7 +85,9 @@ def main() -> int:
         cam_face = t2._first_nonplanar_face(ctx["placed"]["cam"], mod)
         out["declarative_cam_has_nonplanar_face"] = cam_face is not None
         if cam_face is None:
-            out["error"] = "declarative cam exposed NO non-planar face (build defect not fixed?)"
+            out["error"] = (
+                "declarative cam exposed NO non-planar face (build defect not fixed?)"
+            )
             out["verdict"] = "NO-GO"
             return _finish(out)
 
@@ -93,21 +105,24 @@ def main() -> int:
         out["feature_type"] = typed(mate, "IFeature", module=mod).GetTypeName2()
 
         asm_path = str(Path(t1._results_tmp(), f"declcam_{os.getpid()}.SLDASM"))
-        if int(typed(ctx["asm"], "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0)) != 0:
+        if (
+            int(typed(ctx["asm"], "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0))
+            != 0
+        ):
             out["error"] = "SAVE_FAILED"
             return _finish(out)
-        rb = t2._read_back(sw, mod, asm_path, "ICamFollowerMateFeatureData",
-                           ("MateAlignment",))
+        rb = t2._read_back(
+            sw, mod, asm_path, "ICamFollowerMateFeatureData", ("MateAlignment",)
+        )
         out["persist"] = rb
 
-        green = (
-            "Cam" in out.get("feature_type", "")
-            and "read_back" in rb
-        )
+        green = "Cam" in out.get("feature_type", "") and "read_back" in rb
         out["ok"] = bool(green)
         out["verdict"] = "GREEN" if green else "NO-GO"
-        print(f"[ellipse-cam] {out['verdict']}: feature={out.get('feature_type')} "
-              f"nonplanar={out['declarative_cam_has_nonplanar_face']}")
+        print(
+            f"[ellipse-cam] {out['verdict']}: feature={out.get('feature_type')} "
+            f"nonplanar={out['declarative_cam_has_nonplanar_face']}"
+        )
     except Exception as exc:
         out["error"] = f"{type(exc).__name__}: {exc}"
         out["traceback"] = traceback.format_exc()

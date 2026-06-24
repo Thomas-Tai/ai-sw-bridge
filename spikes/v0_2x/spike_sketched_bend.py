@@ -88,14 +88,15 @@ def _pcba_null() -> Any:
 
 # ── fixture extension: sketch on the major face ───────────────────────────
 
+
 def _build_fixture_v5(sw: Any, mod: Any):
     """Import the proven fixture builder from spike_hem_v5."""
     from spike_hem_v5 import _build_fixture_v5 as _v5_build
+
     return _v5_build(sw, mod)
 
 
-def _sketch_line_on_major_face(doc: Any, mod: Any,
-                               diag: dict[str, Any]) -> str | None:
+def _sketch_line_on_major_face(doc: Any, mod: Any, diag: dict[str, Any]) -> str | None:
     """Add a single line sketch on the major planar face of the base flange.
 
     The base flange is 60(X) × 40(Y) × 2(Z).  The major face is the top
@@ -106,7 +107,15 @@ def _sketch_line_on_major_face(doc: Any, mod: Any,
     try:
         null_disp = VARIANT(pythoncom.VT_DISPATCH, None)
         doc.Extension.SelectByID2(
-            "", "FACE", 0.0, 0.0, THICKNESS_M, False, 0, null_disp, 0,
+            "",
+            "FACE",
+            0.0,
+            0.0,
+            THICKNESS_M,
+            False,
+            0,
+            null_disp,
+            0,
         )
         face = doc.SelectionManager.GetSelectedObject6(1, -1)
         doc.ClearSelection2(True)
@@ -150,7 +159,11 @@ def _last_sketch_name(doc: Any) -> str:
     last = "Sketch2"
     for feat in feats:
         try:
-            tname = feat.GetTypeName if not callable(feat.GetTypeName) else feat.GetTypeName()
+            tname = (
+                feat.GetTypeName
+                if not callable(feat.GetTypeName)
+                else feat.GetTypeName()
+            )
         except Exception:
             continue
         if tname in ("ProfileFeature", "Sketch"):
@@ -165,13 +178,18 @@ def _last_sketch_name(doc: Any) -> str:
 
 # ── candidate probes ──────────────────────────────────────────────────────
 
+
 def _probe_candidate_a(fm: Any, diag: dict[str, Any]) -> Any:
     """Candidate A: IFeatureManager.InsertSheetMetal3dBend (6-arg → Feature)."""
     try:
         pcba = _pcba_null()
         result = fm.InsertSheetMetal3dBend(
-            BEND_ANGLE_RAD, USE_DEFAULT_RADIUS, BEND_RADIUS_M_ARG,
-            FLIP_DIR, BEND_POS, pcba,
+            BEND_ANGLE_RAD,
+            USE_DEFAULT_RADIUS,
+            BEND_RADIUS_M_ARG,
+            FLIP_DIR,
+            BEND_POS,
+            pcba,
         )
         diag["A_return"] = str(type(result))
         diag["A_is_none"] = result is None
@@ -195,12 +213,12 @@ def _probe_candidate_b(fm: Any, diag: dict[str, Any]) -> Any:
     try:
         result = fm.InsertBends2(
             BEND_RADIUS_M_ARG,  # Radius
-            "",                 # UseBendTable (empty = none)
-            0.5,                # UseKfactor
-            0.0,                # UseBendAllowance
-            False,              # UseAutoRelief
-            0.5,                # OffsetRatio
-            False,              # DoFlatten
+            "",  # UseBendTable (empty = none)
+            0.5,  # UseKfactor
+            0.0,  # UseBendAllowance
+            False,  # UseAutoRelief
+            0.5,  # OffsetRatio
+            False,  # DoFlatten
         )
         diag["B_return"] = str(type(result))
         diag["B_value"] = result
@@ -211,6 +229,7 @@ def _probe_candidate_b(fm: Any, diag: dict[str, Any]) -> Any:
 
 
 # ── save→reopen ───────────────────────────────────────────────────────────
+
 
 def _save_reopen(sw: Any, doc: Any) -> dict[str, Any]:
     """Save → close-all → reopen via the proven typed-OpenDoc6 recipe."""
@@ -257,6 +276,7 @@ def _save_reopen(sw: Any, doc: Any) -> dict[str, Any]:
 
 
 # ── main ──────────────────────────────────────────────────────────────────
+
 
 def _write_and_report(out: dict[str, Any], code: int) -> int:
     res_dir = Path(__file__).resolve().parent / "_results"
@@ -369,8 +389,7 @@ def main() -> int:
             doc = None
             p = out["persist"]
             survived = bool(
-                p.get("reopened")
-                and p.get("faces_after_reopen", 0) > faces_before
+                p.get("reopened") and p.get("faces_after_reopen", 0) > faces_before
             )
             out["persist_survived"] = survived
             code = 0 if survived else 2
@@ -406,9 +425,7 @@ def main() -> int:
             out["delta_faces_B"] = faces_after_b - faces_before_b
             out["delta_vol_mm3_B"] = round(vol_after_b - vol_before_b, 3)
 
-            b_passed = (
-                out["delta_faces_B"] > 0 and abs(out["delta_vol_mm3_B"]) > 1e-6
-            )
+            b_passed = out["delta_faces_B"] > 0 and abs(out["delta_vol_mm3_B"]) > 1e-6
 
             if b_passed:
                 out["verdict"] = "PASS_B"

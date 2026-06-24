@@ -36,6 +36,7 @@ SW_START_SKETCH_PLANE = 0
 
 def connect_running_sw() -> Any:
     from win32com.client import dynamic
+
     try:
         return dynamic.Dispatch(pythoncom.GetActiveObject("SldWorks.Application"))
     except Exception:
@@ -56,11 +57,29 @@ def build_box(doc: Any) -> bool:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True,
-        SW_START_SKETCH_PLANE, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        SW_START_SKETCH_PLANE,
+        0.0,
+        False,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)

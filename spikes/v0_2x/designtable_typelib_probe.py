@@ -38,22 +38,53 @@ sys.path.insert(0, str(_PKG_ROOT))
 
 
 VT_NAMES = {
-    0: "VT_EMPTY", 1: "VT_NULL", 2: "VT_I2", 3: "VT_I4", 4: "VT_R4",
-    5: "VT_R8", 6: "VT_CY", 7: "VT_DATE", 8: "VT_BSTR", 9: "VT_DISPATCH",
-    10: "VT_ERROR", 11: "VT_BOOL", 12: "VT_VARIANT", 13: "VT_UNKNOWN",
-    14: "VT_DECIMAL", 16: "VT_I1", 17: "VT_UI1", 18: "VT_UI2", 19: "VT_UI4",
-    20: "VT_I8", 21: "VT_UI8", 22: "VT_INT", 23: "VT_UINT", 24: "VT_VOID",
-    25: "VT_HRESULT", 26: "VT_PTR", 27: "VT_SAFEARRAY", 28: "VT_CARRAY",
-    29: "VT_USERDEFINED", 30: "VT_LPSTR", 31: "VT_LPWSTR", 36: "VT_RECORD",
+    0: "VT_EMPTY",
+    1: "VT_NULL",
+    2: "VT_I2",
+    3: "VT_I4",
+    4: "VT_R4",
+    5: "VT_R8",
+    6: "VT_CY",
+    7: "VT_DATE",
+    8: "VT_BSTR",
+    9: "VT_DISPATCH",
+    10: "VT_ERROR",
+    11: "VT_BOOL",
+    12: "VT_VARIANT",
+    13: "VT_UNKNOWN",
+    14: "VT_DECIMAL",
+    16: "VT_I1",
+    17: "VT_UI1",
+    18: "VT_UI2",
+    19: "VT_UI4",
+    20: "VT_I8",
+    21: "VT_UI8",
+    22: "VT_INT",
+    23: "VT_UINT",
+    24: "VT_VOID",
+    25: "VT_HRESULT",
+    26: "VT_PTR",
+    27: "VT_SAFEARRAY",
+    28: "VT_CARRAY",
+    29: "VT_USERDEFINED",
+    30: "VT_LPSTR",
+    31: "VT_LPWSTR",
+    36: "VT_RECORD",
 }
 
 INVOKEKIND_NAMES = {
-    1: "FUNCTION", 2: "PROPERTYGET", 4: "PROPERTYPUT", 8: "PROPERTYPUTREF",
+    1: "FUNCTION",
+    2: "PROPERTYGET",
+    4: "PROPERTYPUT",
+    8: "PROPERTYPUTREF",
 }
 
 FUNCKIND_NAMES = {
-    0: "VIRTUAL", 1: "PUREVIRTUAL", 2: "NONBROWSABLE",
-    3: "STATIC", 4: "DISPATCH",
+    0: "VIRTUAL",
+    1: "PUREVIRTUAL",
+    2: "NONBROWSABLE",
+    3: "STATIC",
+    4: "DISPATCH",
 }
 
 
@@ -248,12 +279,17 @@ def main() -> int:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--out", type=Path, default=None,
-                   help="Write JSON report to path (default: stdout).")
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Write JSON report to path (default: stdout).",
+    )
     args = p.parse_args()
 
     try:
         import pythoncom
+
         pythoncom.CoInitialize()
     except ImportError:
         pass
@@ -263,6 +299,7 @@ def main() -> int:
     finally:
         try:
             import pythoncom
+
             pythoncom.CoUninitialize()
         except ImportError:
             pass

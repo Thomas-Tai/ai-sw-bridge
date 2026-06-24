@@ -182,12 +182,14 @@ def commit_properties(
                     _resolved, pvalue, _resolved2 = typed_cpm.Get4(name, False)
                 except Exception:
                     pvalue = None
-                result["props_skipped"].append({
-                    "name": name,
-                    "type": type_name,
-                    "reason": "exists and overwrite=false",
-                    "existing_value": pvalue,
-                })
+                result["props_skipped"].append(
+                    {
+                        "name": name,
+                        "type": type_name,
+                        "reason": "exists and overwrite=false",
+                        "existing_value": pvalue,
+                    }
+                )
                 continue
 
             options = SW_CUSTOM_PROP_REPLACE if overwrite else SW_CUSTOM_PROP_ADD
@@ -204,12 +206,14 @@ def commit_properties(
                 )
                 continue
 
-            result["props_set"].append({
-                "name": name,
-                "type": type_name,
-                "type_id": type_id,
-                "value": value,
-            })
+            result["props_set"].append(
+                {
+                    "name": name,
+                    "type": type_name,
+                    "type_id": type_id,
+                    "value": value,
+                }
+            )
 
         if result["errors"]:
             title = mdoc2.GetTitle
@@ -249,11 +253,13 @@ def commit_properties(
                 result["errors"].append(f"Delete2({name}) raised: {exc!r}")
                 continue
             if del_result in (SW_CUSTOM_DELETE_OK, SW_CUSTOM_DELETE_NOT_PRESENT):
-                result["props_deleted"].append({
-                    "name": name,
-                    "result": del_result,
-                    "was_present": del_result == SW_CUSTOM_DELETE_OK,
-                })
+                result["props_deleted"].append(
+                    {
+                        "name": name,
+                        "result": del_result,
+                        "was_present": del_result == SW_CUSTOM_DELETE_OK,
+                    }
+                )
             else:
                 result["errors"].append(
                     f"Delete2({name}) returned {del_result} "
@@ -319,9 +325,8 @@ def commit_properties(
                     "exists": exists,
                     "value": pvalue,
                     "expected": expected,
-                    "match": exists and semantic_prop_match(
-                        prop_info["type"], expected, pvalue
-                    ),
+                    "match": exists
+                    and semantic_prop_match(prop_info["type"], expected, pvalue),
                 }
                 result["read_back"].append(read_back_entry)
                 prop_info["reopen_read_back"] = read_back_entry

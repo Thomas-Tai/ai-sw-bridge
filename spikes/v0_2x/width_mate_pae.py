@@ -70,6 +70,7 @@ def run() -> str:
     mod = wrapper_module()
 
     import win32com.client as w32_compat
+
     sw = w32_compat.Dispatch("SldWorks.Application")
 
     # Close all docs for a clean slate
@@ -94,10 +95,14 @@ def run() -> str:
         "schema_version": 1,
         "name": "WidthSlot",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 10.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 10.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
 
@@ -105,10 +110,14 @@ def run() -> str:
         "schema_version": 1,
         "name": "WidthTab",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 20.0, "height": 10.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 10.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
 
@@ -128,6 +137,7 @@ def run() -> str:
     # Create assembly
     print("\n--- Creating assembly ---")
     import glob
+
     asm_templates = glob.glob(
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
     )
@@ -137,8 +147,11 @@ def run() -> str:
         return "WALL"
 
     asm_doc = sw.NewDocument(asm_templates[0], 0, 0.1, 0.1)
-    gate("asm_create", asm_doc is not None,
-         f"type={type(asm_doc).__name__ if asm_doc else None}")
+    gate(
+        "asm_create",
+        asm_doc is not None,
+        f"type={type(asm_doc).__name__ if asm_doc else None}",
+    )
 
     if asm_doc is None:
         save_results()
@@ -148,16 +161,11 @@ def run() -> str:
         # Place components
         print("\n--- Placing components ---")
         components = [
-            {"id": "slot", "part": SLOT_PATH,
-             "transform": {"xyz_mm": [0, 0, 0]}},
-            {"id": "tab", "part": TAB_PATH,
-             "transform": {"xyz_mm": [0, 0, 0.015]}},
+            {"id": "slot", "part": SLOT_PATH, "transform": {"xyz_mm": [0, 0, 0]}},
+            {"id": "tab", "part": TAB_PATH, "transform": {"xyz_mm": [0, 0, 0.015]}},
         ]
-        placed, place_err = place_components(
-            sw, asm_doc, components, mod=mod
-        )
-        gate("place", place_err is None,
-             f"placed={len(placed)}, err={place_err}")
+        placed, place_err = place_components(sw, asm_doc, components, mod=mod)
+        gate("place", place_err is None, f"placed={len(placed)}, err={place_err}")
 
         if place_err:
             save_results()
@@ -170,9 +178,7 @@ def run() -> str:
 
         def probe_face(comp: Any, normal: list[float]) -> dict:
             ref = {"normal": normal}
-            res = resolve_component_face(
-                asm_doc, comp, ref, mod=mod
-            )
+            res = resolve_component_face(asm_doc, comp, ref, mod=mod)
             return {
                 "ok": res.ok,
                 "method": res.method,
@@ -185,9 +191,12 @@ def run() -> str:
         tab_r = probe_face(tab_comp, [1, 0, 0])
 
         all_ok = all(f["ok"] for f in [slot_l, slot_r, tab_l, tab_r])
-        gate("faces_resolve", all_ok,
-             f"slot_L={slot_l['ok']}, slot_R={slot_r['ok']}, "
-             f"tab_L={tab_l['ok']}, tab_R={tab_r['ok']}")
+        gate(
+            "faces_resolve",
+            all_ok,
+            f"slot_L={slot_l['ok']}, slot_R={slot_r['ok']}, "
+            f"tab_L={tab_l['ok']}, tab_R={tab_r['ok']}",
+        )
 
         if not all_ok:
             save_results()
@@ -198,26 +207,23 @@ def run() -> str:
         width_spec = {
             "type": "width",
             "width_faces": [
-                {"component": "slot",
-                 "face_ref": {"normal": [-1, 0, 0]}},
-                {"component": "slot",
-                 "face_ref": {"normal": [1, 0, 0]}},
+                {"component": "slot", "face_ref": {"normal": [-1, 0, 0]}},
+                {"component": "slot", "face_ref": {"normal": [1, 0, 0]}},
             ],
             "tab_faces": [
-                {"component": "tab",
-                 "face_ref": {"normal": [-1, 0, 0]}},
-                {"component": "tab",
-                 "face_ref": {"normal": [1, 0, 0]}},
+                {"component": "tab", "face_ref": {"normal": [-1, 0, 0]}},
+                {"component": "tab", "face_ref": {"normal": [1, 0, 0]}},
             ],
         }
 
-        mate_feat, mate_err = create_mate(
-            asm_doc, placed, width_spec, mod=mod
-        )
+        mate_feat, mate_err = create_mate(asm_doc, placed, width_spec, mod=mod)
         mate_ok = mate_feat is not None and mate_err is None
-        gate("create_width_mate", mate_ok,
-             f"feat={type(mate_feat).__name__ if mate_feat else None}, "
-             f"err={mate_err}")
+        gate(
+            "create_width_mate",
+            mate_ok,
+            f"feat={type(mate_feat).__name__ if mate_feat else None}, "
+            f"err={mate_err}",
+        )
 
         if not mate_ok:
             save_results()
@@ -235,24 +241,31 @@ def run() -> str:
 
         print(f"  verify_mates: {len(vm)} mates:")
         for m in vm:
-            print(f"    {m['name']}: type={m['type']}, "
-                  f"solved={m['solved']}, error_code={m['error_code']}")
+            print(
+                f"    {m['name']}: type={m['type']}, "
+                f"solved={m['solved']}, error_code={m['error_code']}"
+            )
 
         width_mates = [m for m in vm if m["type"] == "MateWidth"]
-        gate("has_width_mate", len(width_mates) == 1,
-             f"count={len(width_mates)}")
+        gate("has_width_mate", len(width_mates) == 1, f"count={len(width_mates)}")
 
         if width_mates:
             wm = width_mates[0]
-            gate("width_solved", wm.get("solved", False),
-                 f"solved={wm.get('solved')}, "
-                 f"error_code={wm.get('error_code')}")
-            gate("width_error_clean",
-                 wm.get("error_code", -1) == 0,
-                 f"error_code={wm.get('error_code')}")
-            gate("width_not_suppressed",
-                 not wm.get("suppressed", True),
-                 f"suppressed={wm.get('suppressed')}")
+            gate(
+                "width_solved",
+                wm.get("solved", False),
+                f"solved={wm.get('solved')}, " f"error_code={wm.get('error_code')}",
+            )
+            gate(
+                "width_error_clean",
+                wm.get("error_code", -1) == 0,
+                f"error_code={wm.get('error_code')}",
+            )
+            gate(
+                "width_not_suppressed",
+                not wm.get("suppressed", True),
+                f"suppressed={wm.get('suppressed')}",
+            )
 
         all_solved = (
             len(width_mates) == 1
@@ -260,8 +273,11 @@ def run() -> str:
             and width_mates[0].get("error_code", -1) == 0
             and not width_mates[0].get("suppressed", True)
         )
-        gate("OVERALL_GREEN", all_solved,
-             "solo MateWidth solved clean (err-51 was over-constraint only)")
+        gate(
+            "OVERALL_GREEN",
+            all_solved,
+            "solo MateWidth solved clean (err-51 was over-constraint only)",
+        )
 
         return "GREEN" if all_solved else "PARTIAL"
 
@@ -286,7 +302,8 @@ if __name__ == "__main__":
         verdict = run()
     except Exception as exc:
         results["gates"]["UNEXPECTED"] = {
-            "ok": False, "detail": f"{type(exc).__name__}: {exc}"
+            "ok": False,
+            "detail": f"{type(exc).__name__}: {exc}",
         }
         verdict = "WALL"
     finally:

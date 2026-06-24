@@ -42,7 +42,9 @@ def main() -> None:
     print(f"[composite] handler returned: ok={ok}, note={note!r}")
 
     nodes_after = fx.count_feature_nodes(doc)
-    print(f"[composite] feature nodes after: {nodes_after} (delta={nodes_after - nodes_before})")
+    print(
+        f"[composite] feature nodes after: {nodes_after} (delta={nodes_after - nodes_before})"
+    )
 
     if not ok:
         print("[composite] FAIL — handler returned False")

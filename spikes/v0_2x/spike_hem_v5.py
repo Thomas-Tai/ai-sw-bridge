@@ -144,8 +144,9 @@ def _edge_endpoints(edge: Any) -> tuple[tuple, tuple] | None:
     return None
 
 
-def _select_longest_boundary_edge(doc: Any, body: Any, mod: Any,
-                                  diag: dict[str, Any]) -> Any:
+def _select_longest_boundary_edge(
+    doc: Any, body: Any, mod: Any, diag: dict[str, Any]
+) -> Any:
     """Deterministically select the LONGEST linear edge of the body.
 
     On the flat 60x40x2 base flange the longest edges (~60mm) are the major
@@ -153,8 +154,11 @@ def _select_longest_boundary_edge(doc: Any, body: Any, mod: Any,
     ``GetEdges()[0]`` topological lottery that NO_OP'd v4.
     """
     rec, edges_raw = _capture(lambda: body.GetEdges())
-    edge_list = (list(edges_raw) if edges_raw and isinstance(edges_raw, (list, tuple))
-                 else [edges_raw] if edges_raw else [])
+    edge_list = (
+        list(edges_raw)
+        if edges_raw and isinstance(edges_raw, (list, tuple))
+        else [edges_raw] if edges_raw else []
+    )
     diag["edge_count"] = len(edge_list)
     if not edge_list:
         diag["error"] = "no edges"
@@ -168,12 +172,14 @@ def _select_longest_boundary_edge(doc: Any, body: Any, mod: Any,
         (sx, sy, sz), (ex, ey, ez) = pts
         length = math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2 + (ez - sz) ** 2)
         mid = ((sx + ex) / 2.0, (sy + ey) / 2.0, (sz + ez) / 2.0)
-        measured.append({
-            "idx": i,
-            "len_mm": round(length * 1000.0, 4),
-            "mid_mm": [round(c * 1000.0, 4) for c in mid],
-            "edge": e,
-        })
+        measured.append(
+            {
+                "idx": i,
+                "len_mm": round(length * 1000.0, 4),
+                "mid_mm": [round(c * 1000.0, 4) for c in mid],
+                "edge": e,
+            }
+        )
 
     if not measured:
         diag["error"] = "no measurable edges"
@@ -190,8 +196,10 @@ def _select_longest_boundary_edge(doc: Any, body: Any, mod: Any,
     # Sanity: the longest edge of a 60x40x2 plate must be ~60mm; if it is not,
     # the fixture is not the shape we think it is — fail loud rather than fire.
     if not (55.0 <= chosen["len_mm"] <= 65.0):
-        diag["error"] = (f"longest edge {chosen['len_mm']}mm not the expected "
-                         f"~60mm boundary — aborting before the fire")
+        diag["error"] = (
+            f"longest edge {chosen['len_mm']}mm not the expected "
+            f"~60mm boundary — aborting before the fire"
+        )
         return None
 
     edge = chosen["edge"]
@@ -239,8 +247,8 @@ def _build_fixture_v5(sw: Any, mod: Any) -> tuple[Any, Any, Any, dict[str, Any]]
         sk = doc.SketchManager
         sk.InsertSketch(True)
         sk.CreateCornerRectangle(
-            -PROF_W_M / 2, -PROF_H_M / 2, 0.0,
-            PROF_W_M / 2, PROF_H_M / 2, 0.0)
+            -PROF_W_M / 2, -PROF_H_M / 2, 0.0, PROF_W_M / 2, PROF_H_M / 2, 0.0
+        )
         sk.InsertSketch(True)
     except Exception as e:
         diag["sketch_error"] = f"{type(e).__name__}: {e}"[:200]
@@ -277,8 +285,11 @@ def _build_fixture_v5(sw: Any, mod: Any) -> tuple[Any, Any, Any, dict[str, Any]]
         pass
 
     rec, bodies = _capture(lambda: doc.GetBodies2(SW_BODY_SOLID, True))
-    body_list = (list(bodies) if bodies and isinstance(bodies, (list, tuple))
-                 else [bodies] if bodies else [])
+    body_list = (
+        list(bodies)
+        if bodies and isinstance(bodies, (list, tuple))
+        else [bodies] if bodies else []
+    )
     if not body_list:
         diag["error"] = "no bodies"
         return doc, fm, None, diag
@@ -350,9 +361,11 @@ def main() -> int:
             out["persist"] = _save_reopen_v5(sw, mod, doc)
             doc = None  # _save_reopen_v5 closed all docs
             p = out["persist"]
-            survived = bool(p.get("reopened")
-                            and p.get("hem_feature", {}).get("found")
-                            and p.get("faces_after_reopen", 0) > before["faces"])
+            survived = bool(
+                p.get("reopened")
+                and p.get("hem_feature", {}).get("found")
+                and p.get("faces_after_reopen", 0) > before["faces"]
+            )
             out["persist_survived"] = survived
             code = 0 if survived else 2
             if not survived:

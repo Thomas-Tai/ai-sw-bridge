@@ -102,8 +102,9 @@ def main() -> int:
             out["error"] = "no persist token captured for the chosen edge"
             out["verdict"] = "ERROR"
             return _finish(out, 1)
-        ref = DurableEdgeRef(persist_id=pid, start=start, end=end,
-                             length=length, role_hint="edge")
+        ref = DurableEdgeRef(
+            persist_id=pid, start=start, end=end, length=length, role_hint="edge"
+        )
         edge_ref_dict = ref.to_dict()
         out["edge_ref"] = {
             "len_mm": round(length * 1000.0, 3),
@@ -126,8 +127,12 @@ def main() -> int:
         faces_b, vol_b = _metrics(doc)
         out["faces_before"] = faces_b
         out["vol_before_mm3"] = vol_b
-        feature = {"hem_type": "closed", "position": "inside",
-                   "length_mm": 10, "miter_gap_mm": 1}
+        feature = {
+            "hem_type": "closed",
+            "position": "inside",
+            "length_mm": 10,
+            "miter_gap_mm": 1,
+        }
         ok, err = create_hem(doc, feature, {"edge_ref": edge_ref_dict})
         out["handler_ok"] = ok
         out["handler_err"] = err

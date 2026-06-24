@@ -77,7 +77,11 @@ def run() -> dict[str, Any]:
     # Overall solid bbox (sanity; expected 60 from the wall regardless).
     try:
         bodies = doc.GetBodies2(0, False)
-        blist = list(bodies) if isinstance(bodies, (list, tuple)) else ([bodies] if bodies else [])
+        blist = (
+            list(bodies)
+            if isinstance(bodies, (list, tuple))
+            else ([bodies] if bodies else [])
+        )
     except Exception:
         blist = []
     out["body_count"] = len(blist)
@@ -91,13 +95,21 @@ def run() -> dict[str, Any]:
             faces = body.GetFaces()
         except Exception:
             continue
-        flist = list(faces) if isinstance(faces, (list, tuple)) else ([faces] if faces else [])
+        flist = (
+            list(faces)
+            if isinstance(faces, (list, tuple))
+            else ([faces] if faces else [])
+        )
         for face in flist:
             bx = _box(face)
             if bx is None or len(bx) < 6:
                 continue
             zmax = bx[5]
-            overall_zmax_mm = zmax * 1000.0 if overall_zmax_mm is None else max(overall_zmax_mm, zmax * 1000.0)
+            overall_zmax_mm = (
+                zmax * 1000.0
+                if overall_zmax_mm is None
+                else max(overall_zmax_mm, zmax * 1000.0)
+            )
             y_center = (bx[1] + bx[4]) / 2.0
             if y_center < Y_NEG_CUT:
                 z = zmax * 1000.0

@@ -2,6 +2,7 @@
 Investigate AddExplodeStep requirements - why does it return None?
 Uses proven part_builder.
 """
+
 import pythoncom
 from win32com.client import dynamic, gencache, VARIANT
 import winreg
@@ -17,6 +18,7 @@ sys.path.insert(0, str(_PKG_ROOT))
 sys.path.insert(0, str(_V15))
 
 SW_LIBID = "{83A33D31-27C5-11CE-BFD4-00400513BB57}"
+
 
 def _sw_tlb_path():
     try:
@@ -40,6 +42,7 @@ def _sw_tlb_path():
             except:
                 continue
     return None
+
 
 def investigate():
     pythoncom.CoInitialize()
@@ -67,8 +70,19 @@ def investigate():
             "schema_version": 1,
             "name": "ProbeBox",
             "features": [
-                {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front", "width": 10.0, "height": 10.0},
-                {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 5.0},
+                {
+                    "type": "sketch_rectangle_on_plane",
+                    "name": "SK",
+                    "plane": "Front",
+                    "width": 10.0,
+                    "height": 10.0,
+                },
+                {
+                    "type": "boss_extrude_blind",
+                    "name": "EX",
+                    "sketch": "SK",
+                    "depth": 5.0,
+                },
             ],
         }
         br = part_build(box_spec, save_as=part_path, save_format="current", no_dim=True)
@@ -78,7 +92,9 @@ def investigate():
         print(f"Part: {part_path}")
 
         # Create assembly
-        asm_template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        asm_template = (
+            r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        )
         asm = sw.NewDocument(asm_template, 0, 0, 0)
 
         if asm:
@@ -93,9 +109,9 @@ def investigate():
             print(f"Components: comp1={comp1}, comp2={comp2}")
 
             # Create exploded view
-            print("\n" + "="*80)
+            print("\n" + "=" * 80)
             print("Creating exploded view:")
-            print("="*80)
+            print("=" * 80)
 
             view_ok = asm_typed.CreateExplodedView()
             print(f"CreateExplodedView: {view_ok}")
@@ -118,9 +134,9 @@ def investigate():
             print(f"Component[1]: {comp_name}")
 
             # Try different approaches for AddExplodeStep
-            print("\n" + "="*80)
+            print("\n" + "=" * 80)
             print("AddExplodeStep attempts:")
-            print("="*80)
+            print("=" * 80)
 
             # Approach 1: Select then call with Python bools
             print("\n  Approach 1: Select + Python bools...")
@@ -144,10 +160,15 @@ def investigate():
             try:
                 # dispid=14, VT_R8=5, VT_BOOL=11, VT_DISPATCH=9
                 step3 = config._oleobj_.InvokeTypes(
-                    14, 0, 1,  # dispid, LCID, INVOKE_FUNC
+                    14,
+                    0,
+                    1,  # dispid, LCID, INVOKE_FUNC
                     (9, 0),  # returns VT_DISPATCH
                     ((5, 1), (11, 1), (11, 1), (11, 1)),  # args
-                    0.05, 0, 0, 0  # distance_m, VARIANT_FALSE, VARIANT_FALSE, VARIANT_FALSE
+                    0.05,
+                    0,
+                    0,
+                    0,  # distance_m, VARIANT_FALSE, VARIANT_FALSE, VARIANT_FALSE
                 )
                 print(f"    InvokeTypes(0.05, 0, 0, 0): {step3}")
                 if step3:
@@ -157,7 +178,11 @@ def investigate():
 
             # Approach 4: Check if we need to "edit" the exploded view first
             print("\n  Checking exploded view methods...")
-            for method in ["EditExplodedView", "ActivateExplodedView", "GetFirstExplodedView"]:
+            for method in [
+                "EditExplodedView",
+                "ActivateExplodedView",
+                "GetFirstExplodedView",
+            ]:
                 try:
                     dispid = asm._oleobj_.GetIDsOfNames(0, method)
                     print(f"    {method}: FOUND (dispid={dispid})")

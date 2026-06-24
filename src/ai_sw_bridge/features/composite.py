@@ -42,7 +42,9 @@ from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.composite")
 
-SPIKE_STATUS = "GREEN"  # Mode-B fired clean + survived save→reopen on the live seat (W62)
+SPIKE_STATUS = (
+    "GREEN"  # Mode-B fired clean + survived save→reopen on the live seat (W62)
+)
 
 # Verify class (W67): CURVE — witnessed by a feature-node count delta. NOTE
 # (Phase-3 finding): this is the W42-ghost-trap-prone family — node presence is
@@ -134,7 +136,9 @@ def _try_mode_b(doc: Any, edges: list[Any]) -> Any:
             return None
         logger.warning(
             "[B] select_entity edge[%d] (append=True, mark=%d) -> %r",
-            i, _EDGES_TO_JOIN_MARK, ok,
+            i,
+            _EDGES_TO_JOIN_MARK,
+            ok,
         )
         if not ok:
             return None
@@ -145,9 +149,7 @@ def _try_mode_b(doc: Any, edges: list[Any]) -> Any:
     except Exception as e:
         logger.warning("[B] InsertCompositeCurve invocation RAISED: %r", e)
         return None
-    logger.warning(
-        "[B] InsertCompositeCurve (callable=%s) -> %r", callable(ic), result
-    )
+    logger.warning("[B] InsertCompositeCurve (callable=%s) -> %r", callable(ic), result)
     if result:
         return result
     return None
@@ -193,12 +195,17 @@ def create_composite(doc: Any, feature: dict, target: dict) -> tuple[bool, str |
     nodes_after = _count_feature_nodes(doc)
     d_nodes = nodes_after - nodes_before
     if d_nodes <= 0:
-        return False, f"Mode-{mode} returned but no feature node materialized (ghost trap)"
+        return (
+            False,
+            f"Mode-{mode} returned but no feature node materialized (ghost trap)",
+        )
 
     # CURVE geometric gate (W67 P3b): node-count alone is the W42 ghost trap —
     # the composite curve must carry real arc length.
     new_node = verify.newest_node_by_type(
-        doc, ("compositecurve", "refcurve"), match="substring",
+        doc,
+        ("compositecurve", "refcurve"),
+        match="substring",
     )
     length_mm = _curve_length_mm(new_node)
     if verify.gate_curve(d_nodes, length_mm):

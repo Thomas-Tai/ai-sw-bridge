@@ -10,6 +10,7 @@ materialise and are independently selectable by their assigned names.
 Non-destructive: own blank Part via NewDocument, never saves, closes own doc.
 Run with PYTHONPATH=<worktree>/src so the worktree handlers load.
 """
+
 from __future__ import annotations
 
 import json
@@ -32,26 +33,74 @@ SW_DEFAULT_TEMPLATE_PART = 8
 
 # The example-spec gallery (examples/sketch_primitives/spec.json), one per type.
 FEATURES: list[dict[str, Any]] = [
-    {"type": "sketch_line", "name": "SK_Line", "plane": "Front",
-     "start": {"x": 0.0, "y": 0.0}, "end": {"x": 20.0, "y": 20.0}},
-    {"type": "sketch_arc", "name": "SK_Arc", "plane": "Front",
-     "center": {"x": 30.0, "y": 0.0}, "start": {"x": 40.0, "y": 0.0},
-     "end": {"x": 30.0, "y": 10.0}, "direction": "ccw"},
-    {"type": "sketch_spline", "name": "SK_Spline", "plane": "Front",
-     "points": [{"x": 0.0, "y": 30.0}, {"x": 5.0, "y": 35.0}, {"x": 10.0, "y": 32.0},
-                {"x": 15.0, "y": 38.0}, {"x": 20.0, "y": 30.0}], "closed": False},
-    {"type": "sketch_slot", "name": "SK_Slot", "plane": "Front",
-     "center": {"x": 30.0, "y": 30.0}, "width": 6.0, "length": 20.0,
-     "slot_type": "arc", "angle_deg": 0.0},
-    {"type": "sketch_polygon", "name": "SK_Polygon", "plane": "Front",
-     "center": {"x": 50.0, "y": 30.0}, "sides": 6, "radius": 8.0,
-     "inscribed": True, "angle_deg": 0.0},
-    {"type": "sketch_ellipse", "name": "SK_Ellipse", "plane": "Front",
-     "center": {"x": 70.0, "y": 30.0}, "major_radius": 10.0, "minor_radius": 5.0,
-     "angle_deg": 0.0},
-    {"type": "sketch_text", "name": "SK_Text", "plane": "Front",
-     "position": {"x": 0.0, "y": 50.0}, "content": "ai-sw-bridge",
-     "height": 3.0, "font": "Arial", "angle_deg": 0.0},
+    {
+        "type": "sketch_line",
+        "name": "SK_Line",
+        "plane": "Front",
+        "start": {"x": 0.0, "y": 0.0},
+        "end": {"x": 20.0, "y": 20.0},
+    },
+    {
+        "type": "sketch_arc",
+        "name": "SK_Arc",
+        "plane": "Front",
+        "center": {"x": 30.0, "y": 0.0},
+        "start": {"x": 40.0, "y": 0.0},
+        "end": {"x": 30.0, "y": 10.0},
+        "direction": "ccw",
+    },
+    {
+        "type": "sketch_spline",
+        "name": "SK_Spline",
+        "plane": "Front",
+        "points": [
+            {"x": 0.0, "y": 30.0},
+            {"x": 5.0, "y": 35.0},
+            {"x": 10.0, "y": 32.0},
+            {"x": 15.0, "y": 38.0},
+            {"x": 20.0, "y": 30.0},
+        ],
+        "closed": False,
+    },
+    {
+        "type": "sketch_slot",
+        "name": "SK_Slot",
+        "plane": "Front",
+        "center": {"x": 30.0, "y": 30.0},
+        "width": 6.0,
+        "length": 20.0,
+        "slot_type": "arc",
+        "angle_deg": 0.0,
+    },
+    {
+        "type": "sketch_polygon",
+        "name": "SK_Polygon",
+        "plane": "Front",
+        "center": {"x": 50.0, "y": 30.0},
+        "sides": 6,
+        "radius": 8.0,
+        "inscribed": True,
+        "angle_deg": 0.0,
+    },
+    {
+        "type": "sketch_ellipse",
+        "name": "SK_Ellipse",
+        "plane": "Front",
+        "center": {"x": 70.0, "y": 30.0},
+        "major_radius": 10.0,
+        "minor_radius": 5.0,
+        "angle_deg": 0.0,
+    },
+    {
+        "type": "sketch_text",
+        "name": "SK_Text",
+        "plane": "Front",
+        "position": {"x": 0.0, "y": 50.0},
+        "content": "ai-sw-bridge",
+        "height": 3.0,
+        "font": "Arial",
+        "angle_deg": 0.0,
+    },
 ]
 
 
@@ -85,7 +134,7 @@ def run() -> dict[str, Any]:
                 doc.ClearSelection2(True)
                 selectable = bool(doc.SelectByID(feat["name"], "SKETCH", 0.0, 0.0, 0.0))
                 rec["count_delta"] = after - before
-                rec["named_ok"] = (bf.sw_object is not None and bf.name == feat["name"])
+                rec["named_ok"] = bf.sw_object is not None and bf.name == feat["name"]
                 rec["selectable_by_name"] = selectable
                 rec["overall"] = "PASS" if (after > before and selectable) else "FAIL"
             except Exception as e:  # noqa: BLE001

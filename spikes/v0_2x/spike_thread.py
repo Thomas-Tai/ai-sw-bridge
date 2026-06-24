@@ -110,8 +110,8 @@ _CREATEDEF_ID_MAX = 130
 # All interfaces to QI-probe in the CreateDefinition scan.
 _THREAD_QI_IFACES = COSMETIC_THREAD_IFACES + CUT_THREAD_IFACES
 
-CYL_RADIUS_M = 0.010    # 10 mm radius → ⌀20 mm
-CYL_LENGTH_M = 0.030    # 30 mm extrusion length
+CYL_RADIUS_M = 0.010  # 10 mm radius → ⌀20 mm
+CYL_LENGTH_M = 0.030  # 30 mm extrusion length
 
 
 # ---------------------------------------------------------------------------
@@ -119,10 +119,22 @@ CYL_LENGTH_M = 0.030    # 30 mm extrusion length
 # ---------------------------------------------------------------------------
 
 _VT_NAMES = {
-    0: "VT_EMPTY", 2: "VT_I2", 3: "VT_I4", 4: "VT_R4", 5: "VT_R8",
-    8: "VT_BSTR", 9: "VT_DISPATCH", 11: "VT_BOOL", 12: "VT_VARIANT",
-    13: "VT_UNKNOWN", 16: "VT_I1", 17: "VT_UI1", 19: "VT_UI4", 24: "VT_VOID",
-    26: "VT_PTR", 27: "VT_SAFEARRAY",
+    0: "VT_EMPTY",
+    2: "VT_I2",
+    3: "VT_I4",
+    4: "VT_R4",
+    5: "VT_R8",
+    8: "VT_BSTR",
+    9: "VT_DISPATCH",
+    11: "VT_BOOL",
+    12: "VT_VARIANT",
+    13: "VT_UNKNOWN",
+    16: "VT_I1",
+    17: "VT_UI1",
+    19: "VT_UI4",
+    24: "VT_VOID",
+    26: "VT_PTR",
+    27: "VT_SAFEARRAY",
 }
 
 
@@ -166,8 +178,10 @@ def _funcdesc(info: Any, f_idx: int) -> dict[str, Any]:
 # O1 typelib walks
 # ---------------------------------------------------------------------------
 
+
 def _walk_sldworks_interface(
-    iface_name: str, tokens: tuple[str, ...],
+    iface_name: str,
+    tokens: tuple[str, ...],
 ) -> dict[str, Any]:
     """Walk sldworks.tlb for *iface_name* and dump FUNCDESCs matching *tokens*."""
     report: dict[str, Any] = {
@@ -245,6 +259,7 @@ def _walk_swconst_enums(tokens: tuple[str, ...]) -> dict[str, Any]:
 # Probe 0 — CreateDefinition scan (side-effect-free discovery)
 # ---------------------------------------------------------------------------
 
+
 def _probe_createdefinition(sw: Any, mod: Any, template: str) -> dict[str, Any]:
     """Scan CreateDefinition(id) for any return that QIs to a thread interface.
 
@@ -303,6 +318,7 @@ def _probe_createdefinition(sw: Any, mod: Any, template: str) -> dict[str, Any]:
 # Fixture builder — cylinder
 # ---------------------------------------------------------------------------
 
+
 def _build_cylinder(doc: Any) -> dict[str, Any]:
     """Build a cylinder: circle on Front Plane, extruded in Z.
 
@@ -318,14 +334,29 @@ def _build_cylinder(doc: Any) -> dict[str, Any]:
         sk.InsertSketch(True)
         fm = doc.FeatureManager
         feat = fm.FeatureExtrusion2(
-            True, False, False,
-            0, 0,
-            CYL_LENGTH_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0.0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            CYL_LENGTH_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
+            False,
         )
         if feat is None or isinstance(feat, int):
             result["error"] = "cylinder FeatureExtrusion2 did not materialise"
@@ -340,10 +371,13 @@ def _build_cylinder(doc: Any) -> dict[str, Any]:
 # Volume / topology measurement
 # ---------------------------------------------------------------------------
 
+
 def _get_bodies(doc: Any) -> list[Any]:
     try:
-        pdoc = doc if hasattr(doc, "GetBodies2") else typed(
-            doc, "IPartDoc", module=wrapper_module()
+        pdoc = (
+            doc
+            if hasattr(doc, "GetBodies2")
+            else typed(doc, "IPartDoc", module=wrapper_module())
         )
         bodies = pdoc.GetBodies2(0, True)
         return list(bodies) if bodies else []
@@ -412,6 +446,7 @@ def _count_annotations(doc: Any) -> int:
 # Feature-node detection (thread ghost detector)
 # ---------------------------------------------------------------------------
 
+
 def _find_thread_feature(doc: Any) -> dict[str, Any] | None:
     """Walk the feature tree for a node whose type name contains 'thread'.
 
@@ -472,6 +507,7 @@ def _get_feature_names(doc: Any) -> list[str]:
 # Select a cylindrical face (for thread host)
 # ---------------------------------------------------------------------------
 
+
 def _select_cylindrical_face(doc: Any) -> dict[str, Any]:
     """Find and select a cylindrical face via persist-reference round-trip.
 
@@ -504,7 +540,9 @@ def _select_cylindrical_face(doc: Any) -> dict[str, Any]:
                     continue
                 ext = typed(doc.Extension, "IModelDocExtension", module=mod)
                 resolved = ext.GetObjectByPersistReference3(pid)
-                if resolved is None or (isinstance(resolved, tuple) and resolved[0] is None):
+                if resolved is None or (
+                    isinstance(resolved, tuple) and resolved[0] is None
+                ):
                     continue
                 entity = resolved[0] if isinstance(resolved, tuple) else resolved
                 typed_entity = typed(entity, "IEntity", module=mod)
@@ -521,9 +559,15 @@ def _select_cylindrical_face(doc: Any) -> dict[str, Any]:
     try:
         ext = typed(doc.Extension, "IModelDocExtension", module=mod)
         selected = ext.SelectByID2(
-            "", "FACE",
-            CYL_RADIUS_M, 0.0, CYL_LENGTH_M / 2.0,
-            False, 1, None, 0,
+            "",
+            "FACE",
+            CYL_RADIUS_M,
+            0.0,
+            CYL_LENGTH_M / 2.0,
+            False,
+            1,
+            None,
+            0,
         )
         if selected:
             result["selected"] = True
@@ -539,6 +583,7 @@ def _select_cylindrical_face(doc: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Cosmetic thread probe — CreateDefinition(29)
 # ---------------------------------------------------------------------------
+
 
 def _probe_cosmetic_thread(doc: Any) -> dict[str, Any]:
     """Attempt cosmetic thread via CreateDefinition(swFmCosmeticThread=29).
@@ -634,6 +679,7 @@ def _probe_cosmetic_thread(doc: Any) -> dict[str, Any]:
 # Cut thread probe — CreateDefinition(87) / helix sweep
 # ---------------------------------------------------------------------------
 
+
 def _probe_cut_thread(doc: Any) -> dict[str, Any]:
     """Attempt cut thread via CreateDefinition(swFmSweepThread=87).
 
@@ -682,8 +728,12 @@ def _probe_cut_thread(doc: Any) -> dict[str, Any]:
         return result
 
     # Probe the returned object for known interfaces.
-    sweep_ifaces = ("ISweepFeatureData", "ISweepFeatureData2",
-                    "ICutThreadFeatureData", "IThreadFeatureData")
+    sweep_ifaces = (
+        "ISweepFeatureData",
+        "ISweepFeatureData2",
+        "ICutThreadFeatureData",
+        "IThreadFeatureData",
+    )
     for iface in sweep_ifaces:
         try:
             typed_fd = typed_qi(fd, iface, module=mod)
@@ -733,6 +783,7 @@ def _probe_cut_thread(doc: Any) -> dict[str, Any]:
 # Save → reopen verification
 # ---------------------------------------------------------------------------
 
+
 def _save_reopen(sw: Any, doc: Any, part_path: Path) -> dict[str, Any]:
     """Save the part and reopen; verify the thread feature survives."""
     result: dict[str, Any] = {}
@@ -778,6 +829,7 @@ def _save_reopen(sw: Any, doc: Any, part_path: Path) -> dict[str, Any]:
 # Main run
 # ---------------------------------------------------------------------------
 
+
 def run() -> dict[str, Any]:
     result: dict[str, Any] = {"spike_id": "W59_thread", "timestamp": time.time()}
 
@@ -797,9 +849,7 @@ def run() -> dict[str, Any]:
     result["doc_candidate_methods"] = doc_methods
 
     const_matches = const_walk.get("matches", {})
-    result["swconst_thread_values"] = {
-        k: v for k, v in const_matches.items()
-    }
+    result["swconst_thread_values"] = {k: v for k, v in const_matches.items()}
 
     # ── Stage 2: connect to live SW ──────────────────────────────────────
     try:
@@ -824,9 +874,7 @@ def run() -> dict[str, Any]:
     # ── Probe 0: CreateDefinition scan (side-effect-free discovery) ───────
     # If the expected ids (29/87) are wrong, this scan discovers the real
     # ones in the same fire.  Mirrors spike_rib5._probe_createdefinition.
-    result["probe_0_createdefinition"] = _probe_createdefinition(
-        sw, mod, template
-    )
+    result["probe_0_createdefinition"] = _probe_createdefinition(sw, mod, template)
 
     # ── Stage 3: cosmetic thread probe (fresh doc) ───────────────────────
     cosmetic_result: dict[str, Any] = {}
@@ -885,7 +933,9 @@ def run() -> dict[str, Any]:
     )
     cut_reopen = (
         cut_result.get("save_reopen", {}).get("reopen") == "ok"
-        and cut_result.get("save_reopen", {}).get("topo_after_reopen", {}).get("volume_m3")
+        and cut_result.get("save_reopen", {})
+        .get("topo_after_reopen", {})
+        .get("volume_m3")
         is not None
     )
 
@@ -923,9 +973,7 @@ def run() -> dict[str, Any]:
             result["overall"] = "LEAD"
             parts = []
             if discovered_cosmetic is not None:
-                parts.append(
-                    f"cosmetic_definition_id={discovered_cosmetic}"
-                )
+                parts.append(f"cosmetic_definition_id={discovered_cosmetic}")
             if discovered_cut is not None:
                 parts.append(f"cut_definition_id={discovered_cut}")
             result["overall_reason"] = (
@@ -965,6 +1013,7 @@ def run() -> dict[str, Any]:
 # I/O
 # ---------------------------------------------------------------------------
 
+
 def _scrub(o: Any) -> Any:
     if isinstance(o, dict):
         return {k: _scrub(v) for k, v in o.items()}
@@ -997,9 +1046,7 @@ def main() -> int:
     else:
         print(payload)
 
-    return {"PASS": 0, "PARTIAL": 2, "LEAD": 3, "FAIL": 1}.get(
-        result.get("overall"), 1
-    )
+    return {"PASS": 0, "PARTIAL": 2, "LEAD": 3, "FAIL": 1}.get(result.get("overall"), 1)
 
 
 if __name__ == "__main__":

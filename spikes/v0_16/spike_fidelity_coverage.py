@@ -14,6 +14,7 @@ no MakeClosed/CreateClosedSpline/periodic on this seat) and text `angle_deg`
 
 Non-destructive: own blank Parts, never saves, closes own docs.
 """
+
 from __future__ import annotations
 
 import json
@@ -86,8 +87,9 @@ def _mk_spline(sm: Any) -> Any:
 
 
 def _mk_slot(sm: Any) -> Any:
-    return sm.CreateSketchSlot(0, 0, 0.01, -0.02, 0.0, 0.0, 0.02, 0.0, 0.0,
-                               0.02, 0.005, 0.0, False, True)
+    return sm.CreateSketchSlot(
+        0, 0, 0.01, -0.02, 0.0, 0.0, 0.02, 0.0, 0.0, 0.02, 0.005, 0.0, False, True
+    )
 
 
 def _mk_polygon(sm: Any) -> Any:
@@ -120,7 +122,8 @@ def probe_construction(sw: Any, name: str, mk: Callable[[Any], Any]) -> dict[str
         rec["overall"] = "FAIL"
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     return rec
@@ -140,14 +143,18 @@ def probe_text_format(sw: Any) -> dict[str, Any]:
         tf2 = st.GetTextFormat()
         rec["charheight_after"] = float(_prop(tf2, "CharHeight"))
         rec["typeface_after"] = str(_prop(tf2, "TypeFaceName"))
-        ok = abs(rec["charheight_after"] - 0.003) < 1e-6 and rec["typeface_after"] == "Arial"
+        ok = (
+            abs(rec["charheight_after"] - 0.003) < 1e-6
+            and rec["typeface_after"] == "Arial"
+        )
         rec["overall"] = "PASS" if ok else "FAIL"
     except Exception as e:  # noqa: BLE001
         rec["error"] = repr(e)
         rec["overall"] = "FAIL"
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     return rec
@@ -158,8 +165,12 @@ def run() -> dict[str, Any]:
     report: dict[str, Any] = {"sw_revision": str(sw.RevisionNumber)}
     cons: dict[str, Any] = {}
     for name, mk in (
-        ("line", _mk_line), ("arc", _mk_arc), ("spline", _mk_spline),
-        ("slot", _mk_slot), ("polygon", _mk_polygon), ("ellipse", _mk_ellipse),
+        ("line", _mk_line),
+        ("arc", _mk_arc),
+        ("spline", _mk_spline),
+        ("slot", _mk_slot),
+        ("polygon", _mk_polygon),
+        ("ellipse", _mk_ellipse),
     ):
         cons[name] = probe_construction(sw, name, mk)
     report["construction"] = cons
@@ -169,7 +180,11 @@ def run() -> dict[str, Any]:
     cons_fail = [n for n, r in cons.items() if r.get("overall") != "PASS"]
     report["construction_pass"] = cons_pass
     report["construction_fail"] = cons_fail
-    report["overall"] = "PASS" if not cons_fail and report["text_format"]["overall"] == "PASS" else "PARTIAL"
+    report["overall"] = (
+        "PASS"
+        if not cons_fail and report["text_format"]["overall"] == "PASS"
+        else "PARTIAL"
+    )
     return report
 
 

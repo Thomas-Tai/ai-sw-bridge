@@ -3,6 +3,7 @@
 InsertDome(Height:R8, ReverseDir:BOOL, DoEllipticSurface:BOOL) on IModelDoc2.
 Builds 50x50x50mm box, selects top face via persist round-trip, probes 4 arg combos.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -85,9 +86,29 @@ def _build_box(sw):
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion3(
-        True, False, False, 6, 0, 0.025, 0.025,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        6,
+        0,
+        0.025,
+        0.025,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
     return doc
@@ -167,12 +188,12 @@ def run():
 
         # InsertDome(Height, ReverseDir, DoEllipticSurface) on IModelDoc2
         arg_variants = [
-            ("v1_fwd_round",   (0.01, False, False)),
-            ("v2_rev_round",   (0.01, True,  False)),
-            ("v3_fwd_ellip",   (0.01, False, True)),
-            ("v4_rev_ellip",   (0.01, True,  True)),
-            ("v5_tall_fwd",    (0.02, False, False)),
-            ("v6_short_fwd",   (0.005, False, False)),
+            ("v1_fwd_round", (0.01, False, False)),
+            ("v2_rev_round", (0.01, True, False)),
+            ("v3_fwd_ellip", (0.01, False, True)),
+            ("v4_rev_ellip", (0.01, True, True)),
+            ("v5_tall_fwd", (0.02, False, False)),
+            ("v6_short_fwd", (0.005, False, False)),
         ]
 
         probes = []
@@ -208,7 +229,9 @@ def run():
                 except Exception:
                     pass
             probes.append(entry)
-            print("  [%s] mat=%s delta=%d err=%s" % (arg_name, mat, entry["delta"], err))
+            print(
+                "  [%s] mat=%s delta=%d err=%s" % (arg_name, mat, entry["delta"], err)
+            )
             if mat and green is None:
                 green = entry
                 break
@@ -259,9 +282,10 @@ def main():
         print("wrote %s" % args.out, file=sys.stderr)
     else:
         print(payload)
-    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(result.get("overall"), 1)
+    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

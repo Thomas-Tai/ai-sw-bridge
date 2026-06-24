@@ -44,9 +44,9 @@ def test_example_ref_exists_and_uses_the_type(name):
     assert spec_path.is_file(), f"{name}: examples/{example}/spec.json missing"
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     types = {f.get("type") for f in spec.get("features", [])}
-    assert name in types, (
-        f"{name}: examples/{example} does not actually use feature type {name!r}"
-    )
+    assert (
+        name in types
+    ), f"{name}: examples/{example} does not actually use feature type {name!r}"
 
 
 @pytest.mark.parametrize("name", PRIMITIVES)

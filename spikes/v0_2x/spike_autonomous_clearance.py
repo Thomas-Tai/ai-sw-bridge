@@ -26,6 +26,7 @@ penetration-depth witness.
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_autonomous_clearance.py
 """
+
 from __future__ import annotations
 
 import json
@@ -61,15 +62,19 @@ import mech_mate_tier1_gear_screw as t1  # noqa: E402
 _OUT = _HERE.parent / "_results" / "autonomous_clearance.json"
 
 CUBE_MM = 20.0
-INIT_DIST_MM = 10.0       # colliding: 10mm overlap of the 20mm cubes
-STEP_MM = 2.0             # monotonic step-out increment
-MAX_ITERS = 20            # runaway guard (caps the live seat)
-SW_MATE_DISTANCE = 5      # swMateDISTANCE
+INIT_DIST_MM = 10.0  # colliding: 10mm overlap of the 20mm cubes
+STEP_MM = 2.0  # monotonic step-out increment
+MAX_ITERS = 20  # runaway guard (caps the live seat)
+SW_MATE_DISTANCE = 5  # swMateDISTANCE
 
 results: dict[str, Any] = {
     "spike": "w76_autonomous_clearance",
-    "params": {"cube_mm": CUBE_MM, "init_mm": INIT_DIST_MM,
-               "step_mm": STEP_MM, "max_iters": MAX_ITERS},
+    "params": {
+        "cube_mm": CUBE_MM,
+        "init_mm": INIT_DIST_MM,
+        "step_mm": STEP_MM,
+        "max_iters": MAX_ITERS,
+    },
     "trajectory": [],
     "gates": {},
 }
@@ -93,12 +98,19 @@ def _plus_x_face(comp: Any, mod: Any) -> Any | None:
 
 
 def _vol_sum(intf: dict[str, Any]) -> float:
-    return sum(float(i.get("interference_volume_mm3") or 0.0)
-               for i in (intf.get("interferences") or []))
+    return sum(
+        float(i.get("interference_volume_mm3") or 0.0)
+        for i in (intf.get("interferences") or [])
+    )
 
 
 def _make_distance_mate(
-    typed_asm: Any, fa: Any, fb: Any, dist_m: float, align: int, mod: Any,
+    typed_asm: Any,
+    fa: Any,
+    fb: Any,
+    dist_m: float,
+    align: int,
+    mod: Any,
 ) -> tuple[Any | None, str | None, str | None]:
     """CreateMateData(5) -> IDistanceMateFeatureData -> CreateMate. The fixture
     builder; the loop drives this mate via the production driver."""
@@ -108,7 +120,8 @@ def _make_distance_mate(
             return None, None, "CreateMateData None"
         ti = typed_qi(md, "IDistanceMateFeatureData", module=mod)
         ti.EntitiesToMate = w32.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (fa, fb))
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (fa, fb)
+        )
         ti.Distance = dist_m
         try:
             ti.MateAlignment = align
@@ -128,8 +141,9 @@ def _make_distance_mate(
         return None, None, f"{type(exc).__name__}: {exc}"
 
 
-def _try_fixture(sw: Any, mod: Any, path_a: str, path_b: str,
-                 align: int) -> dict[str, Any] | None:
+def _try_fixture(
+    sw: Any, mod: Any, path_a: str, path_b: str, align: int
+) -> dict[str, Any] | None:
     """Spawn a fresh assembly, pre-place B at the colliding offset, add the
     distance mate, and read the initial interference. Returns the fixture dict
     only if the initial state genuinely collides; else closes and returns None."""
@@ -153,7 +167,8 @@ def _try_fixture(sw: Any, mod: Any, path_a: str, path_b: str,
         return None
     typed_asm = typed(asm, "IAssemblyDoc", module=mod)
     mate, name, merr = _make_distance_mate(
-        typed_asm, fa, fb, INIT_DIST_MM / 1000.0, align, mod)
+        typed_asm, fa, fb, INIT_DIST_MM / 1000.0, align, mod
+    )
     if merr or name is None:
         return None
     typed(asm, "IModelDoc2", module=mod).EditRebuild3()
@@ -198,10 +213,13 @@ def main() -> int:
         mate_name = fx["mate_name"]
         init_intf = fx["init_intf"]
         results["mate"] = {"name": mate_name, "alignment": fx["align"]}
-        gate("fixture_collides", True,
-             f"mate={mate_name} align={fx['align']} "
-             f"count={init_intf['interference_count']} "
-             f"vol={_vol_sum(init_intf):.1f}mm3")
+        gate(
+            "fixture_collides",
+            True,
+            f"mate={mate_name} align={fx['align']} "
+            f"count={init_intf['interference_count']} "
+            f"vol={_vol_sum(init_intf):.1f}mm3",
+        )
 
         # ── The autonomous closed loop ──────────────────────────────────────
         cur_mm = INIT_DIST_MM
@@ -212,11 +230,17 @@ def main() -> int:
             intf = sw_get_interference(asm)
             count = int(intf.get("interference_count", 0))
             vol = _vol_sum(intf)
-            step = {"iter": it, "dist_mm": round(cur_mm, 3),
-                    "count": count, "volume_mm3": round(vol, 3)}
+            step = {
+                "iter": it,
+                "dist_mm": round(cur_mm, 3),
+                "count": count,
+                "volume_mm3": round(vol, 3),
+            }
             results["trajectory"].append(step)
-            print(f"  iter {it:2d}: D={cur_mm:5.1f}mm -> count={count} "
-                  f"vol={vol:8.1f}mm3")
+            print(
+                f"  iter {it:2d}: D={cur_mm:5.1f}mm -> count={count} "
+                f"vol={vol:8.1f}mm3"
+            )
             if count == 0 and vol == 0.0:
                 solved = True
                 solved_mm = cur_mm
@@ -231,18 +255,30 @@ def main() -> int:
         results["solved"] = solved
         results["solved_mm"] = solved_mm
 
-        gate("loop_resolved", solved,
-             f"clash-free at D={solved_mm}mm" if solved
-             else f"unresolved after {len(results['trajectory'])} iters"
-                  + (f" (drive {drive_err})" if drive_err else ""))
+        gate(
+            "loop_resolved",
+            solved,
+            (
+                f"clash-free at D={solved_mm}mm"
+                if solved
+                else f"unresolved after {len(results['trajectory'])} iters"
+                + (f" (drive {drive_err})" if drive_err else "")
+            ),
+        )
         if solved:
-            gate("monotonic_stepout", solved_mm > INIT_DIST_MM,
-                 f"{INIT_DIST_MM}mm -> {solved_mm}mm")
+            gate(
+                "monotonic_stepout",
+                solved_mm > INIT_DIST_MM,
+                f"{INIT_DIST_MM}mm -> {solved_mm}mm",
+            )
             # Geometry sanity: 20mm cubes clear at center-offset >= 20mm.
-            gate("clearance_geometry_sane",
-                 19.0 <= solved_mm <= INIT_DIST_MM + STEP_MM *
-                 ((CUBE_MM - INIT_DIST_MM) / STEP_MM + 1),
-                 f"solved at {solved_mm}mm (expected ~{CUBE_MM}mm)")
+            gate(
+                "clearance_geometry_sane",
+                19.0
+                <= solved_mm
+                <= INIT_DIST_MM + STEP_MM * ((CUBE_MM - INIT_DIST_MM) / STEP_MM + 1),
+                f"solved at {solved_mm}mm (expected ~{CUBE_MM}mm)",
+            )
             gate("no_drive_error", drive_err is None, str(drive_err))
     finally:
         try:
@@ -255,7 +291,8 @@ def main() -> int:
 
 def _finish() -> int:
     all_pass = bool(results["gates"]) and all(
-        g["ok"] for g in results["gates"].values())
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")

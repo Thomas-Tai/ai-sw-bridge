@@ -110,7 +110,11 @@ def _count_pattern_instances(fm: Any, pattern_name: str) -> int | None:
     except Exception:
         pass
     # Method 2: try GetPatternFeatureCount or similar
-    for method_name in ("GetPatternFeatureCount", "GetInstanceCount", "GetFeatureCount"):
+    for method_name in (
+        "GetPatternFeatureCount",
+        "GetInstanceCount",
+        "GetFeatureCount",
+    ):
         try:
             method = getattr(feat, method_name, None)
             if method is not None:
@@ -131,19 +135,32 @@ def _build_geometry(doc: Any, mod: Any) -> dict[str, Any]:
     try:
         doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
         doc.SketchManager.InsertSketch(True)
-        doc.SketchManager.CreateCornerRectangle(
-            -0.01, -0.01, 0, 0.01, 0.01, 0
-        )
+        doc.SketchManager.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
         doc.SketchManager.InsertSketch(True)
         f = fm.FeatureExtrusion3(
-            True, False, False,
-            0, 0,
-            0.01, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0.0, 0.0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            0.01,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0.0,
+            0.0,
+            False,
         )
         if f:
             f.Name = "Boss_Box"
@@ -167,14 +184,29 @@ def _build_geometry(doc: Any, mod: Any) -> dict[str, Any]:
         doc.SketchManager.CreateCircleByRadius(0.005, 0.005, 0, 0.0025)
         doc.SketchManager.InsertSketch(True)
         f = fm.FeatureExtrusion3(
-            True, False, False,
-            0, 0,
-            0.003, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0.0, 0.0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            0.003,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0.0,
+            0.0,
+            False,
         )
         if f:
             f.Name = "Boss_Seed"
@@ -246,9 +278,7 @@ def _test_seed_selection(doc: Any, mod: Any, seed_name: str) -> dict[str, Any]:
     return result
 
 
-def _probe_linear(
-    doc: Any, fm: Any, mod: Any, seed_name: str
-) -> dict[str, Any]:
+def _probe_linear(doc: Any, fm: Any, mod: Any, seed_name: str) -> dict[str, Any]:
     """Linear pattern: seed + direction edge → FeatureLinearPattern5."""
     result: dict[str, Any] = {}
     ext = typed(doc.Extension, "IModelDocExtension", module=mod)
@@ -327,16 +357,28 @@ def _probe_linear(
     pattern_count = 3
     try:
         args = (
-            pattern_count, spacing_m, 1, 0.0,  # Num1, Spacing1, Num2, Spacing2
-            False, False,  # FlipDir1, FlipDir2
-            "", "",  # DName1, DName2
-            False, False,  # GeometryPattern, VaryInstance
-            False, False,  # HasOffset1, HasOffset2
-            False, False,  # CtrlByNum1, CtrlByNum2
-            False, False,  # FromCentroid1, FromCentroid2
-            False, False,  # RevOffset1, RevOffset2
-            0.0, 0.0,  # Offset1, Offset2
-            False, False,  # D2PatternSeedOnly, SyncSubAssemblies
+            pattern_count,
+            spacing_m,
+            1,
+            0.0,  # Num1, Spacing1, Num2, Spacing2
+            False,
+            False,  # FlipDir1, FlipDir2
+            "",
+            "",  # DName1, DName2
+            False,
+            False,  # GeometryPattern, VaryInstance
+            False,
+            False,  # HasOffset1, HasOffset2
+            False,
+            False,  # CtrlByNum1, CtrlByNum2
+            False,
+            False,  # FromCentroid1, FromCentroid2
+            False,
+            False,  # RevOffset1, RevOffset2
+            0.0,
+            0.0,  # Offset1, Offset2
+            False,
+            False,  # D2PatternSeedOnly, SyncSubAssemblies
         )
         feat = fm.FeatureLinearPattern5(*args)
         result["create_feature"] = {
@@ -362,10 +404,12 @@ def _probe_linear(
         tree = []
         if feats:
             for f in feats:
-                tree.append({
-                    "name": _feat_name(f),
-                    "type": _type_name(f),
-                })
+                tree.append(
+                    {
+                        "name": _feat_name(f),
+                        "type": _type_name(f),
+                    }
+                )
         result["feature_tree"] = tree
     except Exception:
         pass
@@ -444,18 +488,37 @@ def _probe_linear(
                 count_before_alt = _feat_count(fm)
                 try:
                     feat_alt = fm.FeatureLinearPattern5(
-                        pattern_count, spacing_m, 1, 0.0,
-                        False, False, "", "",
-                        False, False, False, False,
-                        False, False, False, False,
-                        False, False, 0.0, 0.0, False, False,
+                        pattern_count,
+                        spacing_m,
+                        1,
+                        0.0,
+                        False,
+                        False,
+                        "",
+                        "",
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        0.0,
+                        0.0,
+                        False,
+                        False,
                     )
                     alt_result["create_feature_alt"] = {
                         "is_none": feat_alt is None,
                         "type": type(feat_alt).__name__ if feat_alt else "NoneType",
                     }
                     if feat_alt:
-                        alt_result["create_feature_alt"]["type_name"] = _type_name(feat_alt)
+                        alt_result["create_feature_alt"]["type_name"] = _type_name(
+                            feat_alt
+                        )
                 except Exception as e:
                     alt_result["create_feature_alt"] = {"exception": str(e)[:100]}
                     feat_alt = None
@@ -480,9 +543,7 @@ def _probe_linear(
     return result
 
 
-def _probe_circular(
-    doc: Any, fm: Any, mod: Any, seed_name: str
-) -> dict[str, Any]:
+def _probe_circular(doc: Any, fm: Any, mod: Any, seed_name: str) -> dict[str, Any]:
     """Circular pattern: seed + axis → FeatureCircularPattern5."""
     result: dict[str, Any] = {}
     ext = typed(doc.Extension, "IModelDocExtension", module=mod)
@@ -593,7 +654,9 @@ def _probe_circular(
         if feats:
             for f in feats:
                 tn = _type_name(f)
-                if tn and ("CirPattern" in tn or "CircularPattern" in tn or "LPattern" in tn):
+                if tn and (
+                    "CirPattern" in tn or "CircularPattern" in tn or "LPattern" in tn
+                ):
                     new_feat_type = tn
                     new_feat_name = _feat_name(f)
                     break
@@ -636,9 +699,7 @@ def _probe_circular(
     return result
 
 
-def _probe_mirror(
-    doc: Any, fm: Any, mod: Any, seed_name: str
-) -> dict[str, Any]:
+def _probe_mirror(doc: Any, fm: Any, mod: Any, seed_name: str) -> dict[str, Any]:
     """Mirror feature: seed + plane → InsertMirrorFeature2."""
     result: dict[str, Any] = {}
     ext = typed(doc.Extension, "IModelDocExtension", module=mod)
@@ -788,21 +849,40 @@ def run() -> dict[str, Any]:
                 # Build box only (Extrusion type, no boss)
                 doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
                 doc.SketchManager.InsertSketch(True)
-                doc.SketchManager.CreateCornerRectangle(
-                    -0.01, -0.01, 0, 0.01, 0.01, 0
-                )
+                doc.SketchManager.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
                 doc.SketchManager.InsertSketch(True)
                 f = fm.FeatureExtrusion3(
-                    True, False, False, 0, 0, 0.01, 0.0,
-                    False, False, False, False, 0.0, 0.0,
-                    False, False, False, False,
-                    True, True, True, 0.0, 0.0, False,
+                    True,
+                    False,
+                    False,
+                    0,
+                    0,
+                    0.01,
+                    0.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                    0.0,
+                    0.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                    True,
+                    True,
+                    True,
+                    0.0,
+                    0.0,
+                    False,
                 )
                 if f:
                     f.Name = "Box"
                 doc.ForceRebuild3(False)
                 feat_obj = _find_feature_by_name(fm, "Box")
-                result["linear_alt_seed_type"] = _type_name(feat_obj) if feat_obj else "?"
+                result["linear_alt_seed_type"] = (
+                    _type_name(feat_obj) if feat_obj else "?"
+                )
 
                 # Select direction: box edge at (0, 10mm, 10mm)
                 doc.ClearSelection2(True)
@@ -816,26 +896,52 @@ def run() -> dict[str, Any]:
                         if ok2:
                             count_b = _feat_count(fm)
                             feat_result = fm.FeatureLinearPattern5(
-                                3, 0.005, 1, 0.0,
-                                False, False, "", "",
-                                False, False, False, False,
-                                False, False, False, False,
-                                False, False, 0.0, 0.0, False, False,
+                                3,
+                                0.005,
+                                1,
+                                0.0,
+                                False,
+                                False,
+                                "",
+                                "",
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                0.0,
+                                0.0,
+                                False,
+                                False,
                             )
                             count_a = _feat_count(fm)
                             result["linear_alt_box"] = {
-                                "create_result": type(feat_result).__name__ if feat_result else "None",
+                                "create_result": (
+                                    type(feat_result).__name__
+                                    if feat_result
+                                    else "None"
+                                ),
                                 "count_delta": count_a - count_b,
                             }
                             if feat_result:
-                                result["linear_alt_box"]["type_name"] = _type_name(feat_result)
+                                result["linear_alt_box"]["type_name"] = _type_name(
+                                    feat_result
+                                )
                 else:
                     result["linear_alt_box"] = {"direction_select": False}
             except Exception as e:
                 result["linear_alt_box_error"] = str(e)[:200]
 
     # If still failing, try the box approach from first doc with Extrusion seed
-    if linear.get("verdict") == "NO-GO" and result.get("linear_alt_box", {}).get("count_delta", 0) == 0:
+    if (
+        linear.get("verdict") == "NO-GO"
+        and result.get("linear_alt_box", {}).get("count_delta", 0) == 0
+    ):
         print("--- LINEAR ALT2: box seed (Extrusion type) ---", file=sys.stderr)
         # Use first doc's box as seed instead of Boss_Seed
         _try_close(sw, doc)
@@ -845,15 +951,32 @@ def run() -> dict[str, Any]:
             try:
                 doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
                 doc.SketchManager.InsertSketch(True)
-                doc.SketchManager.CreateCornerRectangle(
-                    -0.01, -0.01, 0, 0.01, 0.01, 0
-                )
+                doc.SketchManager.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
                 doc.SketchManager.InsertSketch(True)
                 f = fm.FeatureExtrusion3(
-                    True, False, False, 0, 0, 0.01, 0.0,
-                    False, False, False, False, 0.0, 0.0,
-                    False, False, False, False,
-                    True, True, True, 0.0, 0.0, False,
+                    True,
+                    False,
+                    False,
+                    0,
+                    0,
+                    0.01,
+                    0.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                    0.0,
+                    0.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                    True,
+                    True,
+                    True,
+                    0.0,
+                    0.0,
+                    False,
                 )
                 if f:
                     f.Name = "Box"
@@ -871,20 +994,41 @@ def run() -> dict[str, Any]:
                         if ok2:
                             count_b2 = _feat_count(fm)
                             feat_r2 = fm.FeatureLinearPattern5(
-                                3, 0.005, 1, 0.0,
-                                False, False, "", "",
-                                False, False, False, False,
-                                False, False, False, False,
-                                False, False, 0.0, 0.0, False, False,
+                                3,
+                                0.005,
+                                1,
+                                0.0,
+                                False,
+                                False,
+                                "",
+                                "",
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                False,
+                                0.0,
+                                0.0,
+                                False,
+                                False,
                             )
                             count_a2 = _feat_count(fm)
                             result["linear_alt2_box_extrusion"] = {
                                 "seed_type": "Extrusion",
-                                "create_result": type(feat_r2).__name__ if feat_r2 else "None",
+                                "create_result": (
+                                    type(feat_r2).__name__ if feat_r2 else "None"
+                                ),
                                 "count_delta": count_a2 - count_b2,
                             }
                             if feat_r2:
-                                result["linear_alt2_box_extrusion"]["type_name"] = _type_name(feat_r2)
+                                result["linear_alt2_box_extrusion"]["type_name"] = (
+                                    _type_name(feat_r2)
+                                )
                 else:
                     result["linear_alt2_box_extrusion"] = {"direction_select": False}
             except Exception as e:
@@ -901,7 +1045,10 @@ def run() -> dict[str, Any]:
     geom2 = _build_geometry(doc, mod)
     seed_name2 = geom2.get("seed")
     if not seed_name2:
-        result["circular_pattern"] = {"verdict": "NO-GO", "failure_point": "geometry rebuild failed"}
+        result["circular_pattern"] = {
+            "verdict": "NO-GO",
+            "failure_point": "geometry rebuild failed",
+        }
     else:
         print("--- CIRCULAR PATTERN ---", file=sys.stderr)
         circular = _probe_circular(doc, fm, mod, seed_name2)
@@ -912,13 +1059,19 @@ def run() -> dict[str, Any]:
     _try_close(sw, doc)
     doc = sw.NewDocument(template, 0, 0.0, 0.0)
     if doc is None:
-        result["mirror_feature"] = {"verdict": "NO-GO", "failure_point": "could not create third doc"}
+        result["mirror_feature"] = {
+            "verdict": "NO-GO",
+            "failure_point": "could not create third doc",
+        }
     else:
         fm = doc.FeatureManager
         geom3 = _build_geometry(doc, mod)
         seed_name3 = geom3.get("seed")
         if not seed_name3:
-            result["mirror_feature"] = {"verdict": "NO-GO", "failure_point": "geometry rebuild failed"}
+            result["mirror_feature"] = {
+                "verdict": "NO-GO",
+                "failure_point": "geometry rebuild failed",
+            }
         else:
             print("--- MIRROR FEATURE ---", file=sys.stderr)
             mirror = _probe_mirror(doc, fm, mod, seed_name3)

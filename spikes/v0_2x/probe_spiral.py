@@ -12,6 +12,7 @@ sweep {1,2,3} to locate the spiral mode empirically (don't trust the enum blind)
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/probe_spiral.py
 """
+
 from __future__ import annotations
 
 import json
@@ -47,7 +48,7 @@ out: dict[str, Any] = {}
 
 def _node_types(doc: Any) -> list[str]:
     names = []
-    for f in (doc.FeatureManager.GetFeatures(False) or []):
+    for f in doc.FeatureManager.GetFeatures(False) or []:
         for attr in ("GetTypeName2", "GetTypeName"):
             try:
                 v = getattr(f, attr)
@@ -97,22 +98,41 @@ def _build_circle_seed(sw: Any, radius_m: float) -> tuple[Any, Any, str] | None:
     return doc, raw, "SpiralBase"
 
 
-def _try_spiral(sw: Any, defined_by: int, *, const_pitch: bool = True,
-                reverse: bool = False, clockwise: bool = False,
-                pitch_m: float = 0.010, revolutions: float = 3.0,
-                height_m: float | None = None, start_angle: float = 0.0,
-                diameter: float = 0.0, start_radius_m: float = 0.005) -> dict[str, Any]:
+def _try_spiral(
+    sw: Any,
+    defined_by: int,
+    *,
+    const_pitch: bool = True,
+    reverse: bool = False,
+    clockwise: bool = False,
+    pitch_m: float = 0.010,
+    revolutions: float = 3.0,
+    height_m: float | None = None,
+    start_angle: float = 0.0,
+    diameter: float = 0.0,
+    start_radius_m: float = 0.005,
+) -> dict[str, Any]:
     """Fresh seed, fire InsertHelix on a GENUINELY late-bound doc
     (dynamic.Dispatch). Selection (VARIANT callout) + InsertHelix both go
     through the late-bound proxy — the typed Extension rejects the
     VARIANT(VT_DISPATCH,None) callout (ref_axis binding-inverse trap)."""
     import traceback
+
     if height_m is None:
         height_m = pitch_m * revolutions
-    r: dict[str, Any] = {"defined_by": defined_by, "args": {
-        "const_pitch": const_pitch, "reverse": reverse, "clockwise": clockwise,
-        "pitch_m": pitch_m, "rev": revolutions, "height_m": height_m,
-        "start_angle": start_angle, "diameter": diameter}}
+    r: dict[str, Any] = {
+        "defined_by": defined_by,
+        "args": {
+            "const_pitch": const_pitch,
+            "reverse": reverse,
+            "clockwise": clockwise,
+            "pitch_m": pitch_m,
+            "rev": revolutions,
+            "height_m": height_m,
+            "start_angle": start_angle,
+            "diameter": diameter,
+        },
+    }
     try:
         sw.CloseAllDocuments(True)
     except Exception:
@@ -127,14 +147,24 @@ def _try_spiral(sw: Any, defined_by: int, *, const_pitch: bool = True,
     try:
         ldoc.ClearSelection2(True)
         null_callout = VARIANT(pythoncom.VT_DISPATCH, None)
-        sel = ldoc.Extension.SelectByID2(sketch, "SKETCH", 0, 0, 0, False, 0, null_callout, 0)
+        sel = ldoc.Extension.SelectByID2(
+            sketch, "SKETCH", 0, 0, 0, False, 0, null_callout, 0
+        )
         r["select_ok"] = bool(sel)
         if not sel:
             r["error"] = "sketch select failed"
             return r
         ldoc.InsertHelix(
-            const_pitch, reverse, False, clockwise, defined_by,
-            pitch_m, revolutions, height_m, start_angle, diameter,
+            const_pitch,
+            reverse,
+            False,
+            clockwise,
+            defined_by,
+            pitch_m,
+            revolutions,
+            height_m,
+            start_angle,
+            diameter,
         )
         ldoc.ForceRebuild3(False)
     except Exception as e:  # noqa: BLE001
@@ -168,7 +198,9 @@ def main() -> int:
             "D_reverse": dict(reverse=True),
             "E_small_pitch_more_rev": dict(pitch_m=0.002, revolutions=5.0),
             "F_diam_and_constpitch_false": dict(diameter=0.010, const_pitch=False),
-            "G_startangle": dict(start_angle=math.radians(0.0), diameter=0.010, height_m=0.0),
+            "G_startangle": dict(
+                start_angle=math.radians(0.0), diameter=0.010, height_m=0.0
+            ),
         }
         out["spiral_db3_variants"] = {}
         for name, kw in variants.items():

@@ -132,10 +132,29 @@ def _build_base_and_seed(doc: Any, mod: Any) -> dict[str, Any]:
         doc.SketchManager.CreateCornerRectangle(-0.02, -0.02, 0, 0.02, 0.02, 0)
         doc.SketchManager.InsertSketch(True)
         f = fm.FeatureExtrusion3(
-            True, False, False, 0, 0, 0.005, 0.0,
-            False, False, False, False, 0.0, 0.0,
-            False, False, False, False,
-            True, True, True, 0.0, 0.0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            0.005,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0.0,
+            0.0,
+            False,
         )
         if f:
             f.Name = "Base_Plate"
@@ -153,15 +172,32 @@ def _build_base_and_seed(doc: Any, mod: Any) -> dict[str, Any]:
             return out
         doc.SketchManager.InsertSketch(True)
         # 5×5mm rectangle centered at (12mm, 0) in sketch coords
-        doc.SketchManager.CreateCornerRectangle(
-            0.0095, -0.0025, 0, 0.0145, 0.0025, 0
-        )
+        doc.SketchManager.CreateCornerRectangle(0.0095, -0.0025, 0, 0.0145, 0.0025, 0)
         doc.SketchManager.InsertSketch(True)
         f = fm.FeatureExtrusion3(
-            True, False, False, 0, 0, 0.01, 0.0,
-            False, False, False, False, 0.0, 0.0,
-            False, False, False, False,
-            True, True, True, 0.0, 0.0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            0.01,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0.0,
+            0.0,
+            False,
         )
         if f:
             f.Name = "Seed_Boss"
@@ -196,9 +232,7 @@ def _build_ref_axis(doc: Any, fm: Any) -> bool:
     return False
 
 
-def _probe_route(
-    sw: Any, mod: Any, route: str, count: int
-) -> dict[str, Any]:
+def _probe_route(sw: Any, mod: Any, route: str, count: int) -> dict[str, Any]:
     """Build geometry, measure seed volume, apply pattern, measure delta."""
     result: dict[str, Any] = {"route": route}
 
@@ -236,10 +270,29 @@ def _probe_route(
             doc_base.SketchManager.CreateCornerRectangle(-0.02, -0.02, 0, 0.02, 0.02, 0)
             doc_base.SketchManager.InsertSketch(True)
             fm_base.FeatureExtrusion3(
-                True, False, False, 0, 0, 0.005, 0.0,
-                False, False, False, False, 0.0, 0.0,
-                False, False, False, False,
-                True, True, True, 0.0, 0.0, False,
+                True,
+                False,
+                False,
+                0,
+                0,
+                0.005,
+                0.0,
+                False,
+                False,
+                False,
+                False,
+                0.0,
+                0.0,
+                False,
+                False,
+                False,
+                False,
+                True,
+                True,
+                True,
+                0.0,
+                0.0,
+                False,
             )
             doc_base.ForceRebuild3(False)
             vol_base = _get_volume_mm3(doc_base)
@@ -274,7 +327,12 @@ def _probe_route(
         target = {"seed": "Seed_Boss", "direction": {"x": 0, "y": 20, "z": 5}}
         ok, err = _create_linear_pattern(doc, feature, target)
     elif route == "circular":
-        feature = {"type": "circular_pattern", "count": count, "angle_deg": 360, "equal_spacing": True}
+        feature = {
+            "type": "circular_pattern",
+            "count": count,
+            "angle_deg": 360,
+            "equal_spacing": True,
+        }
         target = {"seed": "Seed_Boss", "axis": "Axis1"}
         ok, err = _create_circular_pattern(doc, feature, target)
     elif route == "mirror":
@@ -330,7 +388,10 @@ def _probe_route(
     volume_grew = (vol_delta or 0) > 0
 
     # Strict ratio check (for disjoint geometry)
-    ratio_close = ratio is not None and abs(ratio - expected_ratio) / max(expected_ratio, 0.01) < 0.15
+    ratio_close = (
+        ratio is not None
+        and abs(ratio - expected_ratio) / max(expected_ratio, 0.01) < 0.15
+    )
 
     # Minimum bar: volume and faces both grew (refutes hollow pattern)
     min_bar_pass = ok and volume_grew and faces_grew and has_pattern_type
@@ -344,7 +405,9 @@ def _probe_route(
     # Verdict: use strict ratio if it passes, otherwise fall back to minimum bar
     verified = ratio_close or min_bar_pass
     result["instances_verified"] = verified
-    result["verification_method"] = "strict_ratio" if ratio_close else ("minimum_bar" if min_bar_pass else "FAILED")
+    result["verification_method"] = (
+        "strict_ratio" if ratio_close else ("minimum_bar" if min_bar_pass else "FAILED")
+    )
     result["rounded_N"] = round((ratio or 0) + 1) if ratio is not None else None
 
     sw.CloseDoc(_title(doc))
@@ -398,7 +461,8 @@ def run() -> dict[str, Any]:
 
     result["overall"] = "GREEN" if all_verified else "RED"
     result["summary"] = {
-        r: result[r].get("instances_verified", False) for r in ("linear", "circular", "mirror")
+        r: result[r].get("instances_verified", False)
+        for r in ("linear", "circular", "mirror")
     }
 
     # Diagnostic: test circular pattern variants on SEPARATE fresh documents
@@ -406,10 +470,42 @@ def run() -> dict[str, Any]:
     diag = {}
     diag_template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_PART)
     for variant_name, feature_dict in [
-        ("A_count4_eq360", {"type": "circular_pattern", "count": 4, "angle_deg": 360, "equal_spacing": True}),
-        ("B_count2_eq360", {"type": "circular_pattern", "count": 2, "angle_deg": 360, "equal_spacing": True}),
-        ("C_count4_neq90", {"type": "circular_pattern", "count": 4, "angle_deg": 90.0, "equal_spacing": False}),
-        ("D_count6_eq360", {"type": "circular_pattern", "count": 6, "angle_deg": 360, "equal_spacing": True}),
+        (
+            "A_count4_eq360",
+            {
+                "type": "circular_pattern",
+                "count": 4,
+                "angle_deg": 360,
+                "equal_spacing": True,
+            },
+        ),
+        (
+            "B_count2_eq360",
+            {
+                "type": "circular_pattern",
+                "count": 2,
+                "angle_deg": 360,
+                "equal_spacing": True,
+            },
+        ),
+        (
+            "C_count4_neq90",
+            {
+                "type": "circular_pattern",
+                "count": 4,
+                "angle_deg": 90.0,
+                "equal_spacing": False,
+            },
+        ),
+        (
+            "D_count6_eq360",
+            {
+                "type": "circular_pattern",
+                "count": 6,
+                "angle_deg": 360,
+                "equal_spacing": True,
+            },
+        ),
     ]:
         d = sw.NewDocument(diag_template, 0, 0.0, 0.0)
         if d is None:
@@ -421,10 +517,29 @@ def run() -> dict[str, Any]:
             d.SketchManager.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
             d.SketchManager.InsertSketch(True)
             f = fm_d.FeatureExtrusion3(
-                True, False, False, 0, 0, 0.01, 0.0,
-                False, False, False, False, 0.0, 0.0,
-                False, False, False, False,
-                True, True, True, 0.0, 0.0, False,
+                True,
+                False,
+                False,
+                0,
+                0,
+                0.01,
+                0.0,
+                False,
+                False,
+                False,
+                False,
+                0.0,
+                0.0,
+                False,
+                False,
+                False,
+                False,
+                True,
+                True,
+                True,
+                0.0,
+                0.0,
+                False,
             )
             if f:
                 f.Name = "Box_Seed"
@@ -434,7 +549,9 @@ def run() -> dict[str, Any]:
             vol_b = _get_volume_mm3(d)
             faces_b = _get_face_count(d)
 
-            ok, err = _create_circular_pattern(d, feature_dict, {"seed": "Box_Seed", "axis": "Axis1"})
+            ok, err = _create_circular_pattern(
+                d, feature_dict, {"seed": "Box_Seed", "axis": "Axis1"}
+            )
             d.ForceRebuild3(False)
 
             vol_a = _get_volume_mm3(d)
@@ -454,7 +571,10 @@ def run() -> dict[str, Any]:
                 "faces_after": faces_a,
                 "ratio": ratio,
             }
-            print(f"  {variant_name}: ok={ok}, delta={delta:.0f}, ratio={ratio}, faces={faces_b}->{faces_a}", file=sys.stderr)
+            print(
+                f"  {variant_name}: ok={ok}, delta={delta:.0f}, ratio={ratio}, faces={faces_b}->{faces_a}",
+                file=sys.stderr,
+            )
         except Exception as e:
             diag[variant_name] = {"error": str(e)[:200]}
         sw.CloseDoc(_title(d))
@@ -483,10 +603,29 @@ def _diagnose_circular(sw: Any, mod: Any) -> dict[str, Any]:
         doc.SketchManager.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
         doc.SketchManager.InsertSketch(True)
         f = fm.FeatureExtrusion3(
-            True, False, False, 0, 0, 0.01, 0.0,
-            False, False, False, False, 0.0, 0.0,
-            False, False, False, False,
-            True, True, True, 0.0, 0.0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            0.01,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0.0,
+            0.0,
+            False,
         )
         if f:
             f.Name = "Box_Seed"
@@ -513,7 +652,12 @@ def _diagnose_circular(sw: Any, mod: Any) -> dict[str, Any]:
     diag["faces_before"] = faces_before
 
     # Try circular pattern with Box_Seed (S3 geometry)
-    feature = {"type": "circular_pattern", "count": 4, "angle_deg": 360, "equal_spacing": True}
+    feature = {
+        "type": "circular_pattern",
+        "count": 4,
+        "angle_deg": 360,
+        "equal_spacing": True,
+    }
     target = {"seed": "Box_Seed", "axis": "Axis1"}
     ok, err = _create_circular_pattern(doc, feature, target)
     diag["handler_ok"] = ok
@@ -546,7 +690,12 @@ def _diagnose_circular(sw: Any, mod: Any) -> dict[str, Any]:
 
         # Variant A: equal_spacing=False, angle_deg=90 (angle between instances)
         print("  variant A: equal_spacing=False, angle_deg=90...", file=sys.stderr)
-        featureA = {"type": "circular_pattern", "count": 4, "angle_deg": 90.0, "equal_spacing": False}
+        featureA = {
+            "type": "circular_pattern",
+            "count": 4,
+            "angle_deg": 90.0,
+            "equal_spacing": False,
+        }
         targetA = {"seed": "Box_Seed", "axis": "Axis1"}
         okA, errA = _create_circular_pattern(doc, featureA, targetA)
         doc.ForceRebuild3(False)
@@ -573,8 +722,16 @@ def _diagnose_circular(sw: Any, mod: Any) -> dict[str, Any]:
                     pass
         doc.ForceRebuild3(False)
 
-        print("  variant B: count=5, equal_spacing=True, angle_deg=360...", file=sys.stderr)
-        featureB = {"type": "circular_pattern", "count": 5, "angle_deg": 360.0, "equal_spacing": True}
+        print(
+            "  variant B: count=5, equal_spacing=True, angle_deg=360...",
+            file=sys.stderr,
+        )
+        featureB = {
+            "type": "circular_pattern",
+            "count": 5,
+            "angle_deg": 360.0,
+            "equal_spacing": True,
+        }
         targetB = {"seed": "Box_Seed", "axis": "Axis1"}
         okB, errB = _create_circular_pattern(doc, featureB, targetB)
         doc.ForceRebuild3(False)

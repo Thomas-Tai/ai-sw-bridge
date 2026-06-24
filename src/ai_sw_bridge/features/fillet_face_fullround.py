@@ -64,16 +64,17 @@ SPIKE_STATUS = "GREEN"  # face + full_round seat-proven 2026-06-21
 VERIFY_CLASS = verify.FeatureClass.ADDITIVE_SOLID
 
 # --- swconst harvest (SW2024 v32.1.0.123 — docs/sw_api_full.md) -------------
-_SW_FM_FILLET = 1                       # swFmFillet — shared with constant fillet
-_SW_FACE_FILLET = 2                     # swSimpleFilletType_e.swFaceFillet
-_SW_FULL_ROUND_FILLET = 3               # swSimpleFilletType_e.swFullRoundFillet
+_SW_FM_FILLET = 1  # swFmFillet — shared with constant fillet
+_SW_FACE_FILLET = 2  # swSimpleFilletType_e.swFaceFillet
+_SW_FULL_ROUND_FILLET = 3  # swSimpleFilletType_e.swFullRoundFillet
 
 # CreateFeature may raise this on its RETURN while the solid is already built.
-_MEMBER_NOT_FOUND = -2147352573         # DISP_E_MEMBERNOTFOUND
+_MEMBER_NOT_FOUND = -2147352573  # DISP_E_MEMBERNOTFOUND
 
 # WhichFaceList ids per sub-type (the Int32 arg to SetFaces / GetFaceCount).
-_FACE_WHICH = (1, 2)                     # swFaceFilletSet1 / Set2
-_FULL_ROUND_WHICH = (3, 4, 5)           # side1 / center / side2
+_FACE_WHICH = (1, 2)  # swFaceFilletSet1 / Set2
+_FULL_ROUND_WHICH = (3, 4, 5)  # side1 / center / side2
+
 
 def _face_safearray(face: Any) -> Any:
     """Wrap a single IFace2 in a typed ``VARIANT(VT_ARRAY|VT_DISPATCH)`` SafeArray.
@@ -83,11 +84,14 @@ def _face_safearray(face: Any) -> Any:
     """
     from win32com.client import VARIANT
     import pythoncom
+
     return VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [face])
 
 
 def create_fillet_face_fullround(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Create a FACE fillet on two resolved face-sets.  Fail-closed; never raises.
 
@@ -125,7 +129,10 @@ def create_fillet_face_fullround(
     if not isinstance(faces, list):
         return False, f"face target.faces must be a list, got {type(faces).__name__}"
     if len(faces) != 2:
-        return False, f"fillet_type='face' requires exactly 2 face refs, got {len(faces)}"
+        return (
+            False,
+            f"fillet_type='face' requires exactly 2 face refs, got {len(faces)}",
+        )
 
     # --- radius ------------------------------------------------------------
     try:
@@ -159,7 +166,10 @@ def create_fillet_face_fullround(
         fd = typed_qi(data, "ISimpleFilletFeatureData2", module=wrapper_module())
         init_ok = fd.Initialize(_SW_FACE_FILLET)
         if init_ok is False:
-            return False, f"ISimpleFilletFeatureData2.Initialize({_SW_FACE_FILLET}) returned False"
+            return (
+                False,
+                f"ISimpleFilletFeatureData2.Initialize({_SW_FACE_FILLET}) returned False",
+            )
         fd.DefaultRadius = radius_mm / 1000.0  # mm → m
 
         # bind each face-set via a typed VARIANT SafeArray; readback-guard the bind
@@ -205,7 +215,9 @@ def create_fillet_face_fullround(
     d_faces = faces_after - faces_before  # corroboration only
 
     if abs(d_vol) > verify.VOL_EPS_MM3:
-        logger.info("face fillet materialized: d_vol_mm3=%.4f, d_faces=%d", d_vol, d_faces)
+        logger.info(
+            "face fillet materialized: d_vol_mm3=%.4f, d_faces=%d", d_vol, d_faces
+        )
         return True, None
 
     return False, (
@@ -228,7 +240,11 @@ def _create_full_round(doc: Any, target: dict) -> tuple[bool, str | None]:
 
     ``target`` keys (each a face_ref dict): ``side1`` / ``center`` / ``side2``.
     """
-    refs = [(target.get("side1"), 3), (target.get("center"), 4), (target.get("side2"), 5)]
+    refs = [
+        (target.get("side1"), 3),
+        (target.get("center"), 4),
+        (target.get("side2"), 5),
+    ]
     for name, ref_which in zip(("side1", "center", "side2"), refs):
         if not isinstance(ref_which[0], dict):
             return False, f"full_round target.{name} must be a face_ref dict"
@@ -292,7 +308,9 @@ def _create_full_round(doc: Any, target: dict) -> tuple[bool, str | None]:
     d_faces = faces_after - faces_before
 
     if abs(d_vol) > verify.VOL_EPS_MM3:
-        logger.info("full_round fillet materialized: d_vol_mm3=%.4f, d_faces=%d", d_vol, d_faces)
+        logger.info(
+            "full_round fillet materialized: d_vol_mm3=%.4f, d_faces=%d", d_vol, d_faces
+        )
         return True, None
 
     return False, (

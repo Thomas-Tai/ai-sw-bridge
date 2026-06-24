@@ -133,10 +133,29 @@ def run() -> str:
         doc.SketchManager.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
         doc.SketchManager.InsertSketch(True)
         f = fm.FeatureExtrusion3(
-            True, False, False, 0, 0, 0.01, 0.0,
-            False, False, False, False, 0.0, 0.0,
-            False, False, False, False,
-            True, True, True, 0.0, 0.0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            0.01,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0.0,
+            0.0,
+            False,
         )
         if f:
             f.Name = "Box_Seed"
@@ -195,12 +214,21 @@ def run() -> str:
 
     # CIRCULAR PATTERN
     print("\n--- Circular Pattern ---")
-    circ_feature = {"type": "circular_pattern", "count": 4, "angle_deg": 360, "equal_spacing": True}
+    circ_feature = {
+        "type": "circular_pattern",
+        "count": 4,
+        "angle_deg": 360,
+        "equal_spacing": True,
+    }
     circ_target = {"seed": "Box_Seed", "axis": "Axis1"}
     try:
         ok, err = _create_circular_pattern(doc, circ_feature, circ_target)
         count_after_circ = _feat_count(fm)
-        gate("circular_handler", ok, err or f"delta={count_after_circ - count_after_linear}")
+        gate(
+            "circular_handler",
+            ok,
+            err or f"delta={count_after_circ - count_after_linear}",
+        )
 
         has_circ = False
         feats = fm.GetFeatures(True)
@@ -223,7 +251,11 @@ def run() -> str:
     try:
         ok, err = _create_mirror_feature(doc, mirror_feature, mirror_target)
         count_after_mirror = _feat_count(fm)
-        gate("mirror_handler", ok, err or f"delta={count_after_mirror - count_after_circ}")
+        gate(
+            "mirror_handler",
+            ok,
+            err or f"delta={count_after_mirror - count_after_circ}",
+        )
 
         has_mirror = False
         feats = fm.GetFeatures(True)

@@ -83,7 +83,14 @@ def _find_com_node(doc: Any) -> Any | None:
             return node
         # Looser fallback: bare 'com' surrounded by non-alphabetic boundaries
         # (so we don't false-match 'Combine' / 'Comment' / 'CompositeCurve').
-        if lower == "com" or lower.startswith("com_") or lower.endswith("_com") or "_com_" in lower or lower.startswith("compoint") or lower.startswith("comref"):
+        if (
+            lower == "com"
+            or lower.startswith("com_")
+            or lower.endswith("_com")
+            or "_com_" in lower
+            or lower.startswith("compoint")
+            or lower.startswith("comref")
+        ):
             return node
     return None
 
@@ -117,7 +124,11 @@ def _try_mode_b(doc: Any) -> tuple[bool, str | None]:
     try:
         logger.warning("[com_point] mode_b A3 probe — type(fm) = %r", type(fm).__name__)
         _fm_all = sorted([a for a in dir(fm) if not a.startswith("_")])
-        logger.warning("[com_point] mode_b A3 probe — fm all attrs (%d): %r", len(_fm_all), _fm_all[:60])
+        logger.warning(
+            "[com_point] mode_b A3 probe — fm all attrs (%d): %r",
+            len(_fm_all),
+            _fm_all[:60],
+        )
     except Exception as exc:
         logger.warning("[com_point] mode_b A3 probe failed: %r", exc)
 
@@ -130,15 +141,33 @@ def _try_mode_b(doc: Any) -> tuple[bool, str | None]:
     fm_typed = None
     try:
         fm_typed = typed_qi(fm, "IFeatureManager", module=wrapper_module())
-        logger.warning("[com_point] mode_b typed_qi(IFeatureManager) OK; type=%r",
-                       type(fm_typed).__name__)
+        logger.warning(
+            "[com_point] mode_b typed_qi(IFeatureManager) OK; type=%r",
+            type(fm_typed).__name__,
+        )
         try:
-            _typed_attrs = sorted([a for a in dir(fm_typed) if "insert" in a.lower() and ("com" in a.lower() or "mass" in a.lower() or "center" in a.lower())])
-            logger.warning("[com_point] mode_b typed-fm CoM-related Insert* attrs: %r", _typed_attrs)
+            _typed_attrs = sorted(
+                [
+                    a
+                    for a in dir(fm_typed)
+                    if "insert" in a.lower()
+                    and (
+                        "com" in a.lower()
+                        or "mass" in a.lower()
+                        or "center" in a.lower()
+                    )
+                ]
+            )
+            logger.warning(
+                "[com_point] mode_b typed-fm CoM-related Insert* attrs: %r",
+                _typed_attrs,
+            )
         except Exception as exc:
             logger.warning("[com_point] mode_b typed-fm dir probe failed: %r", exc)
     except EarlyBindError as exc:
-        logger.warning("[com_point] mode_b typed_qi(IFeatureManager) E_NOINTERFACE: %r", exc)
+        logger.warning(
+            "[com_point] mode_b typed_qi(IFeatureManager) E_NOINTERFACE: %r", exc
+        )
     except Exception as exc:
         logger.warning("[com_point] mode_b typed_qi(IFeatureManager) failed: %r", exc)
 
@@ -157,21 +186,35 @@ def _try_mode_b(doc: Any) -> tuple[bool, str | None]:
         try:
             _icom = getattr(_target, _name)
         except AttributeError as exc:
-            logger.warning("[com_point] mode_b: %s not on %s typelib (%r)", _name, _target_label, exc)
+            logger.warning(
+                "[com_point] mode_b: %s not on %s typelib (%r)",
+                _name,
+                _target_label,
+                exc,
+            )
             _errors.append(f"{_name} not on {_target_label} typelib")
             continue
         try:
             _result = _icom() if callable(_icom) else _icom
-            logger.warning("[com_point] mode_b %s via %s returned %r", _name, _target_label, _result)
+            logger.warning(
+                "[com_point] mode_b %s via %s returned %r",
+                _name,
+                _target_label,
+                _result,
+            )
             _called_via = f"{_name} ({_target_label})"
             break
         except Exception as exc:
-            logger.warning("[com_point] mode_b %s via %s raised: %r", _name, _target_label, exc)
+            logger.warning(
+                "[com_point] mode_b %s via %s raised: %r", _name, _target_label, exc
+            )
             _errors.append(f"{_name} via {_target_label} raised: {exc!r}")
             continue
 
     if _called_via is None:
-        return False, "; ".join(_errors) if _errors else "no CoM insertion method dispatched"
+        return False, (
+            "; ".join(_errors) if _errors else "no CoM insertion method dispatched"
+        )
 
     try:
         doc.ForceRebuild3(False)
@@ -180,11 +223,16 @@ def _try_mode_b(doc: Any) -> tuple[bool, str | None]:
 
     after = _count_feature_nodes(doc)
     delta = after - before
-    logger.warning("[com_point] mode_b: node count %d -> %d (delta %d)", before, after, delta)
+    logger.warning(
+        "[com_point] mode_b: node count %d -> %d (delta %d)", before, after, delta
+    )
 
     if delta < 1:
         logger.warning("[com_point] mode_b: no feature node added (ghost)")
-        return False, f"com_point did not add a feature node (count {before} -> {after})"
+        return (
+            False,
+            f"com_point did not add a feature node (count {before} -> {after})",
+        )
 
     # A7-style probe (W63 doctrine — CHM/UI type names are not authoritative,
     # the kernel's own GetTypeName2 is). Log new top-level node identifiers
@@ -192,7 +240,10 @@ def _try_mode_b(doc: Any) -> tuple[bool, str | None]:
     try:
         _all = doc.FeatureManager.GetFeatures(False) or []
         _new_tnames = [_get_type_name(f) for f in _all[before:]]
-        logger.warning("[com_point] mode_b A7 probe — new top-level node type names: %r", _new_tnames)
+        logger.warning(
+            "[com_point] mode_b A7 probe — new top-level node type names: %r",
+            _new_tnames,
+        )
     except Exception as exc:
         logger.warning("[com_point] mode_b A7 probe (GetFeatures) raised: %r", exc)
 
@@ -207,9 +258,7 @@ def _try_mode_b(doc: Any) -> tuple[bool, str | None]:
     return True, "mode_b"
 
 
-def create_com_point(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def create_com_point(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Insert a Center-of-Mass reference point on the part.
 
     ``feature`` spec shape::

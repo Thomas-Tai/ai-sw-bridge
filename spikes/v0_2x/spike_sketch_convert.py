@@ -39,7 +39,7 @@ def main() -> int:
         register(OP)  # W0 hasn't wired __init__.py yet — register in the spike
         doc = fx.new_part(sw)
 
-        sketch, edge = fx.build_box_top_sketch(doc)        # ("Sketch2", top edge)
+        sketch, edge = fx.build_box_top_sketch(doc)  # ("Sketch2", top edge)
         params = {"refs": [fx.capture_edge_ref(doc, edge)]}
 
         res = apply_sketch_edit(doc, sketch, "sketch_convert", params)
@@ -57,9 +57,7 @@ def main() -> int:
         verdict = (
             "PASS"
             if (res["ok"] and delta_ok and survived)
-            else "NO_OP"
-            if (res["call_ok"] and res["segment_delta"] == 0)
-            else "FAIL"
+            else "NO_OP" if (res["call_ok"] and res["segment_delta"] == 0) else "FAIL"
         )
 
         print(

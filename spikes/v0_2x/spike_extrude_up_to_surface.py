@@ -67,13 +67,13 @@ from ai_sw_bridge.sw_types import (  # noqa: E402
 )
 
 # -- Fixture geometry (metres; SW internal unit) -----------------------------
-BLOCK_HALF = 0.050          # 100 mm side -> +/-50 mm
-BLOCK_THICK = 0.010         # 10 mm tall  -> top face at z = +10 mm
+BLOCK_HALF = 0.050  # 100 mm side -> +/-50 mm
+BLOCK_THICK = 0.010  # 10 mm tall  -> top face at z = +10 mm
 TOP_Z = BLOCK_THICK
-PLANE_OFFSET = 0.050        # ref plane 50 mm ABOVE the top face -> z = +60 mm
-TARGET_Z = TOP_Z + PLANE_OFFSET     # 0.060 m
-CIRCLE_R = 0.010            # Ø20 mm boss
-BBOX_TOL_MM = 0.05          # bbox match tolerance
+PLANE_OFFSET = 0.050  # ref plane 50 mm ABOVE the top face -> z = +60 mm
+TARGET_Z = TOP_Z + PLANE_OFFSET  # 0.060 m
+CIRCLE_R = 0.010  # Ø20 mm boss
+BBOX_TOL_MM = 0.05  # bbox match tolerance
 _BLIND = 0
 
 
@@ -101,10 +101,29 @@ def _build_block_100(sw: Any) -> Any:
     doc.ClearSelection2(True)
     fx._select_feature(doc, "Sketch1")
     doc.FeatureManager.FeatureExtrusion2(
-        True, False, False, _BLIND, 0,
-        BLOCK_THICK, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        _BLIND,
+        0,
+        BLOCK_THICK,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     doc.ClearSelection2(True)
     return doc
@@ -157,11 +176,13 @@ def _select_stack(doc: Any, sketch_name: str, plane_name: str, ref_mark: int) ->
         marks = []
         for i in range(1, count + 1):
             try:
-                marks.append({
-                    "idx": i,
-                    "mark": sm.GetSelectedObjectMark(i),
-                    "type": sm.GetSelectedObjectType3(i, -1),
-                })
+                marks.append(
+                    {
+                        "idx": i,
+                        "mark": sm.GetSelectedObjectMark(i),
+                        "type": sm.GetSelectedObjectType3(i, -1),
+                    }
+                )
             except Exception as e:  # noqa: BLE001
                 marks.append({"idx": i, "error": f"{type(e).__name__}: {e}"[:120]})
         dump["marks"] = marks
@@ -175,10 +196,29 @@ def _fire_extrude(doc: Any, end_cond: int) -> Any:
     ignored for up-to end conditions but must be a valid float."""
     fm = doc.FeatureManager
     return fm.FeatureExtrusion2(
-        True, False, False, end_cond, 0,
-        0.001, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        end_cond,
+        0,
+        0.001,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
 
 
@@ -188,7 +228,11 @@ def _body_bbox_zmax_mm(doc: Any) -> float | None:
         bodies = doc.GetBodies2(0, False)  # swSolidBody=0, visibleOnly=False
     except Exception:
         return None
-    blist = list(bodies) if isinstance(bodies, (list, tuple)) else ([bodies] if bodies else [])
+    blist = (
+        list(bodies)
+        if isinstance(bodies, (list, tuple))
+        else ([bodies] if bodies else [])
+    )
     if not blist:
         return None
     try:

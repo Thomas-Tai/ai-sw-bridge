@@ -19,9 +19,7 @@ from ai_sw_bridge.config.variants import (
 
 
 BASE_LOCALS = (
-    '"WIDTH"          = 25.0\n'
-    '"HEIGHT"         = 50.0\n'
-    '"WALL_THICKNESS" = 2.0\n'
+    '"WIDTH"          = 25.0\n' '"HEIGHT"         = 50.0\n' '"WALL_THICKNESS" = 2.0\n'
 )
 
 

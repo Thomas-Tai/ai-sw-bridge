@@ -19,6 +19,7 @@ same way D3 deferred the SW-2025 FeatureCut4 arity.
 Non-destructive: own blank Parts via NewDocument, never saves, closes own docs.
 Usage:  <main-venv>\python spikes\v0_16\spike_sketch_primitives.py
 """
+
 from __future__ import annotations
 
 import json
@@ -67,13 +68,19 @@ def _seg_count(doc: Any) -> int:
         return 1  # single segment returned unwrapped
 
 
-def _probe(sw: Any, label: str, candidates: list[tuple[str, Callable[[Any], Any]]]) -> dict[str, Any]:
+def _probe(
+    sw: Any, label: str, candidates: list[tuple[str, Callable[[Any], Any]]]
+) -> dict[str, Any]:
     """Open a fresh blank Part + Front-Plane sketch, try each candidate call in
     order until one increments the segment count. Record every attempt."""
     template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_PART)
     doc = sw.NewDocument(template, 0, 0.0, 0.0)
     if doc is None:
-        return {"label": label, "overall": "FAIL", "reason": "NewDocument returned None"}
+        return {
+            "label": label,
+            "overall": "FAIL",
+            "reason": "NewDocument returned None",
+        }
     title = _title(doc)
     attempts: list[dict[str, Any]] = []
     overall = "FAIL"
@@ -119,67 +126,133 @@ def run() -> dict[str, Any]:
         report["sw_revision"] = "<unreadable>"
 
     # --- line: CreateLine(x1,y1,z1, x2,y2,z2) ---
-    report["sketch_line"] = _probe(sw, "sketch_line", [
-        ("CreateLine(x1,y1,z1,x2,y2,z2)",
-         lambda sm: sm.CreateLine(-0.02, -0.01, 0.0, 0.02, 0.01, 0.0)),
-    ])
+    report["sketch_line"] = _probe(
+        sw,
+        "sketch_line",
+        [
+            (
+                "CreateLine(x1,y1,z1,x2,y2,z2)",
+                lambda sm: sm.CreateLine(-0.02, -0.01, 0.0, 0.02, 0.01, 0.0),
+            ),
+        ],
+    )
 
     # --- arc: CreateArc(center, start, end, dir) [10] then Create3PointArc [9] ---
-    report["sketch_arc"] = _probe(sw, "sketch_arc", [
-        ("CreateArc(cx,cy,cz, sx,sy,sz, ex,ey,ez, dir=1)",
-         lambda sm: sm.CreateArc(0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.01, 0.0, 1)),
-        ("Create3PointArc(p1,p2,p3)",
-         lambda sm: sm.Create3PointArc(0.01, 0.0, 0.0, -0.01, 0.0, 0.0, 0.0, 0.01, 0.0)),
-    ])
+    report["sketch_arc"] = _probe(
+        sw,
+        "sketch_arc",
+        [
+            (
+                "CreateArc(cx,cy,cz, sx,sy,sz, ex,ey,ez, dir=1)",
+                lambda sm: sm.CreateArc(
+                    0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.01, 0.0, 1
+                ),
+            ),
+            (
+                "Create3PointArc(p1,p2,p3)",
+                lambda sm: sm.Create3PointArc(
+                    0.01, 0.0, 0.0, -0.01, 0.0, 0.0, 0.0, 0.01, 0.0
+                ),
+            ),
+        ],
+    )
 
     # --- ellipse: CreateEllipse(center, majorPt, minorPt) [9] ---
-    report["sketch_ellipse"] = _probe(sw, "sketch_ellipse", [
-        ("CreateEllipse(cx,cy,cz, majX,majY,majZ, minX,minY,minZ)",
-         lambda sm: sm.CreateEllipse(0.0, 0.0, 0.0, 0.02, 0.0, 0.0, 0.0, 0.01, 0.0)),
-    ])
+    report["sketch_ellipse"] = _probe(
+        sw,
+        "sketch_ellipse",
+        [
+            (
+                "CreateEllipse(cx,cy,cz, majX,majY,majZ, minX,minY,minZ)",
+                lambda sm: sm.CreateEllipse(
+                    0.0, 0.0, 0.0, 0.02, 0.0, 0.0, 0.0, 0.01, 0.0
+                ),
+            ),
+        ],
+    )
 
     # --- polygon: CreatePolygon(center, vertexPt, sides, inscribed) [8] ---
-    report["sketch_polygon"] = _probe(sw, "sketch_polygon", [
-        ("CreatePolygon(cx,cy,cz, px,py,pz, sides=6, inscribed=True)",
-         lambda sm: sm.CreatePolygon(0.0, 0.0, 0.0, 0.02, 0.0, 0.0, 6, True)),
-    ])
+    report["sketch_polygon"] = _probe(
+        sw,
+        "sketch_polygon",
+        [
+            (
+                "CreatePolygon(cx,cy,cz, px,py,pz, sides=6, inscribed=True)",
+                lambda sm: sm.CreatePolygon(0.0, 0.0, 0.0, 0.02, 0.0, 0.0, 6, True),
+            ),
+        ],
+    )
 
     # --- slot: CreateSketchSlot(creationType, length, width, ptArray, addDims,
     #     endType, centerType, instances, flip). Pt buffer = SAFEARRAY of doubles. ---
     pts_slot = [-0.015, 0.0, 0.0, 0.015, 0.0, 0.0]  # two centerline endpoints (x,y,z)
-    report["sketch_slot"] = _probe(sw, "sketch_slot", [
-        ("CreateSketchSlot(0,len,wid, VARIANT[pts], True,0,0,1,False)",
-         lambda sm: sm.CreateSketchSlot(0, 0.03, 0.01, _vt_r8_array(pts_slot),
-                                        True, 0, 0, 1, False)),
-        ("CreateSketchSlot(0,len,wid, tuple[pts], True,0,0,1,False)",
-         lambda sm: sm.CreateSketchSlot(0, 0.03, 0.01, tuple(pts_slot),
-                                        True, 0, 0, 1, False)),
-    ])
+    report["sketch_slot"] = _probe(
+        sw,
+        "sketch_slot",
+        [
+            (
+                "CreateSketchSlot(0,len,wid, VARIANT[pts], True,0,0,1,False)",
+                lambda sm: sm.CreateSketchSlot(
+                    0, 0.03, 0.01, _vt_r8_array(pts_slot), True, 0, 0, 1, False
+                ),
+            ),
+            (
+                "CreateSketchSlot(0,len,wid, tuple[pts], True,0,0,1,False)",
+                lambda sm: sm.CreateSketchSlot(
+                    0, 0.03, 0.01, tuple(pts_slot), True, 0, 0, 1, False
+                ),
+            ),
+        ],
+    )
 
     # --- spline: CreateSpline2(ptArray, simulateBspline) then CreateSpline(ptArray) ---
     pts_spline = [-0.02, -0.01, 0.0, 0.0, 0.01, 0.0, 0.02, -0.01, 0.0]
-    report["sketch_spline"] = _probe(sw, "sketch_spline", [
-        ("CreateSpline2(VARIANT[pts], False)",
-         lambda sm: sm.CreateSpline2(_vt_r8_array(pts_spline), False)),
-        ("CreateSpline(VARIANT[pts])",
-         lambda sm: sm.CreateSpline(_vt_r8_array(pts_spline))),
-        ("CreateSpline2(tuple[pts], False)",
-         lambda sm: sm.CreateSpline2(tuple(pts_spline), False)),
-    ])
+    report["sketch_spline"] = _probe(
+        sw,
+        "sketch_spline",
+        [
+            (
+                "CreateSpline2(VARIANT[pts], False)",
+                lambda sm: sm.CreateSpline2(_vt_r8_array(pts_spline), False),
+            ),
+            (
+                "CreateSpline(VARIANT[pts])",
+                lambda sm: sm.CreateSpline(_vt_r8_array(pts_spline)),
+            ),
+            (
+                "CreateSpline2(tuple[pts], False)",
+                lambda sm: sm.CreateSpline2(tuple(pts_spline), False),
+            ),
+        ],
+    )
 
     # --- text: candidates on ISketchManager (CreateText); IModelDoc2.InsertSketchText
     #     is probed separately below if these fail. ---
-    report["sketch_text"] = _probe(sw, "sketch_text", [
-        ("CreateText(text, x,y,z, flags=0)",
-         lambda sm: sm.CreateText("Aa", 0.0, 0.0, 0.0, 0)),
-        ("CreateText(text, x,y,z)",
-         lambda sm: sm.CreateText("Aa", 0.0, 0.0, 0.0)),
-    ])
+    report["sketch_text"] = _probe(
+        sw,
+        "sketch_text",
+        [
+            (
+                "CreateText(text, x,y,z, flags=0)",
+                lambda sm: sm.CreateText("Aa", 0.0, 0.0, 0.0, 0),
+            ),
+            ("CreateText(text, x,y,z)", lambda sm: sm.CreateText("Aa", 0.0, 0.0, 0.0)),
+        ],
+    )
 
-    keys = ["sketch_line", "sketch_arc", "sketch_ellipse", "sketch_polygon",
-            "sketch_slot", "sketch_spline", "sketch_text"]
+    keys = [
+        "sketch_line",
+        "sketch_arc",
+        "sketch_ellipse",
+        "sketch_polygon",
+        "sketch_slot",
+        "sketch_spline",
+        "sketch_text",
+    ]
     report["summary"] = {k: report[k]["overall"] for k in keys}
-    report["overall"] = "PASS" if all(report[k]["overall"] == "PASS" for k in keys) else "PARTIAL"
+    report["overall"] = (
+        "PASS" if all(report[k]["overall"] == "PASS" for k in keys) else "PARTIAL"
+    )
     return report
 
 

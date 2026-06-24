@@ -155,15 +155,15 @@ class TestFeatureNodes:
 class TestGates:
     def test_additive_solid(self) -> None:
         assert v.gate_additive_solid(8, 1103.84) is True
-        assert v.gate_additive_solid(0, 1103.84) is False     # no new faces
-        assert v.gate_additive_solid(8, 1e-9) is False        # vol below eps
+        assert v.gate_additive_solid(0, 1103.84) is False  # no new faces
+        assert v.gate_additive_solid(8, 1e-9) is False  # vol below eps
 
     def test_fold(self) -> None:
         before = (0.0, 0.0, 0.0, 1.0, 1.0, 1.0)
         after = (0.0, 0.0, 0.0, 1.0, 1.0, 1.5)
         assert v.gate_fold(8, before, after) is True
         assert v.gate_fold(0, before, after) is False
-        assert v.gate_fold(8, before, before) is False        # bbox unchanged
+        assert v.gate_fold(8, before, before) is False  # bbox unchanged
 
     def test_fold_volume_preserving(self) -> None:
         assert v.gate_fold_volume_preserving(2, 1e-9) is True
@@ -172,13 +172,13 @@ class TestGates:
 
     def test_surface_create(self) -> None:
         assert v.gate_surface_create(1, 600.0) is True
-        assert v.gate_surface_create(0, 600.0) is False        # no new sheet
-        assert v.gate_surface_create(1, 1e-9) is False         # area below eps
+        assert v.gate_surface_create(0, 600.0) is False  # no new sheet
+        assert v.gate_surface_create(1, 1e-9) is False  # area below eps
 
     def test_surface_aggregate_inverted(self) -> None:
-        assert v.gate_surface_aggregate(-1, 1900.0) is True    # sheets consumed
-        assert v.gate_surface_aggregate(1, 1900.0) is False    # sheets INCREASED
-        assert v.gate_surface_aggregate(-1, 1e-9) is False     # area ghost
+        assert v.gate_surface_aggregate(-1, 1900.0) is True  # sheets consumed
+        assert v.gate_surface_aggregate(1, 1900.0) is False  # sheets INCREASED
+        assert v.gate_surface_aggregate(-1, 1e-9) is False  # area ghost
 
     def test_surface_to_solid(self) -> None:
         assert v.gate_surface_to_solid(500.0, 1) is True
@@ -258,9 +258,7 @@ class TestCurveWitness:
     def test_curve_length_mm_via_reference_curve_segments(self) -> None:
         # PRIMARY seat-proven head: IReferenceCurve.GetSegments() -> edges ->
         # IEdge.GetCurve() -> ICurve -> length.
-        node = _CurveNode(
-            _SpecWithSegments(_Edge(_Curve(0.010)), _Edge(_Curve(0.005)))
-        )
+        node = _CurveNode(_SpecWithSegments(_Edge(_Curve(0.010)), _Edge(_Curve(0.005))))
         assert abs(v.curve_length_mm(node) - 15.0) < 1e-9
 
     def test_curve_length_mm_defensive_get_curves(self) -> None:
@@ -275,8 +273,8 @@ class TestCurveWitness:
 
     def test_gate_curve_is_hard(self) -> None:
         assert v.gate_curve(1, 25.0) is True
-        assert v.gate_curve(0, 25.0) is False        # no new node
-        assert v.gate_curve(1, 1e-9) is False        # length below eps (ghost)
+        assert v.gate_curve(0, 25.0) is False  # no new node
+        assert v.gate_curve(1, 1e-9) is False  # length below eps (ghost)
         # HARD gate: unreadable length is FAILURE, never node-count fallback.
         assert v.gate_curve(1, None) is False
 

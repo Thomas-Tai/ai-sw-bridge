@@ -15,6 +15,7 @@ directive named (feature_statistics + equations):
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_o2_gate_pae.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -59,11 +60,17 @@ def _under_warnings_as_errors(fn) -> tuple[dict[str, Any], bool, str]:
         try:
             return fn(), True, ""
         except PendingDeprecationWarning as exc:  # noqa: BLE001
-            return {"ok": False}, False, f"internal PendingDeprecationWarning leaked: {exc}"
+            return (
+                {"ok": False},
+                False,
+                f"internal PendingDeprecationWarning leaked: {exc}",
+            )
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -87,20 +94,29 @@ def main() -> int:
 
         # ── A: feature_statistics via the client ──────────────────────────
         rep, clean, why = _under_warnings_as_errors(
-            lambda: cli_observe._run_feature_statistics(argparse.Namespace()))
+            lambda: cli_observe._run_feature_statistics(argparse.Namespace())
+        )
         results["feature_stats_report"] = rep
         fcount = rep.get("feature_count")
-        gate("feature_stats_clean",
-             clean and bool(rep.get("ok")) and isinstance(fcount, int) and fcount > 0,
-             why or f"ok={rep.get('ok')} feature_count={fcount} (class-routed, no warning)")
+        gate(
+            "feature_stats_clean",
+            clean and bool(rep.get("ok")) and isinstance(fcount, int) and fcount > 0,
+            why
+            or f"ok={rep.get('ok')} feature_count={fcount} (class-routed, no warning)",
+        )
 
         # ── B: equations via the client ───────────────────────────────────
         rep2, clean2, why2 = _under_warnings_as_errors(
-            lambda: cli_observe._run_equations(argparse.Namespace()))
+            lambda: cli_observe._run_equations(argparse.Namespace())
+        )
         results["equations_report"] = rep2
-        gate("equations_clean", clean2 and bool(rep2.get("ok")),
-             why2 or f"ok={rep2.get('ok')} count={len(rep2.get('equations', []))} "
-             f"(class-routed, no warning)")
+        gate(
+            "equations_clean",
+            clean2 and bool(rep2.get("ok")),
+            why2
+            or f"ok={rep2.get('ok')} count={len(rep2.get('equations', []))} "
+            f"(class-routed, no warning)",
+        )
 
         # ── C: legacy shim STILL warns AND payload identical to baseline ──
         with warnings.catch_warnings(record=True) as caught:
@@ -108,9 +124,11 @@ def main() -> int:
             legacy = sw_get_feature_statistics()
         warned = any(issubclass(w.category, PendingDeprecationWarning) for w in caught)
         identical = legacy == rep
-        gate("baseline_identity",
-             warned and identical,
-             f"legacy warned={warned}, payload_identical_to_class_route={identical}")
+        gate(
+            "baseline_identity",
+            warned and identical,
+            f"legacy warned={warned}, payload_identical_to_class_route={identical}",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

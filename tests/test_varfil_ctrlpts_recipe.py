@@ -239,9 +239,7 @@ class TestCtrlPtRecipeShape:
 
     def test_transition_type_set(self) -> None:
         data, feat, fm = self._wire()
-        apply_ctrlpt_varfil_recipe(
-            fm, data, 0.002, [(0.5, 0.005)], transition_type=2
-        )
+        apply_ctrlpt_varfil_recipe(fm, data, 0.002, [(0.5, 0.005)], transition_type=2)
         assert data.transition_type == 2
 
     def test_create_feature_called(self) -> None:
@@ -286,9 +284,7 @@ class TestCtrlPtRecipeVsBaseline:
         per-edge endpoints produce an equivalent fillet (no ΔVol)."""
         data, feat, fm = self._wire()
         base_r = 0.003
-        apply_ctrlpt_varfil_recipe(
-            fm, data, base_r, [(0.0, base_r), (1.0, base_r)]
-        )
+        apply_ctrlpt_varfil_recipe(fm, data, base_r, [(0.0, base_r), (1.0, base_r)])
         r0, loc0, _ = data.GetControlPointRadiusAtIndex(0)
         r1, loc1, _ = data.GetControlPointRadiusAtIndex(1)
         assert r0 == pytest.approx(base_r)

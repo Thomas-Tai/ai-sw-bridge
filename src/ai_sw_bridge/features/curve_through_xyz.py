@@ -39,7 +39,9 @@ from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.curve_through_xyz")
 
-SPIKE_STATUS = "GREEN"  # seat-proven 2026-06-21 (CurveInFile node, arc 119mm, survives reopen)
+SPIKE_STATUS = (
+    "GREEN"  # seat-proven 2026-06-21 (CurveInFile node, arc 119mm, survives reopen)
+)
 
 VERIFY_CLASS = verify.FeatureClass.CURVE
 
@@ -93,7 +95,11 @@ def _try_mode_b(doc: Any, points_mm: list[list[float]]) -> Any:
             return None
         logger.warning(
             "[B] InsertCurveFilePoint[%d](%g, %g, %g) -> %r",
-            i, x_m, y_m, z_m, result,
+            i,
+            x_m,
+            y_m,
+            z_m,
+            result,
         )
         if result is not None and not result:
             logger.warning("[B] InsertCurveFilePoint[%d] returned False", i)
@@ -112,7 +118,9 @@ def _try_mode_b(doc: Any, points_mm: list[list[float]]) -> Any:
 
 
 def create_curve_through_xyz(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Insert a reference curve through absolute XYZ points.  Fail-closed.
 
@@ -152,8 +160,7 @@ def create_curve_through_xyz(
     feat = _try_mode_b(doc, points)
     if feat is None:
         return False, (
-            "Mode-B (InsertCurveFileBegin/Point/End) failed — "
-            "no curve inserted"
+            "Mode-B (InsertCurveFileBegin/Point/End) failed — " "no curve inserted"
         )
 
     try:
@@ -164,12 +171,12 @@ def create_curve_through_xyz(
     nodes_after = _count_feature_nodes(doc)
     d_nodes = nodes_after - nodes_before
     if d_nodes <= 0:
-        return False, (
-            "Mode-B returned but no feature node materialized (ghost trap)"
-        )
+        return False, ("Mode-B returned but no feature node materialized (ghost trap)")
 
     new_node = verify.newest_node_by_type(
-        doc, ("refcurve", "curve"), match="substring",
+        doc,
+        ("refcurve", "curve"),
+        match="substring",
     )
     length_mm = _curve_length_mm(new_node)
     if verify.gate_curve(d_nodes, length_mm):

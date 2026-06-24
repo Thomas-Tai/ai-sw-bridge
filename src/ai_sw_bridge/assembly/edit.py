@@ -30,12 +30,14 @@ class AssemblyEditError(Exception):
         super().__init__(message)
 
 
-_KNOWN_OPS = frozenset({
-    "add_component",
-    "remove_component",
-    "add_mate",
-    "remove_mate",
-})
+_KNOWN_OPS = frozenset(
+    {
+        "add_component",
+        "remove_component",
+        "add_mate",
+        "remove_mate",
+    }
+)
 
 
 def apply_edit_op(spec: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]:
@@ -77,18 +79,14 @@ def apply_edit_op(spec: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]:
         return _remove_mate(new_spec, op)
 
 
-def _add_component(
-    spec: dict[str, Any], op: dict[str, Any]
-) -> dict[str, Any]:
+def _add_component(spec: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]:
     component = op.get("component")
     if not isinstance(component, dict):
         raise AssemblyEditError("add_component requires 'component' dict")
 
     cid = component.get("id")
     if not isinstance(cid, str) or not cid:
-        raise AssemblyEditError(
-            "add_component: component must have a non-empty 'id'"
-        )
+        raise AssemblyEditError("add_component: component must have a non-empty 'id'")
 
     components = spec.setdefault("components", [])
     existing_ids = {c.get("id") for c in components}
@@ -101,30 +99,20 @@ def _add_component(
     return spec
 
 
-def _remove_component(
-    spec: dict[str, Any], op: dict[str, Any]
-) -> dict[str, Any]:
+def _remove_component(spec: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]:
     cid = op.get("id")
     if not isinstance(cid, str) or not cid:
-        raise AssemblyEditError(
-            "remove_component requires a non-empty 'id' string"
-        )
+        raise AssemblyEditError("remove_component requires a non-empty 'id' string")
 
     components = spec.get("components", [])
-    idx = next(
-        (i for i, c in enumerate(components) if c.get("id") == cid), None
-    )
+    idx = next((i for i, c in enumerate(components) if c.get("id") == cid), None)
     if idx is None:
-        raise AssemblyEditError(
-            f"remove_component: id {cid!r} not found in components"
-        )
+        raise AssemblyEditError(f"remove_component: id {cid!r} not found in components")
 
     # Fail-closed: check for blocking mate references
     blocking = _find_blocking_mates(spec, cid)
     if blocking:
-        refs = ", ".join(
-            f"mate[{i}].{ref}" for i, ref in blocking
-        )
+        refs = ", ".join(f"mate[{i}].{ref}" for i, ref in blocking)
         raise AssemblyEditError(
             f"remove_component: {cid!r} is still referenced by mates: "
             f"{refs}. Remove those mates first."
@@ -134,9 +122,7 @@ def _remove_component(
     return spec
 
 
-def _find_blocking_mates(
-    spec: dict[str, Any], cid: str
-) -> list[tuple[int, str]]:
+def _find_blocking_mates(spec: dict[str, Any], cid: str) -> list[tuple[int, str]]:
     """Scan all mates for references to a component id.
 
     Checks ``a.component``, ``b.component`` (symmetric mates) and
@@ -165,9 +151,7 @@ def _find_blocking_mates(
     return blocking
 
 
-def _add_mate(
-    spec: dict[str, Any], op: dict[str, Any]
-) -> dict[str, Any]:
+def _add_mate(spec: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]:
     mate = op.get("mate")
     if not isinstance(mate, dict):
         raise AssemblyEditError("add_mate requires 'mate' dict")
@@ -180,14 +164,10 @@ def _add_mate(
     return spec
 
 
-def _remove_mate(
-    spec: dict[str, Any], op: dict[str, Any]
-) -> dict[str, Any]:
+def _remove_mate(spec: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]:
     index = op.get("index")
     if not isinstance(index, int) or isinstance(index, bool):
-        raise AssemblyEditError(
-            "remove_mate requires an integer 'index'"
-        )
+        raise AssemblyEditError("remove_mate requires an integer 'index'")
 
     mates = spec.get("mates", [])
     if index < 0 or index >= len(mates):

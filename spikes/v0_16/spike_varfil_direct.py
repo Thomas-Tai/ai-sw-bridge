@@ -122,13 +122,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:  # noqa: BLE001
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:200],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:200],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _probe_members(obj: Any) -> dict[str, str]:
@@ -149,15 +155,38 @@ def _build_box(doc: Any) -> dict[str, Any]:
         return {"built": False, "error": "could not select Front Plane"}
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    seg = sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                                   BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    seg = sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     if seg is None:
         sk.InsertSketch(True)
         return {"built": False, "error": "CreateCornerRectangle returned None"}
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base_args = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False,
-                 False, 0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base_args = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
     except Exception:  # noqa: BLE001
@@ -219,7 +248,9 @@ def run() -> dict[str, Any]:
 
         # H1: Initialize(var) on a typed_qi'd simple object, probe + create.
         _, data = _capture(lambda: fm.CreateDefinition(SW_FM_FILLET))
-        init_rec_outer, simple = _capture(lambda: typed_qi(data, SIMPLE_IFACE, module=mod))
+        init_rec_outer, simple = _capture(
+            lambda: typed_qi(data, SIMPLE_IFACE, module=mod)
+        )
         result["typed_qi_simple"] = init_rec_outer
         if simple is None:
             return {**result, "overall": "FAIL", "reason": "typed_qi(simple) failed"}
@@ -238,7 +269,9 @@ def run() -> dict[str, Any]:
             write_rec, _ = _capture(lambda: simple.SetVariableRadiusParameters(array))
             write_rec["via"] = "SetVariableRadiusParameters"
         elif members.get("VariableRadiusParameters") == "present":
-            write_rec, _ = _capture(lambda: setattr(simple, "VariableRadiusParameters", array))
+            write_rec, _ = _capture(
+                lambda: setattr(simple, "VariableRadiusParameters", array)
+            )
             write_rec["via"] = "VariableRadiusParameters"
         else:
             write_rec = {"status": "SKIPPED", "reason": "no variable setter present"}
@@ -304,8 +337,9 @@ def run() -> dict[str, Any]:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--out", type=Path, default=None)
     args = p.parse_args()
     pythoncom.CoInitialize()

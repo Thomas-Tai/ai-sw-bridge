@@ -175,9 +175,7 @@ def run_spike() -> dict:
             f"Only {ok_count}/{len(variants)} variants built successfully"
         )
     else:
-        result["errors"].append(
-            f"Only {len(distinct)} distinct volume(s): {distinct}"
-        )
+        result["errors"].append(f"Only {len(distinct)} distinct volume(s): {distinct}")
 
     return result
 

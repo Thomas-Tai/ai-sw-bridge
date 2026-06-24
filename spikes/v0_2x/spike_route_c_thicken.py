@@ -51,8 +51,12 @@ _SW_DEFAULT_TEMPLATE_PART = 8
 _SHEET, _SOLID = 1, 0  # swBodyType_e
 _MODULE_CANDIDATES = ["SolidWorksMacro", "RouteCThicken.SolidWorksMacro"]
 _RUNMACRO_ERR = {
-    0: "NoError", 1: "InvalidArg", 2: "MacrosAreDisabled",
-    3: "NotInDesignMode", 4: "OnlyCodeModules", 5: "OutOfMemory",
+    0: "NoError",
+    1: "InvalidArg",
+    2: "MacrosAreDisabled",
+    3: "NotInDesignMode",
+    4: "OnlyCodeModules",
+    5: "OutOfMemory",
     6: "InvalidProcname",
 }
 
@@ -127,7 +131,11 @@ def _run_macro(sw: Any, dll: str, module: str) -> dict[str, Any]:
     try:
         res = sw.RunMacro2(dll, module, "Main", 0)
     except Exception as e:
-        return {"module": module, "called": False, "exc": f"{type(e).__name__}: {e}"[:160]}
+        return {
+            "module": module,
+            "called": False,
+            "exc": f"{type(e).__name__}: {e}"[:160],
+        }
     ran, err = None, None
     if isinstance(res, (list, tuple)):
         ran = bool(res[0])
@@ -135,8 +143,13 @@ def _run_macro(sw: Any, dll: str, module: str) -> dict[str, Any]:
             err = res[1]
     else:
         ran = bool(res)
-    return {"module": module, "called": True, "ran": ran,
-            "error_code": err, "error_name": _RUNMACRO_ERR.get(err, str(err))}
+    return {
+        "module": module,
+        "called": True,
+        "ran": ran,
+        "error_code": err,
+        "error_name": _RUNMACRO_ERR.get(err, str(err)),
+    }
 
 
 def _parse_sentinel() -> dict[str, str]:
@@ -174,7 +187,11 @@ def run() -> dict[str, Any]:
 
     doc = _build_standalone_surface(sw)
     if doc is None:
-        return {**out, "verdict": "ERROR", "reason": "standalone surface fixture failed"}
+        return {
+            **out,
+            "verdict": "ERROR",
+            "reason": "standalone surface fixture failed",
+        }
 
     out["solids_before"] = _solids(doc)
     out["vol_before_mm3"] = _vol_mm3(doc)

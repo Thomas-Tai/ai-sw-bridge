@@ -66,9 +66,9 @@ import math
 from typing import Any
 
 # --- tolerances (mirror selection.live face-fallback tolerances) ---
-_EDGE_POINT_TOL_M = 1e-3   # 1 mm — endpoint & midpoint position drift
+_EDGE_POINT_TOL_M = 1e-3  # 1 mm — endpoint & midpoint position drift
 _EDGE_LENGTH_TOL_M = 1e-3  # 1 mm — length delta (chord today; arc once captured)
-_EDGE_DIR_TOL = 0.02       # 1 - |dot| of chord directions (~11 deg); not gated by default
+_EDGE_DIR_TOL = 0.02  # 1 - |dot| of chord directions (~11 deg); not gated by default
 
 
 def _vec3(seq: Any) -> tuple[float, float, float] | None:

@@ -18,6 +18,7 @@ AddComponent4 inputs.
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_component_transform_probe.py
 """
+
 from __future__ import annotations
 
 import json
@@ -50,7 +51,11 @@ import spike_advanced_mates_probe as P  # noqa: E402
 import mech_mate_tier1_gear_screw as t1  # noqa: E402
 
 _OUT = _HERE.parent / "_results" / "component_transform_probe.json"
-results: dict[str, Any] = {"probe": "w78_component_transform", "gates": {}, "components": []}
+results: dict[str, Any] = {
+    "probe": "w78_component_transform",
+    "gates": {},
+    "components": [],
+}
 
 # Exact AddComponent4 placement inputs (metres), keyed by part-name fragment.
 _PLACED = {"base": [0.0, 0.0, 0.0], "arm": [0.030, 0.0, 0.020]}
@@ -69,8 +74,10 @@ def _name2(comp: Any) -> str:
 
 def _raw_arraydata(comp: Any, mod: Any) -> list[float] | None:
     """Read IComponent2.Transform2.ArrayData verbatim (no row-major conversion)."""
-    for getter in (lambda: comp.Transform2,
-                   lambda: typed(comp, "IComponent2", module=mod).Transform2):
+    for getter in (
+        lambda: comp.Transform2,
+        lambda: typed(comp, "IComponent2", module=mod).Transform2,
+    ):
         try:
             t = getter()
             if callable(t):
@@ -91,7 +98,9 @@ def _near(a: float, b: float, tol: float = 5e-4) -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -108,8 +117,8 @@ def main() -> int:
     except Exception:
         pass
     try:
-        base = P._build("ct_base", P._plate("ct_base"))      # 40x30x5, at origin
-        arm = P._build("ct_arm", P._cube("ct_arm", 20.0))     # 20mm cube at (30,0,20)
+        base = P._build("ct_base", P._plate("ct_base"))  # 40x30x5, at origin
+        arm = P._build("ct_arm", P._cube("ct_arm", 20.0))  # 20mm cube at (30,0,20)
         for x in (base, arm):
             if "error" in x:
                 gate("fixture", False, x["error"])
@@ -159,17 +168,21 @@ def main() -> int:
 
             trans = ad[9:12] if ad and len(ad) >= 12 else None
             rec = {
-                "name": nm, "key": key,
+                "name": nm,
+                "key": key,
                 "placed_m": placed,
                 "arraydata_len": (len(ad) if ad else None),
                 "arraydata": ad,
                 "translation_idx_9_10_11": trans,
                 "rowmajor_translation_3_7_11": (
-                    [rowmajor[3], rowmajor[7], rowmajor[11]] if rowmajor else None),
+                    [rowmajor[3], rowmajor[7], rowmajor[11]] if rowmajor else None
+                ),
                 "com_m": com_m,
                 "placed_minus_com": (
                     [placed[i] - com_m[i] for i in range(3)]
-                    if (com_m and None not in placed) else None),
+                    if (com_m and None not in placed)
+                    else None
+                ),
             }
             results["components"].append(rec)
             print(f"\n  component {nm!r} (key={key})")
@@ -182,17 +195,28 @@ def main() -> int:
             # ambiguous; the arm is the discriminator).
             if key == "arm" and trans is not None:
                 matches_placed = all(_near(trans[i], placed[i]) for i in range(3))
-                matches_minus_com = (
-                    rec["placed_minus_com"] is not None
-                    and all(_near(trans[i], rec["placed_minus_com"][i]) for i in range(3)))
-                gate("arm_matches_placed", matches_placed,
-                     f"ArrayData[9,10,11]={trans} vs placed={placed}")
-                gate("arm_matches_placed_minus_com", matches_minus_com,
-                     f"ArrayData[9,10,11]={trans} vs placed-CoM={rec['placed_minus_com']}")
+                matches_minus_com = rec["placed_minus_com"] is not None and all(
+                    _near(trans[i], rec["placed_minus_com"][i]) for i in range(3)
+                )
+                gate(
+                    "arm_matches_placed",
+                    matches_placed,
+                    f"ArrayData[9,10,11]={trans} vs placed={placed}",
+                )
+                gate(
+                    "arm_matches_placed_minus_com",
+                    matches_minus_com,
+                    f"ArrayData[9,10,11]={trans} vs placed-CoM={rec['placed_minus_com']}",
+                )
                 results["verdict_hint"] = (
-                    "SERIALIZATION_BUG (raw==placed)" if matches_placed else
-                    "ADDCOMPONENT4_PLACES_BY_COM (raw==placed-CoM)" if matches_minus_com else
-                    "NEITHER — investigate rotation/scale")
+                    "SERIALIZATION_BUG (raw==placed)"
+                    if matches_placed
+                    else (
+                        "ADDCOMPONENT4_PLACES_BY_COM (raw==placed-CoM)"
+                        if matches_minus_com
+                        else "NEITHER — investigate rotation/scale"
+                    )
+                )
                 print(f"    >>> HYPOTHESIS: {results['verdict_hint']}")
     finally:
         try:
@@ -204,11 +228,16 @@ def main() -> int:
     g = results["gates"]
     one_clear = g.get("fixture", {}).get("ok") and (
         g.get("arm_matches_placed", {}).get("ok")
-        != g.get("arm_matches_placed_minus_com", {}).get("ok"))
+        != g.get("arm_matches_placed_minus_com", {}).get("ok")
+    )
     results["gates"]["one_clear_hypothesis"] = {
-        "ok": bool(one_clear), "detail": results.get("verdict_hint", "?")}
-    print(f"  [{'PASS' if one_clear else 'FAIL'}] one_clear_hypothesis: "
-          f"{results.get('verdict_hint', '?')}")
+        "ok": bool(one_clear),
+        "detail": results.get("verdict_hint", "?"),
+    }
+    print(
+        f"  [{'PASS' if one_clear else 'FAIL'}] one_clear_hypothesis: "
+        f"{results.get('verdict_hint', '?')}"
+    )
     return _finish()
 
 

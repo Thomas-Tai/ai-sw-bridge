@@ -28,6 +28,7 @@ assembly_p1 tests; M2's seat witness is the boundary + the produced file + disk 
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_m2_gate_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -85,11 +86,17 @@ def _under_warnings_as_errors(fn) -> tuple[dict[str, Any], bool, str]:
         try:
             return fn(), True, ""
         except PendingDeprecationWarning as exc:  # noqa: BLE001
-            return {"ok": False}, False, f"internal PendingDeprecationWarning leaked: {exc}"
+            return (
+                {"ok": False},
+                False,
+                f"internal PendingDeprecationWarning leaked: {exc}",
+            )
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -123,8 +130,11 @@ def main() -> int:
         base_face = _capture_planar_face(sw, base_path, (0.0, 0.0, 1.0), mod)
         lid_face = _capture_planar_face(sw, lid_path, (0.0, 0.0, -1.0), mod)
         if not (base_face.get("ok") and lid_face.get("ok")):
-            gate("propose_clean", False,
-                 f"face capture failed base={base_face.get('error')} lid={lid_face.get('error')}")
+            gate(
+                "propose_clean",
+                False,
+                f"face capture failed base={base_face.get('error')} lid={lid_face.get('error')}",
+            )
             raise SystemExit(_finish())
 
         spec = {
@@ -135,56 +145,73 @@ def main() -> int:
                 {"id": "lid", "part": lid_path, "transform": {"xyz_mm": [0, 0, 50]}},
             ],
             "mates": [
-                {"type": "coincident", "alignment": "anti_aligned",
-                 "a": {"component": "base", "face_ref": base_face["face_ref"]},
-                 "b": {"component": "lid", "face_ref": lid_face["face_ref"]}},
+                {
+                    "type": "coincident",
+                    "alignment": "anti_aligned",
+                    "a": {"component": "base", "face_ref": base_face["face_ref"]},
+                    "b": {"component": "lid", "face_ref": lid_face["face_ref"]},
+                },
             ],
         }
         spec_path.write_text(json.dumps(spec), encoding="utf-8")
 
         # ── A: propose via the CLI runner (cli -> client -> _impl, no leak) ──
         prop, cleanA, whyA = _under_warnings_as_errors(
-            lambda: cli_asm._run_propose(Namespace(spec=str(spec_path))))
+            lambda: cli_asm._run_propose(Namespace(spec=str(spec_path)))
+        )
         results["propose_report"] = prop
         pid = prop.get("proposal_id")
-        gate("propose_clean",
-             cleanA and bool(prop.get("ok")) and isinstance(pid, str) and len(pid) == 12,
-             whyA or f"ok={prop.get('ok')} pid={pid} (cli->client->_impl, no warning)")
+        gate(
+            "propose_clean",
+            cleanA and bool(prop.get("ok")) and isinstance(pid, str) and len(pid) == 12,
+            whyA or f"ok={prop.get('ok')} pid={pid} (cli->client->_impl, no warning)",
+        )
         if not pid:
             raise SystemExit(_finish())
 
         # ── B: dry_run via the CLI runner — disk link crossed the boundary ──
         dry, cleanB, whyB = _under_warnings_as_errors(
-            lambda: cli_asm._run_dry_run(Namespace(proposal_id=pid)))
+            lambda: cli_asm._run_dry_run(Namespace(proposal_id=pid))
+        )
         results["dry_run_report"] = dry
-        gate("dryrun_disklink",
-             cleanB and bool(dry.get("ok")),
-             whyB or f"ok={dry.get('ok')} (client dry_run loaded client propose's pid "
-             f"across the boundary)")
+        gate(
+            "dryrun_disklink",
+            cleanB and bool(dry.get("ok")),
+            whyB
+            or f"ok={dry.get('ok')} (client dry_run loaded client propose's pid "
+            f"across the boundary)",
+        )
 
         # ── C: commit via the CLI runner — out + part_paths flow through the facade ──
         com, cleanC, whyC = _under_warnings_as_errors(
             lambda: cli_asm._run_commit(
-                Namespace(proposal_id=pid, out=asm_path, part_paths="{}")))
+                Namespace(proposal_id=pid, out=asm_path, part_paths="{}")
+            )
+        )
         results["commit_report"] = com
         saved = os.path.isfile(asm_path)
         # Authoritative witness: the commit report's own counters (manifest nests
         # components/mates under manifest["spec"]).
         built_ok = com.get("component_count") == 2 and com.get("mate_count") == 1
-        gate("commit_out_partpaths",
-             cleanC and bool(com.get("ok")) and saved and built_ok,
-             whyC or f"ok={com.get('ok')} sldasm_saved={saved} "
-             f"components={com.get('component_count')} mates={com.get('mate_count')} "
-             f"(out + part_paths threaded through the facade)")
+        gate(
+            "commit_out_partpaths",
+            cleanC and bool(com.get("ok")) and saved and built_ok,
+            whyC
+            or f"ok={com.get('ok')} sldasm_saved={saved} "
+            f"components={com.get('component_count')} mates={com.get('mate_count')} "
+            f"(out + part_paths threaded through the facade)",
+        )
 
         # ── D: legacy shim STILL warns AND still reaches the engine ──
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             legacy = sw_propose_assembly(spec)
         warned = any(issubclass(w.category, PendingDeprecationWarning) for w in caught)
-        gate("shim_still_warns",
-             warned and bool(legacy.get("ok")),
-             f"legacy warned={warned}, still_functions(ok={legacy.get('ok')})")
+        gate(
+            "shim_still_warns",
+            warned and bool(legacy.get("ok")),
+            f"legacy warned={warned}, still_functions(ok={legacy.get('ok')})",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

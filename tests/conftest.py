@@ -31,6 +31,7 @@ def pytest_sessionstart(session: Any) -> None:
     """Re-extend package paths after all plugins are loaded."""
     _extend_pkg_paths()
 
+
 import pytest
 
 # Resolve relative to this file so the tests run anywhere the repo is checked
@@ -91,10 +92,9 @@ def pytest_collection_modifyitems(config, items):
             if item.get_closest_marker("solidworks_only"):
                 item.add_marker(skip_sw)
 
-    explicit = (
-        "destructive_sw" in (config.getoption("-m", "") or "")
-        or "death_recovery" in (config.getoption("-k", "") or "")
-    )
+    explicit = "destructive_sw" in (
+        config.getoption("-m", "") or ""
+    ) or "death_recovery" in (config.getoption("-k", "") or "")
     if not explicit:
         skip_destructive = pytest.mark.skip(
             reason="destructive SW test — run in isolation: "

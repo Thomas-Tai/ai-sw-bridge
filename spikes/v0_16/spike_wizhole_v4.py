@@ -102,13 +102,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:  # noqa: BLE001
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:200],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:200],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _build_box(doc: Any) -> dict[str, Any]:
@@ -116,15 +122,38 @@ def _build_box(doc: Any) -> dict[str, Any]:
         return {"built": False, "error": "could not select Front Plane"}
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    seg = sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                                   BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    seg = sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     if seg is None:
         sk.InsertSketch(True)
         return {"built": False, "error": "CreateCornerRectangle returned None"}
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base_args = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False,
-                 False, 0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base_args = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
     except Exception:  # noqa: BLE001
@@ -157,7 +186,9 @@ def _place_and_select_point(doc: Any) -> dict[str, Any]:
         srec, ok = _capture(lambda: m(False, 0))
         sel = srec["status"] == "OK" and bool(ok)
     if not sel:
-        srec, ok = _capture(lambda: doc.SelectByID("", "SKETCHPOINT", PT_X, PT_Y, BOX_D_M))
+        srec, ok = _capture(
+            lambda: doc.SelectByID("", "SKETCHPOINT", PT_X, PT_Y, BOX_D_M)
+        )
         sel = bool(ok)
     return {"ok": sel, "create_point": rec}
 
@@ -185,15 +216,27 @@ def run() -> dict[str, Any]:
         place = _place_and_select_point(doc)
         result["place_point"] = place
         if not place.get("ok"):
-            return {**result, "overall": "FAIL", "reason": "could not place/select point"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "could not place/select point",
+            }
 
         fm = doc.FeatureManager
         values = (0.0,) * 12
         # AutoSelect=False so SW honours the pre-selected sketch point as the
         # hole position (AutoSelect=True makes it auto-pick and ignore ours).
         base = (
-            SW_WZD_HOLE, SW_STD_ANSI_METRIC, SW_FAST_ANSI_METRIC_DRILL_SIZES,
-            SSIZE, SW_END_BLIND, DIAMETER_M, DEPTH_M, 0.0, *values, "",
+            SW_WZD_HOLE,
+            SW_STD_ANSI_METRIC,
+            SW_FAST_ANSI_METRIC_DRILL_SIZES,
+            SSIZE,
+            SW_END_BLIND,
+            DIAMETER_M,
+            DEPTH_M,
+            0.0,
+            *values,
+            "",
         )
         # Try AutoSelect=False first (use our point), then True as a fallback.
         attempts: list[dict[str, Any]] = []

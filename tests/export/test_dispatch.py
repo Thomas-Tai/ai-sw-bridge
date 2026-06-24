@@ -103,9 +103,7 @@ class TestResolveOutputPath:
         assert p.parent == tmp_path.resolve()
 
     def test_uses_filename_override(self, tmp_path: Path) -> None:
-        req = ExportRequest(
-            format="step214", output_dir=tmp_path, filename="rev_A"
-        )
+        req = ExportRequest(format="step214", output_dir=tmp_path, filename="rev_A")
         fmt = resolve_format("step214")
         p = resolve_output_path(req, "MotorPlate", fmt)
         assert p.name == "rev_A.step"
@@ -213,11 +211,15 @@ class TestExportOne:
 
     @pytest.mark.parametrize(
         "fmt_name",
-        ["step214", "iges", "parasolid", "stl", "3mf"],  # DXF excluded: requires Drawing doc
+        [
+            "step214",
+            "iges",
+            "parasolid",
+            "stl",
+            "3mf",
+        ],  # DXF excluded: requires Drawing doc
     )
-    def test_all_saveas3_formats_succeed(
-        self, tmp_path: Path, fmt_name: str
-    ) -> None:
+    def test_all_saveas3_formats_succeed(self, tmp_path: Path, fmt_name: str) -> None:
         doc = _MockDoc()
         req = ExportRequest(format=fmt_name, output_dir=tmp_path)
         result = _export_one(doc, req, "TestPart")
@@ -244,9 +246,7 @@ class TestExportOne:
     @pytest.mark.parametrize(
         "fmt_name", ["step214", "step203", "iges", "stl", "parasolid", "3mf"]
     )
-    def test_3d_format_rejects_drawing_doc(
-        self, tmp_path: Path, fmt_name: str
-    ) -> None:
+    def test_3d_format_rejects_drawing_doc(self, tmp_path: Path, fmt_name: str) -> None:
         """3D formats (STEP/IGES/STL/Parasolid/3MF) require Part or Assembly (W34)."""
         doc = _MockDrawingDoc()  # GetType() = 3 (Drawing)
         req = ExportRequest(format=fmt_name, output_dir=tmp_path)
@@ -258,9 +258,7 @@ class TestExportOne:
     def test_pdf_invalid_sheets_value(self, tmp_path: Path) -> None:
         """sheets with empty list is rejected."""
         doc = _MockDrawingDoc()
-        req = ExportRequest(
-            format="pdf", output_dir=tmp_path, sheets=[]
-        )
+        req = ExportRequest(format="pdf", output_dir=tmp_path, sheets=[])
         result = _export_one(doc, req, "TestPart")
         assert result.ok is False
         assert "Invalid" in result.error
@@ -295,7 +293,9 @@ class TestExportAll:
         results = export_all(doc, [], "TestPart")
         assert results == []
 
-    def test_human_stream_output(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_human_stream_output(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         doc = _MockDoc()
         requests = [
             ExportRequest(format="step214", output_dir=tmp_path),
@@ -309,9 +309,7 @@ class TestExportAll:
     def test_order_preserved(self, tmp_path: Path) -> None:
         doc = _MockDoc()
         formats = ["iges", "stl", "step214", "parasolid"]
-        requests = [
-            ExportRequest(format=f, output_dir=tmp_path) for f in formats
-        ]
+        requests = [ExportRequest(format=f, output_dir=tmp_path) for f in formats]
         results = export_all(doc, requests, "TestPart")
         assert [r.format for r in results] == formats
 

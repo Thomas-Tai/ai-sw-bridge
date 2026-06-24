@@ -32,9 +32,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_dims_v2.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_dims_v2.json"
 
 POPUP_SUPPRESS_TOGGLES = [9, 10, 22, 23]
 
@@ -92,7 +90,7 @@ def run() -> str:
 
     # Close all docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -121,17 +119,19 @@ def run() -> str:
         "schema_version": 1,
         "name": "DimBoxV2",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 25.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 15.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 25.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 15.0},
         ],
     }
 
-    r = part_build(PART_SPEC, save_as=PART_PATH, save_format="current",
-                   no_dim=False)
-    gate("build_part_with_dims", r.ok and os.path.isfile(PART_PATH),
-         f"ok={r.ok}")
+    r = part_build(PART_SPEC, save_as=PART_PATH, save_format="current", no_dim=False)
+    gate("build_part_with_dims", r.ok and os.path.isfile(PART_PATH), f"ok={r.ok}")
 
     if not os.path.isfile(PART_PATH):
         save_results()
@@ -139,9 +139,7 @@ def run() -> str:
 
     # Create drawing + view
     print("\n--- Creating drawing with view ---")
-    drwdots = glob.glob(
-        r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT"
-    )
+    drwdots = glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT")
     template = drwdots[0]
 
     tsw = typed(sw, "ISldWorks", module=mod)
@@ -160,9 +158,11 @@ def run() -> str:
         view_raw = drawing_doc.CreateDrawViewFromModelView3(
             PART_PATH, "*Front", 0.15, 0.15, 0.0
         )
-        gate("view_create", view_raw is not None
-             and not isinstance(view_raw, int),
-             f"type={type(view_raw).__name__ if view_raw else None}")
+        gate(
+            "view_create",
+            view_raw is not None and not isinstance(view_raw, int),
+            f"type={type(view_raw).__name__ if view_raw else None}",
+        )
 
         if view_raw is None or isinstance(view_raw, int):
             save_results()
@@ -177,11 +177,8 @@ def run() -> str:
         # Route C: IDrawingDoc.InsertModelAnnotations3
         print("\n--- Route C: IDrawingDoc.InsertModelAnnotations3 ---")
         try:
-            result = drawing_doc.InsertModelAnnotations3(
-                0, -1, True, False, True, 0
-            )
-            gate("routeC_insert", True,
-                 f"result_type={type(result).__name__}")
+            result = drawing_doc.InsertModelAnnotations3(0, -1, True, False, True, 0)
+            gate("routeC_insert", True, f"result_type={type(result).__name__}")
             results["routes"]["C_drawingdoc"] = {
                 "status": "GO",
                 "params": "(0, -1, True, False, True, 0)",
@@ -196,14 +193,15 @@ def run() -> str:
         # Post-insert count
         post_count = view.GetAnnotationCount()
         gate("post_annotation_count", True, f"count={post_count}")
-        gate("dims_inserted",
-             post_count > pre_count and post_count > 0,
-             f"pre={pre_count}, post={post_count}")
+        gate(
+            "dims_inserted",
+            post_count > pre_count and post_count > 0,
+            f"pre={pre_count}, post={post_count}",
+        )
 
         # Verdict
         go = post_count > pre_count and post_count > 0
-        gate("OVERALL_GO", go,
-             f"pre={pre_count}, post={post_count}")
+        gate("OVERALL_GO", go, f"pre={pre_count}, post={post_count}")
 
         results["pre_count"] = pre_count
         results["post_count"] = post_count

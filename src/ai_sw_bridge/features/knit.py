@@ -61,8 +61,8 @@ except ImportError:
 VERIFY_CLASS = verify.FeatureClass.SURFACE_AGGREGATE
 
 # CHM-sourced knit-tolerance bounds (metres).
-_TOL_LOWER_M = 1e-7   # 0.0001 mm
-_TOL_UPPER_M = 1e-4   # 0.1 mm
+_TOL_LOWER_M = 1e-7  # 0.0001 mm
+_TOL_UPPER_M = 1e-4  # 0.1 mm
 
 
 def _sheet_body_count(doc: Any) -> int:
@@ -97,7 +97,8 @@ def _null_disp() -> Any:
 
 
 def _select_bodies_for_knit(
-    doc: Any, body_refs: list[dict],
+    doc: Any,
+    body_refs: list[dict],
 ) -> tuple[bool, str | None]:
     """Pre-select sheet bodies via Extension.SelectByID2 with mark=1.
 
@@ -122,7 +123,15 @@ def _select_bodies_for_knit(
         append = i > 0
         try:
             ok = ext.SelectByID2(
-                name, sel_type, 0, 0, 0, append, 1, null_callout, 0,
+                name,
+                sel_type,
+                0,
+                0,
+                0,
+                append,
+                1,
+                null_callout,
+                0,
             )
         except Exception as exc:
             return False, f"SelectByID2({name!r}, {sel_type!r}) raised: {exc!r}"
@@ -144,7 +153,10 @@ def _select_all_sheet_bodies(doc: Any) -> tuple[bool, str | None]:
     """
     bodies = verify.sheet_bodies(doc, visible_only=False)
     if not bodies or len(bodies) < 2:
-        return False, f"need ≥2 sheet bodies to knit, found {len(bodies) if bodies else 0}"
+        return (
+            False,
+            f"need ≥2 sheet bodies to knit, found {len(bodies) if bodies else 0}",
+        )
 
     ext = doc.Extension
     null_callout = _null_disp()
@@ -164,7 +176,15 @@ def _select_all_sheet_bodies(doc: Any) -> tuple[bool, str | None]:
         append = i > 0
         try:
             ok = ext.SelectByID2(
-                body_name, "SURFACEBODY", 0, 0, 0, append, 1, null_callout, 0,
+                body_name,
+                "SURFACEBODY",
+                0,
+                0,
+                0,
+                append,
+                1,
+                null_callout,
+                0,
             )
         except Exception as exc:
             return False, f"SelectByID2({body_name!r}) raised: {exc!r}"
@@ -174,7 +194,9 @@ def _select_all_sheet_bodies(doc: Any) -> tuple[bool, str | None]:
 
 
 def create_knit(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Knit (sew) two or more surface bodies together.  Fail-closed.
 
@@ -242,8 +264,11 @@ def create_knit(
     try:
         fm = doc.FeatureManager
         fm.InsertSewRefSurface(
-            use_gap_filters, try_to_form_solid, merge_entities,
-            knit_tol_m, max_gap_m,
+            use_gap_filters,
+            try_to_form_solid,
+            merge_entities,
+            knit_tol_m,
+            max_gap_m,
         )
     except Exception as exc:
         return False, f"InsertSewRefSurface raised: {exc!r}"

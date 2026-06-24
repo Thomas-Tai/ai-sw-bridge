@@ -58,19 +58,25 @@ class TestAddComponent:
     def test_input_not_mutated(self) -> None:
         spec = _base_spec()
         original = copy.deepcopy(spec)
-        apply_edit_op(spec, {
-            "op": "add_component",
-            "component": {"id": "c", "part": "c.sldprt"},
-        })
+        apply_edit_op(
+            spec,
+            {
+                "op": "add_component",
+                "component": {"id": "c", "part": "c.sldprt"},
+            },
+        )
         assert spec == original
 
     def test_rejects_duplicate_id(self) -> None:
         spec = _base_spec()
         with pytest.raises(AssemblyEditError, match="already exists"):
-            apply_edit_op(spec, {
-                "op": "add_component",
-                "component": {"id": "a", "part": "a2.sldprt"},
-            })
+            apply_edit_op(
+                spec,
+                {
+                    "op": "add_component",
+                    "component": {"id": "a", "part": "a2.sldprt"},
+                },
+            )
 
     def test_rejects_missing_component(self) -> None:
         with pytest.raises(AssemblyEditError, match="component"):
@@ -78,10 +84,13 @@ class TestAddComponent:
 
     def test_rejects_empty_id(self) -> None:
         with pytest.raises(AssemblyEditError, match="id"):
-            apply_edit_op(_base_spec(), {
-                "op": "add_component",
-                "component": {"id": "", "part": "x.sldprt"},
-            })
+            apply_edit_op(
+                _base_spec(),
+                {
+                    "op": "add_component",
+                    "component": {"id": "", "part": "x.sldprt"},
+                },
+            )
 
 
 # ---- remove_component ----
@@ -109,26 +118,31 @@ class TestRemoveComponent:
 
     def test_fail_closed_width_mate_references(self) -> None:
         spec = _base_spec()
-        spec["mates"].append({
-            "type": "width",
-            "width_faces": [
-                {"component": "a", "face_ref": {"normal": [-1, 0, 0]}},
-                {"component": "a", "face_ref": {"normal": [1, 0, 0]}},
-            ],
-            "tab_faces": [
-                {"component": "b", "face_ref": {"normal": [-1, 0, 0]}},
-                {"component": "b", "face_ref": {"normal": [1, 0, 0]}},
-            ],
-        })
+        spec["mates"].append(
+            {
+                "type": "width",
+                "width_faces": [
+                    {"component": "a", "face_ref": {"normal": [-1, 0, 0]}},
+                    {"component": "a", "face_ref": {"normal": [1, 0, 0]}},
+                ],
+                "tab_faces": [
+                    {"component": "b", "face_ref": {"normal": [-1, 0, 0]}},
+                    {"component": "b", "face_ref": {"normal": [1, 0, 0]}},
+                ],
+            }
+        )
         with pytest.raises(AssemblyEditError, match="width_faces"):
             apply_edit_op(spec, {"op": "remove_component", "id": "a"})
 
     def test_rejects_nonexistent_id(self) -> None:
         with pytest.raises(AssemblyEditError, match="not found"):
-            apply_edit_op(_base_spec(), {
-                "op": "remove_component",
-                "id": "ghost",
-            })
+            apply_edit_op(
+                _base_spec(),
+                {
+                    "op": "remove_component",
+                    "id": "ghost",
+                },
+            )
 
     def test_rejects_missing_id(self) -> None:
         with pytest.raises(AssemblyEditError, match="id"):
@@ -164,14 +178,17 @@ class TestAddMate:
     def test_input_not_mutated(self) -> None:
         spec = _base_spec()
         original = copy.deepcopy(spec)
-        apply_edit_op(spec, {
-            "op": "add_mate",
-            "mate": {
-                "type": "parallel",
-                "a": {"component": "a", "face_ref": {"normal": [0, 1, 0]}},
-                "b": {"component": "b", "face_ref": {"normal": [0, 1, 0]}},
+        apply_edit_op(
+            spec,
+            {
+                "op": "add_mate",
+                "mate": {
+                    "type": "parallel",
+                    "a": {"component": "a", "face_ref": {"normal": [0, 1, 0]}},
+                    "b": {"component": "b", "face_ref": {"normal": [0, 1, 0]}},
+                },
             },
-        })
+        )
         assert spec == original
 
     def test_rejects_missing_mate(self) -> None:
@@ -180,10 +197,13 @@ class TestAddMate:
 
     def test_rejects_mate_without_type(self) -> None:
         with pytest.raises(AssemblyEditError, match="type"):
-            apply_edit_op(_base_spec(), {
-                "op": "add_mate",
-                "mate": {"a": {}, "b": {}},
-            })
+            apply_edit_op(
+                _base_spec(),
+                {
+                    "op": "add_mate",
+                    "mate": {"a": {}, "b": {}},
+                },
+            )
 
 
 # ---- remove_mate ----
@@ -243,10 +263,13 @@ class TestManifestEditValidate:
         edited = apply_edit_op(spec, {"op": "remove_mate", "index": 0})
         assert len(edited["mates"]) == 0
         # Step 2: now remove 'b' (no blocking mates)
-        edited = apply_edit_op(edited, {
-            "op": "remove_component",
-            "id": "b",
-        })
+        edited = apply_edit_op(
+            edited,
+            {
+                "op": "remove_component",
+                "id": "b",
+            },
+        )
         assert len(edited["components"]) == 1
         # Edited spec validates
         validate_assembly(edited)
@@ -254,23 +277,29 @@ class TestManifestEditValidate:
     def test_add_component_then_add_mate(self) -> None:
         spec = _base_spec()
         # Add component c
-        edited = apply_edit_op(spec, {
-            "op": "add_component",
-            "component": {
-                "id": "c",
-                "part": "c.sldprt",
-                "transform": {"xyz_mm": [20, 0, 0]},
+        edited = apply_edit_op(
+            spec,
+            {
+                "op": "add_component",
+                "component": {
+                    "id": "c",
+                    "part": "c.sldprt",
+                    "transform": {"xyz_mm": [20, 0, 0]},
+                },
             },
-        })
+        )
         # Add a mate between a and c
-        edited = apply_edit_op(edited, {
-            "op": "add_mate",
-            "mate": {
-                "type": "parallel",
-                "a": {"component": "a", "face_ref": {"normal": [0, 1, 0]}},
-                "b": {"component": "c", "face_ref": {"normal": [0, 1, 0]}},
+        edited = apply_edit_op(
+            edited,
+            {
+                "op": "add_mate",
+                "mate": {
+                    "type": "parallel",
+                    "a": {"component": "a", "face_ref": {"normal": [0, 1, 0]}},
+                    "b": {"component": "c", "face_ref": {"normal": [0, 1, 0]}},
+                },
             },
-        })
+        )
         assert len(edited["components"]) == 3
         assert len(edited["mates"]) == 2
         validate_assembly(edited)
@@ -293,11 +322,14 @@ class TestSwEditAssembly:
 
         result = _sw_edit_assembly_impl(
             str(mpath),
-            {"op": "add_mate", "mate": {
-                "type": "parallel",
-                "a": {"component": "a", "face_ref": {"normal": [0, 1, 0]}},
-                "b": {"component": "b", "face_ref": {"normal": [0, 1, 0]}},
-            }},
+            {
+                "op": "add_mate",
+                "mate": {
+                    "type": "parallel",
+                    "a": {"component": "a", "face_ref": {"normal": [0, 1, 0]}},
+                    "b": {"component": "b", "face_ref": {"normal": [0, 1, 0]}},
+                },
+            },
         )
         assert result["ok"] is True
         assert result["proposal_id"] is not None
@@ -342,14 +374,16 @@ class TestCliEdit:
         mpath = tmp_path / "test.SLDASM.manifest.json"
         manifest.save(mpath)
 
-        op_json = json.dumps({
-            "op": "add_mate",
-            "mate": {
-                "type": "parallel",
-                "a": {"component": "a", "face_ref": {"normal": [0, 1, 0]}},
-                "b": {"component": "b", "face_ref": {"normal": [0, 1, 0]}},
-            },
-        })
+        op_json = json.dumps(
+            {
+                "op": "add_mate",
+                "mate": {
+                    "type": "parallel",
+                    "a": {"component": "a", "face_ref": {"normal": [0, 1, 0]}},
+                    "b": {"component": "b", "face_ref": {"normal": [0, 1, 0]}},
+                },
+            }
+        )
 
         from ai_sw_bridge.cli.assembly import _load_op, _run_edit
         import argparse
@@ -374,13 +408,15 @@ class TestCliEdit:
         manifest.save(mpath)
 
         op_file = tmp_path / "op.json"
-        op_file.write_text(json.dumps({
-            "op": "remove_mate",
-            "index": 0,
-        }))
-
-        args = argparse.Namespace(
-            manifest=str(mpath), op=f"@{op_file}"
+        op_file.write_text(
+            json.dumps(
+                {
+                    "op": "remove_mate",
+                    "index": 0,
+                }
+            )
         )
+
+        args = argparse.Namespace(manifest=str(mpath), op=f"@{op_file}")
         result = _run_edit(args)
         assert result["ok"] is True

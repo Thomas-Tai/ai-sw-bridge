@@ -109,16 +109,16 @@ def _find_bbox_node(doc: Any) -> Any | None:
     return None
 
 
-def _try_mode_a(
-    doc: Any, best_fit: bool
-) -> tuple[bool, str | None]:
+def _try_mode_a(doc: Any, best_fit: bool) -> tuple[bool, str | None]:
     """Mode-A: ``CreateDefinition(swFmBoundingBox)`` → ``IBoundingBoxFeatureData``
     → ``CreateFeature(data)``.
 
     Returns ``(True, "mode_a")`` on verified materialization, ``(False, reason)``
     on any failure.  Never raises.
     """
-    logger.warning("[bounding_box] mode_a: attempting CreateDefinition(%d)", _SW_FM_BOUNDING_BOX)
+    logger.warning(
+        "[bounding_box] mode_a: attempting CreateDefinition(%d)", _SW_FM_BOUNDING_BOX
+    )
     before = _count_feature_nodes(doc)
 
     try:
@@ -198,7 +198,9 @@ def _try_mode_a(
     try:
         bd.IncludeHiddenBodies = False
     except Exception as exc:
-        logger.warning("[bounding_box] mode_a IncludeHiddenBodies setter failed: %r", exc)
+        logger.warning(
+            "[bounding_box] mode_a IncludeHiddenBodies setter failed: %r", exc
+        )
 
     try:
         bd.IncludeSurfaces = False
@@ -212,17 +214,28 @@ def _try_mode_a(
         try:
             bd.ReferenceFaceOrPlane = plane
             ref_setter = "ReferenceFaceOrPlane"
-            logger.warning("[bounding_box] mode_a A5 ReferenceFaceOrPlane = <Front Plane> OK")
+            logger.warning(
+                "[bounding_box] mode_a A5 ReferenceFaceOrPlane = <Front Plane> OK"
+            )
         except Exception as exc:
-            logger.warning("[bounding_box] mode_a A5 ReferenceFaceOrPlane setter failed: %r", exc)
+            logger.warning(
+                "[bounding_box] mode_a A5 ReferenceFaceOrPlane setter failed: %r", exc
+            )
         if ref_setter is None:
             try:
                 bd.PlanarEntity = plane
                 ref_setter = "PlanarEntity"
-                logger.warning("[bounding_box] mode_a A6 PlanarEntity = <Front Plane> OK")
+                logger.warning(
+                    "[bounding_box] mode_a A6 PlanarEntity = <Front Plane> OK"
+                )
             except Exception as exc:
-                logger.warning("[bounding_box] mode_a A6 PlanarEntity setter failed: %r", exc)
-    logger.warning("[bounding_box] mode_a planar reference setter outcome: %s", ref_setter or "NONE")
+                logger.warning(
+                    "[bounding_box] mode_a A6 PlanarEntity setter failed: %r", exc
+                )
+    logger.warning(
+        "[bounding_box] mode_a planar reference setter outcome: %s",
+        ref_setter or "NONE",
+    )
 
     # ReleaseSelectionAccess — commit edits before CreateFeature.
     if access_ok:
@@ -230,7 +243,9 @@ def _try_mode_a(
             bd.ReleaseSelectionAccess()
             logger.warning("[bounding_box] mode_a ReleaseSelectionAccess OK")
         except Exception as exc:
-            logger.warning("[bounding_box] mode_a ReleaseSelectionAccess failed: %r", exc)
+            logger.warning(
+                "[bounding_box] mode_a ReleaseSelectionAccess failed: %r", exc
+            )
 
     # CreateFeature
     try:
@@ -241,7 +256,9 @@ def _try_mode_a(
 
     # Verify materialization
     if feat is None or isinstance(feat, int):
-        logger.warning("[bounding_box] mode_a: CreateFeature did not materialize (feat=%r)", feat)
+        logger.warning(
+            "[bounding_box] mode_a: CreateFeature did not materialize (feat=%r)", feat
+        )
         return False, "CreateFeature did not materialize"
 
     try:
@@ -251,11 +268,16 @@ def _try_mode_a(
 
     after = _count_feature_nodes(doc)
     delta = after - before
-    logger.warning("[bounding_box] mode_a: node count %d -> %d (delta %d)", before, after, delta)
+    logger.warning(
+        "[bounding_box] mode_a: node count %d -> %d (delta %d)", before, after, delta
+    )
 
     if delta < 1:
         logger.warning("[bounding_box] mode_a: no feature node added (ghost)")
-        return False, f"bounding_box did not add a feature node (count {before} -> {after})"
+        return (
+            False,
+            f"bounding_box did not add a feature node (count {before} -> {after})",
+        )
 
     # A7 probe (W63 round-5) — log kernel's authoritative type names. The
     # worker brief assumed GetTypeName2 returns 'BoundingBox' or
@@ -268,28 +290,36 @@ def _try_mode_a(
     except Exception as exc:
         logger.warning("[bounding_box] mode_a A7 probe (feat) raised: %r", exc)
         feat_tname = None
-    logger.warning("[bounding_box] mode_a A7 probe — feat.GetTypeName2 = %r", feat_tname)
+    logger.warning(
+        "[bounding_box] mode_a A7 probe — feat.GetTypeName2 = %r", feat_tname
+    )
 
     try:
         _all_feats = doc.FeatureManager.GetFeatures(False) or []
         _new_feats = list(_all_feats[before:])
         _new_tnames = [_get_type_name(f) for f in _new_feats]
-        logger.warning("[bounding_box] mode_a A7 probe — new top-level node type names: %r", _new_tnames)
+        logger.warning(
+            "[bounding_box] mode_a A7 probe — new top-level node type names: %r",
+            _new_tnames,
+        )
     except Exception as exc:
         logger.warning("[bounding_box] mode_a A7 probe (GetFeatures) raised: %r", exc)
 
     bbox_node = _find_bbox_node(doc)
     if bbox_node is None:
-        logger.warning("[bounding_box] mode_a: node added but no BoundingBox-typed node found")
+        logger.warning(
+            "[bounding_box] mode_a: node added but no BoundingBox-typed node found"
+        )
         return False, "feature node added but no BoundingBox-typed node found in tree"
 
-    logger.warning("[bounding_box] mode_a: BoundingBox node materialized (type=%r)", _get_type_name(bbox_node))
+    logger.warning(
+        "[bounding_box] mode_a: BoundingBox node materialized (type=%r)",
+        _get_type_name(bbox_node),
+    )
     return True, "mode_a"
 
 
-def _try_mode_b(
-    doc: Any, best_fit: bool
-) -> tuple[bool, str | None]:
+def _try_mode_b(doc: Any, best_fit: bool) -> tuple[bool, str | None]:
     """Mode-B: ``IFeatureManager.InsertGlobalBoundingBox`` — legacy entry.
 
     Signature (from CHM):
@@ -316,7 +346,9 @@ def _try_mode_b(
     try:
         _v = getattr(fm, "InsertGlobalBoundingBox")
     except AttributeError:
-        logger.warning("[bounding_box] mode_b: InsertGlobalBoundingBox not on typelib (no-op stub)")
+        logger.warning(
+            "[bounding_box] mode_b: InsertGlobalBoundingBox not on typelib (no-op stub)"
+        )
         return False, "InsertGlobalBoundingBox not available on typelib"
 
     # BBoxType: 0 = axis-aligned (block), 1 = best-fit
@@ -328,9 +360,7 @@ def _try_mode_b(
     # placeholder. See [[reference_makepy_wrong_argtype]] for the [out]-param
     # marshaling family.
     try:
-        _result = (
-            _v(bbox_type, False, False, 0) if callable(_v) else _v
-        )
+        _result = _v(bbox_type, False, False, 0) if callable(_v) else _v
     except Exception as exc:
         logger.warning("[bounding_box] mode_b InsertGlobalBoundingBox raised: %r", exc)
         return False, f"InsertGlobalBoundingBox raised: {exc!r}"
@@ -348,16 +378,26 @@ def _try_mode_b(
 
     after = _count_feature_nodes(doc)
     delta = after - before
-    logger.warning("[bounding_box] mode_b: node count %d -> %d (delta %d)", before, after, delta)
+    logger.warning(
+        "[bounding_box] mode_b: node count %d -> %d (delta %d)", before, after, delta
+    )
 
     if delta < 1:
         logger.warning("[bounding_box] mode_b: no feature node added (ghost)")
-        return False, f"bounding_box did not add a feature node (count {before} -> {after})"
+        return (
+            False,
+            f"bounding_box did not add a feature node (count {before} -> {after})",
+        )
 
     bbox_node = _find_bbox_node(doc)
     if bbox_node is None:
-        logger.warning("[bounding_box] mode_b: node added but no BoundingBox-typed node found")
-        return False, "feature node added but no BoundingBox/BoundingBoxFolder node found"
+        logger.warning(
+            "[bounding_box] mode_b: node added but no BoundingBox-typed node found"
+        )
+        return (
+            False,
+            "feature node added but no BoundingBox/BoundingBoxFolder node found",
+        )
 
     logger.warning("[bounding_box] mode_b: BoundingBox node materialized")
     return True, "mode_b"
@@ -386,7 +426,9 @@ def create_bounding_box(
         return True, note
 
     mode_a_reason = note
-    logger.warning("[bounding_box] mode_a failed (%s), falling through to mode_b", mode_a_reason)
+    logger.warning(
+        "[bounding_box] mode_a failed (%s), falling through to mode_b", mode_a_reason
+    )
 
     # Mode-B fallback
     ok, note = _try_mode_b(doc, best_fit)
@@ -394,4 +436,7 @@ def create_bounding_box(
         return True, note
 
     mode_b_reason = note
-    return False, f"both modes failed — mode_a: {mode_a_reason}; mode_b: {mode_b_reason}"
+    return (
+        False,
+        f"both modes failed — mode_a: {mode_a_reason}; mode_b: {mode_b_reason}",
+    )

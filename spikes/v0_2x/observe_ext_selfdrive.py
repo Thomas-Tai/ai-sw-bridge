@@ -79,9 +79,29 @@ def _build_cube(sw: Any, mod: Any) -> Any | None:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion3(
-        True, False, False, 0, 0, EDGE_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        EDGE_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     if feat is None or isinstance(feat, int):
         return None
@@ -120,10 +140,16 @@ def _normal(face: Any, mod: Any) -> list[float] | None:
 
 def _ok(tag: str, got: float, expected: float, tol: float, out: dict) -> bool:
     green = abs(got - expected) <= tol
-    out[tag] = {"got": got, "expected": expected, "tol": tol,
-                "status": "GREEN" if green else "RED"}
-    print(f"  {'GREEN' if green else 'RED'}  {tag}: got {got:.4f}, "
-          f"expected {expected:.4f} (tol {tol})")
+    out[tag] = {
+        "got": got,
+        "expected": expected,
+        "tol": tol,
+        "status": "GREEN" if green else "RED",
+    }
+    print(
+        f"  {'GREEN' if green else 'RED'}  {tag}: got {got:.4f}, "
+        f"expected {expected:.4f} (tol {tol})"
+    )
     return green
 
 
@@ -162,8 +188,11 @@ def leg_part_measures(sw: Any, mod: Any, out: dict) -> None:
             if n0 and n and abs(sum(a * b for a, b in zip(n0, n))) < 0.1:
                 perp = f
                 break
-        if perp is not None and _select_entity(doc, f0, False, mod) and \
-                _select_entity(doc, perp, True, mod):
+        if (
+            perp is not None
+            and _select_entity(doc, f0, False, mod)
+            and _select_entity(doc, perp, True, mod)
+        ):
             ang = sw_get_measure_angle_from_doc(doc)
             if ang.get("ok") and ang["measure"]["angle_deg"] is not None:
                 _ok("S-ANGLE", ang["measure"]["angle_deg"], 90.0, 1.0, out)
@@ -190,16 +219,22 @@ def leg_part_measures(sw: Any, mod: Any, out: dict) -> None:
                 if dp.get("ok") and dp["measure"]["distance_mm"] is not None:
                     d = dp["measure"]["distance_mm"]
                     green = d > 0
-                    out["S-DUR-PAIR"] = {"distance_mm": d,
-                                         "status": "GREEN" if green else "RED"}
-                    print(f"  {'GREEN' if green else 'RED'}  S-DUR-PAIR: "
-                          f"distance={d:.4f} mm (persist round-trip)")
+                    out["S-DUR-PAIR"] = {
+                        "distance_mm": d,
+                        "status": "GREEN" if green else "RED",
+                    }
+                    print(
+                        f"  {'GREEN' if green else 'RED'}  S-DUR-PAIR: "
+                        f"distance={d:.4f} mm (persist round-trip)"
+                    )
                 else:
                     out["S-DUR-PAIR"] = {"status": "RED", "error": dp.get("error")}
                     print(f"  RED  S-DUR-PAIR: {dp.get('error')}")
             else:
-                out["S-DUR-PAIR"] = {"status": "RED",
-                                     "error": f"only {len(refs)} tokens captured"}
+                out["S-DUR-PAIR"] = {
+                    "status": "RED",
+                    "error": f"only {len(refs)} tokens captured",
+                }
         else:
             out["S-DUR-PAIR"] = {"status": "RED", "error": "no vertices"}
     except Exception as exc:
@@ -256,13 +291,17 @@ def leg_asm_bbox(sw: Any, mod: Any, out: dict) -> None:
         # Two 10mm cubes spanning x[0,30] -> dx~30, dy~dz~10.
         green = dx > 0 and dy > 0 and dz > 0 and dx > dy * 1.5
         out["S-ASM-BBOX"] = {
-            "dx_mm": dx, "dy_mm": dy, "dz_mm": dz,
+            "dx_mm": dx,
+            "dy_mm": dy,
+            "dz_mm": dz,
             "components": bb.get("component_count"),
             "status": "GREEN" if green else "RED",
         }
-        print(f"  {'GREEN' if green else 'RED'}  S-ASM-BBOX: "
-              f"dx={dx:.2f} dy={dy:.2f} dz={dz:.2f} mm "
-              f"({bb.get('component_count')} comps)")
+        print(
+            f"  {'GREEN' if green else 'RED'}  S-ASM-BBOX: "
+            f"dx={dx:.2f} dy={dy:.2f} dz={dz:.2f} mm "
+            f"({bb.get('component_count')} comps)"
+        )
     else:
         out["S-ASM-BBOX"] = {"status": "RED", "error": ab.get("error")}
         print(f"  RED  S-ASM-BBOX: {ab.get('error')}")

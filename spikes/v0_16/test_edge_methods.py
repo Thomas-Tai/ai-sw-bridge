@@ -1,6 +1,8 @@
 """Diagnostic: list all methods on IEdge."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "v0_15"))
 
@@ -38,7 +40,7 @@ try:
     bodies = doc.GetBodies2(0, True)
     edges_raw = bodies[0].GetEdges()
     ext = typed_extension(doc, module=mod)
-    
+
     typed_edge = None
     for e in edges_raw:
         pid = ext.GetPersistReference3(e)
@@ -52,20 +54,20 @@ try:
                 break
             except:
                 continue
-    
+
     if not typed_edge:
         print("No typed edge")
         sys.exit(1)
 
     # List all methods
     print("=== IEdge methods ===")
-    methods = [m for m in dir(typed_edge) if not m.startswith('_')]
+    methods = [m for m in dir(typed_edge) if not m.startswith("_")]
     for m in sorted(methods):
         print(f"  {m}")
 
     # Check if there's a SelectByID we can use
     print("\n=== Checking for selection-related attributes ===")
-    for attr in ['GetEntityId', 'GetId', 'Id', 'GetSelectById', 'GetSelectionId']:
+    for attr in ["GetEntityId", "GetId", "Id", "GetSelectById", "GetSelectionId"]:
         if hasattr(typed_edge, attr):
             print(f"  {attr}: EXISTS")
             try:

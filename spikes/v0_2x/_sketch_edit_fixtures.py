@@ -136,11 +136,15 @@ def build_overhang_lines_sketch(
     """
     _open_sketch_on_plane(doc, plane)
     sm = doc.SketchManager
-    sm.CreateLine(-0.020, 0.000, 0.0, 0.020, 0.000, 0.0)   # horizontal bar H, y=0
+    sm.CreateLine(-0.020, 0.000, 0.0, 0.020, 0.000, 0.0)  # horizontal bar H, y=0
     sm.CreateLine(-0.010, -0.010, 0.0, -0.010, 0.010, 0.0)  # vertical V1 at x=-10mm
-    sm.CreateLine(0.010, -0.010, 0.0, 0.010, 0.010, 0.0)    # vertical V2 at x=+10mm
+    sm.CreateLine(0.010, -0.010, 0.0, 0.010, 0.010, 0.0)  # vertical V2 at x=+10mm
     _close_sketch(doc)
-    pick_xyz = (0.005, 0.000, 0.0)  # on H, between V1(-10) and V2(+10), 5mm clear of origin
+    pick_xyz = (
+        0.005,
+        0.000,
+        0.0,
+    )  # on H, between V1(-10) and V2(+10), 5mm clear of origin
     return "Sketch1", 3, pick_xyz
 
 
@@ -159,8 +163,8 @@ def build_mirror_seed_sketch(
     _open_sketch_on_plane(doc, plane)
     sm = doc.SketchManager
     sm.CreateCenterLine(0.0, -0.020, 0.0, 0.0, 0.020, 0.0)  # vertical centerline on Y
-    sm.CreateLine(0.005, 0.000, 0.0, 0.015, 0.000, 0.0)     # +X horizontal
-    sm.CreateLine(0.015, 0.000, 0.0, 0.015, 0.010, 0.0)     # +X vertical (forms an L)
+    sm.CreateLine(0.005, 0.000, 0.0, 0.015, 0.000, 0.0)  # +X horizontal
+    sm.CreateLine(0.015, 0.000, 0.0, 0.015, 0.010, 0.0)  # +X vertical (forms an L)
     _close_sketch(doc)
     return "Sketch1", 3, [1, 2], 0
 
@@ -179,14 +183,35 @@ def build_box_top_sketch(doc: Any) -> tuple[str, Any]:
     doc.SketchManager.CreateCornerRectangle(-0.020, -0.015, 0.0, 0.020, 0.015, 0.0)
     doc.SketchManager.InsertSketch(True)  # close Sketch1
     doc.ClearSelection2(True)
-    _sk_feat = doc.FeatureByName("Sketch1")  # sketch is a feature -> FeatureByName, not SelectByID2 (None-callout trap)
+    _sk_feat = doc.FeatureByName(
+        "Sketch1"
+    )  # sketch is a feature -> FeatureByName, not SelectByID2 (None-callout trap)
     _sk_feat.Select2(False, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion2(
-        True, False, False, _SW_END_COND_BLIND, 0,
-        0.010, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        _SW_END_COND_BLIND,
+        0,
+        0.010,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     doc.ClearSelection2(True)
 
@@ -200,7 +225,9 @@ def build_box_top_sketch(doc: Any) -> tuple[str, Any]:
     face = swsel.GetSelectedObject6(1, -1)
     if face is None:
         raise RuntimeError("could not select the top face of the box fixture")
-    edges = list(face.GetEdges)  # GetEdges is a late-bound PROPERTY (returns the tuple) -> no parens
+    edges = list(
+        face.GetEdges
+    )  # GetEdges is a late-bound PROPERTY (returns the tuple) -> no parens
     if not edges:
         raise RuntimeError("top face has no edges to convert")
     edge = edges[0]
@@ -209,7 +236,9 @@ def build_box_top_sketch(doc: Any) -> tuple[str, Any]:
     # so the orchestrator's reopen-by-name would miss it). Convert then projects
     # the perimeter edge as a SECOND segment (before=1, after=2).
     doc.SketchManager.InsertSketch(True)
-    doc.SketchManager.CreateLine(-0.018, -0.013, 0.0, -0.014, -0.013, 0.0)  # seed (in-plane z=0)
+    doc.SketchManager.CreateLine(
+        -0.018, -0.013, 0.0, -0.014, -0.013, 0.0
+    )  # seed (in-plane z=0)
     _close_sketch(doc)
     return "Sketch2", edge
 

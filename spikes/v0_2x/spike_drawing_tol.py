@@ -74,13 +74,15 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 def save_results() -> None:
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(results, indent=2, default=str), encoding="utf-8"
+    )
     print(f"  wrote {RESULTS_PATH}", file=sys.stderr)
 
 
 def _close_all_docs(sw: Any) -> None:
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -131,10 +133,14 @@ def run() -> str:
         "schema_version": 1,
         "name": "TolTestBox",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 25.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 15.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 25.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 15.0},
         ],
     }
     r = part_build(spec, save_as=PART_PATH, save_format="current", no_dim=False)
@@ -169,8 +175,14 @@ def run() -> str:
     drawing_doc = typed_qi(doc_raw, "IDrawingDoc", module=mod)
 
     # Create front view
-    view_raw = drawing_doc.CreateDrawViewFromModelView3(PART_PATH, "*Front", 0.15, 0.15, 0.0)
-    gate("create_view", view_raw is not None and not isinstance(view_raw, int), f"type={type(view_raw).__name__}")
+    view_raw = drawing_doc.CreateDrawViewFromModelView3(
+        PART_PATH, "*Front", 0.15, 0.15, 0.0
+    )
+    gate(
+        "create_view",
+        view_raw is not None and not isinstance(view_raw, int),
+        f"type={type(view_raw).__name__}",
+    )
     if view_raw is None or isinstance(view_raw, int):
         save_results()
         return "WALL"
@@ -214,7 +226,9 @@ def run() -> str:
     print(f"  First dim: {dim_name}")
 
     # Short name for IModelDoc2.Parameter lookup
-    dim_short_name = dim_name.split("@")[0] + "@" + dim_name.split("@")[1]  # e.g., "D1@SK"
+    dim_short_name = (
+        dim_name.split("@")[0] + "@" + dim_name.split("@")[1]
+    )  # e.g., "D1@SK"
 
     results["dim_name"] = dim_name
     results["dim_short_name"] = dim_short_name
@@ -225,8 +239,18 @@ def run() -> str:
     print("\n--- Phase 1: In-memory tolerance set + read-back ---")
 
     tolerance_types = [
-        {"label": "symmetric", "type": SW_TOL_SYMMETRIC, "min": -0.00005, "max": 0.00005},
-        {"label": "bilateral", "type": SW_TOL_BILATERAL, "min": -0.00005, "max": 0.0001},
+        {
+            "label": "symmetric",
+            "type": SW_TOL_SYMMETRIC,
+            "min": -0.00005,
+            "max": 0.00005,
+        },
+        {
+            "label": "bilateral",
+            "type": SW_TOL_BILATERAL,
+            "min": -0.00005,
+            "max": 0.0001,
+        },
         {"label": "limit", "type": SW_TOL_LIMIT, "min": -0.00005, "max": 0.0001},
     ]
 
@@ -253,10 +277,17 @@ def run() -> str:
             print(f"    PART dim:    type={part_type}, vals={part_vals}")
 
             matches = rb_type == tt["type"] and part_type == tt["type"]
-            nontrivial = rb_vals is not None and len(rb_vals) >= 2 and (rb_vals[0] != 0 or rb_vals[1] != 0)
+            nontrivial = (
+                rb_vals is not None
+                and len(rb_vals) >= 2
+                and (rb_vals[0] != 0 or rb_vals[1] != 0)
+            )
 
-            gate(f"{label}_set_read", matches and nontrivial,
-                 f"type={rb_type}, vals={rb_vals}, part_matches={part_type == rb_type}")
+            gate(
+                f"{label}_set_read",
+                matches and nontrivial,
+                f"type={rb_type}, vals={rb_vals}, part_matches={part_type == rb_type}",
+            )
 
             results["tolerance_tests"][label] = {
                 "drw_type": rb_type,
@@ -323,8 +354,16 @@ def run() -> str:
             reopen_vals = part_dim_t2.GetToleranceValues()
             print(f"    Reopened PART dim: type={reopen_type}, vals={reopen_vals}")
 
-            persisted = reopen_type == SW_TOL_SYMMETRIC and reopen_vals is not None and len(reopen_vals) >= 2
-            gate("symmetric_persisted", persisted, f"type={reopen_type}, vals={reopen_vals}")
+            persisted = (
+                reopen_type == SW_TOL_SYMMETRIC
+                and reopen_vals is not None
+                and len(reopen_vals) >= 2
+            )
+            gate(
+                "symmetric_persisted",
+                persisted,
+                f"type={reopen_type}, vals={reopen_vals}",
+            )
 
             results["tolerance_tests"]["symmetric_persist"] = {
                 "reopen_type": reopen_type,
@@ -405,8 +444,16 @@ def run() -> str:
             reopen_vals = part_dim_t4.GetToleranceValues()
             print(f"    Reopened PART dim: type={reopen_type}, vals={reopen_vals}")
 
-            persisted = reopen_type == SW_TOL_BILATERAL and reopen_vals is not None and len(reopen_vals) >= 2
-            gate("bilateral_persisted", persisted, f"type={reopen_type}, vals={reopen_vals}")
+            persisted = (
+                reopen_type == SW_TOL_BILATERAL
+                and reopen_vals is not None
+                and len(reopen_vals) >= 2
+            )
+            gate(
+                "bilateral_persisted",
+                persisted,
+                f"type={reopen_type}, vals={reopen_vals}",
+            )
 
             results["tolerance_tests"]["bilateral_persist"] = {
                 "reopen_type": reopen_type,
@@ -481,8 +528,14 @@ def run() -> str:
             reopen_vals = part_dim_t6.GetToleranceValues()
             print(f"    Reopened PART dim: type={reopen_type}, vals={reopen_vals}")
 
-            persisted = reopen_type == SW_TOL_LIMIT and reopen_vals is not None and len(reopen_vals) >= 2
-            gate("limit_persisted", persisted, f"type={reopen_type}, vals={reopen_vals}")
+            persisted = (
+                reopen_type == SW_TOL_LIMIT
+                and reopen_vals is not None
+                and len(reopen_vals) >= 2
+            )
+            gate(
+                "limit_persisted", persisted, f"type={reopen_type}, vals={reopen_vals}"
+            )
 
             results["tolerance_tests"]["limit_persist"] = {
                 "reopen_type": reopen_type,
@@ -502,8 +555,12 @@ def run() -> str:
     # ================================================================
     print("\n--- Verdict ---")
 
-    sym_p = results["tolerance_tests"].get("symmetric_persist", {}).get("persisted", False)
-    bil_p = results["tolerance_tests"].get("bilateral_persist", {}).get("persisted", False)
+    sym_p = (
+        results["tolerance_tests"].get("symmetric_persist", {}).get("persisted", False)
+    )
+    bil_p = (
+        results["tolerance_tests"].get("bilateral_persist", {}).get("persisted", False)
+    )
     lim_p = results["tolerance_tests"].get("limit_persist", {}).get("persisted", False)
 
     all_go = sym_p and bil_p and lim_p
@@ -536,7 +593,10 @@ if __name__ == "__main__":
     try:
         verdict = run()
     except Exception as exc:
-        results["gates"]["UNEXPECTED"] = {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}
+        results["gates"]["UNEXPECTED"] = {
+            "ok": False,
+            "detail": f"{type(exc).__name__}: {exc}",
+        }
         verdict = "NO-GO"
         results["verdict"] = verdict
     finally:

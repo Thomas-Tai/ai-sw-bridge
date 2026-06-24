@@ -23,6 +23,7 @@ from ai_sw_bridge.features import com_point as cp
 # Fake COM infrastructure
 # ---------------------------------------------------------------------------
 
+
 class _FakeFeatureNode:
     def __init__(self, type_name: str | None = None):
         self._type_name = type_name
@@ -69,17 +70,23 @@ class _FakeFeatureManager:
             # Property-form (callable=False): auto-invoke now, return value.
             if not self.__dict__.get("_insert_com_callable", True):
                 if self.__dict__.get("_insert_com_raises", False):
-                    raise RuntimeError("COM error: InsertCenterOfMassReferencePoint failed")
+                    raise RuntimeError(
+                        "COM error: InsertCenterOfMassReferencePoint failed"
+                    )
                 self._activate_post_nodes()
                 self._insert_com_called = True
                 return True
+
             # Callable-form: return a bound function the handler can invoke.
             def _called():
                 self._insert_com_called = True
                 if self._insert_com_raises:
-                    raise RuntimeError("COM error: InsertCenterOfMassReferencePoint failed")
+                    raise RuntimeError(
+                        "COM error: InsertCenterOfMassReferencePoint failed"
+                    )
                 self._activate_post_nodes()
                 return True
+
             return _called
         raise AttributeError(name)
 
@@ -126,7 +133,9 @@ class _FakeDocPropertyForm:
     """Fake doc where ``InsertCenterOfMassReferencePoint`` resolves as a
     property (auto-invoked on attribute access — the late-bind trap)."""
 
-    def __init__(self, *, pre_nodes: list | None = None, post_nodes: list | None = None):
+    def __init__(
+        self, *, pre_nodes: list | None = None, post_nodes: list | None = None
+    ):
         self._fm = _FakeFeatureManager(pre_nodes)
         self._fm._insert_com_callable = False
         self._post_nodes = post_nodes
@@ -145,6 +154,7 @@ class _FakeDocPropertyForm:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_pre_nodes():
     """A baseline feature tree (Origin + 3 planes + 1 boss = 5 nodes)."""
@@ -181,6 +191,7 @@ def _make_post_nodes_wrong_type():
 # ---------------------------------------------------------------------------
 # Tests — Mode-B success
 # ---------------------------------------------------------------------------
+
 
 class TestModeBSuccess:
     def test_callable_insert_returns_true(self):
@@ -223,6 +234,7 @@ class TestModeBSuccess:
 # Tests — Mode-B ghost trap (no node delta)
 # ---------------------------------------------------------------------------
 
+
 class TestModeBGhostTrap:
     def test_no_node_delta_returns_false(self):
         doc = _FakeDoc(
@@ -248,6 +260,7 @@ class TestModeBGhostTrap:
 # Tests — Mode-B wrong type name
 # ---------------------------------------------------------------------------
 
+
 class TestModeBWrongType:
     def test_node_added_but_no_com_type_returns_false(self):
         doc = _FakeDoc(
@@ -263,6 +276,7 @@ class TestModeBWrongType:
 # Tests — Mode-B exception path
 # ---------------------------------------------------------------------------
 
+
 class TestModeBException:
     def test_insert_raises_returns_false(self):
         doc = _FakeDoc(
@@ -275,8 +289,10 @@ class TestModeBException:
 
     def test_handler_never_raises(self):
         """The handler contract: never raise, always return (False, reason)."""
+
         class _BadDoc:
             """Every attribute access raises."""
+
             @property
             def FeatureManager(self):
                 raise RuntimeError("COM unavailable")
@@ -294,6 +310,7 @@ class TestModeBException:
 # ---------------------------------------------------------------------------
 # Tests — count_feature_nodes helper
 # ---------------------------------------------------------------------------
+
 
 class TestCountFeatureNodes:
     def test_returns_zero_when_get_features_returns_none(self):
@@ -331,9 +348,11 @@ class TestCountFeatureNodes:
 # Tests — handler signature and SPIKE_STATUS
 # ---------------------------------------------------------------------------
 
+
 class TestHandlerContract:
     def test_handler_signature(self):
         import inspect
+
         sig = inspect.signature(cp.create_com_point)
         params = list(sig.parameters)
         assert params == ["doc", "feature", "target"]

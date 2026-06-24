@@ -40,7 +40,9 @@ if _SRC not in sys.path:
 
 from _feature_spike_fixtures import _new_part, _select_feature, connect  # noqa: E402
 
-RESULTS_PATH = _REPO_ROOT / "spikes" / "v0_2x" / "_results" / "metadata_config_crud.json"
+RESULTS_PATH = (
+    _REPO_ROOT / "spikes" / "v0_2x" / "_results" / "metadata_config_crud.json"
+)
 
 _BLIND = 0
 
@@ -55,10 +57,29 @@ def build_two_config_part(sw: Any, path: str) -> bool:
     doc.ClearSelection2(True)
     _select_feature(doc, "Sketch1")
     doc.FeatureManager.FeatureExtrusion2(
-        True, False, False, _BLIND, 0,
-        0.010, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        _BLIND,
+        0,
+        0.010,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     doc.ClearSelection2(True)
     # AddConfiguration3(Name, Comment, AlternateName, Options) -> Object
@@ -74,6 +95,7 @@ def build_two_config_part(sw: Any, path: str) -> bool:
 def _read_prop(ext_obj: Any, config_name: str, name: str, mod: Any):
     """(value | None, names_set) for *name* in the *config_name* manager."""
     from ai_sw_bridge.com.earlybind import typed_qi
+
     cpm = typed_qi(
         ext_obj.CustomPropertyManager(config_name), "ICustomPropertyManager", module=mod
     )
@@ -107,24 +129,40 @@ def run() -> dict[str, Any]:
     result["fixture"] = path
 
     specs = [
-        ("file_level_write",
-         {"kind": "properties", "model": path, "properties": {"PropA": "Global"}}),
-        ("config_write",
-         {"kind": "properties", "model": path, "configuration": "Config_B",
-          "properties": {"PropA": "Local_B", "TempProp": "temp"}}),
-        ("config_delete",
-         {"kind": "properties", "model": path, "configuration": "Config_B",
-          "delete": ["TempProp"]}),
+        (
+            "file_level_write",
+            {"kind": "properties", "model": path, "properties": {"PropA": "Global"}},
+        ),
+        (
+            "config_write",
+            {
+                "kind": "properties",
+                "model": path,
+                "configuration": "Config_B",
+                "properties": {"PropA": "Local_B", "TempProp": "temp"},
+            },
+        ),
+        (
+            "config_delete",
+            {
+                "kind": "properties",
+                "model": path,
+                "configuration": "Config_B",
+                "delete": ["TempProp"],
+            },
+        ),
     ]
     for label, spec in specs:
         cr = commit_properties(sw, spec, mod=mod)
-        result["commits"].append({
-            "label": label,
-            "ok": cr.get("ok"),
-            "summary": cr.get("summary"),
-            "errors": cr.get("errors"),
-            "props_deleted": cr.get("props_deleted"),
-        })
+        result["commits"].append(
+            {
+                "label": label,
+                "ok": cr.get("ok"),
+                "summary": cr.get("summary"),
+                "errors": cr.get("errors"),
+                "props_deleted": cr.get("props_deleted"),
+            }
+        )
         if not cr.get("ok"):
             result["overall"] = "FAIL"
             result["finding"] = f"commit '{label}' failed: {cr.get('errors')}"
@@ -195,7 +233,9 @@ def main() -> int:
         except Exception:
             pass
         pythoncom.CoUninitialize()
-    payload = json.dumps(_scrub(result), indent=2, default=lambda o: f"<{type(o).__name__}>")
+    payload = json.dumps(
+        _scrub(result), indent=2, default=lambda o: f"<{type(o).__name__}>"
+    )
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     RESULTS_PATH.write_text(payload, encoding="utf-8")
     print(f"wrote {RESULTS_PATH}", file=sys.stderr)

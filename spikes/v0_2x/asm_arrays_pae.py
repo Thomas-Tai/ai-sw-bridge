@@ -153,8 +153,11 @@ def run() -> str:
     # Dry run
     print("\n--- Dry run ---")
     dry_result = dry_run_assembly(asm_spec)
-    gate("dry_run", dry_result.get("ok", False),
-         f"resolved={len(dry_result.get('resolved_parts', {}))}")
+    gate(
+        "dry_run",
+        dry_result.get("ok", False),
+        f"resolved={len(dry_result.get('resolved_parts', {}))}",
+    )
     if not dry_result.get("ok"):
         gate("dry_run_detail", False, dry_result.get("error", "?"))
         save_results()
@@ -163,21 +166,33 @@ def run() -> str:
     # Commit
     print("\n--- Commit ---")
     commit_result = commit_assembly(sw, asm_spec, ASM_PATH, mod=mod)
-    gate("commit", commit_result.get("ok", False),
-         f"components={commit_result.get('component_count', '?')}, "
-         f"expanded={commit_result.get('array_expanded_count', '?')}")
+    gate(
+        "commit",
+        commit_result.get("ok", False),
+        f"components={commit_result.get('component_count', '?')}, "
+        f"expanded={commit_result.get('array_expanded_count', '?')}",
+    )
 
     if not commit_result.get("ok"):
         gate("commit_detail", False, commit_result.get("error", "?"))
         save_results()
         return "WALL"
 
-    gate("expanded_count", commit_result.get("array_expanded_count") == 7,
-         f"7 expanded (3 rail + 4 bolt)")
-    gate("total_count", commit_result.get("component_count") == 8,
-         f"8 total (1 seed + 7 expanded)")
-    gate("asm_saved", os.path.isfile(ASM_PATH),
-         f"size={os.path.getsize(ASM_PATH) if os.path.isfile(ASM_PATH) else '?'}")
+    gate(
+        "expanded_count",
+        commit_result.get("array_expanded_count") == 7,
+        f"7 expanded (3 rail + 4 bolt)",
+    )
+    gate(
+        "total_count",
+        commit_result.get("component_count") == 8,
+        f"8 total (1 seed + 7 expanded)",
+    )
+    gate(
+        "asm_saved",
+        os.path.isfile(ASM_PATH),
+        f"size={os.path.getsize(ASM_PATH) if os.path.isfile(ASM_PATH) else '?'}",
+    )
 
     # Re-open and verify
     print("\n--- Re-open and verify ---")
@@ -224,12 +239,14 @@ def run() -> str:
                         arr = xform.ArrayData
                         if arr is not None:
                             data = list(arr)
-                            instances.append({
-                                "name": cn,
-                                "tx_mm": round(data[9] * 1000, 2),
-                                "ty_mm": round(data[10] * 1000, 2),
-                                "tz_mm": round(data[11] * 1000, 2),
-                            })
+                            instances.append(
+                                {
+                                    "name": cn,
+                                    "tx_mm": round(data[9] * 1000, 2),
+                                    "ty_mm": round(data[10] * 1000, 2),
+                                    "tz_mm": round(data[11] * 1000, 2),
+                                }
+                            )
                             continue
                 except Exception:
                     pass
@@ -237,14 +254,17 @@ def run() -> str:
     except Exception as exc:
         gate("sample_transforms", False, f"error: {exc!r}")
 
-    gate("sampled_instances", len(instances) == 8,
-         f"sampled {len(instances)} of 8 expected")
+    gate(
+        "sampled_instances",
+        len(instances) == 8,
+        f"sampled {len(instances)} of 8 expected",
+    )
 
     # Verify linear spacing
     linear_candidates = [
-        i for i in instances
-        if abs(i.get("ty_mm", 999)) < 5.0
-        and 95.0 < i.get("tx_mm", -999) < 185.0
+        i
+        for i in instances
+        if abs(i.get("ty_mm", 999)) < 5.0 and 95.0 < i.get("tx_mm", -999) < 185.0
     ]
     linear_ok = False
     if len(linear_candidates) >= 3:
@@ -253,13 +273,17 @@ def run() -> str:
         d12 = abs(xs[2] - xs[1])
         if abs(d01 - 40.0) < 5.0 and abs(d12 - 40.0) < 5.0:
             linear_ok = True
-    gate("linear_spacing", linear_ok,
-         f"found {len(linear_candidates)} candidates, "
-         f"xs={[i['tx_mm'] for i in sorted(linear_candidates, key=lambda x: x.get('tx_mm', 0))]}")
+    gate(
+        "linear_spacing",
+        linear_ok,
+        f"found {len(linear_candidates)} candidates, "
+        f"xs={[i['tx_mm'] for i in sorted(linear_candidates, key=lambda x: x.get('tx_mm', 0))]}",
+    )
 
     # Verify circular radius + not stacked
     circular_candidates = [
-        i for i in instances
+        i
+        for i in instances
         if abs(i.get("ty_mm", 0) - 100) < 60.0
         and abs(i.get("tx_mm", 0)) < 60.0
         and i not in linear_candidates
@@ -271,17 +295,22 @@ def run() -> str:
         for inst in circular_candidates:
             tx = inst.get("tx_mm", 0)
             ty = inst.get("ty_mm", 0) - 100
-            radii.append(math.sqrt(tx ** 2 + ty ** 2))
+            radii.append(math.sqrt(tx**2 + ty**2))
         all_at_radius = all(abs(r - 50.0) < 5.0 for r in radii)
-        distinct = len(set(
-            (round(inst.get("tx_mm", 0), 1), round(inst.get("ty_mm", 0), 1))
-            for inst in circular_candidates
-        ))
+        distinct = len(
+            set(
+                (round(inst.get("tx_mm", 0), 1), round(inst.get("ty_mm", 0), 1))
+                for inst in circular_candidates
+            )
+        )
         if all_at_radius and distinct >= 3:
             circular_ok = True
-    gate("circular_radius", circular_ok,
-         f"found {len(circular_candidates)}, "
-         f"radii={[round(math.sqrt((i.get('tx_mm',0))**2 + (i.get('ty_mm',0)-100)**2), 2) for i in circular_candidates]}")
+    gate(
+        "circular_radius",
+        circular_ok,
+        f"found {len(circular_candidates)}, "
+        f"radii={[round(math.sqrt((i.get('tx_mm',0))**2 + (i.get('ty_mm',0)-100)**2), 2) for i in circular_candidates]}",
+    )
 
     # Manifest round-trip
     print("\n--- Manifest round-trip ---")
@@ -293,13 +322,19 @@ def run() -> str:
         stored_arrays = stored_spec.get("component_arrays")
         orig_arrays = asm_spec.get("component_arrays")
         roundtrip_ok = stored_arrays == orig_arrays
-        gate("manifest_roundtrip", roundtrip_ok,
-             f"stored {len(stored_arrays or [])} arrays, "
-             f"original {len(orig_arrays or [])}")
+        gate(
+            "manifest_roundtrip",
+            roundtrip_ok,
+            f"stored {len(stored_arrays or [])} arrays, "
+            f"original {len(orig_arrays or [])}",
+        )
         # Verify runtime overlay has all 8 instances
         runtime_comps = manifest_data.get("runtime", {}).get("components", [])
-        gate("runtime_instances", len(runtime_comps) == 8,
-             f"{len(runtime_comps)} runtime instances")
+        gate(
+            "runtime_instances",
+            len(runtime_comps) == 8,
+            f"{len(runtime_comps)} runtime instances",
+        )
     else:
         gate("manifest_exists", False, "not found")
         roundtrip_ok = False

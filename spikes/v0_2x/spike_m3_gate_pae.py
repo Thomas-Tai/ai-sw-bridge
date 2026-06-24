@@ -28,6 +28,7 @@ property + disk link. On GREEN the ENTIRE mutate sw_* family is sealed behind .m
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_m3_gate_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -84,11 +85,17 @@ def _under_warnings_as_errors(fn) -> tuple[dict[str, Any], bool, str]:
         try:
             return fn(), True, ""
         except PendingDeprecationWarning as exc:  # noqa: BLE001
-            return {"ok": False}, False, f"internal PendingDeprecationWarning leaked: {exc}"
+            return (
+                {"ok": False},
+                False,
+                f"internal PendingDeprecationWarning leaked: {exc}",
+            )
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -119,73 +126,114 @@ def main() -> int:
 
         drw_path = str(_WORK / "m3_drawing.SLDDRW")
         drw_spec_path = _WORK / "m3_drw_spec.json"
-        drw_spec_path.write_text(json.dumps({
-            "kind": "drawing", "name": "m3_gate_drw", "model": drw_model["path"],
-            "views": ["front", "top", "isometric"], "sheet": {"template_size": "A3"},
-        }), encoding="utf-8")
+        drw_spec_path.write_text(
+            json.dumps(
+                {
+                    "kind": "drawing",
+                    "name": "m3_gate_drw",
+                    "model": drw_model["path"],
+                    "views": ["front", "top", "isometric"],
+                    "sheet": {"template_size": "A3"},
+                }
+            ),
+            encoding="utf-8",
+        )
         prop_spec_path = _WORK / "m3_prop_spec.json"
-        prop_spec_path.write_text(json.dumps({
-            "kind": "properties", "model": prop_model["path"],
-            "properties": {"M3_Tag": "GREEN"},
-        }), encoding="utf-8")
+        prop_spec_path.write_text(
+            json.dumps(
+                {
+                    "kind": "properties",
+                    "model": prop_model["path"],
+                    "properties": {"M3_Tag": "GREEN"},
+                }
+            ),
+            encoding="utf-8",
+        )
 
         # ── A: drawing propose via the CLI runner (cli->client->_impl, no leak) ──
         dp, cleanA, whyA = _under_warnings_as_errors(
-            lambda: cli_drw._run_propose(Namespace(spec=str(drw_spec_path))))
+            lambda: cli_drw._run_propose(Namespace(spec=str(drw_spec_path)))
+        )
         results["drw_propose_report"] = dp
         dpid = dp.get("proposal_id")
-        gate("drw_propose_clean",
-             cleanA and bool(dp.get("ok")) and isinstance(dpid, str) and len(dpid) == 12,
-             whyA or f"ok={dp.get('ok')} pid={dpid} (cli->client->_impl, no warning)")
+        gate(
+            "drw_propose_clean",
+            cleanA and bool(dp.get("ok")) and isinstance(dpid, str) and len(dpid) == 12,
+            whyA or f"ok={dp.get('ok')} pid={dpid} (cli->client->_impl, no warning)",
+        )
         if not dpid:
             raise SystemExit(_finish())
 
         # ── B: drawing dry_run via the CLI runner — disk link crossed the boundary ──
         dd, cleanB, whyB = _under_warnings_as_errors(
-            lambda: cli_drw._run_dry_run(Namespace(proposal_id=dpid)))
+            lambda: cli_drw._run_dry_run(Namespace(proposal_id=dpid))
+        )
         results["drw_dry_run_report"] = dd
-        gate("drw_dryrun_disklink",
-             cleanB and bool(dd.get("ok")),
-             whyB or f"ok={dd.get('ok')} (client dry_run loaded client propose's pid)")
+        gate(
+            "drw_dryrun_disklink",
+            cleanB and bool(dd.get("ok")),
+            whyB or f"ok={dd.get('ok')} (client dry_run loaded client propose's pid)",
+        )
 
         # ── C: drawing commit via the CLI runner — out threaded through facade ──
         dc, cleanC, whyC = _under_warnings_as_errors(
-            lambda: cli_drw._run_commit(Namespace(proposal_id=dpid, out=drw_path)))
+            lambda: cli_drw._run_commit(Namespace(proposal_id=dpid, out=drw_path))
+        )
         results["drw_commit_report"] = dc
         drw_saved = os.path.isfile(drw_path)
         vc = dc.get("view_count") or dc.get("views_placed") or 0
-        gate("drw_commit_file",
-             cleanC and bool(dc.get("ok")) and drw_saved and isinstance(vc, int) and vc > 0,
-             whyC or f"ok={dc.get('ok')} slddrw_saved={drw_saved} view_count={vc} "
-             f"(out threaded through the facade)")
+        gate(
+            "drw_commit_file",
+            cleanC
+            and bool(dc.get("ok"))
+            and drw_saved
+            and isinstance(vc, int)
+            and vc > 0,
+            whyC
+            or f"ok={dc.get('ok')} slddrw_saved={drw_saved} view_count={vc} "
+            f"(out threaded through the facade)",
+        )
 
         # ── D: properties propose via the CLI runner ──
         pp, cleanD, whyD = _under_warnings_as_errors(
-            lambda: cli_props._run_propose(Namespace(spec=str(prop_spec_path))))
+            lambda: cli_props._run_propose(Namespace(spec=str(prop_spec_path)))
+        )
         results["prop_propose_report"] = pp
         ppid = pp.get("proposal_id")
-        gate("prop_propose_clean",
-             cleanD and bool(pp.get("ok")) and isinstance(ppid, str) and len(ppid) == 12,
-             whyD or f"ok={pp.get('ok')} pid={ppid} (cli->client->_impl, no warning)")
+        gate(
+            "prop_propose_clean",
+            cleanD and bool(pp.get("ok")) and isinstance(ppid, str) and len(ppid) == 12,
+            whyD or f"ok={pp.get('ok')} pid={ppid} (cli->client->_impl, no warning)",
+        )
         if not ppid:
             raise SystemExit(_finish())
 
         # ── E: properties dry_run + commit — custom prop landed + verified read-back ──
         pd, cleanE1, whyE1 = _under_warnings_as_errors(
-            lambda: cli_props._run_dry_run(Namespace(proposal_id=ppid)))
+            lambda: cli_props._run_dry_run(Namespace(proposal_id=ppid))
+        )
         results["prop_dry_run_report"] = pd
         pc, cleanE2, whyE2 = _under_warnings_as_errors(
-            lambda: cli_props._run_commit(Namespace(proposal_id=ppid)))
+            lambda: cli_props._run_commit(Namespace(proposal_id=ppid))
+        )
         results["prop_commit_report"] = pc
         props_set = pc.get("props_set") or []
         verified = any(
             p.get("name") == "M3_Tag"
             and (p.get("immediate_read_back") or {}).get("match") is True
-            for p in props_set)
-        gate("prop_commit_verified",
-             cleanE1 and cleanE2 and bool(pd.get("ok")) and bool(pc.get("ok")) and verified,
-             (whyE1 or whyE2) or f"dry_run_ok={pd.get('ok')} commit_ok={pc.get('ok')} "
-             f"M3_Tag_verified_readback={verified} (custom property landed on the doc)")
+            for p in props_set
+        )
+        gate(
+            "prop_commit_verified",
+            cleanE1
+            and cleanE2
+            and bool(pd.get("ok"))
+            and bool(pc.get("ok"))
+            and verified,
+            (whyE1 or whyE2)
+            or f"dry_run_ok={pd.get('ok')} commit_ok={pc.get('ok')} "
+            f"M3_Tag_verified_readback={verified} (custom property landed on the doc)",
+        )
 
         # ── F: legacy shims STILL warn AND still reach the engine ──
         drw_spec = json.loads(drw_spec_path.read_text(encoding="utf-8"))
@@ -194,12 +242,16 @@ def main() -> int:
             warnings.simplefilter("always")
             l_drw = sw_propose_drawing(drw_spec)
             l_prop = sw_propose_properties(prop_spec)
-        warned = sum(
-            1 for w in caught if issubclass(w.category, PendingDeprecationWarning)) >= 2
-        gate("shims_still_warn",
-             warned and bool(l_drw.get("ok")) and bool(l_prop.get("ok")),
-             f"both warned>={warned}, drawing_ok={l_drw.get('ok')} "
-             f"properties_ok={l_prop.get('ok')}")
+        warned = (
+            sum(1 for w in caught if issubclass(w.category, PendingDeprecationWarning))
+            >= 2
+        )
+        gate(
+            "shims_still_warn",
+            warned and bool(l_drw.get("ok")) and bool(l_prop.get("ok")),
+            f"both warned>={warned}, drawing_ok={l_drw.get('ok')} "
+            f"properties_ok={l_prop.get('ok')}",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

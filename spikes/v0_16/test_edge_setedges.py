@@ -1,6 +1,8 @@
 """Test: ISetEdges and AddEdges with VARIANT."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "v0_15"))
 
@@ -40,7 +42,7 @@ try:
     bodies = doc.GetBodies2(0, True)
     edges_raw = bodies[0].GetEdges()
     ext = typed_extension(doc, module=mod)
-    
+
     raw_edge = edges_raw[0]
     pid = ext.GetPersistReference3(raw_edge)
     result = ext.GetObjectByPersistReference3(pid)
@@ -56,10 +58,9 @@ try:
         efl.BendAngle = 1.5708
         efl.BendRadius = 0.002
         efl.UseDefaultBendRadius = False
-        
+
         edge_var = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            [entity]
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [entity]
         )
         efl.ISetEdges(edge_var)
         count = efl.GetEdgeCount()
@@ -80,10 +81,9 @@ try:
         efl2.BendAngle = 1.5708
         efl2.BendRadius = 0.002
         efl2.UseDefaultBendRadius = False
-        
+
         edge_var2 = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            [entity]
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [entity]
         )
         efl2.AddEdges(edge_var2)
         count = efl2.GetEdgeCount()
@@ -101,7 +101,7 @@ try:
     try:
         efl_data3 = fm.CreateDefinition(37)
         efl3 = typed_qi(efl_data3, "IEdgeFlangeFeatureData", module=mod)
-        
+
         # Try to get edges (should be empty initially)
         edges_out = efl3.IGetEdges()
         print(f"  IGetEdges returned: {type(edges_out).__name__}")

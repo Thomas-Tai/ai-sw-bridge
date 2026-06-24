@@ -135,14 +135,20 @@ class TestValidate:
 class TestEffectiveSpacing:
     def test_full_circle_divides_by_num(self) -> None:
         # 4 instances over 360 -> 90 deg apart
-        assert _effective_spacing_deg({"num": 4, "arc_angle_deg": 360}) == pytest.approx(90.0)
+        assert _effective_spacing_deg(
+            {"num": 4, "arc_angle_deg": 360}
+        ) == pytest.approx(90.0)
 
     def test_partial_arc_divides_by_num_minus_1(self) -> None:
         # 3 instances over 90 deg arc -> 45 deg apart
-        assert _effective_spacing_deg({"num": 3, "arc_angle_deg": 90}) == pytest.approx(45.0)
+        assert _effective_spacing_deg({"num": 3, "arc_angle_deg": 90}) == pytest.approx(
+            45.0
+        )
 
     def test_explicit_spacing_wins(self) -> None:
-        assert _effective_spacing_deg({"num": 4, "arc_angle_deg": 360, "spacing_deg": 30}) == pytest.approx(30.0)
+        assert _effective_spacing_deg(
+            {"num": 4, "arc_angle_deg": 360, "spacing_deg": 30}
+        ) == pytest.approx(30.0)
 
 
 # ---------------------------------------------------------------------------
@@ -163,18 +169,26 @@ class TestApply:
         sk = _FakeSketch(1)
         doc = _FakeDoc(sk)
         res = _apply(
-            doc, sk,
-            {"entities": [0], "num": 4, "radius_mm": 20, "arc_angle_deg": 360,
-             "spacing_deg": 90, "pattern_rotate": True, "delete_instances": "2"},
+            doc,
+            sk,
+            {
+                "entities": [0],
+                "num": 4,
+                "radius_mm": 20,
+                "arc_angle_deg": 360,
+                "spacing_deg": 90,
+                "pattern_rotate": True,
+                "delete_instances": "2",
+            },
         )
         args = doc.SketchManager.repeat_args
         assert doc.SketchManager.call_count == 1
         assert len(args) == 9
-        assert args[0] == pytest.approx(0.020)         # ArcRadius — METRES
-        assert args[1] == pytest.approx(2 * math.pi)   # ArcAngle — RADIANS (360)
+        assert args[0] == pytest.approx(0.020)  # ArcRadius — METRES
+        assert args[1] == pytest.approx(2 * math.pi)  # ArcAngle — RADIANS (360)
         assert args[2] == 4 and isinstance(args[2], int)  # PatternNum
-        assert args[3] == pytest.approx(math.pi / 2)   # PatternSpacing — RADIANS (90)
-        assert args[4] is True                          # PatternRotate
+        assert args[3] == pytest.approx(math.pi / 2)  # PatternSpacing — RADIANS (90)
+        assert args[4] is True  # PatternRotate
         assert args[5] == "2" and isinstance(args[5], str)  # DeleteInstances
         assert args[6] is False and args[7] is False and args[8] is False  # dim flags
         assert res["ok"] is True
@@ -185,10 +199,10 @@ class TestApply:
         doc = _FakeDoc(sk)
         _apply(doc, sk, {"entities": [0], "num": 4, "radius_mm": 20})
         args = doc.SketchManager.repeat_args
-        assert args[1] == pytest.approx(2 * math.pi)   # arc_angle default 360
-        assert args[3] == pytest.approx(math.pi / 2)   # spacing default = 360/4 = 90
-        assert args[4] is True                          # pattern_rotate default True
-        assert args[5] == ""                            # delete_instances default ""
+        assert args[1] == pytest.approx(2 * math.pi)  # arc_angle default 360
+        assert args[3] == pytest.approx(math.pi / 2)  # spacing default = 360/4 = 90
+        assert args[4] is True  # pattern_rotate default True
+        assert args[5] == ""  # delete_instances default ""
 
     def test_returns_not_ok_when_com_false(self) -> None:
         sk = _FakeSketch(1)

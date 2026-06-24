@@ -12,7 +12,9 @@ from typing import Any
 import pytest
 
 import ai_sw_bridge.observe as observe
-from ai_sw_bridge.observe import _sw_get_feature_statistics_impl as sw_get_feature_statistics
+from ai_sw_bridge.observe import (
+    _sw_get_feature_statistics_impl as sw_get_feature_statistics,
+)
 
 
 class _FakeStats:
@@ -96,6 +98,7 @@ def patched(monkeypatch):
         monkeypatch.setattr(observe, "get_sw_app", lambda: object())
         monkeypatch.setattr(observe, "get_active_doc", lambda sw: doc)
         monkeypatch.setattr(observe, "resolve", _fake_resolve)
+
     return _apply
 
 
@@ -133,7 +136,12 @@ class TestFeatureStatistics:
         patched(_FakeDoc(_FakeFM(_FakeStats())))
         r = sw_get_feature_statistics()
         assert r["feature_names"] == ["Sketch1", "Boss1", "Cut1", "Surface1"]
-        assert r["feature_types"] == ["ProfileFeature", "Extrusion", "Cut", "RefSurface"]
+        assert r["feature_types"] == [
+            "ProfileFeature",
+            "Extrusion",
+            "Cut",
+            "RefSurface",
+        ]
         assert r["feature_update_times"] == [0.01, 0.02, 0.03, 0.04]
 
     def test_no_active_doc(self, patched) -> None:

@@ -182,7 +182,8 @@ class TestApply:
         sk = _FakeSketch(2)
         doc = _FakeDoc(sk)
         mc_mod._apply(
-            doc, sk,
+            doc,
+            sk,
             {"entities": [0], "dest_mm": [100, 0, 0], "base_mm": [1000, 0, 0]},
         )
         args = doc.Extension.move_or_copy_calls[0]

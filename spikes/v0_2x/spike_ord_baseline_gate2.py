@@ -15,6 +15,7 @@ Gate 2 exhaustive: 6 methods, datum pre-selected, verify dims_on_reopen.
 
 VERIFY-THE-EFFECT: SaveAs3 → CloseDoc → OpenDoc6 → GetDisplayDimensions → count+type.
 """
+
 from __future__ import annotations
 
 import glob
@@ -32,13 +33,17 @@ from ai_sw_bridge.com.sw_type_info import wrapper_module
 
 
 def find_part_template() -> str:
-    for pat in glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.PRTDOT"):
+    for pat in glob.glob(
+        r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.PRTDOT"
+    ):
         return pat
     return ""
 
 
 def find_drawing_template() -> str:
-    for pat in glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT"):
+    for pat in glob.glob(
+        r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT"
+    ):
         return pat
     return ""
 
@@ -62,10 +67,29 @@ def create_test_part(sw, mod) -> tuple[str, Any, Any]:
     skm.InsertSketch(True)
 
     mdoc2.FeatureManager.FeatureExtrusion2(
-        True, False, False, 1, 0, 0.02, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        1,
+        0,
+        0.02,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
 
     mdoc2.EditRebuild3()
@@ -82,7 +106,9 @@ def create_test_drawing(sw, mod, part_path: str) -> tuple[str, Any, Any, Any]:
     drawing_doc = typed_qi(doc_raw, "IDrawingDoc", module=mod)
     mdoc2 = typed(doc_raw, "IModelDoc2", module=mod)
 
-    view_raw = drawing_doc.CreateDrawViewFromModelView3(part_path, "*Front", 0.1, 0.15, 0.0)
+    view_raw = drawing_doc.CreateDrawViewFromModelView3(
+        part_path, "*Front", 0.1, 0.15, 0.0
+    )
     view = typed_qi(view_raw, "IView", module=mod)
     mdoc2.SaveAs3(drw_path, 0, 2)
     return drw_path, drawing_doc, mdoc2, view
@@ -184,19 +210,43 @@ def main() -> None:
     # Test each method
     methods = [
         # ORDINATE
-        {"name": "InsertOrdinate", "args": [], "scheme": "ordinate",
-         "sig": "() -> None (interactive mode starter)"},
-        {"name": "InsertHorizontalOrdinate", "args": [], "scheme": "ordinate",
-         "sig": "() -> None"},
-        {"name": "InsertVerticalOrdinate", "args": [], "scheme": "ordinate",
-         "sig": "() -> None"},
-        {"name": "AddOrdinateDimension2", "args": [0, 0.0, 0.0, 0.0], "scheme": "ordinate",
-         "sig": "(type:I4, X:R8, Y:R8, Z:R8) -> I4 (dim count or error code)"},
+        {
+            "name": "InsertOrdinate",
+            "args": [],
+            "scheme": "ordinate",
+            "sig": "() -> None (interactive mode starter)",
+        },
+        {
+            "name": "InsertHorizontalOrdinate",
+            "args": [],
+            "scheme": "ordinate",
+            "sig": "() -> None",
+        },
+        {
+            "name": "InsertVerticalOrdinate",
+            "args": [],
+            "scheme": "ordinate",
+            "sig": "() -> None",
+        },
+        {
+            "name": "AddOrdinateDimension2",
+            "args": [0, 0.0, 0.0, 0.0],
+            "scheme": "ordinate",
+            "sig": "(type:I4, X:R8, Y:R8, Z:R8) -> I4 (dim count or error code)",
+        },
         # BASELINE
-        {"name": "InsertBaseDim", "args": [], "scheme": "baseline",
-         "sig": "() -> None"},
-        {"name": "InsertChainDim", "args": [], "scheme": "baseline",
-         "sig": "() -> None"},
+        {
+            "name": "InsertBaseDim",
+            "args": [],
+            "scheme": "baseline",
+            "sig": "() -> None",
+        },
+        {
+            "name": "InsertChainDim",
+            "args": [],
+            "scheme": "baseline",
+            "sig": "() -> None",
+        },
     ]
 
     results = []
@@ -213,8 +263,15 @@ def main() -> None:
 
         if cnt < 1:
             print(f"  SKIP: count={cnt}")
-            results.append({"method": name, "scheme": tc["scheme"], "sig": tc["sig"],
-                           "verdict": "SKIP", "reason": f"datum not selected (count={cnt})"})
+            results.append(
+                {
+                    "method": name,
+                    "scheme": tc["scheme"],
+                    "sig": tc["sig"],
+                    "verdict": "SKIP",
+                    "reason": f"datum not selected (count={cnt})",
+                }
+            )
             continue
 
         # Call method
@@ -339,7 +396,12 @@ def main() -> None:
             "GetSelectedObjectCount2(-1) and GetSelectedObjectType2(1) work on this CDispatch."
         ),
         "methods": [
-            {"name": m["name"], "scheme": m["scheme"], "sig": m["sig"], "args": m["args"]}
+            {
+                "name": m["name"],
+                "scheme": m["scheme"],
+                "sig": m["sig"],
+                "args": m["args"],
+            }
             for m in methods
         ],
         "results": results,
@@ -367,8 +429,10 @@ def main() -> None:
     # Per-method summary
     print("\nPer-method summary:")
     for r in results:
-        print(f"  {r['method']}: {r['verdict']} | return={r['return']} | "
-              f"dims_imm={r['dims_immediate']} | dims_reopen={r['dims_reopen']}")
+        print(
+            f"  {r['method']}: {r['verdict']} | return={r['return']} | "
+            f"dims_imm={r['dims_immediate']} | dims_reopen={r['dims_reopen']}"
+        )
 
     try:
         sw.CloseAllDocuments(True)

@@ -19,6 +19,7 @@ free functions, no shims) wired onto the client.
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_recipeb_gate_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -61,7 +62,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -96,12 +99,17 @@ def main() -> int:
         ok = bool(getattr(r0, "ok", False))
         on_disk = bool(path) and Path(path).is_file()
         results["export_result"] = {
-            "format": getattr(r0, "format", None), "ok": ok, "path": path,
-            "error": getattr(r0, "error", None)}
-        gate("export_file_drop",
-             ok and on_disk,
-             f"ok={ok} stl_on_disk={on_disk} path={path} "
-             f"(export_all reached through client.export.run)")
+            "format": getattr(r0, "format", None),
+            "ok": ok,
+            "path": path,
+            "error": getattr(r0, "error", None),
+        }
+        gate(
+            "export_file_drop",
+            ok and on_disk,
+            f"ok={ok} stl_on_disk={on_disk} path={path} "
+            f"(export_all reached through client.export.run)",
+        )
 
         # ── B: features registry introspection ──
         kinds = client.features.list_kinds()
@@ -109,18 +117,24 @@ def main() -> int:
         known = "composite"  # shipped GREEN (W62) — must be advertised
         bogus = "__not_a_real_feature_kind__"
         results["features"] = {"count": len(kinds), "has_composite": known in kinds}
-        gate("features_introspection",
-             isinstance(kinds, list) and kinds == expected and len(kinds) > 0
-             and client.features.supports(known) is True
-             and client.features.supports(bogus) is False,
-             f"list_kinds()=={len(kinds)} kinds, matches_registry={kinds == expected}, "
-             f"supports('{known}')={client.features.supports(known)}, "
-             f"supports(bogus)={client.features.supports(bogus)}")
+        gate(
+            "features_introspection",
+            isinstance(kinds, list)
+            and kinds == expected
+            and len(kinds) > 0
+            and client.features.supports(known) is True
+            and client.features.supports(bogus) is False,
+            f"list_kinds()=={len(kinds)} kinds, matches_registry={kinds == expected}, "
+            f"supports('{known}')={client.features.supports(known)}, "
+            f"supports(bogus)={client.features.supports(bogus)}",
+        )
 
         # ── C: facades are cached (taxonomy parity with .observe/.mutate/.urdf) ──
-        gate("facades_cached",
-             client.export is client.export and client.features is client.features,
-             "client.export and client.features each return a cached singleton")
+        gate(
+            "facades_cached",
+            client.export is client.export and client.features is client.features,
+            "client.export and client.features each return a cached singleton",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

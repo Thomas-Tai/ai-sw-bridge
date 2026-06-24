@@ -68,13 +68,19 @@ def _new_part(sw: Any) -> Any:
     return sw.NewDocument(template, 0, 0.0, 0.0)
 
 
-def _sketch_rect_on_front(doc: Any, w: float, h: float, cx: float = 0.0, cy: float = 0.0) -> None:
+def _sketch_rect_on_front(
+    doc: Any, w: float, h: float, cx: float = 0.0, cy: float = 0.0
+) -> None:
     doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
     sk = doc.SketchManager
     sk.InsertSketch(True)
     sk.CreateCornerRectangle(
-        cx - w / 2, cy - h / 2, 0.0,
-        cx + w / 2, cy + h / 2, 0.0,
+        cx - w / 2,
+        cy - h / 2,
+        0.0,
+        cx + w / 2,
+        cy + h / 2,
+        0.0,
     )
     sk.InsertSketch(True)
 
@@ -83,14 +89,28 @@ def _extrude_no_merge(doc: Any, depth_m: float) -> Any:
     """FeatureExtrusion3 with Merge=False (arg 22) for multi-body."""
     fm = doc.FeatureManager
     return fm.FeatureExtrusion3(
-        True, False, False,
-        0, 0,
-        depth_m, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        0, 0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        depth_m,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
         False,
     )
 
@@ -509,9 +529,13 @@ def run() -> dict[str, Any]:
     output["results"]["delete_body"] = r
     print(f"  status: {r['status']}")
     if r.get("before"):
-        print(f"  before: {r['before']['body_count']} bodies, volumes={r['before'].get('volumes_mm3')}")
+        print(
+            f"  before: {r['before']['body_count']} bodies, volumes={r['before'].get('volumes_mm3')}"
+        )
     if r.get("after"):
-        print(f"  after:  {r['after']['body_count']} bodies, volumes={r['after'].get('volumes_mm3')}")
+        print(
+            f"  after:  {r['after']['body_count']} bodies, volumes={r['after'].get('volumes_mm3')}"
+        )
     if r.get("handler_error"):
         print(f"  error:  {r['handler_error']}")
 
@@ -520,9 +544,13 @@ def run() -> dict[str, Any]:
     output["results"]["combine_subtract"] = r
     print(f"  status: {r['status']}")
     if r.get("before"):
-        print(f"  before: {r['before']['body_count']} bodies, volumes={r['before'].get('volumes_mm3')}")
+        print(
+            f"  before: {r['before']['body_count']} bodies, volumes={r['before'].get('volumes_mm3')}"
+        )
     if r.get("after"):
-        print(f"  after:  {r['after']['body_count']} bodies, volumes={r['after'].get('volumes_mm3')}")
+        print(
+            f"  after:  {r['after']['body_count']} bodies, volumes={r['after'].get('volumes_mm3')}"
+        )
     if r.get("handler_error"):
         print(f"  error:  {r['handler_error']}")
 
@@ -531,9 +559,13 @@ def run() -> dict[str, Any]:
     output["results"]["combine_add"] = r
     print(f"  status: {r['status']}")
     if r.get("before"):
-        print(f"  before: {r['before']['body_count']} bodies, volumes={r['before'].get('volumes_mm3')}")
+        print(
+            f"  before: {r['before']['body_count']} bodies, volumes={r['before'].get('volumes_mm3')}"
+        )
     if r.get("after"):
-        print(f"  after:  {r['after']['body_count']} bodies, volumes={r['after'].get('volumes_mm3')}")
+        print(
+            f"  after:  {r['after']['body_count']} bodies, volumes={r['after'].get('volumes_mm3')}"
+        )
     if r.get("handler_error"):
         print(f"  error:  {r['handler_error']}")
 
@@ -542,9 +574,13 @@ def run() -> dict[str, Any]:
     output["results"]["split"] = r
     print(f"  status: {r['status']}")
     if r.get("before"):
-        print(f"  before: {r['before']['body_count']} bodies, volumes={r['before'].get('volumes_mm3')}")
+        print(
+            f"  before: {r['before']['body_count']} bodies, volumes={r['before'].get('volumes_mm3')}"
+        )
     if r.get("after"):
-        print(f"  after:  {r['after']['body_count']} bodies, volumes={r['after'].get('volumes_mm3')}")
+        print(
+            f"  after:  {r['after']['body_count']} bodies, volumes={r['after'].get('volumes_mm3')}"
+        )
     if r.get("handler_error"):
         print(f"  error:  {r['handler_error']}")
 

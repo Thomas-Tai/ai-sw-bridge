@@ -209,9 +209,7 @@ def collect_feature_health(doc: Any) -> dict[str, Any]:
         try:
             first = resolve(doc, "FirstFeature")
         except Exception:
-            out["error"] = (
-                f"FirstFeature failed on FeatureManager and doc: {exc!r}"
-            )
+            out["error"] = f"FirstFeature failed on FeatureManager and doc: {exc!r}"
             return out
 
     if first is None:
@@ -263,9 +261,7 @@ def collect_feature_health(doc: Any) -> dict[str, Any]:
                 "type_name": type_name,
                 "depth": depth,
                 "state_code": state_code,
-                "state": FEATURE_STATE_NAMES.get(
-                    state_code, f"unknown({state_code})"
-                ),
+                "state": FEATURE_STATE_NAMES.get(state_code, f"unknown({state_code})"),
                 "description": description,
                 "suppressed": suppressed,
             }
@@ -727,7 +723,9 @@ def _sw_get_feature_statistics_impl() -> dict[str, Any]:
             result["error"] = f"FeatureStatistics failed: {exc!r}"
             return result
         if stats is None:
-            result["error"] = "FeatureStatistics returned None (drawing/unsupported doc?)"
+            result["error"] = (
+                "FeatureStatistics returned None (drawing/unsupported doc?)"
+            )
             return result
 
         # Refresh BEFORE reading so counts/times reflect the current tree.
@@ -1591,9 +1589,7 @@ def _sw_undercut_faces_impl(
                 }
             )
 
-        classified = _classify_undercut_faces(
-            face_records, (pull_x, pull_y, pull_z)
-        )
+        classified = _classify_undercut_faces(face_records, (pull_x, pull_y, pull_z))
         result.update(
             face_count=classified["face_count"],
             undercut_count=classified["undercut_count"],
@@ -2099,7 +2095,8 @@ class SolidWorksObserver:
         if doc is None:
             return {"ok": False, "error": "no_active_doc"}
         return _sw_analyze_stackup_impl(
-            doc, component_names, check_endpoints=check_endpoints)
+            doc, component_names, check_endpoints=check_endpoints
+        )
 
     def draft_analysis(
         self,

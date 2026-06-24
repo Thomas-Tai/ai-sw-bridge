@@ -46,9 +46,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "export_pdf.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "export_pdf.json"
 
 # swExportDataFileType_e
 SW_EXPORT_PDF_DATA = 1
@@ -147,9 +145,9 @@ def _dump_typelib(mod: Any) -> dict[str, Any]:
         }
         # Confirm SetSheets signature from gen_py source
         # SetSheets(Which: swExportDataSheetsToExport_e, Sheets: SAFEARRAY of BSTR) -> BOOL
-        dump["IExportPdfData"]["SetSheets_signature"] = (
-            "SetSheets(Which: I4, Sheets: SAFEARRAY(BSTR)) -> BOOL"
-        )
+        dump["IExportPdfData"][
+            "SetSheets_signature"
+        ] = "SetSheets(Which: I4, Sheets: SAFEARRAY(BSTR)) -> BOOL"
     else:
         dump["IExportPdfData"] = "NOT FOUND"
 
@@ -262,13 +260,15 @@ def _build_drawing(
         try:
             ok = drawing_doc.NewSheet3(
                 sname,
-                8,   # PaperSize: swDwgPaperAsize (A4)
-                1,   # TemplateIn: swDwgTemplateCustom
-                1.0, 1.0,  # Scale1, Scale2
+                8,  # PaperSize: swDwgPaperAsize (A4)
+                1,  # TemplateIn: swDwgTemplateCustom
+                1.0,
+                1.0,  # Scale1, Scale2
                 True,  # FirstAngle
-                "",    # TemplateName
-                0.210, 0.297,  # Width, Height (A4 in metres)
-                "",    # PropertyViewName
+                "",  # TemplateName
+                0.210,
+                0.297,  # Width, Height (A4 in metres)
+                "",  # PropertyViewName
             )
             gate(f"newsheet_{sname}", bool(ok), f"NewSheet3 returned {ok!r}")
         except Exception as e:
@@ -299,7 +299,11 @@ def _build_drawing(
     # Verify sheet count
     try:
         n = drawing_doc.GetSheetCount()
-        gate("sheet_count", n == len(sheet_names), f"expected {len(sheet_names)}, got {n}")
+        gate(
+            "sheet_count",
+            n == len(sheet_names),
+            f"expected {len(sheet_names)}, got {n}",
+        )
     except Exception as e:
         gate("sheet_count", False, f"raised: {e}")
         return None
@@ -311,8 +315,11 @@ def _build_drawing(
     try:
         err = doc_m2.SaveAs3(drw_path, 0, 0)
         err_code = int(err) if err is not None else 0
-        gate("drawing_save", err_code == 0 and os.path.isfile(drw_path),
-             f"err={err_code}, exists={os.path.isfile(drw_path)}")
+        gate(
+            "drawing_save",
+            err_code == 0 and os.path.isfile(drw_path),
+            f"err={err_code}, exists={os.path.isfile(drw_path)}",
+        )
     except Exception as e:
         gate("drawing_save", False, f"raised: {e}")
         return None
@@ -402,10 +409,10 @@ def _export_pdf(
             1,  # DISPATCH_METHOD
             (11, 0),  # Return: BOOL
             (
-                (8, 1),   # Name: BSTR in
-                (3, 1),   # Version: I4 in
-                (3, 1),   # Options: I4 in
-                (9, 1),   # ExportData: IDispatch in
+                (8, 1),  # Name: BSTR in
+                (3, 1),  # Version: I4 in
+                (3, 1),  # Options: I4 in
+                (9, 1),  # ExportData: IDispatch in
                 (16387, 3),  # Errors: VARIANT|BYREF, in/out
                 (16387, 3),  # Warnings: VARIANT|BYREF, in/out
             ),
@@ -519,8 +526,13 @@ def run() -> str:
 
     pdf1_path = str(_tmp / f"w25_spike_1sheet_{_ts}.pdf")
     ok1, size1, detail1 = _export_pdf(
-        tsw, mod, drawing1, doc2_1, pdf1_path,
-        SW_EXPORT_ALL_SHEETS, [sheet1_actual],
+        tsw,
+        mod,
+        drawing1,
+        doc2_1,
+        pdf1_path,
+        SW_EXPORT_ALL_SHEETS,
+        [sheet1_actual],
     )
     gate("single_sheet_pdf", ok1, f"size={size1}, {detail1}")
     results["pdf_paths"]["single_sheet"] = pdf1_path
@@ -545,7 +557,11 @@ def run() -> str:
     _close_all_docs(sw)
 
     build2 = _build_drawing(
-        sw, tsw, mod, part_path, template_path,
+        sw,
+        tsw,
+        mod,
+        part_path,
+        template_path,
         [sheet1_actual, "DetailSheet"],
     )
     if build2 is None:
@@ -557,8 +573,13 @@ def run() -> str:
 
     pdf2_path = str(_tmp / f"w25_spike_2sheets_{_ts}.pdf")
     ok2, size2, detail2 = _export_pdf(
-        tsw, mod, drawing2, doc2_2, pdf2_path,
-        SW_EXPORT_ALL_SHEETS, [sheet1_actual, "DetailSheet"],
+        tsw,
+        mod,
+        drawing2,
+        doc2_2,
+        pdf2_path,
+        SW_EXPORT_ALL_SHEETS,
+        [sheet1_actual, "DetailSheet"],
     )
     gate("multi_sheet_pdf", ok2, f"size={size2}, {detail2}")
     results["pdf_paths"]["multi_sheet"] = pdf2_path
@@ -599,8 +620,13 @@ def run() -> str:
     print("\n=== TEST 3: Specified-sheet subset ===")
     pdf3_path = str(_tmp / f"w25_spike_specified_{_ts}.pdf")
     ok3, size3, detail3 = _export_pdf(
-        tsw, mod, drawing2, doc2_2, pdf3_path,
-        SW_EXPORT_SPECIFIED_SHEETS, ["DetailSheet"],
+        tsw,
+        mod,
+        drawing2,
+        doc2_2,
+        pdf3_path,
+        SW_EXPORT_SPECIFIED_SHEETS,
+        ["DetailSheet"],
     )
     gate("specified_sheet_pdf", ok3, f"size={size3}, {detail3}")
     results["pdf_paths"]["specified_sheet"] = pdf3_path
@@ -623,8 +649,13 @@ def run() -> str:
         pass
     pdf4_path = str(_tmp / f"w25_spike_current_{_ts}.pdf")
     ok4, size4, detail4 = _export_pdf(
-        tsw, mod, drawing2, doc2_2, pdf4_path,
-        SW_EXPORT_CURRENT_SHEET, [],
+        tsw,
+        mod,
+        drawing2,
+        doc2_2,
+        pdf4_path,
+        SW_EXPORT_CURRENT_SHEET,
+        [],
     )
     gate("current_sheet_pdf", ok4, f"size={size4}, {detail4}")
     results["pdf_paths"]["current_sheet"] = pdf4_path
@@ -649,10 +680,7 @@ def run() -> str:
     # VERDICT
     # ================================================================
     print("\n--- Verdict ---")
-    multi_ok = (
-        ok2
-        and results.get("multi_sheet_proof", {}).get("passed", False)
-    )
+    multi_ok = ok2 and results.get("multi_sheet_proof", {}).get("passed", False)
     specified_ok = ok3
 
     if ok1 and multi_ok and specified_ok:
@@ -705,7 +733,9 @@ if __name__ == "__main__":
         verdict = run()
     except Exception:
         traceback.print_exc()
-        results["verdict"] = f"NO-GO (unhandled exception: {traceback.format_exc()[:200]})"
+        results["verdict"] = (
+            f"NO-GO (unhandled exception: {traceback.format_exc()[:200]})"
+        )
         save_results()
         verdict = "NO-GO"
     sys.exit(0 if verdict == "GO" else 1)

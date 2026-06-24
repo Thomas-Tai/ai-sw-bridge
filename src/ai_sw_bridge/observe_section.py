@@ -78,8 +78,8 @@ _STATUS_COMPUTE_FAIL = 3
 
 _STATUS_MESSAGES = {
     _STATUS_INVALID_INPUT: "invalid input (faces already in selection set, or no selection)",
-    _STATUS_NOT_COPLANAR:  "selected faces are not in the same or parallel planes",
-    _STATUS_COMPUTE_FAIL:  "unable to compute section properties",
+    _STATUS_NOT_COPLANAR: "selected faces are not in the same or parallel planes",
+    _STATUS_COMPUTE_FAIL: "unable to compute section properties",
 }
 
 # Number of elements in the return array (CHM: "format of returned array of size 24").
@@ -138,7 +138,9 @@ def read_section_props(raw: Any) -> dict[str, Any]:
     try:
         arr = [float(raw[i]) for i in range(_EXPECTED_LEN)]
     except (TypeError, IndexError, ValueError) as exc:
-        result["errors"].append(f"array parse failed (expected {_EXPECTED_LEN} elements): {exc!r}")
+        result["errors"].append(
+            f"array parse failed (expected {_EXPECTED_LEN} elements): {exc!r}"
+        )
         return result
 
     status = int(arr[0])
@@ -280,5 +282,3 @@ def _sw_get_section_props_impl(doc: Any) -> dict[str, Any]:
         result["ok"] = True
 
     return result
-
-

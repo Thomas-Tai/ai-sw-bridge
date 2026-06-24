@@ -97,7 +97,9 @@ def _run_screenshot(args: argparse.Namespace) -> dict[str, Any]:
 
 def _run_measure(args: argparse.Namespace) -> dict[str, Any]:
     # v0.18 slice: route through the class-based SolidWorksClient.
-    return SolidWorksClient().observe.measure(entity_a=args.entity_a, entity_b=args.entity_b)
+    return SolidWorksClient().observe.measure(
+        entity_a=args.entity_a, entity_b=args.entity_b
+    )
 
 
 def _run_measure_selection(_args: argparse.Namespace) -> dict[str, Any]:
@@ -505,13 +507,25 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--pull-x", dest="pull_x", type=float, default=0.0, help="Pull dir X (default 0)"
+        "--pull-x",
+        dest="pull_x",
+        type=float,
+        default=0.0,
+        help="Pull dir X (default 0)",
     )
     p.add_argument(
-        "--pull-y", dest="pull_y", type=float, default=1.0, help="Pull dir Y (default 1)"
+        "--pull-y",
+        dest="pull_y",
+        type=float,
+        default=1.0,
+        help="Pull dir Y (default 1)",
     )
     p.add_argument(
-        "--pull-z", dest="pull_z", type=float, default=0.0, help="Pull dir Z (default 0)"
+        "--pull-z",
+        dest="pull_z",
+        type=float,
+        default=0.0,
+        help="Pull dir Z (default 0)",
     )
     add_subcommand_tier(p, "experimental")
     p.set_defaults(func=_run_undercut)
@@ -561,11 +575,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--ref-a", dest="ref_a", required=True,
+        "--ref-a",
+        dest="ref_a",
+        required=True,
         help="Base64url-encoded persist reference for the first entity.",
     )
     p.add_argument(
-        "--ref-b", dest="ref_b", required=True,
+        "--ref-b",
+        dest="ref_b",
+        required=True,
         help="Base64url-encoded persist reference for the second entity.",
     )
     p.set_defaults(func=_run_measure_durable_pair)
@@ -600,11 +618,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--face-a", dest="face_a", required=True,
+        "--face-a",
+        dest="face_a",
+        required=True,
         help="Name of the first face (e.g. 'Face<1>').",
     )
     p.add_argument(
-        "--face-b", dest="face_b", required=True,
+        "--face-b",
+        dest="face_b",
+        required=True,
         help="Name of the second face (e.g. 'Face<2>').",
     )
     p.set_defaults(func=_run_face_clearance)

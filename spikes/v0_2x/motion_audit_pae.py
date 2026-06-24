@@ -14,6 +14,7 @@ builder/handlers, swept by production motion_sweep) and verifies the EFFECT:
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/motion_audit_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -48,10 +49,17 @@ _OUT = _RESULTS / "motion_audit_pae.json"
 
 def _cube_spec(name: str) -> dict[str, Any]:
     return {
-        "schema_version": 1, "name": name,
+        "schema_version": 1,
+        "name": name,
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "center": {"x": 0.0, "y": 0.0}, "width": 40.0, "height": 40.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "width": 40.0,
+                "height": 40.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 40.0},
         ],
     }
@@ -74,7 +82,9 @@ def _name2(comp: Any, mod: Any) -> str | None:
         return None
 
 
-def _assemble(sw: Any, mod: Any, pa: dict, pb: dict, xyz_b: list[float]) -> dict[str, Any]:
+def _assemble(
+    sw: Any, mod: Any, pa: dict, pb: dict, xyz_b: list[float]
+) -> dict[str, Any]:
     asm = sw.NewDocument(_find_assembly_template(), 0, 0.1, 0.1)
     if asm is None:
         return {"error": "ASM_NEWDOC_NONE"}
@@ -100,7 +110,9 @@ def _distance_leg(sw: Any, mod: Any) -> dict[str, Any]:
         r["error"] = ctx["error"]
         return r
     spec = {
-        "type": "distance", "alignment": "aligned", "value_mm": 30.0,
+        "type": "distance",
+        "alignment": "aligned",
+        "value_mm": 30.0,
         "a": {"component": "a", "face_ref": {"planar_normal": [-1, 0, 0]}},
         "b": {"component": "b", "face_ref": {"planar_normal": [-1, 0, 0]}},
     }
@@ -110,8 +122,16 @@ def _distance_leg(sw: Any, mod: Any) -> dict[str, Any]:
         return r
     typed(mate, "IFeature", module=mod).Name = "DriveDist"
     pair = (_name2(ctx["placed"]["a"], mod), _name2(ctx["placed"]["b"], mod))
-    sweep = motion_sweep(ctx["asm"], mate_name="DriveDist", kind="distance",
-                         start=0.0, stop=50.0, steps=6, clearance_pair=pair, mod=mod)
+    sweep = motion_sweep(
+        ctx["asm"],
+        mate_name="DriveDist",
+        kind="distance",
+        start=0.0,
+        stop=50.0,
+        steps=6,
+        clearance_pair=pair,
+        mod=mod,
+    )
     r["sweep"] = sweep
     prof = sweep.get("profile", [])
     summ = sweep.get("summary", {})
@@ -141,7 +161,8 @@ def _angle_leg(sw: Any, mod: Any) -> dict[str, Any]:
         r["error"] = ctx["error"]
         return r
     coin = {
-        "type": "coincident", "alignment": "closest",
+        "type": "coincident",
+        "alignment": "closest",
         "a": {"component": "a", "face_ref": {"planar_normal": [0, 0, 1]}},
         "b": {"component": "b", "face_ref": {"planar_normal": [0, 0, -1]}},
     }
@@ -150,7 +171,8 @@ def _angle_leg(sw: Any, mod: Any) -> dict[str, Any]:
         r["error"] = f"coincident failed: {e1}"
         return r
     ang = {
-        "type": "angle", "value_deg": 0.0,
+        "type": "angle",
+        "value_deg": 0.0,
         "a": {"component": "a", "face_ref": {"planar_normal": [1, 0, 0]}},
         "b": {"component": "b", "face_ref": {"planar_normal": [1, 0, 0]}},
     }
@@ -159,8 +181,15 @@ def _angle_leg(sw: Any, mod: Any) -> dict[str, Any]:
         r["error"] = f"angle mate failed: {e2}"
         return r
     typed(m2, "IFeature", module=mod).Name = "DriveAngle"
-    sweep = motion_sweep(ctx["asm"], mate_name="DriveAngle", kind="angle",
-                         start=0.0, stop=90.0, steps=4, mod=mod)
+    sweep = motion_sweep(
+        ctx["asm"],
+        mate_name="DriveAngle",
+        kind="angle",
+        start=0.0,
+        stop=90.0,
+        steps=4,
+        mod=mod,
+    )
     r["sweep"] = sweep
     prof = sweep.get("profile", [])
     r["ok"] = (
@@ -187,7 +216,9 @@ def main() -> int:
         result["legs"]["angle"] = _angle_leg(sw, mod)
         print(f"[ma] angle -> {result['legs']['angle'].get('verdict')}")
         result["overall"] = (
-            "PASS" if all(result["legs"][k].get("ok") for k in result["legs"]) else "FAIL"
+            "PASS"
+            if all(result["legs"][k].get("ok") for k in result["legs"])
+            else "FAIL"
         )
         try:
             sw.CloseAllDocuments(True)

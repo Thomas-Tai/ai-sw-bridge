@@ -17,6 +17,7 @@ Non-destructive: own blank Parts, never saves, closes own docs.
 Usage:  <main-venv>\python spikes\v0_16\spike_cut_endcond.py
         (run with PYTHONPATH=<worktree>/src so the worktree builder loads)
 """
+
 from __future__ import annotations
 
 import json
@@ -61,8 +62,30 @@ def _build_box(doc: Any) -> bool:
     sk.CreateCornerRectangle(-W / 2, -H / 2, 0.0, W / 2, H / 2, 0.0)
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base = (True, False, False, 0, 0, D, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        D,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base, False)
     except Exception:  # noqa: BLE001
@@ -96,7 +119,11 @@ def _cut_case(sw: Any, *, args_kwargs: dict, label: str) -> dict[str, Any]:
         doc.ForceRebuild3(False)
         before = _feature_count(doc)
         if not _sketch_circle_on_top(doc):
-            return {"label": label, "overall": "FAIL", "reason": "sketch on top face failed"}
+            return {
+                "label": label,
+                "overall": "FAIL",
+                "reason": "sketch on top face failed",
+            }
         args = builder._cut4_args_2024(**args_kwargs)
         fm = doc.FeatureManager
         feat = fm.FeatureCut4(*args)
@@ -106,7 +133,11 @@ def _cut_case(sw: Any, *, args_kwargs: dict, label: str) -> dict[str, Any]:
         return {
             "label": label,
             "args_len": len(args),
-            "Sd": args[0], "T1": args[3], "T2": args[4], "D1": args[5], "D2": args[6],
+            "Sd": args[0],
+            "T1": args[3],
+            "T2": args[4],
+            "D1": args[5],
+            "D2": args[6],
             "materialized": materialized,
             "feature_count_delta": after - before,
             "overall": "PASS" if (materialized and after > before) else "FAIL",
@@ -134,15 +165,20 @@ def run() -> dict[str, Any]:
     report["two_direction"] = _cut_case(
         sw,
         args_kwargs={
-            "end_cond": SW_END_COND_BLIND, "depth_m": D / 2, "flip": False,
-            "end_cond2": SW_END_COND_BLIND, "depth2_m": D / 2,
+            "end_cond": SW_END_COND_BLIND,
+            "depth_m": D / 2,
+            "flip": False,
+            "end_cond2": SW_END_COND_BLIND,
+            "depth2_m": D / 2,
         },
         label="cut_extrude_two_direction",
     )
 
     mp = report["midplane"]["overall"]
     td = report["two_direction"]["overall"]
-    report["overall"] = "PASS" if (mp == "PASS" and td == "PASS") else f"midplane={mp} two_dir={td}"
+    report["overall"] = (
+        "PASS" if (mp == "PASS" and td == "PASS") else f"midplane={mp} two_dir={td}"
+    )
     return report
 
 

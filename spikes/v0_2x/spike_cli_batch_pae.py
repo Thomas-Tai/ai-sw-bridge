@@ -15,6 +15,7 @@ commit lands on the live seat:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_cli_batch_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -55,7 +56,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _RESULTS.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -96,14 +99,18 @@ def _run_cli(part: Path, props: Path, answer: str) -> tuple[int, dict | None, st
     env["PYTHONPATH"] = str(_SRC)
     proc = subprocess.run(
         [sys.executable, "-m", "ai_sw_bridge.cli.batch", str(part), str(props)],
-        input=answer + "\n", capture_output=True, text=True, env=env, cwd=str(_REPO),
+        input=answer + "\n",
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=str(_REPO),
         timeout=240,
     )
     manifest = None
     out = proc.stdout.strip()
     if out:
         try:
-            manifest = json.loads(out[out.index("{"):])
+            manifest = json.loads(out[out.index("{") :])
         except Exception:
             manifest = None
     return proc.returncode, manifest, proc.stderr
@@ -117,12 +124,19 @@ def main() -> int:
 
     part = _RESULTS / "cli_batch_pae.sldprt"
     props = _RESULTS / "cli_batch_pae_proposals.json"
-    props.write_text(json.dumps([
-        {"feature": {"type": "ref_plane", "distance_mm": 25.0},
-         "target": {"plane": "Front Plane"}},
-        {"feature": {"type": "scale", "scale_factor": 1.5}, "target": {}},
-        {"feature": {"type": "com_point"}, "target": {}},
-    ]), encoding="utf-8")
+    props.write_text(
+        json.dumps(
+            [
+                {
+                    "feature": {"type": "ref_plane", "distance_mm": 25.0},
+                    "target": {"plane": "Front Plane"},
+                },
+                {"feature": {"type": "scale", "scale_factor": 1.5}, "target": {}},
+                {"feature": {"type": "com_point"}, "target": {}},
+            ]
+        ),
+        encoding="utf-8",
+    )
 
     try:
         # --- C first (decline) on a fresh block: the gate must block the write ---
@@ -132,11 +146,16 @@ def main() -> int:
         rc_n, man_n, _err_n = _run_cli(part, props, "n")
         nodes_n = _reopen_node_count(sw, part)
         mtime_n = part.stat().st_mtime_ns
-        gate("decline_noops",
-             rc_n == 0 and bool(man_n) and man_n.get("aborted") is True
-             and mtime_n == mtime0 and nodes_n == nodes0,
-             f"rc={rc_n} aborted={man_n.get('aborted') if man_n else None} "
-             f"mtime_unchanged={mtime_n == mtime0} nodes {nodes0}->{nodes_n}")
+        gate(
+            "decline_noops",
+            rc_n == 0
+            and bool(man_n)
+            and man_n.get("aborted") is True
+            and mtime_n == mtime0
+            and nodes_n == nodes0,
+            f"rc={rc_n} aborted={man_n.get('aborted') if man_n else None} "
+            f"mtime_unchanged={mtime_n == mtime0} nodes {nodes0}->{nodes_n}",
+        )
 
         # --- A + B (approve) on a fresh block: the commit must PERSIST ---
         _build_block_to_disk(sw, part)
@@ -144,19 +163,26 @@ def main() -> int:
         mtime_before = part.stat().st_mtime_ns
         rc_y, man_y, err_y = _run_cli(part, props, "y")
         results["commit_manifest"] = man_y
-        gate("approve_commits",
-             rc_y == 0 and bool(man_y) and man_y.get("ok") is True
-             and man_y.get("committed_count") == 3 and man_y.get("doc_saved") is True,
-             f"rc={rc_y} ok={man_y.get('ok') if man_y else None} "
-             f"committed={man_y.get('committed_count') if man_y else None} "
-             f"kinds={[c.get('kind') for c in (man_y or {}).get('committed', [])]}")
+        gate(
+            "approve_commits",
+            rc_y == 0
+            and bool(man_y)
+            and man_y.get("ok") is True
+            and man_y.get("committed_count") == 3
+            and man_y.get("doc_saved") is True,
+            f"rc={rc_y} ok={man_y.get('ok') if man_y else None} "
+            f"committed={man_y.get('committed_count') if man_y else None} "
+            f"kinds={[c.get('kind') for c in (man_y or {}).get('committed', [])]}",
+        )
 
         nodes_after = _reopen_node_count(sw, part)
         mtime_after = part.stat().st_mtime_ns
-        gate("disk_updated",
-             mtime_after > mtime_before and nodes_after >= nodes_before + 3,
-             f"mtime_advanced={mtime_after > mtime_before} "
-             f"nodes {nodes_before}->{nodes_after} (expect +3 materialized)")
+        gate(
+            "disk_updated",
+            mtime_after > mtime_before and nodes_after >= nodes_before + 3,
+            f"mtime_advanced={mtime_after > mtime_before} "
+            f"nodes {nodes_before}->{nodes_after} (expect +3 materialized)",
+        )
     finally:
         _close_all(sw)
         pythoncom.CoUninitialize()

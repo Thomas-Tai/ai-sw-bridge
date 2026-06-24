@@ -6,6 +6,7 @@ traversal, gap accumulation, the touching→0 mapping, the unmeasurable-pair
 fail-closed path, and the endpoint collinearity sanity check — with the
 underlying ``read_clearance`` primitive mocked, so no SOLIDWORKS seat is needed.
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -25,13 +26,16 @@ def _clr(dist_mm=None, *, touching=False, errors=None):
 
 def _run(seq, names, **kwargs):
     """Drive analyze_stackup with read_clearance returning ``seq`` in order."""
-    with patch.object(C, "wrapper_module", return_value=object()), \
-         patch.object(C, "read_clearance", side_effect=seq) as rc:
+    with (
+        patch.object(C, "wrapper_module", return_value=object()),
+        patch.object(C, "read_clearance", side_effect=seq) as rc,
+    ):
         res = C.analyze_stackup(object(), names, **kwargs)
     return res, rc
 
 
 # ── Input validation ────────────────────────────────────────────────────────
+
 
 def test_rejects_non_list():
     res = C.analyze_stackup(object(), "base-1")
@@ -49,6 +53,7 @@ def test_rejects_empty_name():
 
 
 # ── Core traversal + accumulation ───────────────────────────────────────────
+
 
 def test_two_component_single_gap():
     res, rc = _run([_clr(2.0)], ["base-1", "top-1"], check_endpoints=True)
@@ -98,6 +103,7 @@ def test_no_endpoints_flag_skips_direct_measure():
 
 # ── Fail-closed + sanity flags ──────────────────────────────────────────────
 
+
 def test_unmeasurable_pair_fails_closed():
     seq = [_clr(2.0), _clr(errors=["component not found: 'spacer-1'"])]
     res, _ = _run(seq, ["base-1", "spacer-1", "top-1"], check_endpoints=False)
@@ -129,6 +135,7 @@ def test_unmeasurable_endpoint_leaves_span_none():
 
 # ── sw_analyze_stackup doc-type guard ───────────────────────────────────────
 
+
 def test_sw_wrapper_rejects_non_assembly():
     class _Doc:
         def GetType(self):
@@ -143,7 +150,9 @@ def test_sw_wrapper_passes_assembly_through():
         def GetType(self):
             return C.SW_DOC_ASSEMBLY
 
-    with patch.object(C, "wrapper_module", return_value=object()), \
-         patch.object(C, "read_clearance", side_effect=[_clr(2.0)]):
+    with (
+        patch.object(C, "wrapper_module", return_value=object()),
+        patch.object(C, "read_clearance", side_effect=[_clr(2.0)]),
+    ):
         res = C._sw_analyze_stackup_impl(_Doc(), ["a-1", "b-1"])
     assert res["ok"] is True and res["accumulated_gap_mm"] == 2.0

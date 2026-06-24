@@ -51,6 +51,7 @@ def _mock_curve_length(monkeypatch):
 # Fake COM objects
 # ---------------------------------------------------------------------------
 
+
 class _FakeFeature:
     def __init__(self, type_name: str):
         self._type_name = type_name
@@ -78,8 +79,7 @@ class _FakeExt:
 
 
 class _FakeDoc:
-    def __init__(self, *, select_ok=True, insert_effect=True,
-                 insert_raises=False):
+    def __init__(self, *, select_ok=True, insert_effect=True, insert_raises=False):
         self.fm = _FakeFM()
         self.fm._owning_doc = self
         self.FeatureManager = self.fm
@@ -122,6 +122,7 @@ class _FakeDoc:
 # Operative path — the spiral recipe
 # ---------------------------------------------------------------------------
 
+
 class TestGreenPath:
     def test_green(self):
         doc = _FakeDoc()
@@ -142,17 +143,22 @@ class TestGreenPath:
         doc = _FakeDoc()
         ok, _ = create_spiral(
             doc,
-            {"pitch_mm": 10, "revolutions": 3, "start_angle_deg": 90, "clockwise": True},
+            {
+                "pitch_mm": 10,
+                "revolutions": 3,
+                "start_angle_deg": 90,
+                "clockwise": True,
+            },
             {"sketch": "SpiralBase"},
         )
         assert ok is True
         args = doc.insert_calls[0]
         assert len(args) == 10
-        assert args[0] is False      # ConstantPitch — MUST be False for spiral
-        assert args[3] is True       # Clockwise
-        assert args[4] == 3          # DefinedBy = swHelixDefinedBySpiral
+        assert args[0] is False  # ConstantPitch — MUST be False for spiral
+        assert args[3] is True  # Clockwise
+        assert args[4] == 3  # DefinedBy = swHelixDefinedBySpiral
         assert args[5] == pytest.approx(0.010)  # Pitch 10 mm
-        assert args[6] == pytest.approx(3.0)    # Revolution
+        assert args[6] == pytest.approx(3.0)  # Revolution
         assert args[8] == pytest.approx(math.radians(90))  # StartAngle
 
     def test_defaults_applied(self):
@@ -162,7 +168,7 @@ class TestGreenPath:
         assert ok is True
         args = doc.insert_calls[0]
         assert args[5] == pytest.approx(0.005)  # default pitch 5 mm
-        assert args[6] == pytest.approx(3.0)    # default revolutions 3
+        assert args[6] == pytest.approx(3.0)  # default revolutions 3
 
     def test_uses_latebound_seam(self, monkeypatch):
         """Both SelectByID2 and InsertHelix must route through _latebound (the
@@ -182,11 +188,14 @@ class TestGreenPath:
 # Failure modes
 # ---------------------------------------------------------------------------
 
+
 class TestFailureModes:
     def test_select_failure_short_circuits(self):
         doc = _FakeDoc(select_ok=False)
         ok, err = create_spiral(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "SpiralBase"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "SpiralBase"},
         )
         assert ok is False
         assert "select" in err.lower()
@@ -195,7 +204,9 @@ class TestFailureModes:
     def test_insert_raises_returns_false(self):
         doc = _FakeDoc(insert_raises=True)
         ok, err = create_spiral(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "SpiralBase"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "SpiralBase"},
         )
         assert ok is False
         assert "InsertHelix" in err
@@ -205,7 +216,9 @@ class TestFailureModes:
         the db=3 + ConstantPitch=True silent no-op class."""
         doc = _FakeDoc(insert_effect=False)
         ok, err = create_spiral(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "SpiralBase"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "SpiralBase"},
         )
         assert ok is False
         assert "no spiral node materialized" in err
@@ -214,6 +227,7 @@ class TestFailureModes:
 # ---------------------------------------------------------------------------
 # Validation (fail-closed)
 # ---------------------------------------------------------------------------
+
 
 class TestValidation:
     def test_feature_not_dict(self):
@@ -234,19 +248,25 @@ class TestValidation:
 
     def test_invalid_pitch(self):
         ok, err = create_spiral(
-            _FakeDoc(), {"pitch_mm": "abc"}, {"sketch": "SpiralBase"},
+            _FakeDoc(),
+            {"pitch_mm": "abc"},
+            {"sketch": "SpiralBase"},
         )
         assert ok is False and "invalid" in err
 
     def test_nonpositive_pitch(self):
         ok, err = create_spiral(
-            _FakeDoc(), {"pitch_mm": 0}, {"sketch": "SpiralBase"},
+            _FakeDoc(),
+            {"pitch_mm": 0},
+            {"sketch": "SpiralBase"},
         )
         assert ok is False and "pitch_mm" in err
 
     def test_nonpositive_revolutions(self):
         ok, err = create_spiral(
-            _FakeDoc(), {"pitch_mm": 5, "revolutions": -1}, {"sketch": "SpiralBase"},
+            _FakeDoc(),
+            {"pitch_mm": 5, "revolutions": -1},
+            {"sketch": "SpiralBase"},
         )
         assert ok is False and "revolutions" in err
 
@@ -259,6 +279,7 @@ class TestValidation:
 # ---------------------------------------------------------------------------
 # Registration gate + kind disjointness
 # ---------------------------------------------------------------------------
+
 
 class TestRegistration:
     def test_spike_status_is_green(self):
@@ -276,12 +297,15 @@ class TestRegistration:
 # CURVE geometric gate (W42 ghost trap) — node presence alone is NOT success
 # ---------------------------------------------------------------------------
 
+
 class TestCurveGate:
     def test_node_without_arc_length_is_rejected(self, monkeypatch):
         monkeypatch.setattr(spiral, "_curve_length_mm", lambda node: None)
         doc = _FakeDoc()
         ok, err = create_spiral(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "SpiralBase"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "SpiralBase"},
         )
         assert ok is False
         assert "arc length" in err
@@ -290,6 +314,8 @@ class TestCurveGate:
         monkeypatch.setattr(spiral, "_curve_length_mm", lambda node: 90.0)
         doc = _FakeDoc()
         ok, err = create_spiral(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "SpiralBase"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "SpiralBase"},
         )
         assert ok is True, err

@@ -166,63 +166,75 @@ class TestParseDesignTable:
 
     def test_rejects_duplicate_config_names(self) -> None:
         with pytest.raises(ValueError, match="duplicate config name"):
-            parse_design_table({
-                "columns": [{"name": "X"}],
-                "rows": [
-                    {"config_name": "A", "values": {"X": "1"}},
-                    {"config_name": "A", "values": {"X": "2"}},
-                ],
-            })
+            parse_design_table(
+                {
+                    "columns": [{"name": "X"}],
+                    "rows": [
+                        {"config_name": "A", "values": {"X": "1"}},
+                        {"config_name": "A", "values": {"X": "2"}},
+                    ],
+                }
+            )
 
     def test_rejects_duplicate_column_names(self) -> None:
         with pytest.raises(ValueError, match="duplicate column name"):
-            parse_design_table({
-                "columns": [
-                    {"name": "X", "kind": "dimension"},
-                    {"name": "X", "kind": "dimension"},
-                ],
-                "rows": [
-                    {"config_name": "A", "values": {"X": "1"}},
-                    {"config_name": "B", "values": {"X": "2"}},
-                ],
-            })
+            parse_design_table(
+                {
+                    "columns": [
+                        {"name": "X", "kind": "dimension"},
+                        {"name": "X", "kind": "dimension"},
+                    ],
+                    "rows": [
+                        {"config_name": "A", "values": {"X": "1"}},
+                        {"config_name": "B", "values": {"X": "2"}},
+                    ],
+                }
+            )
 
     def test_rejects_empty_columns(self) -> None:
         with pytest.raises(ValueError, match="no columns"):
-            parse_design_table({
-                "columns": [],
-                "rows": [
-                    {"config_name": "A", "values": {}},
-                    {"config_name": "B", "values": {}},
-                ],
-            })
+            parse_design_table(
+                {
+                    "columns": [],
+                    "rows": [
+                        {"config_name": "A", "values": {}},
+                        {"config_name": "B", "values": {}},
+                    ],
+                }
+            )
 
     def test_rejects_empty_rows(self) -> None:
         with pytest.raises(ValueError, match="no rows"):
-            parse_design_table({
-                "columns": [{"name": "X"}],
-                "rows": [],
-            })
+            parse_design_table(
+                {
+                    "columns": [{"name": "X"}],
+                    "rows": [],
+                }
+            )
 
     def test_rejects_unknown_kind(self) -> None:
         with pytest.raises(ValueError, match="unknown kind"):
-            parse_design_table({
-                "columns": [{"name": "X", "kind": "invalid"}],
-                "rows": [
-                    {"config_name": "A", "values": {"X": "1"}},
-                    {"config_name": "B", "values": {"X": "2"}},
-                ],
-            })
+            parse_design_table(
+                {
+                    "columns": [{"name": "X", "kind": "invalid"}],
+                    "rows": [
+                        {"config_name": "A", "values": {"X": "1"}},
+                        {"config_name": "B", "values": {"X": "2"}},
+                    ],
+                }
+            )
 
     def test_rejects_unknown_column_in_values(self) -> None:
         with pytest.raises(ValueError, match="unknown columns"):
-            parse_design_table({
-                "columns": [{"name": "X"}],
-                "rows": [
-                    {"config_name": "A", "values": {"X": "1", "Y": "2"}},
-                    {"config_name": "B", "values": {"X": "3"}},
-                ],
-            })
+            parse_design_table(
+                {
+                    "columns": [{"name": "X"}],
+                    "rows": [
+                        {"config_name": "A", "values": {"X": "1", "Y": "2"}},
+                        {"config_name": "B", "values": {"X": "3"}},
+                    ],
+                }
+            )
 
     def test_numeric_values_converted_to_string(self) -> None:
         block = {

@@ -39,11 +39,7 @@ def deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any
 def _merge_in_place(target: dict[str, Any], source: dict[str, Any]) -> None:
     """Recursively merge *source* into *target* (mutates *target*)."""
     for key, value in source.items():
-        if (
-            key in target
-            and isinstance(target[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in target and isinstance(target[key], dict) and isinstance(value, dict):
             _merge_in_place(target[key], value)
         else:
             target[key] = copy.deepcopy(value)

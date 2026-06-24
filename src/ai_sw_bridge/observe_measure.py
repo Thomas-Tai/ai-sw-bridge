@@ -61,8 +61,15 @@ def read_measure(doc: Any, measure: Any) -> dict[str, Any]:
     result["delta_z_mm"] = safe_float("DeltaZ")
 
     # Check if any measurement succeeded
-    if all(v is None for v in [result["distance_mm"], result["delta_x_mm"],
-                               result["delta_y_mm"], result["delta_z_mm"]]):
+    if all(
+        v is None
+        for v in [
+            result["distance_mm"],
+            result["delta_x_mm"],
+            result["delta_y_mm"],
+            result["delta_z_mm"],
+        ]
+    ):
         result["errors"].append("no valid measurements returned")
 
     return result
@@ -251,8 +258,15 @@ def _sw_get_measure_from_doc_impl(doc: Any) -> dict[str, Any]:
     }
 
     # Check if any measurement succeeded
-    if all(v is None for v in [meas["distance_mm"], meas["delta_x_mm"],
-                               meas["delta_y_mm"], meas["delta_z_mm"]]):
+    if all(
+        v is None
+        for v in [
+            meas["distance_mm"],
+            meas["delta_x_mm"],
+            meas["delta_y_mm"],
+            meas["delta_z_mm"],
+        ]
+    ):
         meas["errors"].append("no valid measurements returned")
 
     if meas["errors"]:
@@ -427,8 +441,15 @@ def read_measure_durable_pair(
     result["delta_y_mm"] = safe_float("DeltaY")
     result["delta_z_mm"] = safe_float("DeltaZ")
 
-    if all(v is None for v in [result["distance_mm"], result["delta_x_mm"],
-                               result["delta_y_mm"], result["delta_z_mm"]]):
+    if all(
+        v is None
+        for v in [
+            result["distance_mm"],
+            result["delta_x_mm"],
+            result["delta_y_mm"],
+            result["delta_z_mm"],
+        ]
+    ):
         result["errors"].append("no valid measurements returned")
 
     return result
@@ -647,5 +668,3 @@ def _sw_get_measure_area_from_doc_impl(doc: Any) -> dict[str, Any]:
 
     result["measure"] = {"area_mm2": area_result["area_mm2"]}
     return result
-
-

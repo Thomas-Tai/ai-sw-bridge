@@ -42,7 +42,7 @@ def main() -> int:
     try:
         register(OP)
         doc = fx.new_part(sw)
-        sketch, n0 = fx.build_rect_sketch(doc)          # ("Sketch1", 4)
+        sketch, n0 = fx.build_rect_sketch(doc)  # ("Sketch1", 4)
         params = {"chamfer_type": 1, "dist1_mm": 5, "dist2_mm": 5, "entities": [0, 1]}
         res = apply_sketch_edit(doc, sketch, "sketch_chamfer", params)
 
@@ -54,11 +54,7 @@ def main() -> int:
         verdict = (
             "PASS"
             if (res["ok"] and delta_ok and survived)
-            else (
-                "NO_OP"
-                if res["call_ok"] and res["segment_delta"] == 0
-                else "FAIL"
-            )
+            else ("NO_OP" if res["call_ok"] and res["segment_delta"] == 0 else "FAIL")
         )
         print(
             json.dumps(

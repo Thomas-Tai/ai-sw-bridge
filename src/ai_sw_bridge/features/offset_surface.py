@@ -75,7 +75,10 @@ def create_offset_surface(
     except (TypeError, ValueError) as exc:
         return False, f"offset_mm must be numeric: {exc}"
     if offset_m < 0:
-        return False, f"offset_mm must be non-negative, got {feature.get('offset_mm')!r}"
+        return (
+            False,
+            f"offset_mm must be non-negative, got {feature.get('offset_mm')!r}",
+        )
 
     reverse = bool(feature.get("reverse", False))
 

@@ -17,6 +17,7 @@ measure area):
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_o3_gate_pae.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -65,7 +66,11 @@ def _under_warnings_as_errors(fn) -> tuple[dict[str, Any], bool, str]:
         try:
             return fn(), True, ""
         except PendingDeprecationWarning as exc:  # noqa: BLE001
-            return {"ok": False}, False, f"internal PendingDeprecationWarning leaked: {exc}"
+            return (
+                {"ok": False},
+                False,
+                f"internal PendingDeprecationWarning leaked: {exc}",
+            )
 
 
 def _select_first_face(doc) -> bool:
@@ -88,7 +93,9 @@ def _select_first_face(doc) -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -113,15 +120,23 @@ def main() -> int:
         doc = get_active_doc(get_sw_app())
         selected = _select_first_face(doc)
         if not selected:
-            gate("measure_area_clean", False, "could not select a face for measure_area")
+            gate(
+                "measure_area_clean", False, "could not select a face for measure_area"
+            )
             raise SystemExit(_finish())
         rep, clean, why = _under_warnings_as_errors(
-            lambda: cli_observe._run_measure_area(argparse.Namespace()))
+            lambda: cli_observe._run_measure_area(argparse.Namespace())
+        )
         results["measure_area_report"] = rep
         area = (rep.get("measure") or {}).get("area_mm2")
-        gate("measure_area_clean",
-             clean and bool(rep.get("ok")) and isinstance(area, (int, float)) and area > 0,
-             why or f"ok={rep.get('ok')} area={area} mm^2 (class-routed, no warning)")
+        gate(
+            "measure_area_clean",
+            clean
+            and bool(rep.get("ok"))
+            and isinstance(area, (int, float))
+            and area > 0,
+            why or f"ok={rep.get('ok')} area={area} mm^2 (class-routed, no warning)",
+        )
 
         # ── B: clearance via the client (two 20mm cubes, centers 30mm apart) ─
         sw.CloseAllDocuments(True)
@@ -148,14 +163,20 @@ def main() -> int:
             raise SystemExit(_finish())
         ns_clr = argparse.Namespace(comp_a=names[0], comp_b=names[1])
         rep2, clean2, why2 = _under_warnings_as_errors(
-            lambda: cli_observe._run_clearance(ns_clr))
+            lambda: cli_observe._run_clearance(ns_clr)
+        )
         results["clearance_report"] = rep2
         gap = (rep2.get("clearance") or {}).get("min_distance_mm")
-        gate("clearance_clean",
-             clean2 and bool(rep2.get("ok")) and isinstance(gap, (int, float))
-             and 9.0 < gap < 11.0,
-             why2 or f"ok={rep2.get('ok')} min_distance_mm={gap} "
-             f"(expected ~10, class-routed, no warning)")
+        gate(
+            "clearance_clean",
+            clean2
+            and bool(rep2.get("ok"))
+            and isinstance(gap, (int, float))
+            and 9.0 < gap < 11.0,
+            why2
+            or f"ok={rep2.get('ok')} min_distance_mm={gap} "
+            f"(expected ~10, class-routed, no warning)",
+        )
 
         # ── C: legacy shim STILL warns AND payload identical to baseline ──
         with warnings.catch_warnings(record=True) as caught:
@@ -163,9 +184,11 @@ def main() -> int:
             legacy = sw_get_clearance(adoc, names[0], names[1])
         warned = any(issubclass(w.category, PendingDeprecationWarning) for w in caught)
         identical = legacy == rep2
-        gate("baseline_identity",
-             warned and identical,
-             f"legacy warned={warned}, payload_identical_to_class_route={identical}")
+        gate(
+            "baseline_identity",
+            warned and identical,
+            f"legacy warned={warned}, payload_identical_to_class_route={identical}",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

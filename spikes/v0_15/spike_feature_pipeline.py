@@ -103,8 +103,10 @@ def _new_blank_part(sw: Any) -> Any:
 def run(keep_docs: bool) -> dict[str, Any]:
     from ai_sw_bridge.sw_com import get_sw_app  # late import: needs a live seat
 
-    result: dict[str, Any] = {"binding": "hybrid early (com.earlybind.typed_qi)",
-                              "feature": "constant-radius fillet"}
+    result: dict[str, Any] = {
+        "binding": "hybrid early (com.earlybind.typed_qi)",
+        "feature": "constant-radius fillet",
+    }
     sw = get_sw_app()
     mod = wrapper_module()
     if mod is None:
@@ -130,7 +132,11 @@ def run(keep_docs: bool) -> dict[str, Any]:
     if data is None:
         result["pipeline"] = pipe
         _close(sw, doc, result)
-        return {**result, "overall": "FAIL", "reason": "CreateDefinition(swFmFillet) returned None"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": "CreateDefinition(swFmFillet) returned None",
+        }
 
     # 2. QI-acquire the typed interface via the shipped helper.
     try:
@@ -141,13 +147,18 @@ def run(keep_docs: bool) -> dict[str, Any]:
         pipe["typed_qi"] = f"FAIL: {e}"
         result["pipeline"] = pipe
         _close(sw, doc, result)
-        return {**result, "overall": "FAIL",
-                "reason": "typed_qi could not acquire ISimpleFilletFeatureData2"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": "typed_qi could not acquire ISimpleFilletFeatureData2",
+        }
 
     # 3. Set the fillet parameters on the typed object.
-    for prop, val in (("Type", SW_CONST_RADIUS_FILLET),
-                      ("DefaultRadius", FILLET_RADIUS_M),
-                      ("PropagateToTangentFaces", True)):
+    for prop, val in (
+        ("Type", SW_CONST_RADIUS_FILLET),
+        ("DefaultRadius", FILLET_RADIUS_M),
+        ("PropagateToTangentFaces", True),
+    ):
         try:
             setattr(fd, prop, val)
             pipe[f"set_{prop}"] = "OK"
@@ -188,7 +199,9 @@ def run(keep_docs: bool) -> dict[str, Any]:
             fd.Edges = (edge0,)
             feat = fm.CreateFeature(fd)
             pipe["fallback_createfeature_type"] = _tag(feat)
-            pipe["fallback_feature_type_name"] = _type_name(feat) if _materialized(feat) else None
+            pipe["fallback_feature_type_name"] = (
+                _type_name(feat) if _materialized(feat) else None
+            )
             fd.ReleaseSelectionAccess()
         except Exception as e:  # noqa: BLE001
             pipe["fallback_error"] = f"{type(e).__name__}: {str(e)[:160]}"
@@ -196,14 +209,18 @@ def run(keep_docs: bool) -> dict[str, Any]:
     result["pipeline"] = pipe
 
     materialized = _materialized(feat)
-    type_name = (pipe.get("feature_type_name") or pipe.get("fallback_feature_type_name") or "")
+    type_name = (
+        pipe.get("feature_type_name") or pipe.get("fallback_feature_type_name") or ""
+    )
     if materialized:
         overall, reason = "PASS", (
-            f"feature materialized (type {type_name!r}) via the QI feature-data pipeline")
+            f"feature materialized (type {type_name!r}) via the QI feature-data pipeline"
+        )
     else:
         overall, reason = "PARTIAL", (
             "ISimpleFilletFeatureData2 acquired + props set, but CreateFeature did "
-            "not materialize -- remaining issue is selection / CreateFeature, not QI")
+            "not materialize -- remaining issue is selection / CreateFeature, not QI"
+        )
     result["overall"] = overall
     result["reason"] = reason
 
@@ -223,12 +240,20 @@ def _close(sw: Any, doc: Any, result: dict[str, Any], keep: bool = False) -> Non
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--out", type=Path, default=None,
-                   help="Write JSON report to this path instead of stdout.")
-    p.add_argument("--keep-docs", action="store_true",
-                   help="Do not close the spike's own document at the end.")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Write JSON report to this path instead of stdout.",
+    )
+    p.add_argument(
+        "--keep-docs",
+        action="store_true",
+        help="Do not close the spike's own document at the end.",
+    )
     args = p.parse_args()
 
     pythoncom.CoInitialize()

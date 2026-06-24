@@ -111,7 +111,9 @@ def _resolve_path_segments(doc: Any, sketch_name: str) -> list[Any] | None:
     try:
         feat_raw = doc.FeatureByName(sketch_name)
     except Exception as e:
-        logger.warning("[structural_weldment] FeatureByName(%r) RAISED: %r", sketch_name, e)
+        logger.warning(
+            "[structural_weldment] FeatureByName(%r) RAISED: %r", sketch_name, e
+        )
         return None
     if feat_raw is None:
         logger.warning("[structural_weldment] FeatureByName(%r) -> None", sketch_name)
@@ -130,9 +132,16 @@ def _resolve_path_segments(doc: Any, sketch_name: str) -> list[Any] | None:
 
 
 def _build_and_fire(
-    fm: Any, *, profile_path: str, segments: list[Any], connected_opt: int,
-    allow_protrusion: bool, corner_treatment: bool, corner_type: int | None,
-    miter_merge: bool, configuration: str,
+    fm: Any,
+    *,
+    profile_path: str,
+    segments: list[Any],
+    connected_opt: int,
+    allow_protrusion: bool,
+    corner_treatment: bool,
+    corner_type: int | None,
+    miter_merge: bool,
+    configuration: str,
 ) -> Any:
     """Create the structural-member group, assign segments + corner options,
     and fire InsertStructuralWeldment5.  Returns the Feature (or None)."""
@@ -143,20 +152,29 @@ def _build_and_fire(
         try:
             grp.CornerTreatmentType = corner_type
         except Exception as e:
-            logger.warning("[structural_weldment] CornerTreatmentType set RAISED: %r", e)
+            logger.warning(
+                "[structural_weldment] CornerTreatmentType set RAISED: %r", e
+            )
     if miter_merge:
         try:
             grp.MiterMergeCondition = True
         except Exception as e:
-            logger.warning("[structural_weldment] MiterMergeCondition set RAISED: %r", e)
+            logger.warning(
+                "[structural_weldment] MiterMergeCondition set RAISED: %r", e
+            )
     return fm.InsertStructuralWeldment5(
-        profile_path, connected_opt, allow_protrusion,
-        _disp_array([grp]), configuration,
+        profile_path,
+        connected_opt,
+        allow_protrusion,
+        _disp_array([grp]),
+        configuration,
     )
 
 
 def create_structural_weldment(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Generate structural frame members along a 3D-sketch path.
 
@@ -232,10 +250,15 @@ def create_structural_weldment(
     try:
         fm = _fm(doc)
         _build_and_fire(
-            fm, profile_path=profile_path, segments=segments,
-            connected_opt=connected_opt, allow_protrusion=allow_protrusion,
-            corner_treatment=corner_treatment, corner_type=corner_type,
-            miter_merge=miter_merge, configuration=configuration,
+            fm,
+            profile_path=profile_path,
+            segments=segments,
+            connected_opt=connected_opt,
+            allow_protrusion=allow_protrusion,
+            corner_treatment=corner_treatment,
+            corner_type=corner_type,
+            miter_merge=miter_merge,
+            configuration=configuration,
         )
         doc.ForceRebuild3(False)
     except Exception as exc:
@@ -261,6 +284,7 @@ def create_structural_weldment(
         f"sketch={sketch_name!r}, connected={cseg} — a 0 connected-segments "
         f"option or a missing profile config ghosts the feature"
     )
+
 
 # Registration is via the sanctioned ``_register_lane`` gate in
 # ``features/__init__.py`` (W67 Phase-4 fail-loud path) — not a module-level

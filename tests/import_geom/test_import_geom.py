@@ -100,9 +100,7 @@ def test_validator_valid_step(
     assert spec.source_extension() == ".step"
 
 
-def test_validator_valid_with_verify(
-    valid_step: Path, output_path: Path
-) -> None:
+def test_validator_valid_with_verify(valid_step: Path, output_path: Path) -> None:
     envelope = {
         "kind": "import",
         "source": str(valid_step),
@@ -147,13 +145,9 @@ def test_validator_rejects_wrong_kind(valid_envelope: dict) -> None:
     assert ei.value.path == "kind"
 
 
-def test_validator_rejects_missing_kind(
-    valid_step: Path, output_path: Path
-) -> None:
+def test_validator_rejects_missing_kind(valid_step: Path, output_path: Path) -> None:
     with pytest.raises(ImportValidationError) as ei:
-        validate_import_spec(
-            {"source": str(valid_step), "output": str(output_path)}
-        )
+        validate_import_spec({"source": str(valid_step), "output": str(output_path)})
     assert ei.value.path == "kind"
 
 
@@ -201,7 +195,9 @@ def test_validator_rejects_missing_source(output_path: Path) -> None:
     assert "does not exist" in ei.value.message
 
 
-def test_validator_rejects_output_without_sldprt(valid_step: Path, tmp_path: Path) -> None:
+def test_validator_rejects_output_without_sldprt(
+    valid_step: Path, tmp_path: Path
+) -> None:
     bad_out = tmp_path / "out.stp"
     with pytest.raises(ImportValidationError) as ei:
         validate_import_spec(
@@ -231,7 +227,9 @@ def test_validator_rejects_output_parent_missing(
     assert "parent directory" in ei.value.message
 
 
-def test_validator_rejects_bad_verify_volume(valid_step: Path, output_path: Path) -> None:
+def test_validator_rejects_bad_verify_volume(
+    valid_step: Path, output_path: Path
+) -> None:
     with pytest.raises(ImportValidationError) as ei:
         validate_import_spec(
             {
@@ -391,9 +389,7 @@ class _FakeSW:
         self.closed.append(title)
 
 
-def _run_import(
-    spec: ImportSpec, fake_sw: _FakeSW
-) -> ImportResult:
+def _run_import(spec: ImportSpec, fake_sw: _FakeSW) -> ImportResult:
     """Inject ``fake_sw`` as the dispatched SldWorks.Application and run.
 
     The dispatch module ``from ai_sw_bridge.com.earlybind import typed_qi``
@@ -425,9 +421,7 @@ def _run_import(
             earlybind_fake.typed_qi = original_typed_qi  # type: ignore[attr-defined]
 
 
-def test_dispatch_happy_path(
-    valid_step: Path, output_path: Path
-) -> None:
+def test_dispatch_happy_path(valid_step: Path, output_path: Path) -> None:
     doc = _FakeDoc(bodies=[_FakeBody(face_count=6)])
     fake_sw = _FakeSW(doc)
     spec = validate_import_spec(
@@ -445,9 +439,7 @@ def test_dispatch_happy_path(
     assert fake_sw.loadfile4_calls[0][1] == "r"
 
 
-def test_dispatch_bodyless_import_fails(
-    valid_step: Path, output_path: Path
-) -> None:
+def test_dispatch_bodyless_import_fails(valid_step: Path, output_path: Path) -> None:
     doc = _FakeDoc(bodies=[])  # zero bodies — the E4 trap
     fake_sw = _FakeSW(doc)
     spec = validate_import_spec(
@@ -458,9 +450,7 @@ def test_dispatch_bodyless_import_fails(
     assert any("E4" in e or "body" in e.lower() for e in result.errors)
 
 
-def test_dispatch_faceless_body_fails(
-    valid_step: Path, output_path: Path
-) -> None:
+def test_dispatch_faceless_body_fails(valid_step: Path, output_path: Path) -> None:
     doc = _FakeDoc(bodies=[_FakeBody(face_count=0)])
     fake_sw = _FakeSW(doc)
     spec = validate_import_spec(
@@ -471,9 +461,7 @@ def test_dispatch_faceless_body_fails(
     assert any("face" in e.lower() for e in result.errors)
 
 
-def test_dispatch_volume_match(
-    valid_step: Path, output_path: Path
-) -> None:
+def test_dispatch_volume_match(valid_step: Path, output_path: Path) -> None:
     doc = _FakeDoc(volume_m3=24000.0 * 1e-9)  # 24000 mm³ in m³
     fake_sw = _FakeSW(doc)
     spec = validate_import_spec(
@@ -489,9 +477,7 @@ def test_dispatch_volume_match(
     assert result.volume_mm3 == pytest.approx(24000.0, rel=1e-6)
 
 
-def test_dispatch_volume_mismatch_fails(
-    valid_step: Path, output_path: Path
-) -> None:
+def test_dispatch_volume_mismatch_fails(valid_step: Path, output_path: Path) -> None:
     doc = _FakeDoc(volume_m3=10000.0 * 1e-9)
     fake_sw = _FakeSW(doc)
     spec = validate_import_spec(
@@ -550,9 +536,7 @@ def test_dispatch_saveas3_nonzero_error_fails(
     assert any("SaveAs3" in e for e in result.errors)
 
 
-def test_dispatch_non_part_doc_type_fails(
-    valid_step: Path, output_path: Path
-) -> None:
+def test_dispatch_non_part_doc_type_fails(valid_step: Path, output_path: Path) -> None:
     doc = _FakeDoc(doc_type=2)  # assembly
     fake_sw = _FakeSW(doc)
     spec = validate_import_spec(
@@ -563,9 +547,7 @@ def test_dispatch_non_part_doc_type_fails(
     assert any("not a Part" in e for e in result.errors)
 
 
-def test_result_to_dict_omits_empty_errors(
-    valid_step: Path, output_path: Path
-) -> None:
+def test_result_to_dict_omits_empty_errors(valid_step: Path, output_path: Path) -> None:
     doc = _FakeDoc()
     fake_sw = _FakeSW(doc)
     spec = validate_import_spec(

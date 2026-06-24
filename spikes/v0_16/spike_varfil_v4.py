@@ -89,13 +89,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:  # noqa: BLE001
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:200],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:200],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _build_box(doc: Any) -> dict[str, Any]:
@@ -103,15 +109,38 @@ def _build_box(doc: Any) -> dict[str, Any]:
         return {"built": False, "error": "could not select Front Plane"}
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    seg = sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                                   BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    seg = sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     if seg is None:
         sk.InsertSketch(True)
         return {"built": False, "error": "CreateCornerRectangle returned None"}
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base_args = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False,
-                 False, 0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base_args = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
     except Exception:  # noqa: BLE001
@@ -163,7 +192,9 @@ def _select_edges_append(doc: Any, mod: Any) -> dict[str, Any]:
         return out
     erec, edges = _capture(lambda: body.GetEdges())
     out["get_edges"] = erec
-    edge_list = list(edges) if isinstance(edges, (tuple, list)) else ([edges] if edges else [])
+    edge_list = (
+        list(edges) if isinstance(edges, (tuple, list)) else ([edges] if edges else [])
+    )
     out["n_edges"] = len(edge_list)
     if len(edge_list) < 2:
         out["error"] = "fewer than 2 edges"
@@ -294,8 +325,10 @@ def run() -> dict[str, Any]:
 
         tf = typed(feat, "IFeature", module=mod)
         mod_rec, mod_ret = _capture(lambda: tf.ModifyDefinition(defn_raw, doc, None))
-        result["modify_definition"] = {**mod_rec,
-                                       "ret": bool(mod_ret) if mod_ret is not None else None}
+        result["modify_definition"] = {
+            **mod_rec,
+            "ret": bool(mod_ret) if mod_ret is not None else None,
+        }
 
         _, defn2_raw = _capture(lambda: _get_definition(feat, mod))
         if defn2_raw is not None:
@@ -319,18 +352,24 @@ def run() -> dict[str, Any]:
     expected = {round(r, 6) for r in PER_EDGE_RADII_M}
     if items_count >= 2 and expected.issubset(distinct):
         overall = "PASS-PER-EDGE"
-        interp = (f"{items_count} fillet items, distinct radii {sorted(distinct)} m stuck "
-                  "→ build variable_radius_fillet: append-select edges, create multi-radius, "
-                  "SetRadius per item, early-bound ModifyDefinition.")
+        interp = (
+            f"{items_count} fillet items, distinct radii {sorted(distinct)} m stuck "
+            "→ build variable_radius_fillet: append-select edges, create multi-radius, "
+            "SetRadius per item, early-bound ModifyDefinition."
+        )
     elif items_count < 2:
         overall = "ONE-ITEM"
-        interp = (f"still {items_count} fillet item(s) with non-adjacent edges "
-                  f"(edge_count={edge_count}) → fillet items are NOT per-edge; the per-edge "
-                  "radius model differs. Inspect select.selection_count / edge_count.")
+        interp = (
+            f"still {items_count} fillet item(s) with non-adjacent edges "
+            f"(edge_count={edge_count}) → fillet items are NOT per-edge; the per-edge "
+            "radius model differs. Inspect select.selection_count / edge_count."
+        )
     else:
         overall = "PARTIAL-EDIT"
-        interp = (f"{items_count} items but radii {sorted(distinct)} != expected "
-                  f"{sorted(expected)} → SetRadius/ModifyDefinition shape needs tuning.")
+        interp = (
+            f"{items_count} items but radii {sorted(distinct)} != expected "
+            f"{sorted(expected)} → SetRadius/ModifyDefinition shape needs tuning."
+        )
 
     result["overall"] = overall
     result["interpretation"] = interp

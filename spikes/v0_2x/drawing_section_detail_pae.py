@@ -21,9 +21,7 @@ from typing import Any
 
 # Guard against charmap crashes from Unicode COM return values (W19 S1 lesson)
 if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(
-        sys.stdout.buffer, encoding="utf-8", errors="replace"
-    )
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
@@ -92,7 +90,7 @@ def run() -> str:
 
     # Close stale docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -179,8 +177,11 @@ def run() -> str:
     # --- Propose ---
     print("\n--- Drawing lifecycle: propose ---")
     dp = sw_propose_drawing(drawing_spec)
-    gate("drw_propose", dp.get("ok", False),
-         f"pid={dp.get('proposal_id')}, err={dp.get('error')}")
+    gate(
+        "drw_propose",
+        dp.get("ok", False),
+        f"pid={dp.get('proposal_id')}, err={dp.get('error')}",
+    )
     if not dp.get("ok"):
         results["propose_error"] = dp.get("error")
         save_results()
@@ -189,8 +190,11 @@ def run() -> str:
     # --- Dry run ---
     print("\n--- Drawing lifecycle: dry_run ---")
     dd = sw_dry_run_drawing(dp["proposal_id"])
-    gate("drw_dry_run", dd.get("ok", False),
-         f"state={dd.get('state')}, err={dd.get('error')}")
+    gate(
+        "drw_dry_run",
+        dd.get("ok", False),
+        f"state={dd.get('state')}, err={dd.get('error')}",
+    )
     if not dd.get("ok"):
         results["dry_run_error"] = dd.get("error")
         save_results()
@@ -199,10 +203,13 @@ def run() -> str:
     # --- Commit ---
     print("\n--- Drawing lifecycle: commit ---")
     dc = sw_commit_drawing(dp["proposal_id"], DRW_PATH)
-    gate("drw_commit", dc.get("ok", False),
-         f"view_count={dc.get('view_count')}, "
-         f"views={dc.get('views_placed')}, "
-         f"err={dc.get('error')}")
+    gate(
+        "drw_commit",
+        dc.get("ok", False),
+        f"view_count={dc.get('view_count')}, "
+        f"views={dc.get('views_placed')}, "
+        f"err={dc.get('error')}",
+    )
     if not dc.get("ok"):
         results["commit_error"] = dc.get("error")
         results["commit_view_errors"] = dc.get("view_errors")
@@ -214,9 +221,11 @@ def run() -> str:
     results["views_placed"] = views_placed
     results["view_count"] = view_count
 
-    gate("commit_view_count_ge_3",
-         view_count >= 3,
-         f"view_count={view_count} (front + section A + detail B)")
+    gate(
+        "commit_view_count_ge_3",
+        view_count >= 3,
+        f"view_count={view_count} (front + section A + detail B)",
+    )
 
     # Check that section and detail names appear in views_placed
     has_section = any(
@@ -229,12 +238,8 @@ def run() -> str:
         for n in views_placed
         if str(n).lower() != "front"
     )
-    gate("commit_has_section_view",
-         has_section,
-         f"views_placed={views_placed}")
-    gate("commit_has_detail_view",
-         has_detail,
-         f"views_placed={views_placed}")
+    gate("commit_has_section_view", has_section, f"views_placed={views_placed}")
+    gate("commit_has_detail_view", has_detail, f"views_placed={views_placed}")
 
     # --- File on disk ---
     drw_size = os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0
@@ -294,15 +299,21 @@ def run() -> str:
             results["reopen_view_types"] = view_types_seen
             print(f"    views found: {list(zip(view_names_seen, view_types_seen))}")
 
-            gate("reopen_total_model_views_ge_3",
-                 reopen_total_model_views >= 3,
-                 f"non-sheet views={reopen_total_model_views}")
-            gate("reopen_has_section_type",
-                 reopen_section_count >= 1,
-                 f"section (type={SW_VIEW_TYPE_SECTION}) count={reopen_section_count}")
-            gate("reopen_has_detail_type",
-                 reopen_detail_count >= 1,
-                 f"detail (type={SW_VIEW_TYPE_DETAIL}) count={reopen_detail_count}")
+            gate(
+                "reopen_total_model_views_ge_3",
+                reopen_total_model_views >= 3,
+                f"non-sheet views={reopen_total_model_views}",
+            )
+            gate(
+                "reopen_has_section_type",
+                reopen_section_count >= 1,
+                f"section (type={SW_VIEW_TYPE_SECTION}) count={reopen_section_count}",
+            )
+            gate(
+                "reopen_has_detail_type",
+                reopen_detail_count >= 1,
+                f"detail (type={SW_VIEW_TYPE_DETAIL}) count={reopen_detail_count}",
+            )
 
             try:
                 t = drw_doc.GetTitle
@@ -316,9 +327,12 @@ def run() -> str:
 
     # --- Overall ---
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL_GREEN", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
-         f"{len(results['gates'])} gates pass")
+    gate(
+        "OVERALL_GREEN",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
+        f"{len(results['gates'])} gates pass",
+    )
 
     return "GREEN" if all_pass else "PARTIAL"
 
@@ -328,6 +342,7 @@ if __name__ == "__main__":
         verdict = run()
     except Exception as exc:
         import traceback
+
         results["gates"]["UNEXPECTED"] = {
             "ok": False,
             "detail": f"{type(exc).__name__}: {exc}",

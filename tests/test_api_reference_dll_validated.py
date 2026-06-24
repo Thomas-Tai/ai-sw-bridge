@@ -32,7 +32,9 @@ MIN_METHOD_COUNT = 208
 @pytest.fixture(scope="module")
 def ref_data() -> dict:
     if not REF_JSON.exists():
-        pytest.skip(f"{REF_JSON.name} not generated yet (run chm_extract.py batch first)")
+        pytest.skip(
+            f"{REF_JSON.name} not generated yet (run chm_extract.py batch first)"
+        )
     return json.loads(REF_JSON.read_text(encoding="utf-8"))
 
 

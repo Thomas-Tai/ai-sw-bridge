@@ -103,6 +103,7 @@ def patched(monkeypatch):
         # typed() -> identity so the fakes are used directly.
         monkeypatch.setattr(bi, "typed", lambda obj, iface, module=None: obj)
         monkeypatch.setattr(bi, "wrapper_module", lambda: object())
+
     return _apply
 
 
@@ -157,13 +158,13 @@ class TestDisjoint:
 class TestMultiPair:
     def test_three_bodies_two_clashes(self, patched):
         a, b, c = _FakeBody("B1"), _FakeBody("B2"), _FakeBody("B3")
-        a.set_clash(b, edges=8, volume_m3=1000.0 / 1e9)   # 1000 mm^3
+        a.set_clash(b, edges=8, volume_m3=1000.0 / 1e9)  # 1000 mm^3
         b.set_clash(c, edges=12, volume_m3=2500.0 / 1e9)  # 2500 mm^3
         # a vs c disjoint
         patched(_FakeDoc([a, b, c]))
         r = run()
         assert r["body_count"] == 3
-        assert r["pairwise_checks"] == 3   # C(3,2)
+        assert r["pairwise_checks"] == 3  # C(3,2)
         assert r["interfering_pair_count"] == 2
         assert r["clean"] is False
         assert r["total_interference_volume_mm3"] == pytest.approx(3500.0)
@@ -175,17 +176,23 @@ class TestThresholdLogging:
     def test_large_part_logs_pairwise_count(self, patched, caplog):
         bodies = [_FakeBody(f"B{i}") for i in range(51)]  # > 50 -> 1275 checks
         patched(_FakeDoc(bodies))
-        with caplog.at_level(logging.WARNING, logger="ai_sw_bridge.observe_body_interference"):
+        with caplog.at_level(
+            logging.WARNING, logger="ai_sw_bridge.observe_body_interference"
+        ):
             r = run()
         assert r["body_count"] == 51
         assert r["pairwise_checks"] == 51 * 50 // 2  # 1275
-        assert any("1275" in rec.message and "pairwise" in rec.message
-                   for rec in caplog.records)
+        assert any(
+            "1275" in rec.message and "pairwise" in rec.message
+            for rec in caplog.records
+        )
 
     def test_under_threshold_no_warning(self, patched, caplog):
         bodies = [_FakeBody(f"B{i}") for i in range(3)]
         patched(_FakeDoc(bodies))
-        with caplog.at_level(logging.WARNING, logger="ai_sw_bridge.observe_body_interference"):
+        with caplog.at_level(
+            logging.WARNING, logger="ai_sw_bridge.observe_body_interference"
+        ):
             run()
         assert not caplog.records
 
@@ -210,6 +217,7 @@ class TestVolumeFailSoft:
 
         def _boom(x, y):
             return None, "Operations2: boom"
+
         monkeypatch.setattr(bi, "_intersection_volume_mm3", _boom)
         patched(_FakeDoc([a, b]))
         r = run()

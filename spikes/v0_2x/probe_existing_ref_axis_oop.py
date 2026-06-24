@@ -42,7 +42,11 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # _feature_spike_fixtures
 
-RESULTS_PATH = Path(__file__).resolve().parents[1] / "_results" / "probe_existing_ref_axis_oop.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "_results"
+    / "probe_existing_ref_axis_oop.json"
+)
 
 import pythoncom  # noqa: E402
 from win32com.client import VARIANT  # noqa: E402
@@ -171,7 +175,9 @@ def run() -> dict[str, Any]:
         # --- Verdict ---
         handler_walled = (not ok) and result["note_mentions_type_mismatch"]
         dc = result["direct_callout_probe"]
-        callout_asymmetry = (dc.get("bare_none_ok") is False) and (dc.get("variant_ok") is True)
+        callout_asymmetry = (dc.get("bare_none_ok") is False) and (
+            dc.get("variant_ok") is True
+        )
 
         if handler_walled or callout_asymmetry:
             result["overall"] = "WALLS"

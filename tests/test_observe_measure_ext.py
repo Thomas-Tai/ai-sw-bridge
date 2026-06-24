@@ -33,6 +33,7 @@ def _mock_typed_side_effect(iface_map):
         if iface in iface_map:
             return iface_map[iface]
         return MagicMock()
+
     return side_effect
 
 
@@ -234,7 +235,10 @@ def test_read_measure_durable_pair_shape_on_bad_ref():
     """Bad durable ref → errors populated, all measurements None."""
     mock_doc = MagicMock()
 
-    with patch("ai_sw_bridge.observe_measure.typed_extension", side_effect=Exception("no extension")):
+    with patch(
+        "ai_sw_bridge.observe_measure.typed_extension",
+        side_effect=Exception("no extension"),
+    ):
         result = read_measure_durable_pair(mock_doc, "ref_a", "ref_b")
     assert isinstance(result, dict)
     assert set(result.keys()) == MEASURE_PAIR_KEYS
@@ -246,8 +250,10 @@ def test_sw_get_measure_durable_pair_shape():
     """Verify _sw_get_measure_durable_pair_impl return shape."""
     mock_doc = MagicMock()
 
-    with patch("ai_sw_bridge.observe_measure.typed_extension") as mock_ext, \
-         patch("ai_sw_bridge.observe_measure.typed") as mock_typed:
+    with (
+        patch("ai_sw_bridge.observe_measure.typed_extension") as mock_ext,
+        patch("ai_sw_bridge.observe_measure.typed") as mock_typed,
+    ):
         mock_ext.side_effect = Exception("no extension")
         mock_typed.side_effect = Exception("no typed")
 
@@ -260,6 +266,7 @@ def test_sw_get_measure_durable_pair_shape():
 def test_sw_get_measure_durable_pair_green():
     """Resolve two durable refs → select both → measure 10mm."""
     import base64
+
     mock_doc = MagicMock()
     mock_entity_a = MagicMock()
     mock_entity_b = MagicMock()
@@ -288,8 +295,11 @@ def test_sw_get_measure_durable_pair_green():
     ext2.CreateMeasure = MagicMock(return_value=mock_measure)
     mock_doc_typed.Extension = ext2
 
-    with patch("ai_sw_bridge.observe_measure.typed_extension", return_value=mock_ext), \
-         patch("ai_sw_bridge.observe_measure.typed") as mock_typed_fn:
+    with (
+        patch("ai_sw_bridge.observe_measure.typed_extension", return_value=mock_ext),
+        patch("ai_sw_bridge.observe_measure.typed") as mock_typed_fn,
+    ):
+
         def typed_se(obj, iface, module=None):
             if iface == "IModelDoc2":
                 return mock_doc_typed
@@ -298,6 +308,7 @@ def test_sw_get_measure_durable_pair_green():
                     return mock_ientity_a
                 return mock_ientity_b
             return MagicMock()
+
         mock_typed_fn.side_effect = typed_se
 
         result = _sw_get_measure_durable_pair_impl(mock_doc, pid_a, pid_b)
@@ -332,7 +343,9 @@ def test_measure_durable_pair_subcommand_in_parser():
     import pytest
 
     parser = _build_parser()
-    args = parser.parse_args(["measure_durable_pair", "--ref-a", "abc", "--ref-b", "def"])
+    args = parser.parse_args(
+        ["measure_durable_pair", "--ref-a", "abc", "--ref-b", "def"]
+    )
     assert args.tool == "measure_durable_pair"
     assert args.ref_a == "abc"
     assert args.ref_b == "def"

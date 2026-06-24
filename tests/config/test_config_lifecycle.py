@@ -22,6 +22,7 @@ from ai_sw_bridge.config.lifecycle import create_configuration, delete_configura
 # Stateful fake COM objects
 # ---------------------------------------------------------------------------
 
+
 class _FakeConfig:
     def __init__(self, name, *, parent=None):
         self.Name = name
@@ -54,9 +55,17 @@ class _FakeCM:
 
 
 class _FakeDoc:
-    def __init__(self, names=("Default",), *, active=None,
-                 add_returns_none=False, add_raises=False,
-                 show_returns=True, delete_returns=True, delete_really=True):
+    def __init__(
+        self,
+        names=("Default",),
+        *,
+        active=None,
+        add_returns_none=False,
+        add_raises=False,
+        show_returns=True,
+        delete_returns=True,
+        delete_really=True,
+    ):
         self.names = list(names)
         self.parents = {}
         self.active = active if active is not None else self.names[0]
@@ -95,6 +104,7 @@ def _identity_typed_qi(monkeypatch):
 # ---------------------------------------------------------------------------
 # create_configuration
 # ---------------------------------------------------------------------------
+
 
 class TestCreate:
     def test_empty_name(self):
@@ -154,6 +164,7 @@ class TestCreate:
 # delete_configuration
 # ---------------------------------------------------------------------------
 
+
 class TestDelete:
     def test_empty_name(self):
         ok, err = delete_configuration(_FakeDoc(), "")
@@ -188,21 +199,24 @@ class TestDelete:
         assert doc.shown == ["Default"]
 
     def test_switch_failure_fails_closed(self):
-        doc = _FakeDoc(names=("Default", "ToDelete"), active="ToDelete",
-                       show_returns=False)
+        doc = _FakeDoc(
+            names=("Default", "ToDelete"), active="ToDelete", show_returns=False
+        )
         ok, err = delete_configuration(doc, "ToDelete")
         assert ok is False and "switch" in err
         assert "ToDelete" in doc.names
 
     def test_delete_returns_false(self):
-        doc = _FakeDoc(names=("Default", "ToDelete"), active="Default",
-                       delete_returns=False)
+        doc = _FakeDoc(
+            names=("Default", "ToDelete"), active="Default", delete_returns=False
+        )
         ok, err = delete_configuration(doc, "ToDelete")
         assert ok is False and "False" in err
 
     def test_still_present_after_delete(self):
         """DeleteConfiguration2 claims True but the config persists -> fail."""
-        doc = _FakeDoc(names=("Default", "ToDelete"), active="Default",
-                       delete_really=False)
+        doc = _FakeDoc(
+            names=("Default", "ToDelete"), active="Default", delete_really=False
+        )
         ok, err = delete_configuration(doc, "ToDelete")
         assert ok is False and "still present" in err

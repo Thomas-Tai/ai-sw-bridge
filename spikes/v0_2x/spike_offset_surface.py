@@ -38,9 +38,7 @@ def _select_top_face(doc):
     from win32com.client import VARIANT
 
     null_disp = VARIANT(pythoncom.VT_DISPATCH, None)
-    doc.Extension.SelectByID2(
-        "", "FACE", 0.0, 0.0, 0.010, False, 0, null_disp, 0
-    )
+    doc.Extension.SelectByID2("", "FACE", 0.0, 0.0, 0.010, False, 0, null_disp, 0)
     face = doc.SelectionManager.GetSelectedObject6(1, -1)
     doc.ClearSelection2(True)
     return face
@@ -103,19 +101,26 @@ def main() -> None:
 
     if not ok:
         print("[offset_surface] FAIL — handler returned False")
-        print("[offset_surface] direct-API diagnostic: attempting InsertOffsetSurface directly...")
+        print(
+            "[offset_surface] direct-API diagnostic: attempting InsertOffsetSurface directly..."
+        )
         try:
             doc.ClearSelection2(True)
             face2 = _select_top_face(doc)
             if face2 is not None:
                 from ai_sw_bridge.selection.live import select_entity
+
                 select_entity(face2, mark=0)
                 ios = doc.InsertOffsetSurface
                 direct_result = ios(0.005, False) if callable(ios) else ios
-                print(f"[offset_surface] direct InsertOffsetSurface(0.005, False) -> {direct_result!r}")
+                print(
+                    f"[offset_surface] direct InsertOffsetSurface(0.005, False) -> {direct_result!r}"
+                )
                 direct_count = _sheet_body_count(doc)
                 direct_area = _total_sheet_area_mm2(doc)
-                print(f"[offset_surface] direct: sheet_bodies={direct_count}, area={direct_area:.3f}")
+                print(
+                    f"[offset_surface] direct: sheet_bodies={direct_count}, area={direct_area:.3f}"
+                )
             else:
                 print("[offset_surface] could not re-select top face for diagnostic")
         except Exception as exc:

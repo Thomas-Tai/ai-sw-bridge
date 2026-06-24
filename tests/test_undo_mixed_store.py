@@ -33,17 +33,31 @@ def test_undo_skips_foreign_family_committed_records(tmp_path, monkeypatch):
     monkeypatch.setattr(mutate, "get_active_doc", lambda sw: None)
 
     # Foreign-family committed record: kind/spec shape, no var, no proposal_id.
-    _write(tmp_path, "foreign", {
-        "kind": "assembly", "spec": {"x": 1}, "state": ST_COMMITTED,
-        "proposed_at": 1.0, "committed_at": 100.0,
-    })
+    _write(
+        tmp_path,
+        "foreign",
+        {
+            "kind": "assembly",
+            "spec": {"x": 1},
+            "state": ST_COMMITTED,
+            "proposed_at": 1.0,
+            "committed_at": 100.0,
+        },
+    )
     # Local-change committed record (the one undo should target — newer).
-    _write(tmp_path, "abc123def456", {
-        "proposal_id": "abc123def456", "var": "BOX_W", "state": ST_COMMITTED,
-        "committed_at": 200.0, "old_expression": "20",
-        "locals_path": str(tmp_path / "x_locals.txt"),
-        "snapshot_text": '"BOX_W" = 20\n',
-    })
+    _write(
+        tmp_path,
+        "abc123def456",
+        {
+            "proposal_id": "abc123def456",
+            "var": "BOX_W",
+            "state": ST_COMMITTED,
+            "committed_at": 200.0,
+            "old_expression": "20",
+            "locals_path": str(tmp_path / "x_locals.txt"),
+            "snapshot_text": '"BOX_W" = 20\n',
+        },
+    )
 
     res = _sw_undo_last_commit_impl()
 
@@ -57,10 +71,16 @@ def test_undo_with_only_foreign_commit_reports_nothing_to_undo(tmp_path, monkeyp
     """If the only committed records are foreign-family, undo reports cleanly
     ('nothing to undo') instead of crashing or falsely targeting them."""
     monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
-    _write(tmp_path, "foreign", {
-        "kind": "drawing", "spec": {}, "state": ST_COMMITTED,
-        "committed_at": 100.0,
-    })
+    _write(
+        tmp_path,
+        "foreign",
+        {
+            "kind": "drawing",
+            "spec": {},
+            "state": ST_COMMITTED,
+            "committed_at": 100.0,
+        },
+    )
 
     res = _sw_undo_last_commit_impl()
 

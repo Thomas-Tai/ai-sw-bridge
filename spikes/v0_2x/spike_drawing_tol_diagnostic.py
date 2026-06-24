@@ -67,7 +67,7 @@ def run() -> None:
 
     # Close all docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -94,10 +94,14 @@ def run() -> None:
         "schema_version": 1,
         "name": "TolDiagBox",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 25.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 15.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 25.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 15.0},
         ],
     }
     r = part_build(spec, save_as=PART_PATH, save_format="current", no_dim=False)
@@ -117,7 +121,10 @@ def run() -> None:
     part_doc = ret[0] if isinstance(ret, tuple) else ret
 
     if part_doc is None:
-        results["tests"]["open_part_A"] = {"ok": False, "error": "OpenDoc6 returned None"}
+        results["tests"]["open_part_A"] = {
+            "ok": False,
+            "error": "OpenDoc6 returned None",
+        }
         save_results()
         return
 
@@ -151,11 +158,13 @@ def run() -> None:
                             d_name = d.FullName
                         except Exception:
                             pass
-                        part_dims.append({
-                            "dim": d,
-                            "name": d_name,
-                            "feat": feat_name,
-                        })
+                        part_dims.append(
+                            {
+                                "dim": d,
+                                "name": d_name,
+                                "feat": feat_name,
+                            }
+                        )
             except Exception:
                 pass
     except Exception as e:
@@ -165,7 +174,10 @@ def run() -> None:
     for pd in part_dims:
         print(f"    {pd['name']} (from {pd['feat']})")
 
-    results["tests"]["part_dims_found"] = {"count": len(part_dims), "names": [pd["name"] for pd in part_dims]}
+    results["tests"]["part_dims_found"] = {
+        "count": len(part_dims),
+        "names": [pd["name"] for pd in part_dims],
+    }
 
     # Set symmetric tolerance on first part dimension
     if part_dims:
@@ -206,9 +218,7 @@ def run() -> None:
 
     # Create drawing with dimensions:true
     print("\n  Creating drawing with dimensions:true...")
-    drwdots = glob.glob(
-        r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT"
-    )
+    drwdots = glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT")
     if not drwdots:
         results["tests"]["template"] = {"ok": False}
         save_results()
@@ -266,12 +276,14 @@ def run() -> None:
                         tol_vals = d.GetToleranceValues()
                     except Exception:
                         pass
-                    drw_dims.append({
-                        "dim": d,
-                        "name": d_name,
-                        "tol_type": tol_type,
-                        "tol_vals": str(tol_vals) if tol_vals else None,
-                    })
+                    drw_dims.append(
+                        {
+                            "dim": d,
+                            "name": d_name,
+                            "tol_type": tol_type,
+                            "tol_vals": str(tol_vals) if tol_vals else None,
+                        }
+                    )
                 except Exception:
                     pass
     except Exception:
@@ -283,7 +295,10 @@ def run() -> None:
 
     results["tests"]["drawing_dims_from_toleranced_part"] = {
         "count": len(drw_dims),
-        "dims": [{"name": d["name"], "tol_type": d["tol_type"], "tol_vals": d["tol_vals"]} for d in drw_dims],
+        "dims": [
+            {"name": d["name"], "tol_type": d["tol_type"], "tol_vals": d["tol_vals"]}
+            for d in drw_dims
+        ],
     }
 
     # Check if part's tolerance is reflected in drawing
@@ -367,12 +382,14 @@ def run() -> None:
                                 tol_vals = d.GetToleranceValues()
                             except Exception:
                                 pass
-                            reopen_part_dims.append({
-                                "dim": d,
-                                "name": d_name,
-                                "tol_type": tol_type,
-                                "tol_vals": str(tol_vals) if tol_vals else None,
-                            })
+                            reopen_part_dims.append(
+                                {
+                                    "dim": d,
+                                    "name": d_name,
+                                    "tol_type": tol_type,
+                                    "tol_vals": str(tol_vals) if tol_vals else None,
+                                }
+                            )
                 except Exception:
                     pass
         except Exception:
@@ -380,11 +397,20 @@ def run() -> None:
 
         print(f"  Reopened part has {len(reopen_part_dims)} dimensions")
         for pd in reopen_part_dims:
-            print(f"    {pd['name']}: tol_type={pd['tol_type']}, tol_vals={pd['tol_vals']}")
+            print(
+                f"    {pd['name']}: tol_type={pd['tol_type']}, tol_vals={pd['tol_vals']}"
+            )
 
         results["tests"]["reopen_part_dims"] = {
             "count": len(reopen_part_dims),
-            "dims": [{"name": d["name"], "tol_type": d["tol_type"], "tol_vals": d["tol_vals"]} for d in reopen_part_dims],
+            "dims": [
+                {
+                    "name": d["name"],
+                    "tol_type": d["tol_type"],
+                    "tol_vals": d["tol_vals"],
+                }
+                for d in reopen_part_dims
+            ],
         }
 
         try:
@@ -431,11 +457,13 @@ def run() -> None:
                                     tol_vals = d.GetToleranceValues()
                                 except Exception:
                                     pass
-                                reopen_drw_dims.append({
-                                    "name": d_name,
-                                    "tol_type": tol_type,
-                                    "tol_vals": str(tol_vals) if tol_vals else None,
-                                })
+                                reopen_drw_dims.append(
+                                    {
+                                        "name": d_name,
+                                        "tol_type": tol_type,
+                                        "tol_vals": str(tol_vals) if tol_vals else None,
+                                    }
+                                )
                             except Exception:
                                 pass
                 except Exception:
@@ -449,11 +477,20 @@ def run() -> None:
 
         print(f"  Reopened drawing has {len(reopen_drw_dims)} dimensions")
         for dd in reopen_drw_dims:
-            print(f"    {dd['name']}: tol_type={dd['tol_type']}, tol_vals={dd['tol_vals']}")
+            print(
+                f"    {dd['name']}: tol_type={dd['tol_type']}, tol_vals={dd['tol_vals']}"
+            )
 
         results["tests"]["reopen_drw_dims"] = {
             "count": len(reopen_drw_dims),
-            "dims": [{"name": d["name"], "tol_type": d["tol_type"], "tol_vals": d["tol_vals"]} for d in reopen_drw_dims],
+            "dims": [
+                {
+                    "name": d["name"],
+                    "tol_type": d["tol_type"],
+                    "tol_vals": d["tol_vals"],
+                }
+                for d in reopen_drw_dims
+            ],
         }
 
         try:

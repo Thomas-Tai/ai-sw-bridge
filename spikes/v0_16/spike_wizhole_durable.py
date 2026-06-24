@@ -20,6 +20,7 @@ the persist token is exercised across a rebuild (the realistic case).
 Non-destructive: own blank Part, never saves, closes own doc.
 Usage:  .venv-py310\Scripts\python spikes\v0_16\spike_wizhole_durable.py
 """
+
 from __future__ import annotations
 
 import base64
@@ -47,10 +48,10 @@ BOX_W_M, BOX_H_M, BOX_D_M = 0.040, 0.040, 0.020
 SW_DEFAULT_TEMPLATE_PART = 8
 
 # Hole spec: ANSI Metric / Drill sizes — proven set from the wizhole work.
-HOLE_TYPE = "hole"            # generic drilled hole
+HOLE_TYPE = "hole"  # generic drilled hole
 STANDARD = "ANSI Metric"
 FASTENER = "Drill Sizes"
-SIZE = "Ø6.0"            # Ø6.0 — a valid Drill Sizes entry (DB-confirmed)
+SIZE = "Ø6.0"  # Ø6.0 — a valid Drill Sizes entry (DB-confirmed)
 
 
 def _title(doc: Any) -> Any:
@@ -63,12 +64,35 @@ def _build_box(doc: Any) -> bool:
         return False
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                             BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base, False)
     except Exception:  # noqa: BLE001
@@ -133,8 +157,11 @@ def run() -> dict[str, Any]:
         # 2. Rebuild THEN resolve — exercise the token across a rebuild.
         doc.ForceRebuild3(False)
         res = resolve_manifest_face(doc, face_ref)
-        report["resolve"] = {"method": res.method, "resolved": res.entity is not None,
-                             "note": res.note}
+        report["resolve"] = {
+            "method": res.method,
+            "resolved": res.entity is not None,
+            "note": res.note,
+        }
         if res.entity is None:
             return {"overall": "FAIL", "reason": "face unresolved", **report}
 
@@ -148,11 +175,15 @@ def run() -> dict[str, Any]:
 
         sk = doc.SketchManager
         sk.InsertSketch(True)
-        px, py, pz = 0.005, 0.005, BOX_D_M   # on-face point offset from centre
+        px, py, pz = 0.005, 0.005, BOX_D_M  # on-face point offset from centre
         pt = sk.CreatePoint(px, py, pz)
         sk.InsertSketch(True)
         if pt is None:
-            return {"overall": "FAIL", "reason": "CreatePoint None (sketch not on face?)", **report}
+            return {
+                "overall": "FAIL",
+                "reason": "CreatePoint None (sketch not on face?)",
+                **report,
+            }
 
         # 4. Resolve DB args and run the wizard pipeline.
         generic = mutate._WZD_GENERIC_HOLE_TYPES[HOLE_TYPE]
@@ -169,7 +200,9 @@ def run() -> dict[str, Any]:
                 hsd = None
             # Brute the resolver: try the known catalog via _resolve_hole_args with
             # a placeholder, then read the suggested sizes out of the error.
-            ok0, si, fi, err0 = mutate._resolve_hole_args(generic, STANDARD, FASTENER, "__none__")
+            ok0, si, fi, err0 = mutate._resolve_hole_args(
+                generic, STANDARD, FASTENER, "__none__"
+            )
             report["size_probe_error"] = err0
             # err0 lists available sizes; grab the first token after 'available: '
             size = None
@@ -181,7 +214,9 @@ def run() -> dict[str, Any]:
         if not size:
             return {"overall": "FAIL", "reason": "no DB size resolved", **report}
 
-        ok, std_idx, fast_idx, err = mutate._resolve_hole_args(generic, STANDARD, FASTENER, size)
+        ok, std_idx, fast_idx, err = mutate._resolve_hole_args(
+            generic, STANDARD, FASTENER, size
+        )
         if not ok:
             return {"overall": "FAIL", "reason": f"resolve_hole_args: {err}", **report}
 
@@ -200,7 +235,11 @@ def run() -> dict[str, Any]:
             return bool(doc.SelectByID("", "SKETCHPOINT", px, py, pz))
 
         if not _select_point():
-            return {"overall": "FAIL", "reason": "could not select placement point", **report}
+            return {
+                "overall": "FAIL",
+                "reason": "could not select placement point",
+                **report,
+            }
 
         fm = doc.FeatureManager
         data = fm.CreateDefinition(mutate._SW_FM_HOLE_WZD)

@@ -7,6 +7,7 @@ stays separate => 2 bodies. Verify-the-EFFECT = body count.
 Uses sys.path.insert(0, worktree/src) FIRST so the WORKTREE builder (with the
 merge field) wins over the editable-install main-repo copy.
 """
+
 from __future__ import annotations
 
 import sys
@@ -28,14 +29,33 @@ def _spec(merge: bool) -> dict:
         "schema_version": 1,
         "name": "MergeProbe",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK_A",
-             "plane": "Front", "width": 50.0, "height": 50.0},
-            {"type": "boss_extrude_blind", "name": "Block_A",
-             "sketch": "SK_A", "depth": 50.0},
-            {"type": "sketch_rectangle_on_plane", "name": "SK_B",
-             "plane": "Right", "width": 100.0, "height": 100.0},
-            {"type": "boss_extrude_blind", "name": "Block_B",
-             "sketch": "SK_B", "depth": 100.0, "merge": merge},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_A",
+                "plane": "Front",
+                "width": 50.0,
+                "height": 50.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "Block_A",
+                "sketch": "SK_A",
+                "depth": 50.0,
+            },
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_B",
+                "plane": "Right",
+                "width": 100.0,
+                "height": 100.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "Block_B",
+                "sketch": "SK_B",
+                "depth": 100.0,
+                "merge": merge,
+            },
         ],
     }
 
@@ -71,8 +91,10 @@ def main() -> int:
         results[merge] = n
         print(f"  merge={merge!s:5} -> {n} body(ies)")
     ok = results.get(True) == 1 and results.get(False) == 2
-    print(f"\n=== {'GREEN' if ok else 'RED'} "
-          f"(expect merge=True->1, merge=False->2) ===")
+    print(
+        f"\n=== {'GREEN' if ok else 'RED'} "
+        f"(expect merge=True->1, merge=False->2) ==="
+    )
     return 0 if ok else 1
 
 

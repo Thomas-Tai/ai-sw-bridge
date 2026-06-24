@@ -14,11 +14,21 @@ from ai_sw_bridge.observe_bbox import (
 )
 
 
-ASM_BBOX_KEYS = frozenset({
-    "x_min_mm", "x_max_mm", "y_min_mm", "y_max_mm",
-    "z_min_mm", "z_max_mm", "dx_mm", "dy_mm", "dz_mm",
-    "component_count", "errors",
-})
+ASM_BBOX_KEYS = frozenset(
+    {
+        "x_min_mm",
+        "x_max_mm",
+        "y_min_mm",
+        "y_max_mm",
+        "z_min_mm",
+        "z_max_mm",
+        "dx_mm",
+        "dy_mm",
+        "dz_mm",
+        "component_count",
+        "errors",
+    }
+)
 
 SW_ASM_BBOX_KEYS = frozenset({"ok", "error", "bounding_box"})
 
@@ -89,12 +99,14 @@ def test_read_assembly_bbox_single_component():
     mock_asm_typed.GetComponents = MagicMock(return_value=(mock_comp,))
 
     with patch("ai_sw_bridge.observe_bbox.typed") as mock_typed_fn:
+
         def typed_se(obj, iface, module=None):
             if iface == "IAssemblyDoc":
                 return mock_asm_typed
             if iface == "IPartDoc":
                 return mock_part_typed
             return MagicMock()
+
         mock_typed_fn.side_effect = typed_se
 
         result = read_assembly_bbox(mock_asm_typed)

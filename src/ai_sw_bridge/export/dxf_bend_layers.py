@@ -106,7 +106,7 @@ def classify_bend_lines_geometric(dxf_text: str) -> dict[str, Any]:
 
     bend_lines: list[dict[str, Any]] = []
     outline_count = 0
-    for (x1, y1, x2, y2) in segments:
+    for x1, y1, x2, y2 in segments:
         on_perimeter = (
             (_on(x1, x_min) and _on(x2, x_min))
             or (_on(x1, x_max) and _on(x2, x_max))
@@ -165,10 +165,12 @@ def rewrite_dxf_with_bend_layer(
         for b in bends:
             sx, sy = b["start"]
             ex, ey = b["end"]
-            fwd = (_close(x1, sx) and _close(y1, sy)
-                   and _close(x2, ex) and _close(y2, ey))
-            rev = (_close(x1, ex) and _close(y1, ey)
-                   and _close(x2, sx) and _close(y2, sy))
+            fwd = (
+                _close(x1, sx) and _close(y1, sy) and _close(x2, ex) and _close(y2, ey)
+            )
+            rev = (
+                _close(x1, ex) and _close(y1, ey) and _close(x2, sx) and _close(y2, sy)
+            )
             if fwd or rev:
                 return True
         return False

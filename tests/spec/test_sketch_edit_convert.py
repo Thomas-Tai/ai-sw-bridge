@@ -72,7 +72,8 @@ def _wire(monkeypatch, *, entity=_sentinel, select_ok: bool = True):
     if entity is _sentinel:
         entity = object()
     monkeypatch.setattr(
-        convert, "resolve_edge_ref",
+        convert,
+        "resolve_edge_ref",
         lambda doc, ref: type("R", (), {"entity": entity, "note": "test"})(),
     )
     selected: list[tuple] = []
@@ -128,7 +129,8 @@ class TestApply:
         selected = _wire(monkeypatch)
         doc = _FakeDoc(ret=True)
         res = convert._apply(
-            doc, object(),
+            doc,
+            object(),
             {"refs": [_edge_ref(), _edge_ref(0.06), _edge_ref(0.08)]},
         )
         assert res["ok"] is True
@@ -139,7 +141,8 @@ class TestApply:
         _wire(monkeypatch)
         doc = _FakeDoc(ret=True)
         convert._apply(
-            doc, object(),
+            doc,
+            object(),
             {"refs": [_edge_ref()], "chain": True, "inner_loops": True},
         )
         assert doc.SketchManager.calls == [(True, True)]

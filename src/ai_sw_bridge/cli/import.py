@@ -165,10 +165,7 @@ def main() -> int:
             "source": args.source,
             "output": args.output,
         }
-        if (
-            args.verify_volume is not None
-            or args.min_bodies != 1
-        ):
+        if args.verify_volume is not None or args.min_bodies != 1:
             envelope["verify"] = {}
             if args.verify_volume is not None:
                 envelope["verify"]["volume_mm3"] = args.verify_volume

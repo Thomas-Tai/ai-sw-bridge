@@ -72,8 +72,10 @@ from spike_sheetmetal_v2 import (  # noqa: E402
 
 def _set_props(w: Any) -> dict[str, Any]:
     recs: dict[str, Any] = {}
-    for name, val in (("BendAngle", EDGE_FLANGE_ANGLE_RAD),
-                      ("BendRadius", EDGE_FLANGE_RADIUS_M)):
+    for name, val in (
+        ("BendAngle", EDGE_FLANGE_ANGLE_RAD),
+        ("BendRadius", EDGE_FLANGE_RADIUS_M),
+    ):
         rec, _ = _capture(lambda n=name, v=val: setattr(w, n, v))
         recs[name] = rec.get("status")
     return recs
@@ -162,7 +164,10 @@ def _try_featuredata_route(
     rec["create_feature"] = feat_rec
     if _materialized(feat):
         rec["overall"] = "PASS"
-    elif isinstance(rec["edge_count_after_feed"], int) and rec["edge_count_after_feed"] >= 1:
+    elif (
+        isinstance(rec["edge_count_after_feed"], int)
+        and rec["edge_count_after_feed"] >= 1
+    ):
         rec["overall"] = "PARTIAL-FED"  # edges accepted but CreateFeature no-op
     else:
         rec["overall"] = "NO-EDGE"
@@ -189,8 +194,9 @@ def _rank_linear_edges(edges: list, mod: Any) -> list[dict[str, Any]]:
         except Exception as exc:  # noqa: BLE001
             info["curve_error"] = f"{type(exc).__name__}: {exc}"[:100]
         ranked.append(info)
-    linear = sorted((r for r in ranked if r["is_line"]),
-                    key=lambda r: r["length"], reverse=True)
+    linear = sorted(
+        (r for r in ranked if r["is_line"]), key=lambda r: r["length"], reverse=True
+    )
     return linear or sorted(ranked, key=lambda r: r["length"], reverse=True)
 
 
@@ -200,7 +206,9 @@ def _try_legacy(doc: Any, fm: Any, ranked: list[dict[str, Any]]) -> dict[str, An
     linear (boundary) edge + a valid BooleanOptions bitmask so the kernel uses
     document defaults instead of the (declined) manual bend/relief values.
     """
-    out: dict[str, Any] = {"route": "L - InsertSheetMetalEdgeFlange2 (nulls + tuned params)"}
+    out: dict[str, Any] = {
+        "route": "L - InsertSheetMetalEdgeFlange2 (nulls + tuned params)"
+    }
     vt_disp = w32.VARIANT(pythoncom.VT_DISPATCH, None)
     angle = math.pi / 2.0
     radius = 0.002
@@ -214,8 +222,12 @@ def _try_legacy(doc: Any, fm: Any, ranked: list[dict[str, Any]]) -> dict[str, An
     )
     top = ranked[:6]
     out["edge_ranking"] = [
-        {"index": r["index"], "is_line": r["is_line"],
-         "len_mm": round(r["length"] * 1000, 2)} for r in ranked
+        {
+            "index": r["index"],
+            "is_line": r["is_line"],
+            "len_mm": round(r["length"] * 1000, 2),
+        }
+        for r in ranked
     ]
     attempts: list[dict[str, Any]] = []
     for opt_label, opts in OPT:
@@ -228,8 +240,23 @@ def _try_legacy(doc: Any, fm: Any, ranked: list[dict[str, Any]]) -> dict[str, An
             # (FlangeEdges, SketchFeats, BooleanOptions, FlangeAngle, FlangeRadius,
             #  BendPosition, FlangeOffsetDist, ReliefType, FlangeReliefRatio,
             #  FlangeReliefWidth, FlangeReliefDepth, FlangeSharpType, CustomBendAllowance)
-            rec, feat = _capture(lambda e=e, o=opts: fm.InsertSheetMetalEdgeFlange2(
-                e, vt_disp, o, angle, radius, 1, offset, 2, 0.5, 0.0, 0.0, 0, vt_disp))
+            rec, feat = _capture(
+                lambda e=e, o=opts: fm.InsertSheetMetalEdgeFlange2(
+                    e,
+                    vt_disp,
+                    o,
+                    angle,
+                    radius,
+                    1,
+                    offset,
+                    2,
+                    0.5,
+                    0.0,
+                    0.0,
+                    0,
+                    vt_disp,
+                )
+            )
             rec["boolean_options"] = opt_label
             rec["edge_index"] = ei
             rec["edge_len_mm"] = round(r["length"] * 1000, 2)
@@ -249,6 +276,7 @@ def _try_legacy(doc: Any, fm: Any, ranked: list[dict[str, Any]]) -> dict[str, An
         hist[str(key)[:70]] = hist.get(str(key)[:70], 0) + 1
     out["return_histogram"] = hist
     return out
+
 
 def run(keep_file: bool = False) -> dict[str, Any]:
     result: dict[str, Any] = {"binding": "hybrid early (com.earlybind pattern)"}
@@ -270,7 +298,11 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     result["base_flange"] = {k: v for k, v in base.items() if not k.startswith("_")}
     if base.get("overall") != "PASS":
         _try_close(sw, doc)
-        return {**result, "overall": "FAIL", "reason": "base flange did not materialize"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": "base flange did not materialize",
+        }
 
     edges = _find_bendable_edges(doc, mod)
     result["edge_count_found"] = len(edges)
@@ -308,10 +340,10 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     result["interpretation"] = {
         "PASS": f"edge flange materialized via {winner} — build the handler.",
         "PARTIAL-FED": "a feed pushed GetEdgeCount>=1 but CreateFeature no-op — "
-                       "edges now marshal; narrow the remaining CreateFeature gap.",
+        "edges now marshal; narrow the remaining CreateFeature gap.",
         "PARTIAL": "no feed pushed GetEdgeCount>=1 and nothing materialized — the "
-                   "out-of-process edge-array marshaling wall persists across all "
-                   "variants; escalate (VBA oracle / different edge acquisition).",
+        "out-of-process edge-array marshaling wall persists across all "
+        "variants; escalate (VBA oracle / different edge acquisition).",
     }.get(overall, "")
 
     _try_close(sw, doc)
@@ -335,7 +367,8 @@ def main() -> int:
     else:
         print(payload)
     return {"PASS": 0, "PARTIAL-FED": 2, "PARTIAL": 2, "FAIL": 1}.get(
-        result.get("overall"), 1)
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":

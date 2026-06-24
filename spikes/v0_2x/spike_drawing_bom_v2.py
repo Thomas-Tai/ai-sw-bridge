@@ -29,9 +29,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_bom_v2.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_bom_v2.json"
 
 SW_BOM_TYPE_TOP_LEVEL_ONLY = 1
 SW_TABLE_ANCHOR_TOP_LEFT = 1
@@ -144,7 +142,7 @@ def run() -> str:
 
     # Close all open docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -175,10 +173,19 @@ def run() -> str:
             "schema_version": 1,
             "name": f"BomV2{label.upper()}",
             "features": [
-                {"type": "sketch_rectangle_on_plane", "name": "SK",
-                 "plane": "Front", "width": w_mm, "height": 20.0},
-                {"type": "boss_extrude_blind", "name": "EX",
-                 "sketch": "SK", "depth": 10.0},
+                {
+                    "type": "sketch_rectangle_on_plane",
+                    "name": "SK",
+                    "plane": "Front",
+                    "width": w_mm,
+                    "height": 20.0,
+                },
+                {
+                    "type": "boss_extrude_blind",
+                    "name": "EX",
+                    "sketch": "SK",
+                    "depth": 10.0,
+                },
             ],
         }
         r = part_build(spec, save_as=path, save_format="current", no_dim=True)
@@ -197,9 +204,12 @@ def run() -> str:
             {"id": "b", "part": PART_B, "transform": {"xyz_mm": [0, 0, 15]}},
         ],
         "mates": [
-            {"type": "coincident", "alignment": "aligned",
-             "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
-             "b": {"component": "b", "face_ref": {"normal": [0, 0, -1]}}},
+            {
+                "type": "coincident",
+                "alignment": "aligned",
+                "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
+                "b": {"component": "b", "face_ref": {"normal": [0, 0, -1]}},
+            },
         ],
     }
 
@@ -221,8 +231,11 @@ def run() -> str:
     tsw.OpenDoc6(ASM_PATH, 2, 1, "", 0, 0)
 
     doc_raw = sw.NewDocument(drw_template, 0, 0.420, 0.297)
-    gate("drawing_create", doc_raw is not None and not isinstance(doc_raw, int),
-         f"type={type(doc_raw).__name__ if doc_raw else None}")
+    gate(
+        "drawing_create",
+        doc_raw is not None and not isinstance(doc_raw, int),
+        f"type={type(doc_raw).__name__ if doc_raw else None}",
+    )
     if doc_raw is None or isinstance(doc_raw, int):
         save_results()
         return "WALL"
@@ -237,8 +250,11 @@ def run() -> str:
             ASM_PATH, "*Front", 0.15, 0.15, 0.0
         )
         view_ok = view_raw is not None and not isinstance(view_raw, int)
-        gate("view_created", view_ok,
-             f"type={type(view_raw).__name__ if view_raw else None}")
+        gate(
+            "view_created",
+            view_ok,
+            f"type={type(view_raw).__name__ if view_raw else None}",
+        )
         if not view_ok:
             save_results()
             return "WALL"
@@ -258,8 +274,11 @@ def run() -> str:
         print("\n--- H3: ActivateView before BOM insert ---")
         try:
             activated = drawing_doc.ActivateView(view_name) if view_name else None
-            gate("h3_activate_view", bool(activated),
-                 f"ActivateView({view_name!r})={activated}")
+            gate(
+                "h3_activate_view",
+                bool(activated),
+                f"ActivateView({view_name!r})={activated}",
+            )
         except Exception as exc:
             gate("h3_activate_view", False, f"raised: {repr(exc)[:80]}")
 
@@ -268,14 +287,22 @@ def run() -> str:
         bom_ann_a = None
         try:
             bom_ann_a = typed_view.InsertBomTable4(
-                False, 0.05, 0.22,
+                False,
+                0.05,
+                0.22,
                 SW_TABLE_ANCHOR_TOP_LEFT,
                 SW_BOM_TYPE_TOP_LEVEL_ONLY,
-                "", bom_template, False,
-                SW_INDENTED_NUMBERING_NONE, False,
+                "",
+                bom_template,
+                False,
+                SW_INDENTED_NUMBERING_NONE,
+                False,
             )
-            gate("insert_A", bom_ann_a is not None and not isinstance(bom_ann_a, int),
-                 f"type={type(bom_ann_a).__name__ if bom_ann_a else None}")
+            gate(
+                "insert_A",
+                bom_ann_a is not None and not isinstance(bom_ann_a, int),
+                f"type={type(bom_ann_a).__name__ if bom_ann_a else None}",
+            )
         except Exception as exc:
             gate("insert_A", False, f"raised: {repr(exc)[:100]}")
 
@@ -284,14 +311,22 @@ def run() -> str:
         bom_ann_b = None
         try:
             bom_ann_b = typed_view.InsertBomTable4(
-                True, 0.0, 0.0,
+                True,
+                0.0,
+                0.0,
                 SW_TABLE_ANCHOR_TOP_RIGHT,
                 SW_BOM_TYPE_TOP_LEVEL_ONLY,
-                "", bom_template, False,
-                SW_INDENTED_NUMBERING_NONE, False,
+                "",
+                bom_template,
+                False,
+                SW_INDENTED_NUMBERING_NONE,
+                False,
             )
-            gate("insert_B", bom_ann_b is not None and not isinstance(bom_ann_b, int),
-                 f"type={type(bom_ann_b).__name__ if bom_ann_b else None}")
+            gate(
+                "insert_B",
+                bom_ann_b is not None and not isinstance(bom_ann_b, int),
+                f"type={type(bom_ann_b).__name__ if bom_ann_b else None}",
+            )
         except Exception as exc:
             gate("insert_B", False, f"raised: {repr(exc)[:100]}")
 
@@ -300,14 +335,22 @@ def run() -> str:
         bom_ann_c = None
         try:
             bom_ann_c = typed_view.InsertBomTable4(
-                False, 0.05, 0.22,
+                False,
+                0.05,
+                0.22,
                 SW_TABLE_ANCHOR_TOP_LEFT,
                 SW_BOM_TYPE_TOP_LEVEL_ONLY,
-                "", "", False,
-                SW_INDENTED_NUMBERING_NONE, False,
+                "",
+                "",
+                False,
+                SW_INDENTED_NUMBERING_NONE,
+                False,
             )
-            gate("insert_C", bom_ann_c is not None and not isinstance(bom_ann_c, int),
-                 f"type={type(bom_ann_c).__name__ if bom_ann_c else None}")
+            gate(
+                "insert_C",
+                bom_ann_c is not None and not isinstance(bom_ann_c, int),
+                f"type={type(bom_ann_c).__name__ if bom_ann_c else None}",
+            )
         except Exception as exc:
             gate("insert_C", False, f"raised: {repr(exc)[:100]}")
 
@@ -316,15 +359,22 @@ def run() -> str:
         try:
             imd2 = typed(doc_raw, "IModelDoc2", module=mod)
             rebuild_ok = imd2.ForceRebuild3(False)
-            gate("h1_force_rebuild", bool(rebuild_ok), f"ForceRebuild3(False)={rebuild_ok}")
+            gate(
+                "h1_force_rebuild",
+                bool(rebuild_ok),
+                f"ForceRebuild3(False)={rebuild_ok}",
+            )
         except Exception as exc:
             gate("h1_force_rebuild", False, f"raised: {repr(exc)[:80]}")
 
         # Check table annotation count after all inserts + rebuild
         try:
             post_count = typed_view.GetTableAnnotationCount() or 0
-            gate("post_rebuild_table_count", post_count > 0,
-                 f"GetTableAnnotationCount={post_count}")
+            gate(
+                "post_rebuild_table_count",
+                post_count > 0,
+                f"GetTableAnnotationCount={post_count}",
+            )
             results["characterization"]["post_rebuild_table_count"] = post_count
         except Exception as exc:
             gate("post_rebuild_table_count", False, f"raised: {repr(exc)[:80]}")
@@ -334,13 +384,21 @@ def run() -> str:
         try:
             ta_array = typed_view.GetTableAnnotations()
             if ta_array is not None:
-                ta_list = list(ta_array) if hasattr(ta_array, '__iter__') else [ta_array]
-                gate("table_annotations_array",
-                     len(ta_list) > 0,
-                     f"count={len(ta_list)}, types={[type(t).__name__ for t in ta_list[:3]]}")
+                ta_list = (
+                    list(ta_array) if hasattr(ta_array, "__iter__") else [ta_array]
+                )
+                gate(
+                    "table_annotations_array",
+                    len(ta_list) > 0,
+                    f"count={len(ta_list)}, types={[type(t).__name__ for t in ta_list[:3]]}",
+                )
                 results["characterization"]["table_annotations"] = len(ta_list)
             else:
-                gate("table_annotations_array", False, "GetTableAnnotations returned None")
+                gate(
+                    "table_annotations_array",
+                    False,
+                    "GetTableAnnotations returned None",
+                )
         except Exception as exc:
             gate("table_annotations_array", False, f"raised: {repr(exc)[:100]}")
 
@@ -353,8 +411,10 @@ def run() -> str:
                 # Summarize key findings
                 mpnc_row1 = probe.get("model_path_names_count_by_row", {}).get(1)
                 cc2_row1 = probe.get("components_count2_by_row", {}).get(1)
-                print(f"  probe_{label}: model_path_names_count[1]={mpnc_row1}, "
-                      f"components_count2[1]={cc2_row1}")
+                print(
+                    f"  probe_{label}: model_path_names_count[1]={mpnc_row1}, "
+                    f"components_count2[1]={cc2_row1}"
+                )
 
         # Liveness: determine working annotation and its data rows
         # Use insert_A as primary; check which annotation has > 0 data
@@ -387,15 +447,22 @@ def run() -> str:
                 row_count_via_ibomtable = bom_table.GetRowCount() or 0
                 col_count = bom_table.GetColumnCount() or 0
                 data_rows = row_count_via_ibomtable - 1
-                gate("ibomtable_row_count",
-                     row_count_via_ibomtable > 0,
-                     f"GetRowCount={row_count_via_ibomtable}, data_rows={data_rows}")
-                results["characterization"]["ibomtable_row_count"] = row_count_via_ibomtable
+                gate(
+                    "ibomtable_row_count",
+                    row_count_via_ibomtable > 0,
+                    f"GetRowCount={row_count_via_ibomtable}, data_rows={data_rows}",
+                )
+                results["characterization"][
+                    "ibomtable_row_count"
+                ] = row_count_via_ibomtable
                 results["characterization"]["ibomtable_col_count"] = col_count
                 results["characterization"]["ibomtable_data_rows"] = data_rows
             else:
-                gate("ibomtable_row_count", False,
-                     f"IGetBomTable returned {type(bom_table_raw).__name__ if bom_table_raw else None}")
+                gate(
+                    "ibomtable_row_count",
+                    False,
+                    f"IGetBomTable returned {type(bom_table_raw).__name__ if bom_table_raw else None}",
+                )
         except Exception as exc:
             gate("ibomtable_row_count", False, f"raised: {repr(exc)[:120]}")
             results["characterization"]["ibomtable_error_v2"] = repr(exc)
@@ -403,23 +470,34 @@ def run() -> str:
         # Liveness gate
         data_rows = row_count_via_ibomtable - 1 if row_count_via_ibomtable > 0 else -1
         liveness_ok = data_rows > 0
-        gate("LIVENESS_DATA_ROWS_GT_ZERO", liveness_ok,
-             f"data_rows={data_rows} (row_count={row_count_via_ibomtable})")
-        gate("LIVENESS_ROWS_EQ_COMPONENT_COUNT",
-             data_rows == component_count,
-             f"data_rows={data_rows}, component_count={component_count}")
+        gate(
+            "LIVENESS_DATA_ROWS_GT_ZERO",
+            liveness_ok,
+            f"data_rows={data_rows} (row_count={row_count_via_ibomtable})",
+        )
+        gate(
+            "LIVENESS_ROWS_EQ_COMPONENT_COUNT",
+            data_rows == component_count,
+            f"data_rows={data_rows}, component_count={component_count}",
+        )
         results["characterization"]["liveness_ok"] = liveness_ok
 
         # Save drawing
         try:
             doc_raw.SaveAs3(DRW_PATH, 0, 2)
-            gate("drawing_save", os.path.isfile(DRW_PATH),
-                 f"size={os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0}")
+            gate(
+                "drawing_save",
+                os.path.isfile(DRW_PATH),
+                f"size={os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0}",
+            )
         except Exception as exc:
             gate("drawing_save", False, f"SaveAs3 raised: {exc!r}")
 
-        gate("OVERALL", liveness_ok and os.path.isfile(DRW_PATH),
-             f"liveness={liveness_ok}, saved={os.path.isfile(DRW_PATH)}")
+        gate(
+            "OVERALL",
+            liveness_ok and os.path.isfile(DRW_PATH),
+            f"liveness={liveness_ok}, saved={os.path.isfile(DRW_PATH)}",
+        )
         return "GO" if liveness_ok else "NO-GO"
 
     finally:

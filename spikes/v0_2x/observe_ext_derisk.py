@@ -88,13 +88,21 @@ def main() -> int:
                         tol=0.5,
                     )
                     all_green = all_green and green
-                    results.append({"leg": "S-FACE-CLEAR", "green": green,
-                                    "scalar": fc["clearance"]["min_distance_mm"]})
+                    results.append(
+                        {
+                            "leg": "S-FACE-CLEAR",
+                            "green": green,
+                            "scalar": fc["clearance"]["min_distance_mm"],
+                        }
+                    )
                 else:
                     _fail("face_clearance", fc.get("error", "unknown"))
                     all_green = False
             else:
-                _fail("face_clearance", "need two faces selected (or named Face<1>/Face<2>)")
+                _fail(
+                    "face_clearance",
+                    "need two faces selected (or named Face<1>/Face<2>)",
+                )
                 all_green = False
         else:
             print("  SKIP  pre-select two faces to run S-FACE-CLEAR")
@@ -132,8 +140,9 @@ def main() -> int:
         if ar.get("ok") and ar["measure"]["area_mm2"] is not None:
             green = _ok("area", ar["measure"]["area_mm2"], 100.0, tol=1.0)
             all_green = all_green and green
-            results.append({"leg": "S-AREA", "green": green,
-                            "scalar": ar["measure"]["area_mm2"]})
+            results.append(
+                {"leg": "S-AREA", "green": green, "scalar": ar["measure"]["area_mm2"]}
+            )
         else:
             print("  SKIP  pre-select a face to run S-AREA")
             results.append({"leg": "S-AREA", "green": None, "skipped": True})
@@ -152,15 +161,27 @@ def main() -> int:
             ab = sw_get_assembly_bbox_from_doc(doc)
             if ab.get("ok") and ab["bounding_box"] is not None:
                 bb = ab["bounding_box"]
-                print(f"  INFO  dx={bb['dx_mm']:.1f} dy={bb['dy_mm']:.1f} "
-                      f"dz={bb['dz_mm']:.1f} mm, {bb['component_count']} components")
+                print(
+                    f"  INFO  dx={bb['dx_mm']:.1f} dy={bb['dy_mm']:.1f} "
+                    f"dz={bb['dz_mm']:.1f} mm, {bb['component_count']} components"
+                )
                 green = bb["dx_mm"] > 0 and bb["dy_mm"] > 0 and bb["dz_mm"] > 0
-                print(f"  {'GREEN' if green else 'RED'}  assembly_bbox "
-                      f"(positive spans)")
+                print(
+                    f"  {'GREEN' if green else 'RED'}  assembly_bbox "
+                    f"(positive spans)"
+                )
                 all_green = all_green and green
-                results.append({"leg": "S-ASM-BBOX", "green": green,
-                                "scalar": {"dx": bb["dx_mm"], "dy": bb["dy_mm"],
-                                           "dz": bb["dz_mm"]}})
+                results.append(
+                    {
+                        "leg": "S-ASM-BBOX",
+                        "green": green,
+                        "scalar": {
+                            "dx": bb["dx_mm"],
+                            "dy": bb["dy_mm"],
+                            "dz": bb["dz_mm"],
+                        },
+                    }
+                )
             else:
                 _fail("assembly_bbox", ab.get("error", "unknown"))
                 all_green = False
@@ -187,8 +208,10 @@ def main() -> int:
                     d = dp["measure"]["distance_mm"]
                     print(f"  INFO  durable pair distance = {d:.3f} mm")
                     green = d > 0
-                    print(f"  {'GREEN' if green else 'RED'}  durable_pair "
-                          f"(positive distance)")
+                    print(
+                        f"  {'GREEN' if green else 'RED'}  durable_pair "
+                        f"(positive distance)"
+                    )
                     all_green = all_green and green
                     results.append({"leg": "S-DUR-PAIR", "green": green, "scalar": d})
                 else:
@@ -213,7 +236,9 @@ def main() -> int:
     print(f"Overall: {'ALL GREEN' if all_green and reds == 0 else 'HAS RED'}")
 
     with open("spikes/v0_2x/_results_W52_observe_ext.json", "w") as f:
-        json.dump({"results": results, "all_green": all_green}, f, indent=2, default=str)
+        json.dump(
+            {"results": results, "all_green": all_green}, f, indent=2, default=str
+        )
 
     return 0 if all_green and reds == 0 else 1
 

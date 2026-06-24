@@ -88,8 +88,13 @@ def _wire(
 
 class TestEffectGate:
     def test_success_with_new_body_and_area(self, monkeypatch):
-        _wire(monkeypatch, count_before=0, count_after=1,
-              area_before=0.0, area_after=1200.0)
+        _wire(
+            monkeypatch,
+            count_before=0,
+            count_after=1,
+            area_before=0.0,
+            area_after=1200.0,
+        )
         doc = _FakeDoc()
         ok, note = create_offset_surface(
             doc, {"offset_mm": 5.0}, {"face_entity": _FACE_SENTINEL}
@@ -100,8 +105,13 @@ class TestEffectGate:
         assert doc.rebuilt is True
 
     def test_success_with_multiple_new_bodies(self, monkeypatch):
-        _wire(monkeypatch, count_before=0, count_after=3,
-              area_before=0.0, area_after=3600.0)
+        _wire(
+            monkeypatch,
+            count_before=0,
+            count_after=3,
+            area_before=0.0,
+            area_after=3600.0,
+        )
         ok, _ = create_offset_surface(
             _FakeDoc(), {"offset_mm": 5.0}, {"face_entity": _FACE_SENTINEL}
         )
@@ -123,8 +133,9 @@ class TestVerifyGate:
 
     def test_new_body_zero_area_is_ghost(self, monkeypatch):
         """Body count increases but area stays zero → ghost (W42 surface form)."""
-        _wire(monkeypatch, count_before=0, count_after=1,
-              area_before=0.0, area_after=0.0)
+        _wire(
+            monkeypatch, count_before=0, count_after=1, area_before=0.0, area_after=0.0
+        )
         ok, note = create_offset_surface(
             _FakeDoc(), {"offset_mm": 5.0}, {"face_entity": _FACE_SENTINEL}
         )
@@ -150,7 +161,8 @@ class TestRecipePin:
         _wire(monkeypatch)
         doc = _FakeDoc()
         ok, _ = create_offset_surface(
-            doc, {"offset_mm": 5.0, "reverse": False},
+            doc,
+            {"offset_mm": 5.0, "reverse": False},
             {"face_entity": _FACE_SENTINEL},
         )
         assert ok
@@ -163,7 +175,8 @@ class TestRecipePin:
         _wire(monkeypatch)
         doc = _FakeDoc()
         ok, _ = create_offset_surface(
-            doc, {"offset_mm": 10.0, "reverse": True},
+            doc,
+            {"offset_mm": 10.0, "reverse": True},
             {"face_entity": _FACE_SENTINEL},
         )
         assert ok
@@ -174,9 +187,7 @@ class TestRecipePin:
     def test_default_offset_is_5mm(self, monkeypatch):
         _wire(monkeypatch)
         doc = _FakeDoc()
-        ok, _ = create_offset_surface(
-            doc, {}, {"face_entity": _FACE_SENTINEL}
-        )
+        ok, _ = create_offset_surface(doc, {}, {"face_entity": _FACE_SENTINEL})
         assert ok
         thickness, reverse = doc.insert_calls[0]
         assert thickness == pytest.approx(0.005)
@@ -209,14 +220,16 @@ class TestValidation:
 
     def test_non_numeric_offset_rejected(self):
         ok, err = create_offset_surface(
-            _FakeDoc(), {"offset_mm": "not_a_number"},
+            _FakeDoc(),
+            {"offset_mm": "not_a_number"},
             {"face_entity": _FACE_SENTINEL},
         )
         assert ok is False and "offset_mm" in err
 
     def test_negative_offset_rejected(self):
         ok, err = create_offset_surface(
-            _FakeDoc(), {"offset_mm": -1.0},
+            _FakeDoc(),
+            {"offset_mm": -1.0},
             {"face_entity": _FACE_SENTINEL},
         )
         assert ok is False and "offset_mm" in err
@@ -240,8 +253,11 @@ class TestUnfiredGate:
 
     def test_in_handler_registry_when_green(self):
         from ai_sw_bridge.features import HANDLER_REGISTRY
+
         assert "offset_surface" in HANDLER_REGISTRY
-        assert HANDLER_REGISTRY["offset_surface"] is offset_surface.create_offset_surface
+        assert (
+            HANDLER_REGISTRY["offset_surface"] is offset_surface.create_offset_surface
+        )
 
 
 # --- selection contract (mark=0, no callout) --------------------------------

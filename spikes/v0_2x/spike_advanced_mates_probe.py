@@ -15,6 +15,7 @@ CreateMate returns a Feature AND the mate survives save->close->reopen.
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_advanced_mates_probe.py
 """
+
 from __future__ import annotations
 
 import json
@@ -52,10 +53,17 @@ results: dict[str, Any] = {"probe": "w75_advanced_mates", "legs": {}}
 
 def _cube(name: str, mm: float = 20.0) -> dict[str, Any]:
     return {
-        "schema_version": 1, "name": name,
+        "schema_version": 1,
+        "name": name,
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "center": {"x": 0.0, "y": 0.0}, "width": mm, "height": mm},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "width": mm,
+                "height": mm,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": mm},
         ],
     }
@@ -63,10 +71,17 @@ def _cube(name: str, mm: float = 20.0) -> dict[str, Any]:
 
 def _plate(name: str) -> dict[str, Any]:
     return {
-        "schema_version": 1, "name": name,
+        "schema_version": 1,
+        "name": name,
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "center": {"x": 0.0, "y": 0.0}, "width": 40.0, "height": 30.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "width": 40.0,
+                "height": 30.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 5.0},
         ],
     }
@@ -228,7 +243,8 @@ def _leg_symmetric(sw: Any, mod: Any) -> dict[str, Any]:
         ti = typed_qi(md, "ISymmetricMateFeatureData", module=mod)
         ti.SymmetryPlane = plane
         ti.EntitiesToMate = w32.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (ea, eb))
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (ea, eb)
+        )
         try:
             ti.MateAlignment = 0  # closest/aligned default
         except Exception:
@@ -253,8 +269,11 @@ def _leg_symmetric(sw: Any, mod: Any) -> dict[str, Any]:
     path = str(Path(t1._results_tmp(), f"w75_symmetric_{os.getpid()}.SLDASM"))
     r["saved"] = _save(asm, mod, path)
     r["reopen_mates"] = _reopen_mate_types(sw, mod, path) if r["saved"] else []
-    r["status"] = "GREEN" if (r.get("feature_type", "").find("Mate") >= 0
-                              and r["reopen_mates"]) else "PARTIAL"
+    r["status"] = (
+        "GREEN"
+        if (r.get("feature_type", "").find("Mate") >= 0 and r["reopen_mates"])
+        else "PARTIAL"
+    )
     return r
 
 
@@ -295,9 +314,13 @@ def _leg_profile_center(sw: Any, mod: Any) -> dict[str, Any]:
             return r
         ti = typed_qi(md, "IProfileCenterMateFeatureData", module=mod)
         ti.EntitiesToMate = w32.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (fa, fb))
-        for prop, val in (("LockRotation", False), ("FlipDimension", False),
-                          ("OffsetDistance", 0.0)):
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (fa, fb)
+        )
+        for prop, val in (
+            ("LockRotation", False),
+            ("FlipDimension", False),
+            ("OffsetDistance", 0.0),
+        ):
             try:
                 setattr(ti, prop, val)
             except Exception:
@@ -326,8 +349,11 @@ def _leg_profile_center(sw: Any, mod: Any) -> dict[str, Any]:
     path = str(Path(t1._results_tmp(), f"w75_profilecenter_{os.getpid()}.SLDASM"))
     r["saved"] = _save(asm, mod, path)
     r["reopen_mates"] = _reopen_mate_types(sw, mod, path) if r["saved"] else []
-    r["status"] = "GREEN" if (r.get("feature_type", "").find("Mate") >= 0
-                              and r["reopen_mates"]) else "PARTIAL"
+    r["status"] = (
+        "GREEN"
+        if (r.get("feature_type", "").find("Mate") >= 0 and r["reopen_mates"])
+        else "PARTIAL"
+    )
     return r
 
 
@@ -344,12 +370,17 @@ def main() -> int:
             try:
                 res = leg_fn(sw, mod)
             except Exception as exc:
-                res = {"status": "UNEXPECTED", "error": f"{type(exc).__name__}: {exc}",
-                       "tb": traceback.format_exc()}
+                res = {
+                    "status": "UNEXPECTED",
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "tb": traceback.format_exc(),
+                }
             results["legs"][res.get("leg", leg_fn.__name__)] = res
-            print(f"  [{res.get('status')}] {res.get('leg')}: "
-                  f"feat={res.get('feature_type')} reopen={res.get('reopen_mates')} "
-                  f"err={res.get('error')}")
+            print(
+                f"  [{res.get('status')}] {res.get('leg')}: "
+                f"feat={res.get('feature_type')} reopen={res.get('reopen_mates')} "
+                f"err={res.get('error')}"
+            )
             try:
                 sw.CloseAllDocuments(True)
             except Exception:
@@ -360,9 +391,14 @@ def main() -> int:
         except Exception:
             pass
         pythoncom.CoUninitialize()
-    verdict = "GREEN" if all(
-        results["legs"].get(k, {}).get("status") == "GREEN"
-        for k in ("symmetric", "profile_center")) else "PARTIAL"
+    verdict = (
+        "GREEN"
+        if all(
+            results["legs"].get(k, {}).get("status") == "GREEN"
+            for k in ("symmetric", "profile_center")
+        )
+        else "PARTIAL"
+    )
     results["verdict"] = verdict
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
     print(f"\nVerdict: {verdict}  (wrote {_OUT})")

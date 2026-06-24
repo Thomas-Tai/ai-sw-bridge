@@ -35,19 +35,37 @@ from typing import Any
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
-RESULTS_PATH = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "drawing_note.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "drawing_note.json"
+)
 
 _SW_NOTE = 6  # swAnnotationType_e.swNote
 
 
 def _build_minimal_part(part_path: str) -> bool:
     from ai_sw_bridge.spec.builder import build as part_build
+
     spec = {
         "schema_version": 1,
         "name": "W70_Box",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK_Box", "plane": "Front", "width": 20.0, "height": 20.0},
-            {"type": "boss_extrude_blind", "name": "EX_Box", "sketch": "SK_Box", "depth": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Box",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 20.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Box",
+                "sketch": "SK_Box",
+                "depth": 10.0,
+            },
         ],
     }
     res = part_build(spec, no_dim=True, save_as=part_path)
@@ -94,7 +112,7 @@ def _reopen_count_notes(drawing_path: str) -> dict[str, Any]:
     try:
         ddoc = typed_qi(doc, "IDrawingDoc", module=mod)
         sheet = typed_qi(ddoc.GetCurrentSheet(), "ISheet", module=mod)
-        for v_raw in (sheet.GetViews() or []):
+        for v_raw in sheet.GetViews() or []:
             if v_raw is None:
                 continue
             try:
@@ -117,7 +135,10 @@ def main() -> int:
     from ai_sw_bridge.drawing.lifecycle import commit_drawing
     from ai_sw_bridge.sw_com import get_sw_app
 
-    result: dict[str, Any] = {"spike": "w70_drawing_note", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    result: dict[str, Any] = {
+        "spike": "w70_drawing_note",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
     mod = wrapper_module()
     sw = get_sw_app()
 
@@ -137,7 +158,9 @@ def main() -> int:
             "model": part_path,
             "views": ["front"],
             "annotations": {
-                "note": [{"view": "front", "x": 0.15, "y": 0.15, "text": "DEBURR ALL EDGES"}],
+                "note": [
+                    {"view": "front", "x": 0.15, "y": 0.15, "text": "DEBURR ALL EDGES"}
+                ],
             },
         }
         try:
@@ -148,13 +171,17 @@ def main() -> int:
             _write(result)
             return 1
         result["commit_ok"] = commit.get("ok", False)
-        result["commit_note_annotations"] = commit.get("note_annotations") or _dig_note(commit)
+        result["commit_note_annotations"] = commit.get("note_annotations") or _dig_note(
+            commit
+        )
 
         reopen = _reopen_count_notes(drawing_path)
         result["reopen"] = reopen
         green = bool(commit.get("ok")) and reopen.get("ok")
         result["overall"] = "PASS" if green else "FAIL"
-        result["finding"] = f"commit_ok={commit.get('ok')}, notes_on_reopen={reopen.get('total_notes')}"
+        result["finding"] = (
+            f"commit_ok={commit.get('ok')}, notes_on_reopen={reopen.get('total_notes')}"
+        )
         _write(result)
         return 0 if green else 1
 

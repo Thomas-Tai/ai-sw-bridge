@@ -32,9 +32,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_dims.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_dims.json"
 
 results: dict[str, Any] = {
     "spike": "w17_drawing_dims",
@@ -124,7 +122,7 @@ def run() -> str:
 
     # Close all docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 d.CloseDoc
             except Exception:
@@ -142,16 +140,19 @@ def run() -> str:
         "schema_version": 1,
         "name": "DimBox",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 25.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 15.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 25.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 15.0},
         ],
     }
 
     # Build with no_dim=True (feature dims still exist in tree)
-    r = part_build(PART_SPEC, save_as=PART_PATH, save_format="current",
-                   no_dim=True)
+    r = part_build(PART_SPEC, save_as=PART_PATH, save_format="current", no_dim=True)
     gate("build_part", r.ok and os.path.isfile(PART_PATH), f"ok={r.ok}")
 
     if not os.path.isfile(PART_PATH):
@@ -160,9 +161,7 @@ def run() -> str:
 
     # Create drawing + view
     print("\n--- Creating drawing with view ---")
-    drwdots = glob.glob(
-        r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT"
-    )
+    drwdots = glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.DRWDOT")
     if not drwdots:
         gate("template", False, "no .drwdot found")
         save_results()
@@ -188,9 +187,11 @@ def run() -> str:
         view_raw = drawing_doc.CreateDrawViewFromModelView3(
             PART_PATH, "*Front", 0.15, 0.15, 0.0
         )
-        gate("view_create", view_raw is not None
-             and not isinstance(view_raw, int),
-             f"type={type(view_raw).__name__ if view_raw else None}")
+        gate(
+            "view_create",
+            view_raw is not None and not isinstance(view_raw, int),
+            f"type={type(view_raw).__name__ if view_raw else None}",
+        )
 
         if view_raw is None or isinstance(view_raw, int):
             save_results()
@@ -226,8 +227,11 @@ def run() -> str:
             ]:
                 try:
                     result = view.InsertModelAnnotations3(*params)
-                    gate(f"routeA_{params_label}", True,
-                         f"result={result}, type={type(result).__name__}")
+                    gate(
+                        f"routeA_{params_label}",
+                        True,
+                        f"result={result}, type={type(result).__name__}",
+                    )
                     route_a[params_label] = {"result": str(result)[:100]}
 
                     # Count after
@@ -238,8 +242,7 @@ def run() -> str:
                         route_a["working_params"] = params_label
                         break
                 except Exception as e:
-                    gate(f"routeA_{params_label}", False,
-                         f"raised: {str(e)[:80]}")
+                    gate(f"routeA_{params_label}", False, f"raised: {str(e)[:80]}")
                     route_a[params_label] = {"error": str(e)[:200]}
         except Exception as e:
             route_a["error"] = str(e)[:200]
@@ -258,8 +261,7 @@ def run() -> str:
                 ]:
                     try:
                         result = sheet.InsertModelAnnotations3(*params)
-                        gate(f"routeB_{params_label}", True,
-                             f"result={result}")
+                        gate(f"routeB_{params_label}", True, f"result={result}")
                         route_b[params_label] = {"result": str(result)[:100]}
 
                         post = count_annotations(view, f"postB_{params_label}")
@@ -269,8 +271,7 @@ def run() -> str:
                             route_b["working_params"] = params_label
                             break
                     except Exception as e:
-                        gate(f"routeB_{params_label}", False,
-                             f"raised: {str(e)[:80]}")
+                        gate(f"routeB_{params_label}", False, f"raised: {str(e)[:80]}")
                         route_b[params_label] = {"error": str(e)[:200]}
             except Exception as e:
                 route_b["error"] = str(e)[:200]
@@ -288,8 +289,7 @@ def run() -> str:
                 ]:
                     try:
                         result = drawing_doc.InsertModelAnnotations3(*params)
-                        gate(f"routeC_{params_label}", True,
-                             f"result={result}")
+                        gate(f"routeC_{params_label}", True, f"result={result}")
                         route_c[params_label] = {"result": str(result)[:100]}
 
                         post = count_annotations(view, f"postC_{params_label}")
@@ -299,8 +299,7 @@ def run() -> str:
                             route_c["working_params"] = params_label
                             break
                     except Exception as e:
-                        gate(f"routeC_{params_label}", False,
-                             f"raised: {str(e)[:80]}")
+                        gate(f"routeC_{params_label}", False, f"raised: {str(e)[:80]}")
                         route_c[params_label] = {"error": str(e)[:200]}
             except Exception as e:
                 route_c["error"] = str(e)[:200]
@@ -322,13 +321,15 @@ def run() -> str:
 
         if any_go:
             verdict = "GO"
-            gate("OVERALL_GO", True,
-                 f"pre={pre_count}, final={final_count}")
+            gate("OVERALL_GO", True, f"pre={pre_count}, final={final_count}")
         else:
             verdict = "NO-GO"
-            gate("OVERALL_NO_GO", False,
-                 f"pre={pre_count}, final={final_count} "
-                 f"(insert-but-zero or all routes wall)")
+            gate(
+                "OVERALL_NO_GO",
+                False,
+                f"pre={pre_count}, final={final_count} "
+                f"(insert-but-zero or all routes wall)",
+            )
 
         results["verdict"] = verdict
         return verdict

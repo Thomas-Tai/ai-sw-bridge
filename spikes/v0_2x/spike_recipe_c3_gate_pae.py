@@ -32,6 +32,7 @@ HANDLER_REGISTRY seam, while the edge_flange island stayed put in mutate.
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_recipe_c3_gate_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -70,7 +71,10 @@ import ai_sw_bridge.mutate as mutate_mod  # noqa: E402
 
 _OUT = _HERE.parent / "_results" / "recipec3_gate_pae.json"
 _WORK = _HERE.parent / "_results" / "recipec3_work"
-results: dict[str, Any] = {"pae": "recipec3_refgeometry_registry_migration_gate", "gates": {}}
+results: dict[str, Any] = {
+    "pae": "recipec3_refgeometry_registry_migration_gate",
+    "gates": {},
+}
 
 _REFGEO_KINDS = ("ref_plane", "ref_axis", "coordinate_system", "ref_point")
 
@@ -82,7 +86,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -103,10 +109,29 @@ def _build_box_seed(sw: Any, path: str) -> bool:
     sm.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
     sm.InsertSketch(True)
     f = fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.01, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0.0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.01,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0.0,
+        0.0,
+        False,
     )
     if f:
         try:
@@ -150,8 +175,15 @@ def _node_type_present(sw: Any, path: str, token: str) -> bool:
             pass
 
 
-def _lifecycle(client: Any, sw: Any, name: str, seed: str, feature: dict,
-               target: dict, node_token: str) -> None:
+def _lifecycle(
+    client: Any,
+    sw: Any,
+    name: str,
+    seed: str,
+    feature: dict,
+    target: dict,
+    node_token: str,
+) -> None:
     try:
         sw.CloseAllDocuments(True)
     except Exception:
@@ -168,16 +200,18 @@ def _lifecycle(client: Any, sw: Any, name: str, seed: str, feature: dict,
     results[f"{name}_commit"] = com
     node_ok = _node_type_present(sw, seed, node_token)
     lifecycle_ok = bool(prop.get("ok")) and bool(dry.get("ok")) and bool(com.get("ok"))
-    gate(f"{name}_lifecycle",
-         lifecycle_ok and node_ok,
-         f"propose={prop.get('ok')} dry_run={dry.get('ok')} commit={com.get('ok')} "
-         f"'{node_token}'_node={node_ok} (executed through HANDLER_REGISTRY) "
-         f"err={com.get('error') or dry.get('error')}")
+    gate(
+        f"{name}_lifecycle",
+        lifecycle_ok and node_ok,
+        f"propose={prop.get('ok')} dry_run={dry.get('ok')} commit={com.get('ok')} "
+        f"'{node_token}'_node={node_ok} (executed through HANDLER_REGISTRY) "
+        f"err={com.get('error') or dry.get('error')}",
+    )
 
 
 def _scan_for_node(doc: Any, token: str) -> bool:
     """Scan the in-memory feature tree for a node whose type-name contains *token*."""
-    for fnode in (doc.FeatureManager.GetFeatures(False) or []):
+    for fnode in doc.FeatureManager.GetFeatures(False) or []:
         for attr in ("GetTypeName2", "GetTypeName"):
             try:
                 v = getattr(fnode, attr)
@@ -206,16 +240,18 @@ def _ref_axis_direct_witness(sw: Any, seed: str) -> None:
     try:
         doc.ClearSelection2(True)
         ret = rg._create_ref_axis(
-            doc, {"type": "ref_axis"},
-            {"planes": ["Front Plane", "Right Plane"]})
+            doc, {"type": "ref_axis"}, {"planes": ["Front Plane", "Right Plane"]}
+        )
         ok = ret[0] if isinstance(ret, tuple) else ret
         node_ok = _scan_for_node(doc, "RefAxis")
         results["ref_axis_direct_return"] = repr(ret)
-        gate("ref_axis_direct_materialize",
-             bool(ok) and node_ok,
-             f"direct _create_ref_axis ret={ret!r} 'RefAxis'_node={node_ok} "
-             f"(migrated handler materializes; dry_run transaction defect recorded "
-             f"in deferred_findings)")
+        gate(
+            "ref_axis_direct_materialize",
+            bool(ok) and node_ok,
+            f"direct _create_ref_axis ret={ret!r} 'RefAxis'_node={node_ok} "
+            f"(migrated handler materializes; dry_run transaction defect recorded "
+            f"in deferred_findings)",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)
@@ -228,19 +264,22 @@ def _record_ref_axis_dryrun_defect(client: Any, seed: str) -> None:
     transaction-context marshaling defect; store it as a deferred finding."""
     finding: dict[str, Any] = {
         "status": "PRE_EXISTING / DEFERRED (fast-follow lane queued)",
-        "note": ("ref_axis materializes correctly on a DIRECT handler call (see the "
-                 "ref_axis_direct_materialize gate). The failure is isolated to the "
-                 "dry_run transaction context: the VARIANT(VT_DISPATCH, None) "
-                 "SelectByID2 callout drops its COM reference crossing the "
-                 "_proposals_dir transaction boundary. NOT introduced by the Recipe-C "
-                 "migration (handler is byte-identical to the HEAD mutate original); "
-                 "ref_axis full lifecycle was never seat-proven pre-migration (W64 "
-                 "used a direct OOP probe). Fixed in a SEPARATE commit per the M1 "
-                 "undo-bug precedent."),
+        "note": (
+            "ref_axis materializes correctly on a DIRECT handler call (see the "
+            "ref_axis_direct_materialize gate). The failure is isolated to the "
+            "dry_run transaction context: the VARIANT(VT_DISPATCH, None) "
+            "SelectByID2 callout drops its COM reference crossing the "
+            "_proposals_dir transaction boundary. NOT introduced by the Recipe-C "
+            "migration (handler is byte-identical to the HEAD mutate original); "
+            "ref_axis full lifecycle was never seat-proven pre-migration (W64 "
+            "used a direct OOP probe). Fixed in a SEPARATE commit per the M1 "
+            "undo-bug precedent."
+        ),
     }
     try:
         prop = client.mutate.propose_feature_add(
-            seed, {"type": "ref_axis"}, {"planes": ["Front Plane", "Right Plane"]})
+            seed, {"type": "ref_axis"}, {"planes": ["Front Plane", "Right Plane"]}
+        )
         finding["propose_ok"] = prop.get("ok")
         pid = prop.get("proposal_id")
         if pid:
@@ -250,9 +289,11 @@ def _record_ref_axis_dryrun_defect(client: Any, seed: str) -> None:
     except Exception as exc:  # noqa: BLE001
         finding["captured_exception"] = repr(exc)
     results["deferred_findings"] = {"ref_axis_dry_run_transaction_defect": finding}
-    print(f"  [INFO] deferred_finding recorded: ref_axis dry_run defect "
-          f"(dry_run_ok={finding.get('dry_run_ok')}, "
-          f"error={str(finding.get('dry_run_error'))[:60]!r})")
+    print(
+        f"  [INFO] deferred_finding recorded: ref_axis dry_run defect "
+        f"(dry_run_ok={finding.get('dry_run_ok')}, "
+        f"error={str(finding.get('dry_run_error'))[:60]!r})"
+    )
 
 
 def main() -> int:
@@ -274,17 +315,31 @@ def main() -> int:
             gate("registry_seam", False, f"features.ref_geometry import failed: {exc}")
             raise SystemExit(_finish())
         registered = all(k in HANDLER_REGISTRY for k in _REFGEO_KINDS)
-        in_features = all(hasattr(rg, n) for n in (
-            "_create_ref_plane", "_create_ref_axis",
-            "_create_coordinate_system", "_create_ref_point"))
-        gone_from_mutate = not any(hasattr(mutate_mod, n) for n in (
-            "_create_ref_plane", "_create_ref_axis",
-            "_create_coordinate_system", "_create_ref_point"))
+        in_features = all(
+            hasattr(rg, n)
+            for n in (
+                "_create_ref_plane",
+                "_create_ref_axis",
+                "_create_coordinate_system",
+                "_create_ref_point",
+            )
+        )
+        gone_from_mutate = not any(
+            hasattr(mutate_mod, n)
+            for n in (
+                "_create_ref_plane",
+                "_create_ref_axis",
+                "_create_coordinate_system",
+                "_create_ref_point",
+            )
+        )
         island_intact = hasattr(mutate_mod, "_create_edge_flange")
-        gate("registry_seam",
-             registered and in_features and gone_from_mutate and island_intact,
-             f"registered={registered} in_ref_geometry={in_features} "
-             f"removed_from_mutate={gone_from_mutate} edge_flange_island_intact={island_intact}")
+        gate(
+            "registry_seam",
+            registered and in_features and gone_from_mutate and island_intact,
+            f"registered={registered} in_ref_geometry={in_features} "
+            f"removed_from_mutate={gone_from_mutate} edge_flange_island_intact={island_intact}",
+        )
 
         seed = str(_WORK / "recipec3_seed.SLDPRT")
         if not _build_box_seed(sw, seed):
@@ -294,9 +349,15 @@ def main() -> int:
         client = SolidWorksClient()
 
         # ── B: ref_plane (offset) lifecycle ──
-        _lifecycle(client, sw, "ref_plane", seed,
-                   {"type": "ref_plane", "distance_mm": 50.0},
-                   {"plane": "Front Plane"}, "RefPlane")
+        _lifecycle(
+            client,
+            sw,
+            "ref_plane",
+            seed,
+            {"type": "ref_plane", "distance_mm": 50.0},
+            {"plane": "Front Plane"},
+            "RefPlane",
+        )
         # ── C: ref_axis DIRECT-call materialization (migrated handler is sound) ──
         _ref_axis_direct_witness(sw, seed)
         # ── record the pre-existing dry_run transaction defect (not gated) ──

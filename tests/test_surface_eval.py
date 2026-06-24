@@ -74,16 +74,26 @@ def _fake_typed(obj: Any, iface: str, module: Any = None) -> Any:
 class TestEvaluateSurfaceAtUv:
     def test_ok(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import ai_sw_bridge.com.earlybind as eb_mod
+
         monkeypatch.setattr(eb_mod, "typed", _fake_typed)
         face = _FakeFace()
         result = evaluate_surface_at_uv(face, 0.5, 0.5)
         assert result["ok"] is True
-        assert result["point_mm"] == [pytest.approx(10.0), pytest.approx(20.0), pytest.approx(30.0)]
-        assert result["normal"] == [pytest.approx(0.0), pytest.approx(0.0), pytest.approx(1.0)]
+        assert result["point_mm"] == [
+            pytest.approx(10.0),
+            pytest.approx(20.0),
+            pytest.approx(30.0),
+        ]
+        assert result["normal"] == [
+            pytest.approx(0.0),
+            pytest.approx(0.0),
+            pytest.approx(1.0),
+        ]
         assert result["error"] is None
 
     def test_get_surface_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import ai_sw_bridge.com.earlybind as eb_mod
+
         monkeypatch.setattr(eb_mod, "typed", _fake_typed)
         face = _FakeFaceNoSurface()
         result = evaluate_surface_at_uv(face, 0.5, 0.5)
@@ -92,6 +102,7 @@ class TestEvaluateSurfaceAtUv:
 
     def test_get_surface_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import ai_sw_bridge.com.earlybind as eb_mod
+
         monkeypatch.setattr(eb_mod, "typed", _fake_typed)
         face = _FakeFaceRaise()
         result = evaluate_surface_at_uv(face, 0.5, 0.5)
@@ -102,6 +113,7 @@ class TestEvaluateSurfaceAtUv:
 class TestGetSurfaceParameterRange:
     def test_ok(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import ai_sw_bridge.com.earlybind as eb_mod
+
         monkeypatch.setattr(eb_mod, "typed", _fake_typed)
         face = _FakeFace()
         result = get_surface_parameter_range(face)
@@ -111,6 +123,7 @@ class TestGetSurfaceParameterRange:
 
     def test_get_surface_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import ai_sw_bridge.com.earlybind as eb_mod
+
         monkeypatch.setattr(eb_mod, "typed", _fake_typed)
         face = _FakeFaceNoSurface()
         result = get_surface_parameter_range(face)

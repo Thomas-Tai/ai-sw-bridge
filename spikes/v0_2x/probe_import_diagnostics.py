@@ -29,6 +29,7 @@ Witness questions:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/probe_import_diagnostics.py
 """
+
 from __future__ import annotations
 
 import json
@@ -63,10 +64,18 @@ out: dict[str, Any] = {"probe": "import_diagnostics"}
 # swFaultEntityErrorCode_e — partial decode (the gap/face/body classes most
 # relevant to imported geometry).
 _FAULT_CODES = {
-    1: "swBodyCorrupt", 2: "swBodyInvalidIdentifiers", 3: "swBodyInsideOut",
-    4: "swBodyRegionsInconsistent", 16: "swFaceBadVertex", 17: "swFaceBadEdge",
-    18: "swFaceBadEdgeOrder", 19: "swFaceNoAccomVertex", 20: "swFaceBadLoops",
-    21: "swFaceSelfIntersecting", 22: "swFaceBadWireframe", 23: "swFaceCheckerFailure",
+    1: "swBodyCorrupt",
+    2: "swBodyInvalidIdentifiers",
+    3: "swBodyInsideOut",
+    4: "swBodyRegionsInconsistent",
+    16: "swFaceBadVertex",
+    17: "swFaceBadEdge",
+    18: "swFaceBadEdgeOrder",
+    19: "swFaceNoAccomVertex",
+    20: "swFaceBadLoops",
+    21: "swFaceSelfIntersecting",
+    22: "swFaceBadWireframe",
+    23: "swFaceCheckerFailure",
 }
 
 
@@ -139,13 +148,20 @@ def _body_summary(part_ld: Any) -> dict[str, Any]:
                             ec = int(fault.ErrorCode[i])
                         except Exception:
                             ec = None
-                    codes.append({"code": ec, "name": _FAULT_CODES.get(ec, f"code_{ec}")})
+                    codes.append(
+                        {"code": ec, "name": _FAULT_CODES.get(ec, f"code_{ec}")}
+                    )
                 if cnt:
                     faults.append({"body_type": bt, "count": cnt, "codes": codes})
         except Exception as e:  # noqa: BLE001
             faults.append({"check3_exc": repr(e)})
-    return {"body_count": len(bodies), "solid": solid, "sheet": sheet,
-            "other": other, "faults": faults}
+    return {
+        "body_count": len(bodies),
+        "solid": solid,
+        "sheet": sheet,
+        "other": other,
+        "faults": faults,
+    }
 
 
 def _import_diagnosis(part_ld: Any) -> dict[str, Any]:

@@ -86,13 +86,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:  # noqa: BLE001
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:200],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:200],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _build_box(doc: Any) -> dict[str, Any]:
@@ -100,15 +106,38 @@ def _build_box(doc: Any) -> dict[str, Any]:
         return {"built": False, "error": "could not select Front Plane"}
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    seg = sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                                   BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    seg = sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     if seg is None:
         sk.InsertSketch(True)
         return {"built": False, "error": "CreateCornerRectangle returned None"}
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base_args = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False,
-                 False, 0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base_args = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
     except Exception:  # noqa: BLE001
@@ -124,7 +153,7 @@ def _select_edges(doc: Any) -> int:
     except Exception:  # noqa: BLE001
         pass
     n = 0
-    for (x, y, z) in TOP_EDGES:
+    for x, y, z in TOP_EDGES:
         if doc.SelectByID("", "EDGE", x, y, z):
             n += 1
     return n
@@ -271,19 +300,25 @@ def run() -> dict[str, Any]:
     expected = {round(r, 6) for r in PER_EDGE_RADII_M}
     if items_count <= 0:
         overall = "NO-ITEMS"
-        interp = ("FilletItemsCount is 0 even on the created feature's definition "
-                  "→ per-edge radii use a different accessor; inspect get_definition "
-                  "/ access_selections.")
+        interp = (
+            "FilletItemsCount is 0 even on the created feature's definition "
+            "→ per-edge radii use a different accessor; inspect get_definition "
+            "/ access_selections."
+        )
     elif expected.issubset(distinct):
         overall = "PASS-PER-EDGE"
-        interp = (f"distinct per-edge radii stuck ({sorted(distinct)} m) → build a "
-                  "variable_radius_fillet handler: create multi-radius, GetDefinition, "
-                  "SetRadius per item, ModifyDefinition.")
+        interp = (
+            f"distinct per-edge radii stuck ({sorted(distinct)} m) → build a "
+            "variable_radius_fillet handler: create multi-radius, GetDefinition, "
+            "SetRadius per item, ModifyDefinition."
+        )
     else:
         overall = "PARTIAL-EDIT"
-        interp = (f"items enumerable (count={items_count}) but readback radii "
-                  f"{sorted(distinct)} != expected {sorted(expected)} → SetRadius / "
-                  "ModifyDefinition shape needs tuning (see set_per_item / modify_definition).")
+        interp = (
+            f"items enumerable (count={items_count}) but readback radii "
+            f"{sorted(distinct)} != expected {sorted(expected)} → SetRadius / "
+            "ModifyDefinition shape needs tuning (see set_per_item / modify_definition)."
+        )
 
     result["overall"] = overall
     result["interpretation"] = interp

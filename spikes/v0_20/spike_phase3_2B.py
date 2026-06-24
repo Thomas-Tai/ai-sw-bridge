@@ -83,6 +83,7 @@ PART_SPEC = {
 
 def probe_faces(part_path: str, sw: Any, tsw: Any, mod: Any) -> list[dict]:
     from ai_sw_bridge.com.earlybind import typed, typed_extension
+
     ret = tsw.OpenDoc6(part_path, 1, 1, "", 0, 0)
     doc = ret[0] if isinstance(ret, tuple) else ret
     if doc is None:
@@ -115,14 +116,20 @@ def probe_faces(part_path: str, sw: Any, tsw: Any, mod: Any) -> list[dict]:
                         persist_id = base64.b64encode(bytes(pid_bytes)).decode("ascii")
                 except Exception:
                     pass
-                face_list.append({
-                    "face_idx": idx,
-                    "is_cylinder": is_cyl,
-                    "is_plane": is_plane,
-                    "normal": [round(n, 6) for n in normal],
-                    "centroid": [round(cx * 1000, 3), round(cy * 1000, 3), round(cz * 1000, 3)],
-                    "persist_id": persist_id,
-                })
+                face_list.append(
+                    {
+                        "face_idx": idx,
+                        "is_cylinder": is_cyl,
+                        "is_plane": is_plane,
+                        "normal": [round(n, 6) for n in normal],
+                        "centroid": [
+                            round(cx * 1000, 3),
+                            round(cy * 1000, 3),
+                            round(cz * 1000, 3),
+                        ],
+                        "persist_id": persist_id,
+                    }
+                )
             except Exception:
                 pass
         return face_list
@@ -162,7 +169,9 @@ def run() -> bool:
     from ai_sw_bridge.com.earlybind import typed, typed_qi
     from ai_sw_bridge.sw_com import get_sw_app
     from ai_sw_bridge.assembly.handlers import (
-        create_mate, verify_mates, place_components,
+        create_mate,
+        verify_mates,
+        place_components,
     )
 
     mod = wrapper_module()
@@ -191,8 +200,11 @@ def run() -> bool:
     for label, path in [("A", PART_A_PATH), ("B", PART_B_PATH)]:
         print(f"  Building Part {label}...")
         r = part_build(PART_SPEC, save_as=path, save_format="current", no_dim=True)
-        gate(f"build_part_{label.lower()}", r.ok and os.path.isfile(path),
-             f"ok={r.ok}, features={r.features_built}")
+        gate(
+            f"build_part_{label.lower()}",
+            r.ok and os.path.isfile(path),
+            f"ok={r.ok}, features={r.features_built}",
+        )
 
     if not os.path.isfile(PART_A_PATH) or not os.path.isfile(PART_B_PATH):
         gate("parts_built", False, "Part build failed")
@@ -210,12 +222,16 @@ def run() -> bool:
     face_a_right = find_planar(faces_a, [1, 0, 0])
     face_b_right = find_planar(faces_b, [1, 0, 0])
 
-    gate("probe_faces", all([face_a_top, face_b_bottom, face_a_right, face_b_right]),
-         f"top_A={face_a_top is not None}, bottom_B={face_b_bottom is not None}")
+    gate(
+        "probe_faces",
+        all([face_a_top, face_b_bottom, face_a_right, face_b_right]),
+        f"top_A={face_a_top is not None}, bottom_B={face_b_bottom is not None}",
+    )
 
     # Create assembly
     print("\n--- Step 3: Assembly + limit mates ---")
     import glob
+
     asm_templates = glob.glob(
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
     )
@@ -246,8 +262,11 @@ def run() -> bool:
 
     mate_feat, mate_err = create_mate(asm_doc, placed, dist_limit_spec, mod=mod)
     dist_ok = mate_feat is not None and mate_err is None
-    gate("create_distance_limit_mate", dist_ok,
-         f"feat={mate_feat is not None}, error={mate_err}")
+    gate(
+        "create_distance_limit_mate",
+        dist_ok,
+        f"feat={mate_feat is not None}, error={mate_err}",
+    )
 
     # --- Angle mate with limits ---
     print("\n  Creating angle mate with limits (45° ± 15°)...")
@@ -262,8 +281,11 @@ def run() -> bool:
 
     mate_feat2, mate_err2 = create_mate(asm_doc, placed, angle_limit_spec, mod=mod)
     angle_ok = mate_feat2 is not None and mate_err2 is None
-    gate("create_angle_limit_mate", angle_ok,
-         f"feat={mate_feat2 is not None}, error={mate_err2}")
+    gate(
+        "create_angle_limit_mate",
+        angle_ok,
+        f"feat={mate_feat2 is not None}, error={mate_err2}",
+    )
 
     # --- verify_mates ---
     print("\n--- Step 4: verify_mates ---")
@@ -275,12 +297,17 @@ def run() -> bool:
     vm = verify_mates(asm_doc, mod=mod)
     print(f"  verify_mates returned {len(vm)} mates:")
     for m in vm:
-        print(f"    {m['name']}: type={m['type']}, solved={m['solved']}, "
-              f"error_code={m['error_code']}")
+        print(
+            f"    {m['name']}: type={m['type']}, solved={m['solved']}, "
+            f"error_code={m['error_code']}"
+        )
 
     all_solved = len(vm) >= 2 and all(m.get("solved") for m in vm)
-    gate("verify_mates_all_solved", all_solved,
-         f"total={len(vm)}, solved={sum(1 for m in vm if m.get('solved'))}")
+    gate(
+        "verify_mates_all_solved",
+        all_solved,
+        f"total={len(vm)}, solved={sum(1 for m in vm if m.get('solved'))}",
+    )
 
     # --- Read back limit properties ---
     print("\n--- Step 5: Read back limit properties ---")
@@ -288,7 +315,7 @@ def run() -> bool:
     try:
         fm = asm_doc.FeatureManager
         feats = fm.GetFeatures(False)
-        for feat in (feats or []):
+        for feat in feats or []:
             ifeat = typed(feat, "IFeature", module=mod)
             type_name = ifeat.GetTypeName2()
             if "Mate" not in type_name or type_name == "MateGroup":
@@ -304,16 +331,20 @@ def run() -> bool:
                     dist_val = d_iface.Distance
                     max_dist = d_iface.MaximumDistance
                     min_dist = d_iface.MinimumDistance
-                    print(f"  {ifeat.Name}: Distance={dist_val}, "
-                          f"Min={min_dist}, Max={max_dist}")
-                    results["per_mate_results"].append({
-                        "name": ifeat.Name,
-                        "type": type_name,
-                        "distance_m": dist_val,
-                        "min_distance_m": min_dist,
-                        "max_distance_m": max_dist,
-                        "limits_set": min_dist != 0 or max_dist != 0,
-                    })
+                    print(
+                        f"  {ifeat.Name}: Distance={dist_val}, "
+                        f"Min={min_dist}, Max={max_dist}"
+                    )
+                    results["per_mate_results"].append(
+                        {
+                            "name": ifeat.Name,
+                            "type": type_name,
+                            "distance_m": dist_val,
+                            "min_distance_m": min_dist,
+                            "max_distance_m": max_dist,
+                            "limits_set": min_dist != 0 or max_dist != 0,
+                        }
+                    )
                 except Exception as e:
                     print(f"  {ifeat.Name}: read error: {e}")
             elif "Angle" in type_name:
@@ -322,16 +353,20 @@ def run() -> bool:
                     angle_val = a_iface.Angle
                     max_angle = a_iface.MaximumAngle
                     min_angle = a_iface.MinimumAngle
-                    print(f"  {ifeat.Name}: Angle={angle_val}, "
-                          f"Min={min_angle}, Max={max_angle}")
-                    results["per_mate_results"].append({
-                        "name": ifeat.Name,
-                        "type": type_name,
-                        "angle_rad": angle_val,
-                        "min_angle_rad": min_angle,
-                        "max_angle_rad": max_angle,
-                        "limits_set": min_angle != 0 or max_angle != 0,
-                    })
+                    print(
+                        f"  {ifeat.Name}: Angle={angle_val}, "
+                        f"Min={min_angle}, Max={max_angle}"
+                    )
+                    results["per_mate_results"].append(
+                        {
+                            "name": ifeat.Name,
+                            "type": type_name,
+                            "angle_rad": angle_val,
+                            "min_angle_rad": min_angle,
+                            "max_angle_rad": max_angle,
+                            "limits_set": min_angle != 0 or max_angle != 0,
+                        }
+                    )
                 except Exception as e:
                     print(f"  {ifeat.Name}: read error: {e}")
     except Exception as e:

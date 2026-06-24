@@ -123,7 +123,8 @@ class TestResolveComponentFace:
 
         pid_b64 = base64.urlsafe_b64encode(b"\xff").decode("ascii").rstrip("=")
         result = resolve_component_face(
-            doc, comp,
+            doc,
+            comp,
             {"persist_id": pid_b64, "normal": target_normal},
         )
         assert result.ok
@@ -162,9 +163,7 @@ class TestResolveComponentFace:
             lambda obj, iface, module=None: obj,
         )
 
-        result = resolve_component_face(
-            doc, comp, {"normal": target_normal}
-        )
+        result = resolve_component_face(doc, comp, {"normal": target_normal})
         assert not result.ok
         assert result.method == "unresolved"
         assert "no face matched" in result.error
@@ -182,9 +181,7 @@ class TestResolveComponentFace:
             lambda doc, module=None: ext,
         )
 
-        result = resolve_component_face(
-            doc, EmptyComp(), {"normal": [0, 0, 1]}
-        )
+        result = resolve_component_face(doc, EmptyComp(), {"normal": [0, 0, 1]})
         assert not result.ok
         assert "no bodies" in result.error
 

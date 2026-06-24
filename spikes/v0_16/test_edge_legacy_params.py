@@ -1,6 +1,8 @@
 """Test: InsertSheetMetalEdgeFlange with different parameter combinations."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "v0_15"))
 

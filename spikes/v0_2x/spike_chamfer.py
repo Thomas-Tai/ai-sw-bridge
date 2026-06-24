@@ -50,7 +50,11 @@ import pythoncom  # noqa: E402
 from ai_sw_bridge.com.earlybind import typed, typed_qi, EarlyBindError  # noqa: E402
 from ai_sw_bridge.com.sw_type_info import wrapper_module  # noqa: E402
 from ai_sw_bridge.sw_com import get_sw_app  # noqa: E402
-from ai_sw_bridge.selection import DurableEdgeRef, resolve_edge_ref, select_entity  # noqa: E402
+from ai_sw_bridge.selection import (
+    DurableEdgeRef,
+    resolve_edge_ref,
+    select_entity,
+)  # noqa: E402
 
 SW_DEFAULT_TEMPLATE_PART = 8
 SWCONST_TLB = Path(r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\swconst.tlb")
@@ -147,6 +151,7 @@ def _body_volume(doc: Any) -> float | None:
 # ---------------------------------------------------------------------------
 # Typelib probes
 # ---------------------------------------------------------------------------
+
 
 def _walk_swconst_feature_name_ids() -> dict[str, Any]:
     report: dict[str, Any] = {"path": str(SWCONST_TLB), "loadable": False}
@@ -249,6 +254,7 @@ def _probe_members(obj: Any, names: tuple[str, ...]) -> dict[str, str]:
 # Box builder
 # ---------------------------------------------------------------------------
 
+
 def _build_box(doc: Any) -> dict[str, Any]:
     out: dict[str, Any] = {}
     fm = doc.FeatureManager
@@ -257,8 +263,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
         sk = doc.SketchManager
         sk.InsertSketch(True)
         sk.CreateCornerRectangle(
-            -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-            BOX_W_M / 2, BOX_H_M / 2, 0.0,
+            -BOX_W_M / 2,
+            -BOX_H_M / 2,
+            0.0,
+            BOX_W_M / 2,
+            BOX_H_M / 2,
+            0.0,
         )
         sk.InsertSketch(True)
         out["sketch"] = "Sketch1"
@@ -268,14 +278,29 @@ def _build_box(doc: Any) -> dict[str, Any]:
 
     try:
         feat = fm.FeatureExtrusion3(
-            True, False, False,
-            0, 0,
-            BOX_D_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOX_D_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
+            False,
         )
         out["extrude"] = feat is not None
         out["extrude_materialized"] = _materialized(feat)
@@ -291,6 +316,7 @@ def _build_box(doc: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Durable edge capture (top-front edge of the box)
 # ---------------------------------------------------------------------------
+
 
 def _capture_durable_edge(doc: Any) -> dict[str, Any]:
     out: dict[str, Any] = {}
@@ -311,6 +337,7 @@ def _capture_durable_edge(doc: Any) -> dict[str, Any]:
             return out
 
         from ai_sw_bridge.selection.live import capture_persist_id
+
         persist_id = capture_persist_id(doc, edge_obj)
 
         try:
@@ -347,9 +374,8 @@ def _capture_durable_edge(doc: Any) -> dict[str, Any]:
 # Chamfer probe
 # ---------------------------------------------------------------------------
 
-def _probe_chamfer(
-    doc: Any, edge_ref_dict: dict, mod: Any
-) -> dict[str, Any]:
+
+def _probe_chamfer(doc: Any, edge_ref_dict: dict, mod: Any) -> dict[str, Any]:
     result: dict[str, Any] = {}
     fm = doc.FeatureManager
 
@@ -423,7 +449,9 @@ def _probe_chamfer(
                     fd.SetEdgeChamferDistance(CHAMFER_DISTANCE_M)
                     set_recs["SetEdgeChamferDistance"] = "OK"
                 except Exception as e:
-                    set_recs["SetEdgeChamferDistance"] = f"{type(e).__name__}: {str(e)[:120]}"
+                    set_recs["SetEdgeChamferDistance"] = (
+                        f"{type(e).__name__}: {str(e)[:120]}"
+                    )
             if members.get("EdgeChamferAngle") == "present":
                 try:
                     fd.EdgeChamferAngle = CHAMFER_ANGLE_RAD
@@ -474,9 +502,13 @@ def _probe_chamfer(
         angle = CHAMFER_ANGLE_RAD
         other_dist = 0.0
         try:
-            feat2 = fm.InsertFeatureChamfer(options, chamfer_type, width, angle, other_dist, 0.0, 0.0, 0.0)
+            feat2 = fm.InsertFeatureChamfer(
+                options, chamfer_type, width, angle, other_dist, 0.0, 0.0, 0.0
+            )
             legacy_result["returned_none"] = feat2 is None
-            legacy_result["type"] = type(feat2).__name__ if feat2 is not None else "None"
+            legacy_result["type"] = (
+                type(feat2).__name__ if feat2 is not None else "None"
+            )
             if _materialized(feat2):
                 legacy_result["type_name"] = _type_name(feat2)
                 legacy_result["materialized"] = True
@@ -502,8 +534,16 @@ def _probe_chamfer(
     }
     result["delta"] = {
         "feature_count": count_after - count_before,
-        "face_count": (faces_after - faces_before) if faces_before >= 0 and faces_after >= 0 else None,
-        "volume": (volume_after - volume_before) if volume_before is not None and volume_after is not None else None,
+        "face_count": (
+            (faces_after - faces_before)
+            if faces_before >= 0 and faces_after >= 0
+            else None
+        ),
+        "volume": (
+            (volume_after - volume_before)
+            if volume_before is not None and volume_after is not None
+            else None
+        ),
     }
 
     # Verdict
@@ -512,9 +552,8 @@ def _probe_chamfer(
     delta_ok = result["delta"]["feature_count"] >= 1
     face_delta = result["delta"].get("face_count")
     vol_delta = result["delta"].get("volume")
-    geometry_altered = (
-        (face_delta is not None and face_delta > 0)
-        or (vol_delta is not None and abs(vol_delta) > 1e-12)
+    geometry_altered = (face_delta is not None and face_delta > 0) or (
+        vol_delta is not None and abs(vol_delta) > 1e-12
     )
 
     if cd_ok and delta_ok and geometry_altered:
@@ -528,10 +567,14 @@ def _probe_chamfer(
         result["reason"] = "feature created but geometry unchanged (no-op trap)"
     elif (cd_ok or legacy_ok) and not delta_ok:
         result["verdict"] = "NO-GO"
-        result["reason"] = f"feature created but count delta={result['delta']['feature_count']}"
+        result["reason"] = (
+            f"feature created but count delta={result['delta']['feature_count']}"
+        )
     else:
         result["verdict"] = "NO-GO"
-        result["reason"] = "neither CreateDefinition nor InsertFeatureChamfer materialized"
+        result["reason"] = (
+            "neither CreateDefinition nor InsertFeatureChamfer materialized"
+        )
 
     return result
 
@@ -539,6 +582,7 @@ def _probe_chamfer(
 # ---------------------------------------------------------------------------
 # Top-level run
 # ---------------------------------------------------------------------------
+
 
 def run() -> dict[str, Any]:
     result: dict[str, Any] = {
@@ -620,7 +664,9 @@ def main() -> None:
     verdict = result.get("overall", "NO-GO")
     print(f"verdict: {verdict}", file=sys.stderr)
     if result.get("confirmed"):
-        print(f"confirmed: {json.dumps(result['confirmed'], indent=2)}", file=sys.stderr)
+        print(
+            f"confirmed: {json.dumps(result['confirmed'], indent=2)}", file=sys.stderr
+        )
     print(f"results written to {RESULTS_PATH}", file=sys.stderr)
 
 

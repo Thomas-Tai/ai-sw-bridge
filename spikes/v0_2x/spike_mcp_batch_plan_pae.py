@@ -14,6 +14,7 @@ kernel:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_mcp_batch_plan_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -51,7 +52,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _RESULTS.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -108,27 +111,40 @@ def main() -> int:
     mcp = create_server(runtime)
     try:
         tool = next((t for t in mcp.iter_tools() if t.name == "sw_batch_plan"), None)
-        gate("facade_seam", tool is not None, f"sw_batch_plan registered={tool is not None}")
+        gate(
+            "facade_seam",
+            tool is not None,
+            f"sw_batch_plan registered={tool is not None}",
+        )
         if tool is None:
             return _finish()
 
         proposals = [
-            {"feature": {"type": "ref_plane", "distance_mm": 25.0},
-             "target": {"plane": "Front Plane"}},
+            {
+                "feature": {"type": "ref_plane", "distance_mm": 25.0},
+                "target": {"plane": "Front Plane"},
+            },
             {"feature": {"type": "scale", "scale_factor": 1.5}, "target": {}},
             {"feature": {"type": "com_point"}, "target": {}},
         ]
         # Drives @com_tool → ComExecutor STA thread → engine dry_run on the kernel.
         r = tool.fn(str(path), proposals)
         results["manifest"] = r
-        ok_b = (r.get("ok") is True and r.get("dry_run") is True
-                and r.get("doc_saved") is False and r.get("committed_count") == 3
-                and r.get("mcp_mode") == "plan_only_dry_run"
-                and r.get("committed_to_disk") is False)
-        gate("validates", bool(ok_b),
-             f"ok={r.get('ok')} dry_run={r.get('dry_run')} saved={r.get('doc_saved')} "
-             f"committed={r.get('committed_count')} kinds={[c.get('kind') for c in r.get('committed', [])]} "
-             f"err={r.get('error')}")
+        ok_b = (
+            r.get("ok") is True
+            and r.get("dry_run") is True
+            and r.get("doc_saved") is False
+            and r.get("committed_count") == 3
+            and r.get("mcp_mode") == "plan_only_dry_run"
+            and r.get("committed_to_disk") is False
+        )
+        gate(
+            "validates",
+            bool(ok_b),
+            f"ok={r.get('ok')} dry_run={r.get('dry_run')} saved={r.get('doc_saved')} "
+            f"committed={r.get('committed_count')} kinds={[c.get('kind') for c in r.get('committed', [])]} "
+            f"err={r.get('error')}",
+        )
     finally:
         try:
             runtime.shutdown()
@@ -138,10 +154,12 @@ def main() -> int:
     # Disk-untouched witness (after the executor released the doc).
     mtime_after = path.stat().st_mtime_ns
     nodes_after = _reopen_node_count(sw, path)
-    gate("disk_untouched",
-         mtime_after == mtime_before and nodes_after == nodes_before,
-         f"mtime_unchanged={mtime_after == mtime_before} "
-         f"nodes {nodes_before}->{nodes_after} (must be equal — dry-run persists nothing)")
+    gate(
+        "disk_untouched",
+        mtime_after == mtime_before and nodes_after == nodes_before,
+        f"mtime_unchanged={mtime_after == mtime_before} "
+        f"nodes {nodes_before}->{nodes_after} (must be equal — dry-run persists nothing)",
+    )
 
     _close_all(sw)
     pythoncom.CoUninitialize()

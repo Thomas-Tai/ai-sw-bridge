@@ -76,8 +76,13 @@ def test_commit_threads_args_and_part_paths() -> None:
     parser = _build_parser()
     args = parser.parse_args(
         [
-            "commit", "--proposal-id", "pid7", "--out", "out.sldasm",
-            "--part-paths", '{"lid": "C:/tmp/lid.sldprt"}',
+            "commit",
+            "--proposal-id",
+            "pid7",
+            "--out",
+            "out.sldasm",
+            "--part-paths",
+            '{"lid": "C:/tmp/lid.sldprt"}',
         ]
     )
     with patch(
@@ -85,7 +90,8 @@ def test_commit_threads_args_and_part_paths() -> None:
     ) as m:
         args.func(args)
     m.assert_called_once_with(
-        proposal_id="pid7", output_path="out.sldasm",
+        proposal_id="pid7",
+        output_path="out.sldasm",
         part_paths={"lid": "C:/tmp/lid.sldprt"},
     )
 

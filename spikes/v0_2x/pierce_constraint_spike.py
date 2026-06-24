@@ -23,6 +23,7 @@ A frozen center across all tokens = pierce not reachable out-of-process (a wall)
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/pierce_constraint_spike.py
 """
+
 from __future__ import annotations
 
 import json
@@ -149,7 +150,9 @@ def main() -> int:
         circle = sm.CreateCircle(0.020, 0.0, 0.0, 0.025, 0.0, 0.0)  # center (20,0), r=5
         sk = doc.GetActiveSketch2
         before = _center_xy(circle, mod)
-        out["center_before_mm"] = [round(before[0] * 1000, 4), round(before[1] * 1000, 4)] if before else None
+        out["center_before_mm"] = (
+            [round(before[0] * 1000, 4), round(before[1] * 1000, 4)] if before else None
+        )
 
         # --- Try pierce tokens; the EFFECT (center snap) is the arbiter ---
         attempts: list[dict[str, Any]] = []
@@ -157,15 +160,20 @@ def main() -> int:
         for token in _PIERCE_TOKENS:
             n0 = _count_relations(sk)
             pre = _center_xy(circle, mod)
-            pre_offset = pre is not None and (abs(pre[0]) > 0.001 or abs(pre[1]) > 0.001)
+            pre_offset = pre is not None and (
+                abs(pre[0]) > 0.001 or abs(pre[1]) > 0.001
+            )
             doc.ClearSelection2(True)
             # Select the circle CENTER by coordinate (ISketchPoint has no Select4
             # on the gen_py proxy). The center sits at part (0.020, 0, 0) on the
             # Front plane until a working pierce snaps it to the origin.
             cur = _center_xy(circle, mod) or (0.020, 0.0)
             try:
-                sel_pt = bool(ext.SelectByID2(
-                    "", "SKETCHPOINT", cur[0], cur[1], 0.0, False, 0, None, 0))
+                sel_pt = bool(
+                    ext.SelectByID2(
+                        "", "SKETCHPOINT", cur[0], cur[1], 0.0, False, 0, None, 0
+                    )
+                )
             except Exception as exc:  # noqa: BLE001
                 sel_pt = f"pt_select_err:{exc!r}"[:80]
             try:
@@ -181,20 +189,34 @@ def main() -> int:
             n1 = _count_relations(sk)
             after = _center_xy(circle, mod)
             dx_mm = abs(after[0] * 1000) if after else None
-            at_origin = bool(after is not None and abs(after[0]) < 0.001 and abs(after[1]) < 0.001)
+            at_origin = bool(
+                after is not None and abs(after[0]) < 0.001 and abs(after[1]) < 0.001
+            )
             # The EFFECT is the arbiter (RelationManager.GetRelations(0) is a
             # TYPE filter, not a count of all relations — it returns 0 for
             # pierce). A token WINS only if THIS attempt moved the center from an
             # offset position to the pierce point (attribution, not coincidence).
             snapped = bool(pre_offset and at_origin)
-            attempts.append({
-                "token": token, "sel_point": sel_pt, "sel_path": sel_path,
-                "add_error": add_err, "relation_delta": n1 - n0,
-                "center_after_mm": [round(after[0] * 1000, 4), round(after[1] * 1000, 4)] if after else None,
-                "snapped_this_attempt": snapped, "center_at_origin": at_origin,
-            })
-            print(f"[pierce] {token:<14} -> snapped={snapped} at_origin={at_origin} "
-                  f"delta={n1-n0} center_x_mm={dx_mm}")
+            attempts.append(
+                {
+                    "token": token,
+                    "sel_point": sel_pt,
+                    "sel_path": sel_path,
+                    "add_error": add_err,
+                    "relation_delta": n1 - n0,
+                    "center_after_mm": (
+                        [round(after[0] * 1000, 4), round(after[1] * 1000, 4)]
+                        if after
+                        else None
+                    ),
+                    "snapped_this_attempt": snapped,
+                    "center_at_origin": at_origin,
+                }
+            )
+            print(
+                f"[pierce] {token:<14} -> snapped={snapped} at_origin={at_origin} "
+                f"delta={n1-n0} center_x_mm={dx_mm}"
+            )
             if snapped:
                 winner = token
                 break
@@ -208,7 +230,9 @@ def main() -> int:
 
         if winner is None:
             out["status"] = "PIERCE_FROZEN"
-            out["note"] = "no token snapped the center — pierce not reachable out-of-process"
+            out["note"] = (
+                "no token snapped the center — pierce not reachable out-of-process"
+            )
             return _finish(out)
 
         # --- Secondary gate: the sweep now solves with the anchored profile ---
@@ -237,8 +261,11 @@ def main() -> int:
                         vol += float(mp[3]) * 1e9
                 except Exception:
                     pass
-            out["sweep"] = {"feature_delta": n_after - n_before, "bodies": nb,
-                            "volume_mm3": round(vol, 1)}
+            out["sweep"] = {
+                "feature_delta": n_after - n_before,
+                "bodies": nb,
+                "volume_mm3": round(vol, 1),
+            }
             sweep_ok = (n_after > n_before) and nb >= 1 and vol > 0
         except Exception as exc:  # noqa: BLE001
             out["sweep"] = {"error": f"{exc!r}"[:160]}
@@ -263,7 +290,9 @@ def main() -> int:
 
 def _finish(out: dict) -> int:
     _OUT.write_text(json.dumps(out, indent=2, default=str), encoding="utf-8")
-    print(f"[pierce] verdict: {out.get('status')} (token={out.get('winning_token')}) -> {_OUT}")
+    print(
+        f"[pierce] verdict: {out.get('status')} (token={out.get('winning_token')}) -> {_OUT}"
+    )
     return 0 if out.get("status") == "GREEN" else 1
 
 

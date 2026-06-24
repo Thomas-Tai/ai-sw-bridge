@@ -12,6 +12,7 @@ PASS = commit ok AND doc_saved AND the resolve method was persist_id.
 Non-destructive: own temp .sldprt + temp proposals dir; closes own docs.
 Usage:  <main-venv>\python spikes\v0_16\_seatcheck_wizhole_durable_pae.py
 """
+
 from __future__ import annotations
 
 import base64
@@ -53,8 +54,30 @@ def _build_box(doc: Any) -> bool:
     sk.CreateCornerRectangle(-W / 2, -H / 2, 0.0, W / 2, H / 2, 0.0)
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base = (True, False, False, 0, 0, D, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        D,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base, False)
     except Exception:  # noqa: BLE001
@@ -97,21 +120,30 @@ def run() -> dict[str, Any]:
         return {"overall": "FAIL", "reason": "box build failed", **report}
     doc.ForceRebuild3(False)
     face_ref = _capture_face_ref(doc, 0.0, 0.0, D, "+z_top")
-    report["captured"] = {"has_persist": face_ref is not None and "persist_id" in face_ref}
+    report["captured"] = {
+        "has_persist": face_ref is not None and "persist_id" in face_ref
+    }
     if face_ref is None or "persist_id" not in face_ref:
         try:
             sw.CloseDoc(_title(doc))
         except Exception:  # noqa: BLE001
             pass
-        return {"overall": "FAIL", "reason": "no durable persist token captured", **report}
+        return {
+            "overall": "FAIL",
+            "reason": "no durable persist token captured",
+            **report,
+        }
 
     path = str(_TMP / "wizhole_durable.sldprt")
     doc.SaveAs3(path, 0, 0)
     sw.CloseDoc(_title(doc))
 
     feature = {
-        "type": "wizard_hole", "hole_type": "hole", "standard": "ANSI Metric",
-        "fastener_type": "Drill Sizes", "size": "Ø6.0",
+        "type": "wizard_hole",
+        "hole_type": "hole",
+        "standard": "ANSI Metric",
+        "fastener_type": "Drill Sizes",
+        "size": "Ø6.0",
         "end_condition": "through_all",
     }
     target = {"face_ref": face_ref, "point": [0.005, 0.005, D]}
@@ -123,15 +155,24 @@ def run() -> dict[str, Any]:
     pid = prop["proposal_id"]
 
     dry = mutate.sw_dry_run_feature_add(pid)
-    report["dry_run"] = {"ok": dry.get("ok"), "state": dry.get("state"),
-                         "result": dry.get("dry_run_result"), "error": dry.get("error")}
+    report["dry_run"] = {
+        "ok": dry.get("ok"),
+        "state": dry.get("state"),
+        "result": dry.get("dry_run_result"),
+        "error": dry.get("error"),
+    }
     if not dry.get("ok"):
         return {"overall": "FAIL-DRYRUN", **report}
 
     commit = mutate.sw_commit_feature_add(pid)
-    report["commit"] = {"ok": commit.get("ok"), "doc_saved": commit.get("doc_saved"),
-                        "error": commit.get("error")}
-    report["overall"] = "PASS" if (commit.get("ok") and commit.get("doc_saved")) else "PARTIAL"
+    report["commit"] = {
+        "ok": commit.get("ok"),
+        "doc_saved": commit.get("doc_saved"),
+        "error": commit.get("error"),
+    }
+    report["overall"] = (
+        "PASS" if (commit.get("ok") and commit.get("doc_saved")) else "PARTIAL"
+    )
     return report
 
 

@@ -19,6 +19,7 @@ Gates:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_stackup_pae.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -74,7 +75,8 @@ def _near(val: Any, target: float, tol: float = 0.05) -> bool:
 
 def _finish() -> int:
     all_pass = bool(results["gates"]) and all(
-        g["ok"] for g in results["gates"].values())
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -103,16 +105,23 @@ def main() -> int:
         # Place along +X: base@0, spacer@22 (gap 2mm), top@45 (gap 3mm).
         comps = [
             {"id": "base", "part": base["path"], "transform": {"xyz_mm": [0, 0, 0]}},
-            {"id": "spacer", "part": spacer["path"], "transform": {"xyz_mm": [22, 0, 0]}},
+            {
+                "id": "spacer",
+                "part": spacer["path"],
+                "transform": {"xyz_mm": [22, 0, 0]},
+            },
             {"id": "top", "part": top["path"], "transform": {"xyz_mm": [45, 0, 0]}},
         ]
         asm, placed, err = P._place(sw, mod, comps)
         if err:
             gate("fixture", False, err)
             raise SystemExit(_finish())
-        names = [_name2(placed["base"]), _name2(placed["spacer"]), _name2(placed["top"])]
-        gate("fixture", all(names) and len(placed) == 3,
-             f"components={names}")
+        names = [
+            _name2(placed["base"]),
+            _name2(placed["spacer"]),
+            _name2(placed["top"]),
+        ]
+        gate("fixture", all(names) and len(placed) == 3, f"components={names}")
         if not all(names):
             raise SystemExit(_finish())
 
@@ -124,30 +133,38 @@ def main() -> int:
         rep = sw_analyze_stackup(asm, names, check_endpoints=True)
         results["report"] = rep
         gaps = [p.get("gap_mm") for p in rep.get("pairs", [])]
-        gate("gaps",
-             rep.get("ok") is True and rep.get("accumulation_complete") is True
-             and len(gaps) == 2 and _near(gaps[0], 2.0) and _near(gaps[1], 3.0)
-             and _near(rep.get("accumulated_gap_mm"), 5.0),
-             f"ok={rep.get('ok')} gaps={gaps} "
-             f"accumulated={rep.get('accumulated_gap_mm')} err={rep.get('error')}")
-        gate("endpoint",
-             _near(rep.get("endpoint_span_mm"), 25.0)
-             and _near(rep.get("intervening_span_mm"), 20.0)
-             and rep.get("linear_consistent") is True
-             and not rep.get("warnings"),
-             f"endpoint_span={rep.get('endpoint_span_mm')} "
-             f"intervening={rep.get('intervening_span_mm')} "
-             f"linear={rep.get('linear_consistent')} warn={rep.get('warnings')}")
+        gate(
+            "gaps",
+            rep.get("ok") is True
+            and rep.get("accumulation_complete") is True
+            and len(gaps) == 2
+            and _near(gaps[0], 2.0)
+            and _near(gaps[1], 3.0)
+            and _near(rep.get("accumulated_gap_mm"), 5.0),
+            f"ok={rep.get('ok')} gaps={gaps} "
+            f"accumulated={rep.get('accumulated_gap_mm')} err={rep.get('error')}",
+        )
+        gate(
+            "endpoint",
+            _near(rep.get("endpoint_span_mm"), 25.0)
+            and _near(rep.get("intervening_span_mm"), 20.0)
+            and rep.get("linear_consistent") is True
+            and not rep.get("warnings"),
+            f"endpoint_span={rep.get('endpoint_span_mm')} "
+            f"intervening={rep.get('intervening_span_mm')} "
+            f"linear={rep.get('linear_consistent')} warn={rep.get('warnings')}",
+        )
 
         # ── Gate D: the same audit through the CLI runner (active doc) ────
         ns = argparse.Namespace(components=names, no_endpoints=False)
         cli_rep = _run_analyze_stackup(ns)
         results["cli_report"] = cli_rep
-        gate("cli_entry",
-             cli_rep.get("ok") is True
-             and _near(cli_rep.get("accumulated_gap_mm"), 5.0),
-             f"ok={cli_rep.get('ok')} accumulated={cli_rep.get('accumulated_gap_mm')} "
-             f"err={cli_rep.get('error')}")
+        gate(
+            "cli_entry",
+            cli_rep.get("ok") is True and _near(cli_rep.get("accumulated_gap_mm"), 5.0),
+            f"ok={cli_rep.get('ok')} accumulated={cli_rep.get('accumulated_gap_mm')} "
+            f"err={cli_rep.get('error')}",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

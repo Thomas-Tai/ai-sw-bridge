@@ -36,7 +36,9 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-RESULTS_PATH = Path(__file__).resolve().parents[1] / "_results" / "fillet_face_fullround.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[1] / "_results" / "fillet_face_fullround.json"
+)
 
 import pythoncom
 
@@ -49,8 +51,10 @@ from ai_sw_bridge.selection.live import capture_persist_id
 
 # --- face capture (persist-id + minimal fingerprint) ----------------------
 
+
 def _null_disp() -> Any:
     from win32com.client import VARIANT
+
     return VARIANT(pythoncom.VT_DISPATCH, None)
 
 
@@ -207,6 +211,7 @@ def _face_count(doc: Any) -> int:
 
 # --- fixture: 40x30x10 block face refs (face fillet needs 2 adjacent) ------
 
+
 def _block_face_refs(doc: Any) -> tuple[dict, dict] | None:
     """Capture two ADJACENT face refs on the 40x30x10 block.
 
@@ -215,8 +220,8 @@ def _block_face_refs(doc: Any) -> tuple[dict, dict] | None:
       set2: +x side     (x=20mm, normal +x)
     Their shared top-right edge is the fillet target.
     """
-    top = _select_face_at(doc, 0.0, 0.0, 0.010)        # z=10mm
-    side_x = _select_face_at(doc, 0.020, 0.0, 0.005)   # x=20mm
+    top = _select_face_at(doc, 0.0, 0.0, 0.010)  # z=10mm
+    side_x = _select_face_at(doc, 0.020, 0.0, 0.005)  # x=20mm
     if top is None or side_x is None:
         return None
     return (
@@ -231,7 +236,7 @@ def _block_face_refs(doc: Any) -> tuple[dict, dict] | None:
 # flanked by two SIDE faces along parallel long edges.  We build the slab
 # by boss-extruding a narrow rectangle on the block's top face (Sketch2).
 
-_SLAB_WIDTH_M = 0.010   # 10 mm
+_SLAB_WIDTH_M = 0.010  # 10 mm
 _SLAB_LENGTH_M = 0.030  # 30 mm
 _SLAB_HEIGHT_M = 0.005  # 5 mm
 _BLIND = 0
@@ -246,6 +251,7 @@ def _build_slab_on_block(doc: Any) -> bool:
     SIDE faces (+y / -y).
     """
     from win32com.client import VARIANT
+
     null = VARIANT(pythoncom.VT_DISPATCH, None)
     ext = doc.Extension
     try:
@@ -271,10 +277,29 @@ def _build_slab_on_block(doc: Any) -> bool:
         return False
     try:
         doc.FeatureManager.FeatureExtrusion2(
-            True, False, False, _BLIND, 0,
-            _SLAB_HEIGHT_M, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False,
-            True, True, True, 0, 0.0, False,
+            True,
+            False,
+            False,
+            _BLIND,
+            0,
+            _SLAB_HEIGHT_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0.0,
+            False,
         )
     except Exception as exc:
         print(f"  slab: FeatureExtrusion2 raised: {exc!r}", file=sys.stderr)
@@ -295,9 +320,9 @@ def _slab_face_refs(doc: Any) -> tuple[dict, dict, dict] | None:
       center: slab top        (z=15mm, normal +z)
       side2:  -y long side    (y=-5mm, normal -y, z~12.5mm)
     """
-    side1 = _select_face_at(doc, 0.0, 0.005, 0.0125)      # +y slab side
-    center = _select_face_at(doc, 0.0, 0.0, 0.015)         # slab top (z=15mm)
-    side2 = _select_face_at(doc, 0.0, -0.005, 0.0125)      # -y slab side
+    side1 = _select_face_at(doc, 0.0, 0.005, 0.0125)  # +y slab side
+    center = _select_face_at(doc, 0.0, 0.0, 0.015)  # slab top (z=15mm)
+    side2 = _select_face_at(doc, 0.0, -0.005, 0.0125)  # -y slab side
     if side1 is None or center is None or side2 is None:
         return None
     return (
@@ -308,6 +333,7 @@ def _slab_face_refs(doc: Any) -> tuple[dict, dict, dict] | None:
 
 
 # --- direct-API diagnostic probe (closes the SetFaces residual unknown) ---
+
 
 def _setfaces_diagnostic(doc: Any, face_refs: list[dict], type_id: int) -> dict:
     """Diagnostic: try SetFaces(WhichFaceList, FaceList) explicitly.
@@ -350,6 +376,7 @@ def _setfaces_diagnostic(doc: Any, face_refs: list[dict], type_id: int) -> dict:
 
 
 # --- main run --------------------------------------------------------------
+
 
 def _run_sub(
     doc: Any,
@@ -402,7 +429,9 @@ def _run_sub(
         type_id = 2 if feature.get("fillet_type") == "face" else 3
         try:
             out["setfaces_diagnostic"] = _setfaces_diagnostic(
-                doc, face_refs_for_diag, type_id,
+                doc,
+                face_refs_for_diag,
+                type_id,
             )
         except Exception as exc:
             out["setfaces_diagnostic_error"] = f"{type(exc).__name__}: {exc}"
@@ -414,6 +443,7 @@ def run() -> dict[str, Any]:
     result: dict[str, Any] = {"spike_id": "W68_fillet_face_fullround"}
     try:
         from ai_sw_bridge.sw_com import get_sw_app
+
         sw = get_sw_app()
     except Exception as exc:
         return {**result, "overall": "ERROR", "reason": f"connect: {exc!r}"}
@@ -426,8 +456,11 @@ def run() -> dict[str, Any]:
         try:
             pair = _block_face_refs(doc_a)
             if pair is None:
-                a = {"sub": "face", "handler_ok": False,
-                     "handler_note": "fixture: could not select block top/+x faces"}
+                a = {
+                    "sub": "face",
+                    "handler_ok": False,
+                    "handler_note": "fixture: could not select block top/+x faces",
+                }
             else:
                 a = _run_sub(
                     doc_a,
@@ -455,13 +488,19 @@ def run() -> dict[str, Any]:
         try:
             slab_ok = _build_slab_on_block(doc_b)
             if not slab_ok:
-                b = {"sub": "full_round", "handler_ok": False,
-                     "handler_note": "fixture: slab extrusion failed"}
+                b = {
+                    "sub": "full_round",
+                    "handler_ok": False,
+                    "handler_note": "fixture: slab extrusion failed",
+                }
             else:
                 triple = _slab_face_refs(doc_b)
                 if triple is None:
-                    b = {"sub": "full_round", "handler_ok": False,
-                         "handler_note": "fixture: could not select slab side1/center/side2"}
+                    b = {
+                        "sub": "full_round",
+                        "handler_ok": False,
+                        "handler_note": "fixture: could not select slab side1/center/side2",
+                    }
                 else:
                     side1, center, side2 = triple
                     b = _run_sub(
@@ -492,7 +531,11 @@ def run() -> dict[str, Any]:
             if not r.get("handler_ok"):
                 return "FAIL"
             tname = (r.get("last_feature_type") or "").lower()
-            if "fillet" not in tname and "roundfillet" not in tname and "facefillet" not in tname:
+            if (
+                "fillet" not in tname
+                and "roundfillet" not in tname
+                and "facefillet" not in tname
+            ):
                 return "FAIL"
             if r.get("survives_reopen"):
                 return "PASS"
@@ -536,7 +579,10 @@ def main() -> None:
     )
     print(f"overall: {result.get('overall')}", file=sys.stderr)
     print(f"finding: {result.get('finding')}", file=sys.stderr)
-    print(f"face: {result.get('face_verdict')}  full_round: {result.get('full_round_verdict')}", file=sys.stderr)
+    print(
+        f"face: {result.get('face_verdict')}  full_round: {result.get('full_round_verdict')}",
+        file=sys.stderr,
+    )
     print(f"results -> {RESULTS_PATH}", file=sys.stderr)
 
 

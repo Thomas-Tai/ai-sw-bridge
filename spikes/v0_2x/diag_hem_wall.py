@@ -47,7 +47,15 @@ HEM_MITER_GAP_M = 0.001
 
 MEMID_HEM_V1 = 91
 HEM_V1_ARGTYPES_VT13 = (
-    (3, 1), (3, 1), (11, 1), (5, 1), (5, 1), (5, 1), (5, 1), (5, 1), (13, 1),
+    (3, 1),
+    (3, 1),
+    (11, 1),
+    (5, 1),
+    (5, 1),
+    (5, 1),
+    (5, 1),
+    (5, 1),
+    (13, 1),
 )
 
 
@@ -59,13 +67,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:300],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:300],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _materialized(feat: Any) -> bool:
@@ -109,8 +123,8 @@ def _build_base_flange(doc: Any, fm: Any, mod: Any) -> dict[str, Any]:
         sk = doc.SketchManager
         sk.InsertSketch(True)
         sk.CreateCornerRectangle(
-            -PROF_W_M / 2, -PROF_H_M / 2, 0.0,
-            PROF_W_M / 2, PROF_H_M / 2, 0.0)
+            -PROF_W_M / 2, -PROF_H_M / 2, 0.0, PROF_W_M / 2, PROF_H_M / 2, 0.0
+        )
         sk.InsertSketch(True)
     except Exception as e:
         out["sketch_error"] = str(e)
@@ -199,8 +213,8 @@ def _try_dynamic_dispatch(sw: Any, mod: Any) -> dict[str, Any]:
             sk = doc.SketchManager
             sk.InsertSketch(True)
             sk.CreateCornerRectangle(
-                -PROF_W_M / 2, -PROF_H_M / 2, 0.0,
-                PROF_W_M / 2, PROF_H_M / 2, 0.0)
+                -PROF_W_M / 2, -PROF_H_M / 2, 0.0, PROF_W_M / 2, PROF_H_M / 2, 0.0
+            )
             sk.InsertSketch(True)
         except Exception as e:
             return {"error": f"sketch: {e}"}
@@ -263,18 +277,37 @@ def _try_dynamic_dispatch(sw: Any, mod: Any) -> dict[str, Any]:
             pass
 
         # Dynamic dispatch InsertSheetMetalHem
-        args = (SW_HEM_TYPE_CLOSED, SW_HEM_POSITION_OUTSIDE, False,
-                HEM_LENGTH_M, 0.0, 0.0, 0.0, HEM_MITER_GAP_M, None)
+        args = (
+            SW_HEM_TYPE_CLOSED,
+            SW_HEM_POSITION_OUTSIDE,
+            False,
+            HEM_LENGTH_M,
+            0.0,
+            0.0,
+            0.0,
+            HEM_MITER_GAP_M,
+            None,
+        )
         rec_dyn, feat_dyn = _capture(lambda: fm.InsertSheetMetalHem(*args))
         out["dynamic_dispatch"] = rec_dyn
         out["dynamic_dispatch_materialized"] = _materialized(feat_dyn)
 
         if not _materialized(feat_dyn):
             # Try with pythoncom.Missing instead of None
-            args_missing = (SW_HEM_TYPE_CLOSED, SW_HEM_POSITION_OUTSIDE, False,
-                            HEM_LENGTH_M, 0.0, 0.0, 0.0, HEM_MITER_GAP_M,
-                            pythoncom.Missing)
-            rec_miss, feat_miss = _capture(lambda: fm.InsertSheetMetalHem(*args_missing))
+            args_missing = (
+                SW_HEM_TYPE_CLOSED,
+                SW_HEM_POSITION_OUTSIDE,
+                False,
+                HEM_LENGTH_M,
+                0.0,
+                0.0,
+                0.0,
+                HEM_MITER_GAP_M,
+                pythoncom.Missing,
+            )
+            rec_miss, feat_miss = _capture(
+                lambda: fm.InsertSheetMetalHem(*args_missing)
+            )
             out["pythoncom_missing"] = rec_miss
             out["pythoncom_missing_materialized"] = _materialized(feat_miss)
 
@@ -300,8 +333,8 @@ def _try_pcba_and_edges(sw: Any, mod: Any) -> dict[str, Any]:
             sk = doc.SketchManager
             sk.InsertSketch(True)
             sk.CreateCornerRectangle(
-                -PROF_W_M / 2, -PROF_H_M / 2, 0.0,
-                PROF_W_M / 2, PROF_H_M / 2, 0.0)
+                -PROF_W_M / 2, -PROF_H_M / 2, 0.0, PROF_W_M / 2, PROF_H_M / 2, 0.0
+            )
             sk.InsertSketch(True)
         except Exception as e:
             return {"error": f"sketch: {e}"}
@@ -357,19 +390,31 @@ def _try_pcba_and_edges(sw: Any, mod: Any) -> dict[str, Any]:
                 pid = ext.GetPersistReference3(edge)
                 if pid:
                     obj_result = ext.GetObjectByPersistReference3(pid)
-                    edge = obj_result[0] if isinstance(obj_result, tuple) else obj_result
+                    edge = (
+                        obj_result[0] if isinstance(obj_result, tuple) else obj_result
+                    )
                 edge.Select2(False, 0)
             except Exception as e:
                 attempts.append({"edge": i, "select_error": str(e)})
                 continue
 
-            args = (SW_HEM_TYPE_CLOSED, SW_HEM_POSITION_OUTSIDE, False,
-                    HEM_LENGTH_M, 0.0, 0.0, 0.0, HEM_MITER_GAP_M, None)
+            args = (
+                SW_HEM_TYPE_CLOSED,
+                SW_HEM_POSITION_OUTSIDE,
+                False,
+                HEM_LENGTH_M,
+                0.0,
+                0.0,
+                0.0,
+                HEM_MITER_GAP_M,
+                None,
+            )
 
             rec_raw, feat_raw = _capture(
                 lambda: fm._oleobj_.InvokeTypes(
-                    MEMID_HEM_V1, 0, 1, (9, 0),
-                    HEM_V1_ARGTYPES_VT13, *args))
+                    MEMID_HEM_V1, 0, 1, (9, 0), HEM_V1_ARGTYPES_VT13, *args
+                )
+            )
 
             attempt = {
                 "edge": i,

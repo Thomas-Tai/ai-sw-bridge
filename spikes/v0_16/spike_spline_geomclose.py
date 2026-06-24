@@ -14,6 +14,7 @@ GEOMETRICALLY-CLOSED one (last == first) in separate fresh sketches, count the
 closed sketch contours each yields. Closed must produce >= 1 closed contour
 that the open one does not. Non-destructive: own blank Parts, never saves.
 """
+
 from __future__ import annotations
 
 import json
@@ -89,7 +90,8 @@ def _build_spline(sw: Any, pts: list[float]) -> dict[str, Any]:
         rec["closed_contours"] = -1
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     return rec
@@ -107,7 +109,9 @@ def run() -> dict[str, Any]:
 
     o = report["open"].get("closed_contours", -1)
     c = report["closed"].get("closed_contours", -1)
-    materialized = report["closed"].get("materialized") and report["open"].get("materialized")
+    materialized = report["closed"].get("materialized") and report["open"].get(
+        "materialized"
+    )
     # PASS: closed-point spline yields a closed contour the open one does not.
     report["discriminates"] = materialized and c >= 1 and c > o
     report["overall"] = "PASS" if report["discriminates"] else "INVESTIGATE"

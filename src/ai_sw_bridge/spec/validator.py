@@ -125,9 +125,11 @@ def _check_schema(spec: dict[str, Any]) -> None:
     # the v1 schema, which carries the required-key + `const` checks that emit
     # the right error.
     raw_version = cleaned.get("schema_version") if isinstance(cleaned, dict) else None
-    version = raw_version if isinstance(raw_version, int) else SCHEMA["properties"][
-        "schema_version"
-    ]["const"]
+    version = (
+        raw_version
+        if isinstance(raw_version, int)
+        else SCHEMA["properties"]["schema_version"]["const"]
+    )
     schema = schema_for_version(version, v2_enabled=_v2_enabled())
     try:
         jsonschema.validate(instance=cleaned, schema=schema)

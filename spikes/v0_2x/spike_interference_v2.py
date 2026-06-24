@@ -46,8 +46,10 @@ SW_DOC_PART = 1
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
+
 def _find_asm_template() -> str | None:
     import glob
+
     for pat in [
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT",
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.asmdot",
@@ -64,7 +66,9 @@ def _retry(fn, *args, retries=3, delay=5, label=""):
             return fn(*args)
         except Exception as exc:
             if attempt < retries - 1:
-                print(f"  [{label}] Attempt {attempt+1} failed: {exc!r}, retrying in {delay}s …")
+                print(
+                    f"  [{label}] Attempt {attempt+1} failed: {exc!r}, retrying in {delay}s …"
+                )
                 time.sleep(delay)
             else:
                 raise
@@ -76,8 +80,12 @@ def _make_block_part(sw_typed: Any, mod: Any, path: str) -> str | None:
         doc = _retry(
             sw_typed.NewDocument,
             r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.PRTDOT",
-            0, 0, 0,
-            retries=3, delay=5, label="part_new",
+            0,
+            0,
+            0,
+            retries=3,
+            delay=5,
+            label="part_new",
         )
         if doc is None:
             return "NewDocument(part) returned None"
@@ -91,13 +99,28 @@ def _make_block_part(sw_typed: Any, mod: Any, path: str) -> str | None:
         dt.ClearSelection2(True)
         dt.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
         feat = dt.FeatureManager.FeatureExtrusion2(
-            True, False, False, 0, 0,
-            BOX_SIZE_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOX_SIZE_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
             False,
         )
         if feat is None:
@@ -121,9 +144,12 @@ def _close_all(sw_typed: Any) -> None:
 
 
 def _build_assembly(
-    sw_typed: Any, mod: Any,
-    part_path: str, asm_template: str,
-    offset_m: float, label: str,
+    sw_typed: Any,
+    mod: Any,
+    part_path: str,
+    asm_template: str,
+    offset_m: float,
+    label: str,
 ) -> tuple[Any, Any, Any, str | None]:
     """Open new assembly, place two copies of *part_path* at *offset_m*.
 
@@ -189,7 +215,9 @@ def _build_assembly(
 
 
 def _detect_interference(
-    asm_typed: Any, mod: Any, label: str,
+    asm_typed: Any,
+    mod: Any,
+    label: str,
 ) -> tuple[int | None, list[dict[str, Any]], list[str]]:
     """Run interference detection on an open assembly.
 
@@ -277,7 +305,9 @@ def _detect_interference(
 
 
 def _read_interference(
-    intf_obj: Any, mod: Any, idx: int,
+    intf_obj: Any,
+    mod: Any,
+    idx: int,
 ) -> dict[str, Any]:
     """Read one IInterference object: Components + Volume."""
     entry: dict[str, Any] = {
@@ -346,6 +376,7 @@ def _read_interference(
 
 # ── Main ──────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     pythoncom.CoInitialize()
     sw = get_sw_app()
@@ -389,8 +420,12 @@ def main() -> None:
         print("[S1] Building OVERLAP assembly (2 cubes, 10mm offset) …")
 
         asm_doc, asm_typed, doc_typed, build_err = _build_assembly(
-            sw_typed, mod, part_path, asm_templ,
-            OVERLAP_OFFSET_M, "overlap",
+            sw_typed,
+            mod,
+            part_path,
+            asm_templ,
+            OVERLAP_OFFSET_M,
+            "overlap",
         )
         if build_err:
             result["errors"].append(f"overlap build: {build_err}")
@@ -399,7 +434,9 @@ def main() -> None:
             return
 
         overlap_count, overlap_interferences, overlap_errors = _detect_interference(
-            asm_typed, mod, "overlap",
+            asm_typed,
+            mod,
+            "overlap",
         )
         result["overlap_count"] = overlap_count
         result["interference_enumeration"] = {
@@ -408,8 +445,10 @@ def main() -> None:
         }
         result["errors"].extend(overlap_errors)
 
-        print(f"[S1] Overlap count={overlap_count}, "
-              f"enumerated {len(overlap_interferences)} interference(s)")
+        print(
+            f"[S1] Overlap count={overlap_count}, "
+            f"enumerated {len(overlap_interferences)} interference(s)"
+        )
 
         # Leave overlap assembly OPEN — closing corrupts COM channel
         # Just save it for persistence
@@ -423,8 +462,12 @@ def main() -> None:
         print("[S1] Building CLEARANCE assembly (2 cubes, 50mm offset) …")
 
         asm_doc2, asm_typed2, doc_typed2, build_err2 = _build_assembly(
-            sw_typed, mod, part_path, asm_templ,
-            CLEARANCE_OFFSET_M, "clearance",
+            sw_typed,
+            mod,
+            part_path,
+            asm_templ,
+            CLEARANCE_OFFSET_M,
+            "clearance",
         )
         if build_err2:
             result["errors"].append(f"clearance build: {build_err2}")
@@ -433,7 +476,9 @@ def main() -> None:
             return
 
         clearance_count, _, clearance_errors = _detect_interference(
-            asm_typed2, mod, "clearance",
+            asm_typed2,
+            mod,
+            "clearance",
         )
         result["negative_control_count"] = clearance_count
         result["errors"].extend(clearance_errors)
@@ -486,7 +531,10 @@ def main() -> None:
                 for intf in enum["interferences"]:
                     if intf.get("volume_m3") is not None and intf["volume_m3"] > 0:
                         has_volume = True
-                    if intf.get("component_names") and len(intf["component_names"]) >= 2:
+                    if (
+                        intf.get("component_names")
+                        and len(intf["component_names"]) >= 2
+                    ):
                         has_components = True
             if has_volume and has_components:
                 result["verdict"] = "GREEN"
@@ -509,9 +557,7 @@ def main() -> None:
             )
         else:
             result["verdict"] = "NO-GO"
-            result["errors"].append(
-                f"unexpected counts: overlap={oc}, clearance={cc}"
-            )
+            result["errors"].append(f"unexpected counts: overlap={oc}, clearance={cc}")
 
     except Exception as exc:
         result["errors"].append(f"top-level: {exc!r}")
@@ -524,8 +570,10 @@ def main() -> None:
             pass
         _write_result(result)
         print(f"\n[S1] VERDICT: {result['verdict']}")
-        print(f"[S1] overlap_count={result['overlap_count']}, "
-              f"negative_control_count={result['negative_control_count']}")
+        print(
+            f"[S1] overlap_count={result['overlap_count']}, "
+            f"negative_control_count={result['negative_control_count']}"
+        )
 
 
 def _write_result(result: dict[str, Any]) -> None:

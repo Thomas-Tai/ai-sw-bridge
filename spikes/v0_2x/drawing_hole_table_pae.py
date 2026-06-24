@@ -25,8 +25,18 @@ from typing import Any
 _SRC = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_SRC))
 
-RESULTS_PATH = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "drawing_hole_table_pae.json"
-results: dict[str, Any] = {"pae": "w71_drawing_hole_table", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"), "gates": {}}
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "drawing_hole_table_pae.json"
+)
+results: dict[str, Any] = {
+    "pae": "w71_drawing_hole_table",
+    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    "gates": {},
+}
 
 
 def gate(name: str, ok: bool, detail: str = "") -> bool:
@@ -37,17 +47,41 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 def _build_part(path: str) -> bool:
     from ai_sw_bridge.spec.builder import build as part_build
+
     spec = {
-        "schema_version": 1, "name": "W71_HoleTblPAE",
+        "schema_version": 1,
+        "name": "W71_HoleTblPAE",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK_Base",
-             "plane": "Front", "width": 40.0, "height": 40.0},
-            {"type": "boss_extrude_blind", "name": "EX_Base", "sketch": "SK_Base", "depth": 10.0},
-            {"type": "sketch_circle_on_face", "name": "SK_H1", "of_feature": "EX_Base",
-             "face": "+z", "diameter": 6.0, "center": {"u": -10.0, "v": 0.0}},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Base",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 40.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Base",
+                "sketch": "SK_Base",
+                "depth": 10.0,
+            },
+            {
+                "type": "sketch_circle_on_face",
+                "name": "SK_H1",
+                "of_feature": "EX_Base",
+                "face": "+z",
+                "diameter": 6.0,
+                "center": {"u": -10.0, "v": 0.0},
+            },
             {"type": "cut_extrude_through_all", "name": "CUT_H1", "sketch": "SK_H1"},
-            {"type": "sketch_circle_on_face", "name": "SK_H2", "of_feature": "EX_Base",
-             "face": "+z", "diameter": 6.0, "center": {"u": 10.0, "v": 0.0}},
+            {
+                "type": "sketch_circle_on_face",
+                "name": "SK_H2",
+                "of_feature": "EX_Base",
+                "face": "+z",
+                "diameter": 6.0,
+                "center": {"u": 10.0, "v": 0.0},
+            },
             {"type": "cut_extrude_through_all", "name": "CUT_H2", "sketch": "SK_H2"},
         ],
     }
@@ -84,8 +118,11 @@ def run() -> str:
         return "WALL"
 
     spec = {
-        "kind": "drawing", "name": "ht_pae", "model": part_path,
-        "views": ["front", "top"], "hole_table": True,
+        "kind": "drawing",
+        "name": "ht_pae",
+        "model": part_path,
+        "views": ["front", "top"],
+        "hole_table": True,
         "sheet": {"template_size": "A3"},
     }
     dp = sw_propose_drawing(spec)
@@ -94,13 +131,19 @@ def run() -> str:
     sw_dry_run_drawing(dp["proposal_id"])
     dc = sw_commit_drawing(dp["proposal_id"], drw_path)
     gate("commit", dc.get("ok", False), str(dc.get("error") or ""))
-    gate("hole_table_inserted_flag", dc.get("hole_table_inserted") is True,
-         f"hole_table_inserted={dc.get('hole_table_inserted')}")
+    gate(
+        "hole_table_inserted_flag",
+        dc.get("hole_table_inserted") is True,
+        f"hole_table_inserted={dc.get('hole_table_inserted')}",
+    )
     if not dc.get("ok"):
         results["commit_error"] = dc.get("error")
         return "PARTIAL"
-    gate("drw_on_disk", os.path.isfile(drw_path),
-         f"size={os.path.getsize(drw_path) if os.path.isfile(drw_path) else 0}")
+    gate(
+        "drw_on_disk",
+        os.path.isfile(drw_path),
+        f"size={os.path.getsize(drw_path) if os.path.isfile(drw_path) else 0}",
+    )
 
     # Reopen part + drawing; walk views for a persisted IHoleTableAnnotation.
     tsw = typed(sw, "ISldWorks", module=mod)
@@ -141,8 +184,11 @@ def run() -> str:
         except Exception:
             pass
     results["reopen_hole_tables"] = reopen_hole_tables
-    gate("reopen_hole_table_persists", reopen_hole_tables >= 1,
-         f"hole_tables={reopen_hole_tables}")
+    gate(
+        "reopen_hole_table_persists",
+        reopen_hole_tables >= 1,
+        f"hole_tables={reopen_hole_tables}",
+    )
 
     try:
         sw.CloseAllDocuments(True)
@@ -150,29 +196,39 @@ def run() -> str:
         pass
 
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL_GREEN", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/{len(results['gates'])}")
+    gate(
+        "OVERALL_GREEN",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/{len(results['gates'])}",
+    )
     return "GREEN" if all_pass else "PARTIAL"
 
 
 def main() -> int:
     import pythoncom
+
     pythoncom.CoInitialize()
     try:
         verdict = run()
     except Exception as exc:
-        results["gates"]["UNEXPECTED"] = {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}
+        results["gates"]["UNEXPECTED"] = {
+            "ok": False,
+            "detail": f"{type(exc).__name__}: {exc}",
+        }
         verdict = "WALL"
     finally:
         try:
             import win32com.client as w32
+
             w32.Dispatch("SldWorks.Application").CloseAllDocuments(True)
         except Exception:
             pass
         pythoncom.CoUninitialize()
     results["verdict"] = verdict
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(results, indent=2, default=str), encoding="utf-8"
+    )
     print(f"\nVerdict: {verdict}  (wrote {RESULTS_PATH})")
     return 0 if verdict == "GREEN" else 1
 

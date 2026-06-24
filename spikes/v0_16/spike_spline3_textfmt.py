@@ -12,6 +12,7 @@ C: InsertSketchText(useDocFmt=0) returns an ISketchText that pywin32 wraps as a
 
 Non-destructive: own blank Parts, never saves, closes own docs.
 """
+
 from __future__ import annotations
 
 import json
@@ -85,7 +86,8 @@ def probe_spline3(sw: Any) -> dict[str, Any]:
         rec["overall"] = "FAIL"
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     return rec
@@ -126,7 +128,8 @@ def probe_text_format(sw: Any) -> dict[str, Any]:
         rec["overall"] = "FAIL"
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     return rec
@@ -138,7 +141,9 @@ def run() -> dict[str, Any]:
     report["spline3"] = probe_spline3(sw)
     report["text_format"] = probe_text_format(sw)
     keys = ("spline3", "text_format")
-    report["overall"] = "PASS" if all(report[k]["overall"] == "PASS" for k in keys) else "PARTIAL"
+    report["overall"] = (
+        "PASS" if all(report[k]["overall"] == "PASS" for k in keys) else "PARTIAL"
+    )
     return report
 
 

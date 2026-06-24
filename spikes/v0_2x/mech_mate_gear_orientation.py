@@ -19,6 +19,7 @@ that order + keeps the read-back assert as a fail-closed guard.
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/mech_mate_gear_orientation.py
 """
+
 from __future__ import annotations
 
 import json
@@ -82,7 +83,10 @@ def _read_gear_ratio_after_reopen(sw: Any, mod: Any, asm_path: str) -> Any:
 
 
 def _order_leg(sw: Any, mod: Any, enum_val: int, order: str) -> dict[str, Any]:
-    r: dict[str, Any] = {"order": order, "requested": {"num": _REQ_NUM, "den": _REQ_DEN}}
+    r: dict[str, Any] = {
+        "order": order,
+        "requested": {"num": _REQ_NUM, "den": _REQ_DEN},
+    }
     ctx = cal._place_two_shafts(sw, mod, f"gearorient_{order}")
     if "error" in ctx:
         r["error"] = ctx["error"]
@@ -93,9 +97,7 @@ def _order_leg(sw: Any, mod: Any, enum_val: int, order: str) -> dict[str, Any]:
     pair = (f1, f2) if order == "A" else (f2, f1)
     md = typed_asm.CreateMateData(enum_val)
     ti = typed_qi(md, _GEAR_IFACE, module=mod)
-    ti.EntitiesToMate = w32.VARIANT(
-        pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, pair
-    )
+    ti.EntitiesToMate = w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, pair)
     ti.GearRatioNumerator = _REQ_NUM
     ti.GearRatioDenominator = _REQ_DEN
     mate = typed_asm.CreateMate(md)
@@ -131,8 +133,10 @@ def main() -> int:
         for order in ("A", "B"):
             leg = _order_leg(sw, mod, enum_val, order)
             result["legs"].append(leg)
-            print(f"[go] order={order} reopened={leg.get('reopened')} "
-                  f"matches={leg.get('matches_requested')} err={leg.get('error')}")
+            print(
+                f"[go] order={order} reopened={leg.get('reopened')} "
+                f"matches={leg.get('matches_requested')} err={leg.get('error')}"
+            )
         winners = [l["order"] for l in result["legs"] if l.get("matches_requested")]
         result["winning_order"] = winners[0] if len(winners) == 1 else None
         result["verdict"] = "GREEN" if len(winners) == 1 else "AMBIGUOUS"

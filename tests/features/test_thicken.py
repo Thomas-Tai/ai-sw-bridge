@@ -29,6 +29,7 @@ from ai_sw_bridge.features.thicken import create_thicken
 
 # --- fake COM objects -------------------------------------------------------
 
+
 class _FakeFM:
     def __init__(self) -> None:
         self.calls: list[tuple] = []
@@ -69,6 +70,7 @@ _FACE_REF = {
 def _face_ref() -> dict:
     """Return a fresh copy of the valid face_ref dict (tests may mutate it)."""
     import copy
+
     return copy.deepcopy(_FACE_REF)
 
 
@@ -112,12 +114,14 @@ def _wire(
 
 # --- SPIKE_STATUS pin -------------------------------------------------------
 
+
 class TestSpikeStatus:
     def test_unfired_before_seat_proof(self):
         assert tk.SPIKE_STATUS == "UNFIRED"
 
 
 # --- enum mapper ------------------------------------------------------------
+
 
 class TestEnumMapping:
     def test_maps_strings_ints_and_rejects_garbage(self):
@@ -132,6 +136,7 @@ class TestEnumMapping:
 
 
 # --- happy path + recipe pin -----------------------------------------------
+
 
 class TestEffectGate:
     def test_green_thicken_first_sheet_body(self, monkeypatch):
@@ -156,13 +161,13 @@ class TestEffectGate:
         assert ok, err
         args = doc.FeatureManager.calls[0]
         assert len(args) == 7
-        assert args[0] == pytest.approx(0.005)    # 5 mm -> 0.005 m
-        assert args[1] == 2                        # both = 2
-        assert args[2] == 0                        # FaceIndex = 0
-        assert args[3] is False                    # FillVolume
-        assert args[4] is False                    # Merge
-        assert args[5] is False                    # UseFeatScope
-        assert args[6] is True                     # UseAutoSelect
+        assert args[0] == pytest.approx(0.005)  # 5 mm -> 0.005 m
+        assert args[1] == 2  # both = 2
+        assert args[2] == 0  # FaceIndex = 0
+        assert args[3] is False  # FillVolume
+        assert args[4] is False  # Merge
+        assert args[5] is False  # UseFeatScope
+        assert args[6] is True  # UseAutoSelect
 
     def test_default_params(self, monkeypatch):
         _wire(monkeypatch)
@@ -170,14 +175,16 @@ class TestEffectGate:
         ok, err = create_thicken(doc, {}, {})
         assert ok, err
         args = doc.FeatureManager.calls[0]
-        assert args[0] == pytest.approx(0.002)    # default 2 mm -> m
-        assert args[1] == 0                        # default side1 = 0
+        assert args[0] == pytest.approx(0.002)  # default 2 mm -> m
+        assert args[1] == 0  # default side1 = 0
 
     def test_int_direction_passes_through(self, monkeypatch):
         _wire(monkeypatch)
         doc = _FakeDoc()
         ok, err = create_thicken(
-            doc, {"direction": 1}, {},
+            doc,
+            {"direction": 1},
+            {},
         )
         assert ok, err
         assert doc.FeatureManager.calls[0][1] == 1
@@ -185,7 +192,8 @@ class TestEffectGate:
     def test_face_ref_target_resolved(self, monkeypatch):
         _wire(monkeypatch)
         monkeypatch.setattr(
-            tk, "resolve_manifest_face",
+            tk,
+            "resolve_manifest_face",
             lambda doc, ref: type("R", (), {"entity": object(), "note": "test"})(),
         )
         doc = _FakeDoc()
@@ -200,7 +208,9 @@ class TestEffectGate:
         """Thicken that adds no volume is a ghost — NOT success."""
         _wire(monkeypatch, metrics=((600.0, 6), (600.0, 6)), solid_counts=(1, 1))
         ok, err = create_thicken(
-            _FakeDoc(), {"thickness_mm": 2.0}, {},
+            _FakeDoc(),
+            {"thickness_mm": 2.0},
+            {},
         )
         assert ok is False
         assert "did not produce" in err
@@ -209,7 +219,9 @@ class TestEffectGate:
         """Volume rose but no new solid body materialized — ghost."""
         _wire(monkeypatch, metrics=((0.0, 0), (500.0, 4)), solid_counts=(1, 1))
         ok, err = create_thicken(
-            _FakeDoc(), {"thickness_mm": 2.0}, {},
+            _FakeDoc(),
+            {"thickness_mm": 2.0},
+            {},
         )
         assert ok is False
         assert "did not produce" in err
@@ -218,7 +230,9 @@ class TestEffectGate:
         """Volume went DOWN (e.g. a cut) — not an additive thicken."""
         _wire(monkeypatch, metrics=((1000.0, 8), (500.0, 6)), solid_counts=(1, 2))
         ok, err = create_thicken(
-            _FakeDoc(), {"thickness_mm": 2.0}, {},
+            _FakeDoc(),
+            {"thickness_mm": 2.0},
+            {},
         )
         assert ok is False
         assert "did not produce" in err
@@ -226,35 +240,46 @@ class TestEffectGate:
     def test_no_sheet_bodies_fails_closed(self, monkeypatch):
         _wire(monkeypatch, sheet_bodies=())
         ok, err = create_thicken(
-            _FakeDoc(), {"thickness_mm": 2.0}, {},
+            _FakeDoc(),
+            {"thickness_mm": 2.0},
+            {},
         )
         assert ok is False and "no sheet bodies" in err
 
 
 # --- fail-closed contract ---------------------------------------------------
 
+
 class TestValidation:
     def test_bad_direction_rejected(self):
         ok, err = create_thicken(
-            _FakeDoc(), {"direction": "sideways"}, {},
+            _FakeDoc(),
+            {"direction": "sideways"},
+            {},
         )
         assert ok is False and "direction" in err
 
     def test_bad_thickness_rejected(self):
         ok, err = create_thicken(
-            _FakeDoc(), {"thickness_mm": "not_a_number"}, {},
+            _FakeDoc(),
+            {"thickness_mm": "not_a_number"},
+            {},
         )
         assert ok is False and "numeric" in err
 
     def test_nonpositive_thickness_rejected(self):
         ok, err = create_thicken(
-            _FakeDoc(), {"thickness_mm": 0}, {},
+            _FakeDoc(),
+            {"thickness_mm": 0},
+            {},
         )
         assert ok is False and "positive" in err
 
     def test_negative_thickness_rejected(self):
         ok, err = create_thicken(
-            _FakeDoc(), {"thickness_mm": -1}, {},
+            _FakeDoc(),
+            {"thickness_mm": -1},
+            {},
         )
         assert ok is False and "positive" in err
 
@@ -269,14 +294,17 @@ class TestValidation:
     def test_select_failure_rejected(self, monkeypatch):
         _wire(monkeypatch, select_ok=False)
         ok, err = create_thicken(
-            _FakeDoc(), {"thickness_mm": 2.0}, {},
+            _FakeDoc(),
+            {"thickness_mm": 2.0},
+            {},
         )
         assert ok is False and "select" in err
 
     def test_face_ref_unresolved_rejected(self, monkeypatch):
         _wire(monkeypatch)
         monkeypatch.setattr(
-            tk, "resolve_manifest_face",
+            tk,
+            "resolve_manifest_face",
             lambda doc, ref: type("R", (), {"entity": None, "note": "no match"})(),
         )
         ok, err = create_thicken(
@@ -298,6 +326,7 @@ class TestValidation:
 
 # --- never-raise ------------------------------------------------------------
 
+
 class TestNeverRaise:
     def test_com_exception_caught(self, monkeypatch):
         """FeatureBossThicken raising does not propagate — returns (False, …)."""
@@ -309,16 +338,20 @@ class TestNeverRaise:
 
         doc.FeatureManager.FeatureBossThicken = boom
         ok, err = create_thicken(
-            doc, {"thickness_mm": 2.0}, {},
+            doc,
+            {"thickness_mm": 2.0},
+            {},
         )
         assert ok is False and "raised" in err
 
 
 # --- registry gate ----------------------------------------------------------
 
+
 class TestRegistryGate:
     def test_kind_not_registered_when_unfired(self):
         from ai_sw_bridge.features import HANDLER_REGISTRY
+
         assert tk.SPIKE_STATUS == "UNFIRED"
         assert "thicken" not in HANDLER_REGISTRY
 

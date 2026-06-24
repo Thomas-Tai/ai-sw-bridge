@@ -37,13 +37,11 @@ sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
 # Write to the canonical drawing_bom.json (S1 definitive result)
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_bom.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_bom.json"
 
-SW_BOM_TYPE_TOP_LEVEL_ONLY = 1   # swBomType_TopLevelOnly
-SW_TABLE_ANCHOR_TOP_LEFT = 1     # swTableAnchor_TopLeft
-SW_INDENTED_NUMBERING_NONE = 2   # swIndentedNumberingType_None
+SW_BOM_TYPE_TOP_LEVEL_ONLY = 1  # swBomType_TopLevelOnly
+SW_TABLE_ANCHOR_TOP_LEFT = 1  # swTableAnchor_TopLeft
+SW_INDENTED_NUMBERING_NONE = 2  # swIndentedNumberingType_None
 
 results: dict[str, Any] = {
     "spike": "w18_drawing_bom_v3_definitive",
@@ -139,7 +137,7 @@ def run() -> str:
 
     # Close all open docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -157,9 +155,9 @@ def run() -> str:
     gate("bom_template_found", bom_template is not None, f"path={bom_template}")
     gate("drw_template_found", drw_template is not None, f"path={drw_template}")
     results["characterization"]["bom_template_source"] = bom_template
-    results["characterization"]["bom_template_glob"] = (
-        r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\lang\english\*.sldbomtbt"
-    )
+    results["characterization"][
+        "bom_template_glob"
+    ] = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\lang\english\*.sldbomtbt"
 
     if not bom_template or not drw_template:
         save_results()
@@ -175,10 +173,19 @@ def run() -> str:
             "schema_version": 1,
             "name": f"BomV3{label.upper()}",
             "features": [
-                {"type": "sketch_rectangle_on_plane", "name": "SK",
-                 "plane": "Front", "width": w_mm, "height": 20.0},
-                {"type": "boss_extrude_blind", "name": "EX",
-                 "sketch": "SK", "depth": 10.0},
+                {
+                    "type": "sketch_rectangle_on_plane",
+                    "name": "SK",
+                    "plane": "Front",
+                    "width": w_mm,
+                    "height": 20.0,
+                },
+                {
+                    "type": "boss_extrude_blind",
+                    "name": "EX",
+                    "sketch": "SK",
+                    "depth": 10.0,
+                },
             ],
         }
         r = part_build(spec, save_as=path, save_format="current", no_dim=True)
@@ -191,21 +198,30 @@ def run() -> str:
     ASM_PATH = str(_tmp / f"w18v3_{_ts}.SLDASM")
     c = sw_commit_assembly(
         sw_dry_run_assembly(
-            sw_propose_assembly({
-                "kind": "assembly",
-                "name": "bom_v3_asm",
-                "components": [
-                    {"id": "a", "part": PART_A, "transform": {"xyz_mm": [0, 0, 0]}},
-                    {"id": "b", "part": PART_B, "transform": {"xyz_mm": [0, 0, 15]}},
-                ],
-                "mates": [
-                    {"type": "coincident", "alignment": "aligned",
-                     "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
-                     "b": {"component": "b", "face_ref": {"normal": [0, 0, -1]}}},
-                ],
-            })["proposal_id"]
+            sw_propose_assembly(
+                {
+                    "kind": "assembly",
+                    "name": "bom_v3_asm",
+                    "components": [
+                        {"id": "a", "part": PART_A, "transform": {"xyz_mm": [0, 0, 0]}},
+                        {
+                            "id": "b",
+                            "part": PART_B,
+                            "transform": {"xyz_mm": [0, 0, 15]},
+                        },
+                    ],
+                    "mates": [
+                        {
+                            "type": "coincident",
+                            "alignment": "aligned",
+                            "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
+                            "b": {"component": "b", "face_ref": {"normal": [0, 0, -1]}},
+                        },
+                    ],
+                }
+            )["proposal_id"]
         )["proposal_id"],
-        ASM_PATH
+        ASM_PATH,
     )
     component_count = c.get("component_count") or 2
     gate("assembly_commit", c.get("ok", False), f"components={component_count}")
@@ -222,8 +238,11 @@ def run() -> str:
     tsw.OpenDoc6(ASM_PATH, 2, 1, "", 0, 0)
 
     doc_raw = sw.NewDocument(drw_template, 0, 0.420, 0.297)
-    gate("drawing_create", doc_raw is not None and not isinstance(doc_raw, int),
-         f"type={type(doc_raw).__name__ if doc_raw else None}")
+    gate(
+        "drawing_create",
+        doc_raw is not None and not isinstance(doc_raw, int),
+        f"type={type(doc_raw).__name__ if doc_raw else None}",
+    )
     if doc_raw is None or isinstance(doc_raw, int):
         save_results()
         return "WALL"
@@ -238,8 +257,11 @@ def run() -> str:
             ASM_PATH, "*Front", 0.15, 0.15, 0.0
         )
         view_ok = view_raw is not None and not isinstance(view_raw, int)
-        gate("view_created", view_ok,
-             f"type={type(view_raw).__name__ if view_raw else None}")
+        gate(
+            "view_created",
+            view_ok,
+            f"type={type(view_raw).__name__ if view_raw else None}",
+        )
         if not view_ok:
             save_results()
             return "WALL"
@@ -255,30 +277,33 @@ def run() -> str:
 
         # INSERT BOM — Route A: IView.InsertBomTable4
         print("\n--- Insert BOM: IView.InsertBomTable4 ---")
-        print(f"  signature (CONFIRMED): InsertBomTable4("
-              f"UseAnchorPoint:bool, X:float, Y:float, AnchorType:int, "
-              f"BomType:int, Configuration:str, TableTemplate:str, "
-              f"Hidden:bool, IndentedNumberingType:int, DetailedCutList:bool"
-              f") -> IBomTableAnnotation")
+        print(
+            f"  signature (CONFIRMED): InsertBomTable4("
+            f"UseAnchorPoint:bool, X:float, Y:float, AnchorType:int, "
+            f"BomType:int, Configuration:str, TableTemplate:str, "
+            f"Hidden:bool, IndentedNumberingType:int, DetailedCutList:bool"
+            f") -> IBomTableAnnotation"
+        )
         print(f"  template: {bom_template}")
 
         bom_annotation = typed_view.InsertBomTable4(
-            False,                         # UseAnchorPoint
-            0.05,                          # X metres on sheet
-            0.22,                          # Y metres on sheet
-            SW_TABLE_ANCHOR_TOP_LEFT,      # AnchorType = 1
-            SW_BOM_TYPE_TOP_LEVEL_ONLY,    # BomType = 1 (swBomType_TopLevelOnly)
-            "",                            # Configuration (default)
-            bom_template,                  # TableTemplate path
-            False,                         # Hidden
-            SW_INDENTED_NUMBERING_NONE,    # IndentedNumberingType = 2
-            False,                         # DetailedCutList
+            False,  # UseAnchorPoint
+            0.05,  # X metres on sheet
+            0.22,  # Y metres on sheet
+            SW_TABLE_ANCHOR_TOP_LEFT,  # AnchorType = 1
+            SW_BOM_TYPE_TOP_LEVEL_ONLY,  # BomType = 1 (swBomType_TopLevelOnly)
+            "",  # Configuration (default)
+            bom_template,  # TableTemplate path
+            False,  # Hidden
+            SW_INDENTED_NUMBERING_NONE,  # IndentedNumberingType = 2
+            False,  # DetailedCutList
         )
-        bom_ok = (
-            bom_annotation is not None and not isinstance(bom_annotation, int)
+        bom_ok = bom_annotation is not None and not isinstance(bom_annotation, int)
+        gate(
+            "bom_inserted",
+            bom_ok,
+            f"returned type={type(bom_annotation).__name__ if bom_annotation else None}",
         )
-        gate("bom_inserted", bom_ok,
-             f"returned type={type(bom_annotation).__name__ if bom_annotation else None}")
 
         results["characterization"]["working_route"] = "IView.InsertBomTable4"
         results["characterization"]["signature"] = (
@@ -296,8 +321,7 @@ def run() -> str:
         # LIVENESS GATE: IBomTableAnnotation.GetComponentsCount2 iterator
         print("\n--- Liveness gate: GetComponentsCount2 iterator ---")
         data_rows = _count_bom_data_rows(bom_annotation)
-        gate("bom_data_rows_gt_zero", data_rows > 0,
-             f"data_rows={data_rows}")
+        gate("bom_data_rows_gt_zero", data_rows > 0, f"data_rows={data_rows}")
 
         # Detailed row data for the results JSON
         row_data: list[dict[str, Any]] = []
@@ -307,12 +331,14 @@ def run() -> str:
                 count = r[0] if isinstance(r, (list, tuple)) else r
                 item = r[1] if isinstance(r, (list, tuple)) and len(r) > 1 else ""
                 part = r[2] if isinstance(r, (list, tuple)) and len(r) > 2 else ""
-                row_data.append({
-                    "row_index": row_idx,
-                    "component_count": count,
-                    "item_number": item,
-                    "part_number": part,
-                })
+                row_data.append(
+                    {
+                        "row_index": row_idx,
+                        "component_count": count,
+                        "item_number": item,
+                        "part_number": part,
+                    }
+                )
             except Exception:
                 break
 
@@ -322,20 +348,29 @@ def run() -> str:
         print(f"  BOM rows: {data_rows}, assembly components: {component_count}")
 
         count_match = data_rows == component_count
-        gate("bom_rows_eq_component_count", count_match,
-             f"data_rows={data_rows}, component_count={component_count}")
+        gate(
+            "bom_rows_eq_component_count",
+            count_match,
+            f"data_rows={data_rows}, component_count={component_count}",
+        )
 
         # Save drawing
         print("\n--- Saving drawing ---")
         doc_raw.SaveAs3(DRW_PATH, 0, 2)
-        gate("drawing_save", os.path.isfile(DRW_PATH),
-             f"size={os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0}")
+        gate(
+            "drawing_save",
+            os.path.isfile(DRW_PATH),
+            f"size={os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0}",
+        )
         results["characterization"]["drawing_path"] = DRW_PATH
 
         liveness_ok = data_rows > 0
-        gate("OVERALL_GO", liveness_ok and os.path.isfile(DRW_PATH),
-             f"BOM data_rows={data_rows}/{component_count} components, "
-             f"file={os.path.isfile(DRW_PATH)}")
+        gate(
+            "OVERALL_GO",
+            liveness_ok and os.path.isfile(DRW_PATH),
+            f"BOM data_rows={data_rows}/{component_count} components, "
+            f"file={os.path.isfile(DRW_PATH)}",
+        )
 
         return "GO" if liveness_ok else "NO-GO"
 

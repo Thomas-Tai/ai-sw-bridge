@@ -31,9 +31,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_bom.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_bom.json"
 
 # SW constant literals (swBomType_e, swTableAnchor_e, swIndentedNumberingType_e)
 SW_BOM_TYPE_TOP_LEVEL_ONLY = 1
@@ -110,7 +108,7 @@ def run() -> str:
 
     # Close all open docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -307,16 +305,16 @@ def run() -> str:
 
         try:
             bom_raw = typed_view.InsertBomTable4(
-                False,                         # UseAnchorPoint
-                0.05,                          # X (metres on sheet)
-                0.22,                          # Y (metres on sheet)
-                SW_TABLE_ANCHOR_TOP_LEFT,      # AnchorType = 1
-                SW_BOM_TYPE_TOP_LEVEL_ONLY,    # BomType = 1
-                "",                            # Configuration (default)
-                bom_template,                  # TableTemplate
-                False,                         # Hidden
-                SW_INDENTED_NUMBERING_NONE,    # IndentedNumberingType = 2
-                False,                         # DetailedCutList
+                False,  # UseAnchorPoint
+                0.05,  # X (metres on sheet)
+                0.22,  # Y (metres on sheet)
+                SW_TABLE_ANCHOR_TOP_LEFT,  # AnchorType = 1
+                SW_BOM_TYPE_TOP_LEVEL_ONLY,  # BomType = 1
+                "",  # Configuration (default)
+                bom_template,  # TableTemplate
+                False,  # Hidden
+                SW_INDENTED_NUMBERING_NONE,  # IndentedNumberingType = 2
+                False,  # DetailedCutList
             )
             route_a_ok = bom_raw is not None and not isinstance(bom_raw, int)
             results["characterization"]["route_a"] = {
@@ -344,18 +342,16 @@ def run() -> str:
             route_b_ok = False
             try:
                 bom_raw_b = typed_view.InsertBomTable3(
-                    False,                         # UseAnchorPoint
-                    0.05,                          # X
-                    0.22,                          # Y
-                    SW_TABLE_ANCHOR_TOP_LEFT,      # AnchorType
-                    SW_BOM_TYPE_TOP_LEVEL_ONLY,    # BomType
-                    "",                            # Configuration
-                    bom_template,                  # TableTemplate
-                    False,                         # Hidden
+                    False,  # UseAnchorPoint
+                    0.05,  # X
+                    0.22,  # Y
+                    SW_TABLE_ANCHOR_TOP_LEFT,  # AnchorType
+                    SW_BOM_TYPE_TOP_LEVEL_ONLY,  # BomType
+                    "",  # Configuration
+                    bom_template,  # TableTemplate
+                    False,  # Hidden
                 )
-                route_b_ok = (
-                    bom_raw_b is not None and not isinstance(bom_raw_b, int)
-                )
+                route_b_ok = bom_raw_b is not None and not isinstance(bom_raw_b, int)
                 results["characterization"]["route_b"] = {
                     "result_type": type(bom_raw_b).__name__ if bom_raw_b else None,
                     "ok": route_b_ok,
@@ -381,15 +377,13 @@ def run() -> str:
             try:
                 doc_ext = typed(doc_raw.Extension, "IModelDocExtension", module=mod)
                 bom_raw_c = doc_ext.InsertBomTable(
-                    bom_template,           # TemplateName
-                    0,                      # X (int)
-                    0,                      # Y (int)
+                    bom_template,  # TemplateName
+                    0,  # X (int)
+                    0,  # Y (int)
                     SW_BOM_TYPE_TOP_LEVEL_ONLY,  # BomType
-                    "",                     # ConfigurationName
+                    "",  # ConfigurationName
                 )
-                route_c_ok = (
-                    bom_raw_c is not None and not isinstance(bom_raw_c, int)
-                )
+                route_c_ok = bom_raw_c is not None and not isinstance(bom_raw_c, int)
                 results["characterization"]["route_c"] = {
                     "result_type": type(bom_raw_c).__name__ if bom_raw_c else None,
                     "ok": route_c_ok,
@@ -501,10 +495,7 @@ def run() -> str:
         except Exception as exc:
             gate("drawing_save", False, f"SaveAs3 raised: {exc!r}")
 
-        all_pass = (
-            liveness_ok
-            and os.path.isfile(DRW_PATH)
-        )
+        all_pass = liveness_ok and os.path.isfile(DRW_PATH)
         gate(
             "OVERALL",
             all_pass,

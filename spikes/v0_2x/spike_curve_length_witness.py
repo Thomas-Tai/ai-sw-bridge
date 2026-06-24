@@ -111,7 +111,8 @@ def _diag_segment(seg: Any) -> dict[str, Any]:
     for caster in ("typed_qi", "typed"):
         try:
             te = (
-                typed_qi(seg, "IEdge", module=wrapper_module()) if caster == "typed_qi"
+                typed_qi(seg, "IEdge", module=wrapper_module())
+                if caster == "typed_qi"
                 else typed(seg, "IEdge", module=wrapper_module())
             )
             d[f"edge_{caster}"] = "ok"
@@ -158,7 +159,9 @@ def _introspect_head(node: Any) -> dict[str, Any]:
         cnt = _resolve(rc, "GetSegmentCount")
         diag["IReferenceCurve.GetSegmentCount"] = cnt
         segs = rc.GetSegments()
-        seg_list = list(segs) if isinstance(segs, (list, tuple)) else ([segs] if segs else [])
+        seg_list = (
+            list(segs) if isinstance(segs, (list, tuple)) else ([segs] if segs else [])
+        )
         diag["IReferenceCurve.GetSegments"] = f"len={len(seg_list)}"
         # Per-segment chain dump: seg -> (IEdge?) -> GetCurve -> (ICurve?) ->
         # GetEndParams/GetLength. Pinpoints exactly which hop drops the length.
@@ -171,7 +174,9 @@ def _introspect_head(node: Any) -> dict[str, Any]:
     try:
         sk = typed(spec, "ISketch", module=wrapper_module())
         segs = sk.GetSketchSegments()
-        sk_list = list(segs) if isinstance(segs, (list, tuple)) else ([segs] if segs else [])
+        sk_list = (
+            list(segs) if isinstance(segs, (list, tuple)) else ([segs] if segs else [])
+        )
         diag["ISketch.GetSketchSegments"] = f"len={len(sk_list)}"
         if sk_list:
             seg = sk_list[0]
@@ -185,8 +190,7 @@ def _introspect_head(node: Any) -> dict[str, Any]:
         try:
             val = _resolve(spec, probe)
             diag[f"spec.{probe}"] = (
-                f"len={len(val)}" if isinstance(val, (list, tuple))
-                else repr(val)[:80]
+                f"len={len(val)}" if isinstance(val, (list, tuple)) else repr(val)[:80]
             )
         except Exception as e:
             diag[f"spec.{probe}_error"] = f"{type(e).__name__}: {e}"[:120]
@@ -194,7 +198,10 @@ def _introspect_head(node: Any) -> dict[str, Any]:
 
 
 def _probe_lane(
-    doc: Any, label: str, tokens: tuple[str, ...], expected_min_mm: float,
+    doc: Any,
+    label: str,
+    tokens: tuple[str, ...],
+    expected_min_mm: float,
 ) -> dict[str, Any]:
     """Locate the new curve node, introspect its head, fire the production
     candidate verify.curve_length_mm, and judge."""
@@ -242,12 +249,28 @@ def _make_helix(doc: Any) -> bool:
     null_callout = VARIANT(pythoncom.VT_DISPATCH, None)
     try:
         if not doc.Extension.SelectByID2(
-            sketch, "SKETCH", 0.0, 0.0, 0.0, False, 0, null_callout, 0,
+            sketch,
+            "SKETCH",
+            0.0,
+            0.0,
+            0.0,
+            False,
+            0,
+            null_callout,
+            0,
         ):
             return False
         doc.InsertHelix(
-            True, False, False, True, SW_HELIX_DEFINED_BY_PITCH_AND_REV,
-            pitch_m, HELIX_REVOLUTIONS, height_m, 0.0, 0.0,
+            True,
+            False,
+            False,
+            True,
+            SW_HELIX_DEFINED_BY_PITCH_AND_REV,
+            pitch_m,
+            HELIX_REVOLUTIONS,
+            height_m,
+            0.0,
+            0.0,
         )
         doc.ForceRebuild3(False)
     except Exception:
@@ -287,16 +310,24 @@ def _probe_project_curve(doc: Any) -> dict[str, Any]:
     try:
         sketch_name, face = fx.seed_line_over_top(doc)
     except Exception as e:
-        return {"lane": "project_curve", "verdict": "FIXTURE_FAILED",
-                "error": f"{type(e).__name__}: {e}"[:200]}
+        return {
+            "lane": "project_curve",
+            "verdict": "FIXTURE_FAILED",
+            "error": f"{type(e).__name__}: {e}"[:200],
+        }
     before = Counter(_type_name(n) for n in _feature_nodes(doc))
     try:
         ok, msg = create_project_curve(
-            doc, {"sketch_name": sketch_name}, {"face": face},
+            doc,
+            {"sketch_name": sketch_name},
+            {"face": face},
         )
     except Exception as e:
-        return {"lane": "project_curve", "verdict": "HANDLER_RAISED",
-                "error": f"{type(e).__name__}: {e}"[:200]}
+        return {
+            "lane": "project_curve",
+            "verdict": "HANDLER_RAISED",
+            "error": f"{type(e).__name__}: {e}"[:200],
+        }
 
     after_nodes = _feature_nodes(doc)
     new_ct = Counter(_type_name(n) for n in after_nodes) - before
@@ -309,7 +340,9 @@ def _probe_project_curve(doc: Any) -> dict[str, Any]:
             seen[t] += 1
 
     res: dict[str, Any] = {
-        "lane": "project_curve", "handler_ok": bool(ok), "handler_msg": msg,
+        "lane": "project_curve",
+        "handler_ok": bool(ok),
+        "handler_msg": msg,
         "new_node_types": [_type_name(n) for n in candidates],
     }
     best = None
@@ -324,9 +357,9 @@ def _probe_project_curve(doc: Any) -> dict[str, Any]:
         res["introspection"] = _introspect_head(best_node)
 
     if not ok:
-        res["verdict"] = "HANDLER_NOOP"      # projection failed (fixture/handler)
+        res["verdict"] = "HANDLER_NOOP"  # projection failed (fixture/handler)
     elif best is None:
-        res["verdict"] = "NO_OP"             # real node, witness can't read it
+        res["verdict"] = "NO_OP"  # real node, witness can't read it
     elif best >= 10.0:
         res["verdict"] = "PASS"
     else:
@@ -381,7 +414,8 @@ def main() -> int:
         if _make_composite(doc):
             out["lanes"].append(
                 _probe_lane(
-                    doc, "composite",
+                    doc,
+                    "composite",
                     ("compositecurve", "refcurve", "ref_curve"),
                     expected_min_mm=20.0,
                 )

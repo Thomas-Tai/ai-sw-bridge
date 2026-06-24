@@ -120,14 +120,22 @@ def run(keep_file: bool) -> dict[str, Any]:
     result["propose"] = prop
     if not prop.get("ok"):
         _cleanup(work, tmp, keep_file, result)
-        return {**result, "overall": "FAIL", "reason": f"propose failed: {prop.get('error')}"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": f"propose failed: {prop.get('error')}",
+        }
     pid = prop["proposal_id"]
 
     dry = sw_dry_run_feature_add(pid)
     result["dry_run"] = dry
     if not dry.get("ok"):
         _cleanup(work, tmp, keep_file, result)
-        return {**result, "overall": "FAIL", "reason": f"dry_run failed: {dry.get('error')}"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": f"dry_run failed: {dry.get('error')}",
+        }
 
     mtime_before = tmp.stat().st_mtime
     time.sleep(1.0)  # ensure a detectable mtime delta on coarse filesystems
@@ -143,15 +151,18 @@ def run(keep_file: bool) -> dict[str, Any]:
     if commit.get("ok") and saved_flag and file_written:
         overall, reason = "PASS", (
             "commit reported doc_saved=True and the file mtime advanced -- the "
-            "doc_saved-reporting fix holds against late-bound Save() returning None")
+            "doc_saved-reporting fix holds against late-bound Save() returning None"
+        )
     elif commit.get("ok") and file_written and not saved_flag:
         overall, reason = "PARTIAL", (
             "the file was saved (mtime advanced) but commit.doc_saved is not True "
-            "-- the fix did not take effect")
+            "-- the fix did not take effect"
+        )
     else:
         overall, reason = "FAIL", (
             f"commit ok={commit.get('ok')} doc_saved={commit.get('doc_saved')} "
-            f"mtime_advanced={file_written}; error={commit.get('error')}")
+            f"mtime_advanced={file_written}; error={commit.get('error')}"
+        )
     result["overall"] = overall
     result["reason"] = reason
     return result
@@ -182,12 +193,15 @@ def _cleanup(work: Path, tmp: Path, keep: bool, result: dict[str, Any]) -> None:
             except OSError:
                 pass
         removed.append("proposals")
-    result["cleanup"] = "removed " + ", ".join(removed) if removed else "nothing to remove"
+    result["cleanup"] = (
+        "removed " + ", ".join(removed) if removed else "nothing to remove"
+    )
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--keep-file", action="store_true")
     args = p.parse_args()

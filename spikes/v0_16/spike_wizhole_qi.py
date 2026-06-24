@@ -188,8 +188,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-        BOX_W_M / 2, BOX_H_M / 2, 0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -197,9 +201,28 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
@@ -250,7 +273,11 @@ def run() -> dict[str, Any]:
         def_rec, data = _capture(lambda: fm.CreateDefinition(SW_FM_HOLE_WZD))
         result["create_definition_25"] = def_rec
         if data is None:
-            return {**result, "overall": "FAIL", "reason": "CreateDefinition(25) returned None"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "CreateDefinition(25) returned None",
+            }
 
         qi_rec, typed_obj = _capture(lambda: typed_qi(data, IFACE, module=mod))
         result["typed_qi"] = qi_rec
@@ -262,7 +289,9 @@ def run() -> dict[str, Any]:
 
             # Best-effort minimal setup: set HoleType if present.
             if members.get("HoleType") == "present":
-                set_rec, _ = _capture(lambda: setattr(typed_obj, "HoleType", SIMPLE_HOLE_TYPE))
+                set_rec, _ = _capture(
+                    lambda: setattr(typed_obj, "HoleType", SIMPLE_HOLE_TYPE)
+                )
                 result["set_hole_type"] = set_rec
 
             # Select the top face, then attempt CreateFeature. Wizard holes
@@ -272,9 +301,7 @@ def run() -> dict[str, Any]:
                 doc.ClearSelection2(True)
             except Exception:  # noqa: BLE001
                 pass
-            sel_rec, _ = _capture(
-                lambda: doc.SelectByID("", "FACE", 0, 0, BOX_D_M)
-            )
+            sel_rec, _ = _capture(lambda: doc.SelectByID("", "FACE", 0, 0, BOX_D_M))
             result["select_top_face"] = sel_rec
 
             feat_rec, feat = _capture(lambda: fm.CreateFeature(data))

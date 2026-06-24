@@ -28,9 +28,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "l4_persistence_pae.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "l4_persistence_pae.json"
 
 results: dict[str, Any] = {
     "pae": "w14_l4_persistence",
@@ -77,14 +75,17 @@ def run() -> str:
         "schema_version": 1,
         "name": "PlateA",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 30.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 5.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 30.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 5.0},
         ],
     }
-    r = part_build(SPEC_A, save_as=PART_A_PATH, save_format="current",
-                   no_dim=True)
+    r = part_build(SPEC_A, save_as=PART_A_PATH, save_format="current", no_dim=True)
     gate("build_part_a", r.ok and os.path.isfile(PART_A_PATH), f"ok={r.ok}")
 
     if not os.path.isfile(PART_A_PATH):
@@ -98,15 +99,17 @@ def run() -> str:
         "schema_version": 1,
         "name": "PlateB",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 20.0, "height": 15.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 5.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 15.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 5.0},
         ],
     }
-    Path(PART_B_SPEC_PATH).write_text(
-        json.dumps(SPEC_B, indent=2), encoding="utf-8"
-    )
+    Path(PART_B_SPEC_PATH).write_text(json.dumps(SPEC_B, indent=2), encoding="utf-8")
     gate("write_part_spec_b", os.path.isfile(PART_B_SPEC_PATH))
 
     expected_sha = sha256_of_file(PART_B_SPEC_PATH)
@@ -144,15 +147,21 @@ def run() -> str:
             },
         ],
     }
-    gate("authored_spec", True,
-         f"components={len(assembly_spec['components'])}, "
-         f"mates={len(assembly_spec['mates'])}")
+    gate(
+        "authored_spec",
+        True,
+        f"components={len(assembly_spec['components'])}, "
+        f"mates={len(assembly_spec['mates'])}",
+    )
 
     # --- Propose ---
     print("\n--- Propose ---")
     propose = sw_propose_assembly(assembly_spec)
-    gate("propose_ok", propose.get("ok", False),
-         f"proposal_id={propose.get('proposal_id')}")
+    gate(
+        "propose_ok",
+        propose.get("ok", False),
+        f"proposal_id={propose.get('proposal_id')}",
+    )
 
     if not propose.get("ok"):
         results["propose_error"] = propose.get("error")
@@ -164,9 +173,11 @@ def run() -> str:
     # --- Dry run ---
     print("\n--- Dry run ---")
     dry = sw_dry_run_assembly(pid)
-    gate("dry_run_ok", dry.get("ok", False),
-         f"state={dry.get('state')}, "
-         f"resolved={len(dry.get('resolved_parts', {}))}")
+    gate(
+        "dry_run_ok",
+        dry.get("ok", False),
+        f"state={dry.get('state')}, " f"resolved={len(dry.get('resolved_parts', {}))}",
+    )
 
     if not dry.get("ok"):
         results["dry_run_error"] = dry.get("error")
@@ -177,10 +188,13 @@ def run() -> str:
     print("\n--- Commit ---")
     ASM_PATH = str(_tmp / f"w14_l4_{_ts}.SLDASM")
     commit = sw_commit_assembly(pid, ASM_PATH)
-    gate("commit_ok", commit.get("ok", False),
-         f"state={commit.get('state')}, "
-         f"components={commit.get('component_count')}, "
-         f"mates={commit.get('mate_count')}")
+    gate(
+        "commit_ok",
+        commit.get("ok", False),
+        f"state={commit.get('state')}, "
+        f"components={commit.get('component_count')}, "
+        f"mates={commit.get('mate_count')}",
+    )
 
     if not commit.get("ok"):
         results["commit_error"] = commit.get("error")
@@ -190,16 +204,17 @@ def run() -> str:
     # --- Verify manifest sidecar ---
     print("\n--- Verify manifest ---")
     manifest_path = commit.get("manifest_path")
-    gate("manifest_path_set",
-         manifest_path is not None,
-         f"path={manifest_path}")
+    gate("manifest_path_set", manifest_path is not None, f"path={manifest_path}")
 
     if manifest_path is None:
         save_results()
         return "PARTIAL"
 
-    gate("manifest_file_exists", os.path.isfile(manifest_path),
-         f"size={os.path.getsize(manifest_path) if os.path.isfile(manifest_path) else 0}")
+    gate(
+        "manifest_file_exists",
+        os.path.isfile(manifest_path),
+        f"size={os.path.getsize(manifest_path) if os.path.isfile(manifest_path) else 0}",
+    )
 
     if not os.path.isfile(manifest_path):
         save_results()
@@ -211,9 +226,12 @@ def run() -> str:
     reloaded_spec = reloaded.to_spec()
 
     lossless = reloaded_spec == assembly_spec
-    gate("lossless_to_spec", lossless,
-         f"reloaded keys={sorted(reloaded_spec.keys())}, "
-         f"authored keys={sorted(assembly_spec.keys())}")
+    gate(
+        "lossless_to_spec",
+        lossless,
+        f"reloaded keys={sorted(reloaded_spec.keys())}, "
+        f"authored keys={sorted(assembly_spec.keys())}",
+    )
 
     if not lossless:
         # Diff the specs for diagnosis
@@ -228,9 +246,11 @@ def run() -> str:
     # --- Verify runtime overlay ---
     print("\n--- Runtime overlay ---")
     rt_comps = {c.id: c for c in reloaded.components}
-    gate("runtime_has_both_components",
-         len(rt_comps) == 2,
-         f"ids={sorted(rt_comps.keys())}")
+    gate(
+        "runtime_has_both_components",
+        len(rt_comps) == 2,
+        f"ids={sorted(rt_comps.keys())}",
+    )
 
     for cid in ("plate_a", "plate_b"):
         comp = rt_comps.get(cid)
@@ -238,24 +258,26 @@ def run() -> str:
             gate(f"sw_name_{cid}", False, "component not in runtime")
             continue
         has_name = bool(comp.sw_name) and comp.sw_name != cid
-        gate(f"sw_name_{cid}", has_name,
-             f"sw_name={comp.sw_name!r}")
+        gate(f"sw_name_{cid}", has_name, f"sw_name={comp.sw_name!r}")
 
     # --- Verify provenance ---
     print("\n--- Provenance ---")
     comp_b = rt_comps.get("plate_b")
     if comp_b is not None:
         has_spec_path = comp_b.part_spec_path is not None
-        gate("plate_b_has_part_spec_path", has_spec_path,
-             f"path={comp_b.part_spec_path}")
+        gate(
+            "plate_b_has_part_spec_path", has_spec_path, f"path={comp_b.part_spec_path}"
+        )
 
         sha_match = (
             comp_b.part_spec_sha256 is not None
             and comp_b.part_spec_sha256 == expected_sha
         )
-        gate("plate_b_sha256_match", sha_match,
-             f"expected={expected_sha}, "
-             f"got={comp_b.part_spec_sha256}")
+        gate(
+            "plate_b_sha256_match",
+            sha_match,
+            f"expected={expected_sha}, " f"got={comp_b.part_spec_sha256}",
+        )
     else:
         gate("plate_b_provenance", False, "plate_b not in runtime")
 
@@ -265,27 +287,32 @@ def run() -> str:
     rt_section = raw_json.get("runtime", {})
 
     asm_path_on_disk = rt_section.get("assembly_path", "")
-    gate("assembly_path_relative",
-         not os.path.isabs(asm_path_on_disk),
-         f"on_disk={asm_path_on_disk!r}")
+    gate(
+        "assembly_path_relative",
+        not os.path.isabs(asm_path_on_disk),
+        f"on_disk={asm_path_on_disk!r}",
+    )
 
     for rc in rt_section.get("components", []):
         pp = rc.get("part_path", "")
-        gate(f"part_path_relative_{rc['id']}",
-             not os.path.isabs(pp),
-             f"on_disk={pp!r}")
+        gate(f"part_path_relative_{rc['id']}", not os.path.isabs(pp), f"on_disk={pp!r}")
 
     # Spec block untouched on disk
     spec_on_disk = raw_json.get("spec", {})
-    gate("spec_block_verbatim_on_disk",
-         spec_on_disk == assembly_spec,
-         "spec block matches authored spec byte-for-byte")
+    gate(
+        "spec_block_verbatim_on_disk",
+        spec_on_disk == assembly_spec,
+        "spec block matches authored spec byte-for-byte",
+    )
 
     # --- Overall ---
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL_GREEN", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
-         f"{len(results['gates'])} gates pass")
+    gate(
+        "OVERALL_GREEN",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
+        f"{len(results['gates'])} gates pass",
+    )
 
     return "GREEN" if all_pass else "PARTIAL"
 

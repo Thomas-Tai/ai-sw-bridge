@@ -61,6 +61,7 @@ def evaluate_surface_at_uv(
 
     if module is None:
         from ..com.sw_type_info import wrapper_module
+
         module = wrapper_module()
 
     from ..com.earlybind import typed as _typed
@@ -139,6 +140,7 @@ def get_surface_parameter_range(face: Any, module: Any = None) -> dict[str, Any]
 
     if module is None:
         from ..com.sw_type_info import wrapper_module
+
         module = wrapper_module()
 
     from ..com.earlybind import typed as _typed

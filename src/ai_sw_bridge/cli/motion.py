@@ -49,7 +49,9 @@ def _load_spec(path: str) -> dict[str, Any]:
         if key not in drv:
             raise ValueError(f"driver missing required key {key!r}")
     if drv["type"] not in ("distance", "angle"):
-        raise ValueError(f"driver.type must be 'distance' or 'angle', got {drv['type']!r}")
+        raise ValueError(
+            f"driver.type must be 'distance' or 'angle', got {drv['type']!r}"
+        )
     return spec
 
 
@@ -150,9 +152,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     subs = parser.add_subparsers(dest="tool", required=True, metavar="tool")
     p = subs.add_parser("audit", help="Run a motion audit from a spec JSON.")
-    p.add_argument("--spec", required=True, help="Path to a kind:'motion_audit' spec JSON.")
     p.add_argument(
-        "--output-dir", dest="output_dir", default="_results",
+        "--spec", required=True, help="Path to a kind:'motion_audit' spec JSON."
+    )
+    p.add_argument(
+        "--output-dir",
+        dest="output_dir",
+        default="_results",
         help="Directory for the result JSON (default: _results).",
     )
     p.set_defaults(func=_run_audit)

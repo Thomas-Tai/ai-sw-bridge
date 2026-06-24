@@ -37,8 +37,8 @@ from ai_sw_bridge.observe_section import (
 # - principal lx=ly = 1.3333e-8 m⁴ (square → already principal)
 # - principal angle = 0 rad
 
-_IXX_M4 = 0.020 * (0.020 ** 3) / 12   # 1.3333e-8
-_JP_M4 = 2 * _IXX_M4                   # 2.6667e-8
+_IXX_M4 = 0.020 * (0.020**3) / 12  # 1.3333e-8
+_JP_M4 = 2 * _IXX_M4  # 2.6667e-8
 
 
 def _good_raw() -> list[float]:
@@ -64,28 +64,35 @@ def _good_raw() -> list[float]:
       [21-23] principal axis Z = (0, 0, 1)
     """
     return [
-        0.0,         # [0]  status = success
-        4.0e-4,      # [1]  area m²
-        0.0,         # [2]  centroid x m
-        0.0,         # [3]  centroid y m
-        0.020,       # [4]  centroid z m
-        _IXX_M4,     # [5]  Ixx m⁴
-        _IXX_M4,     # [6]  Iyy m⁴
-        _IXX_M4,     # [7]  Izz m⁴
-        0.0,         # [8]  -Ixy m⁴
-        0.0,         # [9]  -Izx m⁴
-        0.0,         # [10] -Iyz m⁴
-        _JP_M4,      # [11] polar Jp m⁴
-        0.0,         # [12] principal angle rad
-        _IXX_M4,     # [13] principal lx m⁴
-        _IXX_M4,     # [14] principal ly m⁴
-        1.0, 0.0, 0.0,  # [15-17] axis X direction
-        0.0, 1.0, 0.0,  # [18-20] axis Y direction
-        0.0, 0.0, 1.0,  # [21-23] axis Z direction
+        0.0,  # [0]  status = success
+        4.0e-4,  # [1]  area m²
+        0.0,  # [2]  centroid x m
+        0.0,  # [3]  centroid y m
+        0.020,  # [4]  centroid z m
+        _IXX_M4,  # [5]  Ixx m⁴
+        _IXX_M4,  # [6]  Iyy m⁴
+        _IXX_M4,  # [7]  Izz m⁴
+        0.0,  # [8]  -Ixy m⁴
+        0.0,  # [9]  -Izx m⁴
+        0.0,  # [10] -Iyz m⁴
+        _JP_M4,  # [11] polar Jp m⁴
+        0.0,  # [12] principal angle rad
+        _IXX_M4,  # [13] principal lx m⁴
+        _IXX_M4,  # [14] principal ly m⁴
+        1.0,
+        0.0,
+        0.0,  # [15-17] axis X direction
+        0.0,
+        1.0,
+        0.0,  # [18-20] axis Y direction
+        0.0,
+        0.0,
+        1.0,  # [21-23] axis Z direction
     ]
 
 
 # ── Tests: read_section_props parser ─────────────────────────────────────────
+
 
 class TestReadSectionProps:
 
@@ -155,7 +162,7 @@ class TestReadSectionProps:
         assert props["status_ok"] is False
         assert props["status"] == 1
         assert "invalid input" in props["status_message"]
-        assert props["area_mm2"] is None   # not populated on non-zero status
+        assert props["area_mm2"] is None  # not populated on non-zero status
 
     def test_status_not_coplanar(self):
         raw = _good_raw()
@@ -185,19 +192,31 @@ class TestReadSectionProps:
     def test_all_output_keys_present(self):
         props = read_section_props(_good_raw())
         expected_keys = {
-            "status", "status_ok", "status_message",
-            "area_mm2", "centroid_mm",
-            "ixx_mm4", "iyy_mm4", "izz_mm4",
-            "ixy_mm4", "izx_mm4", "iyz_mm4",
-            "jp_mm4", "principal_angle_deg",
-            "ix_mm4", "iy_mm4",
-            "principal_axis_x", "principal_axis_y", "principal_axis_z",
+            "status",
+            "status_ok",
+            "status_message",
+            "area_mm2",
+            "centroid_mm",
+            "ixx_mm4",
+            "iyy_mm4",
+            "izz_mm4",
+            "ixy_mm4",
+            "izx_mm4",
+            "iyz_mm4",
+            "jp_mm4",
+            "principal_angle_deg",
+            "ix_mm4",
+            "iy_mm4",
+            "principal_axis_x",
+            "principal_axis_y",
+            "principal_axis_z",
             "errors",
         }
         assert set(props.keys()) == expected_keys
 
 
 # ── Tests: sw_get_section_props top-level observer ────────────────────────────
+
 
 def _make_mock_doc(raw: list[float]) -> MagicMock:
     """Build a minimal mock of an IModelDoc2 dispatch object whose
@@ -222,12 +241,21 @@ class TestSwGetSectionProps:
         doc = _make_mock_doc(_good_raw())
         result = _sw_get_section_props_impl(doc)
         expected = {
-            "area_mm2", "centroid_mm",
-            "ixx_mm4", "iyy_mm4", "izz_mm4",
-            "ixy_mm4", "izx_mm4", "iyz_mm4",
-            "jp_mm4", "principal_angle_deg",
-            "ix_mm4", "iy_mm4",
-            "principal_axis_x", "principal_axis_y", "principal_axis_z",
+            "area_mm2",
+            "centroid_mm",
+            "ixx_mm4",
+            "iyy_mm4",
+            "izz_mm4",
+            "ixy_mm4",
+            "izx_mm4",
+            "iyz_mm4",
+            "jp_mm4",
+            "principal_angle_deg",
+            "ix_mm4",
+            "iy_mm4",
+            "principal_axis_x",
+            "principal_axis_y",
+            "principal_axis_z",
         }
         assert set(result["section"].keys()) == expected
 
@@ -252,7 +280,7 @@ class TestSwGetSectionProps:
         """doc.Extension raises AttributeError — observer should fall back
         to typed() path.  Since no real typed() is available offline, it
         is expected to fail cleanly (ok=False, error non-empty)."""
-        doc = MagicMock(spec=[])   # spec=[] → AttributeError on all attrs
+        doc = MagicMock(spec=[])  # spec=[] → AttributeError on all attrs
         result = _sw_get_section_props_impl(doc)
         assert result["ok"] is False
         assert result["error"] is not None

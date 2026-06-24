@@ -16,6 +16,7 @@ production builder. Reuses the Tier-2 de-risk spike's helpers verbatim.
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/mech_mate_tier2_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -69,8 +70,11 @@ def _rack_pinion_leg(sw: Any, mod: Any) -> dict[str, Any]:
     if "error" in rack or "error" in pinion:
         r["error"] = rack.get("error") or pinion.get("error")
         return r
-    ctx = _place(sw, mod, [("rack", rack["path"], [0, 0, 0]),
-                           ("pinion", pinion["path"], [60, 0, 0])])
+    ctx = _place(
+        sw,
+        mod,
+        [("rack", rack["path"], [0, 0, 0]), ("pinion", pinion["path"], [60, 0, 0])],
+    )
     if "error" in ctx:
         r["error"] = ctx["error"]
         return r
@@ -90,8 +94,9 @@ def _rack_pinion_leg(sw: Any, mod: Any) -> dict[str, Any]:
     if int(typed(ctx["asm"], "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0)) != 0:
         r["error"] = "SAVE_FAILED"
         return r
-    rb = t2._read_back(sw, mod, asm_path, "IRackPinionMateFeatureData",
-                       ("DiameterType", "DiameterVal"))
+    rb = t2._read_back(
+        sw, mod, asm_path, "IRackPinionMateFeatureData", ("DiameterType", "DiameterVal")
+    )
     r["persist"] = rb
     vals = rb.get("read_back", {})
     r["ok"] = (
@@ -110,8 +115,11 @@ def _cam_follower_leg(sw: Any, mod: Any) -> dict[str, Any]:
     if "error" in cam or "error" in follower:
         r["error"] = cam.get("error") or follower.get("error")
         return r
-    ctx = _place(sw, mod, [("cam", cam["path"], [0, 0, 0]),
-                           ("follower", follower["path"], [60, 0, 0])])
+    ctx = _place(
+        sw,
+        mod,
+        [("cam", cam["path"], [0, 0, 0]), ("follower", follower["path"], [60, 0, 0])],
+    )
     if "error" in ctx:
         r["error"] = ctx["error"]
         return r
@@ -130,8 +138,9 @@ def _cam_follower_leg(sw: Any, mod: Any) -> dict[str, Any]:
     if int(typed(ctx["asm"], "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0)) != 0:
         r["error"] = "SAVE_FAILED"
         return r
-    rb = t2._read_back(sw, mod, asm_path, "ICamFollowerMateFeatureData",
-                       ("MateAlignment",))
+    rb = t2._read_back(
+        sw, mod, asm_path, "ICamFollowerMateFeatureData", ("MateAlignment",)
+    )
     r["persist"] = rb
     r["ok"] = "read_back" in rb and "Cam" in rb.get("mate_feature_type", "")
     r["verdict"] = "GREEN" if r["ok"] else "NO-GO"

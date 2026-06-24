@@ -10,6 +10,7 @@ Non-destructive: builds its own part, never touches the user's open documents.
 
 Usage:  .venv-py310\Scripts\python spikes\v0_16\_seatcheck_arun_curve.py
 """
+
 from __future__ import annotations
 
 import json
@@ -60,10 +61,29 @@ def _build_cylinder(sw: Any) -> Any:
     sk.InsertSketch(True)
 
     feat = doc.FeatureManager.FeatureExtrusion2(
-        True, False, False, 0, 0, DEPTH_M, 0.0,
-        False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        DEPTH_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         sw.CloseDoc(_title(doc))
@@ -105,15 +125,17 @@ def run() -> dict[str, Any]:
     curve_on_straight = 0
     for be in edges:
         cls = _classify_edge(be.start, be.end, be.length, be.curve_mid_source)
-        edge_report.append({
-            "idx": be.edge_idx,
-            "body": be.body_id,
-            "class": cls,
-            "source": be.curve_mid_source,
-            "length": round(be.length, 6),
-            "chord": round(math.dist(be.start, be.end), 6),
-            "midpoint": tuple(round(v, 6) for v in be.midpoint),
-        })
+        edge_report.append(
+            {
+                "idx": be.edge_idx,
+                "body": be.body_id,
+                "class": cls,
+                "source": be.curve_mid_source,
+                "length": round(be.length, 6),
+                "chord": round(math.dist(be.start, be.end), 6),
+                "midpoint": tuple(round(v, 6) for v in be.midpoint),
+            }
+        )
         if be.curve_mid_source == "curve":
             if cls == "curved":
                 curve_on_curved += 1
@@ -140,7 +162,9 @@ def run() -> dict[str, Any]:
                 )
                 if cp:
                     cma = _read_curve_mid_and_arc(
-                        e0, (cp[0], cp[1], cp[2]), (cp[3], cp[4], cp[5]),
+                        e0,
+                        (cp[0], cp[1], cp[2]),
+                        (cp[3], cp[4], cp[5]),
                     )
                     if cma is not None:
                         mid, arc, src = cma

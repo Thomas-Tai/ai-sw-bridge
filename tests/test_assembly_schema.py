@@ -64,10 +64,12 @@ class TestSchemaConstants:
 class TestSchemaValidation:
     def test_accepts_minimal(self) -> None:
         import jsonschema
+
         jsonschema.validate(_minimal_assembly(), ASSEMBLY_SCHEMA)
 
     def test_rejects_missing_kind(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         del spec["kind"]
         with pytest.raises(jsonschema.ValidationError):
@@ -75,16 +77,19 @@ class TestSchemaValidation:
 
     def test_rejects_wrong_kind(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_minimal_assembly(kind="part"), ASSEMBLY_SCHEMA)
 
     def test_rejects_empty_components(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(_minimal_assembly(components=[]), ASSEMBLY_SCHEMA)
 
     def test_rejects_component_without_id(self) -> None:
         import jsonschema
+
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(
                 _minimal_assembly(components=[{"part": "x.sldprt"}]),
@@ -93,12 +98,14 @@ class TestSchemaValidation:
 
     def test_rejects_unknown_mate_type(self) -> None:
         import jsonschema
+
         spec = _with_mate(_minimal_assembly(), type="weld")
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, ASSEMBLY_SCHEMA)
 
     def test_rejects_unknown_alignment(self) -> None:
         import jsonschema
+
         spec = _with_mate(_minimal_assembly(), alignment="sideways")
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, ASSEMBLY_SCHEMA)
@@ -205,6 +212,7 @@ class TestProposeAssembly:
     def test_propose_accepts_valid(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_assembly_impl
+
         result = _sw_propose_assembly_impl(_minimal_assembly())
         assert result["ok"] is True
         assert result["proposal_id"] is not None
@@ -213,6 +221,7 @@ class TestProposeAssembly:
     def test_propose_rejects_schema_error(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_assembly_impl
+
         result = _sw_propose_assembly_impl({"kind": "part", "name": "x"})
         assert result["ok"] is False
         assert "schema" in result["error"]
@@ -220,6 +229,7 @@ class TestProposeAssembly:
     def test_propose_rejects_semantic_error(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_assembly_impl
+
         spec = _minimal_assembly()
         spec["components"][1]["id"] = "a"  # duplicate
         result = _sw_propose_assembly_impl(spec)
@@ -229,6 +239,7 @@ class TestProposeAssembly:
     def test_propose_rejects_non_dict(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_assembly_impl
+
         result = _sw_propose_assembly_impl("not a dict")  # type: ignore[arg-type]
         assert result["ok"] is False
 
@@ -236,6 +247,7 @@ class TestProposeAssembly:
         """Assembly is de-advertised — feature_add must fail-closed for it."""
         monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path))
         from ai_sw_bridge.mutate import _sw_propose_feature_add_impl
+
         result = _sw_propose_feature_add_impl(
             "dummy.sldprt",
             {"type": "assembly"},
@@ -245,6 +257,7 @@ class TestProposeAssembly:
 
 
 # ---- Phase-2 mate type validation (distance, concentric, parallel, perpendicular) ----
+
 
 def _mate_spec(mtype: str, **kwargs) -> dict:
     """Helper to build a mate spec with the given type."""
@@ -335,6 +348,7 @@ class TestPhase2MateValidation:
 # limit on distance/angle (Min/Max variation). Width remains de-advertised
 # (needs a separate two-reference-set handler path — see DEFERRED.md).
 
+
 class TestPhase3MateValidation:
     """Phase-3 mate type validation rules (tangent / angle / limit)."""
 
@@ -361,7 +375,9 @@ class TestPhase3MateValidation:
 
     def test_rejects_tangent_with_value_deg(self) -> None:
         spec = _assembly_with_mate(_mate_spec("tangent", value_deg=30.0))
-        with pytest.raises(AssemblyValidationError, match="does not accept 'value_deg'"):
+        with pytest.raises(
+            AssemblyValidationError, match="does not accept 'value_deg'"
+        ):
             validate_assembly(spec)
 
     # --- angle: requires value_deg, rejects value_mm ---
@@ -372,7 +388,9 @@ class TestPhase3MateValidation:
 
     def test_rejects_angle_without_value_deg(self) -> None:
         spec = _assembly_with_mate(_mate_spec("angle"))
-        with pytest.raises(AssemblyValidationError, match="angle mate requires 'value_deg'"):
+        with pytest.raises(
+            AssemblyValidationError, match="angle mate requires 'value_deg'"
+        ):
             validate_assembly(spec)
 
     def test_rejects_angle_with_value_mm(self) -> None:
@@ -383,30 +401,42 @@ class TestPhase3MateValidation:
     # --- limit: distance/angle only, both bounds, min < max ---
 
     def test_accepts_distance_limit(self) -> None:
-        mate = _mate_spec("distance", value_mm=5.0, limit={"min_mm": 3.0, "max_mm": 7.0})
+        mate = _mate_spec(
+            "distance", value_mm=5.0, limit={"min_mm": 3.0, "max_mm": 7.0}
+        )
         validate_assembly(_assembly_with_mate(mate))  # should not raise
 
     def test_accepts_angle_limit(self) -> None:
-        mate = _mate_spec("angle", value_deg=45.0, limit={"min_deg": 30.0, "max_deg": 60.0})
+        mate = _mate_spec(
+            "angle", value_deg=45.0, limit={"min_deg": 30.0, "max_deg": 60.0}
+        )
         validate_assembly(_assembly_with_mate(mate))  # should not raise
 
     def test_rejects_limit_on_non_distance_angle(self) -> None:
         mate = _mate_spec("parallel", limit={"min_mm": 3.0, "max_mm": 7.0})
-        with pytest.raises(AssemblyValidationError, match="only supported for distance and angle"):
+        with pytest.raises(
+            AssemblyValidationError, match="only supported for distance and angle"
+        ):
             validate_assembly(_assembly_with_mate(mate))
 
     def test_rejects_distance_limit_missing_bound(self) -> None:
         mate = _mate_spec("distance", value_mm=5.0, limit={"min_mm": 3.0})
-        with pytest.raises(AssemblyValidationError, match="requires both 'min_mm' and 'max_mm'"):
+        with pytest.raises(
+            AssemblyValidationError, match="requires both 'min_mm' and 'max_mm'"
+        ):
             validate_assembly(_assembly_with_mate(mate))
 
     def test_rejects_distance_limit_min_ge_max(self) -> None:
-        mate = _mate_spec("distance", value_mm=5.0, limit={"min_mm": 7.0, "max_mm": 3.0})
+        mate = _mate_spec(
+            "distance", value_mm=5.0, limit={"min_mm": 7.0, "max_mm": 3.0}
+        )
         with pytest.raises(AssemblyValidationError, match="must be less than"):
             validate_assembly(_assembly_with_mate(mate))
 
     def test_rejects_angle_limit_min_ge_max(self) -> None:
-        mate = _mate_spec("angle", value_deg=45.0, limit={"min_deg": 60.0, "max_deg": 30.0})
+        mate = _mate_spec(
+            "angle", value_deg=45.0, limit={"min_deg": 60.0, "max_deg": 30.0}
+        )
         with pytest.raises(AssemblyValidationError, match="must be less than"):
             validate_assembly(_assembly_with_mate(mate))
 
@@ -453,34 +483,43 @@ class TestWidthMateSchemaValidation:
 
     def test_width_schema_accepts_well_formed(self) -> None:
         import jsonschema
+
         jsonschema.validate(_width_mate_spec(), WIDTH_MATE_SCHEMA)
 
     def test_width_schema_rejects_one_width_face(self) -> None:
         import jsonschema
-        spec = _width_mate_spec(width_faces=[
-            {"component": "a", "face_ref": {"normal": [-1, 0, 0]}},
-        ])
+
+        spec = _width_mate_spec(
+            width_faces=[
+                {"component": "a", "face_ref": {"normal": [-1, 0, 0]}},
+            ]
+        )
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, WIDTH_MATE_SCHEMA)
 
     def test_width_schema_rejects_three_tab_faces(self) -> None:
         import jsonschema
-        spec = _width_mate_spec(tab_faces=[
-            {"component": "b", "face_ref": {"normal": [-1, 0, 0]}},
-            {"component": "b", "face_ref": {"normal": [1, 0, 0]}},
-            {"component": "b", "face_ref": {"normal": [0, 1, 0]}},
-        ])
+
+        spec = _width_mate_spec(
+            tab_faces=[
+                {"component": "b", "face_ref": {"normal": [-1, 0, 0]}},
+                {"component": "b", "face_ref": {"normal": [1, 0, 0]}},
+                {"component": "b", "face_ref": {"normal": [0, 1, 0]}},
+            ]
+        )
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, WIDTH_MATE_SCHEMA)
 
     def test_width_schema_rejects_stray_alignment(self) -> None:
         import jsonschema
+
         spec = _width_mate_spec(alignment="aligned")
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, WIDTH_MATE_SCHEMA)
 
     def test_assembly_schema_accepts_width_mate(self) -> None:
         import jsonschema
+
         jsonschema.validate(_assembly_with_width_mate(), ASSEMBLY_SCHEMA)
 
 
@@ -503,9 +542,11 @@ class TestWidthMateValidation:
             validate_assembly(spec)
 
     def test_rejects_wrong_count_width_faces(self) -> None:
-        mate = _width_mate_spec(width_faces=[
-            {"component": "a", "face_ref": {"normal": [-1, 0, 0]}},
-        ])
+        mate = _width_mate_spec(
+            width_faces=[
+                {"component": "a", "face_ref": {"normal": [-1, 0, 0]}},
+            ]
+        )
         spec = _assembly_with_width_mate(mate)
         with pytest.raises(Exception):
             validate_assembly(spec)
@@ -541,28 +582,34 @@ class TestWidthMateValidation:
             validate_assembly(spec)
 
     def test_rejects_unknown_component_in_width_faces(self) -> None:
-        mate = _width_mate_spec(width_faces=[
-            {"component": "ghost", "face_ref": {"normal": [-1, 0, 0]}},
-            {"component": "a", "face_ref": {"normal": [1, 0, 0]}},
-        ])
+        mate = _width_mate_spec(
+            width_faces=[
+                {"component": "ghost", "face_ref": {"normal": [-1, 0, 0]}},
+                {"component": "a", "face_ref": {"normal": [1, 0, 0]}},
+            ]
+        )
         spec = _assembly_with_width_mate(mate)
         with pytest.raises(AssemblyValidationError, match="ghost"):
             validate_assembly(spec)
 
     def test_rejects_unknown_component_in_tab_faces(self) -> None:
-        mate = _width_mate_spec(tab_faces=[
-            {"component": "b", "face_ref": {"normal": [-1, 0, 0]}},
-            {"component": "ghost", "face_ref": {"normal": [1, 0, 0]}},
-        ])
+        mate = _width_mate_spec(
+            tab_faces=[
+                {"component": "b", "face_ref": {"normal": [-1, 0, 0]}},
+                {"component": "ghost", "face_ref": {"normal": [1, 0, 0]}},
+            ]
+        )
         spec = _assembly_with_width_mate(mate)
         with pytest.raises(AssemblyValidationError, match="ghost"):
             validate_assembly(spec)
 
     def test_rejects_empty_face_ref_in_width_faces(self) -> None:
-        mate = _width_mate_spec(width_faces=[
-            {"component": "a", "face_ref": {}},
-            {"component": "a", "face_ref": {"normal": [1, 0, 0]}},
-        ])
+        mate = _width_mate_spec(
+            width_faces=[
+                {"component": "a", "face_ref": {}},
+                {"component": "a", "face_ref": {"normal": [1, 0, 0]}},
+            ]
+        )
         spec = _assembly_with_width_mate(mate)
         with pytest.raises(AssemblyValidationError, match="face_ref"):
             validate_assembly(spec)
@@ -578,12 +625,14 @@ class TestRpyConvention:
 
     def test_identity(self) -> None:
         from ai_sw_bridge.assembly.handlers import _rpy_to_transform
+
         m = _rpy_to_transform(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         expected = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]
         assert [round(v, 6) for v in m] == expected
 
     def test_90_deg_about_z(self) -> None:
         from ai_sw_bridge.assembly.handlers import _rpy_to_transform
+
         m = _rpy_to_transform(0.0, 0.0, 90.0, 0.0, 0.0, 0.0)
         # Rz(90°) = [[0,-1,0],[1,0,0],[0,0,1]]
         rot = [round(v, 6) for v in m[:9]]
@@ -591,6 +640,7 @@ class TestRpyConvention:
 
     def test_90_deg_about_x(self) -> None:
         from ai_sw_bridge.assembly.handlers import _rpy_to_transform
+
         m = _rpy_to_transform(90.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         # Rx(90°) = [[1,0,0],[0,0,-1],[0,1,0]]
         rot = [round(v, 6) for v in m[:9]]
@@ -598,6 +648,7 @@ class TestRpyConvention:
 
     def test_translation_in_metres(self) -> None:
         from ai_sw_bridge.assembly.handlers import _rpy_to_transform
+
         m = _rpy_to_transform(0.0, 0.0, 0.0, 0.05, 0.1, 0.2)
         tx, ty, tz = m[9], m[10], m[11]
         assert abs(tx - 0.05) < 1e-9
@@ -606,6 +657,7 @@ class TestRpyConvention:
 
     def test_scale_is_one(self) -> None:
         from ai_sw_bridge.assembly.handlers import _rpy_to_transform
+
         m = _rpy_to_transform(45.0, 30.0, 60.0, 1.0, 2.0, 3.0)
         assert m[12] == 1.0
 
@@ -616,6 +668,7 @@ class TestRpyConvention:
 class TestComponentPatternsSchema:
     def test_accepts_mirror_pattern(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_patterns"] = [
             {"type": "mirror", "seed": "a", "plane": "right"},
@@ -624,6 +677,7 @@ class TestComponentPatternsSchema:
 
     def test_accepts_with_name_modifier(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_patterns"] = [
             {"type": "mirror", "seed": "a", "plane": "front", "name_modifier": 2},
@@ -632,6 +686,7 @@ class TestComponentPatternsSchema:
 
     def test_rejects_unknown_type(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_patterns"] = [
             {"type": "linear", "seed": "a", "plane": "right"},
@@ -641,6 +696,7 @@ class TestComponentPatternsSchema:
 
     def test_rejects_invalid_plane(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_patterns"] = [
             {"type": "mirror", "seed": "a", "plane": "xy"},
@@ -650,6 +706,7 @@ class TestComponentPatternsSchema:
 
     def test_rejects_missing_seed(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_patterns"] = [
             {"type": "mirror", "plane": "right"},
@@ -659,6 +716,7 @@ class TestComponentPatternsSchema:
 
     def test_rejects_negative_name_modifier(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_patterns"] = [
             {"type": "mirror", "seed": "a", "plane": "right", "name_modifier": -1},
@@ -668,6 +726,7 @@ class TestComponentPatternsSchema:
 
     def test_accepts_no_patterns(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         jsonschema.validate(spec, ASSEMBLY_SCHEMA)
 
@@ -727,54 +786,90 @@ class TestComponentPatternsValidator:
 class TestComponentArraysSchema:
     def test_accepts_linear_array(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "rail", "type": "linear", "part": "r.sldprt",
-             "count": 5, "spacing_mm": 40, "direction": [1, 0, 0]},
+            {
+                "id": "rail",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 5,
+                "spacing_mm": 40,
+                "direction": [1, 0, 0],
+            },
         ]
         jsonschema.validate(spec, ASSEMBLY_SCHEMA)
 
     def test_accepts_circular_array(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "bolt", "type": "circular", "part": "b.sldprt",
-             "count": 6, "radius_mm": 50, "axis": [0, 0, 1]},
+            {
+                "id": "bolt",
+                "type": "circular",
+                "part": "b.sldprt",
+                "count": 6,
+                "radius_mm": 50,
+                "axis": [0, 0, 1],
+            },
         ]
         jsonschema.validate(spec, ASSEMBLY_SCHEMA)
 
     def test_rejects_count_less_than_2(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "r", "type": "linear", "part": "r.sldprt",
-             "count": 1, "spacing_mm": 40, "direction": [1, 0, 0]},
+            {
+                "id": "r",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 1,
+                "spacing_mm": 40,
+                "direction": [1, 0, 0],
+            },
         ]
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, ASSEMBLY_SCHEMA)
 
     def test_rejects_zero_spacing(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "r", "type": "linear", "part": "r.sldprt",
-             "count": 3, "spacing_mm": 0, "direction": [1, 0, 0]},
+            {
+                "id": "r",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 3,
+                "spacing_mm": 0,
+                "direction": [1, 0, 0],
+            },
         ]
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, ASSEMBLY_SCHEMA)
 
     def test_rejects_unknown_type(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "x", "type": "spiral", "part": "x.sldprt",
-             "count": 3, "radius_mm": 50, "axis": [0, 0, 1]},
+            {
+                "id": "x",
+                "type": "spiral",
+                "part": "x.sldprt",
+                "count": 3,
+                "radius_mm": 50,
+                "axis": [0, 0, 1],
+            },
         ]
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(spec, ASSEMBLY_SCHEMA)
 
     def test_accepts_no_arrays(self) -> None:
         import jsonschema
+
         spec = _minimal_assembly()
         jsonschema.validate(spec, ASSEMBLY_SCHEMA)
 
@@ -783,24 +878,43 @@ class TestComponentArraysValidator:
     def test_accepts_valid_linear(self) -> None:
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "rail", "type": "linear", "part": "r.sldprt",
-             "count": 3, "spacing_mm": 40, "direction": [1, 0, 0]},
+            {
+                "id": "rail",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 3,
+                "spacing_mm": 40,
+                "direction": [1, 0, 0],
+            },
         ]
         validate_assembly(spec)
 
     def test_accepts_valid_circular(self) -> None:
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "bolt", "type": "circular", "part": "b.sldprt",
-             "count": 4, "radius_mm": 50, "axis": [0, 0, 1], "angle_deg": 360},
+            {
+                "id": "bolt",
+                "type": "circular",
+                "part": "b.sldprt",
+                "count": 4,
+                "radius_mm": 50,
+                "axis": [0, 0, 1],
+                "angle_deg": 360,
+            },
         ]
         validate_assembly(spec)
 
     def test_rejects_unknown_type(self) -> None:
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "x", "type": "grid", "part": "x.sldprt",
-             "count": 3, "spacing_mm": 10, "direction": [1, 0, 0]},
+            {
+                "id": "x",
+                "type": "grid",
+                "part": "x.sldprt",
+                "count": 3,
+                "spacing_mm": 10,
+                "direction": [1, 0, 0],
+            },
         ]
         with pytest.raises(AssemblyValidationError, match="unknown array type"):
             validate_assembly(spec)
@@ -808,8 +922,14 @@ class TestComponentArraysValidator:
     def test_rejects_count_less_than_2(self) -> None:
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "r", "type": "linear", "part": "r.sldprt",
-             "count": 1, "spacing_mm": 10, "direction": [1, 0, 0]},
+            {
+                "id": "r",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 1,
+                "spacing_mm": 10,
+                "direction": [1, 0, 0],
+            },
         ]
         with pytest.raises(AssemblyValidationError, match="count must be"):
             validate_assembly(spec)
@@ -817,8 +937,14 @@ class TestComponentArraysValidator:
     def test_rejects_negative_spacing(self) -> None:
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "r", "type": "linear", "part": "r.sldprt",
-             "count": 3, "spacing_mm": -5, "direction": [1, 0, 0]},
+            {
+                "id": "r",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 3,
+                "spacing_mm": -5,
+                "direction": [1, 0, 0],
+            },
         ]
         with pytest.raises(AssemblyValidationError, match="positive"):
             validate_assembly(spec)
@@ -826,8 +952,14 @@ class TestComponentArraysValidator:
     def test_rejects_zero_direction(self) -> None:
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "r", "type": "linear", "part": "r.sldprt",
-             "count": 3, "spacing_mm": 10, "direction": [0, 0, 0]},
+            {
+                "id": "r",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 3,
+                "spacing_mm": 10,
+                "direction": [0, 0, 0],
+            },
         ]
         with pytest.raises(AssemblyValidationError, match="non-zero"):
             validate_assembly(spec)
@@ -835,8 +967,14 @@ class TestComponentArraysValidator:
     def test_rejects_zero_axis(self) -> None:
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "b", "type": "circular", "part": "b.sldprt",
-             "count": 4, "radius_mm": 50, "axis": [0, 0, 0]},
+            {
+                "id": "b",
+                "type": "circular",
+                "part": "b.sldprt",
+                "count": 4,
+                "radius_mm": 50,
+                "axis": [0, 0, 0],
+            },
         ]
         with pytest.raises(AssemblyValidationError, match="non-zero"):
             validate_assembly(spec)
@@ -844,8 +982,14 @@ class TestComponentArraysValidator:
     def test_rejects_negative_radius(self) -> None:
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "b", "type": "circular", "part": "b.sldprt",
-             "count": 4, "radius_mm": -10, "axis": [0, 0, 1]},
+            {
+                "id": "b",
+                "type": "circular",
+                "part": "b.sldprt",
+                "count": 4,
+                "radius_mm": -10,
+                "axis": [0, 0, 1],
+            },
         ]
         with pytest.raises(AssemblyValidationError, match="positive"):
             validate_assembly(spec)
@@ -860,8 +1004,14 @@ class TestComponentArraysValidator:
                 {"id": "b", "part": "b.sldprt"},
             ],
             "component_arrays": [
-                {"id": "a", "type": "linear", "part": "r.sldprt",
-                 "count": 3, "spacing_mm": 10, "direction": [1, 0, 0]},
+                {
+                    "id": "a",
+                    "type": "linear",
+                    "part": "r.sldprt",
+                    "count": 3,
+                    "spacing_mm": 10,
+                    "direction": [1, 0, 0],
+                },
             ],
         }
         with pytest.raises(AssemblyValidationError, match="collides"):
@@ -870,8 +1020,13 @@ class TestComponentArraysValidator:
     def test_rejects_missing_part(self) -> None:
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "r", "type": "linear",
-             "count": 3, "spacing_mm": 10, "direction": [1, 0, 0]},
+            {
+                "id": "r",
+                "type": "linear",
+                "count": 3,
+                "spacing_mm": 10,
+                "direction": [1, 0, 0],
+            },
         ]
         with pytest.raises(AssemblyValidationError, match="part"):
             validate_assembly(spec)
@@ -879,10 +1034,22 @@ class TestComponentArraysValidator:
     def test_rejects_duplicate_array_id(self) -> None:
         spec = _minimal_assembly()
         spec["component_arrays"] = [
-            {"id": "r", "type": "linear", "part": "r.sldprt",
-             "count": 2, "spacing_mm": 10, "direction": [1, 0, 0]},
-            {"id": "r", "type": "linear", "part": "r.sldprt",
-             "count": 2, "spacing_mm": 10, "direction": [0, 1, 0]},
+            {
+                "id": "r",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 2,
+                "spacing_mm": 10,
+                "direction": [1, 0, 0],
+            },
+            {
+                "id": "r",
+                "type": "linear",
+                "part": "r.sldprt",
+                "count": 2,
+                "spacing_mm": 10,
+                "direction": [0, 1, 0],
+            },
         ]
         with pytest.raises(AssemblyValidationError, match="duplicate"):
             validate_assembly(spec)
@@ -913,38 +1080,61 @@ class TestExplodedViewsSchema:
 
     def test_accepts_multiple_steps(self) -> None:
         spec = _minimal_assembly()
-        spec = _with_exploded_view(spec, steps=[
-            {"components": ["a"], "distance_mm": 30.0, "direction": "top"},
-            {"components": ["b"], "distance_mm": 50.0, "direction": "front",
-             "reverse": True},
-        ])
+        spec = _with_exploded_view(
+            spec,
+            steps=[
+                {"components": ["a"], "distance_mm": 30.0, "direction": "top"},
+                {
+                    "components": ["b"],
+                    "distance_mm": 50.0,
+                    "direction": "front",
+                    "reverse": True,
+                },
+            ],
+        )
         validate_assembly(spec)
 
     def test_rejects_unknown_direction(self) -> None:
-        spec = _with_exploded_view(_minimal_assembly(), steps=[
-            {"components": ["b"], "distance_mm": 50.0, "direction": "diagonal"},
-        ])
+        spec = _with_exploded_view(
+            _minimal_assembly(),
+            steps=[
+                {"components": ["b"], "distance_mm": 50.0, "direction": "diagonal"},
+            ],
+        )
         with pytest.raises(Exception, match="direction"):
             validate_assembly(spec)
 
     def test_rejects_zero_distance(self) -> None:
-        spec = _with_exploded_view(_minimal_assembly(), steps=[
-            {"components": ["b"], "distance_mm": 0, "direction": "front"},
-        ])
+        spec = _with_exploded_view(
+            _minimal_assembly(),
+            steps=[
+                {"components": ["b"], "distance_mm": 0, "direction": "front"},
+            ],
+        )
         with pytest.raises(Exception):
             validate_assembly(spec)
 
     def test_rejects_unknown_component(self) -> None:
-        spec = _with_exploded_view(_minimal_assembly(), steps=[
-            {"components": ["nonexistent"], "distance_mm": 50.0, "direction": "front"},
-        ])
+        spec = _with_exploded_view(
+            _minimal_assembly(),
+            steps=[
+                {
+                    "components": ["nonexistent"],
+                    "distance_mm": 50.0,
+                    "direction": "front",
+                },
+            ],
+        )
         with pytest.raises(AssemblyValidationError, match="not found"):
             validate_assembly(spec)
 
     def test_rejects_empty_components(self) -> None:
-        spec = _with_exploded_view(_minimal_assembly(), steps=[
-            {"components": [], "distance_mm": 50.0, "direction": "front"},
-        ])
+        spec = _with_exploded_view(
+            _minimal_assembly(),
+            steps=[
+                {"components": [], "distance_mm": 50.0, "direction": "front"},
+            ],
+        )
         with pytest.raises(Exception):
             validate_assembly(spec)
 
@@ -965,25 +1155,42 @@ class TestExplodedViewsSchema:
             validate_assembly(spec)
 
     def test_accepts_reverse_boolean(self) -> None:
-        spec = _with_exploded_view(_minimal_assembly(), steps=[
-            {"components": ["b"], "distance_mm": 50.0, "direction": "right",
-             "reverse": False},
-        ])
+        spec = _with_exploded_view(
+            _minimal_assembly(),
+            steps=[
+                {
+                    "components": ["b"],
+                    "distance_mm": 50.0,
+                    "direction": "right",
+                    "reverse": False,
+                },
+            ],
+        )
         validate_assembly(spec)
 
     def test_rejects_non_boolean_reverse(self) -> None:
-        spec = _with_exploded_view(_minimal_assembly(), steps=[
-            {"components": ["b"], "distance_mm": 50.0, "direction": "front",
-             "reverse": "yes"},
-        ])
+        spec = _with_exploded_view(
+            _minimal_assembly(),
+            steps=[
+                {
+                    "components": ["b"],
+                    "distance_mm": 50.0,
+                    "direction": "front",
+                    "reverse": "yes",
+                },
+            ],
+        )
         with pytest.raises(AssemblyValidationError, match="reverse"):
             validate_assembly(spec)
 
     def test_all_directions_accepted(self) -> None:
         for d in ("front", "top", "right"):
-            spec = _with_exploded_view(_minimal_assembly(), steps=[
-                {"components": ["b"], "distance_mm": 50.0, "direction": d},
-            ])
+            spec = _with_exploded_view(
+                _minimal_assembly(),
+                steps=[
+                    {"components": ["b"], "distance_mm": 50.0, "direction": d},
+                ],
+            )
             validate_assembly(spec)
 
 
@@ -1063,18 +1270,23 @@ class TestSlotMateValidation:
 class TestHingeMateSchemaValidation:
     def test_schema_accepts_well_formed(self) -> None:
         import jsonschema
+
         jsonschema.validate(_hinge_mate(), HINGE_MATE_SCHEMA)
 
     def test_schema_rejects_one_concentric_face(self) -> None:
         import jsonschema
-        m = _hinge_mate(concentric_faces=[
-            {"component": "a", "face_ref": {"is_cylinder": True}},
-        ])
+
+        m = _hinge_mate(
+            concentric_faces=[
+                {"component": "a", "face_ref": {"is_cylinder": True}},
+            ]
+        )
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(m, HINGE_MATE_SCHEMA)
 
     def test_assembly_schema_accepts_hinge(self) -> None:
         import jsonschema
+
         jsonschema.validate(_assembly_with(_hinge_mate()), ASSEMBLY_SCHEMA)
 
 
@@ -1086,9 +1298,11 @@ class TestHingeMateValidation:
         validate_assembly(_assembly_with(_hinge_mate(alignment="closest")))
 
     def test_rejects_wrong_count_concentric(self) -> None:
-        m = _hinge_mate(concentric_faces=[
-            {"component": "a", "face_ref": {"is_cylinder": True}},
-        ])
+        m = _hinge_mate(
+            concentric_faces=[
+                {"component": "a", "face_ref": {"is_cylinder": True}},
+            ]
+        )
         with pytest.raises(AssemblyValidationError, match="exactly 2"):
             validate_assembly(_assembly_with(m))
 
@@ -1098,10 +1312,12 @@ class TestHingeMateValidation:
             validate_assembly(_assembly_with(m))
 
     def test_rejects_unknown_component(self) -> None:
-        m = _hinge_mate(concentric_faces=[
-            {"component": "ghost", "face_ref": {"is_cylinder": True}},
-            {"component": "b", "face_ref": {"is_cylinder": True}},
-        ])
+        m = _hinge_mate(
+            concentric_faces=[
+                {"component": "ghost", "face_ref": {"is_cylinder": True}},
+                {"component": "b", "face_ref": {"is_cylinder": True}},
+            ]
+        )
         with pytest.raises(AssemblyValidationError, match="not found"):
             validate_assembly(_assembly_with(m))
 
@@ -1109,6 +1325,7 @@ class TestHingeMateValidation:
 # ---------------------------------------------------------------------------
 # W75 advanced mates — symmetric + profile_center
 # ---------------------------------------------------------------------------
+
 
 class TestAdvancedMatesW75Schema:
     """Schema-level acceptance for the W75 advanced mate pair."""
@@ -1119,18 +1336,23 @@ class TestAdvancedMatesW75Schema:
 
     def test_assembly_accepts_symmetric(self) -> None:
         import jsonschema
+
         mate = _mate_spec("symmetric", symmetry_plane="Right Plane")
         jsonschema.validate(_assembly_with_mate(mate), ASSEMBLY_SCHEMA)
 
     def test_assembly_accepts_profile_center_bare(self) -> None:
         import jsonschema
+
         jsonschema.validate(
-            _assembly_with_mate(_mate_spec("profile_center")), ASSEMBLY_SCHEMA)
+            _assembly_with_mate(_mate_spec("profile_center")), ASSEMBLY_SCHEMA
+        )
 
     def test_assembly_accepts_profile_center_scalars(self) -> None:
         import jsonschema
-        mate = _mate_spec("profile_center", offset_mm=5.0, flip=True,
-                          lock_rotation=False)
+
+        mate = _mate_spec(
+            "profile_center", offset_mm=5.0, flip=True, lock_rotation=False
+        )
         jsonschema.validate(_assembly_with_mate(mate), ASSEMBLY_SCHEMA)
 
 
@@ -1138,8 +1360,9 @@ class TestAdvancedMatesW75Validation:
     """Semantic (validate_assembly) rules for the W75 advanced mate pair."""
 
     def test_accepts_symmetric_well_formed(self) -> None:
-        validate_assembly(_assembly_with_mate(
-            _mate_spec("symmetric", symmetry_plane="Right Plane")))
+        validate_assembly(
+            _assembly_with_mate(_mate_spec("symmetric", symmetry_plane="Right Plane"))
+        )
 
     def test_symmetric_requires_symmetry_plane(self) -> None:
         with pytest.raises(AssemblyValidationError, match="symmetry_plane"):
@@ -1147,44 +1370,58 @@ class TestAdvancedMatesW75Validation:
 
     def test_symmetric_rejects_empty_symmetry_plane(self) -> None:
         with pytest.raises(AssemblyValidationError, match="symmetry_plane"):
-            validate_assembly(_assembly_with_mate(
-                _mate_spec("symmetric", symmetry_plane="  ")))
+            validate_assembly(
+                _assembly_with_mate(_mate_spec("symmetric", symmetry_plane="  "))
+            )
 
     def test_symmetric_rejects_value_mm(self) -> None:
         with pytest.raises(AssemblyValidationError, match="does not accept"):
-            validate_assembly(_assembly_with_mate(
-                _mate_spec("symmetric", symmetry_plane="Right Plane",
-                           value_mm=5.0)))
+            validate_assembly(
+                _assembly_with_mate(
+                    _mate_spec("symmetric", symmetry_plane="Right Plane", value_mm=5.0)
+                )
+            )
 
     def test_symmetric_rejects_profile_center_scalars(self) -> None:
         with pytest.raises(AssemblyValidationError, match="does not accept"):
-            validate_assembly(_assembly_with_mate(
-                _mate_spec("symmetric", symmetry_plane="Right Plane",
-                           offset_mm=3.0)))
+            validate_assembly(
+                _assembly_with_mate(
+                    _mate_spec("symmetric", symmetry_plane="Right Plane", offset_mm=3.0)
+                )
+            )
 
     def test_accepts_profile_center_well_formed(self) -> None:
-        validate_assembly(_assembly_with_mate(
-            _mate_spec("profile_center", offset_mm=2.0, lock_rotation=True)))
+        validate_assembly(
+            _assembly_with_mate(
+                _mate_spec("profile_center", offset_mm=2.0, lock_rotation=True)
+            )
+        )
 
     def test_profile_center_rejects_symmetry_plane(self) -> None:
         with pytest.raises(AssemblyValidationError, match="symmetry_plane"):
-            validate_assembly(_assembly_with_mate(
-                _mate_spec("profile_center", symmetry_plane="Right Plane")))
+            validate_assembly(
+                _assembly_with_mate(
+                    _mate_spec("profile_center", symmetry_plane="Right Plane")
+                )
+            )
 
     def test_profile_center_rejects_value_mm(self) -> None:
         with pytest.raises(AssemblyValidationError, match="does not accept"):
-            validate_assembly(_assembly_with_mate(
-                _mate_spec("profile_center", value_mm=5.0)))
+            validate_assembly(
+                _assembly_with_mate(_mate_spec("profile_center", value_mm=5.0))
+            )
 
     def test_non_advanced_rejects_offset_mm(self) -> None:
         with pytest.raises(AssemblyValidationError, match="does not accept"):
-            validate_assembly(_assembly_with_mate(
-                _mate_spec("concentric", offset_mm=5.0)))
+            validate_assembly(
+                _assembly_with_mate(_mate_spec("concentric", offset_mm=5.0))
+            )
 
 
 # ---------------------------------------------------------------------------
 # W75b mechanical linkage — linear_coupler
 # ---------------------------------------------------------------------------
+
 
 def _lc_mate(**kw) -> dict:
     base = _mate_spec("linear_coupler", ratio_numerator=1.0, ratio_denominator=2.0)
@@ -1200,7 +1437,10 @@ class TestLinearCouplerSchema:
 
     def test_assembly_accepts_linear_coupler(self) -> None:
         import jsonschema
-        jsonschema.validate(_assembly_with_mate(_lc_mate(reverse=True)), ASSEMBLY_SCHEMA)
+
+        jsonschema.validate(
+            _assembly_with_mate(_lc_mate(reverse=True)), ASSEMBLY_SCHEMA
+        )
 
 
 class TestLinearCouplerValidation:
@@ -1232,10 +1472,12 @@ class TestLinearCouplerValidation:
 
     def test_non_coupler_rejects_ratio_fields(self) -> None:
         with pytest.raises(AssemblyValidationError, match="does not accept"):
-            validate_assembly(_assembly_with_mate(
-                _mate_spec("concentric", ratio_numerator=1.0)))
+            validate_assembly(
+                _assembly_with_mate(_mate_spec("concentric", ratio_numerator=1.0))
+            )
 
     def test_non_coupler_rejects_reverse(self) -> None:
         with pytest.raises(AssemblyValidationError, match="does not accept"):
-            validate_assembly(_assembly_with_mate(
-                _mate_spec("concentric", reverse=True)))
+            validate_assembly(
+                _assembly_with_mate(_mate_spec("concentric", reverse=True))
+            )

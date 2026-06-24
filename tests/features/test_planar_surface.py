@@ -102,8 +102,13 @@ def _wire(
 
 class TestEffectGate:
     def test_success_with_new_body_and_area(self, monkeypatch):
-        _wire(monkeypatch, count_before=0, count_after=1,
-              area_before=0.0, area_after=1200.0)
+        _wire(
+            monkeypatch,
+            count_before=0,
+            count_after=1,
+            area_before=0.0,
+            area_after=1200.0,
+        )
         doc = _FakeDoc()
         ok, note = create_planar_surface(doc, {}, {"boundary": "Sketch2"})
         assert ok is True
@@ -113,8 +118,13 @@ class TestEffectGate:
 
     def test_success_with_multiple_new_bodies(self, monkeypatch):
         """ΔSheetBodies > +1 is still valid (e.g. multi-region fill)."""
-        _wire(monkeypatch, count_before=0, count_after=3,
-              area_before=0.0, area_after=3600.0)
+        _wire(
+            monkeypatch,
+            count_before=0,
+            count_after=3,
+            area_before=0.0,
+            area_after=3600.0,
+        )
         ok, _ = create_planar_surface(_FakeDoc(), {}, {"boundary": "Sketch2"})
         assert ok is True
 
@@ -133,16 +143,22 @@ class TestVerifyGate:
 
     def test_new_body_zero_area_is_ghost(self, monkeypatch):
         """Body count increases but area stays zero → ghost (W42 surface form)."""
-        _wire(monkeypatch, count_before=0, count_after=1,
-              area_before=0.0, area_after=0.0)
+        _wire(
+            monkeypatch, count_before=0, count_after=1, area_before=0.0, area_after=0.0
+        )
         ok, note = create_planar_surface(_FakeDoc(), {}, {"boundary": "Sketch2"})
         assert ok is False
         assert "did not materialize" in note
 
     def test_insert_returns_false_still_checks_gate(self, monkeypatch):
         """Boolean False return but body somehow appeared → still passes gate."""
-        _wire(monkeypatch, count_before=0, count_after=1,
-              area_before=0.0, area_after=500.0)
+        _wire(
+            monkeypatch,
+            count_before=0,
+            count_after=1,
+            area_before=0.0,
+            area_after=500.0,
+        )
         doc = _FakeDoc(insert_result=False)
         ok, _ = create_planar_surface(doc, {}, {"boundary": "Sketch2"})
         assert ok is True
@@ -194,8 +210,11 @@ class TestUnfiredGate:
 
     def test_in_handler_registry_when_green(self):
         from ai_sw_bridge.features import HANDLER_REGISTRY
+
         assert "planar_surface" in HANDLER_REGISTRY
-        assert HANDLER_REGISTRY["planar_surface"] is planar_surface.create_planar_surface
+        assert (
+            HANDLER_REGISTRY["planar_surface"] is planar_surface.create_planar_surface
+        )
 
 
 # --- selection contract (mark=0, no callout) --------------------------------

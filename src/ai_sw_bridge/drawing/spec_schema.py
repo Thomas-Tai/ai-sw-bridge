@@ -194,8 +194,7 @@ _TITLE_BLOCK_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "minProperties": 1,
     "properties": {
-        name: {"type": "string", "minLength": 1}
-        for name in TITLE_BLOCK_KNOWN_FIELDS
+        name: {"type": "string", "minLength": 1} for name in TITLE_BLOCK_KNOWN_FIELDS
     },
     "description": (
         "Title-block field map. Keys must be from the canonical vocabulary "
@@ -234,6 +233,7 @@ def validate_title_block(spec: dict[str, Any], *, path: str) -> None:
                 f"{path}.title_block.{name}: value must be a non-empty "
                 f"string; got {type(value).__name__}"
             )
+
 
 # ---- W53: annotations (drawing-annotation block)
 #

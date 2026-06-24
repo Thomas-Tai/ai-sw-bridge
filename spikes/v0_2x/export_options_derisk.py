@@ -126,13 +126,26 @@ def _create_box_part(sw_app: object, temp_dir: Path) -> tuple:
 
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        0, 0,
-        0.020, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.020,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
         0,
         0.0,
         False,
@@ -203,11 +216,15 @@ def _create_drawing(sw_app: object, part_path: Path, temp_dir: Path) -> tuple:
 # Byte verifiers
 # ---------------------------------------------------------------------------
 
+
 def verify_dwg(path: Path) -> dict:
     """DWG binary header: starts with 'AC10xx' (version string)."""
     result = {
-        "format": "DWG", "path": str(path),
-        "verdict": "NO-GO", "size_bytes": 0, "error": None,
+        "format": "DWG",
+        "path": str(path),
+        "verdict": "NO-GO",
+        "size_bytes": 0,
+        "error": None,
     }
     if not path.exists():
         result["error"] = "File does not exist"
@@ -238,9 +255,12 @@ def verify_dwg(path: Path) -> dict:
 def verify_stl(path: Path, expected_mode: str) -> dict:
     """STL discriminator: binary starts with 80-byte header; ASCII with 'solid'."""
     result = {
-        "format": "STL", "path": str(path),
-        "verdict": "NO-GO", "size_bytes": 0,
-        "expected_mode": expected_mode, "actual_mode": None,
+        "format": "STL",
+        "path": str(path),
+        "verdict": "NO-GO",
+        "size_bytes": 0,
+        "expected_mode": expected_mode,
+        "actual_mode": None,
         "error": None,
     }
     if not path.exists():
@@ -282,9 +302,7 @@ def verify_stl(path: Path, expected_mode: str) -> dict:
             return result
 
     if actual != expected_mode:
-        result["error"] = (
-            f"Mode mismatch: expected {expected_mode}, got {actual}"
-        )
+        result["error"] = f"Mode mismatch: expected {expected_mode}, got {actual}"
         return result
 
     result["verdict"] = "GREEN"
@@ -294,9 +312,12 @@ def verify_stl(path: Path, expected_mode: str) -> dict:
 def verify_step_ap(path: Path, expected_ap: str) -> dict:
     """STEP FILE_SCHEMA discriminator: AP203 vs AP214."""
     result = {
-        "format": "STEP", "path": str(path),
-        "verdict": "NO-GO", "size_bytes": 0,
-        "expected_ap": expected_ap, "actual_schema": None,
+        "format": "STEP",
+        "path": str(path),
+        "verdict": "NO-GO",
+        "size_bytes": 0,
+        "expected_ap": expected_ap,
+        "actual_schema": None,
         "error": None,
     }
     if not path.exists():
@@ -329,13 +350,8 @@ def verify_step_ap(path: Path, expected_ap: str) -> dict:
             )
             return result
     elif expected_ap == "AP214":
-        if (
-            "AUTOMOTIVE_DESIGN" not in schema_name
-            and "AP214" not in schema_name
-        ):
-            result["error"] = (
-                f"Expected AP214 (AUTOMOTIVE_DESIGN), got: {schema_name}"
-            )
+        if "AUTOMOTIVE_DESIGN" not in schema_name and "AP214" not in schema_name:
+            result["error"] = f"Expected AP214 (AUTOMOTIVE_DESIGN), got: {schema_name}"
             return result
 
     result["verdict"] = "GREEN"
@@ -345,6 +361,7 @@ def verify_step_ap(path: Path, expected_ap: str) -> dict:
 # ---------------------------------------------------------------------------
 # Legs
 # ---------------------------------------------------------------------------
+
 
 def leg_dwg(sw_app: object, temp_dir: Path) -> dict:
     """Leg 1: DWG export from a Drawing doc."""
@@ -536,7 +553,8 @@ def main() -> None:
             leg_result = leg_fn(sw_app, temp_dir)
         except Exception as exc:
             leg_result = {
-                "leg": leg_name, "verdict": "NO-GO",
+                "leg": leg_name,
+                "verdict": "NO-GO",
                 "error": f"{type(exc).__name__}: {exc}",
             }
         results["legs"][leg_name] = leg_result

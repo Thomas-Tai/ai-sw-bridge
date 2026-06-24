@@ -14,6 +14,7 @@ fresh blank Part + Front-Plane sketch, recording the verbatim outcome:
 
 Non-destructive: own blank Parts, never saves, closes own docs.
 """
+
 from __future__ import annotations
 
 import json
@@ -60,7 +61,9 @@ def _seg_count(doc: Any) -> int:
         return 1
 
 
-def _sweep(sw: Any, label: str, candidates: list[tuple[str, Callable[[Any, Any], Any]]]) -> dict[str, Any]:
+def _sweep(
+    sw: Any, label: str, candidates: list[tuple[str, Callable[[Any, Any], Any]]]
+) -> dict[str, Any]:
     """Each candidate gets a fresh doc+sketch; receives (doc, sm)."""
     template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_PART)
     attempts: list[dict[str, Any]] = []
@@ -112,38 +115,66 @@ def run() -> dict[str, Any]:
         report["sw_revision"] = "<unreadable>"
 
     L, Wd = 0.03, 0.01
-    p3 = [-0.015, 0.0, 0.0, 0.015, 0.0, 0.0]      # two 3D points
-    p2 = [-0.015, 0.0, 0.015, 0.0]                # two 2D points
+    p3 = [-0.015, 0.0, 0.0, 0.015, 0.0, 0.0]  # two 3D points
+    p2 = [-0.015, 0.0, 0.015, 0.0]  # two 2D points
     # swSketchSlotCreationType_e candidates: 0..4
     slot_cands: list[tuple[str, Callable[[Any, Any], Any]]] = []
     for ct in (1, 0, 2):
-        slot_cands.append((
-            f"CreateSketchSlot(ct={ct}, L,W, VT_R8[3D x2], True,0,0,1,False)",
-            (lambda c: lambda doc, sm: sm.CreateSketchSlot(c, L, Wd, _vt_r8(p3), True, 0, 0, 1, False))(ct),
-        ))
-        slot_cands.append((
-            f"CreateSketchSlot(ct={ct}, L,W, VT_R8[2D x2], True,0,0,1,False)",
-            (lambda c: lambda doc, sm: sm.CreateSketchSlot(c, L, Wd, _vt_r8(p2), True, 0, 0, 1, False))(ct),
-        ))
+        slot_cands.append(
+            (
+                f"CreateSketchSlot(ct={ct}, L,W, VT_R8[3D x2], True,0,0,1,False)",
+                (
+                    lambda c: lambda doc, sm: sm.CreateSketchSlot(
+                        c, L, Wd, _vt_r8(p3), True, 0, 0, 1, False
+                    )
+                )(ct),
+            )
+        )
+        slot_cands.append(
+            (
+                f"CreateSketchSlot(ct={ct}, L,W, VT_R8[2D x2], True,0,0,1,False)",
+                (
+                    lambda c: lambda doc, sm: sm.CreateSketchSlot(
+                        c, L, Wd, _vt_r8(p2), True, 0, 0, 1, False
+                    )
+                )(ct),
+            )
+        )
     # Shorter arg-count variant (some overloads omit trailing flags).
-    slot_cands.append((
-        "CreateSketchSlot(1, L,W, VT_R8[3D x2], True, 0)",
-        lambda doc, sm: sm.CreateSketchSlot(1, L, Wd, _vt_r8(p3), True, 0),
-    ))
+    slot_cands.append(
+        (
+            "CreateSketchSlot(1, L,W, VT_R8[3D x2], True, 0)",
+            lambda doc, sm: sm.CreateSketchSlot(1, L, Wd, _vt_r8(p3), True, 0),
+        )
+    )
     report["sketch_slot"] = _sweep(sw, "sketch_slot", slot_cands)
 
     text_cands: list[tuple[str, Callable[[Any, Any], Any]]] = [
-        ("doc.InsertSketchText(0,0,0,'Aa', 1,0,0.0, 0.0,0.0) [9]",
-         lambda doc, sm: doc.InsertSketchText(0.0, 0.0, 0.0, "Aa", 1, 0, 0.0, 0.0, 0.0)),
-        ("doc.InsertSketchText(0,0,0,'Aa', 1,0,0.0) [7]",
-         lambda doc, sm: doc.InsertSketchText(0.0, 0.0, 0.0, "Aa", 1, 0, 0.0)),
-        ("doc.InsertSketchText(0,0,0,'Aa', 1,0,0.0, 0.01,0.005) widths>0",
-         lambda doc, sm: doc.InsertSketchText(0.0, 0.0, 0.0, "Aa", 1, 0, 0.0, 0.01, 0.005)),
+        (
+            "doc.InsertSketchText(0,0,0,'Aa', 1,0,0.0, 0.0,0.0) [9]",
+            lambda doc, sm: doc.InsertSketchText(
+                0.0, 0.0, 0.0, "Aa", 1, 0, 0.0, 0.0, 0.0
+            ),
+        ),
+        (
+            "doc.InsertSketchText(0,0,0,'Aa', 1,0,0.0) [7]",
+            lambda doc, sm: doc.InsertSketchText(0.0, 0.0, 0.0, "Aa", 1, 0, 0.0),
+        ),
+        (
+            "doc.InsertSketchText(0,0,0,'Aa', 1,0,0.0, 0.01,0.005) widths>0",
+            lambda doc, sm: doc.InsertSketchText(
+                0.0, 0.0, 0.0, "Aa", 1, 0, 0.0, 0.01, 0.005
+            ),
+        ),
     ]
     report["sketch_text"] = _sweep(sw, "sketch_text", text_cands)
 
-    report["summary"] = {k: report[k]["overall"] for k in ("sketch_slot", "sketch_text")}
-    report["overall"] = "PASS" if all(v == "PASS" for v in report["summary"].values()) else "PARTIAL"
+    report["summary"] = {
+        k: report[k]["overall"] for k in ("sketch_slot", "sketch_text")
+    }
+    report["overall"] = (
+        "PASS" if all(v == "PASS" for v in report["summary"].values()) else "PARTIAL"
+    )
     return report
 
 

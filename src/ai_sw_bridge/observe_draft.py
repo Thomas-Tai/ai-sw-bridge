@@ -83,9 +83,7 @@ def _read_normal(face: Any) -> tuple[float, float, float] | None:
         return None
 
 
-def _classify_draft(
-    draft_deg: float, min_angle_deg: float
-) -> str:
+def _classify_draft(draft_deg: float, min_angle_deg: float) -> str:
     """Classify a draft angle as positive, negative, or vertical."""
     if abs(draft_deg) <= min_angle_deg:
         return "vertical"
@@ -165,6 +163,7 @@ def read_draft(
             pdoc = part_doc
         else:
             from .com.earlybind import typed
+
             pdoc = typed(part_doc, "IPartDoc", module=mod)
     except Exception as exc:
         result["errors"].append(f"IPartDoc acquisition failed: {exc!r}")
@@ -229,7 +228,9 @@ def read_draft(
 
             face_global_idx += 1
 
-    result["min_draft_deg"] = round(min_abs_draft, 4) if min_abs_draft is not None else None
+    result["min_draft_deg"] = (
+        round(min_abs_draft, 4) if min_abs_draft is not None else None
+    )
     return result
 
 
@@ -269,24 +270,16 @@ def _sw_get_draft_analysis_impl(
         return result
 
     if doc_type != SW_DOC_PART:
-        result["error"] = (
-            f"draft analysis requires part document (got type {doc_type})"
-        )
+        result["error"] = f"draft analysis requires part document (got type {doc_type})"
         return result
 
     draft = read_draft(doc, pull_direction, min_angle_deg, mod=mod)
 
     if draft["errors"]:
         result["error"] = "; ".join(draft["errors"])
-        result["draft_analysis"] = {
-            k: v for k, v in draft.items() if k != "errors"
-        }
+        result["draft_analysis"] = {k: v for k, v in draft.items() if k != "errors"}
     else:
-        result["draft_analysis"] = {
-            k: v for k, v in draft.items() if k != "errors"
-        }
+        result["draft_analysis"] = {k: v for k, v in draft.items() if k != "errors"}
         result["ok"] = True
 
     return result
-
-

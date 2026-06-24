@@ -38,6 +38,7 @@ sys.path.insert(0, str(repo_root / "src"))
 
 def _new_part(sw_typed, mod):
     from ai_sw_bridge.com.earlybind import typed
+
     doc = sw_typed.NewDocument(
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.PRTDOT", 0, 0, 0
     )
@@ -89,7 +90,13 @@ def run() -> dict:
         RELATION_TOKENS,
     )
 
-    result: dict = {"ok": False, "gates": {}, "errors": [], "token_dump": {}, "detail": {}}
+    result: dict = {
+        "ok": False,
+        "gates": {},
+        "errors": [],
+        "token_dump": {},
+        "detail": {},
+    }
     sw = get_sw_app()
     if sw is None:
         result["errors"].append("get_sw_app() None")
@@ -103,8 +110,8 @@ def run() -> dict:
         doc, dt = _new_part(sw_typed, mod)
         sm = dt.SketchManager
         sm.InsertSketch(True)
-        sm.CreateLine(-0.015, 0.020, 0.0, 0.015, 0.020, 0.0)   # 30mm
-        sm.CreateLine(-0.005, 0.010, 0.0, 0.005, 0.010, 0.0)   # 10mm
+        sm.CreateLine(-0.015, 0.020, 0.0, 0.015, 0.020, 0.0)  # 30mm
+        sm.CreateLine(-0.005, 0.010, 0.0, 0.005, 0.010, 0.0)  # 10mm
         segs = _segs(dt)
         len0_b, len1_b = _seg_len(segs[0]), _seg_len(segs[1])
         eq = apply_relations_in_open_sketch(
@@ -117,10 +124,11 @@ def run() -> dict:
             "before": [round(len0_b * 1000, 4), round(len1_b * 1000, 4)],
             "after": [round(len0_a * 1000, 4), round(len1_a * 1000, 4)],
         }
-        result["token_dump"]["equal"] = eq.get("ok") and eq.get("relations_applied", 0) >= 1
+        result["token_dump"]["equal"] = (
+            eq.get("ok") and eq.get("relations_applied", 0) >= 1
+        )
         result["gates"]["G2_equal_moves_geometry"] = (
-            abs(len0_b - len1_b) > 0.005
-            and abs(len0_a - len1_a) < 1e-5
+            abs(len0_b - len1_b) > 0.005 and abs(len0_a - len1_a) < 1e-5
         )
         result["gates"]["G1_equal_token_fires"] = bool(result["token_dump"]["equal"])
         sm.InsertSketch(True)
@@ -130,7 +138,7 @@ def run() -> dict:
         doc, dt = _new_part(sw_typed, mod)
         sm = dt.SketchManager
         sm.InsertSketch(True)
-        sm.CreateLine(-0.015, 0.020, 0.0, 0.015, 0.022, 0.0)   # tilted (dy=2mm)
+        sm.CreateLine(-0.015, 0.020, 0.0, 0.015, 0.022, 0.0)  # tilted (dy=2mm)
         dxdy_b = _seg_dxdy(_segs(dt)[0])
         hz = apply_relations_in_open_sketch(
             doc, [{"type": "horizontal", "entities": [0]}]
@@ -141,7 +149,9 @@ def run() -> dict:
             "before_mm": round(dxdy_b[1] * 1000, 4),
             "after_mm": round(dxdy_a[1] * 1000, 4),
         }
-        result["token_dump"]["horizontal"] = hz.get("ok") and hz.get("relations_applied", 0) >= 1
+        result["token_dump"]["horizontal"] = (
+            hz.get("ok") and hz.get("relations_applied", 0) >= 1
+        )
         result["gates"]["G3_horizontal_moves_geometry"] = (
             abs(dxdy_b[1]) > 0.001 and abs(dxdy_a[1]) < 1e-6
         )
@@ -152,7 +162,7 @@ def run() -> dict:
         doc, dt = _new_part(sw_typed, mod)
         sm = dt.SketchManager
         sm.InsertSketch(True)
-        sm.CreateLine(0.0, 0.0, 0.0, 0.020, 0.001, 0.0)    # ~horizontal
+        sm.CreateLine(0.0, 0.0, 0.0, 0.020, 0.001, 0.0)  # ~horizontal
         sm.CreateLine(0.020, 0.0, 0.0, 0.019, 0.020, 0.0)  # ~vertical
         pp = apply_relations_in_open_sketch(
             doc, [{"type": "perpendicular", "entities": [0, 1]}]
@@ -162,7 +172,9 @@ def run() -> dict:
         v0, v1 = _seg_dxdy(s[0]), _seg_dxdy(s[1])
         dot = v0[0] * v1[0] + v0[1] * v1[1]
         result["detail"]["perpendicular_dot"] = round(dot, 9)
-        result["token_dump"]["perpendicular"] = pp.get("ok") and pp.get("relations_applied", 0) >= 1
+        result["token_dump"]["perpendicular"] = (
+            pp.get("ok") and pp.get("relations_applied", 0) >= 1
+        )
         result["gates"]["G4_perpendicular_moves_geometry"] = abs(dot) < 1e-7
         sm.InsertSketch(True)
         sw.CloseAllDocuments(True)
@@ -171,7 +183,7 @@ def run() -> dict:
         doc, dt = _new_part(sw_typed, mod)
         sm = dt.SketchManager
         sm.InsertSketch(True)
-        sm.CreateLine(0.0, 0.0, 0.0, 0.002, 0.020, 0.0)   # tilted (dx=2mm)
+        sm.CreateLine(0.0, 0.0, 0.0, 0.002, 0.020, 0.0)  # tilted (dx=2mm)
         dxdy_b = _seg_dxdy(_segs(dt)[0])
         vt = apply_relations_in_open_sketch(
             doc, [{"type": "vertical", "entities": [0]}]
@@ -182,7 +194,9 @@ def run() -> dict:
             "before_mm": round(dxdy_b[0] * 1000, 4),
             "after_mm": round(dxdy_a[0] * 1000, 4),
         }
-        result["token_dump"]["vertical"] = vt.get("ok") and vt.get("relations_applied", 0) >= 1
+        result["token_dump"]["vertical"] = (
+            vt.get("ok") and vt.get("relations_applied", 0) >= 1
+        )
         result["gates"]["G5_vertical_moves_geometry"] = (
             abs(dxdy_b[0]) > 0.001 and abs(dxdy_a[0]) < 1e-6
         )
@@ -193,7 +207,7 @@ def run() -> dict:
         doc, dt = _new_part(sw_typed, mod)
         sm = dt.SketchManager
         sm.InsertSketch(True)
-        sm.CreateLine(0.0, 0.0, 0.0, 0.020, 0.001, 0.0)    # ~horizontal (slope ~0.05)
+        sm.CreateLine(0.0, 0.0, 0.0, 0.020, 0.001, 0.0)  # ~horizontal (slope ~0.05)
         sm.CreateLine(0.0, 0.005, 0.0, 0.020, 0.007, 0.0)  # different slope (~0.1)
         v0_b = _seg_dxdy(_segs(dt)[0])
         v1_b = _seg_dxdy(_segs(dt)[1])
@@ -210,7 +224,9 @@ def run() -> dict:
             "before": round(cross_b, 9),
             "after": round(cross_a, 9),
         }
-        result["token_dump"]["parallel"] = pa.get("ok") and pa.get("relations_applied", 0) >= 1
+        result["token_dump"]["parallel"] = (
+            pa.get("ok") and pa.get("relations_applied", 0) >= 1
+        )
         result["gates"]["G6_parallel_moves_geometry"] = (
             abs(cross_b) > 1e-7 and abs(cross_a) < 1e-7
         )
@@ -221,8 +237,10 @@ def run() -> dict:
         doc, dt = _new_part(sw_typed, mod)
         sm = dt.SketchManager
         sm.InsertSketch(True)
-        sm.CreateCircle(0.0, 0.0, 0.0, 0.005, 0.0, 0.0)      # center at origin, r=5mm
-        sm.CreateCircle(0.010, 0.005, 0.0, 0.013, 0.005, 0.0) # center at (10,5)mm, r=3mm
+        sm.CreateCircle(0.0, 0.0, 0.0, 0.005, 0.0, 0.0)  # center at origin, r=5mm
+        sm.CreateCircle(
+            0.010, 0.005, 0.0, 0.013, 0.005, 0.0
+        )  # center at (10,5)mm, r=3mm
         segs = _segs(dt)
         c0_b = _circle_center(segs[0])
         c1_b = _circle_center(segs[1])
@@ -245,7 +263,9 @@ def run() -> dict:
             "dist_before_mm": round(dist_b * 1000, 4),
             "dist_after_mm": round(dist_a * 1000, 4),
         }
-        result["token_dump"]["concentric"] = cc.get("ok") and cc.get("relations_applied", 0) >= 1
+        result["token_dump"]["concentric"] = (
+            cc.get("ok") and cc.get("relations_applied", 0) >= 1
+        )
         result["gates"]["G7_concentric_moves_geometry"] = (
             dist_b > 0.001 and dist_a < 1e-6
         )
@@ -254,8 +274,15 @@ def run() -> dict:
 
         # ── Summary ─────────────────────────────────────────────────────
         all_tokens_fired = all(
-            result["token_dump"].get(t) for t in
-            ["equal", "horizontal", "perpendicular", "vertical", "parallel", "concentric"]
+            result["token_dump"].get(t)
+            for t in [
+                "equal",
+                "horizontal",
+                "perpendicular",
+                "vertical",
+                "parallel",
+                "concentric",
+            ]
         )
         result["gates"]["G1_all_tokens_fire"] = all_tokens_fired
 

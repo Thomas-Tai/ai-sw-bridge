@@ -43,7 +43,10 @@ sys.path.insert(0, str(_SRC))
 
 RESULTS_PATH = (
     Path(__file__).resolve().parents[2]
-    / "spikes" / "v0_2x" / "_results" / "weldment_member_probe.json"
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "weldment_member_probe.json"
 )
 PROFILE = (
     r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS"
@@ -90,17 +93,28 @@ def run() -> str:
         pass
     tsw = typed(sw, "ISldWorks", module=mod)
 
-    def fire(label: str, connected_opt: int, apply_corner: bool,
-             corner_type: int | None = None, miter: bool | None = None) -> dict:
+    def fire(
+        label: str,
+        connected_opt: int,
+        apply_corner: bool,
+        corner_type: int | None = None,
+        miter: bool | None = None,
+    ) -> dict:
         tmp = tempfile.mkdtemp(prefix="w73_")
         part = os.path.join(tmp, "W73.SLDPRT")
         spec = {
-            "schema_version": 1, "name": "W73",
+            "schema_version": 1,
+            "name": "W73",
             "features": [
-                {"type": "sketch_3d_sketch", "name": "PATH", "points": [
-                    {"x": 0.0, "y": 0.0, "z": 0.0},
-                    {"x": 100.0, "y": 0.0, "z": 0.0},
-                    {"x": 100.0, "y": 100.0, "z": 0.0}]},
+                {
+                    "type": "sketch_3d_sketch",
+                    "name": "PATH",
+                    "points": [
+                        {"x": 0.0, "y": 0.0, "z": 0.0},
+                        {"x": 100.0, "y": 0.0, "z": 0.0},
+                        {"x": 100.0, "y": 100.0, "z": 0.0},
+                    ],
+                },
             ],
         }
         r = part_build(spec, save_as=part, save_format="current", no_dim=True)
@@ -134,8 +148,12 @@ def run() -> str:
         err = None
         try:
             feat = fm.InsertStructuralWeldment5(
-                PROFILE, connected_opt, True,
-                VARIANT(pc.VT_ARRAY | pc.VT_DISPATCH, [grp]), CONFIG)
+                PROFILE,
+                connected_opt,
+                True,
+                VARIANT(pc.VT_ARRAY | pc.VT_DISPATCH, [grp]),
+                CONFIG,
+            )
         except Exception as exc:
             err = f"{type(exc).__name__}: {exc}"
         try:
@@ -145,8 +163,10 @@ def run() -> str:
         vol_after = verify.solid_volume_mm3(doc)
         bods = verify.bodies(doc, 0, False)
         rec = {
-            "label": label, "connected_opt": connected_opt,
-            "apply_corner": apply_corner, "corner_type": corner_type,
+            "label": label,
+            "connected_opt": connected_opt,
+            "apply_corner": apply_corner,
+            "corner_type": corner_type,
             "miter": miter,
             "ret_is_feature": feat is not None and not isinstance(feat, int),
             "delta_vol_mm3": round(vol_after - vol_before, 3),
@@ -165,53 +185,75 @@ def run() -> str:
 
     # ---- Phase 2: base members (minimal simple cut) ----
     p2 = fire("phase2_simple_cut", 1, False)
-    gate("P2_base_members_materialize", materialized(p2),
-         f"ret_feat={p2.get('ret_is_feature')} dVol={p2.get('delta_vol_mm3')} "
-         f"bodies={p2.get('bodies')}")
+    gate(
+        "P2_base_members_materialize",
+        materialized(p2),
+        f"ret_feat={p2.get('ret_is_feature')} dVol={p2.get('delta_vol_mm3')} "
+        f"bodies={p2.get('bodies')}",
+    )
 
     # ---- Phase 3: heavier corner intersection solves ----
     coped = fire("phase3_coped_cut", 2, False)
-    gate("P3_coped_cut_materialize", materialized(coped),
-         f"dVol={coped.get('delta_vol_mm3')} bodies={coped.get('bodies')}")
+    gate(
+        "P3_coped_cut_materialize",
+        materialized(coped),
+        f"dVol={coped.get('delta_vol_mm3')} bodies={coped.get('bodies')}",
+    )
 
     ct0 = fire("phase3_corner_treat_0", 1, True, corner_type=0)
-    gate("P3_corner_treatment_materialize", materialized(ct0),
-         f"dVol={ct0.get('delta_vol_mm3')} bodies={ct0.get('bodies')}")
+    gate(
+        "P3_corner_treatment_materialize",
+        materialized(ct0),
+        f"dVol={ct0.get('delta_vol_mm3')} bodies={ct0.get('bodies')}",
+    )
 
     miter = fire("phase3_miter_merge", 1, True, corner_type=0, miter=True)
     # miter-merge FUSES the two members -> expect 1 body (the intersection solve)
-    gate("P3_miter_merge_materialize",
-         materialized(miter),
-         f"dVol={miter.get('delta_vol_mm3')} bodies={miter.get('bodies')} "
-         f"(fuse 2->1 = {miter.get('bodies') == 1})")
+    gate(
+        "P3_miter_merge_materialize",
+        materialized(miter),
+        f"dVol={miter.get('delta_vol_mm3')} bodies={miter.get('bodies')} "
+        f"(fuse 2->1 = {miter.get('bodies') == 1})",
+    )
 
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
-         f"{len(results['gates'])}")
+    gate(
+        "OVERALL",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
+        f"{len(results['gates'])}",
+    )
     return "GREEN" if all_pass else "PARTIAL"
 
 
 def main() -> int:
     import pythoncom
+
     pythoncom.CoInitialize()
     try:
         verdict = run()
     except Exception as exc:
         import traceback
-        results["gates"]["UNEXPECTED"] = {"ok": False, "detail": f"{type(exc).__name__}: {exc}"}
+
+        results["gates"]["UNEXPECTED"] = {
+            "ok": False,
+            "detail": f"{type(exc).__name__}: {exc}",
+        }
         results["traceback"] = traceback.format_exc()
         verdict = "WALL"
     finally:
         try:
             import win32com.client as w32
+
             w32.Dispatch("SldWorks.Application").CloseAllDocuments(True)
         except Exception:
             pass
         pythoncom.CoUninitialize()
     results["verdict"] = verdict
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(results, indent=2, default=str), encoding="utf-8"
+    )
     print(f"\nVerdict: {verdict}  (wrote {RESULTS_PATH})")
     return 0 if verdict == "GREEN" else 1
 

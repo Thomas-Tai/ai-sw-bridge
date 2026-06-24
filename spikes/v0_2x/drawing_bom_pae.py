@@ -21,9 +21,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_bom_pae.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_bom_pae.json"
 
 results: dict[str, Any] = {
     "pae": "w18_drawing_bom",
@@ -72,7 +70,7 @@ def run() -> str:
 
     # Close all open docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -102,10 +100,19 @@ def run() -> str:
             "schema_version": 1,
             "name": f"PaeBom{label.upper()}",
             "features": [
-                {"type": "sketch_rectangle_on_plane", "name": "SK",
-                 "plane": "Front", "width": w_mm, "height": 20.0},
-                {"type": "boss_extrude_blind", "name": "EX",
-                 "sketch": "SK", "depth": 10.0},
+                {
+                    "type": "sketch_rectangle_on_plane",
+                    "name": "SK",
+                    "plane": "Front",
+                    "width": w_mm,
+                    "height": 20.0,
+                },
+                {
+                    "type": "boss_extrude_blind",
+                    "name": "EX",
+                    "sketch": "SK",
+                    "depth": 10.0,
+                },
             ],
         }
         r = part_build(spec, save_as=path, save_format="current", no_dim=True)
@@ -124,9 +131,12 @@ def run() -> str:
             {"id": "b", "part": PART_B, "transform": {"xyz_mm": [0, 0, 15]}},
         ],
         "mates": [
-            {"type": "coincident", "alignment": "aligned",
-             "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
-             "b": {"component": "b", "face_ref": {"normal": [0, 0, -1]}}},
+            {
+                "type": "coincident",
+                "alignment": "aligned",
+                "a": {"component": "a", "face_ref": {"normal": [0, 0, 1]}},
+                "b": {"component": "b", "face_ref": {"normal": [0, 0, -1]}},
+            },
         ],
     }
 
@@ -134,8 +144,11 @@ def run() -> str:
     da = sw_dry_run_assembly(pa["proposal_id"])
     ca = sw_commit_assembly(pa["proposal_id"], ASM_PATH)
     component_count = ca.get("component_count") or 2
-    gate("asm_commit", ca.get("ok", False),
-         f"components={component_count}, mates={ca.get('mate_count')}")
+    gate(
+        "asm_commit",
+        ca.get("ok", False),
+        f"components={component_count}, mates={ca.get('mate_count')}",
+    )
 
     if not ca.get("ok") or not os.path.isfile(ASM_PATH):
         save_results()
@@ -156,8 +169,7 @@ def run() -> str:
     }
 
     dp = sw_propose_drawing(drawing_spec)
-    gate("drw_propose", dp.get("ok", False),
-         f"pid={dp.get('proposal_id')}")
+    gate("drw_propose", dp.get("ok", False), f"pid={dp.get('proposal_id')}")
 
     if not dp.get("ok"):
         results["propose_error"] = dp.get("error")
@@ -170,10 +182,13 @@ def run() -> str:
 
     print("\n--- Drawing lifecycle: commit ---")
     dc = sw_commit_drawing(dp["proposal_id"], DRW_PATH)
-    gate("drw_commit", dc.get("ok", False),
-         f"views={dc.get('views_placed')}, "
-         f"bom_inserted={dc.get('bom_inserted')}, "
-         f"bom_data_rows={dc.get('bom_data_rows')}")
+    gate(
+        "drw_commit",
+        dc.get("ok", False),
+        f"views={dc.get('views_placed')}, "
+        f"bom_inserted={dc.get('bom_inserted')}, "
+        f"bom_data_rows={dc.get('bom_data_rows')}",
+    )
 
     if not dc.get("ok"):
         results["commit_error"] = dc.get("error")
@@ -181,18 +196,20 @@ def run() -> str:
         return "PARTIAL"
 
     bom_data_rows_commit = dc.get("bom_data_rows", 0)
-    gate("bom_data_rows_gt_zero_commit",
-         bom_data_rows_commit > 0,
-         f"bom_data_rows={bom_data_rows_commit}")
-    gate("bom_data_rows_eq_components",
-         bom_data_rows_commit == component_count,
-         f"bom_data_rows={bom_data_rows_commit}, component_count={component_count}")
+    gate(
+        "bom_data_rows_gt_zero_commit",
+        bom_data_rows_commit > 0,
+        f"bom_data_rows={bom_data_rows_commit}",
+    )
+    gate(
+        "bom_data_rows_eq_components",
+        bom_data_rows_commit == component_count,
+        f"bom_data_rows={bom_data_rows_commit}, component_count={component_count}",
+    )
 
     # --- File on disk ---
     print("\n--- Verify drawing file ---")
-    drw_size = (
-        os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0
-    )
+    drw_size = os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0
     gate("drw_file_exists", os.path.isfile(DRW_PATH), f"size={drw_size}")
     results["drawing_path"] = DRW_PATH
 
@@ -243,9 +260,7 @@ def run() -> str:
                             except Exception:
                                 break
                     except Exception as exc3:
-                        reopen_errors.append(
-                            f"GetFirstTableAnnotation: {exc3!r}"[:80]
-                        )
+                        reopen_errors.append(f"GetFirstTableAnnotation: {exc3!r}"[:80])
                     try:
                         v = tv.GetNextView()
                     except Exception:
@@ -256,12 +271,16 @@ def run() -> str:
             if reopen_errors:
                 results["reopen_probe_errors"] = reopen_errors
 
-            gate("reopen_bom_rows_gt_zero",
-                 reopen_bom_rows > 0,
-                 f"reopen_bom_rows={reopen_bom_rows}")
-            gate("reopen_bom_rows_eq_components",
-                 reopen_bom_rows == component_count,
-                 f"reopen_bom_rows={reopen_bom_rows}, component_count={component_count}")
+            gate(
+                "reopen_bom_rows_gt_zero",
+                reopen_bom_rows > 0,
+                f"reopen_bom_rows={reopen_bom_rows}",
+            )
+            gate(
+                "reopen_bom_rows_eq_components",
+                reopen_bom_rows == component_count,
+                f"reopen_bom_rows={reopen_bom_rows}, component_count={component_count}",
+            )
             results["reopen_bom_rows"] = reopen_bom_rows
 
             try:
@@ -277,9 +296,12 @@ def run() -> str:
 
     # Overall: commit bom_data_rows > 0 and file on disk are the load-bearing gates
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL_GREEN", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
-         f"{len(results['gates'])} gates pass")
+    gate(
+        "OVERALL_GREEN",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
+        f"{len(results['gates'])} gates pass",
+    )
 
     return "GREEN" if all_pass else "PARTIAL"
 

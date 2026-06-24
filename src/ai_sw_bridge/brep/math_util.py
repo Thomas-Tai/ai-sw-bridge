@@ -65,14 +65,24 @@ class MathUtility:
             raise ValueError(f"transform needs 16 elements, got {len(data)}")
         return self._util.CreateTransform(tuple(float(d) for d in data))
 
-    def create_transform_from_moves(
-        self, tx: float, ty: float, tz: float
-    ) -> Any:
+    def create_transform_from_moves(self, tx: float, ty: float, tz: float) -> Any:
         """Convenience: build a pure-translation IMathTransform."""
         identity = [
-            1.0, 0.0, 0.0, float(tx),
-            0.0, 1.0, 0.0, float(ty),
-            0.0, 0.0, 1.0, float(tz),
-            0.0, 0.0, 0.0, 1.0,
+            1.0,
+            0.0,
+            0.0,
+            float(tx),
+            0.0,
+            1.0,
+            0.0,
+            float(ty),
+            0.0,
+            0.0,
+            1.0,
+            float(tz),
+            0.0,
+            0.0,
+            0.0,
+            1.0,
         ]
         return self.create_transform(identity)

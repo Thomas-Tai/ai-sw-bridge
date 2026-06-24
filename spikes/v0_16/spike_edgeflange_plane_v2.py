@@ -23,6 +23,7 @@ MILESTONE (this only, do NOT chain into the flange call):
 Usage:
     python spikes/v0_16/spike_edgeflange_plane_v2.py --out spikes/v0_16/_results/edgeflange_normal_plane_T6_v2.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -90,6 +91,7 @@ def _list_features(doc: Any, mod: Any) -> list[dict[str, str]]:
 
 # ---- TYPELIB FIRST --------------------------------------------------------
 
+
 def _read_swconst_enum(enum_name: str) -> dict[str, int]:
     """Read an enum from swconst.tlb via pythoncom.LoadTypeLib + ITypeComp.
 
@@ -98,9 +100,7 @@ def _read_swconst_enum(enum_name: str) -> dict[str, int]:
     Returns {member_name: value} for the named enum. Raises on failure.
     """
     if not os.path.isfile(SWCONST_TLB_PATH):
-        raise FileNotFoundError(
-            f"swconst.tlb not found at {SWCONST_TLB_PATH}"
-        )
+        raise FileNotFoundError(f"swconst.tlb not found at {SWCONST_TLB_PATH}")
     tlb = pythoncom.LoadTypeLib(SWCONST_TLB_PATH)
     typeinfo = None
     for i in range(tlb.GetTypeInfoCount()):
@@ -126,7 +126,9 @@ def _read_swconst_enum(enum_name: str) -> dict[str, int]:
     for check_name in tuple(members.keys())[:3]:
         bind_result = tc.Bind(check_name)
         if bind_result and isinstance(bind_result, tuple) and len(bind_result) >= 2:
-            bind_val = bind_result[1].value if hasattr(bind_result[1], "value") else None
+            bind_val = (
+                bind_result[1].value if hasattr(bind_result[1], "value") else None
+            )
             if bind_val is not None and bind_val != members[check_name]:
                 raise ValueError(
                     f"Bind({check_name})={bind_val} != iter={members[check_name]}"
@@ -145,10 +147,16 @@ def _extract_constraints() -> dict[str, Any]:
 
     distance_val = raw.get("swRefPlaneReferenceConstraint_Distance")
     result["Distance"] = distance_val
-    result["distance_anchor_ok"] = (distance_val == 8)
+    result["distance_anchor_ok"] = distance_val == 8
 
-    for short_name in ("Coincident", "Perpendicular", "Parallel",
-                       "Angle", "MidPlane", "Distance"):
+    for short_name in (
+        "Coincident",
+        "Perpendicular",
+        "Parallel",
+        "Angle",
+        "MidPlane",
+        "Distance",
+    ):
         full = f"swRefPlaneReferenceConstraint_{short_name}"
         result[short_name] = raw.get(full)
 
@@ -156,6 +164,7 @@ def _extract_constraints() -> dict[str, Any]:
 
 
 # ---- BOX + EDGE + VERTEX --------------------------------------------------
+
 
 def _build_box(sw: Any) -> Any:
     template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_PART)
@@ -172,9 +181,29 @@ def _build_box(sw: Any) -> Any:
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.05, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.05,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
     return doc
@@ -259,10 +288,15 @@ def _find_linear_edge_and_vertex(
 
 # ---- MAIN PROBE -----------------------------------------------------------
 
+
 def _probe_normal_plane(
-    doc: Any, fm: Any, mod: Any,
-    edge: Any, vertex: Any,
-    coincident_flag: int, perpendicular_flag: int,
+    doc: Any,
+    fm: Any,
+    mod: Any,
+    edge: Any,
+    vertex: Any,
+    coincident_flag: int,
+    perpendicular_flag: int,
 ) -> dict[str, Any]:
     """Sweep marks and reference order for InsertRefPlane with two references.
 
@@ -378,7 +412,8 @@ def _verify_sketch(doc: Any, mod: Any, plane_name: str) -> dict[str, Any]:
         doc.ClearSelection2(True)
 
         sketches = [
-            f["name"] for f in _list_features(doc, mod)
+            f["name"]
+            for f in _list_features(doc, mod)
             if f.get("type") == "ProfileFeature"
         ]
         out["all_sketches"] = sketches
@@ -415,8 +450,10 @@ def run() -> dict[str, Any]:
             ),
         }
     print("[t6v2] anchor OK: Distance=%s" % constraints["Distance"])
-    print("[t6v2] Coincident=%s, Perpendicular=%s" % (
-        constraints.get("Coincident"), constraints.get("Perpendicular")))
+    print(
+        "[t6v2] Coincident=%s, Perpendicular=%s"
+        % (constraints.get("Coincident"), constraints.get("Perpendicular"))
+    )
 
     coin = constraints.get("Coincident")
     perp = constraints.get("Perpendicular")
@@ -445,8 +482,10 @@ def run() -> dict[str, Any]:
         edge, vertex, edge_len, edge_diag = _find_linear_edge_and_vertex(doc, mod)
         result["edge_length"] = edge_len
         result["edge_diag"] = edge_diag
-        print("[t6v2] edge: %.1fmm, vertex acquired: %s" % (
-            edge_len * 1000, edge_diag.get("vertex_acquired")))
+        print(
+            "[t6v2] edge: %.1fmm, vertex acquired: %s"
+            % (edge_len * 1000, edge_diag.get("vertex_acquired"))
+        )
 
         iedge = typed(edge, "IEdge", module=mod)
         icurve = typed(iedge.GetCurve(), "ICurve", module=mod)
@@ -473,7 +512,9 @@ def run() -> dict[str, Any]:
             feats = _list_features(doc, mod)
             plane_name = None
             for f in feats:
-                if f.get("type") == "RefPlane" and f.get("name", "").startswith("Plane"):
+                if f.get("type") == "RefPlane" and f.get("name", "").startswith(
+                    "Plane"
+                ):
                     plane_name = f["name"]
                     break
             result["plane_name"] = plane_name
@@ -506,8 +547,7 @@ def run() -> dict[str, Any]:
             result["interpretation"] = (
                 "WALL: all %d mark/order combos no-oped with Coincident=%d, "
                 "Perpendicular=%d. Two-reference InsertRefPlane does not "
-                "materialize out-of-process."
-                % (len(probe["attempts"]), coin, perp)
+                "materialize out-of-process." % (len(probe["attempts"]), coin, perp)
             )
 
     finally:
@@ -533,7 +573,8 @@ def main() -> int:
     else:
         print(payload)
     return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(
-        result.get("overall"), 1)
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":

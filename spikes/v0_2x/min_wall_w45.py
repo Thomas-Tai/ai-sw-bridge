@@ -79,10 +79,29 @@ def _box_solid(doc) -> None:
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False, SW_END_COND_BLIND, 0,
-        BOX, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        BOX,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("FeatureExtrusion2 returned None")
@@ -128,13 +147,10 @@ def run_com() -> dict:
         "thin_ok": bool(thin.get("ok")),
         "thick_ok": bool(thick.get("ok")),
         "thin_lt_thick": (
-            thin_mm is not None
-            and thick_mm is not None
-            and thin_mm < thick_mm
+            thin_mm is not None and thick_mm is not None and thin_mm < thick_mm
         ),
         "thin_near_2mm": (
-            thin_mm is not None
-            and abs(thin_mm - THIN_EXPECT_MM) <= THIN_TOL_MM
+            thin_mm is not None and abs(thin_mm - THIN_EXPECT_MM) <= THIN_TOL_MM
         ),
         "thick_above_floor": (thick_mm is not None and thick_mm >= THICK_MIN_MM),
     }

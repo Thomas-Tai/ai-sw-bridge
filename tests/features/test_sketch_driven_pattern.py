@@ -37,6 +37,7 @@ from ai_sw_bridge.features.sketch_driven_pattern import create_sketch_driven_pat
 # Fake COM objects
 # ---------------------------------------------------------------------------
 
+
 class _FakeFM:
     """Fake FeatureManager that records FeatureSketchDrivenPattern calls."""
 
@@ -86,6 +87,7 @@ class _FakeDoc:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _feat(**kw) -> dict:
     """Default valid feature dict."""
     base = {"seed_name": "Boss-Extrude2", "sketch_name": "Sketch3"}
@@ -106,7 +108,9 @@ def _wire(
 ) -> None:
     """Patch select_entity + _metrics seams on the sdp lane module."""
     monkeypatch.setattr(
-        sdp, "select_entity", lambda e, append=False, mark=0: select_ok,
+        sdp,
+        "select_entity",
+        lambda e, append=False, mark=0: select_ok,
     )
     seq = list(metrics)
     state = {"n": 0}
@@ -123,6 +127,7 @@ def _wire(
 # Dormant gate -- SPIKE_STATUS is UNFIRED, kind absent from registry
 # ---------------------------------------------------------------------------
 
+
 class TestDormantGate:
     def test_spike_status_is_green(self) -> None:
         # seat-proven 2026-06-21 (SketchPattern node, +5 faces/+423mm³, survives reopen)
@@ -137,6 +142,7 @@ class TestDormantGate:
 # Validation -- runs even when UNFIRED (the handler validates before COM)
 # ---------------------------------------------------------------------------
 
+
 class TestValidation:
     def test_feature_not_dict(self):
         ok, err = create_sketch_driven_pattern(_FakeDoc(), "not-a-dict", _tgt())
@@ -149,21 +155,27 @@ class TestValidation:
     def test_missing_seed_name(self, monkeypatch):
         _wire(monkeypatch)
         ok, err = create_sketch_driven_pattern(
-            _FakeDoc(), {"sketch_name": "Sketch3"}, _tgt(),
+            _FakeDoc(),
+            {"sketch_name": "Sketch3"},
+            _tgt(),
         )
         assert ok is False and "seed_name" in err
 
     def test_empty_seed_name(self, monkeypatch):
         _wire(monkeypatch)
         ok, err = create_sketch_driven_pattern(
-            _FakeDoc(), {"seed_name": "", "sketch_name": "Sketch3"}, _tgt(),
+            _FakeDoc(),
+            {"seed_name": "", "sketch_name": "Sketch3"},
+            _tgt(),
         )
         assert ok is False and "seed_name" in err
 
     def test_missing_sketch_name(self, monkeypatch):
         _wire(monkeypatch)
         ok, err = create_sketch_driven_pattern(
-            _FakeDoc(), {"seed_name": "Boss-Extrude2"}, _tgt(),
+            _FakeDoc(),
+            {"seed_name": "Boss-Extrude2"},
+            _tgt(),
         )
         assert ok is False and "sketch_name" in err
 
@@ -179,7 +191,9 @@ class TestValidation:
     def test_non_string_seed_name(self, monkeypatch):
         _wire(monkeypatch)
         ok, err = create_sketch_driven_pattern(
-            _FakeDoc(), {"seed_name": 42, "sketch_name": "Sketch3"}, _tgt(),
+            _FakeDoc(),
+            {"seed_name": 42, "sketch_name": "Sketch3"},
+            _tgt(),
         )
         assert ok is False and "seed_name" in err
 
@@ -187,6 +201,7 @@ class TestValidation:
 # ---------------------------------------------------------------------------
 # Mode-B green -- selection + FeatureSketchDrivenPattern -> additive gate
 # ---------------------------------------------------------------------------
+
 
 class TestModeB:
     def test_green_pattern(self, monkeypatch):
@@ -225,13 +240,16 @@ class TestModeB:
 # Selection failure
 # ---------------------------------------------------------------------------
 
+
 class TestSelectionFailure:
     def test_seed_not_found(self, monkeypatch):
         _wire(monkeypatch)
         doc = _FakeDoc()
         doc._features_by_name.pop("Boss-Extrude2", None)
         ok, err = create_sketch_driven_pattern(
-            doc, _feat(seed_name="NoSuchSeed"), _tgt(),
+            doc,
+            _feat(seed_name="NoSuchSeed"),
+            _tgt(),
         )
         assert ok is False and "seed" in err.lower()
 
@@ -240,7 +258,9 @@ class TestSelectionFailure:
         doc = _FakeDoc()
         doc._features_by_name.pop("Sketch3", None)
         ok, err = create_sketch_driven_pattern(
-            doc, _feat(sketch_name="NoSuchSketch"), _tgt(),
+            doc,
+            _feat(sketch_name="NoSuchSketch"),
+            _tgt(),
         )
         assert ok is False and "sketch" in err.lower()
 
@@ -259,6 +279,7 @@ class TestSelectionFailure:
 # ---------------------------------------------------------------------------
 # Ghost rejection -- method ran but no geometry delta
 # ---------------------------------------------------------------------------
+
 
 class TestGhostRejection:
     def test_zero_volume_delta_rejected(self, monkeypatch):
@@ -279,6 +300,7 @@ class TestGhostRejection:
 # ---------------------------------------------------------------------------
 # Never raises
 # ---------------------------------------------------------------------------
+
 
 class TestNeverRaises:
     def test_with_none_inputs(self) -> None:
@@ -306,26 +328,44 @@ class TestNeverRaises:
 # Kind-name disjointness from built-in types
 # ---------------------------------------------------------------------------
 
+
 class TestKindNames:
     def test_sketch_driven_pattern_disjoint_from_builtin_types(self) -> None:
         builtin_kinds = {
-            "fillet_constant_radius", "base_flange", "variable_radius_fillet",
-            "wizard_hole", "shell", "draft", "sweep", "ref_plane",
-            "ref_axis", "coordinate_system", "ref_point", "dome",
-            "sweep_cut", "boss_extrude", "boss_revolve", "cut_extrude",
+            "fillet_constant_radius",
+            "base_flange",
+            "variable_radius_fillet",
+            "wizard_hole",
+            "shell",
+            "draft",
+            "sweep",
+            "ref_plane",
+            "ref_axis",
+            "coordinate_system",
+            "ref_point",
+            "dome",
+            "sweep_cut",
+            "boss_extrude",
+            "boss_revolve",
+            "cut_extrude",
         }
         assert "sketch_driven_pattern" not in builtin_kinds
 
     def test_sketch_driven_pattern_registered_to_its_handler(self) -> None:
         # post-ship: the kind maps to ITS handler (no collision with another lane)
-        assert HANDLER_REGISTRY.get("sketch_driven_pattern") is create_sketch_driven_pattern
+        assert (
+            HANDLER_REGISTRY.get("sketch_driven_pattern")
+            is create_sketch_driven_pattern
+        )
 
 
 # ---------------------------------------------------------------------------
 # Module-level constants
 # ---------------------------------------------------------------------------
 
+
 class TestConstants:
     def test_verify_class_is_additive_solid(self) -> None:
         from ai_sw_bridge.features.verify import FeatureClass
+
         assert sdp.VERIFY_CLASS == FeatureClass.ADDITIVE_SOLID

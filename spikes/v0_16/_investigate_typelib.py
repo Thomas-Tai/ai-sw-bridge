@@ -4,6 +4,7 @@ interface. This decides whether a makepy regen could ever help.
 
 NO mutation. NO makepy regen. Just reports. Run with the bridge's venv.
 """
+
 from __future__ import annotations
 
 TLB_PATH = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\sldworks.tlb"

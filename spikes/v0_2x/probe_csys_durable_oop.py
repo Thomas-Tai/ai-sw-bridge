@@ -39,7 +39,9 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-RESULTS_PATH = Path(__file__).resolve().parents[1] / "_results" / "probe_csys_durable_oop.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[1] / "_results" / "probe_csys_durable_oop.json"
+)
 
 import pythoncom  # noqa: E402
 from win32com.client import VARIANT  # noqa: E402
@@ -53,9 +55,9 @@ BOX_W_M = 0.040
 BOX_H_M = 0.030
 BOX_D_M = 0.010
 
-CORNER = (BOX_W_M / 2, BOX_H_M / 2, BOX_D_M)        # origin vertex (NOT model origin)
-X_EDGE = (0.0, BOX_H_M / 2, BOX_D_M)                # top +Y edge midpoint (runs along X)
-Y_EDGE = (BOX_W_M / 2, 0.0, BOX_D_M)               # top +X edge midpoint (runs along Y)
+CORNER = (BOX_W_M / 2, BOX_H_M / 2, BOX_D_M)  # origin vertex (NOT model origin)
+X_EDGE = (0.0, BOX_H_M / 2, BOX_D_M)  # top +Y edge midpoint (runs along X)
+Y_EDGE = (BOX_W_M / 2, 0.0, BOX_D_M)  # top +X edge midpoint (runs along Y)
 
 
 def _null() -> Any:
@@ -111,7 +113,10 @@ def _csys_origin(doc: Any, name: str) -> tuple[list[float] | None, str]:
     for holder_name, holder in (("doc", doc), ("ext", getattr(doc, "Extension", None))):
         if holder is None:
             continue
-        for meth in ("GetCoordinateSystemTransformByName", "GetCoordinateSystemTransformByName2"):
+        for meth in (
+            "GetCoordinateSystemTransformByName",
+            "GetCoordinateSystemTransformByName2",
+        ):
             try:
                 fn = getattr(holder, meth, None)
                 if fn is None:
@@ -122,9 +127,15 @@ def _csys_origin(doc: Any, name: str) -> tuple[list[float] | None, str]:
                 arr = xform.ArrayData
                 if arr is None or len(arr) < 12:
                     continue
-                return [float(arr[9]), float(arr[10]), float(arr[11])], f"{holder_name}.{meth}"
+                return [
+                    float(arr[9]),
+                    float(arr[10]),
+                    float(arr[11]),
+                ], f"{holder_name}.{meth}"
             except Exception as exc:  # noqa: BLE001
-                _LAST_XFORM_ERR.append(f"{holder_name}.{meth}: {type(exc).__name__}: {exc}")
+                _LAST_XFORM_ERR.append(
+                    f"{holder_name}.{meth}: {type(exc).__name__}: {exc}"
+                )
                 continue
     return None, "unreadable"
 

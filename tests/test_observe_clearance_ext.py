@@ -13,9 +13,7 @@ from ai_sw_bridge.observe_clearance import (
 )
 
 
-FACE_CLEARANCE_KEYS = frozenset(
-    {"min_distance_mm", "faces", "touching", "errors"}
-)
+FACE_CLEARANCE_KEYS = frozenset({"min_distance_mm", "faces", "touching", "errors"})
 
 SW_FACE_CLEARANCE_KEYS = frozenset({"ok", "error", "clearance"})
 
@@ -143,9 +141,9 @@ def test_face_clearance_subcommand_in_parser():
     import pytest
 
     parser = _build_parser()
-    args = parser.parse_args([
-        "face_clearance", "--face-a", "Face<1>", "--face-b", "Face<2>"
-    ])
+    args = parser.parse_args(
+        ["face_clearance", "--face-a", "Face<1>", "--face-b", "Face<2>"]
+    )
     assert args.tool == "face_clearance"
     assert args.face_a == "Face<1>"
     assert args.face_b == "Face<2>"

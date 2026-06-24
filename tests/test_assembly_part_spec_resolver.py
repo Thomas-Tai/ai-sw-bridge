@@ -101,6 +101,7 @@ class TestBuildPartSpec:
             "ai_sw_bridge.spec.builder.build",
             return_value=fake_result,
         ) as mock_build:
+
             def _side_effect(spec, save_as=None, save_format="current", **kwargs):
                 Path(save_as).write_text("fake")
                 return fake_result
@@ -282,27 +283,36 @@ class TestCommitPartSpec:
         fake_sw.NewDocument.return_value = fake_asm_doc
         fake_asm_doc.SaveAs3.return_value = None
 
-        with patch(
-            "ai_sw_bridge.assembly.lifecycle._find_assembly_template",
-            return_value="fake.ASMDOT",
-        ), patch(
-            "ai_sw_bridge.assembly.lifecycle.place_components",
-            return_value=(placed, None),
-        ), patch(
-            "ai_sw_bridge.assembly.lifecycle._build_part_spec",
-            side_effect=fake_build,
-        ) as mock_build, patch(
-            "ai_sw_bridge.assembly.lifecycle._temp_part_path",
-            return_value=str(save_to),
-        ), patch(
-            "ai_sw_bridge.com.sw_type_info.wrapper_module",
-            return_value=MagicMock(),
-        ), patch(
-            "ai_sw_bridge.com.earlybind.typed",
-            side_effect=lambda obj, iface, module=None: MagicMock(),
+        with (
+            patch(
+                "ai_sw_bridge.assembly.lifecycle._find_assembly_template",
+                return_value="fake.ASMDOT",
+            ),
+            patch(
+                "ai_sw_bridge.assembly.lifecycle.place_components",
+                return_value=(placed, None),
+            ),
+            patch(
+                "ai_sw_bridge.assembly.lifecycle._build_part_spec",
+                side_effect=fake_build,
+            ) as mock_build,
+            patch(
+                "ai_sw_bridge.assembly.lifecycle._temp_part_path",
+                return_value=str(save_to),
+            ),
+            patch(
+                "ai_sw_bridge.com.sw_type_info.wrapper_module",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "ai_sw_bridge.com.earlybind.typed",
+                side_effect=lambda obj, iface, module=None: MagicMock(),
+            ),
         ):
             result = commit_assembly(
-                fake_sw, asm_spec, str(tmp_path / "out.sldasm"),
+                fake_sw,
+                asm_spec,
+                str(tmp_path / "out.sldasm"),
             )
 
         assert result["ok"] is True
@@ -335,21 +345,27 @@ class TestCommitPartSpec:
         fake_asm_doc = MagicMock()
         fake_sw.NewDocument.return_value = fake_asm_doc
 
-        with patch(
-            "ai_sw_bridge.assembly.lifecycle._find_assembly_template",
-            return_value="fake.ASMDOT",
-        ), patch(
-            "ai_sw_bridge.assembly.lifecycle.place_components",
-            return_value=(placed, None),
-        ), patch(
-            "ai_sw_bridge.assembly.lifecycle._build_part_spec",
-            side_effect=AssertionError("override must skip build"),
-        ), patch(
-            "ai_sw_bridge.com.sw_type_info.wrapper_module",
-            return_value=MagicMock(),
-        ), patch(
-            "ai_sw_bridge.com.earlybind.typed",
-            side_effect=lambda obj, iface, module=None: MagicMock(),
+        with (
+            patch(
+                "ai_sw_bridge.assembly.lifecycle._find_assembly_template",
+                return_value="fake.ASMDOT",
+            ),
+            patch(
+                "ai_sw_bridge.assembly.lifecycle.place_components",
+                return_value=(placed, None),
+            ),
+            patch(
+                "ai_sw_bridge.assembly.lifecycle._build_part_spec",
+                side_effect=AssertionError("override must skip build"),
+            ),
+            patch(
+                "ai_sw_bridge.com.sw_type_info.wrapper_module",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "ai_sw_bridge.com.earlybind.typed",
+                side_effect=lambda obj, iface, module=None: MagicMock(),
+            ),
         ):
             result = commit_assembly(
                 fake_sw,
@@ -386,7 +402,9 @@ class TestCommitPartSpec:
             side_effect=fake_build,
         ):
             result = commit_assembly(
-                fake_sw, asm_spec, str(tmp_path / "out.sldasm"),
+                fake_sw,
+                asm_spec,
+                str(tmp_path / "out.sldasm"),
             )
 
         assert result["ok"] is False

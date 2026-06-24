@@ -272,9 +272,7 @@ def test_capture_on_but_no_doc_skips_read(
         calls.append(entity)
         return b"x"
 
-    monkeypatch.setattr(
-        "ai_sw_bridge.brep.interrogator.read_persist_reference", _spy
-    )
+    monkeypatch.setattr("ai_sw_bridge.brep.interrogator.read_persist_reference", _spy)
     result = interrogate(_one_face_feature(), _Ctx(doc=None))
     assert result is not None
     assert "persist_id" not in result["faces"][0]
@@ -420,8 +418,8 @@ def test_edge_with_bad_curveparams_is_skipped(
 
 
 _ARC_CP = (0.0, 0.0, 0.0, 0.02, 0.0, 0.0)  # start + end endpoints
-_ARC_TRUE_MID = (0.01, 0.01, 0.0)          # apex of quarter-circle
-_ARC_TRUE_LEN = math.pi * 0.01             # pi * r (r = 0.01 m)
+_ARC_TRUE_MID = (0.01, 0.01, 0.0)  # apex of quarter-circle
+_ARC_TRUE_LEN = math.pi * 0.01  # pi * r (r = 0.01 m)
 
 
 def _arc_edge() -> MockEdge:

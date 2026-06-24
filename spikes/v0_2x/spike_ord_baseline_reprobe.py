@@ -9,6 +9,7 @@ Gate 2: Does AddOrdinateDimension create dims with datum selected?
 
 Evidence: ISelectionMgr.GetSelectedObjectCount2(-1) after each selection attempt.
 """
+
 from __future__ import annotations
 
 import glob
@@ -71,10 +72,29 @@ def create_test_part(sw, mod) -> tuple[str, Any, Any]:
 
     # Extrude 20mm
     mdoc2.FeatureManager.FeatureExtrusion2(
-        True, False, False, 1, 0, 0.02, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        1,
+        0,
+        0.02,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
 
     mdoc2.EditRebuild3()
@@ -102,7 +122,9 @@ def create_test_drawing(sw, mod, part_path: str) -> tuple[str, Any, Any, Any]:
     drawing_doc = typed_qi(doc_raw, "IDrawingDoc", module=mod)
     mdoc2 = typed(doc_raw, "IModelDoc2", module=mod)
 
-    view_raw = drawing_doc.CreateDrawViewFromModelView3(part_path, "*Front", 0.1, 0.15, 0.0)
+    view_raw = drawing_doc.CreateDrawViewFromModelView3(
+        part_path, "*Front", 0.1, 0.15, 0.0
+    )
     if view_raw is None or isinstance(view_raw, int):
         raise RuntimeError(f"CreateDrawViewFromModelView3 returned {view_raw}")
 
@@ -206,12 +228,18 @@ def test_gate1_selection(sw, mod) -> dict:
             # GetVisibleEntities(ViewComponent, EntityType)
             # ViewComponent=None for all visible entities
             entities_raw = view.GetVisibleEntities(None, 2)  # 2 = edge
-            result["routes"]["route1"]["get_visible_edges_result"] = str(entities_raw is not None)
-            result["routes"]["route1"]["get_visible_edges_type"] = type(entities_raw).__name__
+            result["routes"]["route1"]["get_visible_edges_result"] = str(
+                entities_raw is not None
+            )
+            result["routes"]["route1"]["get_visible_edges_type"] = type(
+                entities_raw
+            ).__name__
 
             if entities_raw is not None and not isinstance(entities_raw, int):
                 # Check if it's an iterable
-                if hasattr(entities_raw, '__iter__') and not isinstance(entities_raw, (str, bytes)):
+                if hasattr(entities_raw, "__iter__") and not isinstance(
+                    entities_raw, (str, bytes)
+                ):
                     entity_count = len(list(entities_raw)) if entities_raw else 0
                     result["routes"]["route1"]["visible_edge_count"] = entity_count
 
@@ -224,31 +252,47 @@ def test_gate1_selection(sw, mod) -> dict:
                         clear_selection(drw_mdoc2, mod)
                         try:
                             sel_ok = view.SelectEntity(first_edge, False)
-                            result["routes"]["route1"]["select_entity_result"] = str(sel_ok)
+                            result["routes"]["route1"]["select_entity_result"] = str(
+                                sel_ok
+                            )
 
                             # Check selection count on drawing doc
                             sel_count_after = get_selection_count(drw_mdoc2, mod)
-                            result["routes"]["route1"]["sel_count_after"] = sel_count_after
+                            result["routes"]["route1"][
+                                "sel_count_after"
+                            ] = sel_count_after
 
                             # Also check on part doc's SelectionMgr
                             part_sel_count = get_selection_count(part_mdoc2, mod)
-                            result["routes"]["route1"]["part_sel_count_after"] = part_sel_count
+                            result["routes"]["route1"][
+                                "part_sel_count_after"
+                            ] = part_sel_count
 
                             if sel_count_after > 0 or part_sel_count > 0:
                                 result["routes"]["route1"]["success"] = True
-                                result["routes"]["route1"]["selected_entity_type"] = "edge"
-                                result["routes"]["route1"]["selection_context"] = "drawing" if sel_count_after > 0 else "part"
+                                result["routes"]["route1"][
+                                    "selected_entity_type"
+                                ] = "edge"
+                                result["routes"]["route1"]["selection_context"] = (
+                                    "drawing" if sel_count_after > 0 else "part"
+                                )
                             else:
                                 result["routes"]["route1"]["success"] = False
-                                result["routes"]["route1"]["reason"] = "sel_count stayed 0 on both drawing and part"
+                                result["routes"]["route1"][
+                                    "reason"
+                                ] = "sel_count stayed 0 on both drawing and part"
                         except Exception as e:
                             result["routes"]["route1"]["select_entity_error"] = str(e)
                     else:
                         result["routes"]["route1"]["reason"] = "no visible edges"
                 else:
-                    result["routes"]["route1"]["reason"] = f"entities not iterable: {type(entities_raw)}"
+                    result["routes"]["route1"][
+                        "reason"
+                    ] = f"entities not iterable: {type(entities_raw)}"
             else:
-                result["routes"]["route1"]["reason"] = f"GetVisibleEntities returned None/int"
+                result["routes"]["route1"][
+                    "reason"
+                ] = f"GetVisibleEntities returned None/int"
         except Exception as e:
             result["routes"]["route1"]["get_visible_entities_error"] = str(e)
 
@@ -256,9 +300,11 @@ def test_gate1_selection(sw, mod) -> dict:
         clear_selection(drw_mdoc2, mod)
         try:
             vertices_raw = view.GetVisibleEntities(None, 3)  # 3 = vertex
-            result["routes"]["route1"]["get_visible_vertices_result"] = str(vertices_raw is not None)
+            result["routes"]["route1"]["get_visible_vertices_result"] = str(
+                vertices_raw is not None
+            )
 
-            if vertices_raw is not None and hasattr(vertices_raw, '__iter__'):
+            if vertices_raw is not None and hasattr(vertices_raw, "__iter__"):
                 vertex_count = len(list(vertices_raw)) if vertices_raw else 0
                 result["routes"]["route1"]["visible_vertex_count"] = vertex_count
 
@@ -272,10 +318,14 @@ def test_gate1_selection(sw, mod) -> dict:
                         result["routes"]["route1"]["select_vertex_result"] = str(sel_ok)
 
                         sel_count_after = get_selection_count(drw_mdoc2, mod)
-                        result["routes"]["route1"]["sel_count_after_vertex"] = sel_count_after
+                        result["routes"]["route1"][
+                            "sel_count_after_vertex"
+                        ] = sel_count_after
 
                         if sel_count_after > 0:
-                            result["routes"]["route1"]["vertex_selection_success"] = True
+                            result["routes"]["route1"][
+                                "vertex_selection_success"
+                            ] = True
                     except Exception as e:
                         result["routes"]["route1"]["select_vertex_error"] = str(e)
         except Exception as e:
@@ -285,7 +335,9 @@ def test_gate1_selection(sw, mod) -> dict:
         # Route 2: IEntity.Select2 with view ACTIVE
         # Get a model entity from the part and select it
         # --------------------------------------------------------------
-        result["routes"]["route2"] = {"method": "IEntity.Select2 (model entity with view active)"}
+        result["routes"]["route2"] = {
+            "method": "IEntity.Select2 (model entity with view active)"
+        }
         clear_selection(drw_mdoc2, mod)
 
         try:
@@ -304,7 +356,9 @@ def test_gate1_selection(sw, mod) -> dict:
                     # Select via IEntity.Select2
                     try:
                         sel_ok = entity.Select2(False, 0)  # append=False, mark=0
-                        result["routes"]["route2"]["entity_select2_result"] = str(sel_ok)
+                        result["routes"]["route2"]["entity_select2_result"] = str(
+                            sel_ok
+                        )
 
                         sel_count_after = get_selection_count(drw_mdoc2, mod)
                         result["routes"]["route2"]["sel_count_after"] = sel_count_after
@@ -312,7 +366,9 @@ def test_gate1_selection(sw, mod) -> dict:
                         if sel_count_after > 0:
                             result["routes"]["route2"]["success"] = True
                         else:
-                            result["routes"]["route2"]["reason"] = "model entity selected but drawing sel_count=0"
+                            result["routes"]["route2"][
+                                "reason"
+                            ] = "model entity selected but drawing sel_count=0"
                     except Exception as e:
                         result["routes"]["route2"]["select2_error"] = str(e)
                 else:
@@ -353,7 +409,9 @@ def test_gate1_selection(sw, mod) -> dict:
                     if sel_count_after > 0:
                         result["routes"]["route3"]["success"] = True
                     else:
-                        result["routes"]["route3"]["reason"] = "point created but sel_count=0"
+                        result["routes"]["route3"][
+                            "reason"
+                        ] = "point created but sel_count=0"
                 except Exception as e:
                     result["routes"]["route3"]["select_error"] = str(e)
             else:
@@ -378,6 +436,7 @@ def test_gate1_selection(sw, mod) -> dict:
     except Exception as e:
         result["error"] = str(e)
         import traceback
+
         result["traceback"] = traceback.format_exc()
 
     return result
@@ -414,7 +473,7 @@ def test_gate2_ordinate_with_datum(sw, mod) -> dict:
         vertices_raw = view.GetVisibleEntities(None, 3)  # 3 = vertex
         result["get_visible_entities_result"] = str(vertices_raw is not None)
 
-        if vertices_raw is not None and hasattr(vertices_raw, '__iter__'):
+        if vertices_raw is not None and hasattr(vertices_raw, "__iter__"):
             vertices = list(vertices_raw)
             result["visible_vertex_count"] = len(vertices)
 
@@ -437,14 +496,18 @@ def test_gate2_ordinate_with_datum(sw, mod) -> dict:
                         # --------------------------------------------------------------
                         # Try horizontal ordinate (type=0)
                         try:
-                            ok_h = drawing_doc.AddOrdinateDimension(0, x_ll + 0.01, y_ll + 0.01, 0.0)
+                            ok_h = drawing_doc.AddOrdinateDimension(
+                                0, x_ll + 0.01, y_ll + 0.01, 0.0
+                            )
                             result["AddOrdinateDimension(0)_result"] = str(ok_h)
                         except Exception as e:
                             result["AddOrdinateDimension(0)_error"] = str(e)
 
                         # Try vertical ordinate (type=1)
                         try:
-                            ok_v = drawing_doc.AddOrdinateDimension(1, x_ll + 0.02, y_ll + 0.02, 0.0)
+                            ok_v = drawing_doc.AddOrdinateDimension(
+                                1, x_ll + 0.02, y_ll + 0.02, 0.0
+                            )
                             result["AddOrdinateDimension(1)_result"] = str(ok_v)
                         except Exception as e:
                             result["AddOrdinateDimension(1)_error"] = str(e)
@@ -473,7 +536,9 @@ def test_gate2_ordinate_with_datum(sw, mod) -> dict:
                             result["error"] = "Failed to reopen drawing"
                             return result
 
-                        reopened_drawing = typed_qi(reopened_doc, "IDrawingDoc", module=mod)
+                        reopened_drawing = typed_qi(
+                            reopened_doc, "IDrawingDoc", module=mod
+                        )
                         reopened_mdoc2 = typed(reopened_doc, "IModelDoc2", module=mod)
 
                         views_raw = reopened_drawing.GetViews()
@@ -490,7 +555,9 @@ def test_gate2_ordinate_with_datum(sw, mod) -> dict:
                         else:
                             result["gate2_result"] = "FAIL"
                             result["verdict"] = "NO-GO"
-                            result["reason"] = "dims added during create but not persisted"
+                            result["reason"] = (
+                                "dims added during create but not persisted"
+                            )
 
                         # Cleanup
                         t2 = reopened_mdoc2.GetTitle
@@ -499,7 +566,9 @@ def test_gate2_ordinate_with_datum(sw, mod) -> dict:
                         sw.CloseDoc(os.path.basename(part_path))
                     else:
                         result["datum_selected"] = False
-                        result["reason"] = f"datum selection failed (sel_count={sel_count})"
+                        result["reason"] = (
+                            f"datum selection failed (sel_count={sel_count})"
+                        )
                         result["gate2_result"] = "SKIP"
                 except Exception as e:
                     result["datum_select_error"] = str(e)
@@ -524,6 +593,7 @@ def test_gate2_ordinate_with_datum(sw, mod) -> dict:
     except Exception as e:
         result["error"] = str(e)
         import traceback
+
         result["traceback"] = traceback.format_exc()
 
     return result
@@ -549,10 +619,15 @@ def main() -> None:
     # Write results
     results_path = Path(__file__).parent / "_results" / "ord_baseline.json"
     with open(results_path, "w") as f:
-        json.dump({
-            "gate1": g1_result,
-            "gate2_ordinate": g2_result,
-        }, f, indent=2, default=str)
+        json.dump(
+            {
+                "gate1": g1_result,
+                "gate2_ordinate": g2_result,
+            },
+            f,
+            indent=2,
+            default=str,
+        )
 
     print(f"\n=== Results: {results_path} ===")
 

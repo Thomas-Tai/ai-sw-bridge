@@ -28,7 +28,9 @@ from .streams import add_quiet_flag, apply_quiet
 
 
 def _run_propose(args: argparse.Namespace) -> dict[str, Any]:
-    return SolidWorksClient().mutate.propose_local_change(var=args.var, new_value=args.new_value)
+    return SolidWorksClient().mutate.propose_local_change(
+        var=args.var, new_value=args.new_value
+    )
 
 
 def _run_dry_run(args: argparse.Namespace) -> dict[str, Any]:

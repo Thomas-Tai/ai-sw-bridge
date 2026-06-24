@@ -47,9 +47,7 @@ from typing import Any
 
 # Ensure stdout handles any Unicode chars from SW COM (won't crash on charmap)
 if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(
-        sys.stdout.buffer, encoding="utf-8", errors="replace"
-    )
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
@@ -65,17 +63,41 @@ results: dict[str, Any] = {
     "typelib": {
         "CreateSectionViewAt5": {
             "dispid": "0xf8",
-            "args": ["X:R8", "Y:R8", "Z:R8", "SectionLabel:BSTR",
-                     "Options:I4", "ExcludedComponents:VARIANT", "SectionDepth:R8"],
+            "args": [
+                "X:R8",
+                "Y:R8",
+                "Z:R8",
+                "SectionLabel:BSTR",
+                "Options:I4",
+                "ExcludedComponents:VARIANT",
+                "SectionDepth:R8",
+            ],
         },
         "CreateDetailViewAt4": {
             "dispid": "0x111",
-            "args": ["X:R8", "Y:R8", "Z:R8", "Style:I4", "Scale1:R8", "Scale2:R8",
-                     "LabelIn:BSTR", "Showtype:I4", "FullOutline:BOOL",
-                     "JaggedOutline:BOOL", "NoOutline:BOOL", "ShapeIntensity:I4"],
+            "args": [
+                "X:R8",
+                "Y:R8",
+                "Z:R8",
+                "Style:I4",
+                "Scale1:R8",
+                "Scale2:R8",
+                "LabelIn:BSTR",
+                "Showtype:I4",
+                "FullOutline:BOOL",
+                "JaggedOutline:BOOL",
+                "NoOutline:BOOL",
+                "ShapeIntensity:I4",
+            ],
         },
-        "CreateLine": {"dispid": "0x1b", "args": ["X1:R8","Y1:R8","Z1:R8","X2:R8","Y2:R8","Z2:R8"]},
-        "CreateCircleByRadius": {"dispid": "0x1e", "args": ["XC:R8","YC:R8","ZC:R8","Radius:R8"]},
+        "CreateLine": {
+            "dispid": "0x1b",
+            "args": ["X1:R8", "Y1:R8", "Z1:R8", "X2:R8", "Y2:R8", "Z2:R8"],
+        },
+        "CreateCircleByRadius": {
+            "dispid": "0x1e",
+            "args": ["XC:R8", "YC:R8", "ZC:R8", "Radius:R8"],
+        },
         "MakeSectionLine": {"dispid": "0x1b_on_IDrawingDoc", "args": []},
         "IView.Type": {"dispid": "0x94", "note": "property → I4"},
     },
@@ -179,7 +201,7 @@ def run() -> str:
 
     # Close stale docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -206,7 +228,7 @@ def run() -> str:
                 "type": "sketch_rectangle_on_plane",
                 "name": "SK_BOX",
                 "plane": "Front",
-                "width": 40.0,   # mm
+                "width": 40.0,  # mm
                 "height": 30.0,
             },
             {
@@ -297,27 +319,34 @@ def run() -> str:
         "type": parent_type,
         "view_count_before_derived": parent_view_count,
     }
-    print(f"    parent: name={parent_name!r}, pos={parent_pos}, "
-          f"outline={parent_outline}, type={parent_type}, "
-          f"total_views={parent_view_count}")
+    print(
+        f"    parent: name={parent_name!r}, pos={parent_pos}, "
+        f"outline={parent_outline}, type={parent_type}, "
+        f"total_views={parent_view_count}"
+    )
 
     # Record empirical parent type (assumed 0=named but verify)
     results["parent_type_empirical"] = parent_type
-    gate("parent_view_has_type",
-         parent_type is not None,
-         f"type={parent_type} (empirical; 0=named assumed)")
+    gate(
+        "parent_view_has_type",
+        parent_type is not None,
+        f"type={parent_type} (empirical; 0=named assumed)",
+    )
 
     if parent_outline is None or parent_pos is None:
         gate("parent_geometry", False, "Position or GetOutline returned None")
         save_results()
         return "WALL"
-    gate("parent_geometry", True,
-         f"pos={[round(p*1000,1) for p in parent_pos]}mm "
-         f"outline={[round(o*1000,1) for o in parent_outline]}mm")
+    gate(
+        "parent_geometry",
+        True,
+        f"pos={[round(p*1000,1) for p in parent_pos]}mm "
+        f"outline={[round(o*1000,1) for o in parent_outline]}mm",
+    )
 
     ol = parent_outline
-    cx = (ol[0] + ol[2]) / 2   # centre X of view on sheet
-    cy = (ol[1] + ol[3]) / 2   # centre Y
+    cx = (ol[0] + ol[2]) / 2  # centre X of view on sheet
+    cy = (ol[1] + ol[3]) / 2  # centre Y
     half_w = (ol[2] - ol[0]) / 2
     half_h = (ol[3] - ol[1]) / 2
 
@@ -339,11 +368,9 @@ def run() -> str:
         line_x = cx
         line_y1 = ol[1] - 0.005
         line_y2 = ol[3] + 0.005
-        sec_line = skm.CreateLine(line_x, line_y1, 0.0,
-                                  line_x, line_y2, 0.0)
+        sec_line = skm.CreateLine(line_x, line_y1, 0.0, line_x, line_y2, 0.0)
         sec_result["create_line"] = (
-            "ok" if (sec_line is not None and not isinstance(sec_line, int))
-            else "None"
+            "ok" if (sec_line is not None and not isinstance(sec_line, int)) else "None"
         )
         print(f"    CreateLine -> {type(sec_line).__name__}")
 
@@ -357,15 +384,19 @@ def run() -> str:
 
         # Step 5: create section view to the RIGHT of parent
         # (section line is vertical → looking from the right)
-        sec_x = ol[2] + 0.10   # 100mm right of outline edge
-        sec_y = cy             # same Y as parent centre
-        print(f"    Calling CreateSectionViewAt5({sec_x:.4f}, {sec_y:.4f}, 0, 'A', 0, None, 0.0)")
+        sec_x = ol[2] + 0.10  # 100mm right of outline edge
+        sec_y = cy  # same Y as parent centre
+        print(
+            f"    Calling CreateSectionViewAt5({sec_x:.4f}, {sec_y:.4f}, 0, 'A', 0, None, 0.0)"
+        )
         sec_raw = drawing_doc.CreateSectionViewAt5(
-            sec_x, sec_y, 0.0,
-            "A",        # SectionLabel
-            0,          # Options (0 = default)
-            None,       # ExcludedComponents (part has none)
-            0.0,        # SectionDepth (0 = full depth)
+            sec_x,
+            sec_y,
+            0.0,
+            "A",  # SectionLabel
+            0,  # Options (0 = default)
+            None,  # ExcludedComponents (part has none)
+            0.0,  # SectionDepth (0 = full depth)
         )
         sec_result["create_section_view_raw"] = type(sec_raw).__name__
         print(f"    CreateSectionViewAt5 → {type(sec_raw).__name__}")
@@ -376,16 +407,24 @@ def run() -> str:
             sec_ol = _view_outline(section_view)
             sec_nm = _view_name(section_view)
             sec_area = _outline_area(sec_ol) if sec_ol else 0.0
-            sec_result.update({
-                "name": sec_nm,
-                "type": sec_t,
-                "outline": sec_ol,
-                "outline_area_mm2": round(sec_area * 1e6, 2),
-                # GO = non-None type that differs from parent AND non-degenerate area
-                "verdict": "GO" if (sec_t is not None and sec_t != parent_type and sec_area > 0) else "NO-GO",
-            })
-            print(f"    section view: name={sec_nm!r}, type={sec_t}, "
-                  f"outline={sec_ol}, area_mm2={sec_area*1e6:.2f}")
+            sec_result.update(
+                {
+                    "name": sec_nm,
+                    "type": sec_t,
+                    "outline": sec_ol,
+                    "outline_area_mm2": round(sec_area * 1e6, 2),
+                    # GO = non-None type that differs from parent AND non-degenerate area
+                    "verdict": (
+                        "GO"
+                        if (sec_t is not None and sec_t != parent_type and sec_area > 0)
+                        else "NO-GO"
+                    ),
+                }
+            )
+            print(
+                f"    section view: name={sec_nm!r}, type={sec_t}, "
+                f"outline={sec_ol}, area_mm2={sec_area*1e6:.2f}"
+            )
         else:
             sec_result["verdict"] = "NO-GO"
             sec_result["error"] = "CreateSectionViewAt5 returned None/int"
@@ -401,15 +440,21 @@ def run() -> str:
     results["view_count_after_section"] = section_count
 
     sec_go = sec_result.get("verdict") == "GO"
-    gate("section_view_count_plus1",
-         section_count == parent_view_count + 1,
-         f"before={parent_view_count}, after={section_count}")
-    gate("section_view_type_differs_from_parent",
-         sec_result.get("type") is not None and sec_result.get("type") != parent_type,
-         f"sec_type={sec_result.get('type')}, parent_type={parent_type}")
-    gate("section_outline_nondegenerate",
-         sec_result.get("outline_area_mm2", 0) > 0,
-         f"area_mm2={sec_result.get('outline_area_mm2', 0)}")
+    gate(
+        "section_view_count_plus1",
+        section_count == parent_view_count + 1,
+        f"before={parent_view_count}, after={section_count}",
+    )
+    gate(
+        "section_view_type_differs_from_parent",
+        sec_result.get("type") is not None and sec_result.get("type") != parent_type,
+        f"sec_type={sec_result.get('type')}, parent_type={parent_type}",
+    )
+    gate(
+        "section_outline_nondegenerate",
+        sec_result.get("outline_area_mm2", 0) > 0,
+        f"area_mm2={sec_result.get('outline_area_mm2', 0)}",
+    )
 
     # ---- ROUTE B: DETAIL VIEW -----------------------------------------------
     print("\n--- DETAIL route ---")
@@ -431,11 +476,12 @@ def run() -> str:
         # centre — avoids sitting exactly on the section line.
         det_cx = cx - half_w * 0.3
         det_cy = cy
-        det_r = min(half_w, half_h) * 0.35   # 35% of smallest half-dim
+        det_r = min(half_w, half_h) * 0.35  # 35% of smallest half-dim
         print(f"    CreateCircleByRadius({det_cx:.4f}, {det_cy:.4f}, 0, {det_r:.4f})")
         det_circle = skm.CreateCircleByRadius(det_cx, det_cy, 0.0, det_r)
         det_result["create_circle"] = (
-            "ok" if (det_circle is not None and not isinstance(det_circle, int))
+            "ok"
+            if (det_circle is not None and not isinstance(det_circle, int))
             else "None"
         )
         print(f"    CreateCircleByRadius -> {type(det_circle).__name__}")
@@ -452,15 +498,18 @@ def run() -> str:
         det_y = ol[3] + 0.08
         print(f"    Calling CreateDetailViewAt4({det_x:.4f}, {det_y:.4f}, ...)")
         det_raw = drawing_doc.CreateDetailViewAt4(
-            det_x, det_y, 0.0,     # X, Y, Z  placement
-            0,                      # Style (0 = per standard)
-            2.0, 1.0,               # Scale1 / Scale2 → 2:1
-            "B",                    # LabelIn
-            0,                      # Showtype
-            True,                   # FullOutline
-            False,                  # JaggedOutline
-            False,                  # NoOutline
-            50,                     # ShapeIntensity
+            det_x,
+            det_y,
+            0.0,  # X, Y, Z  placement
+            0,  # Style (0 = per standard)
+            2.0,
+            1.0,  # Scale1 / Scale2 → 2:1
+            "B",  # LabelIn
+            0,  # Showtype
+            True,  # FullOutline
+            False,  # JaggedOutline
+            False,  # NoOutline
+            50,  # ShapeIntensity
         )
         det_result["create_detail_view_raw"] = type(det_raw).__name__
         print(f"    CreateDetailViewAt4 → {type(det_raw).__name__}")
@@ -471,15 +520,23 @@ def run() -> str:
             det_ol = _view_outline(det_view)
             det_nm = _view_name(det_view)
             det_area = _outline_area(det_ol) if det_ol else 0.0
-            det_result.update({
-                "name": det_nm,
-                "type": det_t,
-                "outline": det_ol,
-                "outline_area_mm2": round(det_area * 1e6, 2),
-                "verdict": "GO" if (det_t is not None and det_t != parent_type and det_area > 0) else "NO-GO",
-            })
-            print(f"    detail view: name={det_nm!r}, type={det_t}, "
-                  f"outline={det_ol}, area_mm2={det_area*1e6:.2f}")
+            det_result.update(
+                {
+                    "name": det_nm,
+                    "type": det_t,
+                    "outline": det_ol,
+                    "outline_area_mm2": round(det_area * 1e6, 2),
+                    "verdict": (
+                        "GO"
+                        if (det_t is not None and det_t != parent_type and det_area > 0)
+                        else "NO-GO"
+                    ),
+                }
+            )
+            print(
+                f"    detail view: name={det_nm!r}, type={det_t}, "
+                f"outline={det_ol}, area_mm2={det_area*1e6:.2f}"
+            )
         else:
             det_result["verdict"] = "NO-GO"
             det_result["error"] = "CreateDetailViewAt4 returned None/int"
@@ -495,22 +552,27 @@ def run() -> str:
     results["view_count_after_detail"] = det_count_after
 
     det_go = det_result.get("verdict") == "GO"
-    gate("detail_view_count_plus1",
-         det_count_after == det_count_before + 1,
-         f"before={det_count_before}, after={det_count_after}")
-    gate("detail_view_type_differs_from_parent",
-         det_result.get("type") is not None and det_result.get("type") != parent_type,
-         f"det_type={det_result.get('type')}, parent_type={parent_type}")
-    gate("detail_outline_nondegenerate",
-         det_result.get("outline_area_mm2", 0) > 0,
-         f"area_mm2={det_result.get('outline_area_mm2', 0)}")
+    gate(
+        "detail_view_count_plus1",
+        det_count_after == det_count_before + 1,
+        f"before={det_count_before}, after={det_count_after}",
+    )
+    gate(
+        "detail_view_type_differs_from_parent",
+        det_result.get("type") is not None and det_result.get("type") != parent_type,
+        f"det_type={det_result.get('type')}, parent_type={parent_type}",
+    )
+    gate(
+        "detail_outline_nondegenerate",
+        det_result.get("outline_area_mm2", 0) > 0,
+        f"area_mm2={det_result.get('outline_area_mm2', 0)}",
+    )
 
     # ---- OVERALL VERDICT ----------------------------------------------------
     at_least_one_go = sec_go or det_go
     gate("SECTION_GO", sec_go, f"section verdict={sec_result.get('verdict')}")
     gate("DETAIL_GO", det_go, f"detail verdict={det_result.get('verdict')}")
-    gate("AT_LEAST_ONE_GO", at_least_one_go,
-         f"section={sec_go}, detail={det_go}")
+    gate("AT_LEAST_ONE_GO", at_least_one_go, f"section={sec_go}, detail={det_go}")
 
     if at_least_one_go:
         verdict = "GO"
@@ -538,6 +600,7 @@ if __name__ == "__main__":
         verdict = run()
     except Exception as exc:
         import traceback
+
         results["gates"]["UNEXPECTED"] = {
             "ok": False,
             "detail": f"{type(exc).__name__}: {exc}",

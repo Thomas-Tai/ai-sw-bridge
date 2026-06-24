@@ -39,6 +39,7 @@ behaviour amnesty):
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_recipec_cut4_gate_pae.py
 """
+
 from __future__ import annotations
 
 import base64
@@ -82,23 +83,41 @@ import ai_sw_bridge.mutate as mutate_mod  # noqa: E402
 
 _OUT = _HERE.parent / "_results" / "recipec4_gate_pae.json"
 _WORK = _HERE.parent / "_results" / "recipec4_work"
-results: dict[str, Any] = {"pae": "recipec4_dressup_advshapes_flanges_migration_gate", "gates": {}}
+results: dict[str, Any] = {
+    "pae": "recipec4_dressup_advshapes_flanges_migration_gate",
+    "gates": {},
+}
 
 _GREEN_KINDS = (
-    "fillet_constant_radius", "chamfer", "variable_radius_fillet", "shell",
-    "draft", "dome", "wizard_hole", "base_flange",
+    "fillet_constant_radius",
+    "chamfer",
+    "variable_radius_fillet",
+    "shell",
+    "draft",
+    "dome",
+    "wizard_hole",
+    "base_flange",
 )
 _WALL_KINDS = ("loft", "rib", "wrap", "boundary_boss", "edge_flange")
 _MOVED_HANDLERS = (
-    "_create_fillet", "_create_chamfer", "_create_variable_fillet",
-    "_create_shell", "_create_draft", "_create_loft", "_create_rib",
-    "_create_dome", "_create_wrap", "_create_boundary_boss",
-    "_create_wizard_hole", "_create_base_flange", "_create_edge_flange",
+    "_create_fillet",
+    "_create_chamfer",
+    "_create_variable_fillet",
+    "_create_shell",
+    "_create_draft",
+    "_create_loft",
+    "_create_rib",
+    "_create_dome",
+    "_create_wrap",
+    "_create_boundary_boss",
+    "_create_wizard_hole",
+    "_create_base_flange",
+    "_create_edge_flange",
 )
 
 # 20x20x10 mm box centred on origin, extruded +Z from Front Plane.
-BOX_HW_M = 0.01   # half-width / half-height
-BOX_D_M = 0.01    # depth (Z)
+BOX_HW_M = 0.01  # half-width / half-height
+BOX_D_M = 0.01  # depth (Z)
 
 
 def gate(name: str, ok: bool, detail: str = "") -> bool:
@@ -108,7 +127,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -135,10 +156,29 @@ def _build_box(sw: Any, path: str) -> Any:
     sm.CreateCornerRectangle(-BOX_HW_M, -BOX_HW_M, 0, BOX_HW_M, BOX_HW_M, 0)
     sm.InsertSketch(True)
     f = fm.FeatureExtrusion3(
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False,
-        True, True, True, 0.0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0.0,
+        0.0,
+        False,
     )
     if f:
         try:
@@ -173,7 +213,9 @@ def _capture_edge_ref(sw: Any, path: str) -> dict | None:
         doc.SaveAs3(path, 0, 0)
         return {
             "persist_id": _b64(pid),
-            "start": list(start), "end": list(end), "length": length,
+            "start": list(start),
+            "end": list(end),
+            "length": length,
         }
     finally:
         try:
@@ -222,7 +264,7 @@ def _node_type_present(sw: Any, path: str, token: str) -> bool:
     if doc is None:
         return False
     try:
-        for fnode in (doc.FeatureManager.GetFeatures(False) or []):
+        for fnode in doc.FeatureManager.GetFeatures(False) or []:
             for attr in ("GetTypeName2", "GetTypeName"):
                 try:
                     v = getattr(fnode, attr)
@@ -240,8 +282,15 @@ def _node_type_present(sw: Any, path: str, token: str) -> bool:
             pass
 
 
-def _lifecycle(client: Any, sw: Any, name: str, seed: str, feature: dict,
-               target: dict, node_token: str) -> None:
+def _lifecycle(
+    client: Any,
+    sw: Any,
+    name: str,
+    seed: str,
+    feature: dict,
+    target: dict,
+    node_token: str,
+) -> None:
     try:
         sw.CloseAllDocuments(True)
     except Exception:
@@ -258,24 +307,29 @@ def _lifecycle(client: Any, sw: Any, name: str, seed: str, feature: dict,
     results[f"{name}_commit"] = com
     node_ok = _node_type_present(sw, seed, node_token)
     lifecycle_ok = bool(prop.get("ok")) and bool(dry.get("ok")) and bool(com.get("ok"))
-    gate(f"{name}_lifecycle",
-         lifecycle_ok and node_ok,
-         f"propose={prop.get('ok')} dry_run={dry.get('ok')} commit={com.get('ok')} "
-         f"'{node_token}'_node={node_ok} (routed through HANDLER_REGISTRY) "
-         f"err={com.get('error') or dry.get('error')}")
+    gate(
+        f"{name}_lifecycle",
+        lifecycle_ok and node_ok,
+        f"propose={prop.get('ok')} dry_run={dry.get('ok')} commit={com.get('ok')} "
+        f"'{node_token}'_node={node_ok} (routed through HANDLER_REGISTRY) "
+        f"err={com.get('error') or dry.get('error')}",
+    )
 
 
-def _fail_closed(client: Any, sw: Any, name: str, seed: str, feature: dict,
-                 target: dict) -> None:
+def _fail_closed(
+    client: Any, sw: Any, name: str, seed: str, feature: dict, target: dict
+) -> None:
     try:
         sw.CloseAllDocuments(True)
     except Exception:
         pass
     r = client.mutate.propose_feature_add(seed, feature, target)
     results[f"{name}_propose"] = r
-    gate(f"{name}_fail_closed",
-         (not r.get("ok")) and ("unsupported" in str(r.get("error", "")).lower()),
-         f"ok={r.get('ok')} error={r.get('error')!r}")
+    gate(
+        f"{name}_fail_closed",
+        (not r.get("ok")) and ("unsupported" in str(r.get("error", "")).lower()),
+        f"ok={r.get('ok')} error={r.get('error')!r}",
+    )
 
 
 def main() -> int:
@@ -294,25 +348,49 @@ def main() -> int:
         green_advertised = all(k in HANDLER_REGISTRY for k in _GREEN_KINDS)
         walls_dormant = not any(k in HANDLER_REGISTRY for k in _WALL_KINDS)
         in_modules = (
-            all(hasattr(du, n) for n in ("_create_fillet", "_create_chamfer",
-                "_create_variable_fillet", "_create_shell", "_create_draft"))
-            and all(hasattr(adv, n) for n in ("_create_loft", "_create_rib",
-                "_create_dome", "_create_wrap", "_create_boundary_boss",
-                "_create_wizard_hole"))
-            and all(hasattr(fl, n) for n in ("_create_base_flange", "_create_edge_flange"))
+            all(
+                hasattr(du, n)
+                for n in (
+                    "_create_fillet",
+                    "_create_chamfer",
+                    "_create_variable_fillet",
+                    "_create_shell",
+                    "_create_draft",
+                )
+            )
+            and all(
+                hasattr(adv, n)
+                for n in (
+                    "_create_loft",
+                    "_create_rib",
+                    "_create_dome",
+                    "_create_wrap",
+                    "_create_boundary_boss",
+                    "_create_wizard_hole",
+                )
+            )
+            and all(
+                hasattr(fl, n) for n in ("_create_base_flange", "_create_edge_flange")
+            )
         )
         gone_from_mutate = not any(hasattr(mutate_mod, n) for n in _MOVED_HANDLERS)
         supported = tuple(mutate_mod._SUPPORTED_FEATURE_TYPES)
         supported_pruned = (
             not any(k in supported for k in _GREEN_KINDS)
-            and "sweep" in supported and "sweep_cut" in supported
+            and "sweep" in supported
+            and "sweep_cut" in supported
         )
-        gate("registry_seam",
-             green_advertised and walls_dormant and in_modules and gone_from_mutate
-             and supported_pruned,
-             f"green8_advertised={green_advertised} walls5_dormant={walls_dormant} "
-             f"in_new_modules={in_modules} removed_from_mutate={gone_from_mutate} "
-             f"supported_pruned={supported_pruned} (_SUPPORTED={supported})")
+        gate(
+            "registry_seam",
+            green_advertised
+            and walls_dormant
+            and in_modules
+            and gone_from_mutate
+            and supported_pruned,
+            f"green8_advertised={green_advertised} walls5_dormant={walls_dormant} "
+            f"in_new_modules={in_modules} removed_from_mutate={gone_from_mutate} "
+            f"supported_pruned={supported_pruned} (_SUPPORTED={supported})",
+        )
 
         client = SolidWorksClient()
 
@@ -323,9 +401,15 @@ def main() -> int:
             gate("fillet_lifecycle", False, f"edge_ref capture failed: {edge_ref!r}")
         else:
             results["fillet_edge_ref"] = edge_ref
-            _lifecycle(client, sw, "fillet", fillet_seed,
-                       {"type": "fillet_constant_radius", "radius_mm": 2.0},
-                       edge_ref, "Fillet")
+            _lifecycle(
+                client,
+                sw,
+                "fillet",
+                fillet_seed,
+                {"type": "fillet_constant_radius", "radius_mm": 2.0},
+                edge_ref,
+                "Fillet",
+            )
 
         # ── C: dome (advanced-shape GREEN) full lifecycle ──
         dome_seed = str(_WORK / "recipec4_dome_seed.SLDPRT")
@@ -334,17 +418,36 @@ def main() -> int:
             gate("dome_lifecycle", False, f"face_ref capture failed: {face_ref!r}")
         else:
             results["dome_face_ref"] = face_ref
-            _lifecycle(client, sw, "dome", dome_seed,
-                       {"type": "dome", "distance_mm": 5.0},
-                       {"face_ref": face_ref}, "Dome")
+            _lifecycle(
+                client,
+                sw,
+                "dome",
+                dome_seed,
+                {"type": "dome", "distance_mm": 5.0},
+                {"face_ref": face_ref},
+                "Dome",
+            )
 
         # ── D/E: the walls stay walled (propose fail-closes) ──
-        wall_seed = fillet_seed if (edge_ref and edge_ref.get("persist_id")) else dome_seed
-        _fail_closed(client, sw, "wrap", wall_seed,
-                     {"type": "wrap"}, {"sketch": "Sketch1", "face": [0, 0, BOX_D_M]})
-        _fail_closed(client, sw, "edge_flange", wall_seed,
-                     {"type": "edge_flange", "height_mm": 10.0},
-                     {"edge_ref": (edge_ref or {"persist_id": "x"})})
+        wall_seed = (
+            fillet_seed if (edge_ref and edge_ref.get("persist_id")) else dome_seed
+        )
+        _fail_closed(
+            client,
+            sw,
+            "wrap",
+            wall_seed,
+            {"type": "wrap"},
+            {"sketch": "Sketch1", "face": [0, 0, BOX_D_M]},
+        )
+        _fail_closed(
+            client,
+            sw,
+            "edge_flange",
+            wall_seed,
+            {"type": "edge_flange", "height_mm": 10.0},
+            {"edge_ref": (edge_ref or {"persist_id": "x"})},
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

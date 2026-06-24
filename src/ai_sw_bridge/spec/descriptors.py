@@ -494,7 +494,10 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     "boss_extrude_blind": [
         FieldSpec(
             "sketch",
-            {"type": "string", "description": "Name of an earlier sketch feature to extrude."},
+            {
+                "type": "string",
+                "description": "Name of an earlier sketch feature to extrude.",
+            },
             True,
         ),
         FieldSpec("depth", LENGTH_SCHEMA, True),
@@ -553,7 +556,10 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     "cut_extrude_through_all": [
         FieldSpec(
             "sketch",
-            {"type": "string", "description": "Name of an earlier sketch to cut along."},
+            {
+                "type": "string",
+                "description": "Name of an earlier sketch to cut along.",
+            },
             True,
         ),
         FieldSpec(
@@ -602,7 +608,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         FieldSpec("angle", _ANGLE_DEG, False),
         FieldSpec(
             "flip",
-            {"type": "boolean", "default": False, "description": "Reverse the revolve direction."},
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "Reverse the revolve direction.",
+            },
             False,
         ),
     ],
@@ -624,7 +634,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         FieldSpec("angle", _ANGLE_DEG, False),
         FieldSpec(
             "flip",
-            {"type": "boolean", "default": False, "description": "Reverse the revolve direction."},
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "Reverse the revolve direction.",
+            },
             False,
         ),
     ],
@@ -750,7 +764,10 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec(
             "spacing",
-            {**LENGTH_SCHEMA, "description": "Distance between consecutive instances (mm)."},
+            {
+                **LENGTH_SCHEMA,
+                "description": "Distance between consecutive instances (mm).",
+            },
             True,
         ),
         FieldSpec(
@@ -817,7 +834,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec(
             "flip",
-            {"type": "boolean", "default": False, "description": "Reverse the rotation direction."},
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "Reverse the rotation direction.",
+            },
             False,
         ),
     ],

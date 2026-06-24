@@ -14,6 +14,7 @@ the _latebound re-wrap exists to navigate).
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_spiral_gate_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -61,7 +62,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -113,6 +116,7 @@ def _spiral_arc_len_mm(sw: Any, path: str) -> float | None:
     try:
         doc.ForceRebuild3(False)
         from ai_sw_bridge.features import verify as _v
+
         node = _v.newest_node_by_type(doc, ("Helix",), match="exact")
         if node is None:
             return None
@@ -139,10 +143,12 @@ def main() -> int:
     _WORK.mkdir(parents=True, exist_ok=True)
     try:
         # A: structural
-        gate("registry_seam",
-             ("spiral" in HANDLER_REGISTRY) and hasattr(spiral_mod, "create_spiral"),
-             f"spiral_GREEN={'spiral' in HANDLER_REGISTRY} "
-             f"handler={hasattr(spiral_mod, 'create_spiral')}")
+        gate(
+            "registry_seam",
+            ("spiral" in HANDLER_REGISTRY) and hasattr(spiral_mod, "create_spiral"),
+            f"spiral_GREEN={'spiral' in HANDLER_REGISTRY} "
+            f"handler={hasattr(spiral_mod, 'create_spiral')}",
+        )
 
         seed = str(_WORK / "spiral_seed.SLDPRT")
         sketch = _build_circle_seed(sw, seed)
@@ -157,8 +163,10 @@ def main() -> int:
             pass
 
         prop = client.mutate.propose_feature_add(
-            seed, {"type": "spiral", "pitch_mm": 10.0, "revolutions": 3.0},
-            {"sketch": sketch})
+            seed,
+            {"type": "spiral", "pitch_mm": 10.0, "revolutions": 3.0},
+            {"sketch": sketch},
+        )
         pid = prop.get("proposal_id")
         results["propose"] = prop
         if not pid:
@@ -170,13 +178,21 @@ def main() -> int:
         arc_mm = _spiral_arc_len_mm(sw, seed)
         results["spiral_arc_len_mm"] = arc_mm
 
-        lifecycle_ok = (bool(prop.get("ok")) and bool(dry.get("ok"))
-                        and bool(com.get("ok")) and arc_mm is not None and arc_mm > 0)
-        gate("lifecycle", lifecycle_ok,
-             f"propose={prop.get('ok')} dry_run={dry.get('ok')} commit={com.get('ok')} "
-             f"spiral_arc_len_mm={arc_mm} (routed via registry through the TYPED "
-             f"transaction doc; _latebound navigated the COM boundary) "
-             f"err={com.get('error') or dry.get('error')}")
+        lifecycle_ok = (
+            bool(prop.get("ok"))
+            and bool(dry.get("ok"))
+            and bool(com.get("ok"))
+            and arc_mm is not None
+            and arc_mm > 0
+        )
+        gate(
+            "lifecycle",
+            lifecycle_ok,
+            f"propose={prop.get('ok')} dry_run={dry.get('ok')} commit={com.get('ok')} "
+            f"spiral_arc_len_mm={arc_mm} (routed via registry through the TYPED "
+            f"transaction doc; _latebound navigated the COM boundary) "
+            f"err={com.get('error') or dry.get('error')}",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

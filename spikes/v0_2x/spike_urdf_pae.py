@@ -22,6 +22,7 @@ Gates:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_urdf_pae.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -71,7 +72,9 @@ def _near(v: Any, target: float, tol: float = 0.002) -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -88,8 +91,8 @@ def main() -> int:
     except Exception:
         pass
     try:
-        base = P._build("urdf_base", P._plate("urdf_base"))      # 40x30x5
-        arm = P._build("urdf_arm", P._cube("urdf_arm", 20.0))    # 20mm cube
+        base = P._build("urdf_base", P._plate("urdf_base"))  # 40x30x5
+        arm = P._build("urdf_arm", P._cube("urdf_arm", 20.0))  # 20mm cube
         for x in (base, arm):
             if "error" in x:
                 gate("fixture", False, x["error"])
@@ -109,8 +112,8 @@ def main() -> int:
 
         out_dir = str(Path(t1._results_tmp(), f"w78_urdfout_{os.getpid()}"))
         ns = argparse.Namespace(
-            assembly=asm_path, output_dir=out_dir,
-            robot_name="sorter", ascii_stl=False)
+            assembly=asm_path, output_dir=out_dir, robot_name="sorter", ascii_stl=False
+        )
         rep = _run_export(ns)
         results["report"] = rep
 
@@ -123,27 +126,36 @@ def main() -> int:
             except Exception as exc:  # noqa: BLE001
                 urdf_ok = False
                 rep["xml_error"] = repr(exc)
-        gate("urdf", urdf_ok and root is not None and root.get("name") == "sorter",
-             f"ok={rep.get('ok')} path={urdf_path} err={rep.get('error')}")
+        gate(
+            "urdf",
+            urdf_ok and root is not None and root.get("name") == "sorter",
+            f"ok={rep.get('ok')} path={urdf_path} err={rep.get('error')}",
+        )
         if root is None:
             raise SystemExit(_finish())
 
         # ── meshes ───────────────────────────────────────────────────────
         mesh_dir = Path(rep.get("mesh_dir") or (Path(out_dir) / "meshes"))
         stls = sorted(mesh_dir.glob("*.stl"))
-        gate("meshes",
-             len(stls) == 2 and all(p.stat().st_size > 0 for p in stls),
-             f"stls={[p.name for p in stls]} "
-             f"sizes={[p.stat().st_size for p in stls]}")
+        gate(
+            "meshes",
+            len(stls) == 2 and all(p.stat().st_size > 0 for p in stls),
+            f"stls={[p.name for p in stls]} "
+            f"sizes={[p.stat().st_size for p in stls]}",
+        )
 
         # ── structure ────────────────────────────────────────────────────
         links = root.findall("link")
         joints = root.findall("joint")
         link_names = {ln.get("name") for ln in links}
-        gate("structure",
-             len(links) == 3 and len(joints) == 2 and "base_link" in link_names
-             and all(j.get("type") == "fixed" for j in joints),
-             f"links={sorted(link_names)} joints={len(joints)}")
+        gate(
+            "structure",
+            len(links) == 3
+            and len(joints) == 2
+            and "base_link" in link_names
+            and all(j.get("type") == "fixed" for j in joints),
+            f"links={sorted(link_names)} joints={len(joints)}",
+        )
 
         # ── inertial asymmetry ───────────────────────────────────────────
         masses = {}
@@ -152,10 +164,13 @@ def main() -> int:
             if mass_el is not None:
                 masses[ln.get("name")] = float(mass_el.get("value"))
         vals = sorted(masses.values())
-        gate("inertial",
-             len(masses) == 2 and all(m > 0 for m in vals)
-             and abs(vals[0] - vals[1]) > 1e-6,
-             f"masses={masses}")
+        gate(
+            "inertial",
+            len(masses) == 2
+            and all(m > 0 for m in vals)
+            and abs(vals[0] - vals[1]) > 1e-6,
+            f"masses={masses}",
+        )
 
         # ── placement: select the ARM joint by its child link name ───────
         # Kernel ground truth (spike_component_transform_probe): AddComponent4
@@ -164,11 +179,15 @@ def main() -> int:
         # frame-independent invariant is that the world CoM (joint origin +
         # the inertial CoM offset) equals the AddComponent4 placement.
         arm_joint = next(
-            (j for j in joints
-             if "arm" in ((j.find("child") is not None
-                           and j.find("child").get("link")) or "")), None)
-        arm_link = next(
-            (ln for ln in links if "arm" in (ln.get("name") or "")), None)
+            (
+                j
+                for j in joints
+                if "arm"
+                in ((j.find("child") is not None and j.find("child").get("link")) or "")
+            ),
+            None,
+        )
+        arm_link = next((ln for ln in links if "arm" in (ln.get("name") or "")), None)
         arm_origin = com_world = None
         if arm_joint is not None and arm_link is not None:
             org = arm_joint.find("origin")
@@ -177,16 +196,21 @@ def main() -> int:
                 arm_origin = [float(v) for v in org.get("xyz").split()]
                 com = [float(v) for v in inert_org.get("xyz").split()]
                 com_world = [arm_origin[i] + com[i] for i in range(3)]
-        gate("placement",
-             arm_origin is not None
-             # link-frame pose == placed - CoM == [0.030, 0, 0.010]
-             and _near(arm_origin[0], 0.030) and _near(arm_origin[1], 0.0)
-             and _near(arm_origin[2], 0.010)
-             # physical invariant: the CoM lands at the AddComponent4 placement
-             and com_world is not None and _near(com_world[0], 0.030)
-             and _near(com_world[1], 0.0) and _near(com_world[2], 0.020),
-             f"arm_joint_origin_m={arm_origin} (expect [0.030,0,0.010]); "
-             f"world_CoM={com_world} (expect [0.030,0,0.020])")
+        gate(
+            "placement",
+            arm_origin is not None
+            # link-frame pose == placed - CoM == [0.030, 0, 0.010]
+            and _near(arm_origin[0], 0.030)
+            and _near(arm_origin[1], 0.0)
+            and _near(arm_origin[2], 0.010)
+            # physical invariant: the CoM lands at the AddComponent4 placement
+            and com_world is not None
+            and _near(com_world[0], 0.030)
+            and _near(com_world[1], 0.0)
+            and _near(com_world[2], 0.020),
+            f"arm_joint_origin_m={arm_origin} (expect [0.030,0,0.010]); "
+            f"world_CoM={com_world} (expect [0.030,0,0.020])",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

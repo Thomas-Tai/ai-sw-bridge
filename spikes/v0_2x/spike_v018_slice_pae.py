@@ -16,6 +16,7 @@ Proves the Observer/URDF vertical slice end-to-end:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_v018_slice_pae.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -61,7 +62,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -98,17 +101,26 @@ def main() -> int:
                 clean = False
                 why = f"internal PendingDeprecationWarning leaked: {exc}"
         results["inertia_report"] = rep
-        gate("cli_clean", clean and bool(rep.get("ok")),
-             why or f"ok={rep.get('ok')} (class-routed, no deprecation warning)")
+        gate(
+            "cli_clean",
+            clean and bool(rep.get("ok")),
+            why or f"ok={rep.get('ok')} (class-routed, no deprecation warning)",
+        )
 
         # ── C: the routed payload is physically sane for a cube ───────────
         tensor = rep.get("inertia_tensor_kg_m2")
         com = rep.get("center_of_mass_mm")
-        diag_ok = (isinstance(tensor, (list, tuple)) and len(tensor) == 3
-                   and all(float(tensor[i][i]) > 0 for i in range(3)))
-        gate("data_sane", com is not None and diag_ok,
-             f"com_mm={com} tensor_diag="
-             f"{[tensor[i][i] for i in range(3)] if diag_ok else tensor}")
+        diag_ok = (
+            isinstance(tensor, (list, tuple))
+            and len(tensor) == 3
+            and all(float(tensor[i][i]) > 0 for i in range(3))
+        )
+        gate(
+            "data_sane",
+            com is not None and diag_ok,
+            f"com_mm={com} tensor_diag="
+            f"{[tensor[i][i] for i in range(3)] if diag_ok else tensor}",
+        )
 
         # ── B: the legacy free function STILL warns (external back-compat) ─
         doc = get_active_doc(get_sw_app())
@@ -116,10 +128,13 @@ def main() -> int:
             warnings.simplefilter("always")
             legacy = sw_get_inertia(doc)
         warned = any(issubclass(w.category, PendingDeprecationWarning) for w in caught)
-        gate("shim_warns",
-             warned and bool(legacy.get("ok"))
-             and legacy.get("inertia_tensor_kg_m2") == tensor,
-             f"legacy warned={warned}, same_payload={legacy.get('inertia_tensor_kg_m2') == tensor}")
+        gate(
+            "shim_warns",
+            warned
+            and bool(legacy.get("ok"))
+            and legacy.get("inertia_tensor_kg_m2") == tensor,
+            f"legacy warned={warned}, same_payload={legacy.get('inertia_tensor_kg_m2') == tensor}",
+        )
 
         # ── D: URDF CLI routes through client.urdf, internal _impl, no warn ─
         base = P._build("v018_base", P._plate("v018_base"))
@@ -141,8 +156,8 @@ def main() -> int:
         sw.CloseAllDocuments(True)
         out_dir = str(Path(t1._results_tmp(), f"v018_urdfout_{os.getpid()}"))
         ns = argparse.Namespace(
-            assembly=asm_path, output_dir=out_dir,
-            robot_name="sorter", ascii_stl=False)
+            assembly=asm_path, output_dir=out_dir, robot_name="sorter", ascii_stl=False
+        )
         with warnings.catch_warnings():
             warnings.simplefilter("error", PendingDeprecationWarning)
             try:
@@ -154,8 +169,11 @@ def main() -> int:
                 uclean = False
                 uwhy = f"internal PendingDeprecationWarning leaked: {exc}"
         results["urdf_report_ok"] = bool(urep.get("ok"))
-        gate("urdf_clean", uclean and bool(urep.get("ok")),
-             uwhy or f"ok={urep.get('ok')} (client.urdf routed, no deprecation warning)")
+        gate(
+            "urdf_clean",
+            uclean and bool(urep.get("ok")),
+            uwhy or f"ok={urep.get('ok')} (client.urdf routed, no deprecation warning)",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

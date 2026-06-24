@@ -27,9 +27,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-RESULTS_PATH = (
-    Path(__file__).resolve().parents[1] / "_results" / "thicken.json"
-)
+RESULTS_PATH = Path(__file__).resolve().parents[1] / "_results" / "thicken.json"
 
 import pythoncom
 
@@ -114,12 +112,21 @@ def _create_standalone_surface(sw: Any) -> Any:
     try:
         import pythoncom as _pc
         from win32com.client import VARIANT as _V
+
         doc.SketchManager.InsertSketch(True)
         doc.SketchManager.CreateCornerRectangle(0.0, 0.0, 0.0, 0.04, 0.03, 0.0)
         doc.SketchManager.InsertSketch(True)  # close -> Sketch1
         doc.ClearSelection2(True)
         doc.Extension.SelectByID2(
-            "Sketch1", "SKETCH", 0, 0, 0, False, 0, _V(_pc.VT_DISPATCH, None), 0,
+            "Sketch1",
+            "SKETCH",
+            0,
+            0,
+            0,
+            False,
+            0,
+            _V(_pc.VT_DISPATCH, None),
+            0,
         )
         # InsertPlanarRefSurface is a 0-arg method win32com auto-invokes as a
         # PROPERTY (it fires + returns a bool on attribute access). Calling ()
@@ -144,6 +151,7 @@ def run() -> dict[str, Any]:
 
     try:
         from ai_sw_bridge.sw_com import get_sw_app
+
         sw = get_sw_app()
     except Exception as exc:
         return {**result, "overall": "ERROR", "reason": f"connect: {exc!r}"}
@@ -192,9 +200,7 @@ def run() -> dict[str, Any]:
                 result["last_feature_type"] = _type_name(last)
                 try:
                     nm = last.Name
-                    result["last_feature_name"] = (
-                        nm() if callable(nm) else str(nm)
-                    )
+                    result["last_feature_name"] = nm() if callable(nm) else str(nm)
                 except Exception:
                     pass
         except Exception as exc:

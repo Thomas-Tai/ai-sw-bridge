@@ -156,9 +156,7 @@ def _build_geometry(doc: Any, mod: Any) -> dict[str, Any]:
     return out
 
 
-def _probe_loft(
-    doc: Any, fm: Any, mod: Any, profiles: list[str]
-) -> dict[str, Any]:
+def _probe_loft(doc: Any, fm: Any, mod: Any, profiles: list[str]) -> dict[str, Any]:
     """Production-mirror probe: exact _create_loft sequence with telemetry."""
     result: dict[str, Any] = {}
     ext = typed(doc.Extension, "IModelDocExtension", module=mod)
@@ -175,14 +173,23 @@ def _probe_loft(
         append = i > 0
         try:
             ok = ext.SelectByID2(p, "SKETCH", 0, 0, 0, append, 1, None, 0)
-            sel_results.append({
-                "profile": p, "append": append, "mark": 1, "result": ok,
-            })
+            sel_results.append(
+                {
+                    "profile": p,
+                    "append": append,
+                    "mark": 1,
+                    "result": ok,
+                }
+            )
         except Exception as e:
-            sel_results.append({
-                "profile": p, "append": append, "mark": 1,
-                "exception": f"{type(e).__name__}: {e}",
-            })
+            sel_results.append(
+                {
+                    "profile": p,
+                    "append": append,
+                    "mark": 1,
+                    "exception": f"{type(e).__name__}: {e}",
+                }
+            )
     result["selections"] = sel_results
     result["confirmed_mark"] = 1
 
@@ -238,20 +245,28 @@ def _probe_loft(
             try:
                 method = getattr(fm, method_name, None)
                 if method is None:
-                    legacy_results.append({
-                        "method": method_name, "exists": False,
-                    })
+                    legacy_results.append(
+                        {
+                            "method": method_name,
+                            "exists": False,
+                        }
+                    )
                     continue
-                legacy_results.append({
-                    "method": method_name, "exists": True,
-                    "callable": callable(method),
-                    "type": type(method).__name__,
-                })
+                legacy_results.append(
+                    {
+                        "method": method_name,
+                        "exists": True,
+                        "callable": callable(method),
+                        "type": type(method).__name__,
+                    }
+                )
             except Exception as e:
-                legacy_results.append({
-                    "method": method_name,
-                    "error": f"{type(e).__name__}: {e}",
-                })
+                legacy_results.append(
+                    {
+                        "method": method_name,
+                        "error": f"{type(e).__name__}: {e}",
+                    }
+                )
         result["legacy_probe"] = legacy_results
 
         # Step 3d: Legacy call attempts — re-select and try InsertProtrusionBlend
@@ -268,37 +283,80 @@ def _probe_loft(
         #  draft_angle_start, draft_angle_end, start_draft_dist,
         #  end_draft_dist, merge_result, feature_scope, thin_feature,
         #  auto_select, t1, t2, t3, t4, t5)
-        simple_args = [True, 0, 0, 0, 0.0, 0.0, 0.0, 0.0,
-                       True, True, False, True, 0, 0, 0, 0, 0]
+        simple_args = [
+            True,
+            0,
+            0,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            True,
+            True,
+            False,
+            True,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ]
         try:
             ret = fm.InsertProtrusionBlend(*simple_args)
-            legacy_call_results.append({
-                "method": "InsertProtrusionBlend",
-                "args_count": len(simple_args),
-                "returned_none": ret is None,
-                "return_type": type(ret).__name__,
-            })
+            legacy_call_results.append(
+                {
+                    "method": "InsertProtrusionBlend",
+                    "args_count": len(simple_args),
+                    "returned_none": ret is None,
+                    "return_type": type(ret).__name__,
+                }
+            )
         except Exception as e:
-            legacy_call_results.append({
-                "method": "InsertProtrusionBlend",
-                "exception": f"{type(e).__name__}: {e}"[:200],
-            })
+            legacy_call_results.append(
+                {
+                    "method": "InsertProtrusionBlend",
+                    "exception": f"{type(e).__name__}: {e}"[:200],
+                }
+            )
         # InsertProtrusionBlend2: 18 args (v0_16 found)
-        simple_args2 = [True, 0, 0, 0, 0.0, 0.0, 0.0, 0.0,
-                        True, True, False, True, 0, 0, 0, 0, 0, 0]
+        simple_args2 = [
+            True,
+            0,
+            0,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            True,
+            True,
+            False,
+            True,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ]
         try:
             ret2 = fm.InsertProtrusionBlend2(*simple_args2)
-            legacy_call_results.append({
-                "method": "InsertProtrusionBlend2",
-                "args_count": len(simple_args2),
-                "returned_none": ret2 is None,
-                "return_type": type(ret2).__name__,
-            })
+            legacy_call_results.append(
+                {
+                    "method": "InsertProtrusionBlend2",
+                    "args_count": len(simple_args2),
+                    "returned_none": ret2 is None,
+                    "return_type": type(ret2).__name__,
+                }
+            )
         except Exception as e:
-            legacy_call_results.append({
-                "method": "InsertProtrusionBlend2",
-                "exception": f"{type(e).__name__}: {e}"[:200],
-            })
+            legacy_call_results.append(
+                {
+                    "method": "InsertProtrusionBlend2",
+                    "exception": f"{type(e).__name__}: {e}"[:200],
+                }
+            )
         count_after_legacy = _feat_count(fm)
         result["legacy_call_results"] = legacy_call_results
         result["feature_count_after_legacy"] = count_after_legacy

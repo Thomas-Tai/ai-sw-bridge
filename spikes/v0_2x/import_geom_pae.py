@@ -64,19 +64,35 @@ def _make_box_and_export_step(sw_app, temp_dir: Path) -> Path:
     doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
     sm = doc.SketchManager
     sm.InsertSketch(True)
-    sm.CreateCenterRectangle(0.0, 0.0, 0.0, _WIDTH_MM / 2 / 1000.0,
-                             _DEPTH_MM / 2 / 1000.0, 0.0)
+    sm.CreateCenterRectangle(
+        0.0, 0.0, 0.0, _WIDTH_MM / 2 / 1000.0, _DEPTH_MM / 2 / 1000.0, 0.0
+    )
     sm.InsertSketch(True)
 
     feat = doc.FeatureManager.FeatureExtrusion2(
-        True, False, False,
-        0, 0,
-        _HEIGHT_MM / 1000.0, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        _HEIGHT_MM / 1000.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("FeatureExtrusion2 failed")
@@ -141,7 +157,9 @@ def main() -> dict:
         sw_app = get_sw_app()
         results["seat"] = f"SW {sw_app.RevisionNumber()}"
 
-        print(f"Building {_WIDTH_MM}×{_DEPTH_MM}×{_HEIGHT_MM} box and exporting to STEP...")
+        print(
+            f"Building {_WIDTH_MM}×{_DEPTH_MM}×{_HEIGHT_MM} box and exporting to STEP..."
+        )
         step_path = _make_box_and_export_step(sw_app, temp_dir)
         print(f"  STEP written: {step_path} ({step_path.stat().st_size} bytes)")
 
@@ -163,11 +181,15 @@ def main() -> dict:
         result: ImportResult = import_part(spec)
         results["round_trip"] = result.to_dict()
 
-        print(f"  result: ok={result.ok}, bodies={result.bodies}, "
-              f"faces={result.faces}, volume_mm3={result.volume_mm3}")
+        print(
+            f"  result: ok={result.ok}, bodies={result.bodies}, "
+            f"faces={result.faces}, volume_mm3={result.volume_mm3}"
+        )
 
         if result.ok and result.volume_mm3 is not None:
-            rel_err = abs(result.volume_mm3 - _EXPECTED_VOLUME_MM3) / _EXPECTED_VOLUME_MM3
+            rel_err = (
+                abs(result.volume_mm3 - _EXPECTED_VOLUME_MM3) / _EXPECTED_VOLUME_MM3
+            )
             results["round_trip"]["volume_rel_err"] = round(rel_err, 6)
 
     except Exception as exc:

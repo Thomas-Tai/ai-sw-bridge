@@ -146,7 +146,11 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     part_template = sw.GetUserPreferenceStringValue(SW_DEFAULT_TEMPLATE_PART)
     part_doc = sw.NewDocument(part_template, 0, 0.0, 0.0)
     if part_doc is None:
-        return {**result, "overall": "FAIL", "reason": "NewDocument(part) returned None"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": "NewDocument(part) returned None",
+        }
 
     build = build_single_box(part_doc)
     result["build"] = build
@@ -165,7 +169,11 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     # --- 2. Open a blank drawing --------------------------------------------
     drawing_doc = _new_blank_drawing(sw)
     if drawing_doc is None:
-        return {**result, "overall": "FAIL", "reason": "NewDocument(drawing) returned None"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": "NewDocument(drawing) returned None",
+        }
 
     result["drawing_opened"] = True
     result["drawing_type"] = _tag(drawing_doc)
@@ -175,7 +183,11 @@ def run(keep_file: bool = False) -> dict[str, Any]:
 
     # 3a. Get IDrawingDoc interface
     probes["GetIDrawingDoc"] = _capture(
-        lambda: drawing_doc if hasattr(drawing_doc, "CreateDrawViewFromModelView3") else None,
+        lambda: (
+            drawing_doc
+            if hasattr(drawing_doc, "CreateDrawViewFromModelView3")
+            else None
+        ),
         "IDrawingDoc",
     )
 
@@ -194,7 +206,9 @@ def run(keep_file: bool = False) -> dict[str, Any]:
         views_created.append({"view": vn, **probe})
     probes["views"] = views_created
 
-    n_ok = sum(1 for v in views_created if v["status"] == "OK" and v.get("_val") is not None)
+    n_ok = sum(
+        1 for v in views_created if v["status"] == "OK" and v.get("_val") is not None
+    )
     result["views_attempted"] = len(view_names)
     result["views_created"] = n_ok
 
@@ -225,7 +239,9 @@ def run(keep_file: bool = False) -> dict[str, Any]:
     # --- Verdict ------------------------------------------------------------
     if n_ok > 0 and result.get("drawing_saved"):
         overall = "PASS"
-        interp = "drawing with views created + saved out-of-process -> build the handler"
+        interp = (
+            "drawing with views created + saved out-of-process -> build the handler"
+        )
     elif n_ok > 0:
         overall = "PARTIAL"
         interp = "views created but save failed -> narrow save path or template"

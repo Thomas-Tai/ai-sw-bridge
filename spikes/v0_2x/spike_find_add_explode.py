@@ -1,11 +1,13 @@
 """
 Find where AddExplodeStep lives - probe IConfiguration.
 """
+
 import pythoncom
 from win32com.client import dynamic, gencache, VARIANT
 import winreg
 
 SW_LIBID = "{83A33D31-27C5-11CE-BFD4-00400513BB57}"
+
 
 def _sw_tlb_path():
     try:
@@ -31,6 +33,7 @@ def _sw_tlb_path():
                 continue
     return None
 
+
 def find_add_explode_step():
     pythoncom.CoInitialize()
     try:
@@ -47,13 +50,14 @@ def find_add_explode_step():
 
         # Find AddExplodeStep method and the class it belongs to
         import re
+
         lines = content.split("\n")
 
         print("Finding AddExplodeStep method's class:")
         for i, line in enumerate(lines):
             if "def AddExplodeStep" in line:
                 # Look backward to find the class
-                for j in range(i-1, max(0, i-100), -1):
+                for j in range(i - 1, max(0, i - 100), -1):
                     if "class " in lines[j] and "(DispatchBaseClass)" in lines[j]:
                         class_name = lines[j].split("class ")[1].split("(")[0]
                         print(f"  Found in class: {class_name}")
@@ -65,7 +69,7 @@ def find_add_explode_step():
         print("\nFinding IExplodeStep_vtables_ source:")
         for i, line in enumerate(lines):
             if "IExplodeStep_vtables_" in line:
-                for j in range(i-1, max(0, i-20), -1):
+                for j in range(i - 1, max(0, i - 20), -1):
                     if "class " in lines[j]:
                         class_name = lines[j].split("class ")[1].split("(")[0]
                         print(f"  From class: {class_name}")
@@ -76,7 +80,9 @@ def find_add_explode_step():
         # Runtime probe on IConfiguration
         print("\nRuntime probe on actual Configuration:")
         sw = dynamic.Dispatch("SldWorks.Application")
-        template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        template = (
+            r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        )
         asm = sw.NewDocument(template, 0, 0, 0)
 
         if asm:
@@ -86,8 +92,14 @@ def find_add_explode_step():
 
             if config:
                 # Probe for AddExplodeStep
-                methods = ["AddExplodeStep", "IAddExplodeStep", "AddExplodeStep2",
-                          "CreateExplodeStep", "GetExplodeStepCount", "IGetExplodeStep"]
+                methods = [
+                    "AddExplodeStep",
+                    "IAddExplodeStep",
+                    "AddExplodeStep2",
+                    "CreateExplodeStep",
+                    "GetExplodeStepCount",
+                    "IGetExplodeStep",
+                ]
                 print("\n  IConfiguration methods:")
                 for name in methods:
                     try:
@@ -99,7 +111,9 @@ def find_add_explode_step():
 
                 # Try calling AddExplodeStep on config
                 try:
-                    print("\n  Trying config.AddExplodeStep(0.05, False, False, False)...")
+                    print(
+                        "\n  Trying config.AddExplodeStep(0.05, False, False, False)..."
+                    )
                     step = config.AddExplodeStep(0.05, False, False, False)
                     print(f"    Result: {step} (type={type(step)})")
                 except Exception as e:
@@ -107,7 +121,9 @@ def find_add_explode_step():
 
                 # Try IAddExplodeStep
                 try:
-                    print("\n  Trying config.IAddExplodeStep(0.05, False, False, False)...")
+                    print(
+                        "\n  Trying config.IAddExplodeStep(0.05, False, False, False)..."
+                    )
                     step = config.IAddExplodeStep(0.05, False, False, False)
                     print(f"    Result: {step} (type={type(step)})")
                 except Exception as e:

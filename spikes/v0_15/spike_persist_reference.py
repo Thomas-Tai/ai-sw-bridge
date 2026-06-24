@@ -127,8 +127,28 @@ def build_single_box(doc: Any) -> dict[str, Any]:
 
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)  # 23-arg
@@ -185,17 +205,29 @@ def _read_persist_id(ext: Any, entity: Any) -> dict[str, Any]:
     try:
         pid = ext.GetPersistReference3(entity)
     except pywintypes.com_error as e:
-        return {"status": "COM_ERROR", "hresult": getattr(e, "hresult", None),
-                "description": getattr(e, "strerror", str(e)),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+        return {
+            "status": "COM_ERROR",
+            "hresult": getattr(e, "hresult", None),
+            "description": getattr(e, "strerror", str(e)),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
     except Exception as e:  # AttributeError = method unreachable via late binding
-        return {"status": "PY_EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e), "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+        return {
+            "status": "PY_EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
     if pid is None:
-        return {"status": "NONE_RETURNED",
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
-    out = {"status": "OK", "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
-           "_pid": pid}
+        return {
+            "status": "NONE_RETURNED",
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
+    out = {
+        "status": "OK",
+        "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        "_pid": pid,
+    }
     out.update(_pid_shape(pid))
     return out
 
@@ -222,45 +254,67 @@ def _resolve_persist_id(ext: Any, pid: Any) -> dict[str, Any]:
     forms = [
         ("call(pid)", lambda: ext.GetObjectByPersistReference3(pid)),
         ("call(pid, 0)", lambda: ext.GetObjectByPersistReference3(pid, 0)),
-        ("call(pid, Missing)",
-         lambda: ext.GetObjectByPersistReference3(pid, pythoncom.Missing)),
+        (
+            "call(pid, Missing)",
+            lambda: ext.GetObjectByPersistReference3(pid, pythoncom.Missing),
+        ),
     ]
     for label, fn in forms:
         t0 = time.perf_counter()
         try:
             result = fn()
         except pywintypes.com_error as e:
-            attempts.append({"form": label, "status": "COM_ERROR",
-                             "hresult": getattr(e, "hresult", None),
-                             "description": getattr(e, "strerror", str(e)),
-                             "elapsed_ms": (time.perf_counter() - t0) * 1000.0})
+            attempts.append(
+                {
+                    "form": label,
+                    "status": "COM_ERROR",
+                    "hresult": getattr(e, "hresult", None),
+                    "description": getattr(e, "strerror", str(e)),
+                    "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+                }
+            )
             continue
         except Exception as e:
-            attempts.append({"form": label, "status": "PY_EXCEPTION",
-                             "exception_type": type(e).__name__, "message": str(e),
-                             "elapsed_ms": (time.perf_counter() - t0) * 1000.0})
+            attempts.append(
+                {
+                    "form": label,
+                    "status": "PY_EXCEPTION",
+                    "exception_type": type(e).__name__,
+                    "message": str(e),
+                    "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+                }
+            )
             continue
         obj, err = _interpret(result)
-        attempts.append({
-            "form": label,
-            "status": "OK" if obj is not None else "NONE_RETURNED",
-            "returned_type": _type_tag(result),
-            "obj_type": _type_tag(obj),
-            "error_code": (int(err) if isinstance(err, int) else None),
-            "error_status": PERSIST_STATUS_NAMES.get(err, None) if isinstance(err, int) else None,
-            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
-            "_obj": obj,
-        })
+        attempts.append(
+            {
+                "form": label,
+                "status": "OK" if obj is not None else "NONE_RETURNED",
+                "returned_type": _type_tag(result),
+                "obj_type": _type_tag(obj),
+                "error_code": (int(err) if isinstance(err, int) else None),
+                "error_status": (
+                    PERSIST_STATUS_NAMES.get(err, None)
+                    if isinstance(err, int)
+                    else None
+                ),
+                "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+                "_obj": obj,
+            }
+        )
         if obj is not None:
             break  # first working form wins
     working = next((a for a in attempts if a.get("_obj") is not None), None)
-    return {"working_form": working["form"] if working else None,
-            "_obj": working.get("_obj") if working else None,
-            "attempts": [{k: v for k, v in a.items() if k != "_obj"} for a in attempts]}
+    return {
+        "working_form": working["form"] if working else None,
+        "_obj": working.get("_obj") if working else None,
+        "attempts": [{k: v for k, v in a.items() if k != "_obj"} for a in attempts],
+    }
 
 
-def _verify_identity(ext: Any, original_pid: Any, roundtripped: Any,
-                     kind: str) -> dict[str, Any]:
+def _verify_identity(
+    ext: Any, original_pid: Any, roundtripped: Any, kind: str
+) -> dict[str, Any]:
     """Confirm the round-tripped entity IS the original.
 
     Primary check (kind-agnostic): re-read its persist ID and compare bytes
@@ -273,7 +327,7 @@ def _verify_identity(ext: Any, original_pid: Any, roundtripped: Any,
     try:
         pid2 = ext.GetPersistReference3(roundtripped)
         b0, b1 = _pid_to_bytes(original_pid), _pid_to_bytes(pid2)
-        out["pid_byte_match"] = (b0 is not None and b0 == b1)
+        out["pid_byte_match"] = b0 is not None and b0 == b1
     except Exception as e:
         out["pid_byte_match"] = None
         out["pid_reread_error"] = f"{type(e).__name__}: {e}"
@@ -297,8 +351,9 @@ def _verify_identity(ext: Any, original_pid: Any, roundtripped: Any,
     return out
 
 
-def probe_entity(ext: Any, doc: Any, entity: Any, kind: str, idx: int,
-                 rebuild_between: bool) -> dict[str, Any]:
+def probe_entity(
+    ext: Any, doc: Any, entity: Any, kind: str, idx: int, rebuild_between: bool
+) -> dict[str, Any]:
     rec: dict[str, Any] = {"kind": kind, "index": idx}
 
     read = _read_persist_id(ext, entity)
@@ -313,11 +368,15 @@ def probe_entity(ext: Any, doc: Any, entity: Any, kind: str, idx: int,
         t0 = time.perf_counter()
         try:
             doc.ForceRebuild3(False)
-            rec["rebuild_between"] = {"status": "OK",
-                                      "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+            rec["rebuild_between"] = {
+                "status": "OK",
+                "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+            }
         except Exception as e:
-            rec["rebuild_between"] = {"status": "ERROR",
-                                      "message": f"{type(e).__name__}: {e}"}
+            rec["rebuild_between"] = {
+                "status": "ERROR",
+                "message": f"{type(e).__name__}: {e}",
+            }
 
     resolve = _resolve_persist_id(ext, pid)
     rec["resolve"] = {k: v for k, v in resolve.items() if k != "_obj"}
@@ -330,17 +389,20 @@ def probe_entity(ext: Any, doc: Any, entity: Any, kind: str, idx: int,
     verify = _verify_identity(ext, pid, obj, kind)
     rec["verify"] = verify
 
-    ok = (verify.get("pid_byte_match") is True
-          and verify.get("selectable") is True)
+    ok = verify.get("pid_byte_match") is True and verify.get("selectable") is True
     rec["verdict"] = "GREEN" if ok else "PARTIAL"
     if not ok:
-        rec["reason"] = ("round-tripped but identity/selectability unconfirmed "
-                         f"(pid_match={verify.get('pid_byte_match')}, "
-                         f"selectable={verify.get('selectable')})")
+        rec["reason"] = (
+            "round-tripped but identity/selectability unconfirmed "
+            f"(pid_match={verify.get('pid_byte_match')}, "
+            f"selectable={verify.get('selectable')})"
+        )
     return rec
 
 
-def run_com(skip_build: bool, save_first: bool, rebuild_between: bool) -> dict[str, Any]:
+def run_com(
+    skip_build: bool, save_first: bool, rebuild_between: bool
+) -> dict[str, Any]:
     sw = get_sw_app()
     doc = _ensure_part_doc(sw)
 
@@ -386,8 +448,11 @@ def run_com(skip_build: bool, save_first: bool, rebuild_between: bool) -> dict[s
         s = faces[0].GetSelectByIDString
         selbyid = {"status": "OK", "python_type": _type_tag(s), "value": str(s)[:80]}
     except Exception as e:
-        selbyid = {"status": "UNREACHABLE", "exception_type": type(e).__name__,
-                   "message": str(e)[:120]}
+        selbyid = {
+            "status": "UNREACHABLE",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:120],
+        }
 
     verdicts = [p["verdict"] for p in probes]
     if all(v == "GREEN" for v in verdicts):
@@ -447,20 +512,38 @@ End Sub
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--mode", choices=["com", "vba"], default="com",
-                   help="com = drive SW from Python; vba = emit the .bas oracle.")
-    p.add_argument("--skip-build", action="store_true",
-                   help="Probe the first solid body already in the active part.")
-    p.add_argument("--save-first", action="store_true",
-                   help="SaveAs3 to a temp path before probing (persist refs may "
-                        "be more stable on a saved doc).")
-    p.add_argument("--no-rebuild", action="store_true",
-                   help="Skip the ForceRebuild3 between read and resolve "
-                        "(disables the durability check).")
-    p.add_argument("--out", type=Path, default=None,
-                   help="Write JSON report to this path instead of stdout.")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--mode",
+        choices=["com", "vba"],
+        default="com",
+        help="com = drive SW from Python; vba = emit the .bas oracle.",
+    )
+    p.add_argument(
+        "--skip-build",
+        action="store_true",
+        help="Probe the first solid body already in the active part.",
+    )
+    p.add_argument(
+        "--save-first",
+        action="store_true",
+        help="SaveAs3 to a temp path before probing (persist refs may "
+        "be more stable on a saved doc).",
+    )
+    p.add_argument(
+        "--no-rebuild",
+        action="store_true",
+        help="Skip the ForceRebuild3 between read and resolve "
+        "(disables the durability check).",
+    )
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Write JSON report to this path instead of stdout.",
+    )
     args = p.parse_args()
 
     if args.mode == "vba":

@@ -15,6 +15,7 @@ builder handlers:
 Non-destructive: own blank Part via NewDocument, never saves, closes own doc.
 Run with PYTHONPATH=<worktree>/src so the worktree handlers load.
 """
+
 from __future__ import annotations
 
 import json
@@ -37,34 +38,99 @@ from spike_earlybind_persist import connect_running_sw  # noqa: E402
 SW_DEFAULT_TEMPLATE_PART = 8
 
 CONSTRUCTION_FEATURES: list[dict[str, Any]] = [
-    {"type": "sketch_line", "name": "CF_Line", "plane": "Front",
-     "start": {"x": 0.0, "y": 0.0}, "end": {"x": 20.0, "y": 20.0}, "construction": True},
-    {"type": "sketch_arc", "name": "CF_Arc", "plane": "Front",
-     "center": {"x": 30.0, "y": 0.0}, "start": {"x": 40.0, "y": 0.0},
-     "end": {"x": 30.0, "y": 10.0}, "construction": True},
-    {"type": "sketch_spline", "name": "CF_Spline", "plane": "Front",
-     "points": [{"x": 0.0, "y": 30.0}, {"x": 10.0, "y": 35.0}, {"x": 20.0, "y": 30.0}],
-     "construction": True},
-    {"type": "sketch_polygon", "name": "CF_Polygon", "plane": "Front",
-     "center": {"x": 50.0, "y": 30.0}, "sides": 6, "radius": 8.0, "construction": True},
-    {"type": "sketch_ellipse", "name": "CF_Ellipse", "plane": "Front",
-     "center": {"x": 70.0, "y": 30.0}, "major_radius": 10.0, "minor_radius": 5.0,
-     "construction": True},
+    {
+        "type": "sketch_line",
+        "name": "CF_Line",
+        "plane": "Front",
+        "start": {"x": 0.0, "y": 0.0},
+        "end": {"x": 20.0, "y": 20.0},
+        "construction": True,
+    },
+    {
+        "type": "sketch_arc",
+        "name": "CF_Arc",
+        "plane": "Front",
+        "center": {"x": 30.0, "y": 0.0},
+        "start": {"x": 40.0, "y": 0.0},
+        "end": {"x": 30.0, "y": 10.0},
+        "construction": True,
+    },
+    {
+        "type": "sketch_spline",
+        "name": "CF_Spline",
+        "plane": "Front",
+        "points": [
+            {"x": 0.0, "y": 30.0},
+            {"x": 10.0, "y": 35.0},
+            {"x": 20.0, "y": 30.0},
+        ],
+        "construction": True,
+    },
+    {
+        "type": "sketch_polygon",
+        "name": "CF_Polygon",
+        "plane": "Front",
+        "center": {"x": 50.0, "y": 30.0},
+        "sides": 6,
+        "radius": 8.0,
+        "construction": True,
+    },
+    {
+        "type": "sketch_ellipse",
+        "name": "CF_Ellipse",
+        "plane": "Front",
+        "center": {"x": 70.0, "y": 30.0},
+        "major_radius": 10.0,
+        "minor_radius": 5.0,
+        "construction": True,
+    },
 ]
 
-TEXT_FEATURE = {"type": "sketch_text", "name": "CF_Text", "plane": "Front",
-                "position": {"x": 0.0, "y": 50.0}, "content": "AaBb",
-                "height": 3.0, "font": "Arial"}
+TEXT_FEATURE = {
+    "type": "sketch_text",
+    "name": "CF_Text",
+    "plane": "Front",
+    "position": {"x": 0.0, "y": 50.0},
+    "content": "AaBb",
+    "height": 3.0,
+    "font": "Arial",
+}
 
 REJECTIONS: list[dict[str, Any]] = [
-    {"type": "sketch_spline", "name": "RJ_SplineClosed", "plane": "Front",
-     "points": [{"x": 0.0, "y": 0.0}, {"x": 10.0, "y": 5.0}], "closed": True},
-    {"type": "sketch_slot", "name": "RJ_SlotCons", "plane": "Front",
-     "center": {"x": 30.0, "y": 30.0}, "width": 6.0, "length": 20.0, "construction": True},
-    {"type": "sketch_text", "name": "RJ_TextCons", "plane": "Front",
-     "position": {"x": 0.0, "y": 0.0}, "content": "x", "height": 3.0, "construction": True},
-    {"type": "sketch_text", "name": "RJ_TextAngle", "plane": "Front",
-     "position": {"x": 0.0, "y": 0.0}, "content": "x", "height": 3.0, "angle_deg": 45.0},
+    {
+        "type": "sketch_spline",
+        "name": "RJ_SplineClosed",
+        "plane": "Front",
+        "points": [{"x": 0.0, "y": 0.0}, {"x": 10.0, "y": 5.0}],
+        "closed": True,
+    },
+    {
+        "type": "sketch_slot",
+        "name": "RJ_SlotCons",
+        "plane": "Front",
+        "center": {"x": 30.0, "y": 30.0},
+        "width": 6.0,
+        "length": 20.0,
+        "construction": True,
+    },
+    {
+        "type": "sketch_text",
+        "name": "RJ_TextCons",
+        "plane": "Front",
+        "position": {"x": 0.0, "y": 0.0},
+        "content": "x",
+        "height": 3.0,
+        "construction": True,
+    },
+    {
+        "type": "sketch_text",
+        "name": "RJ_TextAngle",
+        "plane": "Front",
+        "position": {"x": 0.0, "y": 0.0},
+        "content": "x",
+        "height": 3.0,
+        "angle_deg": 45.0,
+    },
 ]
 
 
@@ -110,9 +176,11 @@ def _read_text_format(sw_object: Any) -> dict[str, Any]:
             return {"error": "no text segments"}
         st = typed(seq[0], "ISketchText")
         tf = st.GetTextFormat()
-        return {"char_height": float(tf.CharHeight),
-                "typeface": str(tf.TypeFaceName),
-                "text_count": len(seq)}
+        return {
+            "char_height": float(tf.CharHeight),
+            "typeface": str(tf.TypeFaceName),
+            "text_count": len(seq),
+        }
     except Exception as e:  # noqa: BLE001
         return {"error": repr(e)}
 
@@ -137,7 +205,11 @@ def run() -> dict[str, Any]:
                 doc.ForceRebuild3(False)
                 rec["count_delta"] = _feature_count(doc) - before
                 rec["has_construction"] = _sketch_has_construction(bf.sw_object)
-                rec["overall"] = "PASS" if (rec["count_delta"] > 0 and rec["has_construction"] is True) else "FAIL"
+                rec["overall"] = (
+                    "PASS"
+                    if (rec["count_delta"] > 0 and rec["has_construction"] is True)
+                    else "FAIL"
+                )
             except Exception as e:  # noqa: BLE001
                 rec["error"] = repr(e)
                 rec["overall"] = "FAIL"
@@ -154,9 +226,14 @@ def run() -> dict[str, Any]:
             trec["count_delta"] = _feature_count(doc) - before
             fmt = _read_text_format(bf_text.sw_object)
             trec["format"] = fmt
-            ch_ok = isinstance(fmt.get("char_height"), float) and abs(fmt["char_height"] - 0.003) < 1e-6
+            ch_ok = (
+                isinstance(fmt.get("char_height"), float)
+                and abs(fmt["char_height"] - 0.003) < 1e-6
+            )
             tn_ok = fmt.get("typeface") == "Arial"
-            trec["overall"] = "PASS" if (trec["count_delta"] > 0 and ch_ok and tn_ok) else "FAIL"
+            trec["overall"] = (
+                "PASS" if (trec["count_delta"] > 0 and ch_ok and tn_ok) else "FAIL"
+            )
         except Exception as e:  # noqa: BLE001
             trec["error"] = repr(e)
             trec["overall"] = "FAIL"

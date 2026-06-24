@@ -80,6 +80,7 @@ def test_read_clearance_same_component_names():
 
 # ── Unit conversion tests ─────────────────────────────────────────────────
 
+
 def test_read_clearance_m_to_mm_conversion():
     """Distance returned by IMeasure is in metres; verify conversion to mm."""
     # Build mock component objects
@@ -111,6 +112,7 @@ def test_read_clearance_m_to_mm_conversion():
 
     # Patch typed() to return our mock
     with patch("ai_sw_bridge.observe_clearance.typed") as mock_typed:
+
         def typed_side_effect(obj, iface, module=None):
             if iface == "IAssemblyDoc":
                 return mock_asm_typed
@@ -155,6 +157,7 @@ def test_read_clearance_touching_returns_true():
     mock_doc_typed.Extension = ext
 
     with patch("ai_sw_bridge.observe_clearance.typed") as mock_typed:
+
         def typed_side_effect(obj, iface, module=None):
             if iface == "IAssemblyDoc":
                 return mock_asm_typed
@@ -188,6 +191,7 @@ def test_read_clearance_select2_failure_returns_error():
     mock_doc_typed.ClearSelection2 = MagicMock()
 
     with patch("ai_sw_bridge.observe_clearance.typed") as mock_typed:
+
         def typed_side_effect(obj, iface, module=None):
             if iface == "IAssemblyDoc":
                 return mock_asm_typed
@@ -227,6 +231,7 @@ def test_read_clearance_create_measure_none_returns_error():
     mock_doc_typed.Extension = ext
 
     with patch("ai_sw_bridge.observe_clearance.typed") as mock_typed:
+
         def typed_side_effect(obj, iface, module=None):
             if iface == "IAssemblyDoc":
                 return mock_asm_typed
@@ -244,12 +249,15 @@ def test_read_clearance_create_measure_none_returns_error():
 
 # ── CLI subcommand parser tests ──────────────────────────────────────────
 
+
 def test_clearance_subcommand_in_parser():
     """The 'clearance' subcommand is registered in the CLI parser."""
     from ai_sw_bridge.cli.observe import _build_parser
 
     parser = _build_parser()
-    args = parser.parse_args(["clearance", "--comp-a", "block-1", "--comp-b", "block-2"])
+    args = parser.parse_args(
+        ["clearance", "--comp-a", "block-1", "--comp-b", "block-2"]
+    )
     assert args.tool == "clearance"
     assert args.comp_a == "block-1"
     assert args.comp_b == "block-2"

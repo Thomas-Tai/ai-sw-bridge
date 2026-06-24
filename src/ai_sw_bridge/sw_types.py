@@ -12,7 +12,6 @@ This file contains:
     assertion (catches CHM-mismatched calls early).
 """
 
-
 from __future__ import annotations
 
 
@@ -69,7 +68,9 @@ SW_CONSTRAINT_TYPE_DISTANCE = 1  # swConstraintType_DISTANCE
 SW_CONSTRAINT_TYPE_ANGLE = 2  # swConstraintType_ANGLE
 SW_CONSTRAINT_TYPE_RADIUS = 3  # swConstraintType_RADIUS
 SW_CONSTRAINT_TYPE_HORIZONTAL = 4  # swConstraintType_HORIZONTAL
-SW_CONSTRAINT_TYPE_VERTICAL = 5  # swConstraintType_VERTICAL -- Applies only to sketch lines
+SW_CONSTRAINT_TYPE_VERTICAL = (
+    5  # swConstraintType_VERTICAL -- Applies only to sketch lines
+)
 SW_CONSTRAINT_TYPE_TANGENT = 6  # swConstraintType_TANGENT
 SW_CONSTRAINT_TYPE_PARALLEL = 7  # swConstraintType_PARALLEL
 SW_CONSTRAINT_TYPE_PERPENDICULAR = 8  # swConstraintType_PERPENDICULAR
@@ -90,7 +91,9 @@ SW_CONSTRAINT_TYPE_ARCANGBOTTOM = 22  # swConstraintType_ARCANGBOTTOM
 SW_CONSTRAINT_TYPE_ARCANGLEFT = 23  # swConstraintType_ARCANGLEFT
 SW_CONSTRAINT_TYPE_ARCANGRIGHT = 24  # swConstraintType_ARCANGRIGHT
 SW_CONSTRAINT_TYPE_HORIZPOINTS = 25  # swConstraintType_HORIZPOINTS
-SW_CONSTRAINT_TYPE_VERTPOINTS = 26  # swConstraintType_VERTPOINTS -- Applies only to sketch points
+SW_CONSTRAINT_TYPE_VERTPOINTS = (
+    26  # swConstraintType_VERTPOINTS -- Applies only to sketch points
+)
 SW_CONSTRAINT_TYPE_COLINEAR = 27  # swConstraintType_COLINEAR
 SW_CONSTRAINT_TYPE_CORADIAL = 28  # swConstraintType_CORADIAL
 SW_CONSTRAINT_TYPE_SNAPGRID = 29  # swConstraintType_SNAPGRID
@@ -111,7 +114,9 @@ SW_CONSTRAINT_TYPE_ANGLE3P = 43  # swConstraintType_ANGLE3P
 SW_CONSTRAINT_TYPE_ARCLENGTH = 44  # swConstraintType_ARCLENGTH
 SW_CONSTRAINT_TYPE_NORMAL = 45  # swConstraintType_NORMAL
 SW_CONSTRAINT_TYPE_NORMALPOINTS = 46  # swConstraintType_NORMALPOINTS
-SW_CONSTRAINT_TYPE_SKETCHOFFSET = 47  # swConstraintType_SKETCHOFFSET -- Between entities of the same sketch
+SW_CONSTRAINT_TYPE_SKETCHOFFSET = (
+    47  # swConstraintType_SKETCHOFFSET -- Between entities of the same sketch
+)
 SW_CONSTRAINT_TYPE_ALONGX = 48  # swConstraintType_ALONGX
 SW_CONSTRAINT_TYPE_ALONGY = 49  # swConstraintType_ALONGY
 SW_CONSTRAINT_TYPE_ALONGZ = 50  # swConstraintType_ALONGZ
@@ -134,22 +139,34 @@ SW_CONSTRAINT_TYPE_ALONGXPOINTS3D = 66  # swConstraintType_ALONGXPOINTS3D
 SW_CONSTRAINT_TYPE_ALONGYPOINTS3D = 67  # swConstraintType_ALONGYPOINTS3D
 SW_CONSTRAINT_TYPE_TRACTION = 68  # swConstraintType_TRACTION
 SW_CONSTRAINT_TYPE_BELTTRACTION = 69  # swConstraintType_BELTTRACTION
-SW_CONSTRAINT_TYPE_BLOCKFIXEDLOCK = 70  # swConstraintType_BLOCKFIXEDLOCK -- Lock two blocks together
+SW_CONSTRAINT_TYPE_BLOCKFIXEDLOCK = (
+    70  # swConstraintType_BLOCKFIXEDLOCK -- Lock two blocks together
+)
 SW_CONSTRAINT_TYPE_BLOCKNORMALLOCK = 71  # swConstraintType_BLOCKNORMALLOCK -- Lock blocks to be normal to one another (3D sketch)
 SW_CONSTRAINT_TYPE_BLOCKROTATELOCK = 72  # swConstraintType_BLOCKROTATELOCK -- Lock blocks to rotate around each other (3D sketch)
 SW_CONSTRAINT_TYPE_FAKESLOTCONSTRAINT = 73  # swConstraintType_FAKESLOTCONSTRAINT -- Not actually a constraint; for display purposes only
 SW_CONSTRAINT_TYPE_FIXEDSLOT = 74  # swConstraintType_FIXEDSLOT -- Fix a slot
-SW_CONSTRAINT_TYPE_SAMESLOTS = 75  # swConstraintType_SAMESLOTS -- Same slot width and length
+SW_CONSTRAINT_TYPE_SAMESLOTS = (
+    75  # swConstraintType_SAMESLOTS -- Same slot width and length
+)
 SW_CONSTRAINT_TYPE_LINEARPATTCNT = 76  # swConstraintType_LINEARPATTCNT
 SW_CONSTRAINT_TYPE_CIRCULARPATTCNT = 77  # swConstraintType_CIRCULARPATTCNT
-SW_CONSTRAINT_TYPE_RADIALOFFSET = 78  # swConstraintType_RADIALOFFSET -- For routing pipe offsets
-SW_CONSTRAINT_TYPE_PLANAROFFSET = 79  # swConstraintType_PLANAROFFSET -- For routing pipe offsets
+SW_CONSTRAINT_TYPE_RADIALOFFSET = (
+    78  # swConstraintType_RADIALOFFSET -- For routing pipe offsets
+)
+SW_CONSTRAINT_TYPE_PLANAROFFSET = (
+    79  # swConstraintType_PLANAROFFSET -- For routing pipe offsets
+)
 SW_CONSTRAINT_TYPE_EQUALCURV3DALIGN = 80  # swConstraintType_EQUALCURV3DALIGN -- Aligned equal curvature between 3D splines
 SW_CONSTRAINT_TYPE_FLANGEFACEDIST = 81  # swConstraintType_FLANGEFACEDIST -- Distance from virtual point to the relevant flange face
 SW_CONSTRAINT_TYPE_CONICRHO = 82  # swConstraintType_CONICRHO
 SW_CONSTRAINT_TYPE_C3TOUCH = 83  # swConstraintType_C3TOUCH
-SW_CONSTRAINT_TYPE_DOUBLEANGLE = 84  # swConstraintType_DOUBLEANGLE -- Double angle display
-SW_CONSTRAINT_TYPE_SAMECURVELENGTH = 85  # swConstraintType_SAMECURVELENGTH -- Equal arc/spline length
+SW_CONSTRAINT_TYPE_DOUBLEANGLE = (
+    84  # swConstraintType_DOUBLEANGLE -- Double angle display
+)
+SW_CONSTRAINT_TYPE_SAMECURVELENGTH = (
+    85  # swConstraintType_SAMECURVELENGTH -- Equal arc/spline length
+)
 
 # swCustomInfoType_e: Custom property types.
 SW_CUSTOM_INFO_UNKNOWN = 0  # swCustomInfoUnknown
@@ -161,13 +178,19 @@ SW_CUSTOM_INFO_DATE = 64  # swCustomInfoDate -- Datetime value
 SW_CUSTOM_INFO_EQUATION = 105  # swCustomInfoEquation -- Equation value
 
 # swCustomPropertyAddOption_e: Options when adding custom properties.
-SW_CUSTOM_PROPERTY_ONLY_IF_NEW = 0  # swCustomPropertyOnlyIfNew -- Add the custom property only if it is new
+SW_CUSTOM_PROPERTY_ONLY_IF_NEW = (
+    0  # swCustomPropertyOnlyIfNew -- Add the custom property only if it is new
+)
 SW_CUSTOM_PROPERTY_DELETE_AND_ADD = 1  # swCustomPropertyDeleteAndAdd -- Delete an existing custom property having the same name and add the new custom property
 SW_CUSTOM_PROPERTY_REPLACE_VALUE = 2  # swCustomPropertyReplaceValue -- Replace the value of an existing custom property having the same name
 
 # swDimensionType_e: Types of dimensions.
-SW_DIMENSION_TYPE_UNKNOWN = 0  # swDimensionTypeUnknown -- Dimension type could not be determined
-SW_ORDINATE_DIMENSION = 1  # swOrdinateDimension -- Base ordinate and its subordinates are of this type
+SW_DIMENSION_TYPE_UNKNOWN = (
+    0  # swDimensionTypeUnknown -- Dimension type could not be determined
+)
+SW_ORDINATE_DIMENSION = (
+    1  # swOrdinateDimension -- Base ordinate and its subordinates are of this type
+)
 SW_LINEAR_DIMENSION = 2  # swLinearDimension -- Linear dimension type
 SW_ANGULAR_DIMENSION = 3  # swAngularDimension -- Angular dimension type
 SW_ARC_LENGTH_DIMENSION = 4  # swArcLengthDimension -- Arc length dimension type
@@ -180,9 +203,15 @@ SW_CHAMFER_DIMENSION = 10  # swChamferDimension
 SW_HOR_LINEAR_DIMENSION = 11  # swHorLinearDimension -- Horizontal linear dimension
 SW_VERT_LINEAR_DIMENSION = 12  # swVertLinearDimension -- Vertical linear dimension
 SW_SCALAR_DIMENSION = 13  # swScalarDimension
-SW_RADIAL_LINEAR_DIMENSION = 14  # swRadialLinearDimension -- Doubled distance radial dimension
-SW_DIAMETRIC_LINEAR_DIMENSION = 15  # swDiametricLinearDimension -- Doubled distance linear dimension
-SW_ANGULAR_ORDINATE_DIMENSION = 16  # swAngularOrdinateDimension -- Angular ordinate dimension
+SW_RADIAL_LINEAR_DIMENSION = (
+    14  # swRadialLinearDimension -- Doubled distance radial dimension
+)
+SW_DIAMETRIC_LINEAR_DIMENSION = (
+    15  # swDiametricLinearDimension -- Doubled distance linear dimension
+)
+SW_ANGULAR_ORDINATE_DIMENSION = (
+    16  # swAngularOrdinateDimension -- Angular ordinate dimension
+)
 
 # swDocumentTypes_e: Document types.
 SW_DOC_NONE = 0  # swDocNONE
@@ -236,8 +265,12 @@ SW_DWG_TEMPLATE_NONE = 13  # swDwgTemplateNone
 SW_END_COND_BLIND = 0  # swEndCondBlind
 SW_END_COND_THROUGH_ALL = 1  # swEndCondThroughAll
 SW_END_COND_THROUGH_NEXT = 2  # swEndCondThroughNext
-SW_END_COND_UP_TO_VERTEX = 3  # swEndCondUpToVertex -- Do not use; superseded by swEndCondUpToSelection
-SW_END_COND_UP_TO_SURFACE = 4  # swEndCondUpToSurface -- Do not use; superseded by swEndCondUpToSelection
+SW_END_COND_UP_TO_VERTEX = (
+    3  # swEndCondUpToVertex -- Do not use; superseded by swEndCondUpToSelection
+)
+SW_END_COND_UP_TO_SURFACE = (
+    4  # swEndCondUpToSurface -- Do not use; superseded by swEndCondUpToSelection
+)
 SW_END_COND_OFFSET_FROM_SURFACE = 5  # swEndCondOffsetFromSurface
 SW_END_COND_MID_PLANE = 6  # swEndCondMidPlane
 SW_END_COND_UP_TO_BODY = 7  # swEndCondUpToBody
@@ -255,7 +288,9 @@ SW_EXPORT_DATA_EXPORT_SPECIFIED_SHEETS = 3  # swExportData_ExportSpecifiedSheets
 
 # swExportToDWG_e: Options for the Action parameter of IPartDoc::ExportToDWG2.
 SW_EXPORT_TO_DWG_EXPORT_SHEET_METAL = 1  # swExportToDWG_ExportSheetMetal
-SW_EXPORT_TO_DWG_EXPORT_SELECTED_FACES_OR_LOOPS = 2  # swExportToDWG_ExportSelectedFacesOrLoops
+SW_EXPORT_TO_DWG_EXPORT_SELECTED_FACES_OR_LOOPS = (
+    2  # swExportToDWG_ExportSelectedFacesOrLoops
+)
 SW_EXPORT_TO_DWG_EXPORT_ANNOTATION_VIEWS = 3  # swExportToDWG_ExportAnnotationViews
 
 # swFeatureChamferOption_e: Chamfer feature options. Bitmask.
@@ -282,9 +317,13 @@ SW_FILE_SAVE_FORMAT_NOT_AVAILABLE = 32  # swFileSaveFormatNotAvailable
 SW_FILE_SAVE_AS_DO_NOT_OVERWRITE = 128  # swFileSaveAsDoNotOverwrite
 SW_FILE_SAVE_AS_INVALID_FILE_EXTENSION = 256  # swFileSaveAsInvalidFileExtension
 SW_FILE_SAVE_AS_BAD_EDRAWINGS_VERSION = 1024  # swFileSaveAsBadEDrawingsVersion
-SW_FILE_SAVE_AS_NAME_EXCEEDS_MAX_PATH_LENGTH = 2048  # swFileSaveAsNameExceedsMaxPathLength
+SW_FILE_SAVE_AS_NAME_EXCEEDS_MAX_PATH_LENGTH = (
+    2048  # swFileSaveAsNameExceedsMaxPathLength
+)
 SW_FILE_SAVE_REQUIRES_SAVING_REFERENCES = 8192  # swFileSaveRequiresSavingReferences
-SW_FILE_SAVE_AS_DETACHED_DRAWINGS_NOT_SUPPORTED = 16384  # swFileSaveAsDetachedDrawingsNotSupported
+SW_FILE_SAVE_AS_DETACHED_DRAWINGS_NOT_SUPPORTED = (
+    16384  # swFileSaveAsDetachedDrawingsNotSupported
+)
 
 # swHingeMateEntityType_e: Hinge mate entity types.
 SW_HINGE_MATE_ENTITY_TYPE_CONCENTRIC = 0  # swHingeMateEntityType_Concentric -- Select two concentric entities; valid selections are the same as for concentric mates
@@ -325,24 +364,44 @@ SW_PERSIST_REFERENCED_OBJECT_SUPPRESSED = 2  # swPersistReferencedObject_Suppres
 SW_PERSIST_REFERENCED_OBJECT_DELETED = 4  # swPersistReferencedObject_Deleted
 
 # swRackPinionMateDistanceOptions_e: Rack and pinion mate distance options.
-SW_PINION_PITCH_DIAMETER = 0  # swPinionPitchDiameter -- Specify the pinion pitch diameter
+SW_PINION_PITCH_DIAMETER = (
+    0  # swPinionPitchDiameter -- Specify the pinion pitch diameter
+)
 SW_RACK_TRAVEL_PER_REVOLUTION = 1  # swRackTravelPerRevolution -- Specify the distance the rack travels for each full rotation of the pinion
 
 # swRefPlaneReferenceConstraints_e: Reference plane constraints. Bitmask.
 SW_REF_PLANE_REFERENCE_CONSTRAINT_PARALLEL = 1  # swRefPlaneReferenceConstraint_Parallel
-SW_REF_PLANE_REFERENCE_CONSTRAINT_PERPENDICULAR = 2  # swRefPlaneReferenceConstraint_Perpendicular
-SW_REF_PLANE_REFERENCE_CONSTRAINT_COINCIDENT = 4  # swRefPlaneReferenceConstraint_Coincident
+SW_REF_PLANE_REFERENCE_CONSTRAINT_PERPENDICULAR = (
+    2  # swRefPlaneReferenceConstraint_Perpendicular
+)
+SW_REF_PLANE_REFERENCE_CONSTRAINT_COINCIDENT = (
+    4  # swRefPlaneReferenceConstraint_Coincident
+)
 SW_REF_PLANE_REFERENCE_CONSTRAINT_DISTANCE = 8  # swRefPlaneReferenceConstraint_Distance
 SW_REF_PLANE_REFERENCE_CONSTRAINT_ANGLE = 16  # swRefPlaneReferenceConstraint_Angle
 SW_REF_PLANE_REFERENCE_CONSTRAINT_TANGENT = 32  # swRefPlaneReferenceConstraint_Tangent
 SW_REF_PLANE_REFERENCE_CONSTRAINT_PROJECT = 64  # swRefPlaneReferenceConstraint_Project
-SW_REF_PLANE_REFERENCE_CONSTRAINT_MID_PLANE = 128  # swRefPlaneReferenceConstraint_MidPlane
-SW_REF_PLANE_REFERENCE_CONSTRAINT_OPTION_FLIP = 256  # swRefPlaneReferenceConstraint_OptionFlip
-SW_REF_PLANE_REFERENCE_CONSTRAINT_OPTION_ORIGIN_ON_CURVE = 512  # swRefPlaneReferenceConstraint_OptionOriginOnCurve
-SW_REF_PLANE_REFERENCE_CONSTRAINT_OPTION_PROJECT_TO_NEAREST_LOCATION = 1028  # swRefPlaneReferenceConstraint_OptionProjectToNearestLocation
-SW_REF_PLANE_REFERENCE_CONSTRAINT_OPTION_PROJECT_ALONG_SKETCH_NORMAL = 2056  # swRefPlaneReferenceConstraint_OptionProjectAlongSketchNormal
-SW_REF_PLANE_REFERENCE_CONSTRAINT_PARALLEL_TO_SCREEN = 4096  # swRefPlaneReferenceConstraint_ParallelToScreen
-SW_REF_PLANE_REFERENCE_CONSTRAINT_OPTION_REFERENCE_FLIP = 8192  # swRefPlaneReferenceConstraint_OptionReferenceFlip
+SW_REF_PLANE_REFERENCE_CONSTRAINT_MID_PLANE = (
+    128  # swRefPlaneReferenceConstraint_MidPlane
+)
+SW_REF_PLANE_REFERENCE_CONSTRAINT_OPTION_FLIP = (
+    256  # swRefPlaneReferenceConstraint_OptionFlip
+)
+SW_REF_PLANE_REFERENCE_CONSTRAINT_OPTION_ORIGIN_ON_CURVE = (
+    512  # swRefPlaneReferenceConstraint_OptionOriginOnCurve
+)
+SW_REF_PLANE_REFERENCE_CONSTRAINT_OPTION_PROJECT_TO_NEAREST_LOCATION = (
+    1028  # swRefPlaneReferenceConstraint_OptionProjectToNearestLocation
+)
+SW_REF_PLANE_REFERENCE_CONSTRAINT_OPTION_PROJECT_ALONG_SKETCH_NORMAL = (
+    2056  # swRefPlaneReferenceConstraint_OptionProjectAlongSketchNormal
+)
+SW_REF_PLANE_REFERENCE_CONSTRAINT_PARALLEL_TO_SCREEN = (
+    4096  # swRefPlaneReferenceConstraint_ParallelToScreen
+)
+SW_REF_PLANE_REFERENCE_CONSTRAINT_OPTION_REFERENCE_FLIP = (
+    8192  # swRefPlaneReferenceConstraint_OptionReferenceFlip
+)
 
 # swSaveAsOptions_e: Save As options. Bitmask.
 SW_SAVE_AS_OPTIONS_SILENT = 1  # swSaveAsOptions_Silent
@@ -351,11 +410,17 @@ SW_SAVE_AS_OPTIONS_SAVE_REFERENCED = 4  # swSaveAsOptions_SaveReferenced
 SW_SAVE_AS_OPTIONS_AVOID_REBUILD_ON_SAVE = 8  # swSaveAsOptions_AvoidRebuildOnSave
 SW_SAVE_AS_OPTIONS_IGNORE_BIOGRAPHY = 256  # swSaveAsOptions_IgnoreBiography
 SW_SAVE_AS_OPTIONS_COPY_AND_OPEN = 512  # swSaveAsOptions_CopyAndOpen
-SW_SAVE_AS_OPTIONS_INCLUDE_VIRTUAL_SUB_ASM_COMPS = 1024  # swSaveAsOptions_IncludeVirtualSubAsmComps
-SW_SAVE_AS_OPTIONS_EXPORT_TO2DPDF_FROM_INSPECTION = 2048  # swSaveAsOptions_ExportTo2DPdfFromInspection
+SW_SAVE_AS_OPTIONS_INCLUDE_VIRTUAL_SUB_ASM_COMPS = (
+    1024  # swSaveAsOptions_IncludeVirtualSubAsmComps
+)
+SW_SAVE_AS_OPTIONS_EXPORT_TO2DPDF_FROM_INSPECTION = (
+    2048  # swSaveAsOptions_ExportTo2DPdfFromInspection
+)
 
 # swSaveAsVersion_e: Version of a particular format to save the document.
-SW_SAVE_AS_CURRENT_VERSION = 0  # swSaveAsCurrentVersion -- This is the typical save behavior.
+SW_SAVE_AS_CURRENT_VERSION = (
+    0  # swSaveAsCurrentVersion -- This is the typical save behavior.
+)
 SW_SAVE_AS_FORMAT_PRO_E = 2  # swSaveAsFormatProE
 SW_SAVE_AS_STANDARD_DRAWING = 3  # swSaveAsStandardDrawing
 SW_SAVE_AS_DETACHED_DRAWING = 4  # swSaveAsDetachedDrawing
@@ -375,7 +440,9 @@ SW_FULL_ROUND_FILLET = 3  # swFullRoundFillet
 
 # swSlotMateConstraintOptions_e: Slot mate constraint options.
 SW_SLOT_MATE_CONSTRAINT_OPTION_FREE = 0  # swSlotMateConstraintOption_Free -- Allow the component to move freely in the slot
-SW_SLOT_MATE_CONSTRAINT_OPTION_CENTERED = 1  # swSlotMateConstraintOption_Centered -- Center the component in the slot
+SW_SLOT_MATE_CONSTRAINT_OPTION_CENTERED = (
+    1  # swSlotMateConstraintOption_Centered -- Center the component in the slot
+)
 SW_SLOT_MATE_CONSTRAINT_OPTION_DISTANCE = 2  # swSlotMateConstraintOption_Distance -- Place the component axis at a specified distance from the end of the slot
 SW_SLOT_MATE_CONSTRAINT_OPTION_PERCENT = 3  # swSlotMateConstraintOption_Percent -- Place the component axis at a specified percent of slot length distance from the end of the slot
 
@@ -436,7 +503,13 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     "IAssemblyDoc.AddComponent4": {
         "args_count": 5,
         "arg_names": ["CompName", "ConfigName", "X", "Y", "Z"],
-        "arg_types": ["system.string", "system.string", "system.double", "system.double", "system.double"],
+        "arg_types": [
+            "system.string",
+            "system.string",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "Component2",
         "summary": "Obsolete. Superseded by IAssemblyDoc::AddComponent5.",
     },
@@ -470,8 +543,28 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "IAssemblyDoc.MirrorComponents": {
         "args_count": 9,
-        "arg_names": ["Plane", "ComponentsToInstance", "ComponentsToMirror", "MirroredComponentFilenames", "RecreateMates", "ComponentModifier", "ComponentNameModifier", "MirroredFileLocation", "CopyCustomProperties"],
-        "arg_types": ["system.object", "system.object", "system.object", "system.object", "system.bool", "system.int", "system.string", "system.string", "system.bool"],
+        "arg_names": [
+            "Plane",
+            "ComponentsToInstance",
+            "ComponentsToMirror",
+            "MirroredComponentFilenames",
+            "RecreateMates",
+            "ComponentModifier",
+            "ComponentNameModifier",
+            "MirroredFileLocation",
+            "CopyCustomProperties",
+        ],
+        "arg_types": [
+            "system.object",
+            "system.object",
+            "system.object",
+            "system.object",
+            "system.bool",
+            "system.int",
+            "system.string",
+            "system.string",
+            "system.bool",
+        ],
         "return_type": "System.object",
         "summary": "Obsolete. Superseded by IAssemblyDoc::MirrorComponents2.",
     },
@@ -561,8 +654,24 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "IConfigurationManager.AddConfiguration2": {
         "args_count": 7,
-        "arg_names": ["Name", "Comment", "AlternateName", "Options", "ParentConfigName", "Description", "Rebuild"],
-        "arg_types": ["system.string", "system.string", "system.string", "system.int", "system.string", "system.string", "system.bool"],
+        "arg_names": [
+            "Name",
+            "Comment",
+            "AlternateName",
+            "Options",
+            "ParentConfigName",
+            "Description",
+            "Rebuild",
+        ],
+        "arg_types": [
+            "system.string",
+            "system.string",
+            "system.string",
+            "system.int",
+            "system.string",
+            "system.string",
+            "system.bool",
+        ],
         "return_type": "Configuration",
         "summary": "Creates a new configuration.",
     },
@@ -701,29 +810,93 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "IDrawingDoc.CreateDetailViewAt4": {
         "args_count": 12,
-        "arg_names": ["X", "Y", "Z", "Style", "Scale1", "Scale2", "LabelIn", "Showtype", "FullOutline", "JaggedOutline", "NoOutline", "ShapeIntensity"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.int", "system.double", "system.double", "system.string", "system.int", "system.bool", "system.bool", "system.bool", "system.int"],
+        "arg_names": [
+            "X",
+            "Y",
+            "Z",
+            "Style",
+            "Scale1",
+            "Scale2",
+            "LabelIn",
+            "Showtype",
+            "FullOutline",
+            "JaggedOutline",
+            "NoOutline",
+            "ShapeIntensity",
+        ],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.string",
+            "system.int",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+        ],
         "return_type": "System.object",
         "summary": "Creates a detail view in a drawing document.",
     },
     "IDrawingDoc.CreateDrawViewFromModelView3": {
         "args_count": 5,
         "arg_names": ["ModelName", "ViewName", "LocX", "LocY", "LocZ"],
-        "arg_types": ["system.string", "system.string", "system.double", "system.double", "system.double"],
+        "arg_types": [
+            "system.string",
+            "system.string",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "View",
         "summary": "Creates a drawing view on the current drawing sheet using the specified model view.",
     },
     "IDrawingDoc.CreateFlatPatternViewFromModelView3": {
         "args_count": 7,
-        "arg_names": ["ModelName", "ConfigName", "LocX", "LocY", "LocZ", "HideBendLines", "FlipView"],
-        "arg_types": ["system.string", "system.string", "system.double", "system.double", "system.double", "system.bool", "system.bool"],
+        "arg_names": [
+            "ModelName",
+            "ConfigName",
+            "LocX",
+            "LocY",
+            "LocZ",
+            "HideBendLines",
+            "FlipView",
+        ],
+        "arg_types": [
+            "system.string",
+            "system.string",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+        ],
         "return_type": "View",
         "summary": "Creates a flat-pattern view from a model view.",
     },
     "IDrawingDoc.CreateSectionViewAt5": {
         "args_count": 7,
-        "arg_names": ["X", "Y", "Z", "SectionLabel", "Options", "ExcludedComponents", "SectionDepth"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.string", "system.int", "system.object", "system.double"],
+        "arg_names": [
+            "X",
+            "Y",
+            "Z",
+            "SectionLabel",
+            "Options",
+            "ExcludedComponents",
+            "SectionDepth",
+        ],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.string",
+            "system.int",
+            "system.object",
+            "system.double",
+        ],
         "return_type": "View",
         "summary": "Creates the specified section view.",
     },
@@ -743,15 +916,51 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "IDrawingDoc.InsertModelAnnotations3": {
         "args_count": 6,
-        "arg_names": ["Option", "Types", "AllViews", "DuplicateDims", "HiddenFeatureDims", "UsePlacementInSketch"],
-        "arg_types": ["system.int", "system.int", "system.bool", "system.bool", "system.bool", "system.bool"],
+        "arg_names": [
+            "Option",
+            "Types",
+            "AllViews",
+            "DuplicateDims",
+            "HiddenFeatureDims",
+            "UsePlacementInSketch",
+        ],
+        "arg_types": [
+            "system.int",
+            "system.int",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+        ],
         "return_type": "System.object",
         "summary": "Inserts model annotations into this drawing document's currently selected drawing view.",
     },
     "IDrawingDoc.NewSheet3": {
         "args_count": 10,
-        "arg_names": ["Name", "PaperSize", "TemplateIn", "Scale1", "Scale2", "FirstAngle", "TemplateName", "Width", "Height", "PropertyViewName"],
-        "arg_types": ["system.string", "system.int", "system.int", "system.double", "system.double", "system.bool", "system.string", "system.double", "system.double", "system.string"],
+        "arg_names": [
+            "Name",
+            "PaperSize",
+            "TemplateIn",
+            "Scale1",
+            "Scale2",
+            "FirstAngle",
+            "TemplateName",
+            "Width",
+            "Height",
+            "PropertyViewName",
+        ],
+        "arg_types": [
+            "system.string",
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.string",
+            "system.double",
+            "system.double",
+            "system.string",
+        ],
         "return_type": "System.bool",
         "summary": "Obsolete. Superseded by IDrawingDoc::NewSheet4.",
     },
@@ -914,14 +1123,14 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
         "arg_names": [],
         "arg_types": [],
         "return_type": "System.string",
-        "summary": "Gets the type of feature. NOTE: To get the underlying type of feature of an Instant3D feature (i.e., \"ICE\"), call this method; otherwise, call IFeature::GetTypeName2.",
+        "summary": 'Gets the type of feature. NOTE: To get the underlying type of feature of an Instant3D feature (i.e., "ICE"), call this method; otherwise, call IFeature::GetTypeName2.',
     },
     "IFeature.GetTypeName2": {
         "args_count": 0,
         "arg_names": [],
         "arg_types": [],
         "return_type": "System.string",
-        "summary": "Gets the type of feature. NOTE: To get the underlying type of feature of an Instant3D feature (i.e., \"ICE\"), call IFeature::GetTypeName; otherwise, call this method.",
+        "summary": 'Gets the type of feature. NOTE: To get the underlying type of feature of an Instant3D feature (i.e., "ICE"), call IFeature::GetTypeName; otherwise, call this method.',
     },
     "IFeature.IsSuppressed": {
         "args_count": 0,
@@ -967,43 +1176,313 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "IFeatureManager.FeatureCircularPattern5": {
         "args_count": 14,
-        "arg_names": ["Number", "Spacing", "FlipDirection", "DName", "GeometryPattern", "EqualSpacing", "VaryInstance", "SyncSubAssemblies", "BDir2", "BSymmetric", "Number2", "Spacing2", "DName2", "EqualSpacing2"],
-        "arg_types": ["system.int", "system.double", "system.bool", "system.string", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.int", "system.double", "system.string", "system.bool"],
+        "arg_names": [
+            "Number",
+            "Spacing",
+            "FlipDirection",
+            "DName",
+            "GeometryPattern",
+            "EqualSpacing",
+            "VaryInstance",
+            "SyncSubAssemblies",
+            "BDir2",
+            "BSymmetric",
+            "Number2",
+            "Spacing2",
+            "DName2",
+            "EqualSpacing2",
+        ],
+        "arg_types": [
+            "system.int",
+            "system.double",
+            "system.bool",
+            "system.string",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.double",
+            "system.string",
+            "system.bool",
+        ],
         "return_type": "Feature",
         "summary": "Obsolete. See IFeatureManager::CreateFeature and the Remarks in ICircularPatternFeatureData and ILocalCircularPatternFeatureData.",
     },
     "IFeatureManager.FeatureCut4": {
         "args_count": 27,
-        "arg_names": ["Sd", "Flip", "Dir", "T1", "T2", "D1", "D2", "Dchk1", "Dchk2", "Ddir1", "Ddir2", "Dang1", "Dang2", "OffsetReverse1", "OffsetReverse2", "TranslateSurface1", "TranslateSurface2", "NormalCut", "UseFeatScope", "UseAutoSelect", "AssemblyFeatureScope", "AutoSelectComponents", "PropagateFeatureToParts", "T0", "StartOffset", "FlipStartOffset", "OptimizeGeometry"],
-        "arg_types": ["system.bool", "system.bool", "system.bool", "system.int", "system.int", "system.double", "system.double", "system.bool", "system.bool", "system.bool", "system.bool", "system.double", "system.double", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.int", "system.double", "system.bool", "system.bool"],
+        "arg_names": [
+            "Sd",
+            "Flip",
+            "Dir",
+            "T1",
+            "T2",
+            "D1",
+            "D2",
+            "Dchk1",
+            "Dchk2",
+            "Ddir1",
+            "Ddir2",
+            "Dang1",
+            "Dang2",
+            "OffsetReverse1",
+            "OffsetReverse2",
+            "TranslateSurface1",
+            "TranslateSurface2",
+            "NormalCut",
+            "UseFeatScope",
+            "UseAutoSelect",
+            "AssemblyFeatureScope",
+            "AutoSelectComponents",
+            "PropagateFeatureToParts",
+            "T0",
+            "StartOffset",
+            "FlipStartOffset",
+            "OptimizeGeometry",
+        ],
+        "arg_types": [
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.double",
+            "system.bool",
+            "system.bool",
+        ],
         "return_type": "Feature",
         "summary": "Creates a cut extrude feature.",
     },
     "IFeatureManager.FeatureExtrusion2": {
         "args_count": 23,
-        "arg_names": ["Sd", "Flip", "Dir", "T1", "T2", "D1", "D2", "Dchk1", "Dchk2", "Ddir1", "Ddir2", "Dang1", "Dang2", "OffsetReverse1", "OffsetReverse2", "TranslateSurface1", "TranslateSurface2", "Merge", "UseFeatScope", "UseAutoSelect", "T0", "StartOffset", "FlipStartOffset"],
-        "arg_types": ["system.bool", "system.bool", "system.bool", "system.int", "system.int", "system.double", "system.double", "system.bool", "system.bool", "system.bool", "system.bool", "system.double", "system.double", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.int", "system.double", "system.bool"],
+        "arg_names": [
+            "Sd",
+            "Flip",
+            "Dir",
+            "T1",
+            "T2",
+            "D1",
+            "D2",
+            "Dchk1",
+            "Dchk2",
+            "Ddir1",
+            "Ddir2",
+            "Dang1",
+            "Dang2",
+            "OffsetReverse1",
+            "OffsetReverse2",
+            "TranslateSurface1",
+            "TranslateSurface2",
+            "Merge",
+            "UseFeatScope",
+            "UseAutoSelect",
+            "T0",
+            "StartOffset",
+            "FlipStartOffset",
+        ],
+        "arg_types": [
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.double",
+            "system.bool",
+        ],
         "return_type": "Feature",
         "summary": "Obsolete. Superseded by IFeatureManager::FeatureExtrusion3.",
     },
     "IFeatureManager.FeatureExtrusion3": {
         "args_count": 23,
-        "arg_names": ["Sd", "Flip", "Dir", "T1", "T2", "D1", "D2", "Dchk1", "Dchk2", "Ddir1", "Ddir2", "Dang1", "Dang2", "OffsetReverse1", "OffsetReverse2", "TranslateSurface1", "TranslateSurface2", "Merge", "UseFeatScope", "UseAutoSelect", "T0", "StartOffset", "FlipStartOffset"],
-        "arg_types": ["system.bool", "system.bool", "system.bool", "system.int", "system.int", "system.double", "system.double", "system.bool", "system.bool", "system.bool", "system.bool", "system.double", "system.double", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.int", "system.double", "system.bool"],
+        "arg_names": [
+            "Sd",
+            "Flip",
+            "Dir",
+            "T1",
+            "T2",
+            "D1",
+            "D2",
+            "Dchk1",
+            "Dchk2",
+            "Ddir1",
+            "Ddir2",
+            "Dang1",
+            "Dang2",
+            "OffsetReverse1",
+            "OffsetReverse2",
+            "TranslateSurface1",
+            "TranslateSurface2",
+            "Merge",
+            "UseFeatScope",
+            "UseAutoSelect",
+            "T0",
+            "StartOffset",
+            "FlipStartOffset",
+        ],
+        "arg_types": [
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.double",
+            "system.bool",
+        ],
         "return_type": "Feature",
         "summary": "Creates an extruded feature.",
     },
     "IFeatureManager.FeatureLinearPattern5": {
         "args_count": 22,
-        "arg_names": ["Num1", "Spacing1", "Num2", "Spacing2", "FlipDir1", "FlipDir2", "DName1", "DName2", "GeometryPattern", "VaryInstance", "HasOffset1", "HasOffset2", "CtrlByNum1", "CtrlByNum2", "FromCentroid1", "FromCentroid2", "RevOffset1", "RevOffset2", "Offset1", "Offset2", "D2PatternSeedOnly", "SyncSubAssemblies"],
-        "arg_types": ["system.int", "system.double", "system.int", "system.double", "system.bool", "system.bool", "system.string", "system.string", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.double", "system.double", "system.bool", "system.bool"],
+        "arg_names": [
+            "Num1",
+            "Spacing1",
+            "Num2",
+            "Spacing2",
+            "FlipDir1",
+            "FlipDir2",
+            "DName1",
+            "DName2",
+            "GeometryPattern",
+            "VaryInstance",
+            "HasOffset1",
+            "HasOffset2",
+            "CtrlByNum1",
+            "CtrlByNum2",
+            "FromCentroid1",
+            "FromCentroid2",
+            "RevOffset1",
+            "RevOffset2",
+            "Offset1",
+            "Offset2",
+            "D2PatternSeedOnly",
+            "SyncSubAssemblies",
+        ],
+        "arg_types": [
+            "system.int",
+            "system.double",
+            "system.int",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.string",
+            "system.string",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+        ],
         "return_type": "Feature",
         "summary": "Obsolete. See IFeatureManager::CreateFeature and the Remarks in ILinearPatternFeatureData and ILocalLinearPatternFeatureData.",
     },
     "IFeatureManager.FeatureRevolve2": {
         "args_count": 20,
-        "arg_names": ["SingleDir", "IsSolid", "IsThin", "IsCut", "ReverseDir", "BothDirectionUpToSameEntity", "Dir1Type", "Dir2Type", "Dir1Angle", "Dir2Angle", "OffsetReverse1", "OffsetReverse2", "OffsetDistance1", "OffsetDistance2", "ThinType", "ThinThickness1", "ThinThickness2", "Merge", "UseFeatScope", "UseAutoSelect"],
-        "arg_types": ["system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.int", "system.int", "system.double", "system.double", "system.bool", "system.bool", "system.double", "system.double", "system.int", "system.double", "system.double", "system.bool", "system.bool", "system.bool"],
+        "arg_names": [
+            "SingleDir",
+            "IsSolid",
+            "IsThin",
+            "IsCut",
+            "ReverseDir",
+            "BothDirectionUpToSameEntity",
+            "Dir1Type",
+            "Dir2Type",
+            "Dir1Angle",
+            "Dir2Angle",
+            "OffsetReverse1",
+            "OffsetReverse2",
+            "OffsetDistance1",
+            "OffsetDistance2",
+            "ThinType",
+            "ThinThickness1",
+            "ThinThickness2",
+            "Merge",
+            "UseFeatScope",
+            "UseAutoSelect",
+        ],
+        "arg_types": [
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.double",
+            "system.double",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+        ],
         "return_type": "Feature",
         "summary": "Creates a base-, boss-, or cut-revolve feature.",
     },
@@ -1037,64 +1516,231 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "IFeatureManager.InsertFeatureChamfer": {
         "args_count": 8,
-        "arg_names": ["Options", "ChamferType", "Width", "Angle", "OtherDist", "VertexChamDist1", "VertexChamDist2", "VertexChamDist3"],
-        "arg_types": ["system.int", "system.int", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double"],
+        "arg_names": [
+            "Options",
+            "ChamferType",
+            "Width",
+            "Angle",
+            "OtherDist",
+            "VertexChamDist1",
+            "VertexChamDist2",
+            "VertexChamDist3",
+        ],
+        "arg_types": [
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "Feature",
         "summary": "Inserts a chamfer.",
     },
     "IFeatureManager.InsertMirrorFeature2": {
         "args_count": 5,
-        "arg_names": ["BMirrorBody", "BGeometryPattern", "BMerge", "BKnit", "ScopeOptions"],
-        "arg_types": ["system.bool", "system.bool", "system.bool", "system.bool", "system.int"],
+        "arg_names": [
+            "BMirrorBody",
+            "BGeometryPattern",
+            "BMerge",
+            "BKnit",
+            "ScopeOptions",
+        ],
+        "arg_types": [
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+        ],
         "return_type": "Feature",
         "summary": "Mirrors selected features, faces, bodies, and structure systems about a selected plane or planar face.",
     },
     "IFeatureManager.InsertMultiFaceDraft": {
         "args_count": 6,
-        "arg_names": ["Angle", "FlipDir", "EdgeDraft", "PropType", "IsStepDraft", "IsBodyDraft"],
-        "arg_types": ["system.double", "system.bool", "system.bool", "system.int", "system.bool", "system.bool"],
+        "arg_names": [
+            "Angle",
+            "FlipDir",
+            "EdgeDraft",
+            "PropType",
+            "IsStepDraft",
+            "IsBodyDraft",
+        ],
+        "arg_types": [
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.bool",
+            "system.bool",
+        ],
         "return_type": "Feature",
         "summary": "Inserts a multiface draft feature.",
     },
     "IFeatureManager.InsertRefPlane": {
         "args_count": 6,
-        "arg_names": ["FirstConstraint", "FirstConstraintAngleOrDistance", "SecondConstraint", "SecondConstraintAngleOrDistance", "ThirdConstraint", "ThirdConstraintAngleOrDistance"],
-        "arg_types": ["system.int", "system.double", "system.int", "system.double", "system.int", "system.double"],
+        "arg_names": [
+            "FirstConstraint",
+            "FirstConstraintAngleOrDistance",
+            "SecondConstraint",
+            "SecondConstraintAngleOrDistance",
+            "ThirdConstraint",
+            "ThirdConstraintAngleOrDistance",
+        ],
+        "arg_types": [
+            "system.int",
+            "system.double",
+            "system.int",
+            "system.double",
+            "system.int",
+            "system.double",
+        ],
         "return_type": "System.object",
         "summary": "Inserts a constraint-based reference plane using the selected reference entities.",
     },
     "IFeatureManager.InsertReferencePoint": {
         "args_count": 4,
-        "arg_names": ["NRefPointType", "NRefPointAlongCurveType", "DDistance_or_Percent", "NumberOfRefPoints"],
+        "arg_names": [
+            "NRefPointType",
+            "NRefPointAlongCurveType",
+            "DDistance_or_Percent",
+            "NumberOfRefPoints",
+        ],
         "arg_types": ["system.int", "system.int", "system.double", "system.int"],
         "return_type": "System.object",
         "summary": "Creates the geometry for the reference points based on any of these selected entities: edges, faces, planes, vertices, or sketch geometry.",
     },
     "IFeatureManager.InsertRib": {
         "args_count": 10,
-        "arg_names": ["Is2Sided", "ReverseThicknessDir", "Thickness", "ReferenceEdgeIndex", "ReverseMaterialDir", "IsDrafted", "DraftOutward", "DraftAngle", "IsNormToSketch", "IsDraftedFromWall"],
-        "arg_types": ["system.bool", "system.bool", "system.double", "system.int", "system.bool", "system.bool", "system.bool", "system.double", "system.bool", "system.bool"],
+        "arg_names": [
+            "Is2Sided",
+            "ReverseThicknessDir",
+            "Thickness",
+            "ReferenceEdgeIndex",
+            "ReverseMaterialDir",
+            "IsDrafted",
+            "DraftOutward",
+            "DraftAngle",
+            "IsNormToSketch",
+            "IsDraftedFromWall",
+        ],
+        "arg_types": [
+            "system.bool",
+            "system.bool",
+            "system.double",
+            "system.int",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.double",
+            "system.bool",
+            "system.bool",
+        ],
         "return_type": "void",
         "summary": "Inserts a rib.",
     },
     "IFeatureManager.InsertSheetMetalEdgeFlange2": {
         "args_count": 13,
-        "arg_names": ["FlangeEdges", "SketchFeats", "BooleanOptions", "FlangeAngle", "FlangeRadius", "BendPosition", "FlangeOffsetDist", "ReliefType", "FlangeReliefRatio", "FlangeReliefWidth", "FlangeReliefDepth", "FlangeSharpType", "CustomBendAllowance"],
-        "arg_types": ["system.object", "system.object", "system.int", "system.double", "system.double", "system.int", "system.double", "system.int", "system.double", "system.double", "system.double", "system.int", "custombendallowance"],
+        "arg_names": [
+            "FlangeEdges",
+            "SketchFeats",
+            "BooleanOptions",
+            "FlangeAngle",
+            "FlangeRadius",
+            "BendPosition",
+            "FlangeOffsetDist",
+            "ReliefType",
+            "FlangeReliefRatio",
+            "FlangeReliefWidth",
+            "FlangeReliefDepth",
+            "FlangeSharpType",
+            "CustomBendAllowance",
+        ],
+        "arg_types": [
+            "system.object",
+            "system.object",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.int",
+            "system.double",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.int",
+            "custombendallowance",
+        ],
         "return_type": "Feature",
         "summary": "Obsolete. Superseded by IFeatureManager::CreateDefinition and IFeatureManager::CreateFeature.",
     },
     "IFeatureManager.InsertWrapFeature2": {
         "args_count": 5,
         "arg_names": ["Type", "Thickness", "ReverseDir", "Method", "MeshFactor"],
-        "arg_types": ["system.int", "system.double", "system.bool", "system.int", "system.int"],
+        "arg_types": [
+            "system.int",
+            "system.double",
+            "system.bool",
+            "system.int",
+            "system.int",
+        ],
         "return_type": "Feature",
         "summary": "Inserts a wrap feature.",
     },
     "IFeatureManager.SimpleHole2": {
         "args_count": 23,
-        "arg_names": ["Dia", "Sd", "Flip", "Dir", "T1", "T2", "D1", "D2", "Dchk1", "Dchk2", "Ddir1", "Ddir2", "Dang1", "Dang2", "OffsetReverse1", "OffsetReverse2", "TranslateSurface1", "TranslateSurface2", "UseFeatScope", "UseAutoSelect", "AssemblyFeatureScope", "AutoSelectComponents", "PropagateFeatureToParts"],
-        "arg_types": ["system.double", "system.bool", "system.bool", "system.bool", "system.int", "system.int", "system.double", "system.double", "system.bool", "system.bool", "system.bool", "system.bool", "system.double", "system.double", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool", "system.bool"],
+        "arg_names": [
+            "Dia",
+            "Sd",
+            "Flip",
+            "Dir",
+            "T1",
+            "T2",
+            "D1",
+            "D2",
+            "Dchk1",
+            "Dchk2",
+            "Ddir1",
+            "Ddir2",
+            "Dang1",
+            "Dang2",
+            "OffsetReverse1",
+            "OffsetReverse2",
+            "TranslateSurface1",
+            "TranslateSurface2",
+            "UseFeatScope",
+            "UseAutoSelect",
+            "AssemblyFeatureScope",
+            "AutoSelectComponents",
+            "PropagateFeatureToParts",
+        ],
+        "arg_types": [
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+        ],
         "return_type": "Feature",
         "summary": "Inserts a simple hole feature.",
     },
@@ -1247,8 +1893,48 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "IModelDoc2.FeatureCut5": {
         "args_count": 19,
-        "arg_names": ["Sd", "Flip", "Dir", "T1", "T2", "D1", "D2", "Dchk1", "Dchk2", "Ddir1", "Ddir2", "Dang1", "Dang2", "OffsetReverse1", "OffsetReverse2", "TranslateSurface1", "TranslateSurface2", "KeepPieceIndex", "NormalCut"],
-        "arg_types": ["system.bool", "system.bool", "system.bool", "system.int", "system.int", "system.double", "system.double", "system.bool", "system.bool", "system.bool", "system.bool", "system.double", "system.double", "system.bool", "system.bool", "system.bool", "system.bool", "system.int", "system.bool"],
+        "arg_names": [
+            "Sd",
+            "Flip",
+            "Dir",
+            "T1",
+            "T2",
+            "D1",
+            "D2",
+            "Dchk1",
+            "Dchk2",
+            "Ddir1",
+            "Ddir2",
+            "Dang1",
+            "Dang2",
+            "OffsetReverse1",
+            "OffsetReverse2",
+            "TranslateSurface1",
+            "TranslateSurface2",
+            "KeepPieceIndex",
+            "NormalCut",
+        ],
+        "arg_types": [
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.bool",
+        ],
         "return_type": "void",
         "summary": "Obsolete. Superseded by IFeatureManager::FeatureCut.",
     },
@@ -1338,15 +2024,65 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "IModelDoc2.InsertSketchText": {
         "args_count": 9,
-        "arg_names": ["Ptx", "Pty", "Ptz", "Text", "Alignment", "FlipDirection", "HorizontalMirror", "WidthFactor", "SpaceBetweenChars"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.string", "system.int", "system.int", "system.int", "system.int", "system.int"],
+        "arg_names": [
+            "Ptx",
+            "Pty",
+            "Ptz",
+            "Text",
+            "Alignment",
+            "FlipDirection",
+            "HorizontalMirror",
+            "WidthFactor",
+            "SpaceBetweenChars",
+        ],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.string",
+            "system.int",
+            "system.int",
+            "system.int",
+            "system.int",
+            "system.int",
+        ],
         "return_type": "System.object",
         "summary": "Inserts sketch text.",
     },
     "IModelDoc2.InsertSurfaceFinishSymbol2": {
         "args_count": 14,
-        "arg_names": ["SymType", "LeaderType", "LocX", "LocY", "LocZ", "LaySymbol", "ArrowType", "MachAllowance", "OtherVals", "ProdMethod", "SampleLen", "MaxRoughness", "MinRoughness", "RoughnessSpacing"],
-        "arg_types": ["system.int", "system.int", "system.double", "system.double", "system.double", "system.int", "system.int", "system.string", "system.string", "system.string", "system.string", "system.string", "system.string", "system.string"],
+        "arg_names": [
+            "SymType",
+            "LeaderType",
+            "LocX",
+            "LocY",
+            "LocZ",
+            "LaySymbol",
+            "ArrowType",
+            "MachAllowance",
+            "OtherVals",
+            "ProdMethod",
+            "SampleLen",
+            "MaxRoughness",
+            "MinRoughness",
+            "RoughnessSpacing",
+        ],
+        "arg_types": [
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.int",
+            "system.int",
+            "system.string",
+            "system.string",
+            "system.string",
+            "system.string",
+            "system.string",
+            "system.string",
+            "system.string",
+        ],
         "return_type": "System.bool",
         "summary": "Obsolete. Superseded by IModelDocExtension::InsertSurfaceFinishSymbol3.",
     },
@@ -1381,7 +2117,13 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     "IModelDoc2.SelectByID": {
         "args_count": 5,
         "arg_names": ["SelID", "SelParams", "X", "Y", "Z"],
-        "arg_types": ["system.string", "system.string", "system.double", "system.double", "system.double"],
+        "arg_types": [
+            "system.string",
+            "system.string",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "System.bool",
         "summary": "Obsolete. Superseded by IModelDocExtension::SelectByID2.",
     },
@@ -1437,14 +2179,41 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     "IModelDocExtension.SaveAs": {
         "args_count": 6,
         "arg_names": ["Name", "Version", "Options", "ExportData", "Errors", "Warnings"],
-        "arg_types": ["system.string", "system.int", "system.int", "system.object", "system.int", "system.int"],
+        "arg_types": [
+            "system.string",
+            "system.int",
+            "system.int",
+            "system.object",
+            "system.int",
+            "system.int",
+        ],
         "return_type": "System.bool",
         "summary": "Obsolete. Superseded by IModelDocExtension::SaveAs2.",
     },
     "IModelDocExtension.SelectByID2": {
         "args_count": 9,
-        "arg_names": ["Name", "Type", "X", "Y", "Z", "Append", "Mark", "Callout", "SelectOption"],
-        "arg_types": ["system.string", "system.string", "system.double", "system.double", "system.double", "system.bool", "system.int", "callout", "system.int"],
+        "arg_names": [
+            "Name",
+            "Type",
+            "X",
+            "Y",
+            "Z",
+            "Append",
+            "Mark",
+            "Callout",
+            "SelectOption",
+        ],
+        "arg_types": [
+            "system.string",
+            "system.string",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.int",
+            "callout",
+            "system.int",
+        ],
         "return_type": "System.bool",
         "summary": "Selects the specified entity.",
     },
@@ -1457,8 +2226,28 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "IPartDoc.ExportToDWG2": {
         "args_count": 9,
-        "arg_names": ["FilePath", "ModelName", "Action", "ExportToSingleFile", "Alignment", "IsXDirFlipped", "IsYDirFlipped", "SheetMetalOptions", "Views"],
-        "arg_types": ["system.string", "system.string", "system.int", "system.bool", "system.object", "system.bool", "system.bool", "system.int", "system.object"],
+        "arg_names": [
+            "FilePath",
+            "ModelName",
+            "Action",
+            "ExportToSingleFile",
+            "Alignment",
+            "IsXDirFlipped",
+            "IsYDirFlipped",
+            "SheetMetalOptions",
+            "Views",
+        ],
+        "arg_types": [
+            "system.string",
+            "system.string",
+            "system.int",
+            "system.bool",
+            "system.object",
+            "system.bool",
+            "system.bool",
+            "system.int",
+            "system.object",
+        ],
         "return_type": "System.bool",
         "summary": "Saves various aspects of a part (sheet metal, faces, loops, and annotation views) to one or more DXF/DWG files, preserving the specified file name.",
     },
@@ -1548,8 +2337,26 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "ISheet.SetProperties2": {
         "args_count": 8,
-        "arg_names": ["PaperSz", "Templ", "Scale1", "Scale2", "FirstAngle", "Width", "Height", "SameCustomPropAsSheetInDocProp"],
-        "arg_types": ["system.int", "system.int", "system.double", "system.double", "system.bool", "system.double", "system.double", "system.bool"],
+        "arg_names": [
+            "PaperSz",
+            "Templ",
+            "Scale1",
+            "Scale2",
+            "FirstAngle",
+            "Width",
+            "Height",
+            "SameCustomPropAsSheetInDocProp",
+        ],
+        "arg_types": [
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.bool",
+            "system.double",
+            "system.double",
+            "system.bool",
+        ],
         "return_type": "void",
         "summary": "Sets the properties for this sheet.",
     },
@@ -1576,64 +2383,172 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "ISketchManager.CreateArc": {
         "args_count": 10,
-        "arg_names": ["XC", "YC", "Zc", "X1", "Y1", "Z1", "X2", "Y2", "Z2", "Direction"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.short"],
+        "arg_names": [
+            "XC",
+            "YC",
+            "Zc",
+            "X1",
+            "Y1",
+            "Z1",
+            "X2",
+            "Y2",
+            "Z2",
+            "Direction",
+        ],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.short",
+        ],
         "return_type": "SketchSegment",
         "summary": "Creates an arc based on a center point, a start point, an end point, and a direction.",
     },
     "ISketchManager.CreateCenterLine": {
         "args_count": 6,
         "arg_names": ["X1", "Y1", "Z1", "X2", "Y2", "Z2"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.double", "system.double", "system.double"],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "SketchSegment",
         "summary": "Creates a center line between the specified points.",
     },
     "ISketchManager.CreateCenterRectangle": {
         "args_count": 6,
         "arg_names": ["X1", "Y1", "Z1", "X2", "Y2", "Z2"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.double", "system.double", "system.double"],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "System.object",
         "summary": "Creates a center rectangle.",
     },
     "ISketchManager.CreateCircle": {
         "args_count": 6,
         "arg_names": ["XC", "YC", "Zc", "Xp", "Yp", "Zp"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.double", "system.double", "system.double"],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "SketchSegment",
         "summary": "Creates a circle based on a center point and a point on the circle.",
     },
     "ISketchManager.CreateCircleByRadius": {
         "args_count": 4,
         "arg_names": ["XC", "YC", "Zc", "Radius"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.double"],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "SketchSegment",
         "summary": "Creates a circle based on a center point and a specified radius.",
     },
     "ISketchManager.CreateCornerRectangle": {
         "args_count": 6,
         "arg_names": ["X1", "Y1", "Z1", "X2", "Y2", "Z2"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.double", "system.double", "system.double"],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "System.object",
         "summary": "Creates a corner rectangle.",
     },
     "ISketchManager.CreateEllipse": {
         "args_count": 9,
-        "arg_names": ["XC", "YC", "Zc", "XMajor", "YMajor", "ZMajor", "XMinor", "YMinor", "ZMinor"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double"],
+        "arg_names": [
+            "XC",
+            "YC",
+            "Zc",
+            "XMajor",
+            "YMajor",
+            "ZMajor",
+            "XMinor",
+            "YMinor",
+            "ZMinor",
+        ],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "SketchSegment",
         "summary": "Creates an ellipse using the specified center, major-axis, and minor-axis points.",
     },
     "ISketchManager.CreateLine": {
         "args_count": 6,
         "arg_names": ["X1", "Y1", "Z1", "X2", "Y2", "Z2"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.double", "system.double", "system.double"],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "SketchSegment",
         "summary": "Creates a sketch line in the currently active 2D or 3D sketch.",
     },
     "ISketchManager.CreateParabola": {
         "args_count": 12,
-        "arg_names": ["XFocus", "YFocus", "ZFocus", "XApex", "YApex", "ZApex", "X1", "Y1", "Z1", "X2", "Y2", "Z2"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double"],
+        "arg_names": [
+            "XFocus",
+            "YFocus",
+            "ZFocus",
+            "XApex",
+            "YApex",
+            "ZApex",
+            "X1",
+            "Y1",
+            "Z1",
+            "X2",
+            "Y2",
+            "Z2",
+        ],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+        ],
         "return_type": "SketchSegment",
         "summary": "Creates a parabola in the active sketch.",
     },
@@ -1647,14 +2562,53 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     "ISketchManager.CreatePolygon": {
         "args_count": 8,
         "arg_names": ["XC", "YC", "Zc", "Xp", "Yp", "Zp", "Sides", "Inscribed"],
-        "arg_types": ["system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.int", "system.bool"],
+        "arg_types": [
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.int",
+            "system.bool",
+        ],
         "return_type": "System.object",
         "summary": "Creates a polygon in the active sketch.",
     },
     "ISketchManager.CreateSketchSlot": {
         "args_count": 14,
-        "arg_names": ["SlotCreationType", "SlotLengthType", "Width", "X1", "Y1", "Z1", "X2", "Y2", "Z2", "X3", "Y3", "Z3", "CenterArcDirection", "AddDimension"],
-        "arg_types": ["system.int", "system.int", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.double", "system.int", "system.bool"],
+        "arg_names": [
+            "SlotCreationType",
+            "SlotLengthType",
+            "Width",
+            "X1",
+            "Y1",
+            "Z1",
+            "X2",
+            "Y2",
+            "Z2",
+            "X3",
+            "Y3",
+            "Z3",
+            "CenterArcDirection",
+            "AddDimension",
+        ],
+        "arg_types": [
+            "system.int",
+            "system.int",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.double",
+            "system.int",
+            "system.bool",
+        ],
         "return_type": "SketchSlot",
         "summary": "Creates a sketch slot.",
     },
@@ -1779,8 +2733,22 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "ISldWorks.OpenDoc6": {
         "args_count": 6,
-        "arg_names": ["FileName", "Type", "Options", "Configuration", "Errors", "Warnings"],
-        "arg_types": ["system.string", "system.int", "system.int", "system.string", "system.int", "system.int"],
+        "arg_names": [
+            "FileName",
+            "Type",
+            "Options",
+            "Configuration",
+            "Errors",
+            "Warnings",
+        ],
+        "arg_types": [
+            "system.string",
+            "system.int",
+            "system.int",
+            "system.string",
+            "system.int",
+            "system.int",
+        ],
         "return_type": "ModelDoc2",
         "summary": "Opens an existing document and returns a pointer to the document object.",
     },
@@ -1870,15 +2838,43 @@ METHOD_SIGNATURES: dict[str, dict[str, object]] = {
     },
     "IView.InsertBomTable4": {
         "args_count": 10,
-        "arg_names": ["UseAnchorPoint", "X", "Y", "AnchorType", "BomType", "Configuration", "TableTemplate", "Hidden", "IndentedNumberingType", "DetailedCutList"],
-        "arg_types": ["system.bool", "system.double", "system.double", "system.int", "system.int", "system.string", "system.string", "system.bool", "system.int", "system.bool"],
+        "arg_names": [
+            "UseAnchorPoint",
+            "X",
+            "Y",
+            "AnchorType",
+            "BomType",
+            "Configuration",
+            "TableTemplate",
+            "Hidden",
+            "IndentedNumberingType",
+            "DetailedCutList",
+        ],
+        "arg_types": [
+            "system.bool",
+            "system.double",
+            "system.double",
+            "system.int",
+            "system.int",
+            "system.string",
+            "system.string",
+            "system.bool",
+            "system.int",
+            "system.bool",
+        ],
         "return_type": "BomTableAnnotation",
         "summary": "Obsolete. Superseded by IView::InsertBomTable5.",
     },
     "IWizardHoleFeatureData2.InitializeHole": {
         "args_count": 5,
         "arg_names": ["GenericHoleType", "StdIndex", "FastnerType", "SSize", "EndType"],
-        "arg_types": ["system.int", "system.int", "system.int", "system.string", "system.int"],
+        "arg_types": [
+            "system.int",
+            "system.int",
+            "system.int",
+            "system.string",
+            "system.int",
+        ],
         "return_type": "void",
         "summary": "Initializes a newly created Hole Wizard feature data object.",
     },

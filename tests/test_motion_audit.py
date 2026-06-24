@@ -5,6 +5,7 @@ collision-envelope summarizer (collision_free / first_collision / clear_ranges /
 tightest_clearance). The COM drive + sweep are seat-proven separately
 (spikes/v0_2x/kinematic_motion_derisk + kinematic_angle_confirm + the PAE).
 """
+
 from __future__ import annotations
 
 import math

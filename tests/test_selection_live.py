@@ -236,8 +236,12 @@ def _ref(persist_id=None):
 
 
 def _geom(normal, centroid, area):
-    return {"normal": list(normal), "centroid": list(centroid), "area_mm2": area,
-            "bbox": ([0, 0, 0], [0, 0, 0])}
+    return {
+        "normal": list(normal),
+        "centroid": list(centroid),
+        "area_mm2": area,
+        "bbox": ([0, 0, 0], [0, 0, 0]),
+    }
 
 
 def _patch_faces(monkeypatch, face_to_geom: dict) -> None:
@@ -251,10 +255,13 @@ class TestResolveByFingerprint:
     def test_exact_hash_match(self, monkeypatch: pytest.MonkeyPatch) -> None:
         far = object()
         hit = object()
-        _patch_faces(monkeypatch, {
-            far: _geom((1, 0, 0), (0.01, 0, 0), 100.0),
-            hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
-        })
+        _patch_faces(
+            monkeypatch,
+            {
+                far: _geom((1, 0, 0), (0.01, 0, 0), 100.0),
+                hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
+            },
+        )
         r = live.resolve_by_fingerprint(_DOC, _ref())
         assert r.method == "fingerprint"
         assert r.entity is hit
@@ -263,9 +270,12 @@ class TestResolveByFingerprint:
         # Same normal, centroid 0.5 mm off, different area -> hash differs but
         # within the lossy tolerances.
         near = object()
-        _patch_faces(monkeypatch, {
-            near: _geom((0.0, 0.0, 1.0), (0.0, 0.0, 0.0055), 2501.0),
-        })
+        _patch_faces(
+            monkeypatch,
+            {
+                near: _geom((0.0, 0.0, 1.0), (0.0, 0.0, 0.0055), 2501.0),
+            },
+        )
         r = live.resolve_by_fingerprint(_DOC, _ref())
         assert r.method == "fingerprint_geom"
         assert r.entity is near
@@ -284,7 +294,10 @@ class TestResolveByFingerprint:
 
     def test_unreadable_faces_skipped(self, monkeypatch: pytest.MonkeyPatch) -> None:
         bad, good = object(), object()
-        geoms = {bad: None, good: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"])}
+        geoms = {
+            bad: None,
+            good: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
+        }
         monkeypatch.setattr(live, "_iter_live_faces", lambda doc: [bad, good])
         monkeypatch.setattr(live, "read_face_geometry", lambda f: geoms[f])
         r = live.resolve_by_fingerprint(_DOC, _ref())
@@ -307,7 +320,9 @@ class TestIterLiveFaces:
     def test_body_without_faces_skipped(self) -> None:
         f1 = object()
         good = types.SimpleNamespace(GetFaces=(f1,))
-        doc = types.SimpleNamespace(GetBodies2=(object(), good))  # object() has no GetFaces
+        doc = types.SimpleNamespace(
+            GetBodies2=(object(), good)
+        )  # object() has no GetFaces
         assert live._iter_live_faces(doc) == [f1]
 
     def test_getbodies_raises(self) -> None:
@@ -315,6 +330,7 @@ class TestIterLiveFaces:
             @property
             def GetBodies2(self):  # noqa: N802
                 raise RuntimeError("no bodies")
+
         assert live._iter_live_faces(_Doc()) == []
 
 
@@ -324,22 +340,32 @@ class TestIterLiveFaces:
 
 
 class TestResolveRefTier2:
-    def test_persist_fail_then_fingerprint(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_persist_fail_then_fingerprint(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _patch_ext(monkeypatch, _FakeExt(resolve=(object(), 1)))  # Deleted
         hit = object()
-        _patch_faces(monkeypatch, {
-            hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
-        })
+        _patch_faces(
+            monkeypatch,
+            {
+                hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
+            },
+        )
         r = live.resolve_ref(_DOC, _ref(persist_id=b"tok"))
         assert r.method == "fingerprint"
         assert r.entity is hit
         assert r.persist is not None and r.persist.status_name == "Deleted"
 
-    def test_no_persist_id_uses_fingerprint(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_no_persist_id_uses_fingerprint(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         hit = object()
-        _patch_faces(monkeypatch, {
-            hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
-        })
+        _patch_faces(
+            monkeypatch,
+            {
+                hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
+            },
+        )
         r = live.resolve_ref(_DOC, _ref(persist_id=None))
         assert r.method == "fingerprint"
         assert r.entity is hit
@@ -388,9 +414,12 @@ class TestResolveManifestFace:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         hit = object()
-        _patch_faces(monkeypatch, {
-            hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
-        })
+        _patch_faces(
+            monkeypatch,
+            {
+                hit: _geom(_GEOM["normal"], _GEOM["centroid"], _GEOM["area_mm2"]),
+            },
+        )
         r = live.resolve_manifest_face(_DOC, _manifest_face())  # no persist_id
         assert r.method == "fingerprint"
         assert r.entity is hit
@@ -471,7 +500,9 @@ class TestResolveEdgeRef:
         assert res.method == "persist_id"
         assert res.entity is ent
 
-    def test_persist_deleted_is_unresolved(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_persist_deleted_is_unresolved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # Patch the edge walk empty so tier-2 has no candidates — preserves
         # the "persist failure → unresolved" assertion now that tier-2 exists.
         _patch_ext(monkeypatch, _FakeExt(resolve=(object(), 1)))  # status Deleted
@@ -518,6 +549,7 @@ class TestIterLiveEdges:
             @property
             def GetBodies2(self):  # noqa: N802
                 raise RuntimeError("no bodies")
+
         assert live._iter_live_edges(_Doc()) == []
 
 
@@ -533,26 +565,37 @@ _EDGE_GEOM = {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.01], "length": 0.01}
 def _edge_geom(start, end):
     midpoint = [(s + e) / 2.0 for s, e in zip(start, end)]
     length = math.sqrt(sum((a - b) ** 2 for a, b in zip(start, end)))
-    return {"start": list(start), "end": list(end), "length": length, "midpoint": midpoint}
+    return {
+        "start": list(start),
+        "end": list(end),
+        "length": length,
+        "midpoint": midpoint,
+    }
 
 
 class TestResolveByEdgeFingerprint:
     def test_endpoint_match_hits(self, monkeypatch: pytest.MonkeyPatch) -> None:
         hit = object()
         far = object()
-        _patch_edges(monkeypatch, {
-            far: _edge_geom((0.05, 0.0, 0.0), (0.05, 0.0, 0.01)),  # 50 mm away
-            hit: _edge_geom((0.0, 0.0, 0.0), (0.0, 0.0, 0.01)),     # exact match
-        })
+        _patch_edges(
+            monkeypatch,
+            {
+                far: _edge_geom((0.05, 0.0, 0.0), (0.05, 0.0, 0.01)),  # 50 mm away
+                hit: _edge_geom((0.0, 0.0, 0.0), (0.0, 0.0, 0.01)),  # exact match
+            },
+        )
         res = live.resolve_by_edge_fingerprint(_DOC, _edge_ref())
         assert res.method == "edge_fingerprint"
         assert res.entity is hit
 
     def test_no_match_unresolved(self, monkeypatch: pytest.MonkeyPatch) -> None:
         far = object()
-        _patch_edges(monkeypatch, {
-            far: _edge_geom((0.05, 0.0, 0.0), (0.05, 0.0, 0.01)),
-        })
+        _patch_edges(
+            monkeypatch,
+            {
+                far: _edge_geom((0.05, 0.0, 0.0), (0.05, 0.0, 0.01)),
+            },
+        )
         res = live.resolve_by_edge_fingerprint(_DOC, _edge_ref())
         assert res.method == "unresolved"
         assert res.entity is None
@@ -567,11 +610,14 @@ class TestResolveByEdgeFingerprint:
         """Two matching candidates: the closer one (smaller key) wins."""
         near = object()
         far = object()
-        _patch_edges(monkeypatch, {
-            # Both match within tol; near is 0.1 mm off, far is 0.8 mm off.
-            near: {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0001, 0.01]},
-            far: {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0008, 0.01]},
-        })
+        _patch_edges(
+            monkeypatch,
+            {
+                # Both match within tol; near is 0.1 mm off, far is 0.8 mm off.
+                near: {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0001, 0.01]},
+                far: {"start": [0.0, 0.0, 0.0], "end": [0.0, 0.0008, 0.01]},
+            },
+        )
         res = live.resolve_by_edge_fingerprint(_DOC, _edge_ref())
         assert res.method == "edge_fingerprint"
         assert res.entity is near
@@ -591,9 +637,12 @@ class TestResolveByEdgeFingerprint:
     def test_reversed_endpoints_match(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Edge with start/end swapped still matches (unordered endpoint gate)."""
         hit = object()
-        _patch_edges(monkeypatch, {
-            hit: _edge_geom((0.0, 0.0, 0.01), (0.0, 0.0, 0.0)),  # reversed
-        })
+        _patch_edges(
+            monkeypatch,
+            {
+                hit: _edge_geom((0.0, 0.0, 0.01), (0.0, 0.0, 0.0)),  # reversed
+            },
+        )
         res = live.resolve_by_edge_fingerprint(_DOC, _edge_ref())
         assert res.method == "edge_fingerprint"
         assert res.entity is hit
@@ -605,22 +654,32 @@ class TestResolveByEdgeFingerprint:
 
 
 class TestResolveEdgeRefTier2:
-    def test_persist_miss_then_fingerprint(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_persist_miss_then_fingerprint(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _patch_ext(monkeypatch, _FakeExt(resolve=(object(), 1)))  # Deleted
         hit = object()
-        _patch_edges(monkeypatch, {
-            hit: _edge_geom((0.0, 0.0, 0.0), (0.0, 0.0, 0.01)),
-        })
+        _patch_edges(
+            monkeypatch,
+            {
+                hit: _edge_geom((0.0, 0.0, 0.0), (0.0, 0.0, 0.01)),
+            },
+        )
         res = live.resolve_edge_ref(_DOC, _edge_ref(persist_id=b"tok"))
         assert res.method == "edge_fingerprint"
         assert res.entity is hit
         assert res.persist is not None and res.persist.status_name == "Deleted"
 
-    def test_no_persist_id_uses_fingerprint(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_no_persist_id_uses_fingerprint(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         hit = object()
-        _patch_edges(monkeypatch, {
-            hit: _edge_geom((0.0, 0.0, 0.0), (0.0, 0.0, 0.01)),
-        })
+        _patch_edges(
+            monkeypatch,
+            {
+                hit: _edge_geom((0.0, 0.0, 0.0), (0.0, 0.0, 0.01)),
+            },
+        )
         res = live.resolve_edge_ref(_DOC, _edge_ref(persist_id=None))
         assert res.method == "edge_fingerprint"
         assert res.entity is hit
@@ -666,7 +725,9 @@ def _edge(start, end, *, length=None, midpoint=None):
 # A straight edge along +X, 20 mm long, with chord-derived length/midpoint
 # (exactly what interrogator._probe_edge captures today).
 def _straight():
-    return _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0), length=0.02, midpoint=(0.01, 0.0, 0.0))
+    return _edge(
+        (0.0, 0.0, 0.0), (0.02, 0.0, 0.0), length=0.02, midpoint=(0.01, 0.0, 0.0)
+    )
 
 
 class TestEdgeMatchPredicate:
@@ -678,7 +739,9 @@ class TestEdgeMatchPredicate:
     def test_reversed_orientation_matches(self) -> None:
         """Edges are undirected: the same edge with start/end swapped matches."""
         fwd = _straight()
-        rev = _edge((0.02, 0.0, 0.0), (0.0, 0.0, 0.0), length=0.02, midpoint=(0.01, 0.0, 0.0))
+        rev = _edge(
+            (0.02, 0.0, 0.0), (0.0, 0.0, 0.0), length=0.02, midpoint=(0.01, 0.0, 0.0)
+        )
         assert edges_match(fwd, rev)
         assert edge_match_score(fwd, rev) == (0.0, 0.0, 0.0)
 
@@ -733,7 +796,9 @@ class TestEdgeMatchPredicate:
         """With matching endpoints + midpoint, a length delta alone rejects —
         proving length is an independent gate once a true arc length is captured."""
         a = _straight()
-        b = _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0), length=0.025, midpoint=(0.01, 0.0, 0.0))
+        b = _edge(
+            (0.0, 0.0, 0.0), (0.02, 0.0, 0.0), length=0.025, midpoint=(0.01, 0.0, 0.0)
+        )
         assert edge_match_score(a, b) is None
 
     def test_partial_dicts_match_on_endpoints_only(self) -> None:
@@ -744,14 +809,18 @@ class TestEdgeMatchPredicate:
         assert edges_match(a, b)
 
     def test_malformed_returns_none_never_raises(self) -> None:
-        assert edge_match_score({"start": [0, 0, 0]}, _straight()) is None  # missing end
+        assert (
+            edge_match_score({"start": [0, 0, 0]}, _straight()) is None
+        )  # missing end
         assert edge_match_score({"start": "bad", "end": [0, 0, 0]}, _straight()) is None
-        assert edge_match_score(_straight(), {"start": [0, 0], "end": [0, 0, 0]}) is None
+        assert (
+            edge_match_score(_straight(), {"start": [0, 0], "end": [0, 0, 0]}) is None
+        )
 
     def test_score_orders_closer_candidate_first(self) -> None:
         target = _edge((0.0, 0.0, 0.0), (0.02, 0.0, 0.0))
-        near = _edge((0.0, 0.0, 0.0), (0.02, 0.0001, 0.0))   # 0.1 mm
-        far = _edge((0.0, 0.0, 0.0), (0.02, 0.0008, 0.0))    # 0.8 mm
+        near = _edge((0.0, 0.0, 0.0), (0.02, 0.0001, 0.0))  # 0.1 mm
+        far = _edge((0.0, 0.0, 0.0), (0.02, 0.0008, 0.0))  # 0.8 mm
         k_near = edge_match_score(target, near)
         k_far = edge_match_score(target, far)
         assert k_near is not None and k_far is not None

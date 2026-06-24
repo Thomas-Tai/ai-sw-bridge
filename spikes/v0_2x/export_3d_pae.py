@@ -26,6 +26,7 @@ from ai_sw_bridge.export.dispatch import ExportRequest, _export_one
 
 # --- Parser helpers (same as spike, proven) ---
 
+
 def parse_step(path: Path) -> dict:
     """Parse STEP and return entity counts."""
     text = path.read_text(encoding="utf-8", errors="replace")
@@ -80,13 +81,26 @@ def create_test_part(sw_app, temp_dir: Path) -> Path:
 
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False,
-        0, 0,
-        0.020, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.020,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
         0,
         0.0,
         False,
@@ -162,7 +176,9 @@ def main():
         # --- Doc-type fail-closed test: Drawing→STEP rejected ---
         print("Testing doc-type fail-closed (Drawing->STEP rejected)...")
         # We need a Drawing doc for this test. Create one.
-        drawing_template = sw_app.GetUserPreferenceStringValue(10)  # swDefaultDrawingTemplate
+        drawing_template = sw_app.GetUserPreferenceStringValue(
+            10
+        )  # swDefaultDrawingTemplate
         if drawing_template:
             drawing_doc = sw_app.NewDocument(drawing_template, 0, 0.0, 0.0)
             if drawing_doc is not None:
@@ -174,7 +190,15 @@ def main():
                     "ok": not result.ok,  # Should be False (rejected)
                     "expected_error_substring": "Part (.SLDPRT) or Assembly",
                     "actual_error": result.error,
-                    "verdict": "PASS" if (not result.ok and result.error and "Part (.SLDPRT) or Assembly" in result.error) else "FAIL",
+                    "verdict": (
+                        "PASS"
+                        if (
+                            not result.ok
+                            and result.error
+                            and "Part (.SLDPRT) or Assembly" in result.error
+                        )
+                        else "FAIL"
+                    ),
                 }
                 results["doc_type_tests"]["drawing_to_step"] = doc_type_result
             else:
@@ -191,6 +215,7 @@ def main():
     except Exception as exc:
         results["errors"].append(f"PAE failed: {type(exc).__name__}: {exc}")
         import traceback
+
         results["traceback"] = traceback.format_exc()
         print(f"! PAE failed: {exc}")
 

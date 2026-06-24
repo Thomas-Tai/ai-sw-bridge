@@ -1,6 +1,8 @@
 """Test: pass IEntity objects in VARIANT for AddEdges."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "v0_15"))
 
@@ -40,12 +42,12 @@ try:
     bodies = doc.GetBodies2(0, True)
     edges_raw = bodies[0].GetEdges()
     ext = typed_extension(doc, module=mod)
-    
+
     raw_edge = edges_raw[0]
     pid = ext.GetPersistReference3(raw_edge)
     result = ext.GetObjectByPersistReference3(pid)
     live_edge = result[0] if isinstance(result, tuple) else result
-    
+
     # QI to IEntity
     entity = typed_qi(live_edge, "IEntity", module=mod)
     print(f"Entity type: {type(entity).__name__}")
@@ -58,10 +60,9 @@ try:
         efl.BendAngle = 1.5708
         efl.BendRadius = 0.002
         efl.UseDefaultBendRadius = False
-        
+
         edge_var = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            [entity]
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [entity]
         )
         efl.Edges = edge_var
         count = efl.GetEdgeCount()
@@ -82,10 +83,9 @@ try:
         efl2.BendAngle = 1.5708
         efl2.BendRadius = 0.002
         efl2.UseDefaultBendRadius = False
-        
+
         edge_var2 = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            [entity._oleobj_]
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, [entity._oleobj_]
         )
         efl2.Edges = edge_var2
         count = efl2.GetEdgeCount()
@@ -112,18 +112,17 @@ try:
             if live_e is not None and not isinstance(live_e, int):
                 ent = typed_qi(live_e, "IEntity", module=mod)
                 entities.append(ent)
-        
+
         print(f"  Got {len(entities)} entities")
-        
+
         efl_data3 = fm.CreateDefinition(37)
         efl3 = typed_qi(efl_data3, "IEdgeFlangeFeatureData", module=mod)
         efl3.BendAngle = 1.5708
         efl3.BendRadius = 0.002
         efl3.UseDefaultBendRadius = False
-        
+
         edge_var3 = win32com.client.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            entities
+            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, entities
         )
         efl3.Edges = edge_var3
         count = efl3.GetEdgeCount()

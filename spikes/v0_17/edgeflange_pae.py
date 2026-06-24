@@ -15,6 +15,7 @@ Recipe:
 Usage:
     python spikes/v0_17/edgeflange_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -146,10 +147,13 @@ def main() -> int:
             out["error"] = "base flange failed: %s" % base.get("overall")
             print("[pae] FAIL: %s" % out["error"])
             return 1
-        print("[pae] base flange: %s (%s)" % (
-            base.get("create_feature", {}).get("feature_name"),
-            base.get("create_feature", {}).get("type_name"),
-        ))
+        print(
+            "[pae] base flange: %s (%s)"
+            % (
+                base.get("create_feature", {}).get("feature_name"),
+                base.get("create_feature", {}).get("type_name"),
+            )
+        )
 
         try:
             doc.ForceRebuild3(False)
@@ -216,13 +220,19 @@ def main() -> int:
         # Step 5: Confirm gate — propose rejects edge_flange
         print("[pae] confirming gate (propose rejects de-advertised)...")
         gate = sw_propose_feature_add(
-            "dummy_path", feature_params, target,
+            "dummy_path",
+            feature_params,
+            target,
         )
         out["propose_rejected"] = not gate.get("ok")
         out["gate_error"] = gate.get("error", "")[:120]
-        print("[pae] gate: rejected=%s err=%s" % (
-            out["propose_rejected"], out["gate_error"][:80],
-        ))
+        print(
+            "[pae] gate: rejected=%s err=%s"
+            % (
+                out["propose_rejected"],
+                out["gate_error"][:80],
+            )
+        )
 
         # Final verdict
         out["ok"] = (
@@ -231,17 +241,21 @@ def main() -> int:
             and flange_feature.get("type") == "EdgeFlange"
         )
         status = "GREEN" if out["ok"] else "FAIL"
-        print("[pae] %s: flange=%s(%s) plane=%s sketch=%s gate_rejected=%s" % (
-            status,
-            out.get("flange_feature_name"),
-            out.get("flange_type"),
-            plane_present,
-            sketch_present,
-            out["propose_rejected"],
-        ))
+        print(
+            "[pae] %s: flange=%s(%s) plane=%s sketch=%s gate_rejected=%s"
+            % (
+                status,
+                out.get("flange_feature_name"),
+                out.get("flange_type"),
+                plane_present,
+                sketch_present,
+                out["propose_rejected"],
+            )
+        )
 
     except Exception as exc:
         import traceback
+
         out["error"] = traceback.format_exc()
         out["ok"] = False
         print("[pae] EXCEPTION: %s" % exc)
@@ -257,7 +271,8 @@ def main() -> int:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out_path = RESULTS_DIR / "edgeflange_pae.json"
     out_path.write_text(
-        json.dumps(out, indent=2, default=str), encoding="utf-8",
+        json.dumps(out, indent=2, default=str),
+        encoding="utf-8",
     )
     print("[pae] wrote %s" % out_path)
     return 0 if out["ok"] else 1

@@ -20,7 +20,8 @@ import traceback
 from pathlib import Path
 
 logging.basicConfig(
-    level=logging.WARNING, format="%(name)s %(levelname)s %(message)s",
+    level=logging.WARNING,
+    format="%(name)s %(levelname)s %(message)s",
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -73,8 +74,11 @@ def main() -> int:
     if delta_insert > 0:
         mode_fired = "B-insert"
     else:
-        print("[project_curve_v2] insert path produced no new node; "
-              "firing _try_mode_b_convert...", flush=True)
+        print(
+            "[project_curve_v2] insert path produced no new node; "
+            "firing _try_mode_b_convert...",
+            flush=True,
+        )
         converted = pc._try_mode_b_convert(doc, feature, target)
         print(f"[project_curve_v2] _try_mode_b_convert -> {converted!r}", flush=True)
         try:
@@ -97,7 +101,8 @@ def main() -> int:
 
     print(
         f"[project_curve_v2] handler-side PASS via mode-{mode_fired}; "
-        f"running save->reopen...", flush=True,
+        f"running save->reopen...",
+        flush=True,
     )
     try:
         doc2 = fx.save_and_reopen(sw, doc)

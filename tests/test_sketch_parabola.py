@@ -24,8 +24,10 @@ class _FakeSketchManager:
 
     def __init__(self, return_val: Any = ..., return_none: bool = False) -> None:
         self.calls: list[tuple] = []
-        self._return = None if return_none else (
-            return_val if return_val is not ... else _FakeSketchSegment()
+        self._return = (
+            None
+            if return_none
+            else (return_val if return_val is not ... else _FakeSketchSegment())
         )
 
     def CreateParabola(self, *args: float) -> Any:
@@ -37,7 +39,9 @@ class TestCreateParabola:
     def test_creates_parabola(self) -> None:
         sm = _FakeSketchManager()
         # focal(10,0,0) vertex(0,0,0) end1(-10,10,0) end2(10,10,0)
-        seg = create_parabola(sm, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, -10.0, 10.0, 0.0, 10.0, 10.0, 0.0)
+        seg = create_parabola(
+            sm, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, -10.0, 10.0, 0.0, 10.0, 10.0, 0.0
+        )
         assert seg is not None
         assert len(sm.calls) == 1
         assert len(sm.calls[0]) == 12
@@ -45,22 +49,32 @@ class TestCreateParabola:
     def test_returns_none_raises(self) -> None:
         sm = _FakeSketchManager(return_none=True)
         with pytest.raises(RuntimeError, match="CreateParabola returned None"):
-            create_parabola(sm, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, -10.0, 10.0, 0.0, 10.0, 10.0, 0.0)
+            create_parabola(
+                sm, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, -10.0, 10.0, 0.0, 10.0, 10.0, 0.0
+            )
 
     def test_mm_to_m_conversion(self) -> None:
         sm = _FakeSketchManager()
         create_parabola(
             sm,
-            10.0, 20.0, 0.0,    # focal mm
-            5.0, 0.0, 0.0,      # vertex mm
-            -5.0, 10.0, 0.0,    # end1 mm
-            5.0, 10.0, 0.0,     # end2 mm
+            10.0,
+            20.0,
+            0.0,  # focal mm
+            5.0,
+            0.0,
+            0.0,  # vertex mm
+            -5.0,
+            10.0,
+            0.0,  # end1 mm
+            5.0,
+            10.0,
+            0.0,  # end2 mm
         )
         call = sm.calls[0]
-        assert call[0] == pytest.approx(0.01)   # x_focal 10mm→0.01m
-        assert call[1] == pytest.approx(0.02)   # y_focal 20mm→0.02m
+        assert call[0] == pytest.approx(0.01)  # x_focal 10mm→0.01m
+        assert call[1] == pytest.approx(0.02)  # y_focal 20mm→0.02m
         assert call[3] == pytest.approx(0.005)  # x_vertex 5mm→0.005m
-        assert call[6] == pytest.approx(-0.005) # x_end1 -5mm→-0.005m
+        assert call[6] == pytest.approx(-0.005)  # x_end1 -5mm→-0.005m
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +123,9 @@ class TestParabolaRoundTrip:
             vertex=(0.0, 0.0, 0.0),
         )
         sm = _FakeSketchManager(return_val=seg)
-        result = create_parabola(sm, 10.0, 20.0, 0.0, 0.0, 0.0, 0.0, -10.0, 10.0, 0.0, 10.0, 10.0, 0.0)
+        result = create_parabola(
+            sm, 10.0, 20.0, 0.0, 0.0, 0.0, 0.0, -10.0, 10.0, 0.0, 10.0, 10.0, 0.0
+        )
 
         # Read back focal point (SW returns metres)
         focal = result.GetFocalPoint
@@ -125,5 +141,7 @@ class TestParabolaRoundTrip:
         """Verify the ConstructionGeometry flag is readable on the segment."""
         seg = _FakeParabolaSegment()
         sm = _FakeSketchManager(return_val=seg)
-        result = create_parabola(sm, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, -5.0, 5.0, 0.0, 5.0, 5.0, 0.0)
+        result = create_parabola(
+            sm, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, -5.0, 5.0, 0.0, 5.0, 5.0, 0.0
+        )
         assert result.ConstructionGeometry is False

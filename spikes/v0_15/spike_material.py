@@ -85,9 +85,9 @@ from ai_sw_bridge.sw_com import get_sw_app, get_active_doc, SW_DOC_PART  # noqa:
 # ---------------------------------------------------------------------------
 # Box geometry (metres) — same minimal solid as the other v0.15 spikes.
 # ---------------------------------------------------------------------------
-BOX_W_M = 0.020   # 20 mm x 20 mm footprint
+BOX_W_M = 0.020  # 20 mm x 20 mm footprint
 BOX_H_M = 0.020
-BOX_D_M = 0.010   # 10 mm tall
+BOX_D_M = 0.010  # 10 mm tall
 
 # Candidate (db, name) pairs to probe against this install's material library.
 # The bridge handler will need to use the exact strings the install accepts.
@@ -99,14 +99,14 @@ CANDIDATE_MATERIALS = [
     ("SolidWorks Materials", "Aluminum Alloy 1060"),
     ("SolidWorks Materials", "Copper"),
     ("SolidWorks Materials", "Nylon 6/10"),
-    ("solidworks materials", "AISI 1020 Steel (SS)"),   # lower-case variant
-    ("SolidWorks DIN Materials", "1.0402"),              # DIN library variant
+    ("solidworks materials", "AISI 1020 Steel (SS)"),  # lower-case variant
+    ("SolidWorks DIN Materials", "1.0402"),  # DIN library variant
 ]
 
 # Default geometry-based density SOLIDWORKS uses before material is assigned
 # (1000 kg/m³ — water). Density delta above this epsilon is the "honesty" probe.
 _FALLBACK_DENSITY_KG_M3 = 1000.0
-_DENSITY_DELTA_THRESHOLD = 50.0   # kg/m³ — intentionally loose; steel ~7800, Al ~2700
+_DENSITY_DELTA_THRESHOLD = 50.0  # kg/m³ — intentionally loose; steel ~7800, Al ~2700
 
 
 def _type_tag(v: Any) -> str:
@@ -128,6 +128,7 @@ def _ensure_part_doc(sw: Any) -> Any:
 # Minimal solid fixture
 # ---------------------------------------------------------------------------
 
+
 def _build_box(doc: Any) -> dict[str, Any]:
     """Insert a 20×20×10 mm Boss-Extrude on the Front Plane."""
     if not doc.SelectByID("Front Plane", "PLANE", 0.0, 0.0, 0.0):
@@ -135,8 +136,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-        BOX_W_M / 2,  BOX_H_M / 2,  0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -144,14 +149,33 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
-        feat = fm.FeatureExtrusion2(*base_args, False)   # 23-arg
+        feat = fm.FeatureExtrusion2(*base_args, False)  # 23-arg
     except Exception:
-        feat = fm.FeatureExtrusion2(*base_args)           # 22-arg fallback
+        feat = fm.FeatureExtrusion2(*base_args)  # 22-arg fallback
     if feat is None:
         return {"built": False, "error": "FeatureExtrusion2 returned None"}
     return {"built": True, "feature_name": getattr(feat, "Name", None)}
@@ -160,6 +184,7 @@ def _build_box(doc: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Mass-properties helper
 # ---------------------------------------------------------------------------
+
 
 def _probe_mass_props(doc: Any) -> dict[str, Any]:
     """Read mass properties, returning density and raw output for the report.
@@ -192,7 +217,7 @@ def _probe_mass_props(doc: Any) -> dict[str, Any]:
         rec["raw"] = vals
         if len(vals) >= 3:
             volume_m3 = float(vals[0]) if vals[0] else None
-            mass_kg   = float(vals[2]) if vals[2] else None
+            mass_kg = float(vals[2]) if vals[2] else None
             if volume_m3 and mass_kg and volume_m3 > 0:
                 density = mass_kg / volume_m3
                 rec["density_kg_m3"] = density
@@ -232,6 +257,7 @@ def _probe_mass_props(doc: Any) -> dict[str, Any]:
 # SetMaterialPropertyName2 / GetMaterialPropertyName2 probes
 # ---------------------------------------------------------------------------
 
+
 def _probe_set_material(doc: Any, config: str, db: str, name: str) -> dict[str, Any]:
     """Probe SetMaterialPropertyName2(config, db, name) and read-back."""
     rec: dict[str, Any] = {"config": config, "db": db, "name": name}
@@ -242,7 +268,7 @@ def _probe_set_material(doc: Any, config: str, db: str, name: str) -> dict[str, 
         rec["set_elapsed_ms"] = (time.perf_counter() - t0) * 1000.0
         rec["set_status"] = "OK"
         rec["set_return_type"] = _type_tag(ok)
-        rec["set_return_value"] = (bool(ok) if isinstance(ok, (bool, int)) else str(ok))
+        rec["set_return_value"] = bool(ok) if isinstance(ok, (bool, int)) else str(ok)
     except pywintypes.com_error as e:
         rec["set_elapsed_ms"] = (time.perf_counter() - t0) * 1000.0
         rec["set_status"] = "COM_ERROR"
@@ -268,14 +294,14 @@ def _probe_set_material(doc: Any, config: str, db: str, name: str) -> dict[str, 
         if isinstance(rb, (tuple, list)) and len(rb) >= 2:
             rec["get_db_readback"] = rb[0]
             rec["get_name_readback"] = rb[1]
-            rec["roundtrip_db_match"] = (str(rb[0]) == db)
-            rec["roundtrip_name_match"] = (str(rb[1]) == name)
+            rec["roundtrip_db_match"] = str(rb[0]) == db
+            rec["roundtrip_name_match"] = str(rb[1]) == name
         elif isinstance(rb, str):
             # Some late-binding shapes return only the name as a string.
             rec["get_name_readback"] = rb
-            rec["roundtrip_name_match"] = (rb == name)
+            rec["roundtrip_name_match"] = rb == name
             rec["get_db_readback"] = None
-            rec["roundtrip_db_match"] = None   # indeterminate
+            rec["roundtrip_db_match"] = None  # indeterminate
         else:
             rec["get_raw_value"] = str(rb)
             rec["roundtrip_db_match"] = None
@@ -300,17 +326,17 @@ def probe_candidates(doc: Any) -> dict[str, Any]:
     first_working: dict[str, Any] | None = None
 
     for db, name in CANDIDATE_MATERIALS:
-        rec = _probe_set_material(doc, "", db, name)   # config="" = all configs
+        rec = _probe_set_material(doc, "", db, name)  # config="" = all configs
         results.append(rec)
-        if (first_working is None
-                and rec.get("set_status") == "OK"
-                and rec.get("set_return_value") is not False):
+        if (
+            first_working is None
+            and rec.get("set_status") == "OK"
+            and rec.get("set_return_value") is not False
+        ):
             first_working = rec
 
     # Report the winning pair (if any) and whether the method is reachable at all.
-    method_reachable = any(
-        r.get("set_status") == "OK" for r in results
-    )
+    method_reachable = any(r.get("set_status") == "OK" for r in results)
     roundtrip_clean = (
         first_working is not None
         and first_working.get("get_status") == "OK"
@@ -320,7 +346,8 @@ def probe_candidates(doc: Any) -> dict[str, Any]:
         "method_reachable": method_reachable,
         "first_working_pair": (
             {"db": first_working["db"], "name": first_working["name"]}
-            if first_working else None
+            if first_working
+            else None
         ),
         "roundtrip_clean": roundtrip_clean,
         "results": results,
@@ -331,6 +358,7 @@ def probe_candidates(doc: Any) -> dict[str, Any]:
 # Top-level COM run
 # ---------------------------------------------------------------------------
 
+
 def run_com(skip_build: bool) -> dict[str, Any]:
     sw = get_sw_app()
     doc = _ensure_part_doc(sw)
@@ -339,7 +367,11 @@ def run_com(skip_build: bool) -> dict[str, Any]:
     if not skip_build:
         build_rec.update(_build_box(doc))
         if not build_rec.get("built"):
-            return {"overall": "FAIL", "reason": "box did not build", "build": build_rec}
+            return {
+                "overall": "FAIL",
+                "reason": "box did not build",
+                "build": build_rec,
+            }
         try:
             doc.EditRebuild3
         except Exception:
@@ -364,8 +396,13 @@ def run_com(skip_build: bool) -> dict[str, Any]:
 
     # 4. Density-delta check (the "honesty" probe).
     density_delta: dict[str, Any] = {}
-    if mass_pre.get("density_kg_m3") is not None and mass_post.get("density_kg_m3") is not None:
-        delta = abs(float(mass_post["density_kg_m3"]) - float(mass_pre["density_kg_m3"]))
+    if (
+        mass_pre.get("density_kg_m3") is not None
+        and mass_post.get("density_kg_m3") is not None
+    ):
+        delta = abs(
+            float(mass_post["density_kg_m3"]) - float(mass_pre["density_kg_m3"])
+        )
         density_delta = {
             "pre_density_kg_m3": mass_pre["density_kg_m3"],
             "post_density_kg_m3": mass_post["density_kg_m3"],
@@ -376,14 +413,14 @@ def run_com(skip_build: bool) -> dict[str, Any]:
         density_delta = {
             "pre_density_kg_m3": mass_pre.get("density_kg_m3"),
             "post_density_kg_m3": mass_post.get("density_kg_m3"),
-            "density_changed": None,   # indeterminate — mass-props call failed
+            "density_changed": None,  # indeterminate — mass-props call failed
             "reason": "mass-props density unreadable in pre or post measurement",
         }
 
     # 5. Derive overall verdict.
-    method_ok    = candidates_probe["method_reachable"]
+    method_ok = candidates_probe["method_reachable"]
     roundtrip_ok = candidates_probe["roundtrip_clean"]
-    density_ok   = density_delta.get("density_changed") is True
+    density_ok = density_delta.get("density_changed") is True
 
     if roundtrip_ok and density_ok:
         overall = "PASS"
@@ -432,6 +469,7 @@ def run_com(skip_build: bool) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # VBA oracle (early-binding cross-check)
 # ---------------------------------------------------------------------------
+
 
 def emit_vba() -> str:
     """Early-binding oracle for the SetMaterialPropertyName2 round-trip.
@@ -509,21 +547,27 @@ End Sub
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
-        "--mode", choices=["com", "vba"], default="com",
+        "--mode",
+        choices=["com", "vba"],
+        default="com",
         help="com = drive SW from Python; vba = emit the .bas oracle.",
     )
     p.add_argument(
-        "--skip-build", action="store_true",
+        "--skip-build",
+        action="store_true",
         help="Skip creating the test box; probe the solid body already in the active part.",
     )
     p.add_argument(
-        "--out", type=Path, default=None,
+        "--out",
+        type=Path,
+        default=None,
         help="Write JSON report to this path instead of stdout.",
     )
     args = p.parse_args()

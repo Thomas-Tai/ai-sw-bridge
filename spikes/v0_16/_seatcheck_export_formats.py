@@ -8,6 +8,7 @@ Non-destructive: builds its own box part, exports to a temp dir, cleans up.
 
 Usage:  .venv-py310\Scripts\python spikes\v0_16\_seatcheck_export_formats.py
 """
+
 from __future__ import annotations
 
 import json
@@ -128,8 +129,7 @@ def run() -> dict[str, Any]:
     # --- Verdict ------------------------------------------------------------
     # PASS if all SAVEAS3_DIRECT formats produced files
     direct_count = sum(
-        1 for f in EXPORT_FORMATS.values()
-        if f.save_method == SaveMethod.SAVEAS3_DIRECT
+        1 for f in EXPORT_FORMATS.values() if f.save_method == SaveMethod.SAVEAS3_DIRECT
     )
     if saveas3_ok == direct_count:
         result["overall"] = "PASS"
@@ -139,7 +139,11 @@ def run() -> dict[str, Any]:
         )
     elif saveas3_ok > 0:
         result["overall"] = "PARTIAL"
-        failed = [n for n, r in format_results.items() if not r.get("skipped") and not r.get("file_exists")]
+        failed = [
+            n
+            for n, r in format_results.items()
+            if not r.get("skipped") and not r.get("file_exists")
+        ]
         result["verdict_detail"] = (
             f"{saveas3_ok}/{direct_count} SAVEAS3_DIRECT formats OK; "
             f"failed: {', '.join(failed)}. Investigate per-format."

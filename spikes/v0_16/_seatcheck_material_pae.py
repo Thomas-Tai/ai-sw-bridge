@@ -11,6 +11,7 @@ Validates the shipped code path (not just the spike):
 Non-destructive: own blank Part, never saves, closes own doc.
 Usage:  .venv-py310\Scripts\python spikes\v0_16\_seatcheck_material_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -45,12 +46,35 @@ def _build_box(doc: Any) -> bool:
         return False
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                             BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base, False)
     except Exception:  # noqa: BLE001
@@ -124,7 +148,9 @@ def run() -> dict[str, Any]:
         ret = material.apply_material(doc, {"material": KNOWN_NAME})
         dens = _density(doc)
         report["case_library"] = {
-            "apply_return": ret, "baseline_density": base, "density": dens,
+            "apply_return": ret,
+            "baseline_density": base,
+            "density": dens,
             "honest": (ret is True and dens is not None and dens > 5000.0),
         }
     finally:
@@ -143,9 +169,12 @@ def run() -> dict[str, Any]:
         dens = _density(doc)
         prop = _custom_prop(doc, material.MATERIAL_PROP_NAME)
         report["case_fallback"] = {
-            "apply_return": ret, "density": dens, "custom_prop_material": prop,
-            "fallback_ok": (ret is True and prop == UNKNOWN_NAME
-                            and (dens is None or dens < 2000.0)),
+            "apply_return": ret,
+            "density": dens,
+            "custom_prop_material": prop,
+            "fallback_ok": (
+                ret is True and prop == UNKNOWN_NAME and (dens is None or dens < 2000.0)
+            ),
         }
     finally:
         try:

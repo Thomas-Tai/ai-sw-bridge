@@ -76,7 +76,10 @@ def _run_dry_run(args: argparse.Namespace) -> dict[str, Any]:
     if rec is None:
         return {"ok": False, "error": f"proposal {pid} not found"}
     if rec.get("kind") != "sketch_relations":
-        return {"ok": False, "error": f"proposal {pid} is not a sketch_relations proposal"}
+        return {
+            "ok": False,
+            "error": f"proposal {pid} is not a sketch_relations proposal",
+        }
 
     spec = rec["spec"]
 
@@ -116,7 +119,10 @@ def _run_commit(args: argparse.Namespace) -> dict[str, Any]:
     if rec is None:
         return {"ok": False, "error": f"proposal {pid} not found"}
     if rec.get("kind") != "sketch_relations":
-        return {"ok": False, "error": f"proposal {pid} is not a sketch_relations proposal"}
+        return {
+            "ok": False,
+            "error": f"proposal {pid} is not a sketch_relations proposal",
+        }
     if rec.get("state") != "dry_run_ok":
         return {
             "ok": False,
@@ -137,9 +143,7 @@ def _run_commit(args: argparse.Namespace) -> dict[str, Any]:
         if doc is None:
             return {"ok": False, "error": "no active document in SW"}
 
-        result = apply_relations_to_sketch(
-            doc, spec["sketch"], spec["relations"]
-        )
+        result = apply_relations_to_sketch(doc, spec["sketch"], spec["relations"])
 
         if result.get("ok"):
             rec["state"] = "committed"

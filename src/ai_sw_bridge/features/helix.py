@@ -43,7 +43,9 @@ from . import verify
 logger = logging.getLogger("ai_sw_bridge.features.helix")
 
 # Flipped to "GREEN" by W0 after spike_helix returns PASS on the seat.
-SPIKE_STATUS = "GREEN"  # Mode-B fired clean + survived save→reopen on the live seat (W62)
+SPIKE_STATUS = (
+    "GREEN"  # Mode-B fired clean + survived save→reopen on the live seat (W62)
+)
 
 # Verify class (W67): CURVE — witnessed by a Helix-node count delta. NOTE
 # (Phase-3 finding): node presence is trusted without a geometric scalar
@@ -86,7 +88,9 @@ def _curve_length_mm(node: Any) -> float | None:
 
 
 def create_helix(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Insert a helix reference curve on a pre-selected sketch circle.
 
@@ -147,9 +151,19 @@ def create_helix(
     try:
         null_callout = VARIANT(pythoncom.VT_DISPATCH, None)
         sel_ok = _latebound(doc.Extension).SelectByID2(
-            sketch, "SKETCH", 0.0, 0.0, 0.0, False, 0, null_callout, 0,
+            sketch,
+            "SKETCH",
+            0.0,
+            0.0,
+            0.0,
+            False,
+            0,
+            null_callout,
+            0,
         )
-        logger.warning("[helix] Extension.SelectByID2(%r,'SKETCH') -> %r", sketch, sel_ok)
+        logger.warning(
+            "[helix] Extension.SelectByID2(%r,'SKETCH') -> %r", sketch, sel_ok
+        )
         if not sel_ok:
             return False, f"could not select sketch {sketch!r}"
     except Exception as e:
@@ -159,16 +173,16 @@ def create_helix(
     # Mode-B: doc.InsertHelix (legacy, 10 args, returns void).
     try:
         ldoc.InsertHelix(
-            True,           # ConstantPitch
-            False,          # Reverse
-            False,          # Dimension
-            clockwise,      # Clockwise
+            True,  # ConstantPitch
+            False,  # Reverse
+            False,  # Dimension
+            clockwise,  # Clockwise
             _SW_HELIX_DEFINED_BY_PITCH_AND_REVOLUTION,  # DefinedBy
-            pitch_m,        # Pitch (m)
-            revolutions,    # Revolution
-            height_m,       # Height (m)
+            pitch_m,  # Pitch (m)
+            revolutions,  # Revolution
+            height_m,  # Height (m)
             start_angle_rad,  # StartAngle (rad)
-            0.0,            # Diameter (0 = use sketch circle)
+            0.0,  # Diameter (0 = use sketch circle)
         )
         logger.warning("[helix] InsertHelix called (void return)")
     except Exception as e:

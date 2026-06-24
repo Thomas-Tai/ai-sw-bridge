@@ -31,6 +31,7 @@ from ai_sw_bridge.features.verify import find_feature_by_name, materialized
 # 1. Importability and callability
 # ---------------------------------------------------------------------------
 
+
 class TestImportability:
     def test_create_linear_pattern_is_callable(self):
         assert callable(create_linear_pattern)
@@ -48,6 +49,7 @@ class TestImportability:
 # ---------------------------------------------------------------------------
 # 2. Registry presence and correct mapping
 # ---------------------------------------------------------------------------
+
 
 class TestRegistryPresence:
     def test_linear_pattern_in_registry(self):
@@ -72,6 +74,7 @@ class TestRegistryPresence:
 # ---------------------------------------------------------------------------
 # 3. Relocated helpers: materialized / find_feature_by_name
 # ---------------------------------------------------------------------------
+
 
 class TestMaterialized:
     def test_none_is_not_materialized(self):
@@ -116,9 +119,11 @@ class TestFindFeatureByName:
 
     def _make_fake_doc(self, features_list):
         """Minimal fake doc whose FeatureManager.GetFeatures(True) returns the list."""
+
         class FakeFM:
             def __init__(self, feats):
                 self._feats = feats
+
             def GetFeatures(self, topology):
                 return self._feats
 
@@ -158,6 +163,7 @@ class TestFindFeatureByName:
 
     def test_skips_feature_that_raises_on_name_access(self):
         """A feature that raises on .Name access is skipped (no crash)."""
+
         class BrokenFeature:
             @property
             def Name(self):
@@ -182,6 +188,7 @@ class TestFindFeatureByName:
 # 4. Early-validation fail-close (no COM touch — bare object() doc is fine)
 # ---------------------------------------------------------------------------
 
+
 class TestLinearPatternValidation:
     def test_missing_seed_returns_false(self):
         ok, err = create_linear_pattern(object(), {}, {})
@@ -197,7 +204,9 @@ class TestLinearPatternValidation:
 
     def test_missing_spacing_mm_returns_false(self):
         ok, err = create_linear_pattern(
-            object(), {"count": 2}, {"seed": "Boss1", "direction": {"x": 1, "y": 0, "z": 0}}
+            object(),
+            {"count": 2},
+            {"seed": "Boss1", "direction": {"x": 1, "y": 0, "z": 0}},
         )
         assert ok is False
         assert err is not None
@@ -235,7 +244,9 @@ class TestCircularPatternValidation:
         assert err is not None
 
     def test_non_dict_feature_returns_false(self):
-        ok, err = create_circular_pattern(object(), None, {"seed": "Boss1", "axis": "Axis1"})
+        ok, err = create_circular_pattern(
+            object(), None, {"seed": "Boss1", "axis": "Axis1"}
+        )
         assert ok is False
 
 
@@ -258,6 +269,7 @@ class TestMirrorFeatureValidation:
 # ---------------------------------------------------------------------------
 # 5. Disjointness invariant
 # ---------------------------------------------------------------------------
+
 
 class TestDisjointnessInvariant:
     def test_registry_and_supported_types_are_disjoint(self):

@@ -1,4 +1,5 @@
 """Capture face manifest from the already-built base part."""
+
 import json
 import os
 import sys
@@ -33,9 +34,11 @@ try:
     faces = manifest.faces
     print(f"\nManifest captured: {len(faces)} faces")
     for i, face in enumerate(faces):
-        print(f"  Face {i}: normal={face.get('normal')}, centroid={face.get('centroid')}, "
-              f"fingerprint={face.get('fingerprint','?')[:16]}..., area={face.get('area_mm2',0):.1f}mm2, "
-              f"persist_id={'yes' if face.get('persist_id') else 'no'}")
+        print(
+            f"  Face {i}: normal={face.get('normal')}, centroid={face.get('centroid')}, "
+            f"fingerprint={face.get('fingerprint','?')[:16]}..., area={face.get('area_mm2',0):.1f}mm2, "
+            f"persist_id={'yes' if face.get('persist_id') else 'no'}"
+        )
 
     manifest_path = SAVE_TO.replace(".SLDPRT", "_manifest.json")
     with open(manifest_path, "w") as f:

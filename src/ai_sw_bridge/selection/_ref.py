@@ -73,9 +73,9 @@ class DurableRef:
             "role_hint": self.role_hint,
         }
         if self.persist_id is not None:
-            out["persist_id"] = base64.urlsafe_b64encode(self.persist_id).decode(
-                "ascii"
-            ).rstrip("=")
+            out["persist_id"] = (
+                base64.urlsafe_b64encode(self.persist_id).decode("ascii").rstrip("=")
+            )
         return out
 
     @classmethod
@@ -144,9 +144,7 @@ class DurableRef:
             or not isinstance(centroid, (list, tuple))
             or area_mm2 is None
         ):
-            raise ValueError(
-                "manifest face must include normal, centroid, area_mm2"
-            )
+            raise ValueError("manifest face must include normal, centroid, area_mm2")
         fingerprint = BrepFingerprint.from_face_dict(
             {"normal": normal, "centroid": centroid, "area_mm2": area_mm2}
         )

@@ -36,6 +36,7 @@ sys.path.insert(0, str(repo_root / "src"))
 
 def _find_part_template(sw_typed) -> str | None:
     import glob
+
     cands = [
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.PRTDOT",
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.prtdot",
@@ -62,6 +63,7 @@ def _build_box(sw, sw_typed, mod, path: str):
     silently return None (no body).
     """
     from ai_sw_bridge.com.earlybind import typed
+
     tmpl = _find_part_template(sw_typed)
     doc = sw_typed.NewDocument(tmpl, 0, 0, 0)
     dt = typed(doc, "IModelDoc2", module=mod)
@@ -72,8 +74,29 @@ def _build_box(sw, sw_typed, mod, path: str):
     dt.ClearSelection2(True)
     dt.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     feat = dt.FeatureManager.FeatureExtrusion2(
-        True, False, False, 0, 0, 0.030, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.030,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     dt.ForceRebuild3(True)
     err = dt.SaveAs3(path, 0, 0)
@@ -88,6 +111,7 @@ def _build_tapered(sw, sw_typed, mod, path: str, draft_rad: float, outward: bool
     moldable/undercut per draft-direction × pull-direction).
     """
     from ai_sw_bridge.com.earlybind import typed
+
     tmpl = _find_part_template(sw_typed)
     doc = sw_typed.NewDocument(tmpl, 0, 0, 0)
     dt = typed(doc, "IModelDoc2", module=mod)
@@ -98,14 +122,29 @@ def _build_tapered(sw, sw_typed, mod, path: str, draft_rad: float, outward: bool
     dt.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     # args: 8 Dchk1=True (draft on), 10 Ddir1=outward?, 12 Dang1=draft_rad
     feat = dt.FeatureManager.FeatureExtrusion2(
-        True, False, False, 0, 0, 0.040, 0.0,
-        True,            # 8  Dchk1 — draft while extruding
-        False,           # 9  Dchk2
-        bool(outward),   # 10 Ddir1 — draft outward
-        False,           # 11 Ddir2
-        draft_rad,       # 12 Dang1
-        0.0,             # 13 Dang2
-        False, False, False, False, True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.040,
+        0.0,
+        True,  # 8  Dchk1 — draft while extruding
+        False,  # 9  Dchk2
+        bool(outward),  # 10 Ddir1 — draft outward
+        False,  # 11 Ddir2
+        draft_rad,  # 12 Dang1
+        0.0,  # 13 Dang2
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     dt.ForceRebuild3(True)
     err = dt.SaveAs3(path, 0, 0)
@@ -200,18 +239,20 @@ def run() -> dict:
         # draft SIGN with face POSITION along the pull axis.
         walk = _signed_face_walk(dt, (0.0, 0.0, 1.0))
         result["detail"]["box_signed_walk"] = walk
-        top_face = max(walk, key=lambda t: t[0])     # highest centroid along +Z
-        bot_face = min(walk, key=lambda t: t[0])     # lowest centroid along +Z
+        top_face = max(walk, key=lambda t: t[0])  # highest centroid along +Z
+        bot_face = min(walk, key=lambda t: t[0])  # lowest centroid along +Z
         result["detail"]["box_top_face"] = top_face
         result["detail"]["box_bottom_face"] = bot_face
         result["gates"]["G2_outward_normal_honest"] = (
-            top_face[1] > 80.0 and bot_face[1] < -80.0   # ≈ +90 / -90
+            top_face[1] > 80.0 and bot_face[1] < -80.0  # ≈ +90 / -90
         )
 
         # ── Fixture B: tapered +5° outward ───────────────────────────────
         deg5 = math.radians(5.0)
         tap_path = str(tmpdir / "taper5.sldprt")
-        _d2, dt2, _f2, err2 = _build_tapered(sw, sw_typed, mod, tap_path, deg5, outward=True)
+        _d2, dt2, _f2, err2 = _build_tapered(
+            sw, sw_typed, mod, tap_path, deg5, outward=True
+        )
         if err2 != 0:
             result["errors"].append(f"taper SaveAs3 err={err2}")
             return result

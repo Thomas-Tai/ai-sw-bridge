@@ -147,7 +147,9 @@ def _walk_swconst_typelib() -> dict[str, Any]:
         for ename, members in enums.items():
             for mname, val in members.items():
                 if any(t in mname for t in tokens):
-                    report["discovered"].setdefault(bucket_name, {})[f"{ename}.{mname}"] = val
+                    report["discovered"].setdefault(bucket_name, {})[
+                        f"{ename}.{mname}"
+                    ] = val
     report["enums"] = enums
     return report
 

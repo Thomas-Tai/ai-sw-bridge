@@ -94,7 +94,7 @@ PROF_W_M = 0.040
 PROF_H_M = 0.030
 
 # Sheet-metal parameters (metres).
-THICKNESS_M = 0.002   # 2 mm
+THICKNESS_M = 0.002  # 2 mm
 BEND_RADIUS_M = 0.001  # 1 mm
 
 # Candidate scalar setters on IBaseFlangeFeatureData (probed for presence).
@@ -182,6 +182,7 @@ def _probe_members(obj: Any, names: tuple[str, ...]) -> dict[str, str]:
 # Profile sketch
 # ---------------------------------------------------------------------------
 
+
 def _build_profile(doc: Any) -> dict[str, Any]:
     """Closed rectangle on the Front Plane (the base-flange profile)."""
     out: dict[str, Any] = {}
@@ -190,8 +191,12 @@ def _build_profile(doc: Any) -> dict[str, Any]:
         sk = doc.SketchManager
         sk.InsertSketch(True)
         seg = sk.CreateCornerRectangle(
-            -PROF_W_M / 2, -PROF_H_M / 2, 0.0,
-            PROF_W_M / 2, PROF_H_M / 2, 0.0,
+            -PROF_W_M / 2,
+            -PROF_H_M / 2,
+            0.0,
+            PROF_W_M / 2,
+            PROF_H_M / 2,
+            0.0,
         )
         sk.InsertSketch(True)
         out["built"] = seg is not None
@@ -243,6 +248,7 @@ def _acquire_baseflange_data(fm: Any, mod: Any) -> dict[str, Any]:
 # Top-level run
 # ---------------------------------------------------------------------------
 
+
 def run() -> dict[str, Any]:
     result: dict[str, Any] = {"binding": "hybrid early (com.earlybind.typed_qi)"}
 
@@ -288,7 +294,10 @@ def run() -> dict[str, Any]:
             members = _probe_members(typed_obj, CANDIDATE_MEMBERS)
             result["members"] = members
 
-            for name, val in (("Thickness", THICKNESS_M), ("BendRadius", BEND_RADIUS_M)):
+            for name, val in (
+                ("Thickness", THICKNESS_M),
+                ("BendRadius", BEND_RADIUS_M),
+            ):
                 if members.get(name) == "present":
                     rec, _ = _capture(lambda n=name, v=val: setattr(typed_obj, n, v))
                     set_recs[name] = rec
@@ -357,6 +366,7 @@ def run() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # VBA oracle
 # ---------------------------------------------------------------------------
+
 
 def emit_vba() -> str:
     return r"""' Spike v0.16 S-BASEFLANGE-QI VBA oracle.

@@ -98,51 +98,66 @@ _NON_PLANAR_POINTS = [
 class TestSketch3DHandler:
     def test_non_planar_polyline(self) -> None:
         ctx = _Ctx()
-        bf = builder._build_sketch_3d_sketch(ctx, {
-            "type": "sketch_3d_sketch",
-            "name": "S3D1",
-            "points": _NON_PLANAR_POINTS,
-        })
+        bf = builder._build_sketch_3d_sketch(
+            ctx,
+            {
+                "type": "sketch_3d_sketch",
+                "name": "S3D1",
+                "points": _NON_PLANAR_POINTS,
+            },
+        )
         assert (bf.name, bf.type) == ("S3D1", "sketch_3d_sketch")
 
     def test_insert3d_sketch_opens_and_closes(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_3d_sketch(ctx, {
-            "type": "sketch_3d_sketch",
-            "name": "S3D1",
-            "points": _NON_PLANAR_POINTS,
-        })
+        builder._build_sketch_3d_sketch(
+            ctx,
+            {
+                "type": "sketch_3d_sketch",
+                "name": "S3D1",
+                "points": _NON_PLANAR_POINTS,
+            },
+        )
         toggles = _calls(ctx, "Insert3DSketch")
         assert len(toggles) == 2, f"expected open+close toggles, got {toggles}"
         assert toggles == [(True,), (True,)]
 
     def test_no_plane_selection(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_3d_sketch(ctx, {
-            "type": "sketch_3d_sketch",
-            "name": "S3D1",
-            "points": _NON_PLANAR_POINTS,
-        })
+        builder._build_sketch_3d_sketch(
+            ctx,
+            {
+                "type": "sketch_3d_sketch",
+                "name": "S3D1",
+                "points": _NON_PLANAR_POINTS,
+            },
+        )
         sel = _calls(ctx, "SelectByID")
         assert sel == [], f"3D sketch must NOT select a plane, got {sel}"
 
     def test_no_insert_sketch_2d(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_3d_sketch(ctx, {
-            "type": "sketch_3d_sketch",
-            "name": "S3D1",
-            "points": _NON_PLANAR_POINTS,
-        })
+        builder._build_sketch_3d_sketch(
+            ctx,
+            {
+                "type": "sketch_3d_sketch",
+                "name": "S3D1",
+                "points": _NON_PLANAR_POINTS,
+            },
+        )
         ins2d = _calls(ctx, "InsertSketch")
         assert ins2d == [], f"3D sketch must use Insert3DSketch, got {ins2d}"
 
     def test_create_line_segments_with_real_z(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_3d_sketch(ctx, {
-            "type": "sketch_3d_sketch",
-            "name": "S3D1",
-            "points": _NON_PLANAR_POINTS,
-        })
+        builder._build_sketch_3d_sketch(
+            ctx,
+            {
+                "type": "sketch_3d_sketch",
+                "name": "S3D1",
+                "points": _NON_PLANAR_POINTS,
+            },
+        )
         lines = _calls(ctx, "CreateLine")
         assert len(lines) == 3, f"4 points -> 3 segments, got {len(lines)}"
         _approx_seq(lines[0], [0.0, 0.0, 0.0, 0.1, 0.0, 0.0])
@@ -151,34 +166,43 @@ class TestSketch3DHandler:
 
     def test_z_extent_nonzero(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_3d_sketch(ctx, {
-            "type": "sketch_3d_sketch",
-            "name": "S3D1",
-            "points": _NON_PLANAR_POINTS,
-        })
+        builder._build_sketch_3d_sketch(
+            ctx,
+            {
+                "type": "sketch_3d_sketch",
+                "name": "S3D1",
+                "points": _NON_PLANAR_POINTS,
+            },
+        )
         lines = _calls(ctx, "CreateLine")
         z_vals = [args[2] for args in lines] + [args[5] for args in lines]
         assert any(z != 0.0 for z in z_vals), "Z extent must be non-zero"
 
     def test_feature_renamed(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_3d_sketch(ctx, {
-            "type": "sketch_3d_sketch",
-            "name": "S3D1",
-            "points": _NON_PLANAR_POINTS,
-        })
+        builder._build_sketch_3d_sketch(
+            ctx,
+            {
+                "type": "sketch_3d_sketch",
+                "name": "S3D1",
+                "points": _NON_PLANAR_POINTS,
+            },
+        )
         assert ctx.doc._feat.Name == "S3D1"
 
     def test_two_point_minimum(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_3d_sketch(ctx, {
-            "type": "sketch_3d_sketch",
-            "name": "S3D1",
-            "points": [
-                {"x": 0.0, "y": 0.0, "z": 0.0},
-                {"x": 10.0, "y": 20.0, "z": 30.0},
-            ],
-        })
+        builder._build_sketch_3d_sketch(
+            ctx,
+            {
+                "type": "sketch_3d_sketch",
+                "name": "S3D1",
+                "points": [
+                    {"x": 0.0, "y": 0.0, "z": 0.0},
+                    {"x": 10.0, "y": 20.0, "z": 30.0},
+                ],
+            },
+        )
         lines = _calls(ctx, "CreateLine")
         assert len(lines) == 1
         _approx_seq(lines[0], [0.0, 0.0, 0.0, 0.01, 0.02, 0.03])
@@ -207,13 +231,11 @@ class TestDescriptorRegistryCoversW53:
         desc = builder.DESCRIPTORS["sketch_3d_sketch"]
         points_field = next(f for f in desc.fields if f.name == "points")
         item_schema = points_field.schema["items"]
-        assert "z" in item_schema["required"], (
-            "3D-sketch points must require z (non-planar prerequisite)"
-        )
+        assert (
+            "z" in item_schema["required"]
+        ), "3D-sketch points must require z (non-planar prerequisite)"
 
     def test_no_plane_field(self) -> None:
         desc = builder.DESCRIPTORS["sketch_3d_sketch"]
         field_names = [f.name for f in desc.fields]
-        assert "plane" not in field_names, (
-            "3D sketch must NOT have a plane field"
-        )
+        assert "plane" not in field_names, "3D sketch must NOT have a plane field"

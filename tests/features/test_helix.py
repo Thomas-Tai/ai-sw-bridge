@@ -55,6 +55,7 @@ def _mock_curve_length(monkeypatch):
 # Fake COM objects
 # ---------------------------------------------------------------------------
 
+
 class _FakeFeature:
     def __init__(self, type_name: str):
         self._type_name = type_name
@@ -82,8 +83,9 @@ class _FakeExt:
 
 
 class _FakeDoc:
-    def __init__(self, *, select_ok=True, insert_helix_effect=True,
-                 insert_helix_raises=False):
+    def __init__(
+        self, *, select_ok=True, insert_helix_effect=True, insert_helix_raises=False
+    ):
         self.fm = _FakeFM()
         self.fm._owning_doc = self
         self.FeatureManager = self.fm
@@ -126,6 +128,7 @@ class _FakeDoc:
 # Mode-A quarantine
 # ---------------------------------------------------------------------------
 
+
 class TestModeAQuarantined:
     """Mode-A no longer exists in the handler — the SW2024 swconst harvest
     proves there is no swFeatureNameID for helix. The handler fires Mode-B
@@ -140,6 +143,7 @@ class TestModeAQuarantined:
 # ---------------------------------------------------------------------------
 # Mode-B operative path
 # ---------------------------------------------------------------------------
+
 
 class TestModeB:
     def test_green_mode_b(self):
@@ -160,17 +164,22 @@ class TestModeB:
         doc = _FakeDoc()
         ok, _ = create_helix(
             doc,
-            {"pitch_mm": 10, "revolutions": 3, "start_angle_deg": 90, "clockwise": True},
+            {
+                "pitch_mm": 10,
+                "revolutions": 3,
+                "start_angle_deg": 90,
+                "clockwise": True,
+            },
             {"sketch": "Sketch2"},
         )
         assert ok is True
         args = doc.insert_helix_calls[0]
         assert len(args) == 10
-        assert args[0] is True       # ConstantPitch
-        assert args[3] is True       # Clockwise
-        assert args[4] == 0          # DefinedBy
+        assert args[0] is True  # ConstantPitch
+        assert args[3] is True  # Clockwise
+        assert args[4] == 0  # DefinedBy
         assert args[5] == pytest.approx(0.010)  # Pitch 10 mm
-        assert args[6] == pytest.approx(3.0)    # Revolution
+        assert args[6] == pytest.approx(3.0)  # Revolution
         assert args[7] == pytest.approx(0.030)  # Height = 0.010 * 3
         assert args[8] == pytest.approx(math.radians(90))
 
@@ -180,20 +189,25 @@ class TestModeB:
         its Extension are re-wrapped), else the VARIANT callout raises TypeError
         through mutate._open_doc_typed (probe_curve_lanes_typed_txn 2026-06-24)."""
         calls = []
-        monkeypatch.setattr(helix, "_latebound",
-                            lambda obj: (calls.append(obj), obj)[1])
+        monkeypatch.setattr(
+            helix, "_latebound", lambda obj: (calls.append(obj), obj)[1]
+        )
         doc = _FakeDoc()
         ok, _ = create_helix(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "Sketch2"},
         )
         assert ok is True
-        assert doc in calls            # _latebound(doc) for InsertHelix
+        assert doc in calls  # _latebound(doc) for InsertHelix
         assert doc.Extension in calls  # _latebound(doc.Extension) for SelectByID2
 
     def test_select_failure_short_circuits(self):
         doc = _FakeDoc(select_ok=False)
         ok, err = create_helix(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "Sketch2"},
         )
         assert ok is False
         assert "select" in err.lower()
@@ -202,7 +216,9 @@ class TestModeB:
     def test_insert_helix_raises_returns_false(self):
         doc = _FakeDoc(insert_helix_raises=True)
         ok, err = create_helix(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "Sketch2"},
         )
         assert ok is False
         assert "InsertHelix" in err
@@ -211,7 +227,9 @@ class TestModeB:
         """InsertHelix called, no exception, but no Helix node materialized."""
         doc = _FakeDoc(insert_helix_effect=False)
         ok, err = create_helix(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "Sketch2"},
         )
         assert ok is False
         assert "no Helix node materialized" in err
@@ -220,6 +238,7 @@ class TestModeB:
 # ---------------------------------------------------------------------------
 # Verify gate (ghost trap)
 # ---------------------------------------------------------------------------
+
 
 class TestVerifyGate:
     def test_count_helices_via_getfeatures(self):
@@ -231,17 +250,21 @@ class TestVerifyGate:
 
     def test_count_helices_handles_callable_getfeatures(self):
         """If GetFeatures returns nothing, count is zero."""
+
         class _EmptyFM:
             def GetFeatures(self, top_only):
                 return ()
+
         class _EmptyDoc:
             FeatureManager = _EmptyFM()
+
         assert helix._count_helices(_EmptyDoc()) == 0
 
 
 # ---------------------------------------------------------------------------
 # Validation (fail-closed)
 # ---------------------------------------------------------------------------
+
 
 class TestValidation:
     def test_feature_not_dict(self):
@@ -262,19 +285,25 @@ class TestValidation:
 
     def test_invalid_pitch(self):
         ok, err = create_helix(
-            _FakeDoc(), {"pitch_mm": "abc"}, {"sketch": "Sketch2"},
+            _FakeDoc(),
+            {"pitch_mm": "abc"},
+            {"sketch": "Sketch2"},
         )
         assert ok is False and "invalid" in err
 
     def test_nonpositive_pitch(self):
         ok, err = create_helix(
-            _FakeDoc(), {"pitch_mm": 0}, {"sketch": "Sketch2"},
+            _FakeDoc(),
+            {"pitch_mm": 0},
+            {"sketch": "Sketch2"},
         )
         assert ok is False and "pitch_mm" in err
 
     def test_nonpositive_revolutions(self):
         ok, err = create_helix(
-            _FakeDoc(), {"pitch_mm": 5, "revolutions": -1}, {"sketch": "Sketch2"},
+            _FakeDoc(),
+            {"pitch_mm": 5, "revolutions": -1},
+            {"sketch": "Sketch2"},
         )
         assert ok is False and "revolutions" in err
 
@@ -288,6 +317,7 @@ class TestValidation:
 # Dormant gate + kind disjointness
 # ---------------------------------------------------------------------------
 
+
 class TestDormantGate:
     def test_spike_status_is_green(self):
         assert helix.SPIKE_STATUS == "GREEN"
@@ -299,9 +329,18 @@ class TestDormantGate:
 class TestKindNames:
     def test_helix_disjoint_from_builtin_types(self):
         builtin_kinds = {
-            "fillet_constant_radius", "base_flange", "variable_radius_fillet",
-            "wizard_hole", "shell", "draft", "sweep", "ref_plane",
-            "ref_axis", "coordinate_system", "ref_point", "dome",
+            "fillet_constant_radius",
+            "base_flange",
+            "variable_radius_fillet",
+            "wizard_hole",
+            "shell",
+            "draft",
+            "sweep",
+            "ref_plane",
+            "ref_axis",
+            "coordinate_system",
+            "ref_point",
+            "dome",
             "sweep_cut",
         }
         assert "helix" not in builtin_kinds
@@ -311,6 +350,7 @@ class TestKindNames:
 # CURVE geometric gate (W67 P3b) — node-presence alone is NOT success
 # ---------------------------------------------------------------------------
 
+
 class TestCurveGate:
     def test_node_without_arc_length_is_rejected(self, monkeypatch):
         """A Helix node materialized but with NO readable arc length is the W42
@@ -318,7 +358,9 @@ class TestCurveGate:
         monkeypatch.setattr(helix, "_curve_length_mm", lambda node: None)
         doc = _FakeDoc()
         ok, err = create_helix(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "Sketch2"},
         )
         assert ok is False
         assert "arc length" in err
@@ -327,6 +369,8 @@ class TestCurveGate:
         monkeypatch.setattr(helix, "_curve_length_mm", lambda node: 80.0)
         doc = _FakeDoc()
         ok, err = create_helix(
-            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
+            doc,
+            {"pitch_mm": 5, "revolutions": 4},
+            {"sketch": "Sketch2"},
         )
         assert ok is True, err

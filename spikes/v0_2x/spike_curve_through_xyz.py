@@ -161,6 +161,7 @@ def _fire_curve(points_mm: list[list[float]]) -> dict[str, Any]:
     doc = None
     try:
         from ai_sw_bridge.sw_com import get_sw_app
+
         sw = get_sw_app()
         doc = sw.ActiveDoc
     except Exception:
@@ -179,7 +180,9 @@ def _write_and_report(out: dict[str, Any], code: int) -> int:
     out_path = res_dir / "curve_through_xyz_results.json"
     out_path.write_text(json.dumps(out, indent=2, default=str), encoding="utf-8")
     sys.stderr.write(f"[curve_through_xyz] wrote {out_path}\n")
-    sys.stderr.write(f"[curve_through_xyz] VERDICT: {out.get('verdict')} (exit {code})\n")
+    sys.stderr.write(
+        f"[curve_through_xyz] VERDICT: {out.get('verdict')} (exit {code})\n"
+    )
     sys.stdout.write(json.dumps(out, indent=2, default=str) + "\n")
     return code
 
@@ -242,7 +245,9 @@ def main() -> int:
                 if r is not None and not r:
                     points_ok = False
             except Exception as e:
-                point_results.append({"idx": i, "error": f"{type(e).__name__}: {e}"[:200]})
+                point_results.append(
+                    {"idx": i, "error": f"{type(e).__name__}: {e}"[:200]}
+                )
                 points_ok = False
         mode_b_diag["points"] = point_results
         mode_b_diag["points_ok"] = points_ok
@@ -282,17 +287,20 @@ def main() -> int:
         # The 3-point fire above is the primary test.  If it succeeded, the
         # minimum is <= 3.  A 2-point probe could be added by W0 if needed.
         out["UNKNOWN_2_min_points"] = (
-            "<=3 (3-point fire succeeded)" if mode_b_ok
+            "<=3 (3-point fire succeeded)"
+            if mode_b_ok
             else "UNKNOWN (3-point fire failed)"
         )
 
         # --- Arc-length probe (W67 P3b geometric gate) -------------------
         try:
             from ai_sw_bridge.features import verify as v
+
             length_mm = v.curve_length_mm(new_node)
             out["arc_length_mm"] = length_mm
             out["curve_gate_pass"] = v.gate_curve(
-                curves_after - curves_before, length_mm,
+                curves_after - curves_before,
+                length_mm,
             )
         except Exception as e:
             out["arc_length_error"] = f"{type(e).__name__}: {e}"[:200]

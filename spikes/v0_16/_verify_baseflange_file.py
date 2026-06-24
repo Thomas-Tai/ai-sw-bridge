@@ -1,6 +1,7 @@
 """Reopen a committed part (via the bridge's typed OpenDoc6) and confirm the
 base flange persisted: (1) select it by name, (2) walk the feature tree with
 full exception reporting. Pass the .sldprt path as argv[1]."""
+
 from __future__ import annotations
 
 import sys

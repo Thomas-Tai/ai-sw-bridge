@@ -83,19 +83,37 @@ BOX_D_M = 0.010
 HOLE_DEPTH_M = 0.006
 
 # swconst enums (verified by spikes/v0_16/_investigate_enums.py).
-SW_WZD_HOLE = 2                       # swWzdGeneralHoleTypes_e.swWzdHole
-SW_STD_ANSI_METRIC = 1               # swWzdHoleStandards_e.swStandardAnsiMetric
+SW_WZD_HOLE = 2  # swWzdGeneralHoleTypes_e.swWzdHole
+SW_STD_ANSI_METRIC = 1  # swWzdHoleStandards_e.swStandardAnsiMetric
 SW_FAST_ANSI_METRIC_TAP_DRILLS = 41  # swWzdHoleStandardFastenerTypes_e
 SW_FAST_ANSI_METRIC_DRILL_SIZES = 39
-SW_END_BLIND = 0                     # swEndConditions_e.swEndCondBlind
+SW_END_BLIND = 0  # swEndConditions_e.swEndCondBlind
 
 # (GenericHoleType, StdIndex, FastnerType, SSize, EndType) combos to try in
 # order; the first that doesn't raise wins. Sizes are guesses against the
 # metric drill/tap tables — the spike records which the build accepts.
 INIT_COMBOS = (
-    (SW_WZD_HOLE, SW_STD_ANSI_METRIC, SW_FAST_ANSI_METRIC_DRILL_SIZES, "6.0", SW_END_BLIND),
-    (SW_WZD_HOLE, SW_STD_ANSI_METRIC, SW_FAST_ANSI_METRIC_TAP_DRILLS, "M6", SW_END_BLIND),
-    (SW_WZD_HOLE, SW_STD_ANSI_METRIC, SW_FAST_ANSI_METRIC_TAP_DRILLS, "M6x1.0", SW_END_BLIND),
+    (
+        SW_WZD_HOLE,
+        SW_STD_ANSI_METRIC,
+        SW_FAST_ANSI_METRIC_DRILL_SIZES,
+        "6.0",
+        SW_END_BLIND,
+    ),
+    (
+        SW_WZD_HOLE,
+        SW_STD_ANSI_METRIC,
+        SW_FAST_ANSI_METRIC_TAP_DRILLS,
+        "M6",
+        SW_END_BLIND,
+    ),
+    (
+        SW_WZD_HOLE,
+        SW_STD_ANSI_METRIC,
+        SW_FAST_ANSI_METRIC_TAP_DRILLS,
+        "M6x1.0",
+        SW_END_BLIND,
+    ),
 )
 
 
@@ -154,8 +172,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-        BOX_W_M / 2, BOX_H_M / 2, 0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -163,9 +185,28 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
         feat = fm.FeatureExtrusion2(*base_args, False)
@@ -229,7 +270,11 @@ def run() -> dict[str, Any]:
         def_rec, data = _capture(lambda: fm.CreateDefinition(SW_FM_HOLE_WZD))
         result["create_definition_25"] = def_rec
         if data is None:
-            return {**result, "overall": "FAIL", "reason": "CreateDefinition(25) returned None"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "CreateDefinition(25) returned None",
+            }
 
         qi_rec, fd = _capture(lambda: typed_qi(data, IFACE, module=mod))
         result["typed_qi"] = qi_rec

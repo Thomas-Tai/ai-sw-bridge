@@ -48,14 +48,12 @@ def _latebound(com_obj: Any) -> Any:
 
 # swRefPlaneReferenceConstraint_e (duplicated — also used by the edge_flange
 # island that stays in mutate.py).
-_SW_REFPLANE_OFFSET = 8         # _Distance (bit-flag)
+_SW_REFPLANE_OFFSET = 8  # _Distance (bit-flag)
 _SW_REFPLANE_PERPENDICULAR = 2  # _Perpendicular
-_SW_REFPLANE_COINCIDENT = 4     # _Coincident
+_SW_REFPLANE_COINCIDENT = 4  # _Coincident
 
 
-def _create_ref_plane(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_ref_plane(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Create a reference plane — offset-from-plane OR normal-to-edge.
 
     Two seat-proven variants, dispatched by ``target`` shape:
@@ -86,9 +84,7 @@ def _create_ref_plane(
         doc.ClearSelection2(True)
         doc.SelectByID(plane_name, "PLANE", 0, 0, 0)
         fm = doc.FeatureManager
-        feat = fm.InsertRefPlane(
-            _SW_REFPLANE_OFFSET, distance_m, 0, 0, 0, 0
-        )
+        feat = fm.InsertRefPlane(_SW_REFPLANE_OFFSET, distance_m, 0, 0, 0, 0)
         if _materialized(feat):
             return True, None
         return False, "InsertRefPlane did not materialize"
@@ -170,9 +166,7 @@ def _create_ref_plane_normal_to_edge(
         return False, f"normal-to-edge ref-plane pipeline failed: {exc!r}"
 
 
-def _create_ref_axis(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_ref_axis(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Create a reference axis from two-plane intersection.
 
     Seat-proven recipe (spike_refgeom, W3):
@@ -203,8 +197,15 @@ def _create_ref_axis(
         doc.SelectByID(planes[0], "PLANE", 0, 0, 0)
         ext = _latebound(doc.Extension)
         ext.SelectByID2(
-            planes[1], "PLANE", 0, 0, 0, True, 0,
-            VARIANT(pythoncom.VT_DISPATCH, None), 0,
+            planes[1],
+            "PLANE",
+            0,
+            0,
+            0,
+            True,
+            0,
+            VARIANT(pythoncom.VT_DISPATCH, None),
+            0,
         )
         # InsertAxis2 on IModelDoc2 returns a VARIANT_BOOL (True = success)
         # in late-bound COM, not a Feature dispatch. Treat True as materialized;
@@ -317,9 +318,7 @@ def _create_coordinate_system(
         return False, f"coordinate-system pipeline failed: {exc!r}"
 
 
-def _create_ref_point(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_ref_point(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Create a reference point — durable face-centroid or legacy vertex coord.
 
     Two ``target`` shapes:
@@ -391,7 +390,10 @@ def _create_ref_point(
         if isinstance(feat, tuple):
             feat = feat[0] if len(feat) == 1 else None
         if feat is None or isinstance(feat, (int, bool)):
-            return False, f"InsertReferencePoint did not materialize (returned {feat!r})"
+            return (
+                False,
+                f"InsertReferencePoint did not materialize (returned {feat!r})",
+            )
         return True, None
     except Exception as exc:
         return False, f"ref-point pipeline failed: {exc!r}"

@@ -170,7 +170,10 @@ def _build_edge_normal_plane_sketch(
             ifeat = typed(f, "IFeature", module=mod)
         except Exception:  # noqa: BLE001
             continue
-        if ifeat.Name not in names_before_sk and ifeat.GetTypeName2() == "ProfileFeature":
+        if (
+            ifeat.Name not in names_before_sk
+            and ifeat.GetTypeName2() == "ProfileFeature"
+        ):
             sketch_feat = f
             break
     if sketch_feat is None:
@@ -233,9 +236,7 @@ def _create_edge_flange(
         return False, "could not capture edge persist id"
 
     try:
-        sketch_feat, err = _build_edge_normal_plane_sketch(
-            doc, edge_pid, height_m, mod
-        )
+        sketch_feat, err = _build_edge_normal_plane_sketch(doc, edge_pid, height_m, mod)
         if err is not None:
             return False, err
 
@@ -249,9 +250,7 @@ def _create_edge_flange(
         # SAFEARRAY-of-IDispatch is mandatory for FlangeEdges + SketchFeats.
         vt_null = VARIANT(pythoncom.VT_DISPATCH, None)
         edge_arr = VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (edge,))
-        sketch_arr = VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (sketch_feat,)
-        )
+        sketch_arr = VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, (sketch_feat,))
         doc.ClearSelection2(True)
         try:
             typed(edge, "IEntity", module=mod).Select2(False, 0)
@@ -264,9 +263,19 @@ def _create_edge_flange(
         before = len(_feats) if _feats else 0
         # Returns None on success — verify via delta, never the return value.
         doc.FeatureManager.InsertSheetMetalEdgeFlange2(
-            edge_arr, sketch_arr, _SW_EF_BOOL_OPTS, angle_rad, radius_m,
-            _SW_EF_POS_MATERIAL_INSIDE, 0.0, _SW_EF_RELIEF_TEAR,
-            _SW_EF_RELIEF_RATIO, 0.0, 0.0, _SW_EF_SHARP_DEFAULT, vt_null,
+            edge_arr,
+            sketch_arr,
+            _SW_EF_BOOL_OPTS,
+            angle_rad,
+            radius_m,
+            _SW_EF_POS_MATERIAL_INSIDE,
+            0.0,
+            _SW_EF_RELIEF_TEAR,
+            _SW_EF_RELIEF_RATIO,
+            0.0,
+            0.0,
+            _SW_EF_SHARP_DEFAULT,
+            vt_null,
         )
         doc.ForceRebuild3(False)
         _feats = doc.FeatureManager.GetFeatures(True)

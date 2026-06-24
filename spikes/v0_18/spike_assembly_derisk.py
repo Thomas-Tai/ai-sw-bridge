@@ -47,6 +47,7 @@ Strategy:
 Usage:
     python spikes/v0_18/spike_assembly_derisk.py
 """
+
 from __future__ import annotations
 
 import json
@@ -105,9 +106,29 @@ def _build_box_and_save(sw: Any, part_path: str, mod: Any) -> dict[str, Any]:
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.05, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.05,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
 
@@ -221,7 +242,9 @@ def run() -> dict[str, Any]:
     sw = connect_running_sw()
 
     tmp_dir = tempfile.gettempdir()
-    part_path = os.path.join(tmp_dir, "assembly_derisk_box_%d.SLDPRT" % int(time.time()))
+    part_path = os.path.join(
+        tmp_dir, "assembly_derisk_box_%d.SLDPRT" % int(time.time())
+    )
 
     # Step 1: Build + save a real part
     print("[w8] building + saving box part...")
@@ -234,11 +257,10 @@ def run() -> dict[str, Any]:
     # Step 2: Create assembly — find the assembly template directly
     print("[w8] creating assembly...")
     import glob
+
     asm_templates = glob.glob(
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.asmdot"
-    ) + glob.glob(
-        r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
-    )
+    ) + glob.glob(r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT")
     if not asm_templates:
         return {**result, "overall": "FAIL", "reason": "no assembly template found"}
     asm_template = asm_templates[0]
@@ -258,8 +280,11 @@ def run() -> dict[str, Any]:
         part_doc = open_ret[0] if isinstance(open_ret, tuple) else open_ret
         result["part_preopened"] = part_doc is not None
         if part_doc is None:
-            return {**result, "overall": "FAIL",
-                    "reason": "could not pre-open part doc"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "could not pre-open part doc",
+            }
         part_title = _title(part_doc)
 
         # Step 3: Place component #1
@@ -286,7 +311,14 @@ def run() -> dict[str, Any]:
             print("[w8] AddComponent4 failed, trying AddComponent5...")
             try:
                 comp1 = typed_asm.AddComponent5(
-                    part_path, 0, "", False, "", 0.0, 0.0, 0.0,
+                    part_path,
+                    0,
+                    "",
+                    False,
+                    "",
+                    0.0,
+                    0.0,
+                    0.0,
                 )
                 c5_err = None
             except Exception as e:
@@ -303,8 +335,11 @@ def run() -> dict[str, Any]:
                 result["component1"]["count_after"] = n_after_c1
 
         if not result["component1"]["placed"]:
-            return {**result, "overall": "WALL",
-                    "reason": "component placement failed (both AddComponent4 and 5)"}
+            return {
+                **result,
+                "overall": "WALL",
+                "reason": "component placement failed (both AddComponent4 and 5)",
+            }
 
         # Verify component #1 has real B-rep
         if comp1 is not None:
@@ -337,8 +372,11 @@ def run() -> dict[str, Any]:
         }
 
         if not result["component2"]["placed"]:
-            return {**result, "overall": "PARTIAL",
-                    "reason": "component #2 placement failed (component #1 OK)"}
+            return {
+                **result,
+                "overall": "PARTIAL",
+                "reason": "component #2 placement failed (component #1 OK)",
+            }
 
         # Step 5: Add a mate (COINCIDENT between two faces)
         print("[w8] preparing mate — selecting faces on each component...")
@@ -352,8 +390,11 @@ def run() -> dict[str, Any]:
             faces1, faces2 = [], []
 
         if not faces1 or not faces2:
-            return {**result, "overall": "PARTIAL",
-                    "reason": "could not acquire faces for mate"}
+            return {
+                **result,
+                "overall": "PARTIAL",
+                "reason": "could not acquire faces for mate",
+            }
 
         # Select face from component #1 then face from component #2
         # AddMate5 uses mark=1 for first entity, mark=2 for second entity
@@ -363,29 +404,28 @@ def run() -> dict[str, Any]:
         result["face_selections"] = {"face1": sel1, "face2": sel2}
 
         if not sel1 or not sel2:
-            return {**result, "overall": "PARTIAL",
-                    "reason": "face selection failed"}
+            return {**result, "overall": "PARTIAL", "reason": "face selection failed"}
 
         # Step 6: AddMate5
         print("[w8] calling AddMate5 (COINCIDENT)...")
         n_before_mate = _feature_count(asm_doc)
         try:
             mate_ret = typed_asm.AddMate5(
-                MATE_COINCIDENT,    # MateTypeFromEnum
-                MATE_ALIGN_ALIGNED, # AlignFromEnum
-                False,              # Flip
-                0.0,                # Distance
-                0.0,                # DistanceAbsUpperLimit
-                0.0,                # DistanceAbsLowerLimit
-                0.0,                # GearRatioNumerator
-                0.0,                # GearRatioDenominator
-                0.0,                # Angle
-                0.0,                # AngleAbsUpperLimit
-                0.0,                # AngleAbsLowerLimit
-                False,              # ForPositioningOnly
-                False,              # LockRotation
-                0,                  # WidthMateOption
-                0,                  # ErrorStatus (OUT — passed as placeholder)
+                MATE_COINCIDENT,  # MateTypeFromEnum
+                MATE_ALIGN_ALIGNED,  # AlignFromEnum
+                False,  # Flip
+                0.0,  # Distance
+                0.0,  # DistanceAbsUpperLimit
+                0.0,  # DistanceAbsLowerLimit
+                0.0,  # GearRatioNumerator
+                0.0,  # GearRatioDenominator
+                0.0,  # Angle
+                0.0,  # AngleAbsUpperLimit
+                0.0,  # AngleAbsLowerLimit
+                False,  # ForPositioningOnly
+                False,  # LockRotation
+                0,  # WidthMateOption
+                0,  # ErrorStatus (OUT — passed as placeholder)
             )
             mate_err = None
         except Exception as e:
@@ -408,7 +448,8 @@ def run() -> dict[str, Any]:
             "return_type": type(mate_ret).__name__,
             "return_raw": str(mate_ret)[:200],
             "error_status": error_status,
-            "mate_feature": mate_feature is not None and not isinstance(mate_feature, int),
+            "mate_feature": mate_feature is not None
+            and not isinstance(mate_feature, int),
             "error": mate_err,
             "delta": mate_delta,
             "materialized": mate_delta > 0,
@@ -417,17 +458,17 @@ def run() -> dict[str, Any]:
         # Also check for mate features by type (exclude MateGroup container)
         feats = _feature_types(asm_doc, mod)
         mate_feats = [
-            f for f in feats
+            f
+            for f in feats
             if "Mate" in f.get("type", "") and f.get("type") != "MateGroup"
         ]
         result["mate_features_found"] = mate_feats
 
         # Determine overall: components placed + either mate materialized or
         # mate features found in the tree
-        components_ok = (
-            result.get("component1", {}).get("placed")
-            and result.get("component2", {}).get("count_is_2")
-        )
+        components_ok = result.get("component1", {}).get("placed") and result.get(
+            "component2", {}
+        ).get("count_is_2")
         mate_ok = result["mate"]["materialized"] or len(mate_feats) > 0
 
         if components_ok and mate_ok:
@@ -436,8 +477,7 @@ def run() -> dict[str, Any]:
                 "Assembly construction + mating is tractable out-of-process. "
                 "Component placement via AddComponent4 with saved .sldprt works "
                 "(real B-rep, 2 components). AddMate5 created %d mate feature(s). "
-                "Assembly+mate epoch opens."
-                % len(mate_feats)
+                "Assembly+mate epoch opens." % len(mate_feats)
             )
         elif components_ok:
             result["overall"] = "PARTIAL"
@@ -481,7 +521,8 @@ def main() -> int:
     print("wrote %s" % out)
     print("overall: %s" % result.get("overall"))
     return {"GREEN": 0, "WALL": 2, "PARTIAL": 2, "FAIL": 1}.get(
-        result.get("overall"), 1)
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":

@@ -36,9 +36,15 @@ class _FakeMassProperty:
     def GetMomentOfInertia(self, where_taken: int) -> tuple:
         # Diagonal tensor about the centre of mass (axis-aligned box).
         return (
-            5.333e-9, 0.0, 0.0,
-            0.0, 5.333e-9, 0.0,
-            0.0, 0.0, 8.533e-9,
+            5.333e-9,
+            0.0,
+            0.0,
+            0.0,
+            5.333e-9,
+            0.0,
+            0.0,
+            0.0,
+            8.533e-9,
         )
 
 

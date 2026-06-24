@@ -166,9 +166,9 @@ def test_featurecut4_2024_single_dir_default_behaviour_preserving():
 
     args = builder._cut4_args_2024(end_cond=1, depth_m=0.0, flip=True)
     assert args[0] is True  # Sd single-ended
-    assert args[3] == 1     # T1 = end_cond
-    assert args[4] == 0     # T2 (unused)
-    assert args[6] == 0.0   # D2 (unused)
+    assert args[3] == 1  # T1 = end_cond
+    assert args[4] == 0  # T2 (unused)
+    assert args[6] == 0.0  # D2 (unused)
 
 
 def test_featurecut4_2024_two_direction_arg_shape():
@@ -181,9 +181,9 @@ def test_featurecut4_2024_two_direction_arg_shape():
     )
     assert len(args) == 27
     assert args[0] is False  # Sd: NOT single-ended
-    assert args[3] == 0      # T1
-    assert args[4] == 0      # T2 (second direction blind)
-    assert args[5] == 0.01   # D1
+    assert args[3] == 0  # T1
+    assert args[4] == 0  # T2 (second direction blind)
+    assert args[5] == 0.01  # D1
     assert args[6] == 0.004  # D2
 
 

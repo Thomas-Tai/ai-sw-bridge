@@ -22,6 +22,7 @@ Same gates as before + part_spec-specific:
 Usage:
     python spikes/v0_19/assembly_p1_partspec_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -133,9 +134,9 @@ def main() -> int:
         out["spec"] = spec
         # Pre-condition: lid cites part_spec, not part.
         lid_comp = spec["components"][1]
-        assert "part_spec" in lid_comp and "part" not in lid_comp, (
-            "lid must be sourced via part_spec for this PAE"
-        )
+        assert (
+            "part_spec" in lid_comp and "part" not in lid_comp
+        ), "lid must be sourced via part_spec for this PAE"
         out["lid_source"] = "part_spec"
 
         # ----- STEP 5: propose -----
@@ -156,6 +157,7 @@ def main() -> int:
         # build-then-place resolver will write, without us having to implement
         # that resolver in this PAE.
         from ai_sw_bridge.mutate import _load_proposal, _save_proposal
+
         rec = _load_proposal(pid)
         for comp in rec["spec"]["components"]:
             if comp["id"] == "lid":
@@ -173,7 +175,9 @@ def main() -> int:
         # ----- STEP 7: commit (lid path supplied via part_paths) -----
         print("[pae-ps] sw_commit_assembly(%s, part_paths={lid:...})..." % pid)
         commit = sw_commit_assembly(
-            pid, asm_path, part_paths={"lid": lid_path},
+            pid,
+            asm_path,
+            part_paths={"lid": lid_path},
         )
         out["commit"] = commit
         out["assembly_saved"] = os.path.isfile(asm_path)
@@ -215,7 +219,9 @@ def main() -> int:
                         if n < 1:
                             brep_ok = False
                     except Exception as exc:
-                        comp_brep.append({"error": f"{type(exc).__name__}: {exc}"[:200]})
+                        comp_brep.append(
+                            {"error": f"{type(exc).__name__}: {exc}"[:200]}
+                        )
                         brep_ok = False
             out["component_brep"] = comp_brep
 
@@ -231,10 +237,12 @@ def main() -> int:
                     while sub is not None:
                         try:
                             sf = typed(sub, "IFeature", module=mod)
-                            mate_feats.append({
-                                "name": sf.Name,
-                                "type": sf.GetTypeName2(),
-                            })
+                            mate_feats.append(
+                                {
+                                    "name": sf.Name,
+                                    "type": sf.GetTypeName2(),
+                                }
+                            )
                         except Exception:
                             pass
                         try:
@@ -308,6 +316,7 @@ def main() -> int:
 
     except Exception as exc:
         import traceback
+
         out["error"] = traceback.format_exc()
         out["ok"] = False
         print("[pae-ps] EXCEPTION: %s" % exc)

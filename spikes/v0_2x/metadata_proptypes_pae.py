@@ -38,7 +38,7 @@ sys.path.insert(0, str(repo_root / "src"))
 # swCustomInfoType_e — W53 seat-corrected (31/32/33 were guesses; real enum is
 # sparse: Number=3, Double=5, YesOrNo=11, Text=30, Date=64).
 SW_CUSTOM_INFO_TEXT = 30
-SW_CUSTOM_INFO_NUMBER = 5   # swCustomInfoDouble — Number(3) is int-only, rejects 42.5
+SW_CUSTOM_INFO_NUMBER = 5  # swCustomInfoDouble — Number(3) is int-only, rejects 42.5
 SW_CUSTOM_INFO_DATE = 64
 SW_CUSTOM_INFO_YES_OR_NO = 11
 SW_CUSTOM_PROP_REPLACE = 1
@@ -72,6 +72,7 @@ def _semantic_match(prop_type: str, expected: str, got: str) -> bool:
             return False
     if prop_type == "date":
         from datetime import datetime
+
         fmts = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%d/%m/%Y")
 
         def _parse(s):
@@ -233,13 +234,15 @@ def run_spike() -> dict:
                 )
                 continue
 
-            result["set_props"].append({
-                "name": name,
-                "type": prop["type"],
-                "type_id": type_id,
-                "value": value,
-                "add3_result": add_result,
-            })
+            result["set_props"].append(
+                {
+                    "name": name,
+                    "type": prop["type"],
+                    "type_id": type_id,
+                    "value": value,
+                    "add3_result": add_result,
+                }
+            )
             print(
                 f"[W53] Set {name} (type={type_id}/{prop['type']}) = {value!r}",
                 file=sys.stderr,
@@ -284,9 +287,7 @@ def run_spike() -> dict:
         try:
             save_err = mdoc2.SaveAs3(str(test_part), 0, 0)
             if save_err != 0:
-                result["errors"].append(
-                    f"SaveAs3 returned {save_err} (expected 0)"
-                )
+                result["errors"].append(f"SaveAs3 returned {save_err} (expected 0)")
                 title = mdoc2.GetTitle
                 title = title() if callable(title) else title
                 sw.CloseDoc(title)
@@ -380,19 +381,23 @@ def run_spike() -> dict:
                 name = prop["name"]
                 try:
                     g5 = typed_cpm2.Get5(name, False)
-                    result["reopen_get5"].append({
-                        "name": name,
-                        "get5_raw": g5,
-                    })
+                    result["reopen_get5"].append(
+                        {
+                            "name": name,
+                            "get5_raw": g5,
+                        }
+                    )
                     print(
                         f"[W53] Reopen Get5({name}): {g5}",
                         file=sys.stderr,
                     )
                 except Exception as exc:
-                    result["reopen_get5"].append({
-                        "name": name,
-                        "error": repr(exc),
-                    })
+                    result["reopen_get5"].append(
+                        {
+                            "name": name,
+                            "error": repr(exc),
+                        }
+                    )
 
         # Close
         title2 = mdoc2b.GetTitle

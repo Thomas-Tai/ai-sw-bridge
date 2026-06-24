@@ -28,7 +28,13 @@ from typing import Any
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
-RESULTS_PATH = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "drawing_datum_tag.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "drawing_datum_tag.json"
+)
 
 _KIND = "datum_tag"
 _SW_TYPE = 2  # swAnnotationType_e.swDatumTag
@@ -37,12 +43,24 @@ _RESULT_KEY = "datum_tag_annotations"
 
 def _build_minimal_part(part_path: str) -> bool:
     from ai_sw_bridge.spec.builder import build as part_build
+
     spec = {
         "schema_version": 1,
         "name": "W70_Box",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK_Box", "plane": "Front", "width": 20.0, "height": 20.0},
-            {"type": "boss_extrude_blind", "name": "EX_Box", "sketch": "SK_Box", "depth": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Box",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 20.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Box",
+                "sketch": "SK_Box",
+                "depth": 10.0,
+            },
         ],
     }
     res = part_build(spec, no_dim=True, save_as=part_path)
@@ -89,7 +107,7 @@ def _reopen_count(drawing_path: str) -> dict[str, Any]:
     try:
         ddoc = typed_qi(doc, "IDrawingDoc", module=mod)
         sheet = typed_qi(ddoc.GetCurrentSheet(), "ISheet", module=mod)
-        for v_raw in (sheet.GetViews() or []):
+        for v_raw in sheet.GetViews() or []:
             if v_raw is None:
                 continue
             try:
@@ -112,7 +130,10 @@ def main() -> int:
     from ai_sw_bridge.drawing.lifecycle import commit_drawing
     from ai_sw_bridge.sw_com import get_sw_app
 
-    result: dict[str, Any] = {"spike": f"w70_{_KIND}", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    result: dict[str, Any] = {
+        "spike": f"w70_{_KIND}",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
     mod = wrapper_module()
     sw = get_sw_app()
 
@@ -149,7 +170,9 @@ def main() -> int:
         result["reopen"] = reopen
         green = bool(commit.get("ok")) and reopen.get("ok")
         result["overall"] = "PASS" if green else "FAIL"
-        result["finding"] = f"commit_ok={commit.get('ok')}, {_KIND}_on_reopen={reopen.get('total')}"
+        result["finding"] = (
+            f"commit_ok={commit.get('ok')}, {_KIND}_on_reopen={reopen.get('total')}"
+        )
         _write(result)
         return 0 if green else 1
 

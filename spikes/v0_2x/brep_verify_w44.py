@@ -74,8 +74,10 @@ def _new_part(sw: Any) -> Any:
 def _get_total_face_count(doc: Any) -> int:
     """Sum face count across all solid bodies via IBody2.GetFaces()."""
     try:
-        pdoc = doc if hasattr(doc, "GetBodies2") else typed(
-            doc, "IPartDoc", module=wrapper_module()
+        pdoc = (
+            doc
+            if hasattr(doc, "GetBodies2")
+            else typed(doc, "IPartDoc", module=wrapper_module())
         )
         bodies = pdoc.GetBodies2(0, True)
     except Exception:
@@ -111,8 +113,12 @@ def _sketch_rect_on_front(
     sk = doc.SketchManager
     sk.InsertSketch(True)
     sk.CreateCornerRectangle(
-        cx - w / 2, cy - h / 2, 0.0,
-        cx + w / 2, cy + h / 2, 0.0,
+        cx - w / 2,
+        cy - h / 2,
+        0.0,
+        cx + w / 2,
+        cy + h / 2,
+        0.0,
     )
     sk.InsertSketch(True)
     if name:
@@ -126,8 +132,12 @@ def _sketch_rect_on_front(
 
 
 def _sketch_circle_on_plane(
-    doc: Any, plane_name: str, sketch_name: str,
-    cx: float, cy: float, radius_m: float,
+    doc: Any,
+    plane_name: str,
+    sketch_name: str,
+    cx: float,
+    cy: float,
+    radius_m: float,
 ) -> None:
     doc.SelectByID(plane_name, "PLANE", 0, 0, 0)
     sk = doc.SketchManager
@@ -145,8 +155,13 @@ def _sketch_circle_on_plane(
 
 
 def _sketch_line_on_plane(
-    doc: Any, plane_name: str, sketch_name: str,
-    x1: float, y1: float, x2: float, y2: float,
+    doc: Any,
+    plane_name: str,
+    sketch_name: str,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
 ) -> None:
     doc.SelectByID(plane_name, "PLANE", 0, 0, 0)
     sk = doc.SketchManager
@@ -166,14 +181,28 @@ def _sketch_line_on_plane(
 def _extrude_blind(doc: Any, depth_m: float) -> Any:
     fm = doc.FeatureManager
     return fm.FeatureExtrusion3(
-        True, False, False,
-        0, 0,
-        depth_m, 0.0,
-        False, False, False, False,
-        0.0, 0.0,
-        False, False, False, False,
-        True, True, True,
-        0, 0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        depth_m,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
         False,
     )
 
@@ -313,11 +342,15 @@ def test_shell(sw: Any) -> dict[str, Any]:
     return result
 
 
-def _pick_face_by_normal(doc: Any, want: tuple[float, float, float], tol: float = 0.3) -> Any:
+def _pick_face_by_normal(
+    doc: Any, want: tuple[float, float, float], tol: float = 0.3
+) -> Any:
     """Find a face entity whose outward normal matches *want*."""
     try:
-        pdoc = doc if hasattr(doc, "GetBodies2") else typed(
-            doc, "IPartDoc", module=wrapper_module()
+        pdoc = (
+            doc
+            if hasattr(doc, "GetBodies2")
+            else typed(doc, "IPartDoc", module=wrapper_module())
         )
         bodies = pdoc.GetBodies2(0, True)
     except Exception:
@@ -397,7 +430,9 @@ def test_draft(sw: Any) -> dict[str, Any]:
                 if feat_count_after > feat_count_before:
                     ok = True
             result["handler_ok"] = ok
-            result["handler_error"] = None if ok else "InsertMultiFaceDraft did not materialize"
+            result["handler_error"] = (
+                None if ok else "InsertMultiFaceDraft did not materialize"
+            )
 
         doc.ForceRebuild3(False)
         after = _measure_brep(doc)
@@ -406,7 +441,9 @@ def test_draft(sw: Any) -> dict[str, Any]:
             "vol": round(after["volume_mm3"] - before["volume_mm3"], 4),
             "faces": after["face_count"] - before["face_count"],
         }
-        result["status"] = _verdict(result.get("handler_ok", False), before, after, "draft")
+        result["status"] = _verdict(
+            result.get("handler_ok", False), before, after, "draft"
+        )
     except Exception as exc:
         result["status"] = "EXCEPTION"
         result["error"] = f"{exc!r}\n{traceback.format_exc()}"
@@ -424,20 +461,14 @@ def test_sweep(sw: Any) -> dict[str, Any]:
         result["error"] = "NewDocument returned None"
         return result
     try:
-        _sketch_circle_on_plane(
-            doc, "Front Plane", "SK_Profile", 0.0, 0.0, 0.005
-        )
-        _sketch_line_on_plane(
-            doc, "Right Plane", "SK_Path", -0.030, 0.0, 0.030, 0.0
-        )
+        _sketch_circle_on_plane(doc, "Front Plane", "SK_Profile", 0.0, 0.0, 0.005)
+        _sketch_line_on_plane(doc, "Right Plane", "SK_Path", -0.030, 0.0, 0.030, 0.0)
         doc.ForceRebuild3(False)
 
         before = _measure_brep(doc)
         result["before"] = before
 
-        ok, err = _create_sweep(
-            doc, {}, {"profile": "SK_Profile", "path": "SK_Path"}
-        )
+        ok, err = _create_sweep(doc, {}, {"profile": "SK_Profile", "path": "SK_Path"})
         result["handler_ok"] = ok
         result["handler_error"] = err
 
@@ -472,12 +503,15 @@ def test_sweep_cut(sw: Any) -> dict[str, Any]:
         before = build["before_brep"]
         result["before"] = before
 
-        _sketch_circle_on_plane(
-            doc, "Right Plane", "SK_CutProfile", 0.0, 0.0, 0.003
-        )
+        _sketch_circle_on_plane(doc, "Right Plane", "SK_CutProfile", 0.0, 0.0, 0.003)
         _sketch_line_on_plane(
-            doc, "Front Plane", "SK_CutPath",
-            -0.030, 0.0, 0.030, 0.0,
+            doc,
+            "Front Plane",
+            "SK_CutPath",
+            -0.030,
+            0.0,
+            0.030,
+            0.0,
         )
         doc.ForceRebuild3(False)
 
@@ -583,12 +617,9 @@ def run() -> dict[str, Any]:
         if r.get("handler_error"):
             print(f"  error:  {r['handler_error']}")
 
-    green = sum(
-        1 for r in output["results"].values() if r.get("status") == "GREEN"
-    )
+    green = sum(1 for r in output["results"].values() if r.get("status") == "GREEN")
     ghost = sum(
-        1 for r in output["results"].values()
-        if "GHOST" in str(r.get("status", ""))
+        1 for r in output["results"].values() if "GHOST" in str(r.get("status", ""))
     )
     total = len(output["results"])
     output["summary"] = f"{green}/{total} GREEN, {ghost} GHOST"

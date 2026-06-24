@@ -31,17 +31,13 @@ from pathlib import Path
 from typing import Any
 
 if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(
-        sys.stdout.buffer, encoding="utf-8", errors="replace"
-    )
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "export_pdf_pae.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "export_pdf_pae.json"
 
 results: dict[str, Any] = {
     "pae": "w25_export_pdf",
@@ -93,7 +89,7 @@ def _count_pdf_pages(pdf_path: str) -> int:
     try:
         with open(pdf_path, "rb") as f:
             data = f.read()
-        pattern = re.compile(rb'/Type\s*/Page(?![s])')
+        pattern = re.compile(rb"/Type\s*/Page(?![s])")
         matches = pattern.findall(data)
         count = len(matches)
         results["page_counting_method"] = "raw_byte_scan:/Type/Page(?![s])"
@@ -130,7 +126,9 @@ def _build_test_part(sw: Any, part_path: str) -> bool:
     return bool(r.ok) and os.path.isfile(part_path)
 
 
-def _build_discriminating_drawing(sw: Any, part_path: str, template_path: str) -> str | None:
+def _build_discriminating_drawing(
+    sw: Any, part_path: str, template_path: str
+) -> str | None:
     """Build a DISCRIMINATING 2-sheet drawing:
     - Sheet "Solo": 1 view (front)
     - Sheet "Quad": 4 views (front, top, right, iso)
@@ -169,7 +167,11 @@ def _build_discriminating_drawing(sw: Any, part_path: str, template_path: str) -
     )
 
     if not result.get("ok", False):
-        gate("drawing_build", False, f"commit_drawing failed: {result.get('error', 'unknown')}")
+        gate(
+            "drawing_build",
+            False,
+            f"commit_drawing failed: {result.get('error', 'unknown')}",
+        )
         return None
 
     drawing_path = result.get("path", output_path)
@@ -272,7 +274,11 @@ def run() -> str:
 
     results_all = export_all(doc_m2, [req_all], f"w25_pae_all_{_ts}")
     if not results_all or len(results_all) != 1:
-        gate("export_all_call", False, f"expected 1 result, got {len(results_all) if results_all else 0}")
+        gate(
+            "export_all_call",
+            False,
+            f"expected 1 result, got {len(results_all) if results_all else 0}",
+        )
         results["verdict"] = "FAIL"
         save_results()
         try:
@@ -330,7 +336,9 @@ def run() -> str:
     r_solo = results_solo[0]
     gate("export_solo_ok", r_solo.ok, f"error={r_solo.error}")
 
-    size_solo = Path(pdf_solo_path).stat().st_size if Path(pdf_solo_path).exists() else 0
+    size_solo = (
+        Path(pdf_solo_path).stat().st_size if Path(pdf_solo_path).exists() else 0
+    )
     gate("pdf_solo_exists", Path(pdf_solo_path).exists(), f"size={size_solo}")
 
     results["pdf_paths"]["solo"] = pdf_solo_path
@@ -367,7 +375,9 @@ def run() -> str:
     r_quad = results_quad[0]
     gate("export_quad_ok", r_quad.ok, f"error={r_quad.error}")
 
-    size_quad = Path(pdf_quad_path).stat().st_size if Path(pdf_quad_path).exists() else 0
+    size_quad = (
+        Path(pdf_quad_path).stat().st_size if Path(pdf_quad_path).exists() else 0
+    )
     gate("pdf_quad_exists", Path(pdf_quad_path).exists(), f"size={size_quad}")
 
     results["pdf_paths"]["quad"] = pdf_quad_path
@@ -427,8 +437,11 @@ def run() -> str:
         if r_bad.ok:
             results["verdict"] = "FAIL (unknown sheet not rejected)"
         else:
-            gate("unknown_sheet_message", "Unknown" in r_bad.error or "unknown" in r_bad.error.lower(),
-                 f"error={r_bad.error}")
+            gate(
+                "unknown_sheet_message",
+                "Unknown" in r_bad.error or "unknown" in r_bad.error.lower(),
+                f"error={r_bad.error}",
+            )
     else:
         gate("unknown_sheet_rejected", False, "no results returned")
 
@@ -461,8 +474,11 @@ def run() -> str:
             r_part = results_part[0]
             gate("pdf_on_part_rejected", not r_part.ok, f"error={r_part.error}")
             if not r_part.ok:
-                gate("pdf_on_part_message", "Drawing" in r_part.error,
-                     f"error contains 'Drawing': {r_part.error}")
+                gate(
+                    "pdf_on_part_message",
+                    "Drawing" in r_part.error,
+                    f"error contains 'Drawing': {r_part.error}",
+                )
         else:
             gate("pdf_on_part_rejected", False, "no results")
         try:
@@ -491,7 +507,9 @@ def run() -> str:
         "pages_solo_count",
         "page_count_discrimination_proof",
     ]
-    critical_ok = all(results["gates"].get(g, {}).get("ok", False) for g in critical_gates)
+    critical_ok = all(
+        results["gates"].get(g, {}).get("ok", False) for g in critical_gates
+    )
 
     if critical_ok:
         results["verdict"] = "PASS"
@@ -510,8 +528,11 @@ if __name__ == "__main__":
         verdict = run()
     except Exception:
         import traceback
+
         traceback.print_exc()
-        results["verdict"] = f"FAIL (unhandled exception: {traceback.format_exc()[:200]})"
+        results["verdict"] = (
+            f"FAIL (unhandled exception: {traceback.format_exc()[:200]})"
+        )
         save_results()
         verdict = "FAIL"
     sys.exit(0 if verdict == "PASS" else 1)

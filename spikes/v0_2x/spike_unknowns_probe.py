@@ -30,18 +30,48 @@ from typing import Any
 _PKG = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG))
 
-RESULTS = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "unknowns_probe.json"
+RESULTS = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "unknowns_probe.json"
+)
 
 
 def _build_fixture(path: str) -> bool:
     from ai_sw_bridge.spec.builder import build as part_build
+
     spec = {
-        "schema_version": 1, "name": "W71_Unk",
+        "schema_version": 1,
+        "name": "W71_Unk",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK_Base", "plane": "Front", "width": 40.0, "height": 40.0},
-            {"type": "boss_extrude_blind", "name": "EX_Base", "sketch": "SK_Base", "depth": 10.0},
-            {"type": "sketch_circle_on_face", "name": "SK_Seed", "of_feature": "EX_Base", "face": "+z", "diameter": 6.0, "center": {"u": 0.0, "v": 0.0}},
-            {"type": "cut_extrude_through_all", "name": "CUT_Seed", "sketch": "SK_Seed"},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Base",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 40.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Base",
+                "sketch": "SK_Base",
+                "depth": 10.0,
+            },
+            {
+                "type": "sketch_circle_on_face",
+                "name": "SK_Seed",
+                "of_feature": "EX_Base",
+                "face": "+z",
+                "diameter": 6.0,
+                "center": {"u": 0.0, "v": 0.0},
+            },
+            {
+                "type": "cut_extrude_through_all",
+                "name": "CUT_Seed",
+                "sketch": "SK_Seed",
+            },
         ],
     }
     r = part_build(spec, no_dim=True, save_as=path)
@@ -53,6 +83,7 @@ def _build_fixture(path: str) -> bool:
 
 def _vol() -> float | None:
     from ai_sw_bridge.observe import sw_get_volume
+
     return sw_get_volume().get("volume_mm3")
 
 
@@ -60,6 +91,7 @@ def _ctx():
     from ai_sw_bridge.com.earlybind import typed, typed_qi
     from ai_sw_bridge.com.sw_type_info import wrapper_module
     from ai_sw_bridge.sw_com import get_active_doc, get_sw_app, resolve
+
     mod = wrapper_module()
     sw = get_sw_app()
     doc = get_active_doc(sw)
@@ -86,7 +118,10 @@ def _verdict(ret: Any, dvol: float | None, sel: int | None) -> str:
 
 
 def probe_scale() -> dict:
-    p: dict[str, Any] = {"name": "scale", "api": "IFeatureManager.InsertScale(Type,Uniform,X,Y,Z)->Feature"}
+    p: dict[str, Any] = {
+        "name": "scale",
+        "api": "IFeatureManager.InsertScale(Type,Uniform,X,Y,Z)->Feature",
+    }
     try:
         sw, doc, fm, ext, mod, typed, typed_qi, resolve = _ctx()
         v0 = _vol()
@@ -94,10 +129,19 @@ def probe_scale() -> dict:
         ret = fm.InsertScale(0, True, 1.5, 1.5, 1.5)
         v1 = _vol()
         dvol = (v1 - v0) if (v0 is not None and v1 is not None) else None
-        p.update(ret_repr=repr(ret)[:60], ret_is_none=ret is None, vol_before=v0, vol_after=v1,
-                 dvol=dvol, expected_ratio=3.375, verdict=_verdict(ret, dvol, None))
+        p.update(
+            ret_repr=repr(ret)[:60],
+            ret_is_none=ret is None,
+            vol_before=v0,
+            vol_after=v1,
+            dvol=dvol,
+            expected_ratio=3.375,
+            verdict=_verdict(ret, dvol, None),
+        )
     except Exception as exc:
-        p.update(error=f"{type(exc).__name__}: {str(exc)[:120]}", verdict="WALL (error)")
+        p.update(
+            error=f"{type(exc).__name__}: {str(exc)[:120]}", verdict="WALL (error)"
+        )
     finally:
         try:
             _close(_ctx()[0])
@@ -107,10 +151,14 @@ def probe_scale() -> dict:
 
 
 def probe_fill() -> dict:
-    p: dict[str, Any] = {"name": "fill_pattern", "api": "IFeatureManager.FeatureFillPattern(19 args)->Feature"}
+    p: dict[str, Any] = {
+        "name": "fill_pattern",
+        "api": "IFeatureManager.FeatureFillPattern(19 args)->Feature",
+    }
     try:
         from pythoncom import VT_DISPATCH
         from win32com.client import VARIANT
+
         sw, doc, fm, ext, mod, typed, typed_qi, resolve = _ctx()
         null_callout = VARIANT(VT_DISPATCH, None)
         # boundary = top +z face (block z=0..10, center face at (0,0,0.010)); seed = CUT_Seed
@@ -119,8 +167,12 @@ def probe_fill() -> dict:
         except Exception:
             pass
         # face point MUST be off the centre Ø6 seed hole -> (15,15,10) mm
-        ok_face = ext.SelectByID2("", "FACE", 0.015, 0.015, 0.010, False, 0, null_callout, 0)
-        ok_seed = ext.SelectByID2("CUT_Seed", "BODYFEATURE", 0.0, 0.0, 0.0, True, 4, null_callout, 0)
+        ok_face = ext.SelectByID2(
+            "", "FACE", 0.015, 0.015, 0.010, False, 0, null_callout, 0
+        )
+        ok_seed = ext.SelectByID2(
+            "CUT_Seed", "BODYFEATURE", 0.0, 0.0, 0.0, True, 4, null_callout, 0
+        )
         try:
             sel = doc.SelectionManager.GetSelectedObjectCount2(-1)
         except Exception:
@@ -130,17 +182,46 @@ def probe_fill() -> dict:
         # Margins=0, LoopSpacing=0, NoOfInstances=4, PolygonSides=4, FeaturesToPattern=0,
         # CreateSeedCut=0, Diameter/Dim/Rot/Diag=0, SeedCutPolySides=4, Outer/Inner=0,
         # FlipShape=False, GeometryPattern=True
-        ret = fm.FeatureFillPattern(0, 0, 0.008, 0.0, 0.0, 0.0, 4, 4, 0, 0,
-                                    0.0, 0.0, 0.0, 0.0, 4, 0.0, 0.0, False, True)
+        ret = fm.FeatureFillPattern(
+            0,
+            0,
+            0.008,
+            0.0,
+            0.0,
+            0.0,
+            4,
+            4,
+            0,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            4,
+            0.0,
+            0.0,
+            False,
+            True,
+        )
         v1 = _vol()
         dvol = (v1 - v0) if (v0 is not None and v1 is not None) else None
-        p.update(sel_face=bool(ok_face), sel_seed=bool(ok_seed), sel_count=sel,
-                 ret_repr=repr(ret)[:60], ret_is_none=ret is None, vol_before=v0, vol_after=v1,
-                 dvol=dvol, verdict=_verdict(ret, dvol, sel))
+        p.update(
+            sel_face=bool(ok_face),
+            sel_seed=bool(ok_seed),
+            sel_count=sel,
+            ret_repr=repr(ret)[:60],
+            ret_is_none=ret is None,
+            vol_before=v0,
+            vol_after=v1,
+            dvol=dvol,
+            verdict=_verdict(ret, dvol, sel),
+        )
         if p.get("verdict", "").startswith("WALL") and (sel or 0) < 2:
             p["verdict"] = "INCONCLUSIVE (selection<2)"
     except Exception as exc:
-        p.update(error=f"{type(exc).__name__}: {str(exc)[:120]}", verdict="WALL (error)")
+        p.update(
+            error=f"{type(exc).__name__}: {str(exc)[:120]}", verdict="WALL (error)"
+        )
     finally:
         try:
             _close(_ctx()[0])
@@ -150,10 +231,14 @@ def probe_fill() -> dict:
 
 
 def probe_advanced_hole() -> dict:
-    p: dict[str, Any] = {"name": "advanced_hole", "api": "IFeatureManager.AdvancedHole(near[],far[],...)->Feature"}
+    p: dict[str, Any] = {
+        "name": "advanced_hole",
+        "api": "IFeatureManager.AdvancedHole(near[],far[],...)->Feature",
+    }
     try:
         from pythoncom import VT_DISPATCH
         from win32com.client import VARIANT
+
         sw, doc, fm, ext, mod, typed, typed_qi, resolve = _ctx()
         null_callout = VARIANT(VT_DISPATCH, None)
         # select a point on the top face for the hole location
@@ -161,7 +246,9 @@ def probe_advanced_hole() -> dict:
             doc.ClearSelection2(True)
         except Exception:
             pass
-        ok_face = ext.SelectByID2("", "FACE", 0.015, 0.015, 0.010, False, 0, null_callout, 0)
+        ok_face = ext.SelectByID2(
+            "", "FACE", 0.015, 0.015, 0.010, False, 0, null_callout, 0
+        )
         # CreateAdvancedHoleElementData is on IModelDocExtension, NOT IFeatureManager.
         text = typed(ext, "IModelDocExtension", module=mod)
         elem = None
@@ -177,6 +264,7 @@ def probe_advanced_hole() -> dict:
             # bare list -> DISP_E_ARRAYISLOCKED ('Memory is locked'); the makepy
             # SAFEARRAY doctrine: wrap as VARIANT(VT_ARRAY|VT_DISPATCH, [...]).
             from pythoncom import VT_ARRAY
+
             near = VARIANT(VT_ARRAY | VT_DISPATCH, [elem]) if elem is not None else None
             # AdvancedHole(near, far, UseBaseline, IsCustomCallout, out Result)
             ret = fm.AdvancedHole(near, None, False, False)
@@ -192,11 +280,22 @@ def probe_advanced_hole() -> dict:
             verdict = "WALL (ret=None)"
         else:
             verdict = _verdict(feat, dvol, None)
-        p.update(sel_face=bool(ok_face), elem_created=elem is not None, elem_err=elem_err,
-                 ret_repr=repr(ret)[:80], feat_is_none=feat is None, call_err=call_err,
-                 vol_before=v0, vol_after=v1, dvol=dvol, verdict=verdict)
+        p.update(
+            sel_face=bool(ok_face),
+            elem_created=elem is not None,
+            elem_err=elem_err,
+            ret_repr=repr(ret)[:80],
+            feat_is_none=feat is None,
+            call_err=call_err,
+            vol_before=v0,
+            vol_after=v1,
+            dvol=dvol,
+            verdict=verdict,
+        )
     except Exception as exc:
-        p.update(error=f"{type(exc).__name__}: {str(exc)[:120]}", verdict="WALL (error)")
+        p.update(
+            error=f"{type(exc).__name__}: {str(exc)[:120]}", verdict="WALL (error)"
+        )
     finally:
         try:
             _close(_ctx()[0])
@@ -206,12 +305,24 @@ def probe_advanced_hole() -> dict:
 
 
 def main() -> int:
-    res: dict[str, Any] = {"spike": "unknowns_probe", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"), "probes": []}
-    for builder, fn in (("scale", probe_scale), ("fill_pattern", probe_fill), ("advanced_hole", probe_advanced_hole)):
-        with tempfile.TemporaryDirectory(prefix=f"w71_unk_{builder}_", ignore_cleanup_errors=True) as tmp:
+    res: dict[str, Any] = {
+        "spike": "unknowns_probe",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "probes": [],
+    }
+    for builder, fn in (
+        ("scale", probe_scale),
+        ("fill_pattern", probe_fill),
+        ("advanced_hole", probe_advanced_hole),
+    ):
+        with tempfile.TemporaryDirectory(
+            prefix=f"w71_unk_{builder}_", ignore_cleanup_errors=True
+        ) as tmp:
             path = os.path.join(tmp, "W71_Unk.sldprt")
             if not _build_fixture(path):
-                res["probes"].append({"name": builder, "verdict": "ERROR (fixture build failed)"})
+                res["probes"].append(
+                    {"name": builder, "verdict": "ERROR (fixture build failed)"}
+                )
                 continue
             res["probes"].append(fn())
     res["summary"] = {p["name"]: p.get("verdict") for p in res["probes"]}

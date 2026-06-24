@@ -98,8 +98,12 @@ from . import move_copy_body as _move_copy_body  # noqa: E402,F401
 # Route move/copy_body through the centralized gate too (UNRUN → dormant skip);
 # keeps every lane on one sanctioned path. The module's own _register() is the
 # wall-provenance gate; this is the registry-seam mirror.
-_register_lane("move_body", _move_copy_body.create_move_body, _move_copy_body.SPIKE_STATUS)
-_register_lane("copy_body", _move_copy_body.create_copy_body, _move_copy_body.SPIKE_STATUS)
+_register_lane(
+    "move_body", _move_copy_body.create_move_body, _move_copy_body.SPIKE_STATUS
+)
+_register_lane(
+    "copy_body", _move_copy_body.create_copy_body, _move_copy_body.SPIKE_STATUS
+)
 
 # W62 — composite curve (curves group, lane 1). Mode-A QUARANTINED on this
 # SW build: the swconst harvest (docs/sw_api_full.json @ 32.1.0.123) exposes
@@ -283,10 +287,14 @@ _register_lane("curve_through_xyz", create_curve_through_xyz, _curve_through_xyz
 # Seat-proven 2026-06-21: fm.FeatureSketchDrivenPattern(use_centroid, geom_patt)
 # on seed(mark 4) + ref-sketch(mark 1) materializes a 'SketchPattern' node
 # (+5 faces/+423mm³ from a 3-point sketch, survives reopen). gate_additive_solid.
-from .sketch_driven_pattern import SPIKE_STATUS as _sketch_driven_pattern_status  # noqa: E402
+from .sketch_driven_pattern import (
+    SPIKE_STATUS as _sketch_driven_pattern_status,
+)  # noqa: E402
 from .sketch_driven_pattern import create_sketch_driven_pattern  # noqa: E402
 
-_register_lane("sketch_driven_pattern", create_sketch_driven_pattern, _sketch_driven_pattern_status)
+_register_lane(
+    "sketch_driven_pattern", create_sketch_driven_pattern, _sketch_driven_pattern_status
+)
 
 # W71 — scale (closed-form volume transform; locks the Part-Feature axis).
 # IFeatureManager.InsertScale(Type, Uniform, X, Y, Z) -> Feature: a uniform
@@ -309,10 +317,14 @@ _register_lane("scale", create_scale, _scale_status)
 # (0 ghosts the whole feature). Segments + Groups marshal via
 # VARIANT(VT_ARRAY|VT_DISPATCH). ADDITIVE_SOLID gate (Δfaces>0 ∧ |ΔVol|>eps).
 # SPIKE_STATUS gate: UNFIRED until W0 fires the production seat-proof.
-from .structural_weldment import SPIKE_STATUS as _structural_weldment_status  # noqa: E402
+from .structural_weldment import (
+    SPIKE_STATUS as _structural_weldment_status,
+)  # noqa: E402
 from .structural_weldment import create_structural_weldment  # noqa: E402
 
-_register_lane("structural_weldment", create_structural_weldment, _structural_weldment_status)
+_register_lane(
+    "structural_weldment", create_structural_weldment, _structural_weldment_status
+)
 
 # post-GA — intersect (the boundary-law refinement; FALSIFIED the combine/split
 # wall prediction). The Intersect feature is TWO-PHASE: IFeatureManager.
@@ -386,16 +398,21 @@ from .dress_up import (  # noqa: E402
     _create_variable_fillet,
 )
 
+
 # _create_fillet original signature: (doc, target, radius_mm) — non-standard.
 # Wrap to the standard (doc, feature, target) calling convention.
 def _fillet_adapter(doc: Any, feature: dict, target: dict):  # type: ignore[return]
     return _create_fillet(doc, target, feature["radius_mm"])
 
+
 _register_lane("fillet_constant_radius", _fillet_adapter, _dress_up_status)
 _register_lane("chamfer", _create_chamfer, _dress_up_status)
+
+
 # _create_variable_fillet original signature: (doc, edges) — non-standard.
 def _varfil_adapter(doc: Any, feature: dict, target: dict):  # type: ignore[return]
     return _create_variable_fillet(doc, target["edges"])
+
 
 _register_lane("variable_radius_fillet", _varfil_adapter, _dress_up_status)
 _register_lane("shell", _create_shell, _dress_up_status)
@@ -430,7 +447,9 @@ _register_lane("wizard_hole", _create_wizard_hole, _wizard_hole_status)
 _register_lane("loft", _create_loft, _loft_status)  # WALLED → dormant skip
 _register_lane("rib", _create_rib, _rib_status)  # WALLED → dormant skip
 _register_lane("wrap", _create_wrap, _wrap_status)  # WALLED → dormant skip
-_register_lane("boundary_boss", _create_boundary_boss, _boundary_boss_status)  # DORMANT → skip
+_register_lane(
+    "boundary_boss", _create_boundary_boss, _boundary_boss_status
+)  # DORMANT → skip
 
 # Recipe-C cut #4 — flanges family (base_flange GREEN / edge_flange DORMANT).
 # base_flange = W7 seat-proven GREEN. edge_flange = DORMANT ghost (quarantined
@@ -442,12 +461,18 @@ from .flanges import (  # noqa: E402
     _create_edge_flange,
 )
 
+
 # _create_base_flange original signature: (doc, target, thickness_mm, bend_radius_mm).
 def _base_flange_adapter(doc: Any, feature: dict, target: dict):  # type: ignore[return]
-    return _create_base_flange(doc, target, feature["thickness_mm"], feature["bend_radius_mm"])
+    return _create_base_flange(
+        doc, target, feature["thickness_mm"], feature["bend_radius_mm"]
+    )
+
 
 _register_lane("base_flange", _base_flange_adapter, _base_flange_status)
-_register_lane("edge_flange", _create_edge_flange, _edge_flange_status)  # DORMANT → skip
+_register_lane(
+    "edge_flange", _create_edge_flange, _edge_flange_status
+)  # DORMANT → skip
 
 # Recipe-C cut #6 — sweep family (the FINAL extraction; mutate.py now holds zero
 # feature handlers, _apply_feature is a pure registry lookup). sweep + sweep_cut

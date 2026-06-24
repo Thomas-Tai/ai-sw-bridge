@@ -51,7 +51,7 @@ from ._ref import DurableRef
 # geometry-proximity fallback used when a rebuild perturbed a face past the
 # quantization step. ``1 - normal_dot`` <= NORMAL_TOL and centroid distance
 # <= CENTROID_TOL_M must both hold for a candidate to qualify.
-_FP_NORMAL_TOL = 0.02      # ~11 deg of normal slop
+_FP_NORMAL_TOL = 0.02  # ~11 deg of normal slop
 _FP_CENTROID_TOL_M = 1e-3  # 1 mm centroid drift
 
 # swPersistReferencedObjectStatus_e — the [out] code from
@@ -95,7 +95,9 @@ class PersistResolution:
     def status_name(self) -> str | None:
         if self.status_code is None:
             return None
-        return PERSIST_STATUS_NAMES.get(self.status_code, f"Unknown({self.status_code})")
+        return PERSIST_STATUS_NAMES.get(
+            self.status_code, f"Unknown({self.status_code})"
+        )
 
 
 @dataclass(frozen=True)
@@ -172,6 +174,7 @@ def _iter_live_faces(doc: Any) -> list[Any]:
     body. Both come back as SAFEARRAYs (tuples) under late binding; under
     early binding they may be methods — handled either way.
     """
+
     def _call(obj: Any, name: str, *args: Any) -> Any:
         attr = getattr(obj, name)
         return attr(*args) if callable(attr) else attr
@@ -204,6 +207,7 @@ def _iter_live_edges(doc: Any) -> list[Any]:
     ``GetBodies2(swSolidBody=0, bVisibleOnly=True)`` then ``GetEdges`` per
     body. Mirrors :func:`_iter_live_faces` exactly.
     """
+
     def _call(obj: Any, name: str, *args: Any) -> Any:
         attr = getattr(obj, name)
         return attr(*args) if callable(attr) else attr
@@ -243,7 +247,11 @@ def _read_edge_geometry(edge: Any) -> dict[str, Any] | None:
     the two regimes apart. Returns ``None`` when the edge has no readable
     endpoint geometry.
     """
-    from ..brep.interrogator import _chord_mid, _read_curve_mid_and_arc, _read_curve_params
+    from ..brep.interrogator import (
+        _chord_mid,
+        _read_curve_mid_and_arc,
+        _read_curve_params,
+    )
 
     cp = _read_curve_params(edge)
     if cp is None:
@@ -341,7 +349,9 @@ def resolve_by_fingerprint(doc: Any, ref: Any) -> RefResolution:
                 f"centroid_dist={best_key[1]:.4g} m)"
             ),
         )
-    return RefResolution(None, "unresolved", note="no fingerprint match among live faces")
+    return RefResolution(
+        None, "unresolved", note="no fingerprint match among live faces"
+    )
 
 
 def resolve_by_edge_fingerprint(doc: Any, ref: Any) -> RefResolution:
@@ -375,10 +385,16 @@ def resolve_by_edge_fingerprint(doc: Any, ref: Any) -> RefResolution:
         "start": list(getattr(ref, "start", ())),
         "end": list(getattr(ref, "end", ())),
         "length": getattr(ref, "length", None),
-        "midpoint": list(getattr(ref, "midpoint", ())) if getattr(ref, "midpoint", None) else None,
+        "midpoint": (
+            list(getattr(ref, "midpoint", ()))
+            if getattr(ref, "midpoint", None)
+            else None
+        ),
     }
     if not ref_dict["start"] or not ref_dict["end"]:
-        return RefResolution(None, "unresolved", note="edge ref has no endpoint geometry")
+        return RefResolution(
+            None, "unresolved", note="edge ref has no endpoint geometry"
+        )
 
     best_edge: Any = None
     best_key: tuple[float, float, float] | None = None
@@ -402,7 +418,9 @@ def resolve_by_edge_fingerprint(doc: Any, ref: Any) -> RefResolution:
                 f"length_err={best_key[1]:.4g}, midpoint_err={best_key[2]:.4g})"
             ),
         )
-    return RefResolution(None, "unresolved", note="no edge fingerprint match among live edges")
+    return RefResolution(
+        None, "unresolved", note="no edge fingerprint match among live edges"
+    )
 
 
 def resolve_ref(doc: Any, ref: Any, *, allow_fingerprint: bool = True) -> RefResolution:
@@ -482,7 +500,9 @@ def resolve_manifest_face(
     )
 
 
-def resolve_edge_ref(doc: Any, ref: Any, *, allow_fingerprint: bool = True) -> RefResolution:
+def resolve_edge_ref(
+    doc: Any, ref: Any, *, allow_fingerprint: bool = True
+) -> RefResolution:
     """Resolve a :class:`DurableEdgeRef` to a live edge via the full hierarchy.
 
     Tier 1 ``persist_id`` (proven, reliable) → tier 2 ``edge_fingerprint``
@@ -504,7 +524,9 @@ def resolve_edge_ref(doc: Any, ref: Any, *, allow_fingerprint: bool = True) -> R
         pr = resolve_persist_id(doc, persist_id)
         if pr.ok and pr.entity is not None:
             return RefResolution(pr.entity, "persist_id", persist=pr)
-        persist_note = f"edge persist failed (status={pr.status_name}, error={pr.error})"
+        persist_note = (
+            f"edge persist failed (status={pr.status_name}, error={pr.error})"
+        )
     else:
         persist_note = "no persist_id on edge ref"
 

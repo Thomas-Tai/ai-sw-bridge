@@ -143,7 +143,9 @@ def run_spike() -> dict:
 
         result["stage"] = "set_props"
         for name, value in props_to_set.items():
-            add_result = typed_cpm.Add3(name, SW_CUSTOM_INFO_TEXT, value, SW_CUSTOM_PROP_REPLACE)
+            add_result = typed_cpm.Add3(
+                name, SW_CUSTOM_INFO_TEXT, value, SW_CUSTOM_PROP_REPLACE
+            )
             if add_result != 0:
                 result["errors"].append(f"Add3({name}) returned {add_result}")
                 continue
@@ -160,13 +162,18 @@ def run_spike() -> dict:
         result["stage"] = "immediate_read_back"
         for name, expected in props_to_set.items():
             exists, ptype, pvalue, resolved = typed_cpm.Get6(name)
-            result["read_back"].append({
-                "name": name,
-                "exists": exists,
-                "value": pvalue,
-                "match": pvalue == expected,
-            })
-            print(f"Immediate Get6({name}): {pvalue!r} == {expected!r} -> {pvalue == expected}", file=sys.stderr)
+            result["read_back"].append(
+                {
+                    "name": name,
+                    "exists": exists,
+                    "value": pvalue,
+                    "match": pvalue == expected,
+                }
+            )
+            print(
+                f"Immediate Get6({name}): {pvalue!r} == {expected!r} -> {pvalue == expected}",
+                file=sys.stderr,
+            )
 
         # Count after set
         count_after_set = typed_cpm.Count()
@@ -212,13 +219,18 @@ def run_spike() -> dict:
         result["reopen_read_back"] = []
         for name, expected in props_to_set.items():
             exists, ptype, pvalue, resolved = typed_cpm2.Get6(name)
-            result["reopen_read_back"].append({
-                "name": name,
-                "value": pvalue,
-                "expected": expected,
-                "match": pvalue == expected,
-            })
-            print(f"Reopen Get6({name}): {pvalue!r} == {expected!r} -> {pvalue == expected}", file=sys.stderr)
+            result["reopen_read_back"].append(
+                {
+                    "name": name,
+                    "value": pvalue,
+                    "expected": expected,
+                    "match": pvalue == expected,
+                }
+            )
+            print(
+                f"Reopen Get6({name}): {pvalue!r} == {expected!r} -> {pvalue == expected}",
+                file=sys.stderr,
+            )
 
         # Close
         title2 = mdoc2b.GetTitle
@@ -235,9 +247,13 @@ def run_spike() -> dict:
 
         if all_match and count_ok:
             result["ok"] = True
-            result["summary"] = f"All {len(props_to_set)} props read back; count {count_before}->{count_after}"
+            result["summary"] = (
+                f"All {len(props_to_set)} props read back; count {count_before}->{count_after}"
+            )
         else:
-            result["errors"].append(f"Validation: all_match={all_match}, count_ok={count_ok}")
+            result["errors"].append(
+                f"Validation: all_match={all_match}, count_ok={count_ok}"
+            )
 
         return result
 

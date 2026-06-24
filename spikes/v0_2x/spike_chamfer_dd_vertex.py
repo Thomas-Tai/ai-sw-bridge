@@ -35,7 +35,13 @@ from ai_sw_bridge.selection import DurableEdgeRef  # noqa: E402
 from ai_sw_bridge.features import verify  # noqa: E402
 from ai_sw_bridge import mutate  # noqa: E402
 
-RESULTS_PATH = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "chamfer_dd_vertex.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "chamfer_dd_vertex.json"
+)
 
 SW_DEFAULT_TEMPLATE_PART = 8
 BOX_W_M = 0.020  # x: -10..10 mm
@@ -82,12 +88,34 @@ def _build_box(sw: Any) -> Any:
     doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     sk.InsertSketch(True)
     doc.FeatureManager.FeatureExtrusion3(
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     try:
         doc.EditRebuild3()
@@ -100,7 +128,9 @@ def _capture_top_edge_ref(doc: Any) -> dict | None:
     """Capture a durable ref to the top-front edge (y=0 mid, z=top)."""
     try:
         ext = typed(doc.Extension, "IModelDocExtension")
-        if not ext.SelectByID2("", "EDGE", BOX_W_M / 2, 0.0, BOX_D_M, False, 0, None, 0):
+        if not ext.SelectByID2(
+            "", "EDGE", BOX_W_M / 2, 0.0, BOX_D_M, False, 0, None, 0
+        ):
             return None
         sm = doc.SelectionManager
         if sm.GetSelectedObjectCount2(-1) < 1:
@@ -109,6 +139,7 @@ def _capture_top_edge_ref(doc: Any) -> dict | None:
         if edge is None:
             return None
         from ai_sw_bridge.selection.live import capture_persist_id
+
         persist_id = capture_persist_id(doc, edge)
         try:
             p = edge.GetCurveParams2()
@@ -120,7 +151,9 @@ def _capture_top_edge_ref(doc: Any) -> dict | None:
             end = (BOX_W_M / 2, -BOX_H_M / 2, BOX_D_M)
             length = BOX_H_M
         doc.ClearSelection2(True)
-        return DurableEdgeRef(persist_id=persist_id, start=start, end=end, length=length).to_dict()
+        return DurableEdgeRef(
+            persist_id=persist_id, start=start, end=end, length=length
+        ).to_dict()
     except Exception:
         return None
 
@@ -153,15 +186,22 @@ def _probe(sw: Any, label: str, feature: dict, target_fn) -> dict:
         d_faces = (f1 - f0) if (f0 >= 0 and f1 >= 0) else None
         d_vol = (v1 - v0) if (v0 is not None and v1 is not None) else None
         out["delta"] = {"faces": d_faces, "vol": d_vol}
-        geom_altered = (d_faces is not None and d_faces > 0) and (d_vol is not None and d_vol < -1e-12)
-        out["verdict"] = "GO" if (ok and geom_altered) else ("NO_OP" if not ok else "GHOST")
+        geom_altered = (d_faces is not None and d_faces > 0) and (
+            d_vol is not None and d_vol < -1e-12
+        )
+        out["verdict"] = (
+            "GO" if (ok and geom_altered) else ("NO_OP" if not ok else "GHOST")
+        )
         return out
     finally:
         _try_close(sw, doc)
 
 
 def run() -> dict[str, Any]:
-    result: dict[str, Any] = {"spike": "chamfer_dd_vertex", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    result: dict[str, Any] = {
+        "spike": "chamfer_dd_vertex",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
     sw = get_sw_app()
     try:
         result["sw_revision"] = str(sw.RevisionNumber)
@@ -169,20 +209,37 @@ def run() -> dict[str, Any]:
         result["sw_revision"] = "<unreadable>"
 
     dd = _probe(
-        sw, "distance_distance",
-        {"type": "chamfer", "chamfer_type": "distance_distance", "distance_mm": 2.0, "distance2_mm": 3.0},
+        sw,
+        "distance_distance",
+        {
+            "type": "chamfer",
+            "chamfer_type": "distance_distance",
+            "distance_mm": 2.0,
+            "distance2_mm": 3.0,
+        },
         _capture_top_edge_ref,
     )
     vtx = _probe(
-        sw, "vertex",
-        {"type": "chamfer", "chamfer_type": "vertex", "distance_mm": 2.0, "distance2_mm": 2.0, "distance3_mm": 2.0},
-        lambda doc: {"point": [BOX_W_M / 2 * 1000, BOX_H_M / 2 * 1000, BOX_D_M * 1000]},  # top corner (10,10,10) mm
+        sw,
+        "vertex",
+        {
+            "type": "chamfer",
+            "chamfer_type": "vertex",
+            "distance_mm": 2.0,
+            "distance2_mm": 2.0,
+            "distance3_mm": 2.0,
+        },
+        lambda doc: {
+            "point": [BOX_W_M / 2 * 1000, BOX_H_M / 2 * 1000, BOX_D_M * 1000]
+        },  # top corner (10,10,10) mm
     )
     result["distance_distance"] = dd
     result["vertex"] = vtx
     both_go = dd.get("verdict") == "GO" and vtx.get("verdict") == "GO"
     result["overall"] = "PASS" if both_go else "FAIL"
-    result["finding"] = f"dd={dd.get('verdict')} (Δvol={dd.get('delta', {}).get('vol')}, Δfaces={dd.get('delta', {}).get('faces')}); vertex={vtx.get('verdict')} (Δvol={vtx.get('delta', {}).get('vol')}, Δfaces={vtx.get('delta', {}).get('faces')})"
+    result["finding"] = (
+        f"dd={dd.get('verdict')} (Δvol={dd.get('delta', {}).get('vol')}, Δfaces={dd.get('delta', {}).get('faces')}); vertex={vtx.get('verdict')} (Δvol={vtx.get('delta', {}).get('vol')}, Δfaces={vtx.get('delta', {}).get('faces')})"
+    )
     return result
 
 

@@ -54,8 +54,11 @@ def _capture(fn):
         result = fn()
         return {"status": "OK"}, result
     except Exception as exc:
-        return {"status": "ERR", "type": type(exc).__name__,
-                "message": str(exc)[:200]}, None
+        return {
+            "status": "ERR",
+            "type": type(exc).__name__,
+            "message": str(exc)[:200],
+        }, None
 
 
 def _as_list(obj):
@@ -81,9 +84,29 @@ def _build_box(sw):
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
     fm.FeatureExtrusion3(
-        True, False, False, 0, 0, 0.02, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.02,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     doc.ClearSelection2(True)
     return doc
@@ -110,7 +133,11 @@ def _get_body_entities(doc, mod):
     out["raw_vertices"] = len(_as_list(verts_raw)) if rec_v["status"] == "OK" else rec_v
     # Persist round-trip to get live entities
     ext = typed_extension(doc, module=mod)
-    for label, raw_list in [("faces", faces_raw), ("edges", edges_raw), ("vertices", verts_raw)]:
+    for label, raw_list in [
+        ("faces", faces_raw),
+        ("edges", edges_raw),
+        ("vertices", verts_raw),
+    ]:
         entities = _as_list(raw_list)
         live = []
         for ei, e in enumerate(entities):
@@ -303,11 +330,16 @@ def run():
         # Phase 1: body traversal + entity acquisition
         print("[spike] body traversal...")
         entities = _get_body_entities(doc, mod)
-        result["body_entities"] = {k: (v if not isinstance(v, list) else f"<{len(v)} entities>") for k, v in entities.items()}
+        result["body_entities"] = {
+            k: (v if not isinstance(v, list) else f"<{len(v)} entities>")
+            for k, v in entities.items()
+        }
         faces = entities.get("faces", [])
         edges = entities.get("edges", [])
         vertices = entities.get("vertices", [])
-        print(f"  live: {len(faces)} faces, {len(edges)} edges, {len(vertices)} vertices")
+        print(
+            f"  live: {len(faces)} faces, {len(edges)} edges, {len(vertices)} vertices"
+        )
         # Phase 2: Select2 probes on live entities
         print("[spike] Select2 probes (typed IEntity)...")
         if faces:
@@ -324,9 +356,13 @@ def run():
             rec_ff, ff = _capture(lambda: body.GetFaces())
             rec_vv, vv = _capture(lambda: body.GetVertices())
             if rec_ff["status"] == "OK" and ff:
-                result["face_select2_late"] = _probe_latebound_select(_as_list(ff), "faces")
+                result["face_select2_late"] = _probe_latebound_select(
+                    _as_list(ff), "faces"
+                )
             if rec_vv["status"] == "OK" and vv:
-                result["vertex_select2_late"] = _probe_latebound_select(_as_list(vv), "vertices")
+                result["vertex_select2_late"] = _probe_latebound_select(
+                    _as_list(vv), "vertices"
+                )
         # Phase 3: feature creation with pre-selected entities
         print("[spike] feature creation probes...")
         # Check if any Select2 succeeded
@@ -362,13 +398,19 @@ def run():
         result["green_kinds"] = greens
         if greens:
             result["overall"] = "GREEN"
-            result["interpretation"] = f"{len(greens)} kind(s) materialized: {greens}. W0 wires + advertises."
+            result["interpretation"] = (
+                f"{len(greens)} kind(s) materialized: {greens}. W0 wires + advertises."
+            )
         elif face_sel_ok or vert_sel_ok:
             result["overall"] = "PARTIAL"
-            result["interpretation"] = "Selection achievable but features did not materialize. Tuning needed."
+            result["interpretation"] = (
+                "Selection achievable but features did not materialize. Tuning needed."
+            )
         else:
             result["overall"] = "WALL"
-            result["interpretation"] = "Entity selection wall persists even with typed persist round-trip."
+            result["interpretation"] = (
+                "Entity selection wall persists even with typed persist round-trip."
+            )
     finally:
         _try_close(sw, doc)
     return result
@@ -383,9 +425,12 @@ def main():
         result = run()
     finally:
         pythoncom.CoUninitialize()
+
     def _safe(o):
-        if hasattr(o, "_oleobj_"): return f"<COM {type(o).__name__}>"
+        if hasattr(o, "_oleobj_"):
+            return f"<COM {type(o).__name__}>"
         return str(o)
+
     payload = json.dumps(result, indent=2, default=_safe)
     if args.out is not None:
         args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -393,7 +438,9 @@ def main():
         print(f"wrote {args.out}", file=sys.stderr)
     else:
         print(payload)
-    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(result.get("overall"), 1)
+    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":

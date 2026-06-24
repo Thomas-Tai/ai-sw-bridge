@@ -17,6 +17,7 @@ angle setter no-ops.
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/kinematic_angle_confirm.py
 """
+
 from __future__ import annotations
 
 import json
@@ -56,8 +57,14 @@ def _cube_spec(name: str) -> dict[str, Any]:
         "schema_version": 1,
         "name": name,
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "center": {"x": 0.0, "y": 0.0}, "width": 40.0, "height": 40.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "width": 40.0,
+                "height": 40.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 40.0},
         ],
     }
@@ -138,7 +145,8 @@ def main() -> int:
 
         # Pivot: B's bottom (-Z) coincident on A's top (+Z) → shared Z=40 plane.
         coin = {
-            "type": "coincident", "alignment": "closest",
+            "type": "coincident",
+            "alignment": "closest",
             "a": {"component": "a", "face_ref": {"planar_normal": [0, 0, 1]}},
             "b": {"component": "b", "face_ref": {"planar_normal": [0, 0, -1]}},
         }
@@ -150,7 +158,8 @@ def main() -> int:
 
         # Driver: ANGLE between the two +X faces → rotation about Z.
         ang = {
-            "type": "angle", "value_deg": 0.0,
+            "type": "angle",
+            "value_deg": 0.0,
             "a": {"component": "a", "face_ref": {"planar_normal": [1, 0, 0]}},
             "b": {"component": "b", "face_ref": {"planar_normal": [1, 0, 0]}},
         }
@@ -170,8 +179,10 @@ def main() -> int:
             route = _drive_angle(asm, "DriveAngle", math.radians(deg), mod)
             rot = _comp_rot_z_deg(placed["b"], mod)
             sweep.append({"driven_deg": deg, "drive_route": route, **rot})
-            print(f"[kinang] {deg:>4}deg via {route} -> rotZ_a={rot.get('rotZ_a_deg')} "
-                  f"rotZ_b={rot.get('rotZ_b_deg')}")
+            print(
+                f"[kinang] {deg:>4}deg via {route} -> rotZ_a={rot.get('rotZ_a_deg')} "
+                f"rotZ_b={rot.get('rotZ_b_deg')}"
+            )
         out["sweep"] = sweep
 
         # VERIFY: one of the two rotation candidates must track the driven angle
@@ -187,15 +198,21 @@ def main() -> int:
                     return False
                 deltas.append(abs(v - base))
             # magnitude tracks driven angle within 5deg, strictly increasing
-            ok_mag = all(abs(deltas[i] - sweep[i]["driven_deg"]) <= 5.0
-                         for i in range(len(sweep)))
-            ok_mono = all(deltas[i] <= deltas[i + 1] + 1.0 for i in range(len(deltas) - 1))
+            ok_mag = all(
+                abs(deltas[i] - sweep[i]["driven_deg"]) <= 5.0
+                for i in range(len(sweep))
+            )
+            ok_mono = all(
+                deltas[i] <= deltas[i + 1] + 1.0 for i in range(len(deltas) - 1)
+            )
             return ok_mag and ok_mono
 
         tracks_a = _tracks("rotZ_a_deg")
         tracks_b = _tracks("rotZ_b_deg")
         out["rotation_tracks_driven_angle"] = bool(tracks_a or tracks_b)
-        out["tracking_candidate"] = "rotZ_a_deg" if tracks_a else ("rotZ_b_deg" if tracks_b else None)
+        out["tracking_candidate"] = (
+            "rotZ_a_deg" if tracks_a else ("rotZ_b_deg" if tracks_b else None)
+        )
         out["status"] = "GREEN" if (tracks_a or tracks_b) else "FROZEN_NO_DRIVE"
         try:
             sw.CloseAllDocuments(True)

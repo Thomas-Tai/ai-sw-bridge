@@ -31,6 +31,7 @@ from ai_sw_bridge.features.fillet_face_fullround import (
 
 # --- fake COM objects -----------------------------------------------------
 
+
 class _FakeFD:
     """Fake ISimpleFilletFeatureData2.  Records Initialize(type), DefaultRadius,
     and SetFaces calls; GetFaceCount reflects the bound sets (override to
@@ -75,8 +76,12 @@ class _FakeFM:
     _SENTINEL_DATA = object()
     _USE_DEFAULT = object()
 
-    def __init__(self, *, create_feature_returns: object = _USE_DEFAULT,
-                 create_feature_raises: BaseException | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        create_feature_returns: object = _USE_DEFAULT,
+        create_feature_raises: BaseException | None = None,
+    ) -> None:
         self.def_calls: list[int] = []
         self.create_calls: list = []
         self._create_feature_raises = create_feature_raises
@@ -97,8 +102,12 @@ class _FakeFM:
 
 
 class _FakeDoc:
-    def __init__(self, *, create_feature_returns: object = _FakeFM._USE_DEFAULT,
-                 create_feature_raises: BaseException | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        create_feature_returns: object = _FakeFM._USE_DEFAULT,
+        create_feature_raises: BaseException | None = None,
+    ) -> None:
         self.FeatureManager = _FakeFM(
             create_feature_returns=create_feature_returns,
             create_feature_raises=create_feature_raises,
@@ -115,6 +124,7 @@ class _FakeDoc:
 
 # --- fake face_ref dict (handler-consumable manifest-face shape) ----------
 
+
 def _face_ref(role: str = "face") -> dict:
     return {
         "normal": [0.0, 0.0, 1.0],
@@ -125,6 +135,7 @@ def _face_ref(role: str = "face") -> dict:
 
 
 # --- monkeypatch wiring ----------------------------------------------------
+
 
 class _ResResult:
     def __init__(self, entity: object, method: str = "persist"):
@@ -161,7 +172,9 @@ def _wire(
 
     monkeypatch.setattr(fn.verify, "solid_metrics", fake_metrics)
 
-    sentinel_entity: object | None = object() if resolve_entity is _UNSET else resolve_entity
+    sentinel_entity: object | None = (
+        object() if resolve_entity is _UNSET else resolve_entity
+    )
 
     def fake_resolve(doc, ref):
         return _ResResult(sentinel_entity)
@@ -174,6 +187,7 @@ def _wire(
     state["fake_fd"] = fake_fd
 
     import ai_sw_bridge.com.earlybind as eb
+
     monkeypatch.setattr(eb, "typed_qi", lambda data, iface, module=None: fake_fd)
 
     return state
@@ -181,12 +195,14 @@ def _wire(
 
 # --- SPIKE_STATUS pin -----------------------------------------------------
 
+
 class TestSpikeStatus:
     def test_green_after_seat_proof(self):
         assert fn.SPIKE_STATUS == "GREEN"
 
 
 # --- dispatch: face binds two sets; full_round deferred -------------------
+
 
 class TestDispatch:
     def test_face_uses_type_2_and_setfaces_1_2(self, monkeypatch):
@@ -210,7 +226,11 @@ class TestDispatch:
         ok, err = create_fillet_face_fullround(
             _FakeDoc(),
             {"fillet_type": "full_round"},
-            {"side1": _face_ref("s1"), "center": _face_ref("c"), "side2": _face_ref("s2")},
+            {
+                "side1": _face_ref("s1"),
+                "center": _face_ref("c"),
+                "side2": _face_ref("s2"),
+            },
         )
         assert (ok, err) == (True, None)
         assert state["fake_fd"].initialize_calls == [3]  # swFullRoundFillet
@@ -220,7 +240,9 @@ class TestDispatch:
     def test_full_round_rejects_missing_face_ref(self):
         # a malformed full_round target fails closed at validation
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "full_round"}, {},
+            _FakeDoc(),
+            {"fillet_type": "full_round"},
+            {},
         )
         assert ok is False and "face_ref" in err
 
@@ -230,18 +252,24 @@ class TestDispatch:
         ok, err = create_fillet_face_fullround(
             _FakeDoc(),
             {"fillet_type": "full_round"},
-            {"side1": _face_ref("s1"), "center": _face_ref("c"), "side2": _face_ref("s2")},
+            {
+                "side1": _face_ref("s1"),
+                "center": _face_ref("c"),
+                "side2": _face_ref("s2"),
+            },
         )
         assert ok is False and "did not redistribute" in err
 
 
 # --- volume-change gate ---------------------------------------------------
 
+
 class TestVolumeGate:
     def test_passes_on_positive_vol_delta(self, monkeypatch):
         _wire(monkeypatch, metrics=((6, 8000.0), (8, 8050.0)))
         ok, _ = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"},
+            _FakeDoc(),
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is True
@@ -251,7 +279,8 @@ class TestVolumeGate:
         abs(d_vol) > eps, not d_vol > 0 (seat cert: dVol = -57.94)."""
         _wire(monkeypatch, metrics=((6, 8000.0), (7, 7950.0)))
         ok, _ = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"},
+            _FakeDoc(),
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is True
@@ -259,11 +288,13 @@ class TestVolumeGate:
 
 # --- ghost trap (|d_vol| <= eps → False) ----------------------------------
 
+
 class TestGhostTrap:
     def test_zero_vol_delta_is_ghost(self, monkeypatch):
         _wire(monkeypatch, metrics=((6, 8000.0), (8, 8000.0)))
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"},
+            _FakeDoc(),
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False
@@ -272,7 +303,8 @@ class TestGhostTrap:
     def test_tiny_vol_delta_is_fp_jitter_ghost(self, monkeypatch):
         _wire(monkeypatch, metrics=((6, 8000.0), (8, 8000.0 + 1e-9)))
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"},
+            _FakeDoc(),
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False
@@ -281,13 +313,15 @@ class TestGhostTrap:
 
 # --- bind-guard: GetFaceCount readback ------------------------------------
 
+
 class TestBindGuard:
     def test_unbound_face_set_fails_closed(self, monkeypatch):
         """If SetFaces silently no-ops (GetFaceCount stays 0 — the bare-list
         makepy trap), the handler must fail closed BEFORE CreateFeature."""
         _wire(monkeypatch, typed_qi_returns=_FakeFD(facecount_override=0))
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"},
+            _FakeDoc(),
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False
@@ -295,6 +329,7 @@ class TestBindGuard:
 
 
 # --- CreateFeature return-marshaling noise --------------------------------
+
 
 class TestCreateFeatureNoise:
     def test_member_not_found_swallowed_when_volume_moves(self, monkeypatch):
@@ -305,7 +340,8 @@ class TestCreateFeatureNoise:
         exc.args = (-2147352573, "Member not found.", None, None)
         doc = _FakeDoc(create_feature_raises=exc)
         ok, _ = create_fillet_face_fullround(
-            doc, {"fillet_type": "face"},
+            doc,
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is True
@@ -316,7 +352,8 @@ class TestCreateFeatureNoise:
         exc.args = (-2147467259, "Unspecified error", None, None)  # E_FAIL
         doc = _FakeDoc(create_feature_raises=exc)
         ok, err = create_fillet_face_fullround(
-            doc, {"fillet_type": "face"},
+            doc,
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False
@@ -325,17 +362,21 @@ class TestCreateFeatureNoise:
 
 # --- wrong face count → fail closed ---------------------------------------
 
+
 class TestFaceCount:
     def test_face_with_one_face_rejected(self):
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"}, {"faces": [_face_ref("only")]},
+            _FakeDoc(),
+            {"fillet_type": "face"},
+            {"faces": [_face_ref("only")]},
         )
         assert ok is False
         assert "2" in err or "face refs" in err
 
     def test_face_with_three_faces_rejected(self):
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"},
+            _FakeDoc(),
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b"), _face_ref("c")]},
         )
         assert ok is False
@@ -343,6 +384,7 @@ class TestFaceCount:
 
 
 # --- validation (fail-closed) ---------------------------------------------
+
 
 class TestValidation:
     def test_unknown_fillet_type_rejected(self):
@@ -355,32 +397,41 @@ class TestValidation:
 
     def test_missing_fillet_type_rejected(self):
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {}, {"faces": [_face_ref("a"), _face_ref("b")]},
+            _FakeDoc(),
+            {},
+            {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False and "fillet_type" in err
 
     def test_feature_not_dict_rejected(self):
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), "bad", {"faces": [_face_ref("a"), _face_ref("b")]},
+            _FakeDoc(),
+            "bad",
+            {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False and "feature must be a dict" in err
 
     def test_target_not_dict_rejected(self):
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"}, "bad",
+            _FakeDoc(),
+            {"fillet_type": "face"},
+            "bad",
         )
         assert ok is False and "target must be a dict" in err
 
     def test_face_target_not_list_rejected(self):
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"}, {"faces": "not_a_list"},
+            _FakeDoc(),
+            {"fillet_type": "face"},
+            {"faces": "not_a_list"},
         )
         assert ok is False and "list" in err
 
     def test_non_positive_radius_rejected(self, monkeypatch):
         _wire(monkeypatch)
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face", "radius_mm": 0},
+            _FakeDoc(),
+            {"fillet_type": "face", "radius_mm": 0},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False and "radius_mm" in err
@@ -388,7 +439,8 @@ class TestValidation:
     def test_non_numeric_radius_rejected(self, monkeypatch):
         _wire(monkeypatch)
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face", "radius_mm": "big"},
+            _FakeDoc(),
+            {"fillet_type": "face", "radius_mm": "big"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False and "radius_mm" in err
@@ -396,13 +448,15 @@ class TestValidation:
     def test_unresolved_face_fails_closed(self, monkeypatch):
         _wire(monkeypatch, resolve_entity=None)
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"},
+            _FakeDoc(),
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False and ("did not resolve" in err or "resolve" in err)
 
 
 # --- never-raise ----------------------------------------------------------
+
 
 class TestNeverRaise:
     def test_resolve_exception_caught(self, monkeypatch):
@@ -413,7 +467,8 @@ class TestNeverRaise:
 
         monkeypatch.setattr(fn, "resolve_manifest_face", boom)
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"},
+            _FakeDoc(),
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False and "raised" in err
@@ -427,7 +482,8 @@ class TestNeverRaise:
 
         doc.FeatureManager.CreateDefinition = boom
         ok, err = create_fillet_face_fullround(
-            doc, {"fillet_type": "face"},
+            doc,
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False and "raised" in err
@@ -442,7 +498,8 @@ class TestNeverRaise:
         fake_fd.Initialize = init_false  # type: ignore[method-assign]
         _wire(monkeypatch, typed_qi_returns=fake_fd)
         ok, err = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"},
+            _FakeDoc(),
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok is False and "Initialize" in err
@@ -450,12 +507,14 @@ class TestNeverRaise:
 
 # --- recipe pin -----------------------------------------------------------
 
+
 class TestRecipePin:
     def test_create_definition_id_is_sw_fm_fillet(self, monkeypatch):
         _wire(monkeypatch)
         doc = _FakeDoc()
         ok, _ = create_fillet_face_fullround(
-            doc, {"fillet_type": "face"},
+            doc,
+            {"fillet_type": "face"},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok
@@ -464,7 +523,8 @@ class TestRecipePin:
     def test_default_radius_in_metres(self, monkeypatch):
         state = _wire(monkeypatch)
         ok, _ = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face", "radius_mm": 7.5},
+            _FakeDoc(),
+            {"fillet_type": "face", "radius_mm": 7.5},
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok
@@ -473,7 +533,8 @@ class TestRecipePin:
     def test_default_radius_default_value(self, monkeypatch):
         state = _wire(monkeypatch)
         ok, _ = create_fillet_face_fullround(
-            _FakeDoc(), {"fillet_type": "face"},  # radius_mm omitted → default 5.0
+            _FakeDoc(),
+            {"fillet_type": "face"},  # radius_mm omitted → default 5.0
             {"faces": [_face_ref("a"), _face_ref("b")]},
         )
         assert ok
@@ -482,9 +543,11 @@ class TestRecipePin:
 
 # --- registry gate --------------------------------------------------------
 
+
 class TestRegistryGate:
     def test_fillet_face_registered_when_green(self):
         from ai_sw_bridge.features import HANDLER_REGISTRY
+
         assert fn.SPIKE_STATUS == "GREEN"
         assert "fillet_face" in HANDLER_REGISTRY
         # full-round did not ship — its sibling names must not be advertised

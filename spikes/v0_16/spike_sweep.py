@@ -243,7 +243,11 @@ def run(keep_file: bool = False) -> dict[str, Any]:
 
     if "profile_error" in geom:
         _try_close(sw, doc)
-        return {**result, "overall": "FAIL", "reason": f"profile sketch failed: {geom['profile_error']}"}
+        return {
+            **result,
+            "overall": "FAIL",
+            "reason": f"profile sketch failed: {geom['profile_error']}",
+        }
 
     # --- 2. Scan CreateDefinition for sweep/loft constants --------------------
     fm = doc.FeatureManager
@@ -252,9 +256,7 @@ def run(keep_file: bool = False) -> dict[str, Any]:
 
     # Find candidate sweep/loft entries (non-None, non-exception)
     candidates = {
-        k: v
-        for k, v in scan.items()
-        if "None" not in v and "EXCEPTION" not in v
+        k: v for k, v in scan.items() if "None" not in v and "EXCEPTION" not in v
     }
     result["non_null_definitions"] = candidates
 
@@ -295,11 +297,15 @@ def run(keep_file: bool = False) -> dict[str, Any]:
             ext = typed(doc.Extension, "IModelDocExtension", module=mod)
 
             sel_profile = _capture(
-                lambda: ext.SelectByID2(doc, profile_name, "SKETCH", 0, 0, 0, False, 1, None, 0),
+                lambda: ext.SelectByID2(
+                    doc, profile_name, "SKETCH", 0, 0, 0, False, 1, None, 0
+                ),
                 "select_profile",
             )
             sel_path = _capture(
-                lambda: ext.SelectByID2(doc, path_name, "SKETCH", 0, 0, 0, True, 4, None, 0),
+                lambda: ext.SelectByID2(
+                    doc, path_name, "SKETCH", 0, 0, 0, True, 4, None, 0
+                ),
                 "select_path",
             )
             sweep_result["select_profile"] = sel_profile

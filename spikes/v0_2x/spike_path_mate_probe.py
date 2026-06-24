@@ -14,6 +14,7 @@ reopen -> VIABLE-via-AddMate3; else -> WALLED (Route-C / GUI-only).
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_path_mate_probe.py
 """
+
 from __future__ import annotations
 
 import json
@@ -81,7 +82,11 @@ def main() -> int:
         asm = sw.NewDocument(_find_assembly_template(), 0, 0.1, 0.1)
         comps = [
             {"id": "base", "part": base["path"], "transform": {"xyz_mm": [0, 0, 0]}},
-            {"id": "slider", "part": slider["path"], "transform": {"xyz_mm": [0, 40, 0]}},
+            {
+                "id": "slider",
+                "part": slider["path"],
+                "transform": {"xyz_mm": [0, 40, 0]},
+            },
         ]
         placed, err = place_components(sw, asm, comps, mod=mod)
         if err:
@@ -108,7 +113,8 @@ def main() -> int:
                 sv = bool(ev.Select2(False, vmark))
                 se = bool(ee.Select2(True, emark))
                 ret = typed_asm.AddMate3(
-                    15, 0, False, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, False)
+                    15, 0, False, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, False
+                )
                 mate = ret[0] if isinstance(ret, tuple) else ret
                 estatus = ret[1] if isinstance(ret, tuple) and len(ret) > 1 else None
                 ok = mate is not None and not isinstance(mate, int)
@@ -118,18 +124,28 @@ def main() -> int:
                         ftype = typed(mate, "IFeature", module=mod).GetTypeName2()
                     except Exception:
                         ftype = "?(not IFeature)"
-                results["attempts"].append({
-                    "vmark": vmark, "emark": emark, "sel_v": sv, "sel_e": se,
-                    "error_status": estatus, "mate_returned": ok, "feature_type": ftype,
-                })
+                results["attempts"].append(
+                    {
+                        "vmark": vmark,
+                        "emark": emark,
+                        "sel_v": sv,
+                        "sel_e": se,
+                        "error_status": estatus,
+                        "mate_returned": ok,
+                        "feature_type": ftype,
+                    }
+                )
                 if ok:
                     verdict = "VIABLE_VIA_ADDMATE3"
                     break
             except Exception as exc:
-                results["attempts"].append({
-                    "vmark": vmark, "emark": emark,
-                    "raised": f"{type(exc).__name__}: {exc}",
-                })
+                results["attempts"].append(
+                    {
+                        "vmark": vmark,
+                        "emark": emark,
+                        "raised": f"{type(exc).__name__}: {exc}",
+                    }
+                )
 
         # If something materialized, check reopen-survival.
         if verdict == "VIABLE_VIA_ADDMATE3":

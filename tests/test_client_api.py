@@ -21,6 +21,7 @@ min_wall_thickness, enabled_addins.  All self-resolve the active doc, so
 we monkeypatch observe.get_sw_app / observe.get_active_doc to return None,
 driving the no_active_doc typed-error path without any COM touch.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -58,6 +59,7 @@ class _AsmDoc:
 
 # ── Client facades route to the core WITHOUT a deprecation warning ──────────
 
+
 def test_client_facade_inertia_routes_without_warning():
     client = SolidWorksClient(app=object(), mod=object())
     with warnings.catch_warnings():
@@ -75,6 +77,7 @@ def test_client_facade_stackup_routes_without_warning():
 
 
 # ── Taxonomy: domain facades on one stateful client, cached, lazy ───────────
+
 
 def test_client_taxonomy_and_caching():
     client = SolidWorksClient(app=object(), mod=object())
@@ -429,6 +432,7 @@ def test_client_facade_face_clearance_routes_without_warning():
 
 # ── Batch O3: no_active_doc guard for all 6 O3 facade methods ──────────────
 
+
 def test_client_facade_o3_no_active_doc_guard():
     client = SolidWorksClient(app=object(), mod=object())
     client.active_doc = lambda: None  # type: ignore[method-assign]
@@ -503,7 +507,11 @@ def test_client_facade_propose_feature_add_routes_without_warning():
     client = SolidWorksClient(app=object(), mod=object())
     with warnings.catch_warnings():
         warnings.simplefilter("error", PendingDeprecationWarning)
-        res = client.mutate.propose_feature_add("/no/such.sldprt", {"type": "fillet_constant_radius", "radius_mm": 2}, {"edges": [{"ref": {"persist_id": "AA"}, "radius_mm": 2}]})
+        res = client.mutate.propose_feature_add(
+            "/no/such.sldprt",
+            {"type": "fillet_constant_radius", "radius_mm": 2},
+            {"edges": [{"ref": {"persist_id": "AA"}, "radius_mm": 2}]},
+        )
     assert res["ok"] is False
 
 
@@ -533,6 +541,7 @@ def test_client_facade_commit_feature_add_routes_without_warning():
 
 # ── Batch M1: ProposalStore (v0.14 legacy facade) must not leak warnings ────
 
+
 def test_proposal_store_no_deprecation_warning(tmp_path, monkeypatch):
     """ProposalStore routes to _impl cores — no PendingDeprecationWarning."""
     monkeypatch.setenv("AI_SW_BRIDGE_PROPOSALS", str(tmp_path / "proposals"))
@@ -559,7 +568,11 @@ def test_proposal_store_no_deprecation_warning(tmp_path, monkeypatch):
 
     with warnings.catch_warnings():
         warnings.simplefilter("error", PendingDeprecationWarning)
-        res = store.propose_feature_add("/no/such.sldprt", {"type": "fillet_constant_radius", "radius_mm": 2}, {"edges": [{"ref": {"persist_id": "AA"}, "radius_mm": 2}]})
+        res = store.propose_feature_add(
+            "/no/such.sldprt",
+            {"type": "fillet_constant_radius", "radius_mm": 2},
+            {"edges": [{"ref": {"persist_id": "AA"}, "radius_mm": 2}]},
+        )
     assert res["ok"] is False
 
     with warnings.catch_warnings():
@@ -574,6 +587,7 @@ def test_proposal_store_no_deprecation_warning(tmp_path, monkeypatch):
 
 
 # ── Batch M1: facade is the right type and cached ────────────────────────────
+
 
 def test_client_mutate_facade_type_and_cached():
     client = SolidWorksClient(app=object(), mod=object())
@@ -712,6 +726,7 @@ def test_client_facade_commit_properties_routes_without_warning():
 
 
 # ── Recipe-B: facade-only domains (.export / .features) — no shims ──────────
+
 
 def test_export_facade_delegates_to_export_all(monkeypatch):
     """client.export.run forwards (doc, requests, part_name) to export.export_all

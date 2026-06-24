@@ -19,27 +19,49 @@ from ai_sw_bridge.cli import batch as cli_batch
 _IMPL = "ai_sw_bridge.client._sw_batch_feature_add_impl"
 
 _PROPS = [
-    {"feature": {"type": "ref_plane", "distance_mm": 25.0},
-     "target": {"plane": "Front Plane"}},
+    {
+        "feature": {"type": "ref_plane", "distance_mm": 25.0},
+        "target": {"plane": "Front Plane"},
+    },
     {"feature": {"type": "com_point"}, "target": {"x": 0}},
 ]
 
 _GREEN_MANIFEST = {
-    "ok": True, "total": 2, "attempted": 2, "committed_count": 2,
-    "doc_saved": True, "halted_at": None, "strict": False, "dry_run": False,
+    "ok": True,
+    "total": 2,
+    "attempted": 2,
+    "committed_count": 2,
+    "doc_saved": True,
+    "halted_at": None,
+    "strict": False,
+    "dry_run": False,
     "committed": [
         {"index": 0, "kind": "ref_plane", "note": "n0"},
         {"index": 1, "kind": "com_point", "note": "n1"},
     ],
-    "fault": None, "skipped": [], "error": None,
+    "fault": None,
+    "skipped": [],
+    "error": None,
 }
 
 _FAULT_MANIFEST = {
-    "ok": False, "total": 3, "attempted": 2, "committed_count": 1,
-    "doc_saved": True, "halted_at": 1, "strict": False, "dry_run": False,
+    "ok": False,
+    "total": 3,
+    "attempted": 2,
+    "committed_count": 1,
+    "doc_saved": True,
+    "halted_at": 1,
+    "strict": False,
+    "dry_run": False,
     "committed": [{"index": 0, "kind": "ref_plane", "note": "n0"}],
-    "fault": {"index": 1, "kind": "scale", "stage": "apply",
-              "error": "no solid", "feature": {}, "target": {}},
+    "fault": {
+        "index": 1,
+        "kind": "scale",
+        "stage": "apply",
+        "error": "no solid",
+        "feature": {},
+        "target": {},
+    },
     "skipped": [{"index": 2, "kind": "com_point"}],
     "error": "batch halted at 1/3 (scale): no solid",
 }
@@ -60,6 +82,7 @@ def _stdout_json(capsys) -> dict:
 # Parser
 # ---------------------------------------------------------------------------
 
+
 def test_parser_wires_args():
     parser = cli_batch._build_parser()
     args = parser.parse_args(["part.sldprt", "p.json", "--strict", "--yes"])
@@ -71,6 +94,7 @@ def test_parser_wires_args():
 # ---------------------------------------------------------------------------
 # Approve path ('y' / --yes) — fires the engine (real commit)
 # ---------------------------------------------------------------------------
+
 
 class TestApprove:
     def test_y_commits(self, tmp_path, monkeypatch, capsys):
@@ -90,9 +114,10 @@ class TestApprove:
         def _boom(*_a, **_k):
             raise AssertionError("input must not be called with --yes")
 
-        with patch("builtins.input", _boom), patch(
-            _IMPL, return_value=dict(_GREEN_MANIFEST)
-        ) as m:
+        with (
+            patch("builtins.input", _boom),
+            patch(_IMPL, return_value=dict(_GREEN_MANIFEST)) as m,
+        ):
             rc = cli_batch.main(["part.sldprt", pf, "--yes"])
         assert rc == 0 and m.called
 
@@ -112,6 +137,7 @@ class TestApprove:
 # ---------------------------------------------------------------------------
 # Decline path ('N' / EOF) — bypasses the engine entirely
 # ---------------------------------------------------------------------------
+
 
 class TestDecline:
     def test_n_aborts_without_commit(self, tmp_path, monkeypatch, capsys):
@@ -149,6 +175,7 @@ class TestDecline:
 # Input validation + fault rendering
 # ---------------------------------------------------------------------------
 
+
 class TestEdges:
     def test_missing_proposals_file(self, capsys):
         with patch(_IMPL) as m:
@@ -181,9 +208,11 @@ class TestEdges:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def test_render_manifest_green():
     line = cli_batch._render_manifest(_GREEN_MANIFEST)
     assert "COMMITTED 2/2" in line
+
 
 def test_render_manifest_fault():
     text = cli_batch._render_manifest(_FAULT_MANIFEST)

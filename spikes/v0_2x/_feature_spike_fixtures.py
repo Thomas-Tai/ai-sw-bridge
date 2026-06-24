@@ -83,10 +83,29 @@ def build_block(sw: Any) -> Any:
     doc.ClearSelection2(True)
     _select_feature(doc, "Sketch1")
     doc.FeatureManager.FeatureExtrusion2(
-        True, False, False, _BLIND, 0,
-        0.010, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        _BLIND,
+        0,
+        0.010,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     doc.ClearSelection2(True)
     return doc
@@ -143,9 +162,12 @@ def seed_line_over_top(doc: Any) -> tuple[str, Any]:
     # NOT 64 — 64 is swRefPlaneReferenceConstraint_Project).
     REF_DIST = 8
     plane_feat = doc.FeatureManager.InsertRefPlane(
-        REF_DIST, 0.020,
-        0, 0.0,
-        0, 0.0,
+        REF_DIST,
+        0.020,
+        0,
+        0.0,
+        0,
+        0.0,
     )
     doc.ClearSelection2(True)
     if plane_feat is None:
@@ -182,7 +204,11 @@ def _last_sketch_name(doc: Any) -> str:
     last = "Sketch2"
     for feat in feats:
         try:
-            tname = feat.GetTypeName if not callable(feat.GetTypeName) else feat.GetTypeName()
+            tname = (
+                feat.GetTypeName
+                if not callable(feat.GetTypeName)
+                else feat.GetTypeName()
+            )
         except Exception:
             continue
         if tname in ("ProfileFeature", "Sketch"):

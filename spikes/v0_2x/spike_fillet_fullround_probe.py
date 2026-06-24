@@ -44,7 +44,13 @@ from ai_sw_bridge.com.sw_type_info import wrapper_module  # noqa: E402
 from ai_sw_bridge.sw_com import get_sw_app  # noqa: E402
 from ai_sw_bridge.features import verify  # noqa: E402
 
-RESULTS_PATH = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "fillet_fullround_probe.json"
+RESULTS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "fillet_fullround_probe.json"
+)
 
 SW_DEFAULT_TEMPLATE_PART = 8
 _SW_FM_FILLET = 1
@@ -55,7 +61,7 @@ _MEMBER_NOT_FOUND = -2147352573
 # Box 40x20x10 mm
 _HW_X = 0.020  # x half-width -> x in [-0.020, 0.020]
 _HW_Y = 0.010  # y half-width -> y in [-0.010, 0.010]
-_H_Z = 0.010   # z height
+_H_Z = 0.010  # z height
 
 
 def _null():
@@ -82,9 +88,29 @@ def _build_box(sw: Any) -> Any:
     sk.CreateCornerRectangle(-_HW_X, -_HW_Y, 0.0, _HW_X, _HW_Y, 0.0)
     sk.InsertSketch(True)
     doc.FeatureManager.FeatureExtrusion3(
-        True, False, False, 0, 0, _H_Z, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False,
+        True,
+        False,
+        False,
+        0,
+        0,
+        _H_Z,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
     )
     try:
         doc.EditRebuild3()
@@ -103,7 +129,10 @@ def _face_at(doc: Any, x: float, y: float, z: float) -> Any:
 
 
 def run() -> dict[str, Any]:
-    result: dict[str, Any] = {"spike": "fillet_fullround_probe", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    result: dict[str, Any] = {
+        "spike": "fillet_fullround_probe",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
     sw = get_sw_app()
     try:
         result["sw_revision"] = str(sw.RevisionNumber)
@@ -116,11 +145,13 @@ def run() -> dict[str, Any]:
         result["reason"] = "box build failed"
         return result
     try:
-        side1 = _face_at(doc, 0.0, _HW_Y, _H_Z / 2)   # +y face
-        center = _face_at(doc, 0.0, 0.0, _H_Z)         # top face
-        side2 = _face_at(doc, 0.0, -_HW_Y, _H_Z / 2)   # -y face
+        side1 = _face_at(doc, 0.0, _HW_Y, _H_Z / 2)  # +y face
+        center = _face_at(doc, 0.0, 0.0, _H_Z)  # top face
+        side2 = _face_at(doc, 0.0, -_HW_Y, _H_Z / 2)  # -y face
         result["faces_selected"] = {
-            "side1": side1 is not None, "center": center is not None, "side2": side2 is not None,
+            "side1": side1 is not None,
+            "center": center is not None,
+            "side2": side2 is not None,
         }
         if None in (side1, center, side2):
             result["overall"] = "ERROR"

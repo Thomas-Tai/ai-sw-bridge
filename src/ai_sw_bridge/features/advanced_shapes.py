@@ -69,9 +69,7 @@ _WZD_END_CONDITIONS = {
 }
 
 
-def _create_loft(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_loft(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Create a loft (blend) feature from multiple profile sketches.
 
     Seat-validated (SW 2024 SP1): ``swFmBlend=9`` from ``swconst.tlb``.
@@ -98,7 +96,10 @@ def _create_loft(
                 return False, f"could not select profile sketch {p!r}"
         data = fm.CreateDefinition(9)
         if data is None:
-            return False, "CreateDefinition(9) returned None (profiles may not be compatible)"
+            return (
+                False,
+                "CreateDefinition(9) returned None (profiles may not be compatible)",
+            )
         fd = typed_qi(data, "ILoftFeatureData", module=mod)
         # SEAT-PENDING (W0): confirm CreateFeature materializes a loft.
         feat = fm.CreateFeature(fd)
@@ -109,9 +110,7 @@ def _create_loft(
         return False, f"loft pipeline failed: {exc!r}"
 
 
-def _create_rib(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_rib(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Create a rib feature from a sketch.
 
     Seat-validated (SW 2024 SP1): no ``swFmRib`` in ``swconst.tlb``.
@@ -125,7 +124,9 @@ def _create_rib(
     sketch = target.get("sketch") if isinstance(target, dict) else None
     if not isinstance(sketch, str) or not sketch:
         return False, "target.sketch must be a non-empty sketch name"
-    thickness_mm = feature.get("thickness_mm", 2.0) if isinstance(feature, dict) else 2.0
+    thickness_mm = (
+        feature.get("thickness_mm", 2.0) if isinstance(feature, dict) else 2.0
+    )
     thickness_m = float(thickness_mm) / 1000.0
     try:
         mod = wrapper_module()
@@ -136,15 +137,15 @@ def _create_rib(
         fm = doc.FeatureManager
         # SEAT-PENDING (W0): confirm InsertRib(10) materializes a rib.
         feat = fm.InsertRib(
-            0.0,    # draftAngle
-            0,      # draftType
-            0,      # draftDir
+            0.0,  # draftAngle
+            0,  # draftType
+            0,  # draftDir
             thickness_m,
-            True,   # normalToSketch
-            0,      # refPlaneDir
-            0,      # ribTolerance
-            0,      # ribType (linear)
-            True,   # featureScope
+            True,  # normalToSketch
+            0,  # refPlaneDir
+            0,  # ribTolerance
+            0,  # ribType (linear)
+            True,  # featureScope
             False,  # autoSelect
         )
         if _materialized(feat):
@@ -154,9 +155,7 @@ def _create_rib(
         return False, f"rib pipeline failed: {exc!r}"
 
 
-def _create_dome(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_dome(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Create a dome on a selected planar face.
 
     Seat-validated recipe (W6 T2, spike ``28a5972`` = GREEN, SW 2024 SP1):
@@ -184,8 +183,12 @@ def _create_dome(
     """
     distance_mm = feature.get("distance_mm", 5.0) if isinstance(feature, dict) else 5.0
     distance_m = float(distance_mm) / 1000.0
-    reverse = bool(feature.get("reverse", False)) if isinstance(feature, dict) else False
-    elliptical = bool(feature.get("elliptical", False)) if isinstance(feature, dict) else False
+    reverse = (
+        bool(feature.get("reverse", False)) if isinstance(feature, dict) else False
+    )
+    elliptical = (
+        bool(feature.get("elliptical", False)) if isinstance(feature, dict) else False
+    )
     if not isinstance(target, dict):
         return False, "target must be a dict with 'face_ref' or 'face'"
     doc.ForceRebuild3(False)
@@ -208,11 +211,22 @@ def _create_dome(
         else:
             face = target.get("face")
             if not isinstance(face, (list, tuple)) or len(face) != 3:
-                return False, "target must contain a 'face_ref' or a 3-element 'face' [x,y,z]"
+                return (
+                    False,
+                    "target must contain a 'face_ref' or a 3-element 'face' [x,y,z]",
+                )
             mod = wrapper_module()
             ext = typed(doc.Extension, "IModelDocExtension", module=mod)
             if not ext.SelectByID2(
-                "", "FACE", float(face[0]), float(face[1]), float(face[2]), False, 1, None, 0
+                "",
+                "FACE",
+                float(face[0]),
+                float(face[1]),
+                float(face[2]),
+                False,
+                1,
+                None,
+                0,
             ):
                 return False, "could not select face for dome"
 
@@ -228,9 +242,7 @@ def _create_dome(
         return False, f"dome pipeline failed: {exc!r}"
 
 
-def _create_wrap(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_wrap(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Create a wrap feature (sketch wrapped onto a face).
 
     Seat-validated (SW 2024 SP1): no ``swFmWrap`` in ``swconst.tlb``.
@@ -247,7 +259,9 @@ def _create_wrap(
     face = target.get("face") if isinstance(target, dict) else None
     if not isinstance(face, (list, tuple)) or len(face) != 3:
         return False, "target.face must be a 3-element [x,y,z]"
-    thickness_mm = feature.get("thickness_mm", 1.0) if isinstance(feature, dict) else 1.0
+    thickness_mm = (
+        feature.get("thickness_mm", 1.0) if isinstance(feature, dict) else 1.0
+    )
     thickness_m = float(thickness_mm) / 1000.0
     try:
         mod = wrapper_module()
@@ -255,16 +269,18 @@ def _create_wrap(
         doc.ClearSelection2(True)
         if not ext.SelectByID2(sketch, "SKETCH", 0, 0, 0, False, 0, None, 0):
             return False, f"could not select wrap sketch {sketch!r}"
-        if not ext.SelectByID2("", "FACE", float(face[0]), float(face[1]), float(face[2]), True, 0, None, 0):
+        if not ext.SelectByID2(
+            "", "FACE", float(face[0]), float(face[1]), float(face[2]), True, 0, None, 0
+        ):
             return False, "could not select face for wrap"
         fm = doc.FeatureManager
         # SEAT-PENDING (W0): confirm InsertWrapFeature2(5) materializes.
         feat = fm.InsertWrapFeature2(
-            0,          # type (0=emboss, 1=engrave, 2=scribe)
+            0,  # type (0=emboss, 1=engrave, 2=scribe)
             thickness_m,
-            0.0,        # draftAngle
-            False,      # draftDir
-            False,      # pullDir
+            0.0,  # draftAngle
+            False,  # draftDir
+            False,  # pullDir
         )
         if _materialized(feat):
             return True, None
@@ -292,7 +308,10 @@ def _create_boundary_boss(
         val = target.get(key) if isinstance(target, dict) else None
         if not isinstance(val, list) or not val:
             return False, f"target.{key} must be a non-empty list of sketch names"
-    return False, "boundary_boss: no reachable creation API (DEFERRED — see WAVE5_HANDBACK.md)"
+    return (
+        False,
+        "boundary_boss: no reachable creation API (DEFERRED — see WAVE5_HANDBACK.md)",
+    )
 
 
 def _arrays_from_out(ret: Any) -> list[list]:
@@ -330,7 +349,9 @@ def _hole_table_sizes(hsd: Any, std_name: str, fastener_index: int) -> list[str]
     except Exception:  # noqa: BLE001
         return sizes
     cols = [c for arr in _arrays_from_out(cnames) for c in arr]
-    size_col = next((c for c in cols if "size" in str(c).lower()), cols[0] if cols else None)
+    size_col = next(
+        (c for c in cols if "size" in str(c).lower()), cols[0] if cols else None
+    )
     if size_col is None:
         return sizes
     try:
@@ -338,8 +359,11 @@ def _hole_table_sizes(hsd: Any, std_name: str, fastener_index: int) -> list[str]
     except Exception:  # noqa: BLE001
         return sizes
     # The retval is a bool; the count is the first genuine (non-bool) int.
-    counts = [v for v in (rc if isinstance(rc, (tuple, list)) else [rc])
-              if isinstance(v, int) and not isinstance(v, bool)]
+    counts = [
+        v
+        for v in (rc if isinstance(rc, (tuple, list)) else [rc])
+        if isinstance(v, int) and not isinstance(v, bool)
+    ]
     nrows = counts[0] if counts else 0
     for r in range(nrows):
         try:
@@ -401,9 +425,14 @@ def _resolve_hole_args(
             std_name = str(nm)
             break
     if std_index is None:
-        return False, -1, -1, (
-            f"standard {standard!r} not found; available: "
-            f"{_format_size_catalog([str(n) for n in std_names])}"
+        return (
+            False,
+            -1,
+            -1,
+            (
+                f"standard {standard!r} not found; available: "
+                f"{_format_size_catalog([str(n) for n in std_names])}"
+            ),
         )
 
     f_arrays = _arrays_from_out(hsd.GetFastenerTypes(std_name))
@@ -416,9 +445,14 @@ def _resolve_hole_args(
             fastener_index = idx
             break
     if fastener_index is None:
-        return False, -1, -1, (
-            f"fastener type {fastener_type!r} not found for {std_name!r}; "
-            f"available: {_format_size_catalog([str(n) for n in f_names])}"
+        return (
+            False,
+            -1,
+            -1,
+            (
+                f"fastener type {fastener_type!r} not found for {std_name!r}; "
+                f"available: {_format_size_catalog([str(n) for n in f_names])}"
+            ),
         )
 
     valid_sizes = _hole_table_sizes(hsd, std_name, fastener_index)
@@ -427,14 +461,24 @@ def _resolve_hole_args(
         # table is empty or the COM read failed. Surface as a diagnostic
         # error rather than silently accepting any size string; the caller
         # gets a structured envelope they can act on.
-        return False, -1, -1, (
-            f"no sizes enumerated for {std_name!r}/{fastener_type!r} "
-            f"(DB returned 0 rows — check IHoleDataTable.GetRowCount)"
+        return (
+            False,
+            -1,
+            -1,
+            (
+                f"no sizes enumerated for {std_name!r}/{fastener_type!r} "
+                f"(DB returned 0 rows — check IHoleDataTable.GetRowCount)"
+            ),
         )
     if size not in valid_sizes:
-        return False, -1, -1, (
-            f"size {size!r} invalid for {std_name!r}/{fastener_type!r}; "
-            f"{len(valid_sizes)} valid sizes: {_format_size_catalog(valid_sizes)}"
+        return (
+            False,
+            -1,
+            -1,
+            (
+                f"size {size!r} invalid for {std_name!r}/{fastener_type!r}; "
+                f"{len(valid_sizes)} valid sizes: {_format_size_catalog(valid_sizes)}"
+            ),
         )
     return True, int(std_index), int(fastener_index), None
 

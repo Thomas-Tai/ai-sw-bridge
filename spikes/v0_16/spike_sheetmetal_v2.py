@@ -49,6 +49,7 @@ Usage
     python spikes/v0_16/spike_sheetmetal_v2.py --out report.json
     python spikes/v0_16/spike_sheetmetal_v2.py --mode vba
 """
+
 # ============================================================================
 # SEAT-RUN FINDINGS (2026-05-31, SW 2024 SP1)
 # ============================================================================
@@ -102,7 +103,6 @@ Usage
 # walls when called out-of-process. The VARIANT approach works for parameter
 # passing but the COM objects are not consumed by the SolidWorks API.
 # ============================================================================
-
 
 
 from __future__ import annotations
@@ -183,13 +183,19 @@ def _capture(fn: Any) -> tuple[dict[str, Any], Any]:
     t0 = time.perf_counter()
     try:
         val = fn()
-        return {"status": "OK", "type": _tag(val),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, val
+        return {
+            "status": "OK",
+            "type": _tag(val),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, val
     except Exception as e:  # noqa: BLE001
-        return {"status": "EXCEPTION", "exception_type": type(e).__name__,
-                "message": str(e)[:200],
-                "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0}, None
+        return {
+            "status": "EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e)[:200],
+            "hresult": f"{e.hresult:#010x}" if hasattr(e, "hresult") else None,
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }, None
 
 
 def _probe_members(obj: Any, names: tuple[str, ...]) -> dict[str, str]:
@@ -218,8 +224,8 @@ def _build_profile(doc: Any) -> dict[str, Any]:
         sk = doc.SketchManager
         sk.InsertSketch(True)
         seg = sk.CreateCornerRectangle(
-            -PROF_W_M / 2, -PROF_H_M / 2, 0.0,
-            PROF_W_M / 2, PROF_H_M / 2, 0.0)
+            -PROF_W_M / 2, -PROF_H_M / 2, 0.0, PROF_W_M / 2, PROF_H_M / 2, 0.0
+        )
         sk.InsertSketch(True)
         out["built"] = seg is not None
         out["sketch"] = "Sketch1"
@@ -274,6 +280,7 @@ def _find_bendable_edges(doc, mod=None):
     selectable edge entities.
     """
     from ai_sw_bridge.com.earlybind import typed_extension
+
     rec, bodies = _capture(lambda: doc.GetBodies2(SW_BODY_SOLID, True))
     body_list = _as_list(bodies)
     if not body_list:
@@ -303,9 +310,16 @@ def _find_bendable_edges(doc, mod=None):
 
 
 _EDGEFLANGE_CANDIDATE_MEMBERS = (
-    "BendAngle", "BendRadius", "ReverseDirection",
-    "UseDefaultBendRadius", "FlangePosition", "UsePositionSchedule",
-    "FlangeOffset", "AutoMiter", "Gap")
+    "BendAngle",
+    "BendRadius",
+    "ReverseDirection",
+    "UseDefaultBendRadius",
+    "FlangePosition",
+    "UsePositionSchedule",
+    "FlangeOffset",
+    "AutoMiter",
+    "Gap",
+)
 
 
 def _acquire_edgeflange_data(fm: Any, mod: Any) -> dict[str, Any]:
@@ -340,8 +354,10 @@ def _probe_edge_flange(doc: Any, fm: Any, mod: Any, edges: list) -> dict[str, An
         members = _probe_members(typed_obj, _EDGEFLANGE_CANDIDATE_MEMBERS)
         out["members"] = members
         set_recs: dict[str, Any] = {}
-        for name, val in (("BendAngle", EDGE_FLANGE_ANGLE_RAD),
-                          ("BendRadius", EDGE_FLANGE_RADIUS_M)):
+        for name, val in (
+            ("BendAngle", EDGE_FLANGE_ANGLE_RAD),
+            ("BendRadius", EDGE_FLANGE_RADIUS_M),
+        ):
             if members.get(name) == "present":
                 rec, _ = _capture(lambda n=name, v=val: setattr(typed_obj, n, v))
                 set_recs[name] = rec
@@ -387,16 +403,33 @@ def _probe_edge_flange(doc: Any, fm: Any, mod: Any, edges: list) -> dict[str, An
             out["overall"] = "PASS-via-legacy"
     if "overall" not in out:
         out["overall"] = "FAIL"
-        out["reason"] = "no CreateDefinition id yielded IEdgeFlangeFeatureData; legacy also failed"
+        out["reason"] = (
+            "no CreateDefinition id yielded IEdgeFlangeFeatureData; legacy also failed"
+        )
     return out
 
 
 def _probe_edge_flange_legacy(fm: Any, edges: list) -> dict[str, Any]:
     out: dict[str, Any] = {}
     candidates = [
-        ("6-arg", (EDGE_FLANGE_ANGLE_RAD, False, True, EDGE_FLANGE_RADIUS_M, False, False)),
+        (
+            "6-arg",
+            (EDGE_FLANGE_ANGLE_RAD, False, True, EDGE_FLANGE_RADIUS_M, False, False),
+        ),
         ("4-arg", (EDGE_FLANGE_ANGLE_RAD, False, True, EDGE_FLANGE_RADIUS_M)),
-        ("8-arg", (EDGE_FLANGE_ANGLE_RAD, False, True, EDGE_FLANGE_RADIUS_M, False, False, 0, 0)),
+        (
+            "8-arg",
+            (
+                EDGE_FLANGE_ANGLE_RAD,
+                False,
+                True,
+                EDGE_FLANGE_RADIUS_M,
+                False,
+                False,
+                0,
+                0,
+            ),
+        ),
     ]
     attempts: list[dict[str, Any]] = []
     for label, args in candidates:
@@ -418,8 +451,14 @@ def _probe_edge_flange_legacy(fm: Any, edges: list) -> dict[str, Any]:
 
 
 _MITERFLANGE_CANDIDATE_MEMBERS = (
-    "Angle", "Radius", "BendRadius", "MiterGap",
-    "ReverseDirection", "UseDefaultBendRadius", "FlangePosition")
+    "Angle",
+    "Radius",
+    "BendRadius",
+    "MiterGap",
+    "ReverseDirection",
+    "UseDefaultBendRadius",
+    "FlangePosition",
+)
 
 
 def _acquire_miterflange_data(fm, mod):
@@ -454,9 +493,11 @@ def _probe_miter_flange(doc, fm, mod, edges):
         members = _probe_members(typed_obj, _MITERFLANGE_CANDIDATE_MEMBERS)
         out["members"] = members
         set_recs = {}
-        for name, val in (("Angle", EDGE_FLANGE_ANGLE_RAD),
-                          ("Radius", EDGE_FLANGE_RADIUS_M),
-                          ("BendRadius", EDGE_FLANGE_RADIUS_M)):
+        for name, val in (
+            ("Angle", EDGE_FLANGE_ANGLE_RAD),
+            ("Radius", EDGE_FLANGE_RADIUS_M),
+            ("BendRadius", EDGE_FLANGE_RADIUS_M),
+        ):
             if members.get(name) == "present":
                 rec, _ = _capture(lambda n=name, v=val: setattr(typed_obj, n, v))
                 set_recs[name] = rec
@@ -507,13 +548,14 @@ def _probe_flat_pattern(doc):
     out["ShowConfiguration2"] = show_rec
     for btype, label in (
         (SW_BODY_SHEET_METAL_FLAT, "swSheetMetalFlattenedBody"),
-        (SW_BODY_SOLID, "swSolidBody")):
+        (SW_BODY_SOLID, "swSolidBody"),
+    ):
         rec, bodies = _capture(lambda: doc.GetBodies2(btype, True))
         out[f"GetBodies2_{label}_count"] = len(_as_list(bodies))
-    flat_ok = (
-        out.get("ShowConfiguration2", {}).get("status") == "OK"
-        and (out.get("GetBodies2_swSheetMetalFlattenedBody_count", 0) > 0
-             or out.get("GetBodies2_swSolidBody_count", 0) > 0))
+    flat_ok = out.get("ShowConfiguration2", {}).get("status") == "OK" and (
+        out.get("GetBodies2_swSheetMetalFlattenedBody_count", 0) > 0
+        or out.get("GetBodies2_swSolidBody_count", 0) > 0
+    )
     out["overall"] = "PASS" if flat_ok else "PARTIAL"
     return out
 
@@ -523,9 +565,19 @@ def _probe_export_dwg(doc, keep_files):
     tmp_dir = Path(tempfile.gettempdir()) / "ai-sw-bridge"
     tmp_dir.mkdir(parents=True, exist_ok=True)
     dxf_path = tmp_dir / "spike_sheetmetal_v2_flat.dxf"
-    rec, result = _capture(lambda: doc.Extension.ExportToDWG2(
-        str(dxf_path), doc, SW_DWG_EXPORT_SHEETMETAL,
-        False, False, False, None, None, 1.0))
+    rec, result = _capture(
+        lambda: doc.Extension.ExportToDWG2(
+            str(dxf_path),
+            doc,
+            SW_DWG_EXPORT_SHEETMETAL,
+            False,
+            False,
+            False,
+            None,
+            None,
+            1.0,
+        )
+    )
     out["ExportToDWG2"] = rec
     out["file_created"] = dxf_path.exists()
     if dxf_path.exists():
@@ -537,9 +589,10 @@ def _probe_export_dwg(doc, keep_files):
         except Exception:
             pass
     out["overall"] = (
-        "PASS" if (rec.get("status") == "OK" and out.get("file_created"))
-        else "PARTIAL" if rec.get("status") == "OK"
-        else "FAIL")
+        "PASS"
+        if (rec.get("status") == "OK" and out.get("file_created"))
+        else "PARTIAL" if rec.get("status") == "OK" else "FAIL"
+    )
     return out
 
 
@@ -571,8 +624,11 @@ def run(keep_files=False):
         base = _build_base_flange(doc, fm, mod)
         result["base_flange"] = base
         if base.get("overall") != "PASS":
-            return {**result, "overall": "FAIL",
-                    "reason": "base flange (proven pipeline) failed"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": "base flange (proven pipeline) failed",
+            }
         try:
             doc.ForceRebuild3(False)
         except Exception:
@@ -592,14 +648,18 @@ def run(keep_files=False):
             if len(edges2) > 1:
                 result["miter_flange"] = _probe_miter_flange(doc, fm, mod, edges2[1:])
             else:
-                result["miter_flange"] = {"overall": "SKIPPED",
-                    "reason": "insufficient remaining edges"}
+                result["miter_flange"] = {
+                    "overall": "SKIPPED",
+                    "reason": "insufficient remaining edges",
+                }
         result["flat_pattern"] = _probe_flat_pattern(doc)
         if result["flat_pattern"].get("overall") in ("PASS", "PARTIAL"):
             result["export_dwg"] = _probe_export_dwg(doc, keep_files)
         else:
-            result["export_dwg"] = {"overall": "SKIPPED",
-                "reason": "flat-pattern activation failed"}
+            result["export_dwg"] = {
+                "overall": "SKIPPED",
+                "reason": "flat-pattern activation failed",
+            }
     finally:
         _try_close(sw, doc)
         result["cleanup"] = "closed own doc (no save)"
@@ -611,15 +671,19 @@ def run(keep_files=False):
     failing = sum(1 for v in (edge_v, flat_v, export_v) if v == "FAIL")
     if passing == 3:
         overall = "PASS"
-        interp = ("Edge flange materializes via typed_qi, flat-pattern reachable, "
-                  "ExportToDWG2 succeeds -> build the handler.")
+        interp = (
+            "Edge flange materializes via typed_qi, flat-pattern reachable, "
+            "ExportToDWG2 succeeds -> build the handler."
+        )
     elif failing == 3:
         overall = "FAIL"
         interp = "Edge flange unreachable, flat-pattern and export also failed."
     else:
         overall = "PARTIAL"
-        interp = (f"Mixed: edge_flange={edge_v}, miter_flange={miter_v}, "
-                  f"flat_pattern={flat_v}, export={export_v}. Run --mode vba.")
+        interp = (
+            f"Mixed: edge_flange={edge_v}, miter_flange={miter_v}, "
+            f"flat_pattern={flat_v}, export={export_v}. Run --mode vba."
+        )
     result["overall"] = overall
     result["interpretation"] = interp
     return result
@@ -684,8 +748,9 @@ End Sub
 
 
 def main():
-    p = argparse.ArgumentParser(description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--mode", choices=["com", "vba"], default="com")
     p.add_argument("--out", type=Path, default=None)
     p.add_argument("--keep-files", action="store_true")

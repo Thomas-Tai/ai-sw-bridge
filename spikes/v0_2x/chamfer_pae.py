@@ -119,8 +119,12 @@ def _build_box_and_capture_edge(sw: Any, save_path: str) -> dict[str, Any]:
         sk = doc.SketchManager
         sk.InsertSketch(True)
         sk.CreateCornerRectangle(
-            -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-            BOX_W_M / 2, BOX_H_M / 2, 0.0,
+            -BOX_W_M / 2,
+            -BOX_H_M / 2,
+            0.0,
+            BOX_W_M / 2,
+            BOX_H_M / 2,
+            0.0,
         )
         sk.InsertSketch(True)
     except Exception as e:
@@ -130,9 +134,29 @@ def _build_box_and_capture_edge(sw: Any, save_path: str) -> dict[str, Any]:
 
     try:
         feat = fm.FeatureExtrusion3(
-            True, False, False, 0, 0, BOX_D_M, 0.0,
-            False, False, False, False, 0.0, 0.0,
-            False, False, False, False, True, True, True, 0, 0, False,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOX_D_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
+            False,
         )
         if feat is None or isinstance(feat, int):
             result["error"] = "extrude did not materialize"
@@ -169,7 +193,10 @@ def _build_box_and_capture_edge(sw: Any, save_path: str) -> dict[str, Any]:
             length = BOX_D_M
 
         edge_ref = DurableEdgeRef(
-            persist_id=persist_id, start=start, end=end, length=length,
+            persist_id=persist_id,
+            start=start,
+            end=end,
+            length=length,
         )
         result["edge_ref"] = edge_ref.to_dict()
         result["persist_id_captured"] = persist_id is not None
@@ -214,27 +241,45 @@ def run() -> dict[str, Any]:
             return {**result, "overall": "FAIL", "reason": box["error"]}
 
         edge_ref = box["edge_ref"]
-        feature = {"type": "chamfer", "distance_mm": CHAMFER_DISTANCE_MM, "angle_deg": CHAMFER_ANGLE_DEG}
+        feature = {
+            "type": "chamfer",
+            "distance_mm": CHAMFER_DISTANCE_MM,
+            "angle_deg": CHAMFER_ANGLE_DEG,
+        }
         target = edge_ref
 
         # Phase 2: Propose
         propose = sw_propose_feature_add(sldprt, feature, target)
-        result["propose"] = {k: v for k, v in propose.items() if k not in ("feature", "target")}
+        result["propose"] = {
+            k: v for k, v in propose.items() if k not in ("feature", "target")
+        }
         if not propose["ok"]:
-            return {**result, "overall": "FAIL", "reason": f"propose failed: {propose['error']}"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": f"propose failed: {propose['error']}",
+            }
         pid = propose["proposal_id"]
 
         # Phase 3: Dry-run
         dry = sw_dry_run_feature_add(pid)
         result["dry_run"] = {k: v for k, v in dry.items() if k != "proposal_id"}
         if not dry["ok"]:
-            return {**result, "overall": "FAIL", "reason": f"dry_run failed: {dry['error']}"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": f"dry_run failed: {dry['error']}",
+            }
 
         # Phase 4: Commit
         commit = sw_commit_feature_add(pid)
         result["commit"] = {k: v for k, v in commit.items() if k != "proposal_id"}
         if not commit["ok"]:
-            return {**result, "overall": "FAIL", "reason": f"commit failed: {commit['error']}"}
+            return {
+                **result,
+                "overall": "FAIL",
+                "reason": f"commit failed: {commit['error']}",
+            }
 
         # Phase 5: Verify file on disk
         result["file_exists"] = Path(sldprt).exists()
@@ -242,6 +287,7 @@ def run() -> dict[str, Any]:
         # Phase 6: Re-open and verify
         try:
             from ai_sw_bridge.sw_com import resolve
+
             tsw = typed(sw, "ISldWorks")
             reopen_doc = tsw.OpenDoc6(sldprt, 1, 1, "", 0, 0)
             doc = reopen_doc[0] if isinstance(reopen_doc, tuple) else reopen_doc
@@ -285,13 +331,17 @@ def run() -> dict[str, Any]:
         else:
             # face_count read failed (-1) but feature exists and count +1
             result["overall"] = "GO"
-            result["note"] = "face_count unreadable on reopen; feature delta confirms materialization"
+            result["note"] = (
+                "face_count unreadable on reopen; feature delta confirms materialization"
+            )
     elif chamfer_found and feature_delta == 0:
         result["overall"] = "FAIL"
         result["reason"] = "Chamfer feature found but no feature count delta"
     else:
         result["overall"] = "FAIL"
-        result["reason"] = f"Chamfer not found on reopen (found={chamfer_found}, delta={feature_delta})"
+        result["reason"] = (
+            f"Chamfer not found on reopen (found={chamfer_found}, delta={feature_delta})"
+        )
 
     return result
 

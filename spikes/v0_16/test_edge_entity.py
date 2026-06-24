@@ -1,6 +1,8 @@
 """Diagnostic: try IEntity and SelectByID2 for edges."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "v0_15"))
 
@@ -38,48 +40,48 @@ try:
     bodies = doc.GetBodies2(0, True)
     edges_raw = bodies[0].GetEdges()
     ext = typed_extension(doc, module=mod)
-    
+
     raw_edge = edges_raw[0]
-    
+
     # Get live edge via persist
     pid = ext.GetPersistReference3(raw_edge)
     result = ext.GetObjectByPersistReference3(pid)
     live_edge = result[0] if isinstance(result, tuple) else result
-    
+
     print(f"Raw edge type: {type(raw_edge).__name__}")
     print(f"Live edge type: {type(live_edge).__name__}")
-    
+
     # Check if live_edge has Select methods
     print("\n=== Live edge methods ===")
-    select_methods = [m for m in dir(live_edge) if 'select' in m.lower()]
+    select_methods = [m for m in dir(live_edge) if "select" in m.lower()]
     print(f"Selection-related: {select_methods}")
-    
+
     # Try QI to IEntity
     print("\n=== QI to IEntity ===")
     try:
         entity = typed_qi(live_edge, "IEntity", module=mod)
         print(f"IEntity: {type(entity).__name__}")
-        
+
         # Check IEntity methods
-        entity_methods = [m for m in dir(entity) if 'select' in m.lower()]
+        entity_methods = [m for m in dir(entity) if "select" in m.lower()]
         print(f"IEntity selection methods: {entity_methods}")
-        
+
         # Try Select4 on IEntity
-        if hasattr(entity, 'Select4'):
+        if hasattr(entity, "Select4"):
             doc.ClearSelection2(True)
             result = entity.Select4(False, None)
             print(f"Select4 result: {result}")
-            
+
             sel_mgr = doc.SelectionManager
             count = sel_mgr.GetSelectedObjectCount()
             print(f"Selected objects: {count}")
     except Exception as ex:
         print(f"QI to IEntity failed: {ex}")
-    
+
     # Try using the raw live_edge directly with Select2
     print("\n=== Direct Select2 on live_edge ===")
     try:
-        if hasattr(live_edge, 'Select2'):
+        if hasattr(live_edge, "Select2"):
             doc.ClearSelection2(True)
             result = live_edge.Select2(False, 0)
             print(f"Select2 result: {result}")
@@ -87,7 +89,7 @@ try:
             print("No Select2 method")
     except Exception as ex:
         print(f"Select2 failed: {ex}")
-    
+
     # Try SelectByID2
     print("\n=== SelectByID2 ===")
     try:

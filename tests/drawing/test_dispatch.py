@@ -70,9 +70,7 @@ class TestDrawingResult:
         assert "error" not in d
 
     def test_to_dict_failure(self) -> None:
-        r = DrawingResult(
-            view="section", ok=False, error="SEAT-gated"
-        )
+        r = DrawingResult(view="section", ok=False, error="SEAT-gated")
         d = r.to_dict()
         assert d["error"] == "SEAT-gated"
         assert d["ok"] is False
@@ -176,9 +174,7 @@ class TestGenerateAll:
         results = generate_all(doc, [], "/path/to/part.sldprt")
         assert results == []
 
-    def test_human_stream_output(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_human_stream_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         doc = _MockDrawingDoc(fail_on="*Top")
         requests = [
             DrawingRequest(view="front"),

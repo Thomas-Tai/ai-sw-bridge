@@ -7,6 +7,7 @@ feature handlers and _apply_feature collapses to a pure registry lookup.
 
 SPIKE_STATUS = "GREEN"
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -80,7 +81,7 @@ def _sketch_centroid_coords(sk: Any, mod: Any) -> tuple[float, float, float] | N
         try:
             tseg = typed(seg, "ISketchSegment", module=mod)
             cg = tseg.ConstructionGeometry
-            if (cg() if callable(cg) else cg):
+            if cg() if callable(cg) else cg:
                 continue
         except Exception:
             pass
@@ -97,8 +98,11 @@ def _sketch_centroid_coords(sk: Any, mod: Any) -> tuple[float, float, float] | N
             pass
         try:
             arc = typed_qi(seg, "ISketchArc", module=mod)
-            got += [_pt(arc, "GetCenterPoint2"), _pt(arc, "GetStartPoint2"),
-                    _pt(arc, "GetEndPoint2")]
+            got += [
+                _pt(arc, "GetCenterPoint2"),
+                _pt(arc, "GetStartPoint2"),
+                _pt(arc, "GetEndPoint2"),
+            ]
         except Exception:
             pass
         points.extend(g for g in got if g is not None)
@@ -180,7 +184,7 @@ def _apply_auto_pierce(
         _as = tdoc.GetActiveSketch2
         path_sk = _as() if callable(_as) else _as
         _ps = path_sk.GetSketchSegments
-        psegs = (_ps() if callable(_ps) else _ps)
+        psegs = _ps() if callable(_ps) else _ps
         path_seg = (list(psegs) if psegs else [None])[0]
     except Exception as exc:
         _close()
@@ -216,13 +220,25 @@ def _apply_auto_pierce(
         )
 
     # Transform sketch-local coords to model coords based on the sketch's plane.
-    model_anchor = _sketch_to_model_coords(doc, sk, anchor[0], anchor[1], anchor[2], mod)
+    model_anchor = _sketch_to_model_coords(
+        doc, sk, anchor[0], anchor[1], anchor[2], mod
+    )
 
     try:
         tdoc.ClearSelection2(True)
-        sel_pt = bool(ext.SelectByID2(
-            "", "SKETCHPOINT", model_anchor[0], model_anchor[1], model_anchor[2],
-            False, 0, None, 0))
+        sel_pt = bool(
+            ext.SelectByID2(
+                "",
+                "SKETCHPOINT",
+                model_anchor[0],
+                model_anchor[1],
+                model_anchor[2],
+                False,
+                0,
+                None,
+                0,
+            )
+        )
         sel_path = bool(path_seg.Select2(True, 0))
         if not (sel_pt and sel_path):
             _close()
@@ -240,9 +256,7 @@ def _apply_auto_pierce(
     return True, None
 
 
-def _create_sweep(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_sweep(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Run the seat-validated sweep pipeline on a profile + path sketch.
 
     Mirrors the ``spike_sweep_v2`` PASS path (rev 32.1.0): a sweep IS a
@@ -301,9 +315,7 @@ def _create_sweep(
 # ---- Wave-5: F1 sweep-cut (mirror _create_sweep, swFmSweepCut=18) ----
 
 
-def _create_sweep_cut(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_sweep_cut(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Create a sweep-cut feature — mirror of _create_sweep with swFmSweepCut=18.
 
     Seat-validated recipe (W6 T4, spike ``b5d1174`` = GREEN, SW 2024 SP1):

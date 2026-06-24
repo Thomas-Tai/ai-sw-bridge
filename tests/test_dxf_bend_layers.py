@@ -9,6 +9,7 @@ against the golden L-bracket flat pattern captured from the live seat
 (130,165)→(170,165) must move to ``BEND``; the four perimeter edges must stay
 on ``"0"``; the geometry (re-classification) must be unchanged.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -92,9 +93,9 @@ class TestBendLayerRewriter:
         reclassified = classify_bend_lines_geometric(rewritten)
         assert reclassified["bend_line_count"] == 1
         assert reclassified["outline_line_count"] == 4
-        assert reclassified["bbox"]["y_max"] - reclassified["bbox"]["y_min"] == pytest.approx(
-            86.283, abs=1e-3
-        )
+        assert reclassified["bbox"]["y_max"] - reclassified["bbox"][
+            "y_min"
+        ] == pytest.approx(86.283, abs=1e-3)
 
     def test_custom_layer_name(self) -> None:
         rewritten, _ = rewrite_dxf_with_bend_layer(self._golden(), "IV_BEND")

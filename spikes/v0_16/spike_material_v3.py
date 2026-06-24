@@ -23,6 +23,7 @@ read-back. The winning form is what material.py will use.
 Non-destructive: own blank Part, never saves, closes own doc.
 Usage:  .venv-py310\Scripts\python spikes\v0_16\spike_material_v3.py
 """
+
 from __future__ import annotations
 
 import json
@@ -64,12 +65,35 @@ def _build_box(doc: Any) -> bool:
         return False
     sk = doc.SketchManager
     sk.InsertSketch(True)
-    sk.CreateCornerRectangle(-BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-                             BOX_W_M / 2, BOX_H_M / 2, 0.0)
+    sk.CreateCornerRectangle(
+        -BOX_W_M / 2, -BOX_H_M / 2, 0.0, BOX_W_M / 2, BOX_H_M / 2, 0.0
+    )
     sk.InsertSketch(True)
     fm = doc.FeatureManager
-    base = (True, False, False, 0, 0, BOX_D_M, 0.0, False, False, False, False,
-            0.0, 0.0, False, False, False, False, True, True, True, 0, 0.0)
+    base = (
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+    )
     try:
         feat = fm.FeatureExtrusion2(*base, False)
     except Exception:  # noqa: BLE001
@@ -120,8 +144,8 @@ def _db_forms(db_paths: list[str]) -> list[str]:
     """Candidate `db` argument strings, most-likely-first."""
     forms: list[str] = ["", "SOLIDWORKS Materials", "SolidWorks Materials"]
     for p in db_paths:
-        forms.append(p)                       # full .sldmat path
-        forms.append(Path(p).stem)            # filename without extension
+        forms.append(p)  # full .sldmat path
+        forms.append(Path(p).stem)  # filename without extension
     # de-dup, preserve order
     seen: set[str] = set()
     out: list[str] = []
@@ -169,7 +193,9 @@ def run() -> dict[str, Any]:
                 try:
                     part_dyn.SetMaterialPropertyName2("", db, name)
                 except Exception as e:  # noqa: BLE001
-                    trials.append({"db": db, "name": name, "set_error": f"{type(e).__name__}"})
+                    trials.append(
+                        {"db": db, "name": name, "set_error": f"{type(e).__name__}"}
+                    )
                     continue
                 try:
                     doc.ForceRebuild3(False)
@@ -180,10 +206,19 @@ def run() -> dict[str, Any]:
                         pass
                 dens = _density(doc)
                 rb_name, rb_db = _readback(doc)
-                moved = (dens is not None and baseline is not None
-                         and abs(dens - baseline) > 50.0)
-                rec = {"db": db, "name": name, "density": dens,
-                       "rb_name": rb_name, "rb_db": rb_db, "moved": moved}
+                moved = (
+                    dens is not None
+                    and baseline is not None
+                    and abs(dens - baseline) > 50.0
+                )
+                rec = {
+                    "db": db,
+                    "name": name,
+                    "density": dens,
+                    "rb_name": rb_name,
+                    "rb_db": rb_db,
+                    "moved": moved,
+                }
                 trials.append(rec)
                 if moved and winner is None:
                     winner = rec
@@ -209,8 +244,8 @@ def run() -> dict[str, Any]:
     result["interpretation"] = (
         f"Honoured form: db={winner['db']!r} name={winner['name']!r} "
         f"density={winner['density']:.1f} -> wire into material.py."
-        if winner else
-        "No (db, name) form moved density off the 1000 default; inspect "
+        if winner
+        else "No (db, name) form moved density off the 1000 default; inspect "
         "material_databases / trials to see what the install actually exposes."
     )
     return result

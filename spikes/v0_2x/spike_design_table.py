@@ -205,10 +205,18 @@ def run_spike() -> dict[str, Any]:
     repo_root = Path(__file__).resolve().parents[2]
     proc = subprocess.run(
         [
-            sys.executable, "-m", "ai_sw_bridge.cli.build",
-            str(spec_path), "--no-dim", "--save-as", str(part_path),
+            sys.executable,
+            "-m",
+            "ai_sw_bridge.cli.build",
+            str(spec_path),
+            "--no-dim",
+            "--save-as",
+            str(part_path),
         ],
-        capture_output=True, text=True, timeout=120, cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        timeout=120,
+        cwd=str(repo_root),
     )
     if proc.returncode != 0:
         result["errors"].append(f"build failed: {proc.stderr[-500:]}")
@@ -405,7 +413,9 @@ def run_spike() -> dict[str, Any]:
     result["stage"] = "route_C"
     route_c: dict[str, Any] = {"status": "untried"}
 
-    print("=== Route C: Config enumeration + volume discrimination ===", file=sys.stderr)
+    print(
+        "=== Route C: Config enumeration + volume discrimination ===", file=sys.stderr
+    )
     try:
         names = mdoc2.GetConfigurationNames()
         if names is not None:
@@ -430,9 +440,7 @@ def run_spike() -> dict[str, Any]:
                 result["warnings"].append(vol_err)
 
         route_c["volumes"] = volumes
-        distinct = sorted(set(
-            round(v, 1) for v in volumes.values() if v is not None
-        ))
+        distinct = sorted(set(round(v, 1) for v in volumes.values() if v is not None))
         route_c["distinct_volumes"] = distinct
         route_c["discriminated"] = len(distinct) >= 2
 
@@ -481,10 +489,9 @@ def run_spike() -> dict[str, Any]:
                         vol, _ = _measure_volume(mdoc2b, f"reopen_{cn}")
                         reopen_volumes[cn] = vol
 
-                reopen_distinct = sorted(set(
-                    round(v, 1) for v in reopen_volumes.values()
-                    if v is not None
-                ))
+                reopen_distinct = sorted(
+                    set(round(v, 1) for v in reopen_volumes.values() if v is not None)
+                )
                 result["reopen_volumes"] = reopen_volumes
                 result["reopen_distinct"] = reopen_distinct
                 result["reopen_persisted"] = len(reopen_distinct) >= 2
@@ -497,7 +504,9 @@ def run_spike() -> dict[str, Any]:
     # ---- Final verdict ----
     result["stage"] = "verdict"
 
-    route_a_ok = route_a.get("status") == "called" and route_a.get("returned_value") != "None"
+    route_a_ok = (
+        route_a.get("status") == "called" and route_a.get("returned_value") != "None"
+    )
     route_c_green = route_c.get("status") == "GREEN"
     reopen_persisted = result.get("reopen_persisted", False)
 
@@ -545,12 +554,17 @@ def main() -> int:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--out", type=Path, default=None,
-                   help="Write JSON report to path (default: stdout).")
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Write JSON report to path (default: stdout).",
+    )
     args = p.parse_args()
 
     try:
         import pythoncom
+
         pythoncom.CoInitialize()
     except ImportError:
         pass
@@ -561,6 +575,7 @@ def main() -> int:
     finally:
         try:
             import pythoncom
+
             pythoncom.CoUninitialize()
         except ImportError:
             pass

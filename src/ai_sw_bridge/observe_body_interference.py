@@ -188,7 +188,9 @@ def _sw_get_body_interference_impl() -> dict[str, Any]:
             logger.warning(
                 "body_interference: %d solid bodies => %d pairwise "
                 "GetIntersectionEdges checks; SW COM interop may block for a "
-                "while on this part.", n, pairwise,
+                "while on this part.",
+                n,
+                pairwise,
             )
 
         # Fewer than 2 bodies -> no possible interference (vacuously clean).
@@ -223,18 +225,24 @@ def _sw_get_body_interference_impl() -> dict[str, Any]:
                     continue
                 if not count:
                     continue  # no clash
-                vol_mm3, verr = _intersection_volume_mm3(typed_bodies[i], typed_bodies[j])
+                vol_mm3, verr = _intersection_volume_mm3(
+                    typed_bodies[i], typed_bodies[j]
+                )
                 if verr is not None:
-                    result["errors"].append(f"pair({names[i]},{names[j]}) volume: {verr}")
+                    result["errors"].append(
+                        f"pair({names[i]},{names[j]}) volume: {verr}"
+                    )
                     vol_complete = False
                 elif vol_mm3 is not None:
                     total_vol += vol_mm3
-                pairs.append({
-                    "body_a": names[i],
-                    "body_b": names[j],
-                    "intersection_edge_count": count,
-                    "interference_volume_mm3": vol_mm3,
-                })
+                pairs.append(
+                    {
+                        "body_a": names[i],
+                        "body_b": names[j],
+                        "intersection_edge_count": count,
+                        "interference_volume_mm3": vol_mm3,
+                    }
+                )
 
         result["pairs"] = pairs
         result["interfering_pair_count"] = len(pairs)

@@ -2,6 +2,7 @@
 
 Full dump without filtering - we need to find ordinate/baseline methods.
 """
+
 from __future__ import annotations
 
 TLB_PATH = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\sldworks.tlb"

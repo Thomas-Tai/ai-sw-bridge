@@ -15,6 +15,7 @@ Branching (per W0 contract):
 
 Writes spikes/v0_2x/_results/edgeflange_brep_probe.json.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,8 +25,12 @@ from pathlib import Path
 from typing import Any
 
 _HERE = Path(__file__).resolve()
-for _p in (_HERE.parents[2] / "src", _HERE.parents[1] / "v0_15",
-           _HERE.parents[1] / "v0_16", _HERE.parents[1] / "v0_17"):
+for _p in (
+    _HERE.parents[2] / "src",
+    _HERE.parents[1] / "v0_15",
+    _HERE.parents[1] / "v0_16",
+    _HERE.parents[1] / "v0_17",
+):
     sys.path.insert(0, str(_p))
 
 import pythoncom  # noqa: E402
@@ -177,8 +182,10 @@ def main() -> int:
         d_faces = after["faces"] - before["faces"]
         out["delta"] = {"vol_mm3": d_vol, "faces": d_faces}
         out["bend_in_3d"] = d_vol > 0 and d_faces > 0
-        print("[probe] after:  vol=%s faces=%s -> dVol=%s dFaces=%s"
-              % (after["vol_mm3"], after["faces"], d_vol, d_faces))
+        print(
+            "[probe] after:  vol=%s faces=%s -> dVol=%s dFaces=%s"
+            % (after["vol_mm3"], after["faces"], d_vol, d_faces)
+        )
 
         out["edgeflange_feature"] = _edgeflange_feature_state(doc, mod)
         print("[probe] edgeflange feature: %s" % out["edgeflange_feature"])

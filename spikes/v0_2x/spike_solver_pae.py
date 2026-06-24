@@ -12,6 +12,7 @@ to end on the hot seat. Three gates:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_solver_pae.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -57,16 +58,21 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 def _ns(assembly: str, mate: str, **kw: Any) -> argparse.Namespace:
     return argparse.Namespace(
-        assembly=assembly, mate=mate,
-        step_mm=kw.get("step_mm", 2.0), max_iters=kw.get("max_iters", 20),
-        direction=kw.get("direction", "out"), save=kw.get("save", False),
+        assembly=assembly,
+        mate=mate,
+        step_mm=kw.get("step_mm", 2.0),
+        max_iters=kw.get("max_iters", 20),
+        direction=kw.get("direction", "out"),
+        save=kw.get("save", False),
         output_dir=kw.get("output_dir", str(_HERE.parent / "_results")),
     )
 
 
 def _vol(intf: dict[str, Any]) -> float:
-    return sum(float(i.get("interference_volume_mm3") or 0.0)
-               for i in (intf.get("interferences") or []))
+    return sum(
+        float(i.get("interference_volume_mm3") or 0.0)
+        for i in (intf.get("interferences") or [])
+    )
 
 
 def main() -> int:
@@ -99,9 +105,12 @@ def main() -> int:
         mate_name = fx["mate_name"]
         asm_path = str(Path(t1._results_tmp(), f"w76_solver_{os.getpid()}.SLDASM"))
         sret = typed(fx["asm"], "IModelDoc2", module=mod).SaveAs3(asm_path, 0, 0)
-        gate("fixture_saved", Path(asm_path).exists(),
-             f"mate={mate_name} init_vol={_vol(fx['init_intf']):.0f}mm3 "
-             f"SaveAs3={sret} exists={Path(asm_path).exists()} path={asm_path}")
+        gate(
+            "fixture_saved",
+            Path(asm_path).exists(),
+            f"mate={mate_name} init_vol={_vol(fx['init_intf']):.0f}mm3 "
+            f"SaveAs3={sret} exists={Path(asm_path).exists()} path={asm_path}",
+        )
         # Flush the in-session doc so the CLI re-opens the colliding disk state.
         sw.CloseAllDocuments(True)
 
@@ -109,23 +118,35 @@ def main() -> int:
         ra = _run_resolve(_ns(asm_path, mate_name, step_mm=2.0, max_iters=20))
         results["resolve"] = ra
         final = (ra.get("trajectory") or [{}])[-1]
-        gate("resolve_ok",
-             bool(ra.get("ok")) and bool(ra.get("resolved"))
-             and final.get("count") == 0 and (final.get("volume_mm3") or 0) == 0,
-             f"ok={ra.get('ok')} resolved_mm={ra.get('resolved_mm')} "
-             f"final={final.get('count')}/{final.get('volume_mm3')} "
-             f"err={ra.get('error')}")
-        gate("resolve_geometry_sane",
-             ra.get("resolved_mm") is not None
-             and 19.0 <= float(ra["resolved_mm"]) <= 22.0,
-             f"resolved_mm={ra.get('resolved_mm')} (expect ~20)")
+        gate(
+            "resolve_ok",
+            bool(ra.get("ok"))
+            and bool(ra.get("resolved"))
+            and final.get("count") == 0
+            and (final.get("volume_mm3") or 0) == 0,
+            f"ok={ra.get('ok')} resolved_mm={ra.get('resolved_mm')} "
+            f"final={final.get('count')}/{final.get('volume_mm3')} "
+            f"err={ra.get('error')}",
+        )
+        gate(
+            "resolve_geometry_sane",
+            ra.get("resolved_mm") is not None
+            and 19.0 <= float(ra["resolved_mm"]) <= 22.0,
+            f"resolved_mm={ra.get('resolved_mm')} (expect ~20)",
+        )
 
         # ── Gate B: independent re-sense of the resolved in-session doc ──────
         active = typed(sw, "ISldWorks", module=mod).ActiveDoc
-        intf_b = sw_get_interference(active) if active is not None else {"interference_count": -1}
-        gate("independent_zero_interference",
-             intf_b.get("interference_count") == 0 and _vol(intf_b) == 0.0,
-             f"count={intf_b.get('interference_count')} vol={_vol(intf_b):.1f}")
+        intf_b = (
+            sw_get_interference(active)
+            if active is not None
+            else {"interference_count": -1}
+        )
+        gate(
+            "independent_zero_interference",
+            intf_b.get("interference_count") == 0 and _vol(intf_b) == 0.0,
+            f"count={intf_b.get('interference_count')} vol={_vol(intf_b):.1f}",
+        )
         sw.CloseAllDocuments(True)  # discard unsaved resolved state
 
         # ── Gate C: fail-closed revert on a starved budget ──────────────────
@@ -138,13 +159,17 @@ def main() -> int:
             sv = read_mate_value_si(active_c, mate_name)
             cur_mm = round(sv * 1000.0, 3) if sv is not None else None
             intf_c = sw_get_interference(active_c)
-        gate("revert_fail_closed",
-             rc.get("ok") is False and rc.get("reverted") is True
-             and cur_mm is not None and abs(cur_mm - AC.INIT_DIST_MM) < 0.01
-             and intf_c.get("interference_count", 0) > 0,
-             f"ok={rc.get('ok')} reverted={rc.get('reverted')} "
-             f"mate_back_to={cur_mm}mm clash_restored_vol={_vol(intf_c):.0f}mm3 "
-             f"best={rc.get('best_state')}")
+        gate(
+            "revert_fail_closed",
+            rc.get("ok") is False
+            and rc.get("reverted") is True
+            and cur_mm is not None
+            and abs(cur_mm - AC.INIT_DIST_MM) < 0.01
+            and intf_c.get("interference_count", 0) > 0,
+            f"ok={rc.get('ok')} reverted={rc.get('reverted')} "
+            f"mate_back_to={cur_mm}mm clash_restored_vol={_vol(intf_c):.0f}mm3 "
+            f"best={rc.get('best_state')}",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)
@@ -156,7 +181,8 @@ def main() -> int:
 
 def _finish() -> int:
     all_pass = bool(results["gates"]) and all(
-        g["ok"] for g in results["gates"].values())
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")

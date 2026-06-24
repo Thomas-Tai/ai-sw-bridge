@@ -496,8 +496,11 @@ def _cut4_args_2025(
     real cut on 2025.
     """
     return _cut4_args_2024(
-        end_cond=end_cond, depth_m=depth_m, flip=flip,
-        end_cond2=end_cond2, depth2_m=depth2_m,
+        end_cond=end_cond,
+        depth_m=depth_m,
+        flip=flip,
+        end_cond2=end_cond2,
+        depth2_m=depth2_m,
     )
 
 
@@ -524,8 +527,11 @@ def _call_feature_cut(
     """
     arg_builder = resolve_op("FeatureCut4", sw=ctx.sw)
     args = arg_builder(
-        end_cond=end_cond, depth_m=depth_m, flip=flip,
-        end_cond2=end_cond2, depth2_m=depth2_m,
+        end_cond=end_cond,
+        depth_m=depth_m,
+        flip=flip,
+        end_cond2=end_cond2,
+        depth2_m=depth2_m,
     )
     assert_args("IFeatureManager.FeatureCut4", args)
     fm = ctx.doc.FeatureManager
@@ -632,7 +638,9 @@ def _boss_built_feature(
     )
 
 
-def _build_boss_extrude_midplane(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+def _build_boss_extrude_midplane(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
     """Mid-plane boss: adds ``depth`` of material centred on the sketch plane
     (depth/2 each side). One arg-shape change vs blind — T1 = mid-plane. The
     +normal half-extent (depth/2) is recorded for downstream face derivation."""
@@ -684,8 +692,13 @@ def _build_boss_extrude_two_direction(
     flip = bool(feat.get("flip", False))
     merge = bool(feat.get("merge", True))
     f = _call_feature_extrusion(
-        ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip, merge=merge,
-        end_cond2=SW_END_COND_BLIND, depth2_m=depth2_m,
+        ctx,
+        end_cond=SW_END_COND_BLIND,
+        depth_m=depth_m,
+        flip=flip,
+        merge=merge,
+        end_cond2=SW_END_COND_BLIND,
+        depth2_m=depth2_m,
     )
     f.Name = feat["name"]
     return _boss_built_feature(feat, sketch, sketch_name, f, depth_m, flip)
@@ -786,7 +799,9 @@ def _build_cut_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFe
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
 
-def _build_cut_extrude_midplane(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
+def _build_cut_extrude_midplane(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
     """Mid-plane cut: removes ``depth`` of material centred on the sketch plane
     (``depth/2`` each side). One arg-shape change vs blind -- T1 = mid-plane.
     Like the other cuts it emits a bare BuiltFeature (no extrude_origin/axis
@@ -795,7 +810,9 @@ def _build_cut_extrude_midplane(ctx: BuildContext, feat: dict[str, Any]) -> Buil
     _select_sketch(ctx, sketch_name)
     depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["cut_depth"])
     flip = bool(feat.get("flip", False))
-    f = _call_feature_cut(ctx, end_cond=SW_END_COND_MID_PLANE, depth_m=depth_m, flip=flip)
+    f = _call_feature_cut(
+        ctx, end_cond=SW_END_COND_MID_PLANE, depth_m=depth_m, flip=flip
+    )
     f.Name = feat["name"]
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
@@ -813,8 +830,12 @@ def _build_cut_extrude_two_direction(
     depth2_m = _literal_or_default(feat["depth2"], PLACEHOLDER_MM["cut_depth"])
     flip = bool(feat.get("flip", False))
     f = _call_feature_cut(
-        ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip,
-        end_cond2=SW_END_COND_BLIND, depth2_m=depth2_m,
+        ctx,
+        end_cond=SW_END_COND_BLIND,
+        depth_m=depth_m,
+        flip=flip,
+        end_cond2=SW_END_COND_BLIND,
+        depth2_m=depth2_m,
     )
     f.Name = feat["name"]
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
@@ -1688,8 +1709,12 @@ def _build_sketch_line(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     start, end = feat["start"], feat["end"]
     sm = _enter_plane_sketch(ctx, feat)
     seg = sm.CreateLine(
-        _mm_to_m(start["x"]), _mm_to_m(start["y"]), 0.0,
-        _mm_to_m(end["x"]), _mm_to_m(end["y"]), 0.0,
+        _mm_to_m(start["x"]),
+        _mm_to_m(start["y"]),
+        0.0,
+        _mm_to_m(end["x"]),
+        _mm_to_m(end["y"]),
+        0.0,
     )
     _apply_construction(seg, feat)
     return _close_plane_sketch_and_build(ctx, feat)
@@ -1705,9 +1730,15 @@ def _build_sketch_arc(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     direction = 1 if str(feat.get("direction", "ccw")).lower() == "ccw" else -1
     sm = _enter_plane_sketch(ctx, feat)
     seg = sm.CreateArc(
-        _mm_to_m(c["x"]), _mm_to_m(c["y"]), 0.0,
-        _mm_to_m(s["x"]), _mm_to_m(s["y"]), 0.0,
-        _mm_to_m(e["x"]), _mm_to_m(e["y"]), 0.0,
+        _mm_to_m(c["x"]),
+        _mm_to_m(c["y"]),
+        0.0,
+        _mm_to_m(s["x"]),
+        _mm_to_m(s["y"]),
+        0.0,
+        _mm_to_m(e["x"]),
+        _mm_to_m(e["y"]),
+        0.0,
         direction,
     )
     _apply_construction(seg, feat)
@@ -1774,11 +1805,20 @@ def _build_sketch_slot(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     x3, y3 = x2 + (width / 2.0) * px, y2 + (width / 2.0) * py
     sm = _enter_plane_sketch(ctx, feat)
     sm.CreateSketchSlot(
-        0, 0, width,
-        x1, y1, 0.0,
-        x2, y2, 0.0,
-        x3, y3, 0.0,
-        False, True,
+        0,
+        0,
+        width,
+        x1,
+        y1,
+        0.0,
+        x2,
+        y2,
+        0.0,
+        x3,
+        y3,
+        0.0,
+        False,
+        True,
     )
     return _close_plane_sketch_and_build(ctx, feat)
 
@@ -1859,9 +1899,15 @@ def _build_sketch_text(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     # the sketch manager, so the returned SketchManager handle is unused here.
     _enter_plane_sketch(ctx, feat)
     raw_text = ctx.doc.InsertSketchText(
-        _mm_to_m(pos["x"]), _mm_to_m(pos["y"]), 0.0,
+        _mm_to_m(pos["x"]),
+        _mm_to_m(pos["y"]),
+        0.0,
         str(feat["content"]),
-        0, 0, 0, 1, 1,
+        0,
+        0,
+        0,
+        1,
+        1,
     )
     _apply_text_format(raw_text, feat)
     return _close_plane_sketch_and_build(ctx, feat)
@@ -1888,9 +1934,7 @@ def _enter_3d_sketch(ctx: BuildContext) -> Any:
     return sm
 
 
-def _close_3d_sketch_and_build(
-    ctx: BuildContext, feat: dict[str, Any]
-) -> BuiltFeature:
+def _close_3d_sketch_and_build(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Close the open 3D sketch, rename the new sketch feature, return BuiltFeature."""
     ctx.doc.SketchManager.Insert3DSketch(True)
     sketch_feat = ctx.doc.FeatureByPositionReverse(0)
@@ -1900,9 +1944,7 @@ def _close_3d_sketch_and_build(
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=sketch_feat)
 
 
-def _build_sketch_3d_sketch(
-    ctx: BuildContext, feat: dict[str, Any]
-) -> BuiltFeature:
+def _build_sketch_3d_sketch(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Sketch a 3D polyline through a sequence of 3D points.
 
     Opens a 3D sketch (no plane), draws line segments between consecutive
@@ -1914,8 +1956,12 @@ def _build_sketch_3d_sketch(
     for i in range(len(points) - 1):
         a, b = points[i], points[i + 1]
         sm.CreateLine(
-            _mm_to_m(a["x"]), _mm_to_m(a["y"]), _mm_to_m(a["z"]),
-            _mm_to_m(b["x"]), _mm_to_m(b["y"]), _mm_to_m(b["z"]),
+            _mm_to_m(a["x"]),
+            _mm_to_m(a["y"]),
+            _mm_to_m(a["z"]),
+            _mm_to_m(b["x"]),
+            _mm_to_m(b["y"]),
+            _mm_to_m(b["z"]),
         )
     return _close_3d_sketch_and_build(ctx, feat)
 
@@ -2089,7 +2135,9 @@ DESCRIPTORS: dict[str, FeatureDescriptor] = {
     # (BOOL UpdateEditRebuild) and carries real X/Y/Z. Unblocks weldments (FR-5-06)
     # and swept/lofted surfaces (FR-5-02).
     "sketch_3d_sketch": FeatureType(
-        name="sketch_3d_sketch", handler=None, dim_fields={},
+        name="sketch_3d_sketch",
+        handler=None,
+        dim_fields={},
     ),
 }
 
@@ -2639,14 +2687,11 @@ def run_feature_step(
         if feat.get("relations") and bf.type in SKETCH_TYPES:
             from ._sketch_relations import apply_relations_to_sketch
 
-            rel_result = apply_relations_to_sketch(
-                ctx.doc, bf.name, feat["relations"]
-            )
+            rel_result = apply_relations_to_sketch(ctx.doc, bf.name, feat["relations"])
             if not rel_result.get("ok"):
                 errors = rel_result.get("errors", [])
                 raise RuntimeError(
-                    f"sketch relations failed for '{bf.name}': "
-                    f"{'; '.join(errors)}"
+                    f"sketch relations failed for '{bf.name}': " f"{'; '.join(errors)}"
                 )
 
         # B-rep interrogation (E2.6): walk the feature's faces and
@@ -2659,9 +2704,7 @@ def run_feature_step(
                 if result is not None:
                     opts.brep_manifest.add_feature(result, feature_type=bf.type)
             except Exception as e:
-                logger.warning(
-                    "brep interrogation failed for '%s': %s", bf.name, e
-                )
+                logger.warning("brep interrogation failed for '%s': %s", bf.name, e)
 
         # Mass verification: read volume after this feature and compare
         # delta against _expect if declared. Runs in ALL modes (the volume
@@ -2784,9 +2827,7 @@ def _health_gate(
     ``(False, "<message naming the offenders>")`` otherwise.
     """
     offenders = [
-        h
-        for h in feature_health
-        if h["code"] == 2 or (strict and h["code"] == 1)
+        h for h in feature_health if h["code"] == 2 or (strict and h["code"] == 1)
     ]
     if not offenders:
         return True, None

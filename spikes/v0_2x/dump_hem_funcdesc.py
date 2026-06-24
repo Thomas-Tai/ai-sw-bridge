@@ -103,7 +103,9 @@ def _dump_funcdesc(tlb_path: str, target_iface: str, target_methods: list[str]) 
 
             ret_raw = fd.rettype
             if isinstance(ret_raw, tuple) and len(ret_raw) > 0:
-                ret_vt_val = ret_raw[0] if not isinstance(ret_raw[0], tuple) else ret_raw[0][0]
+                ret_vt_val = (
+                    ret_raw[0] if not isinstance(ret_raw[0], tuple) else ret_raw[0][0]
+                )
                 ret_vt = _vt_name(ret_vt_val)
             else:
                 ret_vt = "VOID"

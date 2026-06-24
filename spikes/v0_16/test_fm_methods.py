@@ -1,6 +1,8 @@
 """Check all FeatureManager methods."""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "v0_15"))
 
@@ -33,7 +35,11 @@ try:
 
     # Also check for sheet metal methods
     print("")
-    sm_methods = [m for m in methods if "sheet" in m.lower() or "Sheet" in m or "metal" in m.lower() or "Metal" in m]
+    sm_methods = [
+        m
+        for m in methods
+        if "sheet" in m.lower() or "Sheet" in m or "metal" in m.lower() or "Metal" in m
+    ]
     print(f"Sheet metal methods ({len(sm_methods)}):")
     for m in sorted(sm_methods):
         print(f"  {m}")

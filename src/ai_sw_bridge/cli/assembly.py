@@ -57,7 +57,9 @@ def _run_commit(args: argparse.Namespace) -> dict[str, Any]:
             return {"ok": False, "error": f"invalid --part-paths JSON: {exc}"}
         if not isinstance(part_paths, dict):
             return {"ok": False, "error": "--part-paths must be a JSON object"}
-    return SolidWorksClient().mutate.commit_assembly(args.proposal_id, args.out, part_paths=part_paths)
+    return SolidWorksClient().mutate.commit_assembly(
+        args.proposal_id, args.out, part_paths=part_paths
+    )
 
 
 def _load_op(raw: str) -> dict[str, Any] | None:

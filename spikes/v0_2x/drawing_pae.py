@@ -20,9 +20,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_pae.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_pae.json"
 
 results: dict[str, Any] = {
     "pae": "w16_drawing",
@@ -74,10 +72,19 @@ def run() -> str:
             "schema_version": 1,
             "name": f"Draw{label.upper()}",
             "features": [
-                {"type": "sketch_rectangle_on_plane", "name": "SK",
-                 "plane": "Front", "width": w, "height": 20.0},
-                {"type": "boss_extrude_blind", "name": "EX",
-                 "sketch": "SK", "depth": 10.0},
+                {
+                    "type": "sketch_rectangle_on_plane",
+                    "name": "SK",
+                    "plane": "Front",
+                    "width": w,
+                    "height": 20.0,
+                },
+                {
+                    "type": "boss_extrude_blind",
+                    "name": "EX",
+                    "sketch": "SK",
+                    "depth": 10.0,
+                },
             ],
         }
         r = part_build(spec, save_as=path, save_format="current", no_dim=True)
@@ -112,8 +119,11 @@ def run() -> str:
     ad = sw_dry_run_assembly(ap["proposal_id"])
     gate("asm_dry_run", ad.get("ok", False))
     ac = sw_commit_assembly(ap["proposal_id"], ASM_PATH)
-    gate("asm_commit", ac.get("ok", False),
-         f"components={ac.get('component_count')}, mates={ac.get('mate_count')}")
+    gate(
+        "asm_commit",
+        ac.get("ok", False),
+        f"components={ac.get('component_count')}, mates={ac.get('mate_count')}",
+    )
 
     if not ac.get("ok"):
         save_results()
@@ -132,8 +142,7 @@ def run() -> str:
     }
 
     dp = sw_propose_drawing(drawing_spec)
-    gate("drw_propose", dp.get("ok", False),
-         f"pid={dp.get('proposal_id')}")
+    gate("drw_propose", dp.get("ok", False), f"pid={dp.get('proposal_id')}")
 
     if not dp.get("ok"):
         results["drw_propose_error"] = dp.get("error")
@@ -146,31 +155,43 @@ def run() -> str:
 
     print("\n--- Drawing: commit ---")
     dc = sw_commit_drawing(dp["proposal_id"], DRW_PATH)
-    gate("drw_commit", dc.get("ok", False),
-         f"views_placed={dc.get('views_placed')}, "
-         f"view_count={dc.get('view_count')}")
+    gate(
+        "drw_commit",
+        dc.get("ok", False),
+        f"views_placed={dc.get('views_placed')}, " f"view_count={dc.get('view_count')}",
+    )
 
     # --- Verify file on disk ---
     print("\n--- Verify drawing file ---")
-    gate("drw_file_exists", os.path.isfile(DRW_PATH),
-         f"size={os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0}")
+    gate(
+        "drw_file_exists",
+        os.path.isfile(DRW_PATH),
+        f"size={os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0}",
+    )
 
     # --- Verify view count matches requested ---
-    gate("drw_view_count",
-         dc.get("view_count") == len(views),
-         f"requested={len(views)}, placed={dc.get('view_count')}")
+    gate(
+        "drw_view_count",
+        dc.get("view_count") == len(views),
+        f"requested={len(views)}, placed={dc.get('view_count')}",
+    )
 
     # --- Verify all requested views placed ---
     placed = dc.get("views_placed", [])
-    gate("drw_all_views_placed",
-         set(placed) == set(views),
-         f"placed={sorted(placed)}, requested={sorted(views)}")
+    gate(
+        "drw_all_views_placed",
+        set(placed) == set(views),
+        f"placed={sorted(placed)}, requested={sorted(views)}",
+    )
 
     # --- Overall ---
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL_GREEN", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
-         f"{len(results['gates'])} gates pass")
+    gate(
+        "OVERALL_GREEN",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
+        f"{len(results['gates'])} gates pass",
+    )
 
     return "GREEN" if all_pass else "PARTIAL"
 

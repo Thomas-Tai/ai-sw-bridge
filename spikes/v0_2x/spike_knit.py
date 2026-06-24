@@ -34,9 +34,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-RESULTS_PATH = (
-    Path(__file__).resolve().parents[1] / "_results" / "knit.json"
-)
+RESULTS_PATH = Path(__file__).resolve().parents[1] / "_results" / "knit.json"
 
 import pythoncom
 
@@ -152,12 +150,27 @@ def _create_two_surface_bodies(doc: Any) -> tuple[bool, list[str]]:
     sheets_before = _count_sheet_bodies(doc)
     try:
         doc.FeatureManager.FeatureExtruRefSurface2(
-            True, False, False, _BLIND, 0,
-            SURFACE_EXTRUDE_DEPTH_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            False, False, False, False,
+            True,
+            False,
+            False,
+            _BLIND,
+            0,
+            SURFACE_EXTRUDE_DEPTH_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
         )
     except Exception as exc:
         print(f"  FeatureExtruRefSurface2 raised: {exc!r}", file=sys.stderr)
@@ -178,7 +191,9 @@ def _create_two_surface_bodies(doc: Any) -> tuple[bool, list[str]]:
     try:
         ext.SelectByID2("Sketch1", "SKETCH", 0, 0, 0, True, 1, null_disp, 0)
     except Exception as exc:
-        print(f"  SelectByID2(Sketch1, SKETCH, append) raised: {exc!r}", file=sys.stderr)
+        print(
+            f"  SelectByID2(Sketch1, SKETCH, append) raised: {exc!r}", file=sys.stderr
+        )
         return False, []
 
     try:
@@ -222,6 +237,7 @@ def run() -> dict[str, Any]:
 
     try:
         from ai_sw_bridge.sw_com import get_sw_app
+
         sw = get_sw_app()
     except Exception as exc:
         return {**result, "overall": "ERROR", "reason": f"connect: {exc!r}"}
@@ -272,9 +288,7 @@ def run() -> dict[str, Any]:
                 result["last_feature_type"] = _type_name(last)
                 try:
                     nm = last.Name
-                    result["last_feature_name"] = (
-                        nm() if callable(nm) else str(nm)
-                    )
+                    result["last_feature_name"] = nm() if callable(nm) else str(nm)
                 except Exception:
                     pass
         except Exception as exc:

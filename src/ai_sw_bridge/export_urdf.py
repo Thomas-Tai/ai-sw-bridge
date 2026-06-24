@@ -139,8 +139,11 @@ def link_xml(
 
 
 def joint_xml(
-    name: str, parent: str, child: str,
-    xyz: tuple[float, float, float], rpy: tuple[float, float, float],
+    name: str,
+    parent: str,
+    child: str,
+    xyz: tuple[float, float, float],
+    rpy: tuple[float, float, float],
 ) -> str:
     """Build a V1 ``fixed`` URDF ``<joint>`` placing *child* at *xyz/rpy*."""
     x, y, z = xyz
@@ -234,23 +237,45 @@ def _extract_link_data(comp: Any, used: set[str], mod: Any) -> dict[str, Any]:
         return rec
 
     transform = _read_component_transform(comp, mod) or [
-        1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+    ]
     com_mm = inert.get("center_of_mass_mm") or [0.0, 0.0, 0.0]
-    rec.update({
-        "ok": True,
-        "mass_kg": mass,
-        "com_m": [float(c) / 1000.0 for c in com_mm],
-        "tensor": inert["inertia_tensor_kg_m2"],
-        "xyz": (transform[3], transform[7], transform[11]),
-        "rpy": rotmat_to_rpy(transform),
-        "part_path": str(part_path),
-    })
+    rec.update(
+        {
+            "ok": True,
+            "mass_kg": mass,
+            "com_m": [float(c) / 1000.0 for c in com_mm],
+            "tensor": inert["inertia_tensor_kg_m2"],
+            "xyz": (transform[3], transform[7], transform[11]),
+            "rpy": rotmat_to_rpy(transform),
+            "part_path": str(part_path),
+        }
+    )
     return rec
 
 
 def _export_part_stl(
-    sw: Any, part_path: str, stl_name: str, meshes_dir: Path,
-    binary_stl: bool, mod: Any,
+    sw: Any,
+    part_path: str,
+    stl_name: str,
+    meshes_dir: Path,
+    binary_stl: bool,
+    mod: Any,
 ) -> tuple[bool, str | None]:
     """PHASE 2 (assembly CLOSED): export one part file's mesh, standalone.
 
@@ -270,22 +295,31 @@ def _export_part_stl(
         return False, f"part file missing on disk: {part_path!r}"
     try:
         tsw = typed(sw, "ISldWorks", module=mod)
-        opened_doc = tsw.OpenDoc6(str(part_path), SW_DOC_PART, _SW_OPEN_SILENT, "", 0, 0)
+        opened_doc = tsw.OpenDoc6(
+            str(part_path), SW_DOC_PART, _SW_OPEN_SILENT, "", 0, 0
+        )
         opened_doc = opened_doc[0] if isinstance(opened_doc, tuple) else opened_doc
     except Exception as exc:  # noqa: BLE001
         return False, f"standalone OpenDoc6 raised: {exc!r}"
     if opened_doc is None:
         return False, f"standalone OpenDoc6 returned None for {part_path}"
 
-    reqs = [ExportRequest(
-        format="stl", output_dir=meshes_dir, filename=stl_name, binary=binary_stl)]
+    reqs = [
+        ExportRequest(
+            format="stl", output_dir=meshes_dir, filename=stl_name, binary=binary_stl
+        )
+    ]
     try:
         exp = SolidWorksClient().export.run(opened_doc, reqs, stl_name)
     except Exception as exc:  # noqa: BLE001
         exp = None
         err = f"export raised: {exc!r}"
     else:
-        err = None if (exp and exp[0].ok) else (exp[0].error if exp else "no export result")
+        err = (
+            None
+            if (exp and exp[0].ok)
+            else (exp[0].error if exp else "no export result")
+        )
     finally:
         # Flush this part so the next standalone open is fresh; CloseAllDocuments
         # (not CloseDoc) — single-doc close mid-session corrupts the COM channel.
@@ -317,9 +351,15 @@ def export_urdf(
     joints:[...], warnings:[...]}``.
     """
     result: dict[str, Any] = {
-        "ok": False, "error": None, "robot_name": robot_name,
-        "urdf_path": None, "mesh_dir": None,
-        "links": [], "joints": [], "warnings": [], "opened_parts": [],
+        "ok": False,
+        "error": None,
+        "robot_name": robot_name,
+        "urdf_path": None,
+        "mesh_dir": None,
+        "links": [],
+        "joints": [],
+        "warnings": [],
+        "opened_parts": [],
     }
 
     if not str(robot_name).strip():
@@ -343,7 +383,9 @@ def export_urdf(
         result["error"] = f"doc.GetType failed: {exc!r}"
         return result
     if doc_type != SW_DOC_ASSEMBLY:
-        result["error"] = f"URDF export requires an assembly document (got type {doc_type})"
+        result["error"] = (
+            f"URDF export requires an assembly document (got type {doc_type})"
+        )
         return result
 
     try:
@@ -416,7 +458,8 @@ def export_urdf(
     for r in records:
         if not r.get("ok"):
             result["warnings"].append(
-                f"component {r.get('raw_name', r.get('name'))!r} skipped: {r.get('error')}")
+                f"component {r.get('raw_name', r.get('name'))!r} skipped: {r.get('error')}"
+            )
     if not usable:
         result["error"] = "no usable components (all failed mass-props/mesh extraction)"
         return result
@@ -426,19 +469,30 @@ def export_urdf(
     links_xml = [f'  <link name="{base}"/>\n']
     joints_xml = []
     for r in usable:
-        links_xml.append(link_xml(
-            r["name"], r["mass_kg"], r["com_m"], r["tensor"], r["mesh_rel"]))
-        joints_xml.append(joint_xml(
-            f"{base}_to_{r['name']}", base, r["name"], r["xyz"], r["rpy"]))
-        result["links"].append({
-            "name": r["name"], "mass_kg": r["mass_kg"],
-            "com_m": r["com_m"], "mesh": r["mesh_rel"],
-        })
-        result["joints"].append({
-            "name": f"{base}_to_{r['name']}", "parent": base,
-            "child": r["name"], "type": "fixed",
-            "xyz": list(r["xyz"]), "rpy": list(r["rpy"]),
-        })
+        links_xml.append(
+            link_xml(r["name"], r["mass_kg"], r["com_m"], r["tensor"], r["mesh_rel"])
+        )
+        joints_xml.append(
+            joint_xml(f"{base}_to_{r['name']}", base, r["name"], r["xyz"], r["rpy"])
+        )
+        result["links"].append(
+            {
+                "name": r["name"],
+                "mass_kg": r["mass_kg"],
+                "com_m": r["com_m"],
+                "mesh": r["mesh_rel"],
+            }
+        )
+        result["joints"].append(
+            {
+                "name": f"{base}_to_{r['name']}",
+                "parent": base,
+                "child": r["name"],
+                "type": "fixed",
+                "xyz": list(r["xyz"]),
+                "rpy": list(r["rpy"]),
+            }
+        )
 
     urdf = assemble_urdf(robot_name, links_xml, joints_xml)
     urdf_path = (out_dir / f"{robot_name}.urdf").resolve()

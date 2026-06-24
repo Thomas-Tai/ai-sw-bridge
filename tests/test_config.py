@@ -347,9 +347,7 @@ def test_parse_variants_nested_dict_overrides() -> None:
         {
             "name": "Large",
             "overrides": {
-                "features": [
-                    {"type": "sketch_rectangle_on_plane", "width": 50.0}
-                ]
+                "features": [{"type": "sketch_rectangle_on_plane", "width": 50.0}]
             },
         }
     ]
@@ -363,9 +361,7 @@ def test_parse_variants_nested_dict_overrides() -> None:
 
 
 def test_parse_variants_flat_string_overrides_unchanged() -> None:
-    block = [
-        {"name": "Small", "overrides": {"WIDTH": "20.0", "HEIGHT": "30.0"}}
-    ]
+    block = [{"name": "Small", "overrides": {"WIDTH": "20.0", "HEIGHT": "30.0"}}]
     variants = parse_variants(block)
     assert len(variants) == 1
     assert len(variants[0].overrides) == 2

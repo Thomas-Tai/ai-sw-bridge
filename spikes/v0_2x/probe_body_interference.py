@@ -28,6 +28,7 @@ read-only? What is the body-name source?
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/probe_body_interference.py
 """
+
 from __future__ import annotations
 
 import json
@@ -58,12 +59,35 @@ out: dict[str, Any] = {"probe": "body_interference"}
 _SWBODYINTERSECT = 15901
 _SW_SOLID = 0
 
+
 # FeatureExtrusion2 arg-18 (0-indexed 17) = Merge. False => separate body.
 def _extrude(doc: Any, sketch_name: str, depth_m: float, *, merge: bool) -> None:
     fx._select_feature(doc, sketch_name)
     doc.FeatureManager.FeatureExtrusion2(
-        True, False, False, 0, 0, depth_m, 0.0, False, False, False, False,
-        0, 0, False, False, False, False, merge, True, True, 0, 0, False)
+        True,
+        False,
+        False,
+        0,
+        0,
+        depth_m,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0,
+        0,
+        False,
+        False,
+        False,
+        False,
+        merge,
+        True,
+        True,
+        0,
+        0,
+        False,
+    )
     doc.ClearSelection2(True)
 
 

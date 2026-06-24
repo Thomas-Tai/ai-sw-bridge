@@ -32,6 +32,7 @@ Probe design:
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/probe_curve_lanes_typed_txn.py
 """
+
 from __future__ import annotations
 
 import json
@@ -129,8 +130,11 @@ def _drive_txn(client: Any, sw: Any, seed: str, feature: dict, target: dict) -> 
     _close_all(sw)
     prop = client.mutate.propose_feature_add(seed, feature, target)
     pid = prop.get("proposal_id")
-    r: dict[str, Any] = {"propose_ok": bool(prop.get("ok")),
-                         "propose_err": prop.get("error"), "pid": pid}
+    r: dict[str, Any] = {
+        "propose_ok": bool(prop.get("ok")),
+        "propose_err": prop.get("error"),
+        "pid": pid,
+    }
     if not pid:
         return r
     dry = client.mutate.dry_run_feature_add(pid)
@@ -160,16 +164,26 @@ def main() -> int:
             if not sk:
                 out["lanes"]["helix"] = {"error": "circle seed build failed"}
             else:
-                res = _drive_txn(client, sw, seed,
-                                 {"type": "helix", "pitch_mm": 10.0, "revolutions": 4.0},
-                                 {"sketch": sk})
+                res = _drive_txn(
+                    client,
+                    sw,
+                    seed,
+                    {"type": "helix", "pitch_mm": 10.0, "revolutions": 4.0},
+                    {"sketch": sk},
+                )
                 err_blob = f"{res.get('dry_run_err')} {res.get('commit_err')}"
                 res["reproduces_typeerror"] = _TYPEERROR_SIG in err_blob
-                res["verdict"] = ("BROKEN_TYPED_TXN" if res["reproduces_typeerror"]
-                                  else ("GREEN" if res.get("commit_ok") else "OTHER_FAIL"))
+                res["verdict"] = (
+                    "BROKEN_TYPED_TXN"
+                    if res["reproduces_typeerror"]
+                    else ("GREEN" if res.get("commit_ok") else "OTHER_FAIL")
+                )
                 out["lanes"]["helix"] = res
         except Exception as e:  # noqa: BLE001
-            out["lanes"]["helix"] = {"probe_exc": repr(e), "tb": traceback.format_exc()[-400:]}
+            out["lanes"]["helix"] = {
+                "probe_exc": repr(e),
+                "tb": traceback.format_exc()[-400:],
+            }
 
         # ---- B: curve_through_xyz — real transaction, expect GREEN (immune) ----
         try:
@@ -178,16 +192,26 @@ def main() -> int:
                 out["lanes"]["curve_through_xyz"] = {"error": "bare seed build failed"}
             else:
                 pts = [[0, 0, 0], [20, 10, 5], [40, 0, 10], [60, 15, 5]]
-                res = _drive_txn(client, sw, seed,
-                                 {"type": "curve_through_xyz"}, {"points": pts})
+                res = _drive_txn(
+                    client, sw, seed, {"type": "curve_through_xyz"}, {"points": pts}
+                )
                 err_blob = f"{res.get('dry_run_err')} {res.get('commit_err')}"
                 res["reproduces_typeerror"] = _TYPEERROR_SIG in err_blob
-                res["verdict"] = ("GREEN" if res.get("commit_ok")
-                                  else ("BROKEN_TYPED_TXN" if res["reproduces_typeerror"]
-                                        else "OTHER_FAIL"))
+                res["verdict"] = (
+                    "GREEN"
+                    if res.get("commit_ok")
+                    else (
+                        "BROKEN_TYPED_TXN"
+                        if res["reproduces_typeerror"]
+                        else "OTHER_FAIL"
+                    )
+                )
                 out["lanes"]["curve_through_xyz"] = res
         except Exception as e:  # noqa: BLE001
-            out["lanes"]["curve_through_xyz"] = {"probe_exc": repr(e), "tb": traceback.format_exc()[-400:]}
+            out["lanes"]["curve_through_xyz"] = {
+                "probe_exc": repr(e),
+                "tb": traceback.format_exc()[-400:],
+            }
 
         # ---- C: composite / project_curve — typed-doc select_entity immunity ----
         # These take LIVE entity targets (edges / face) that do NOT serialize to
@@ -211,8 +235,30 @@ def main() -> int:
             bdoc.ClearSelection2(True)
             # extrude 10mm
             bdoc.FeatureManager.FeatureExtrusion2(
-                True, False, False, 0, 0, 0.010, 0.0, False, False, False, False,
-                0, 0, False, False, False, False, True, True, True, 0, 0, False)
+                True,
+                False,
+                False,
+                0,
+                0,
+                0.010,
+                0.0,
+                False,
+                False,
+                False,
+                False,
+                0,
+                0,
+                False,
+                False,
+                False,
+                False,
+                True,
+                True,
+                True,
+                0,
+                0,
+                False,
+            )
             bdoc.ForceRebuild3(False)
             bdoc.SaveAs3(seed, 0, 0)
             _close_all(sw)
@@ -223,9 +269,10 @@ def main() -> int:
             # which the typed IModelDoc2 proxy does not expose — reach it via a
             # late-bound dynamic re-wrap (resolves through IDispatch).
             import win32com.client.dynamic as _w32dyn
+
             ldoc = _w32dyn.Dispatch(tdoc)
             body = None
-            for b in (ldoc.GetBodies2(0, False) or []):
+            for b in ldoc.GetBodies2(0, False) or []:
                 body = b
                 break
             edge = None
@@ -247,13 +294,18 @@ def main() -> int:
                     comp["select_entity_exc"] = repr(e)
             comp["select_entity_raised"] = raised
             comp["select_entity_ok"] = sel_ok
-            comp["callout_free_immune"] = (raised is False)
-            comp["json_transaction_reachable"] = False  # live-entity targets, no ref-resolution
+            comp["callout_free_immune"] = raised is False
+            comp["json_transaction_reachable"] = (
+                False  # live-entity targets, no ref-resolution
+            )
             comp["verdict"] = "IMMUNE" if raised is False else "NEEDS_REVIEW"
             out["lanes"]["composite_project_curve"] = comp
             _close_all(sw)
         except Exception as e:  # noqa: BLE001
-            out["lanes"]["composite_project_curve"] = {"probe_exc": repr(e), "tb": traceback.format_exc()[-400:]}
+            out["lanes"]["composite_project_curve"] = {
+                "probe_exc": repr(e),
+                "tb": traceback.format_exc()[-400:],
+            }
     finally:
         _close_all(sw)
         pythoncom.CoUninitialize()

@@ -116,9 +116,7 @@ class DesignTableSpec:
             if not row.config_name:
                 errors.append(f"row[{i}] has empty config_name")
             if row.config_name in seen_configs:
-                errors.append(
-                    f"duplicate config name: {row.config_name!r}"
-                )
+                errors.append(f"duplicate config name: {row.config_name!r}")
             seen_configs.add(row.config_name)
 
             unknown_cols = set(row.values.keys()) - set(col_names)
@@ -136,11 +134,12 @@ class DesignTableSpec:
                 errors.append(f"duplicate column name: {c.name!r}")
             seen_cols.add(c.name)
             if c.kind not in (
-                "dimension", "suppression", "equation", "property",
+                "dimension",
+                "suppression",
+                "equation",
+                "property",
             ):
-                errors.append(
-                    f"column {c.name!r}: unknown kind {c.kind!r}"
-                )
+                errors.append(f"column {c.name!r}: unknown kind {c.kind!r}")
 
         return errors
 
@@ -181,22 +180,20 @@ def parse_design_table(block: dict[str, Any]) -> DesignTableSpec:
             raise ValueError(f"columns[{i}] must be an object")
         col_name = col.get("name")
         if not col_name or not isinstance(col_name, str):
-            raise ValueError(
-                f"columns[{i}] missing or non-string 'name'"
-            )
+            raise ValueError(f"columns[{i}] missing or non-string 'name'")
         kind = col.get("kind", "dimension")
         if not isinstance(kind, str):
-            raise ValueError(
-                f"column {col_name!r}: 'kind' must be a string"
-            )
+            raise ValueError(f"column {col_name!r}: 'kind' must be a string")
         unit = col.get("unit", "")
         if not isinstance(unit, str):
-            raise ValueError(
-                f"column {col_name!r}: 'unit' must be a string"
+            raise ValueError(f"column {col_name!r}: 'unit' must be a string")
+        columns.append(
+            DesignTableColumn(
+                name=col_name,
+                kind=kind,
+                unit=unit,
             )
-        columns.append(DesignTableColumn(
-            name=col_name, kind=kind, unit=unit,
-        ))
+        )
 
     raw_rows = block.get("rows", [])
     if not isinstance(raw_rows, list):
@@ -208,27 +205,24 @@ def parse_design_table(block: dict[str, Any]) -> DesignTableSpec:
             raise ValueError(f"rows[{i}] must be an object")
         config_name = row.get("config_name")
         if not config_name or not isinstance(config_name, str):
-            raise ValueError(
-                f"rows[{i}] missing or non-string 'config_name'"
-            )
+            raise ValueError(f"rows[{i}] missing or non-string 'config_name'")
         raw_values = row.get("values", {})
         if not isinstance(raw_values, dict):
-            raise ValueError(
-                f"row {config_name!r}: 'values' must be an object"
-            )
+            raise ValueError(f"row {config_name!r}: 'values' must be an object")
         values: dict[str, str] = {}
         for col_name, val in raw_values.items():
             values[col_name] = str(val)
-        rows.append(DesignTableRow(
-            config_name=config_name, values=values,
-        ))
+        rows.append(
+            DesignTableRow(
+                config_name=config_name,
+                values=values,
+            )
+        )
 
     spec = DesignTableSpec(name=name, columns=columns, rows=rows)
     errors = spec.validate()
     if errors:
-        raise ValueError(
-            f"design table validation failed: {'; '.join(errors)}"
-        )
+        raise ValueError(f"design table validation failed: {'; '.join(errors)}")
 
     return spec
 
@@ -297,8 +291,10 @@ DESIGN_TABLE_BLOCK_SCHEMA: dict[str, Any] = {
                     "kind": {
                         "type": "string",
                         "enum": [
-                            "dimension", "suppression",
-                            "equation", "property",
+                            "dimension",
+                            "suppression",
+                            "equation",
+                            "property",
                         ],
                     },
                     "unit": {"type": "string"},

@@ -139,74 +139,129 @@ def _assert_plane_lifecycle(ctx: _Ctx, name: str) -> None:
 class TestSketchPrimitiveHandlers:
     def test_line(self) -> None:
         ctx = _Ctx()
-        bf = builder._build_sketch_line(ctx, {
-            "type": "sketch_line", "name": "L1", "plane": "Front",
-            "start": {"x": 0.0, "y": 0.0}, "end": {"x": 20.0, "y": 20.0},
-        })
+        bf = builder._build_sketch_line(
+            ctx,
+            {
+                "type": "sketch_line",
+                "name": "L1",
+                "plane": "Front",
+                "start": {"x": 0.0, "y": 0.0},
+                "end": {"x": 20.0, "y": 20.0},
+            },
+        )
         _approx_seq(_only(ctx, "CreateLine"), [0.0, 0.0, 0.0, 0.02, 0.02, 0.0])
         _assert_plane_lifecycle(ctx, "L1")
         assert (bf.name, bf.type) == ("L1", "sketch_line")
 
     def test_arc_ccw_default(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_arc(ctx, {
-            "type": "sketch_arc", "name": "A1", "plane": "Front",
-            "center": {"x": 30.0, "y": 0.0}, "start": {"x": 40.0, "y": 0.0},
-            "end": {"x": 30.0, "y": 10.0},
-        })
-        _approx_seq(_only(ctx, "CreateArc"),
-                    [0.03, 0.0, 0.0, 0.04, 0.0, 0.0, 0.03, 0.01, 0.0, 1])
+        builder._build_sketch_arc(
+            ctx,
+            {
+                "type": "sketch_arc",
+                "name": "A1",
+                "plane": "Front",
+                "center": {"x": 30.0, "y": 0.0},
+                "start": {"x": 40.0, "y": 0.0},
+                "end": {"x": 30.0, "y": 10.0},
+            },
+        )
+        _approx_seq(
+            _only(ctx, "CreateArc"),
+            [0.03, 0.0, 0.0, 0.04, 0.0, 0.0, 0.03, 0.01, 0.0, 1],
+        )
         _assert_plane_lifecycle(ctx, "A1")
 
     def test_arc_cw_direction(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_arc(ctx, {
-            "type": "sketch_arc", "name": "A2", "plane": "Front",
-            "center": {"x": 0.0, "y": 0.0}, "start": {"x": 10.0, "y": 0.0},
-            "end": {"x": 0.0, "y": 10.0}, "direction": "cw",
-        })
+        builder._build_sketch_arc(
+            ctx,
+            {
+                "type": "sketch_arc",
+                "name": "A2",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "start": {"x": 10.0, "y": 0.0},
+                "end": {"x": 0.0, "y": 10.0},
+                "direction": "cw",
+            },
+        )
         assert _only(ctx, "CreateArc")[-1] == -1
 
     def test_spline(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(builder, "_r8_safearray", lambda v: list(v))
         ctx = _Ctx()
-        builder._build_sketch_spline(ctx, {
-            "type": "sketch_spline", "name": "Sp1", "plane": "Front",
-            "points": [{"x": 0.0, "y": 0.0}, {"x": 10.0, "y": 5.0}, {"x": 20.0, "y": 0.0}],
-        })
+        builder._build_sketch_spline(
+            ctx,
+            {
+                "type": "sketch_spline",
+                "name": "Sp1",
+                "plane": "Front",
+                "points": [
+                    {"x": 0.0, "y": 0.0},
+                    {"x": 10.0, "y": 5.0},
+                    {"x": 20.0, "y": 0.0},
+                ],
+            },
+        )
         args = _only(ctx, "CreateSpline2")
         assert args[1] is False
-        _approx_seq(tuple(args[0]),
-                    [0.0, 0.0, 0.0, 0.01, 0.005, 0.0, 0.02, 0.0, 0.0])
+        _approx_seq(tuple(args[0]), [0.0, 0.0, 0.0, 0.01, 0.005, 0.0, 0.02, 0.0, 0.0])
         _assert_plane_lifecycle(ctx, "Sp1")
 
     def test_slot(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_slot(ctx, {
-            "type": "sketch_slot", "name": "Sl1", "plane": "Front",
-            "center": {"x": 30.0, "y": 30.0}, "width": 6.0, "length": 20.0,
-            "slot_type": "arc",
-        })
+        builder._build_sketch_slot(
+            ctx,
+            {
+                "type": "sketch_slot",
+                "name": "Sl1",
+                "plane": "Front",
+                "center": {"x": 30.0, "y": 30.0},
+                "width": 6.0,
+                "length": 20.0,
+                "slot_type": "arc",
+            },
+        )
         args = _only(ctx, "CreateSketchSlot")
         # creationType / lengthType must be ints (VT_I4), not floats.
         assert args[0] == 0 and isinstance(args[0], int)
         assert args[1] == 0 and isinstance(args[1], int)
         # width, P1, P2, P3, addDim, centerline
-        _approx_seq(args, [
-            0, 0, 0.006,
-            0.02, 0.03, 0.0,   # P1 = center - half_len along +x
-            0.04, 0.03, 0.0,   # P2 = center + half_len
-            0.04, 0.033, 0.0,  # P3 = P2 + width/2 perpendicular
-            False, True,
-        ])
+        _approx_seq(
+            args,
+            [
+                0,
+                0,
+                0.006,
+                0.02,
+                0.03,
+                0.0,  # P1 = center - half_len along +x
+                0.04,
+                0.03,
+                0.0,  # P2 = center + half_len
+                0.04,
+                0.033,
+                0.0,  # P3 = P2 + width/2 perpendicular
+                False,
+                True,
+            ],
+        )
         _assert_plane_lifecycle(ctx, "Sl1")
 
     def test_polygon(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_polygon(ctx, {
-            "type": "sketch_polygon", "name": "Pg1", "plane": "Front",
-            "center": {"x": 50.0, "y": 30.0}, "sides": 6, "radius": 8.0,
-        })
+        builder._build_sketch_polygon(
+            ctx,
+            {
+                "type": "sketch_polygon",
+                "name": "Pg1",
+                "plane": "Front",
+                "center": {"x": 50.0, "y": 30.0},
+                "sides": 6,
+                "radius": 8.0,
+            },
+        )
         args = _only(ctx, "CreatePolygon")
         _approx_seq(args, [0.05, 0.03, 0.0, 0.058, 0.03, 0.0, 6, True])
         assert isinstance(args[6], int)
@@ -214,23 +269,39 @@ class TestSketchPrimitiveHandlers:
 
     def test_ellipse(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_ellipse(ctx, {
-            "type": "sketch_ellipse", "name": "El1", "plane": "Front",
-            "center": {"x": 70.0, "y": 30.0}, "major_radius": 10.0, "minor_radius": 5.0,
-        })
-        _approx_seq(_only(ctx, "CreateEllipse"),
-                    [0.07, 0.03, 0.0, 0.08, 0.03, 0.0, 0.07, 0.035, 0.0])
+        builder._build_sketch_ellipse(
+            ctx,
+            {
+                "type": "sketch_ellipse",
+                "name": "El1",
+                "plane": "Front",
+                "center": {"x": 70.0, "y": 30.0},
+                "major_radius": 10.0,
+                "minor_radius": 5.0,
+            },
+        )
+        _approx_seq(
+            _only(ctx, "CreateEllipse"),
+            [0.07, 0.03, 0.0, 0.08, 0.03, 0.0, 0.07, 0.035, 0.0],
+        )
         _assert_plane_lifecycle(ctx, "El1")
 
     def test_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ctx = _Ctx()
         st = _FakeSketchText()
         monkeypatch.setattr(builder, "_as_sketch_text", lambda raw: st)
-        builder._build_sketch_text(ctx, {
-            "type": "sketch_text", "name": "Tx1", "plane": "Front",
-            "position": {"x": 0.0, "y": 50.0}, "content": "hello",
-            "height": 3.0, "font": "Arial",
-        })
+        builder._build_sketch_text(
+            ctx,
+            {
+                "type": "sketch_text",
+                "name": "Tx1",
+                "plane": "Front",
+                "position": {"x": 0.0, "y": 50.0},
+                "content": "hello",
+                "height": 3.0,
+                "font": "Arial",
+            },
+        )
         args = _only(ctx, "InsertSketchText")
         # Ptx, Pty, Ptz, Text, Alignment(int), Flip, HMirror, WidthFactor, SpaceChars
         assert args[3] == "hello"
@@ -245,14 +316,23 @@ class TestSketchPrimitiveHandlers:
         assert typeface == "Arial"
         _assert_plane_lifecycle(ctx, "Tx1")
 
-    def test_text_no_font_keeps_doc_typeface(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_text_no_font_keeps_doc_typeface(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         ctx = _Ctx()
         st = _FakeSketchText()
         monkeypatch.setattr(builder, "_as_sketch_text", lambda raw: st)
-        builder._build_sketch_text(ctx, {
-            "type": "sketch_text", "name": "Tx2", "plane": "Front",
-            "position": {"x": 0.0, "y": 0.0}, "content": "hi", "height": 5.0,
-        })
+        builder._build_sketch_text(
+            ctx,
+            {
+                "type": "sketch_text",
+                "name": "Tx2",
+                "plane": "Front",
+                "position": {"x": 0.0, "y": 0.0},
+                "content": "hi",
+                "height": 5.0,
+            },
+        )
         # height still applied; typeface untouched (no font in spec).
         assert st.set_args[1] == pytest.approx(0.005)
         assert st.set_args[2] is None
@@ -264,37 +344,63 @@ class TestSketchConstructionFlag:
 
     def test_line_construction_marks_segment(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_line(ctx, {
-            "type": "sketch_line", "name": "L1", "plane": "Front",
-            "start": {"x": 0.0, "y": 0.0}, "end": {"x": 20.0, "y": 20.0},
-            "construction": True,
-        })
+        builder._build_sketch_line(
+            ctx,
+            {
+                "type": "sketch_line",
+                "name": "L1",
+                "plane": "Front",
+                "start": {"x": 0.0, "y": 0.0},
+                "end": {"x": 20.0, "y": 20.0},
+                "construction": True,
+            },
+        )
         assert ("ConstructionGeometry", (True,)) in ctx.doc.log
 
     def test_line_default_not_construction(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_line(ctx, {
-            "type": "sketch_line", "name": "L1", "plane": "Front",
-            "start": {"x": 0.0, "y": 0.0}, "end": {"x": 20.0, "y": 20.0},
-        })
+        builder._build_sketch_line(
+            ctx,
+            {
+                "type": "sketch_line",
+                "name": "L1",
+                "plane": "Front",
+                "start": {"x": 0.0, "y": 0.0},
+                "end": {"x": 20.0, "y": 20.0},
+            },
+        )
         assert all(name != "ConstructionGeometry" for name, _ in ctx.doc.log)
 
     def test_polygon_construction_marks_segments(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_polygon(ctx, {
-            "type": "sketch_polygon", "name": "Pg1", "plane": "Front",
-            "center": {"x": 50.0, "y": 30.0}, "sides": 6, "radius": 8.0,
-            "construction": True,
-        })
+        builder._build_sketch_polygon(
+            ctx,
+            {
+                "type": "sketch_polygon",
+                "name": "Pg1",
+                "plane": "Front",
+                "center": {"x": 50.0, "y": 30.0},
+                "sides": 6,
+                "radius": 8.0,
+                "construction": True,
+            },
+        )
         assert ("ConstructionGeometry", (True,)) in ctx.doc.log
 
     def test_ellipse_construction_marks_segment(self) -> None:
         ctx = _Ctx()
-        builder._build_sketch_ellipse(ctx, {
-            "type": "sketch_ellipse", "name": "El1", "plane": "Front",
-            "center": {"x": 70.0, "y": 30.0}, "major_radius": 10.0,
-            "minor_radius": 5.0, "construction": True,
-        })
+        builder._build_sketch_ellipse(
+            ctx,
+            {
+                "type": "sketch_ellipse",
+                "name": "El1",
+                "plane": "Front",
+                "center": {"x": 70.0, "y": 30.0},
+                "major_radius": 10.0,
+                "minor_radius": 5.0,
+                "construction": True,
+            },
+        )
         assert ("ConstructionGeometry", (True,)) in ctx.doc.log
 
 
@@ -306,38 +412,64 @@ class TestSketchFidelityRejections:
     def test_spline_closed_rejected(self) -> None:
         ctx = _Ctx()
         with pytest.raises(NotImplementedError, match="closed"):
-            builder._build_sketch_spline(ctx, {
-                "type": "sketch_spline", "name": "Sp1", "plane": "Front",
-                "points": [{"x": 0.0, "y": 0.0}, {"x": 10.0, "y": 5.0}],
-                "closed": True,
-            })
+            builder._build_sketch_spline(
+                ctx,
+                {
+                    "type": "sketch_spline",
+                    "name": "Sp1",
+                    "plane": "Front",
+                    "points": [{"x": 0.0, "y": 0.0}, {"x": 10.0, "y": 5.0}],
+                    "closed": True,
+                },
+            )
 
     def test_slot_construction_rejected(self) -> None:
         ctx = _Ctx()
         with pytest.raises(NotImplementedError, match="construction"):
-            builder._build_sketch_slot(ctx, {
-                "type": "sketch_slot", "name": "Sl1", "plane": "Front",
-                "center": {"x": 30.0, "y": 30.0}, "width": 6.0, "length": 20.0,
-                "construction": True,
-            })
+            builder._build_sketch_slot(
+                ctx,
+                {
+                    "type": "sketch_slot",
+                    "name": "Sl1",
+                    "plane": "Front",
+                    "center": {"x": 30.0, "y": 30.0},
+                    "width": 6.0,
+                    "length": 20.0,
+                    "construction": True,
+                },
+            )
 
     def test_text_construction_rejected(self) -> None:
         ctx = _Ctx()
         with pytest.raises(NotImplementedError, match="construction"):
-            builder._build_sketch_text(ctx, {
-                "type": "sketch_text", "name": "Tx1", "plane": "Front",
-                "position": {"x": 0.0, "y": 0.0}, "content": "x", "height": 3.0,
-                "construction": True,
-            })
+            builder._build_sketch_text(
+                ctx,
+                {
+                    "type": "sketch_text",
+                    "name": "Tx1",
+                    "plane": "Front",
+                    "position": {"x": 0.0, "y": 0.0},
+                    "content": "x",
+                    "height": 3.0,
+                    "construction": True,
+                },
+            )
 
     def test_text_angle_rejected(self) -> None:
         ctx = _Ctx()
         with pytest.raises(NotImplementedError, match="angle"):
-            builder._build_sketch_text(ctx, {
-                "type": "sketch_text", "name": "Tx1", "plane": "Front",
-                "position": {"x": 0.0, "y": 0.0}, "content": "x", "height": 3.0,
-                "angle_deg": 45.0,
-            })
+            builder._build_sketch_text(
+                ctx,
+                {
+                    "type": "sketch_text",
+                    "name": "Tx1",
+                    "plane": "Front",
+                    "position": {"x": 0.0, "y": 0.0},
+                    "content": "x",
+                    "height": 3.0,
+                    "angle_deg": 45.0,
+                },
+            )
 
 
 class TestMmToMHelper:
@@ -419,10 +551,17 @@ class TestEllipseExtrudeChainStash:
         # The handler returns a bare BuiltFeature (no normal yet); build()'s
         # stash branch is what sets it for plane-based sketches.
         ctx = _Ctx()
-        bf = builder._build_sketch_ellipse(ctx, {
-            "type": "sketch_ellipse", "name": "El1", "plane": "Front",
-            "center": {"x": 0.0, "y": 0.0}, "major_radius": 10.0, "minor_radius": 5.0,
-        })
+        bf = builder._build_sketch_ellipse(
+            ctx,
+            {
+                "type": "sketch_ellipse",
+                "name": "El1",
+                "plane": "Front",
+                "center": {"x": 0.0, "y": 0.0},
+                "major_radius": 10.0,
+                "minor_radius": 5.0,
+            },
+        )
         assert bf.parent_plane_normal is None  # handler leaves it for build()
         _stash_plane_normal(bf, {"type": "sketch_ellipse", "plane": "Front"})
         assert bf.parent_plane_normal == builder.PLANE_NORMALS["Front"]
@@ -436,10 +575,15 @@ class TestEllipseExtrudeChainStash:
         _stash_plane_normal(sk, {"type": "sketch_ellipse", "plane": "Front"})
         ctx.features_by_name["El1"] = sk
 
-        ext = builder._build_boss_extrude_blind(ctx, {  # type: ignore[arg-type]
-            "type": "boss_extrude_blind", "name": "Boss1",
-            "sketch": "El1", "depth": 10.0,
-        })
+        ext = builder._build_boss_extrude_blind(
+            ctx,
+            {  # type: ignore[arg-type]
+                "type": "boss_extrude_blind",
+                "name": "Boss1",
+                "sketch": "El1",
+                "depth": 10.0,
+            },
+        )
         assert ext.extrude_axis == builder.PLANE_NORMALS["Front"]
         assert (ext.name, ext.type) == ("Boss1", "boss_extrude_blind")
 
@@ -450,10 +594,15 @@ class TestEllipseExtrudeChainStash:
         sk = builder.BuiltFeature(name="El1", type="sketch_ellipse")  # not stashed
         ctx.features_by_name["El1"] = sk
         with pytest.raises(RuntimeError, match="no parent_plane_normal stashed"):
-            builder._build_boss_extrude_blind(ctx, {  # type: ignore[arg-type]
-                "type": "boss_extrude_blind", "name": "Boss1",
-                "sketch": "El1", "depth": 10.0,
-            })
+            builder._build_boss_extrude_blind(
+                ctx,
+                {  # type: ignore[arg-type]
+                    "type": "boss_extrude_blind",
+                    "name": "Boss1",
+                    "sketch": "El1",
+                    "depth": 10.0,
+                },
+            )
 
 
 class TestDescriptorRegistryCoversP17s:

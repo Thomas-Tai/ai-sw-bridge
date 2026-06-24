@@ -26,7 +26,13 @@ from typing import Any
 _PKG = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG))
 
-RESULTS = Path(__file__).resolve().parents[2] / "spikes" / "v0_2x" / "_results" / "annotation_recipes_probe.json"
+RESULTS = (
+    Path(__file__).resolve().parents[2]
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "annotation_recipes_probe.json"
+)
 
 _TYPE = {"datum_tag": 2, "weld": 8, "balloon": 6}
 
@@ -36,14 +42,30 @@ def _try(label: str, fn) -> dict[str, Any]:
         r = fn()
         return {"call": label, "ok": True, "return": repr(r)[:50]}
     except Exception as exc:
-        return {"call": label, "ok": False, "error": f"{type(exc).__name__}: {str(exc)[:90]}"}
+        return {
+            "call": label,
+            "ok": False,
+            "error": f"{type(exc).__name__}: {str(exc)[:90]}",
+        }
 
 
 def _build_part(p: str) -> bool:
     from ai_sw_bridge.spec.builder import build as part_build
-    spec = {"schema_version": 1, "name": "W70B", "features": [
-        {"type": "sketch_rectangle_on_plane", "name": "S", "plane": "Front", "width": 20.0, "height": 20.0},
-        {"type": "boss_extrude_blind", "name": "E", "sketch": "S", "depth": 10.0}]}
+
+    spec = {
+        "schema_version": 1,
+        "name": "W70B",
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "S",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 20.0,
+            },
+            {"type": "boss_extrude_blind", "name": "E", "sketch": "S", "depth": 10.0},
+        ],
+    }
     r = part_build(spec, no_dim=True, save_as=p)
     ok = getattr(r, "ok", None)
     if ok is None and isinstance(r, dict):
@@ -51,7 +73,9 @@ def _build_part(p: str) -> bool:
     return bool(ok) and os.path.isfile(p)
 
 
-def _place_via_typed(probe: dict, raw_obj: Any, iface: str, mod: Any, typed_qi: Any, x: float, y: float) -> None:
+def _place_via_typed(
+    probe: dict, raw_obj: Any, iface: str, mod: Any, typed_qi: Any, x: float, y: float
+) -> None:
     """Mirror the note recipe: type the inserted obj, GetAnnotation, SetPosition."""
     probe["insert_is_none"] = raw_obj is None
     if raw_obj is None:
@@ -76,6 +100,7 @@ def _count_types(mdoc2_path: str, want: set[int]) -> dict[str, Any]:
     from ai_sw_bridge.com.earlybind import typed, typed_qi
     from ai_sw_bridge.com.sw_type_info import wrapper_module
     from ai_sw_bridge.sw_com import get_sw_app
+
     mod = wrapper_module()
     sw = get_sw_app()
     tsw = typed(sw, "ISldWorks", module=mod)
@@ -87,11 +112,11 @@ def _count_types(mdoc2_path: str, want: set[int]) -> dict[str, Any]:
     try:
         ddoc = typed_qi(doc, "IDrawingDoc", module=mod)
         sheet = typed_qi(ddoc.GetCurrentSheet(), "ISheet", module=mod)
-        for v_raw in (sheet.GetViews() or []):
+        for v_raw in sheet.GetViews() or []:
             if v_raw is None:
                 continue
             v = typed_qi(v_raw, "IView", module=mod)
-            for raw in (v.GetAnnotations() or []):
+            for raw in v.GetAnnotations() or []:
                 if raw is None:
                     continue
                 try:
@@ -116,7 +141,11 @@ def main() -> int:
     from ai_sw_bridge.drawing.lifecycle import commit_drawing
     from ai_sw_bridge.sw_com import get_sw_app
 
-    res: dict[str, Any] = {"spike": "annotation_recipes_probe", "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"), "probes": {}}
+    res: dict[str, Any] = {
+        "spike": "annotation_recipes_probe",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "probes": {},
+    }
     mod = wrapper_module()
     sw = get_sw_app()
 
@@ -124,14 +153,23 @@ def main() -> int:
         part = os.path.join(tmp, "W70B.sldprt")
         drw = os.path.join(tmp, "W70B.slddrw")
         if not _build_part(part):
-            res["fatal"] = "part build failed"; _w(res); return 1
-        commit_drawing(sw, {"kind": "drawing", "name": "W70B", "model": part, "views": ["front"]}, drw, mod=mod)
+            res["fatal"] = "part build failed"
+            _w(res)
+            return 1
+        commit_drawing(
+            sw,
+            {"kind": "drawing", "name": "W70B", "model": part, "views": ["front"]},
+            drw,
+            mod=mod,
+        )
 
         tsw = typed(sw, "ISldWorks", module=mod)
         ret = tsw.OpenDoc6(drw, 3, 1, "", 0, 0)
         doc = ret[0] if isinstance(ret, tuple) else ret
         if doc is None:
-            res["fatal"] = "reopen None"; _w(res); return 1
+            res["fatal"] = "reopen None"
+            _w(res)
+            return 1
         save_path = os.path.join(tmp, "W70B_annot.slddrw")
         try:
             ddoc = typed_qi(doc, "IDrawingDoc", module=mod)
@@ -171,7 +209,10 @@ def main() -> int:
                     info["sel_count"] = cnt
                     return info
                 except Exception as exc:
-                    return {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:80]}"}
+                    return {
+                        "ok": False,
+                        "error": f"{type(exc).__name__}: {str(exc)[:80]}",
+                    }
 
             res["edge_select_probe"] = _select_edge()
 
@@ -183,7 +224,10 @@ def main() -> int:
                 dobj = mdoc2.InsertDatumTag2()
                 p["insert"] = {"ok": True, "return": repr(dobj)[:50]}
             except Exception as exc:
-                p["insert"] = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:90]}"}
+                p["insert"] = {
+                    "ok": False,
+                    "error": f"{type(exc).__name__}: {str(exc)[:90]}",
+                }
             _place_via_typed(p, dobj, "IDatumTag", mod, typed_qi, 0.10, 0.10)
 
             # --- weld_symbol: select edge -> InsertWeldSymbol3() (no args) ---
@@ -194,7 +238,10 @@ def main() -> int:
                 wobj = mdoc2.InsertWeldSymbol3()
                 pw["insert"] = {"ok": True, "return": repr(wobj)[:50]}
             except Exception as exc:
-                pw["insert"] = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:90]}"}
+                pw["insert"] = {
+                    "ok": False,
+                    "error": f"{type(exc).__name__}: {str(exc)[:90]}",
+                }
             _place_via_typed(pw, wobj, "IWeldSymbol", mod, typed_qi, 0.12, 0.12)
 
             # --- balloon: select edge -> InsertBOMBalloon2(style,size,...) ---
@@ -206,7 +253,10 @@ def main() -> int:
                 bobj = mdoc2.InsertBOMBalloon2(1, 2, 1, "", 0, "")
                 pb["insert"] = {"ok": True, "return": repr(bobj)[:50]}
             except Exception as exc:
-                pb["insert"] = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:90]}"}
+                pb["insert"] = {
+                    "ok": False,
+                    "error": f"{type(exc).__name__}: {str(exc)[:90]}",
+                }
             _place_via_typed(pb, bobj, "INote", mod, typed_qi, 0.14, 0.14)
 
             # save for persistence check
@@ -225,7 +275,11 @@ def main() -> int:
             res["reopen_counts"] = _count_types(save_path, {2, 6, 8})
 
     res["summary"] = {
-        k: ("PLACED" if res["probes"].get(k, {}).get("setposition", {}).get("ok") else "NEEDS_WORK")
+        k: (
+            "PLACED"
+            if res["probes"].get(k, {}).get("setposition", {}).get("ok")
+            else "NEEDS_WORK"
+        )
         for k in ("datum_tag", "weld", "balloon")
     }
     _w(res)

@@ -206,12 +206,14 @@ def run() -> dict[str, Any]:
                                 tx_mm = data[9] * 1000.0
                                 ty_mm = data[10] * 1000.0
                                 tz_mm = data[11] * 1000.0
-                                instances.append({
-                                    "name": cn,
-                                    "tx_mm": round(tx_mm, 2),
-                                    "ty_mm": round(ty_mm, 2),
-                                    "tz_mm": round(tz_mm, 2),
-                                })
+                                instances.append(
+                                    {
+                                        "name": cn,
+                                        "tx_mm": round(tx_mm, 2),
+                                        "ty_mm": round(ty_mm, 2),
+                                        "tz_mm": round(tz_mm, 2),
+                                    }
+                                )
                                 continue
                     except Exception:
                         pass
@@ -225,9 +227,9 @@ def run() -> dict[str, Any]:
         # SW auto-names components from part filename, so we identify linear
         # instances by their expected Y≈0, Z≈-2.5, X∈{100,140,180}.
         linear_candidates = [
-            i for i in instances
-            if abs(i.get("ty_mm", 999)) < 5.0
-            and 95.0 < i.get("tx_mm", -999) < 185.0
+            i
+            for i in instances
+            if abs(i.get("ty_mm", 999)) < 5.0 and 95.0 < i.get("tx_mm", -999) < 185.0
         ]
         result["linear_instances"] = linear_candidates
 
@@ -244,7 +246,8 @@ def run() -> dict[str, Any]:
         # Verify circular array transforms.
         # Circular instances at radius ~50mm from center (0, 100, 0).
         circular_candidates = [
-            i for i in instances
+            i
+            for i in instances
             if abs(i.get("ty_mm", 0) - 100) < 60.0
             and abs(i.get("tx_mm", 0)) < 60.0
             and i not in linear_candidates
@@ -258,16 +261,18 @@ def run() -> dict[str, Any]:
             for inst in circular_candidates:
                 tx = inst.get("tx_mm", 0)
                 ty = inst.get("ty_mm", 0) - 100  # offset from center
-                r = math.sqrt(tx ** 2 + ty ** 2)
+                r = math.sqrt(tx**2 + ty**2)
                 radii.append(r)
 
             result["circular_radii"] = [round(r, 2) for r in radii]
 
             all_at_radius = all(abs(r - 50.0) < 5.0 for r in radii)
-            distinct = len(set(
-                (round(inst.get("tx_mm", 0), 1), round(inst.get("ty_mm", 0), 1))
-                for inst in circular_candidates
-            ))
+            distinct = len(
+                set(
+                    (round(inst.get("tx_mm", 0), 1), round(inst.get("ty_mm", 0), 1))
+                    for inst in circular_candidates
+                )
+            )
             not_stacked = distinct >= 3
 
             if all_at_radius and not_stacked:

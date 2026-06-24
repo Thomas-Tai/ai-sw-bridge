@@ -36,9 +36,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "rotated_placement.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "rotated_placement.json"
 
 results: dict[str, Any] = {
     "spike": "w13_rotated_placement",
@@ -63,9 +61,7 @@ def save_results() -> None:
     print(f"  wrote {RESULTS_PATH}", file=sys.stderr)
 
 
-def rpy_to_matrix(
-    roll_deg: float, pitch_deg: float, yaw_deg: float
-) -> list[float]:
+def rpy_to_matrix(roll_deg: float, pitch_deg: float, yaw_deg: float) -> list[float]:
     """Build 16-element SW transform array: R = Rz . Ry . Rx, row-major."""
     rx, ry, rz = (
         math.radians(roll_deg),
@@ -77,11 +73,22 @@ def rpy_to_matrix(
     cz, sz = math.cos(rz), math.sin(rz)
 
     return [
-        cz * cy, cz * sy * sx - sz * cx, cz * sy * cx + sz * sx,
-        sz * cy, sz * sy * sx + cz * cx, sz * sy * cx - cz * sx,
-        -sy,     cy * sx,               cy * cx,
-        0.0, 0.0, 0.0,
-        1.0, 0.0, 0.0, 0.0,
+        cz * cy,
+        cz * sy * sx - sz * cx,
+        cz * sy * cx + sz * sx,
+        sz * cy,
+        sz * sy * sx + cz * cx,
+        sz * sy * cx - cz * sx,
+        -sy,
+        cy * sx,
+        cy * cx,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
     ]
 
 
@@ -102,7 +109,7 @@ def run() -> str:
 
     # Close all docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 d.CloseDoc
             except Exception:
@@ -121,15 +128,18 @@ def run() -> str:
         "schema_version": 1,
         "name": "RotateBox",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 20.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 20.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
 
-    r = part_build(PART_SPEC, save_as=PART_PATH, save_format="current",
-                   no_dim=True)
+    r = part_build(PART_SPEC, save_as=PART_PATH, save_format="current", no_dim=True)
     gate("build_part", r.ok and os.path.isfile(PART_PATH), f"ok={r.ok}")
 
     if not os.path.isfile(PART_PATH):
@@ -139,6 +149,7 @@ def run() -> str:
     # Create assembly + place
     print("\n--- Creating assembly + placing ---")
     import glob
+
     asm_templates = glob.glob(
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
     )
@@ -165,20 +176,16 @@ def run() -> str:
         # GetMathUtility (needs active doc; zero-arg auto-invoke)
         print("\n--- Characterization: IMathUtility ---")
         mu = typed(sw.GetMathUtility, "IMathUtility", module=mod)
-        gate("get_math_utility", mu is not None,
-             f"type={type(mu).__name__}")
+        gate("get_math_utility", mu is not None, f"type={type(mu).__name__}")
 
         # Create 90°-Z transform
         print("\n--- Characterization: CreateTransform (90° about Z) ---")
         arr_90z = rpy_to_matrix(0.0, 0.0, 90.0)
         print(f"  16-elem: {[round(v, 6) for v in arr_90z]}")
 
-        varr = w32.VARIANT(
-            pythoncom.VT_ARRAY | pythoncom.VT_R8, tuple(arr_90z)
-        )
+        varr = w32.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, tuple(arr_90z))
         xform = mu.CreateTransform(varr)
-        gate("create_transform", xform is not None,
-             f"type={type(xform).__name__}")
+        gate("create_transform", xform is not None, f"type={type(xform).__name__}")
 
         if xform is None:
             save_results()
@@ -186,9 +193,11 @@ def run() -> str:
 
         # Readback from the created transform
         xform_ad = list(xform.ArrayData)
-        gate("xform_arraydata",
-             all(abs(xform_ad[i] - arr_90z[i]) < 0.001 for i in range(16)),
-             f"matches input array")
+        gate(
+            "xform_arraydata",
+            all(abs(xform_ad[i] - arr_90z[i]) < 0.001 for i in range(16)),
+            f"matches input array",
+        )
 
         # Apply to component
         print("\n--- Characterization: Transform2 + SetTransformAndSolve ---")
@@ -206,9 +215,11 @@ def run() -> str:
 
         # Readback from component
         rb_ad = list(comp.Transform2.ArrayData)
-        gate("transform_readback",
-             all(abs(rb_ad[i] - arr_90z[i]) < 0.001 for i in range(9)),
-             f"rotation block matches: {[round(v,4) for v in rb_ad[:9]]}")
+        gate(
+            "transform_readback",
+            all(abs(rb_ad[i] - arr_90z[i]) < 0.001 for i in range(9)),
+            f"rotation block matches: {[round(v,4) for v in rb_ad[:9]]}",
+        )
 
         # Save + reopen to confirm persistence
         print("\n--- Characterization: save/reopen persistence ---")
@@ -236,11 +247,12 @@ def run() -> str:
                 if comps:
                     cc = typed_qi(comps[0], "IComponent2", module=mod)
                     reopen_ad = list(cc.Transform2.ArrayData)
-                    gate("persist_after_reopen",
-                         all(abs(reopen_ad[i] - arr_90z[i]) < 0.001
-                             for i in range(9)),
-                         f"rotation preserved: "
-                         f"{[round(v,4) for v in reopen_ad[:9]]}")
+                    gate(
+                        "persist_after_reopen",
+                        all(abs(reopen_ad[i] - arr_90z[i]) < 0.001 for i in range(9)),
+                        f"rotation preserved: "
+                        f"{[round(v,4) for v in reopen_ad[:9]]}",
+                    )
 
                 try:
                     t = asm2.GetTitle
@@ -259,7 +271,7 @@ def run() -> str:
                 "confirmed": True,
             },
             "transform_method": "CreateTransform(typed IMathUtility) "
-                                "+ Transform2 propput + SetTransformAndSolve",
+            "+ Transform2 propput + SetTransformAndSolve",
             "solve_required": True,
             "rpy_convention": {
                 "order": "Rz . Ry . Rx",
@@ -274,11 +286,8 @@ def run() -> str:
         }
 
         # Overall
-        all_pass = all(
-            g["ok"] for g in results["gates"].values()
-        )
-        gate("OVERALL", all_pass,
-             "all characterizations passed; recipe proven")
+        all_pass = all(g["ok"] for g in results["gates"].values())
+        gate("OVERALL", all_pass, "all characterizations passed; recipe proven")
 
         return "GREEN" if all_pass else "PARTIAL"
 

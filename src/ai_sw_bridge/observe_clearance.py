@@ -203,7 +203,9 @@ def read_clearance(
     return result
 
 
-def _sw_get_clearance_impl(doc: Any, comp_a_name: str, comp_b_name: str) -> dict[str, Any]:
+def _sw_get_clearance_impl(
+    doc: Any, comp_a_name: str, comp_b_name: str
+) -> dict[str, Any]:
     """Core: measure clearance between two assembly components (v0.18 implementation).
 
     Validates *doc* is an assembly, then delegates to :func:`read_clearance`.
@@ -504,12 +506,14 @@ def analyze_stackup(
     for a, b in zip(names, names[1:]):
         clr = read_clearance(asm_doc, a, b, mod)
         gap, touching, err = _gap_of(clr)
-        result["pairs"].append({
-            "components": [a, b],
-            "gap_mm": gap,
-            "touching": touching,
-            "error": err,
-        })
+        result["pairs"].append(
+            {
+                "components": [a, b],
+                "gap_mm": gap,
+                "touching": touching,
+                "error": err,
+            }
+        )
         if gap is None:
             complete = False
         else:
@@ -569,9 +573,11 @@ def _sw_analyze_stackup_impl(
         return {
             "ok": False,
             "error": f"stack-up analysis requires assembly document (got type {doc_type})",
-            "chain": list(component_names) if isinstance(component_names, (list, tuple)) else [],
+            "chain": (
+                list(component_names)
+                if isinstance(component_names, (list, tuple))
+                else []
+            ),
         }
 
     return analyze_stackup(doc, component_names, check_endpoints=check_endpoints)
-
-

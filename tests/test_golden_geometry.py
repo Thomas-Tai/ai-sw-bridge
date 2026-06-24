@@ -52,7 +52,9 @@ class TestHashBrepManifest:
         assert all(c in "0123456789abcdef" for c in h)
 
     def test_deterministic(self):
-        m = _manifest([_feature("A", ["aabbccdd11223344"]), _feature("B", ["eeff00112233aabb"])])
+        m = _manifest(
+            [_feature("A", ["aabbccdd11223344"]), _feature("B", ["eeff00112233aabb"])]
+        )
         assert hash_brep_manifest(m) == hash_brep_manifest(m)
 
     def test_order_independent_across_features(self):
@@ -88,12 +90,17 @@ class TestHashBrepManifest:
 
     def test_mixed_error_and_good_faces(self):
         good = _manifest([_feature("A", ["cccc"])])
-        mixed = _manifest([
-            {"feature": "A", "faces": [
-                {"face_idx": 0},           # error face, no fingerprint
-                {"fingerprint": "cccc", "face_idx": 1},
-            ]}
-        ])
+        mixed = _manifest(
+            [
+                {
+                    "feature": "A",
+                    "faces": [
+                        {"face_idx": 0},  # error face, no fingerprint
+                        {"fingerprint": "cccc", "face_idx": 1},
+                    ],
+                }
+            ]
+        )
         assert hash_brep_manifest(mixed) == hash_brep_manifest(good)
 
 
@@ -185,5 +192,7 @@ def test_no_geometry_drift_across_examples():
         if not check_geometry_drift(spec_dir, manifest_dict):
             failures.append(spec_dir.name)
     if skipped:
-        pytest.skip(f"build_brep.json absent for: {', '.join(skipped)} — rebuild on a seat first")
+        pytest.skip(
+            f"build_brep.json absent for: {', '.join(skipped)} — rebuild on a seat first"
+        )
     assert not failures, f"B-rep fingerprint drift detected in: {', '.join(failures)}"

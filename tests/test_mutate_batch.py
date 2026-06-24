@@ -24,6 +24,7 @@ from ai_sw_bridge.mutate import _sw_batch_feature_add_impl
 # Fakes
 # ---------------------------------------------------------------------------
 
+
 class _FakeDoc:
     def GetTitle(self) -> str:
         return "part.SLDPRT"
@@ -94,6 +95,7 @@ def _wire(
 # Validation — fail closed before any COM
 # ---------------------------------------------------------------------------
 
+
 class TestValidation:
     def test_empty_doc_path(self):
         r = _sw_batch_feature_add_impl("", _props("a"))
@@ -120,6 +122,7 @@ class TestValidation:
 # Green path — all features commit
 # ---------------------------------------------------------------------------
 
+
 class TestAllGreen:
     def test_three_green(self, monkeypatch):
         sw, calls = _wire(
@@ -134,7 +137,9 @@ class TestAllGreen:
         assert r["doc_saved"] is True
         assert r["fault"] is None and r["skipped"] == [] and r["halted_at"] is None
         assert [c["kind"] for c in r["committed"]] == [
-            "ref_plane", "sketch", "boss_extrude_blind"
+            "ref_plane",
+            "sketch",
+            "boss_extrude_blind",
         ]
         assert [c["note"] for c in r["committed"]] == ["n0", "n1", "n2"]
         assert len(sw.closed) == 1  # doc closed in finally
@@ -148,6 +153,7 @@ class TestAllGreen:
 # ---------------------------------------------------------------------------
 # THE canonical fail-fast case — feature 2 (index 1) fails
 # ---------------------------------------------------------------------------
+
 
 class TestFailFast:
     def test_index1_fault_halts_and_saves_greens(self, monkeypatch):
@@ -207,7 +213,9 @@ class TestFailFast:
             raise RuntimeError("COM topology error")
 
         monkeypatch.setattr(mutate, "_apply_feature", fake_apply)
-        r = _sw_batch_feature_add_impl("p.sldprt", _props("ref_plane", "boss_extrude_blind"))
+        r = _sw_batch_feature_add_impl(
+            "p.sldprt", _props("ref_plane", "boss_extrude_blind")
+        )
         assert r["ok"] is False
         assert r["fault"]["stage"] == "apply"
         assert "handler raised" in r["fault"]["error"]
@@ -218,6 +226,7 @@ class TestFailFast:
 # ---------------------------------------------------------------------------
 # strict=True — all-or-nothing (close without saving on fault)
 # ---------------------------------------------------------------------------
+
 
 class TestStrict:
     def test_strict_fault_discards_greens(self, monkeypatch):
@@ -250,6 +259,7 @@ class TestStrict:
 # open_doc + save stage faults
 # ---------------------------------------------------------------------------
 
+
 class TestStageFaults:
     def test_open_doc_fault(self, monkeypatch):
         sw, calls = _wire(monkeypatch, apply_results=[], open_ok=False)
@@ -273,6 +283,7 @@ class TestStageFaults:
 # dry_run (PLAN-ONLY) — validates every feature but NEVER saves
 # ---------------------------------------------------------------------------
 
+
 class TestDryRun:
     def _counting_save(self, monkeypatch):
         n = {"saves": 0}
@@ -291,10 +302,10 @@ class TestDryRun:
             "p.sldprt", _props("ref_plane", "scale", "com_point"), dry_run=True
         )
         assert r["dry_run"] is True
-        assert r["ok"] is True              # all features WOULD commit
-        assert r["committed_count"] == 3    # the would-commit trail
-        assert r["doc_saved"] is False      # nothing persisted
-        assert saves["saves"] == 0          # _save_doc NEVER called
+        assert r["ok"] is True  # all features WOULD commit
+        assert r["committed_count"] == 3  # the would-commit trail
+        assert r["doc_saved"] is False  # nothing persisted
+        assert saves["saves"] == 0  # _save_doc NEVER called
 
     def test_dry_run_fault_still_reported_no_save(self, monkeypatch):
         _wire(monkeypatch, apply_results=[(True, "a"), (False, "bad")])
@@ -312,6 +323,7 @@ class TestDryRun:
 # ---------------------------------------------------------------------------
 # active-doc guard + facade delegation
 # ---------------------------------------------------------------------------
+
 
 class TestGuardAndFacade:
     def test_active_doc_guard(self, monkeypatch, tmp_path):

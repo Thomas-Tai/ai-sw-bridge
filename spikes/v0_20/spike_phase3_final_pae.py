@@ -71,7 +71,9 @@ def run() -> bool:
     from ai_sw_bridge.com.earlybind import typed, typed_extension, typed_qi
     from ai_sw_bridge.sw_com import get_sw_app
     from ai_sw_bridge.assembly.handlers import (
-        create_mate, verify_mates, place_components,
+        create_mate,
+        verify_mates,
+        place_components,
     )
     from ai_sw_bridge.assembly.face_resolver import resolve_component_face
 
@@ -99,12 +101,33 @@ def run() -> bool:
         "schema_version": 1,
         "name": "Phase3_BoxWithCyl",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK_Base", "plane": "Front",
-             "width": 30.0, "height": 30.0},
-            {"type": "boss_extrude_blind", "name": "EX_Base", "sketch": "SK_Base", "depth": 10.0},
-            {"type": "sketch_circle_on_face", "name": "SK_Cyl", "of_feature": "EX_Base",
-             "face": "+z", "center": {"u": 0.5, "v": 0.5}, "diameter": 10.0},
-            {"type": "boss_extrude_blind", "name": "EX_Cyl", "sketch": "SK_Cyl", "depth": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Base",
+                "plane": "Front",
+                "width": 30.0,
+                "height": 30.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Base",
+                "sketch": "SK_Base",
+                "depth": 10.0,
+            },
+            {
+                "type": "sketch_circle_on_face",
+                "name": "SK_Cyl",
+                "of_feature": "EX_Base",
+                "face": "+z",
+                "center": {"u": 0.5, "v": 0.5},
+                "diameter": 10.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Cyl",
+                "sketch": "SK_Cyl",
+                "depth": 10.0,
+            },
         ],
     }
 
@@ -112,8 +135,13 @@ def run() -> bool:
         "schema_version": 1,
         "name": "Phase3_NarrowBox",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "width": 20.0, "height": 20.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 20.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
@@ -123,11 +151,17 @@ def run() -> bool:
 
     # Build parts
     print("\n--- Step 1: Build parts ---")
-    for label, path, spec in [("A", PART_A_PATH, PART_A_SPEC), ("B", PART_B_PATH, PART_B_SPEC)]:
+    for label, path, spec in [
+        ("A", PART_A_PATH, PART_A_SPEC),
+        ("B", PART_B_PATH, PART_B_SPEC),
+    ]:
         print(f"  Building Part {label}...")
         r = part_build(spec, save_as=path, save_format="current", no_dim=True)
-        gate(f"build_part_{label.lower()}", r.ok and os.path.isfile(path),
-             f"ok={r.ok}, features={r.features_built}")
+        gate(
+            f"build_part_{label.lower()}",
+            r.ok and os.path.isfile(path),
+            f"ok={r.ok}, features={r.features_built}",
+        )
 
     if not os.path.isfile(PART_A_PATH) or not os.path.isfile(PART_B_PATH):
         gate("parts_built", False, "Part build failed")
@@ -135,6 +169,7 @@ def run() -> bool:
 
     # Probe faces
     print("\n--- Step 2: Probe faces ---")
+
     def probe_faces(part_path: str) -> list[dict]:
         ret = tsw.OpenDoc6(part_path, 1, 1, "", 0, 0)
         doc = ret[0] if isinstance(ret, tuple) else ret
@@ -167,12 +202,20 @@ def run() -> bool:
                             pid = base64.b64encode(bytes(pid_bytes)).decode("ascii")
                     except Exception:
                         pass
-                    face_list.append({
-                        "face_idx": idx, "is_cylinder": is_cyl, "is_plane": is_plane,
-                        "normal": [round(n, 6) for n in normal],
-                        "centroid": [round(cx*1000, 3), round(cy*1000, 3), round(cz*1000, 3)],
-                        "persist_id": pid,
-                    })
+                    face_list.append(
+                        {
+                            "face_idx": idx,
+                            "is_cylinder": is_cyl,
+                            "is_plane": is_plane,
+                            "normal": [round(n, 6) for n in normal],
+                            "centroid": [
+                                round(cx * 1000, 3),
+                                round(cy * 1000, 3),
+                                round(cz * 1000, 3),
+                            ],
+                            "persist_id": pid,
+                        }
+                    )
                 except Exception:
                     pass
             return face_list
@@ -199,8 +242,12 @@ def run() -> bool:
 
     faces_a = probe_faces(PART_A_PATH)
     faces_b = probe_faces(PART_B_PATH)
-    print(f"  Part A: {len(faces_a)} faces ({sum(1 for f in faces_a if f['is_cylinder'])} cyl)")
-    print(f"  Part B: {len(faces_b)} faces ({sum(1 for f in faces_b if f['is_cylinder'])} cyl)")
+    print(
+        f"  Part A: {len(faces_a)} faces ({sum(1 for f in faces_a if f['is_cylinder'])} cyl)"
+    )
+    print(
+        f"  Part B: {len(faces_b)} faces ({sum(1 for f in faces_b if f['is_cylinder'])} cyl)"
+    )
 
     fa_cyl = find_cylindrical(faces_a)
     fa_top = find_planar(faces_a, [0, 0, 1], z_approx=10)
@@ -211,8 +258,9 @@ def run() -> bool:
     fb_right = find_planar(faces_b, [1, 0, 0])
     fb_left = find_planar(faces_b, [-1, 0, 0])
 
-    all_faces = all([fa_cyl, fa_top, fa_right, fa_front, fa_left,
-                     fb_bottom, fb_right, fb_left])
+    all_faces = all(
+        [fa_cyl, fa_top, fa_right, fa_front, fa_left, fb_bottom, fb_right, fb_left]
+    )
     gate("probe_faces", all_faces, f"cyl={fa_cyl is not None}")
     if not all_faces:
         return False
@@ -228,6 +276,7 @@ def run() -> bool:
     # Create assembly
     print("\n--- Step 3: Assembly ---")
     import glob
+
     asm_templates = glob.glob(
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
     )
@@ -257,7 +306,9 @@ def run() -> bool:
     }
     feat, err = create_mate(asm_doc, placed, tangent_spec, mod=mod)
     gate("tangent", feat is not None, f"error={err}")
-    results["per_mate_results"].append({"type": "tangent", "created": feat is not None, "error": err})
+    results["per_mate_results"].append(
+        {"type": "tangent", "created": feat is not None, "error": err}
+    )
 
     # === Mate 2: Angle (45°) ===
     print("\n--- Mate 2: Angle (45°) ---")
@@ -270,7 +321,14 @@ def run() -> bool:
     }
     feat2, err2 = create_mate(asm_doc, placed, angle_spec, mod=mod)
     gate("angle_45", feat2 is not None, f"error={err2}")
-    results["per_mate_results"].append({"type": "angle", "value_deg": 45.0, "created": feat2 is not None, "error": err2})
+    results["per_mate_results"].append(
+        {
+            "type": "angle",
+            "value_deg": 45.0,
+            "created": feat2 is not None,
+            "error": err2,
+        }
+    )
 
     # === Mate 3: Limit distance (5mm, limits 3-7mm) ===
     print("\n--- Mate 3: Limit distance (3-7mm) ---")
@@ -284,26 +342,36 @@ def run() -> bool:
     }
     feat3, err3 = create_mate(asm_doc, placed, limit_spec, mod=mod)
     gate("limit_distance", feat3 is not None, f"error={err3}")
-    results["per_mate_results"].append({"type": "distance_limit", "created": feat3 is not None, "error": err3})
+    results["per_mate_results"].append(
+        {"type": "distance_limit", "created": feat3 is not None, "error": err3}
+    )
 
     # === Mate 4: Width (groove=part_a sides, tab=part_b sides) ===
     print("\n--- Mate 4: Width ---")
     # Width uses WidthSelection + TabSelection, not EntitiesToMate
     groove_left = resolve_component_face(
-        asm_doc, placed["part_a"],
-        {"normal": [-1, 0, 0], "centroid": fa_left["centroid"]}, mod=mod
+        asm_doc,
+        placed["part_a"],
+        {"normal": [-1, 0, 0], "centroid": fa_left["centroid"]},
+        mod=mod,
     )
     groove_right = resolve_component_face(
-        asm_doc, placed["part_a"],
-        {"normal": [1, 0, 0], "centroid": fa_right["centroid"]}, mod=mod
+        asm_doc,
+        placed["part_a"],
+        {"normal": [1, 0, 0], "centroid": fa_right["centroid"]},
+        mod=mod,
     )
     tab_left = resolve_component_face(
-        asm_doc, placed["part_b"],
-        {"normal": [-1, 0, 0], "centroid": fb_left["centroid"]}, mod=mod
+        asm_doc,
+        placed["part_b"],
+        {"normal": [-1, 0, 0], "centroid": fb_left["centroid"]},
+        mod=mod,
     )
     tab_right = resolve_component_face(
-        asm_doc, placed["part_b"],
-        {"normal": [1, 0, 0], "centroid": fb_right["centroid"]}, mod=mod
+        asm_doc,
+        placed["part_b"],
+        {"normal": [1, 0, 0], "centroid": fb_right["centroid"]},
+        mod=mod,
     )
 
     width_resolved = all([groove_left.ok, groove_right.ok, tab_left.ok, tab_right.ok])
@@ -316,16 +384,19 @@ def run() -> bool:
             w_iface = typed_qi(md, "IWidthMateFeatureData", module=mod)
             w_iface.WidthSelection = w32.VARIANT(
                 pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-                (groove_left.entity, groove_right.entity)
+                (groove_left.entity, groove_right.entity),
             )
             w_iface.TabSelection = w32.VARIANT(
                 pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-                (tab_left.entity, tab_right.entity)
+                (tab_left.entity, tab_right.entity),
             )
             mate_ret = typed_asm.CreateMate(md)
             width_created = mate_ret is not None and not isinstance(mate_ret, int)
-            gate("width_mate", width_created,
-                 f"ret={type(mate_ret).__name__ if mate_ret else None}")
+            gate(
+                "width_mate",
+                width_created,
+                f"ret={type(mate_ret).__name__ if mate_ret else None}",
+            )
         except Exception as e:
             gate("width_mate", False, f"raised: {type(e).__name__}: {e}")
 
@@ -341,12 +412,17 @@ def run() -> bool:
     vm = verify_mates(asm_doc, mod=mod)
     print(f"  {len(vm)} mates found:")
     for m in vm:
-        print(f"    {m['name']}: type={m['type']}, solved={m['solved']}, "
-              f"error_code={m['error_code']}")
+        print(
+            f"    {m['name']}: type={m['type']}, solved={m['solved']}, "
+            f"error_code={m['error_code']}"
+        )
 
     all_solved = len(vm) >= 4 and all(m.get("solved") for m in vm)
-    gate("verify_mates_all_solved", all_solved,
-         f"total={len(vm)}, solved={sum(1 for m in vm if m.get('solved'))}")
+    gate(
+        "verify_mates_all_solved",
+        all_solved,
+        f"total={len(vm)}, solved={sum(1 for m in vm if m.get('solved'))}",
+    )
 
     # Cleanup
     try:
@@ -365,7 +441,8 @@ def main() -> int:
         results["overall"] = "GREEN" if ok else "FAIL"
         results["verdict"] = (
             "All four Phase-3 mate types created and verified solved"
-            if ok else "Some mates failed or unsolved"
+            if ok
+            else "Some mates failed or unsolved"
         )
     finally:
         pythoncom.CoUninitialize()

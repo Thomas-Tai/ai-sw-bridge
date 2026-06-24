@@ -48,11 +48,7 @@ def main() -> int:
         verdict = (
             "PASS"
             if (res["ok"] and delta_ok and survived)
-            else (
-                "NO_OP"
-                if res["call_ok"] and res["segment_delta"] == 0
-                else "FAIL"
-            )
+            else ("NO_OP" if res["call_ok"] and res["segment_delta"] == 0 else "FAIL")
         )
         print(
             json.dumps(

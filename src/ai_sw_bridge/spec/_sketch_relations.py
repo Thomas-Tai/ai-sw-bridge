@@ -129,9 +129,7 @@ def _open_sketch_for_edit(doc: Any, sketch_name: str) -> Any:
     doc.SketchManager.InsertSketch(True)
     sk = doc.GetActiveSketch2
     if sk is None:
-        raise RelationError(
-            f"could not open sketch '{sketch_name}' for editing"
-        )
+        raise RelationError(f"could not open sketch '{sketch_name}' for editing")
     return sk
 
 
@@ -254,12 +252,14 @@ def apply_relations_in_open_sketch(
                     f"(sketch has {len(segments)} segments)"
                 )
                 errors.append(err)
-                results.append({
-                    "index": i,
-                    "type": rtype,
-                    "ok": False,
-                    "error": err,
-                })
+                results.append(
+                    {
+                        "index": i,
+                        "type": rtype,
+                        "ok": False,
+                        "error": err,
+                    }
+                )
                 continue
 
         if errors:
@@ -272,16 +272,16 @@ def apply_relations_in_open_sketch(
         doc.ClearSelection2(True)
         for j, idx in enumerate(entity_indices):
             if not _select_segment(segments[idx], append=(j > 0), mark=0):
-                err = (
-                    f"relations[{i}]: could not select segment at index {idx}"
-                )
+                err = f"relations[{i}]: could not select segment at index {idx}"
                 errors.append(err)
-                results.append({
-                    "index": i,
-                    "type": rtype,
-                    "ok": False,
-                    "error": err,
-                })
+                results.append(
+                    {
+                        "index": i,
+                        "type": rtype,
+                        "ok": False,
+                        "error": err,
+                    }
+                )
                 break
         else:
             # Apply constraint via IModelDoc2.SketchAddConstraints
@@ -294,27 +294,31 @@ def apply_relations_in_open_sketch(
                     f"failed: {exc!r}"
                 )
                 errors.append(err)
-                results.append({
-                    "index": i,
-                    "type": rtype,
-                    "ok": False,
-                    "error": err,
-                })
+                results.append(
+                    {
+                        "index": i,
+                        "type": rtype,
+                        "ok": False,
+                        "error": err,
+                    }
+                )
                 continue
 
             # Verify: relation count increased
             count_after = _count_relations(sk)
             constrained = count_after > count_before
 
-            results.append({
-                "index": i,
-                "type": rtype,
-                "token": token,
-                "ok": True,
-                "relation_count_before": count_before,
-                "relation_count_after": count_after,
-                "constrained": constrained,
-            })
+            results.append(
+                {
+                    "index": i,
+                    "type": rtype,
+                    "token": token,
+                    "ok": True,
+                    "relation_count_before": count_before,
+                    "relation_count_after": count_after,
+                    "constrained": constrained,
+                }
+            )
 
     return {
         "ok": len(errors) == 0,
@@ -368,8 +372,7 @@ def apply_relations_to_sketch(
     result["lengths_before"] = lengths_before
     result["lengths_after"] = lengths_after
     result["geometry_moved"] = any(
-        abs(a - b) > 1e-9
-        for a, b in zip(lengths_before, lengths_after)
+        abs(a - b) > 1e-9 for a, b in zip(lengths_before, lengths_after)
     )
 
     return result

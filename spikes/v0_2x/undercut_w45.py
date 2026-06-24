@@ -77,10 +77,29 @@ def _boss_up(doc) -> None:
     sm.InsertSketch(True)
     fm = doc.FeatureManager
     feat = fm.FeatureExtrusion2(
-        True, False, False, SW_END_COND_BLIND, 0,
-        BOSS_H, 0.0, False, False, False, False,
-        0.0, 0.0, False, False, False, False,
-        True, True, True, 0, 0.0, False,
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,
+        BOSS_H,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
+        False,
     )
     if feat is None:
         raise RuntimeError("FeatureExtrusion2 returned None")
@@ -111,11 +130,33 @@ def _cut_overhang(doc) -> None:
     fm = doc.FeatureManager
     # FeatureCut4 (27-arg verified form -- mirrors spec/builder.py).
     cut = fm.FeatureCut4(
-        True, False, False, SW_END_COND_BLIND, 0,   # 1-5
-        0.008, 0.0, False, False, False, False,     # 6-11
-        0.0, 0.0, False, False, False, False,       # 12-17
-        False, True, True, True, True, False,       # 18-23
-        0, 0.0, False, False,                       # 24-27
+        True,
+        False,
+        False,
+        SW_END_COND_BLIND,
+        0,  # 1-5
+        0.008,
+        0.0,
+        False,
+        False,
+        False,
+        False,  # 6-11
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,  # 12-17
+        False,
+        True,
+        True,
+        True,
+        True,
+        False,  # 18-23
+        0,
+        0.0,
+        False,
+        False,  # 24-27
     )
     if cut is None:
         raise RuntimeError("FeatureCut4 returned None (undercut cut failed)")

@@ -104,17 +104,17 @@ PROFILE_W_M = 0.060
 PROFILE_H_M = 0.040
 
 # Base flange call args — all probe-grade "safe" values.
-SM_THICKNESS_M = 0.0015    # 1.5 mm wall / gauge-equivalent
-SM_REVERSE = False         # extrude in +z direction
+SM_THICKNESS_M = 0.0015  # 1.5 mm wall / gauge-equivalent
+SM_REVERSE = False  # extrude in +z direction
 SM_BEND_RADIUS_M = 0.0015  # 1.5 mm bend radius (equals thickness — common default)
-SM_K_FACTOR = 0.44         # industry default k-factor for mild steel
-SM_RELIEF_TYPE = 0         # swReliefRectangular = 0 (probe default; scan if needed)
-SM_RELIEF_W_M = 0.00125    # 1.25 mm relief width
-SM_RELIEF_D_M = 0.00125    # 1.25 mm relief depth
-SM_RELIEF_RATIO = 0.5      # oblong/tear relief ratio (unused for rectangular, still passed)
-SM_AUTO_RELIEF = True      # let SW calculate relief geometry
-SM_FORM_FEATURE = False    # no form feature on bend
-SM_MERGE_RESULT = True     # merge into single body
+SM_K_FACTOR = 0.44  # industry default k-factor for mild steel
+SM_RELIEF_TYPE = 0  # swReliefRectangular = 0 (probe default; scan if needed)
+SM_RELIEF_W_M = 0.00125  # 1.25 mm relief width
+SM_RELIEF_D_M = 0.00125  # 1.25 mm relief depth
+SM_RELIEF_RATIO = 0.5  # oblong/tear relief ratio (unused for rectangular, still passed)
+SM_AUTO_RELIEF = True  # let SW calculate relief geometry
+SM_FORM_FEATURE = False  # no form feature on bend
+SM_MERGE_RESULT = True  # merge into single body
 
 # swBodyType_e for flat sheet-metal body (value 9).
 # swSolidBody=0 is the general form; 9 = swSheetMetalFlattenedBody.
@@ -148,6 +148,7 @@ def _ensure_part_doc(sw: Any) -> Any:
 # Test fixture: sketch profile for base flange
 # ---------------------------------------------------------------------------
 
+
 def _build_profile_sketch(doc: Any) -> dict[str, Any]:
     """Open a profile sketch on Front Plane; leave it open for InsertSheetMetalBaseFlange2.
 
@@ -159,8 +160,12 @@ def _build_profile_sketch(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -PROFILE_W_M / 2, -PROFILE_H_M / 2, 0.0,
-        PROFILE_W_M / 2,  PROFILE_H_M / 2,  0.0,
+        -PROFILE_W_M / 2,
+        -PROFILE_H_M / 2,
+        0.0,
+        PROFILE_W_M / 2,
+        PROFILE_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)  # close the empty sketch so the doc is consistent
@@ -172,6 +177,7 @@ def _build_profile_sketch(doc: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Base flange probe
 # ---------------------------------------------------------------------------
+
 
 def _probe_base_flange(fm: Any) -> dict[str, Any]:
     """Try InsertSheetMetalBaseFlange2 with the 11-arg and 10-arg arities.
@@ -210,30 +216,36 @@ def _probe_base_flange(fm: Any) -> dict[str, Any]:
         try:
             feat = fm.InsertSheetMetalBaseFlange2(*args)
         except pywintypes.com_error as e:
-            attempts.append({
-                "arity": label,
-                "status": "COM_ERROR",
-                "hresult": f"{getattr(e, 'hresult', None):#010x}",
-                "description": getattr(e, "strerror", str(e)),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
-            })
+            attempts.append(
+                {
+                    "arity": label,
+                    "status": "COM_ERROR",
+                    "hresult": f"{getattr(e, 'hresult', None):#010x}",
+                    "description": getattr(e, "strerror", str(e)),
+                    "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+                }
+            )
             continue
         except Exception as e:
-            attempts.append({
-                "arity": label,
-                "status": "PY_EXCEPTION",
-                "exception_type": type(e).__name__,
-                "message": str(e),
-                "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
-            })
+            attempts.append(
+                {
+                    "arity": label,
+                    "status": "PY_EXCEPTION",
+                    "exception_type": type(e).__name__,
+                    "message": str(e),
+                    "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+                }
+            )
             continue
         elapsed = (time.perf_counter() - t0) * 1000.0
         if feat is None:
-            attempts.append({
-                "arity": label,
-                "status": "NONE_RETURNED",
-                "elapsed_ms": elapsed,
-            })
+            attempts.append(
+                {
+                    "arity": label,
+                    "status": "NONE_RETURNED",
+                    "elapsed_ms": elapsed,
+                }
+            )
         else:
             rec: dict[str, Any] = {
                 "arity": label,
@@ -263,6 +275,7 @@ def _probe_base_flange(fm: Any) -> dict[str, Any]:
 # Arg / return type-tag probe
 # ---------------------------------------------------------------------------
 
+
 def _probe_flange_args(feat: Any) -> dict[str, Any]:
     """Read back the base flange feature data to confirm arg round-trip.
 
@@ -281,7 +294,9 @@ def _probe_flange_args(feat: Any) -> dict[str, Any]:
         rec["GetDefinition_type"] = _type_tag(defn)
     except pywintypes.com_error as e:
         rec["GetDefinition_status"] = "COM_ERROR"
-        rec["GetDefinition_error"] = f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+        rec["GetDefinition_error"] = (
+            f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+        )
         defn = None
     except Exception as e:
         rec["GetDefinition_status"] = "PY_EXCEPTION"
@@ -305,7 +320,9 @@ def _probe_flange_args(feat: Any) -> dict[str, Any]:
                 rec[f"{label}_read_status"] = "OK"
             except pywintypes.com_error as e:
                 rec[f"{label}_read_status"] = "COM_ERROR"
-                rec[f"{label}_read_error"] = f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+                rec[f"{label}_read_error"] = (
+                    f"{getattr(e, 'hresult', None):#010x} {getattr(e, 'strerror', str(e))}"
+                )
             except Exception as e:
                 rec[f"{label}_read_status"] = "PY_EXCEPTION"
                 rec[f"{label}_read_error"] = f"{type(e).__name__}: {e}"
@@ -317,6 +334,7 @@ def _probe_flange_args(feat: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Flat-pattern config probe
 # ---------------------------------------------------------------------------
+
 
 def _probe_flat_pattern_config(doc: Any) -> dict[str, Any]:
     """Scan all configs for the flat-pattern config and activate it.
@@ -386,6 +404,7 @@ def _probe_flat_pattern_config(doc: Any) -> dict[str, Any]:
 # Flat body probe
 # ---------------------------------------------------------------------------
 
+
 def _probe_flat_body(doc: Any) -> dict[str, Any]:
     """Retrieve the flattened sheet-metal body from the active config.
 
@@ -423,6 +442,7 @@ def _probe_flat_body(doc: Any) -> dict[str, Any]:
 # Flat-pattern DXF export probe
 # ---------------------------------------------------------------------------
 
+
 def _probe_flat_pattern_dxf(doc: Any, keep_files: bool) -> dict[str, Any]:
     """Probe ExportToDWG2 for flat-pattern DXF output.
 
@@ -445,15 +465,15 @@ def _probe_flat_pattern_dxf(doc: Any, keep_files: bool) -> dict[str, Any]:
     t0 = time.perf_counter()
     try:
         result = ext.ExportToDWG2(
-            str(dxf_path),          # file path
-            doc,                    # IModelDoc2
+            str(dxf_path),  # file path
+            doc,  # IModelDoc2
             SW_DWG_EXPORT_SHEETMETAL,  # export type
-            False,                  # bExportAllSheets — N/A for sheet metal
-            False,                  # bAlignView
-            False,                  # bUseTemplatSize
-            None,                   # pDWGPages
-            None,                   # pInsertionPoint
-            1.0,                    # dScaleFactor
+            False,  # bExportAllSheets — N/A for sheet metal
+            False,  # bAlignView
+            False,  # bUseTemplatSize
+            None,  # pDWGPages
+            None,  # pInsertionPoint
+            1.0,  # dScaleFactor
         )
         rec["status"] = "OK"
         rec["return_value"] = result
@@ -485,6 +505,7 @@ def _probe_flat_pattern_dxf(doc: Any, keep_files: bool) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Top-level COM run
 # ---------------------------------------------------------------------------
+
 
 def run_com(skip_build: bool, keep_files: bool) -> dict[str, Any]:
     sw = get_sw_app()
@@ -589,6 +610,7 @@ def run_com(skip_build: bool, keep_files: bool) -> dict[str, Any]:
 # VBA oracle (early-binding)
 # ---------------------------------------------------------------------------
 
+
 def emit_vba() -> str:
     """Early-binding oracle for the sheet-metal base flange + flat-pattern pipeline.
 
@@ -683,25 +705,32 @@ End Sub
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
-        "--mode", choices=["com", "vba"], default="com",
+        "--mode",
+        choices=["com", "vba"],
+        default="com",
         help="com = drive SW from Python; vba = emit the .bas oracle.",
     )
     p.add_argument(
-        "--skip-build", action="store_true",
+        "--skip-build",
+        action="store_true",
         help="Skip creating the profile sketch; probe a sheet-metal part already open.",
     )
     p.add_argument(
-        "--keep-files", action="store_true",
+        "--keep-files",
+        action="store_true",
         help="Retain the exported DXF file for manual inspection.",
     )
     p.add_argument(
-        "--out", type=Path, default=None,
+        "--out",
+        type=Path,
+        default=None,
         help="Write JSON report to this path instead of stdout.",
     )
     args = p.parse_args()

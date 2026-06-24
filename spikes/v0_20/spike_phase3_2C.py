@@ -82,6 +82,7 @@ def run() -> str:
 
     # Create assembly
     import glob
+
     asm_templates = glob.glob(
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\*.ASMDOT"
     )
@@ -96,7 +97,11 @@ def run() -> str:
     print("\n--- Characterization 1: CreateMateData(11) ---")
     try:
         md = typed_asm.CreateMateData(11)
-        gate("create_mate_data_width", md is not None, f"md={type(md).__name__ if md else None}")
+        gate(
+            "create_mate_data_width",
+            md is not None,
+            f"md={type(md).__name__ if md else None}",
+        )
     except Exception as e:
         gate("create_mate_data_width", False, f"raised: {e}")
         md = None
@@ -116,14 +121,21 @@ def run() -> str:
     # Characterization 3: Property types
     print("\n--- Characterization 3: Width mate properties ---")
     props_info = {}
-    for prop_name in ["WidthSelection", "TabSelection", "ConstraintType",
-                       "DistanceFromEnd", "PercentDistanceFromEnd", "FlipDimension"]:
+    for prop_name in [
+        "WidthSelection",
+        "TabSelection",
+        "ConstraintType",
+        "DistanceFromEnd",
+        "PercentDistanceFromEnd",
+        "FlipDimension",
+    ]:
         try:
             val = getattr(w_iface, prop_name)
             props_info[prop_name] = {
                 "value": repr(val),
                 "type": type(val).__name__,
-                "is_method": callable(val) and not isinstance(val, (int, float, bool, str)),
+                "is_method": callable(val)
+                and not isinstance(val, (int, float, bool, str)),
             }
             print(f"  {prop_name}: {repr(val)[:80]} ({type(val).__name__})")
         except Exception as e:
@@ -158,8 +170,13 @@ def run() -> str:
         "schema_version": 1,
         "name": "WidthGroove",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "width": 40.0, "height": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 10.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
@@ -169,17 +186,24 @@ def run() -> str:
         "schema_version": 1,
         "name": "WidthTab",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "width": 20.0, "height": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 20.0,
+                "height": 10.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
 
-    for label, path, spec in [("A", PART_A_PATH, PART_SPEC_A), ("B", PART_B_PATH, PART_SPEC_B)]:
+    for label, path, spec in [
+        ("A", PART_A_PATH, PART_SPEC_A),
+        ("B", PART_B_PATH, PART_SPEC_B),
+    ]:
         print(f"  Building Part {label}...")
         r = part_build(spec, save_as=path, save_format="current", no_dim=True)
-        gate(f"build_part_{label.lower()}", r.ok and os.path.isfile(path),
-             f"ok={r.ok}")
+        gate(f"build_part_{label.lower()}", r.ok and os.path.isfile(path), f"ok={r.ok}")
 
     if not os.path.isfile(PART_A_PATH) or not os.path.isfile(PART_B_PATH):
         gate("parts_built", False, "Part build failed")
@@ -187,6 +211,7 @@ def run() -> str:
 
     # Probe faces for width mate
     from ai_sw_bridge.com.earlybind import typed_extension
+
     def get_planar_faces(part_path, normal_target):
         ret = tsw.OpenDoc6(part_path, 1, 1, "", 0, 0)
         doc = ret[0] if isinstance(ret, tuple) else ret
@@ -219,12 +244,18 @@ def run() -> str:
                     cx = (bbox[0] + bbox[3]) / 2.0
                     cy = (bbox[1] + bbox[4]) / 2.0
                     cz = (bbox[2] + bbox[5]) / 2.0
-                    result.append({
-                        "entity": face,
-                        "persist_id": pid,
-                        "centroid": [round(cx * 1000, 3), round(cy * 1000, 3), round(cz * 1000, 3)],
-                        "normal": [round(n, 6) for n in n],
-                    })
+                    result.append(
+                        {
+                            "entity": face,
+                            "persist_id": pid,
+                            "centroid": [
+                                round(cx * 1000, 3),
+                                round(cy * 1000, 3),
+                                round(cz * 1000, 3),
+                            ],
+                            "normal": [round(n, 6) for n in n],
+                        }
+                    )
             return result
         finally:
             title = doc.GetTitle() if callable(doc.GetTitle) else doc.GetTitle
@@ -240,8 +271,12 @@ def run() -> str:
     print(f"  Tab left faces: {len(faces_b_left)}, right: {len(faces_b_right)}")
 
     has_faces = all([faces_a_left, faces_a_right, faces_b_left, faces_b_right])
-    gate("width_faces", has_faces, f"groove L={len(faces_a_left)}, R={len(faces_a_right)}, "
-         f"tab L={len(faces_b_left)}, R={len(faces_b_right)}")
+    gate(
+        "width_faces",
+        has_faces,
+        f"groove L={len(faces_a_left)}, R={len(faces_a_right)}, "
+        f"tab L={len(faces_b_left)}, R={len(faces_b_right)}",
+    )
 
     if not has_faces:
         return "PARTIAL"
@@ -274,14 +309,19 @@ def run() -> str:
     tab_right_ref = {"normal": [1, 0, 0], "centroid": faces_b_right[0]["centroid"]}
 
     groove_left = resolve_component_face(asm_doc, groove_comp, groove_left_ref, mod=mod)
-    groove_right = resolve_component_face(asm_doc, groove_comp, groove_right_ref, mod=mod)
+    groove_right = resolve_component_face(
+        asm_doc, groove_comp, groove_right_ref, mod=mod
+    )
     tab_left = resolve_component_face(asm_doc, tab_comp, tab_left_ref, mod=mod)
     tab_right = resolve_component_face(asm_doc, tab_comp, tab_right_ref, mod=mod)
 
     all_resolved = all([groove_left.ok, groove_right.ok, tab_left.ok, tab_right.ok])
-    gate("resolve_faces", all_resolved,
-         f"groove_L={groove_left.ok}, groove_R={groove_right.ok}, "
-         f"tab_L={tab_left.ok}, tab_R={tab_right.ok}")
+    gate(
+        "resolve_faces",
+        all_resolved,
+        f"groove_L={groove_left.ok}, groove_R={groove_right.ok}, "
+        f"tab_L={tab_left.ok}, tab_R={tab_right.ok}",
+    )
 
     if not all_resolved:
         return "PARTIAL"
@@ -290,11 +330,11 @@ def run() -> str:
     try:
         width_faces = w32.VARIANT(
             pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            (groove_left.entity, groove_right.entity)
+            (groove_left.entity, groove_right.entity),
         )
         tab_faces = w32.VARIANT(
             pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH,
-            (tab_left.entity, tab_right.entity)
+            (tab_left.entity, tab_right.entity),
         )
 
         w_iface.WidthSelection = width_faces
@@ -308,12 +348,16 @@ def run() -> str:
         # Try CreateMate
         mate_ret = typed_asm.CreateMate(md)
         mate_ok = mate_ret is not None and not isinstance(mate_ret, int)
-        gate("create_width_mate", mate_ok,
-             f"mate_ret={type(mate_ret).__name__ if mate_ret else None}")
+        gate(
+            "create_width_mate",
+            mate_ok,
+            f"mate_ret={type(mate_ret).__name__ if mate_ret else None}",
+        )
 
         if mate_ok:
             # Verify the mate is solved
             from ai_sw_bridge.assembly.handlers import verify_mates
+
             try:
                 asm_doc.ForceRebuild3(True)
             except Exception:
@@ -322,11 +366,16 @@ def run() -> str:
             results["verify_mates"] = vm
             print(f"\n  verify_mates: {len(vm)} mates:")
             for m in vm:
-                print(f"    {m['name']}: type={m['type']}, solved={m['solved']}, "
-                      f"error_code={m['error_code']}")
+                print(
+                    f"    {m['name']}: type={m['type']}, solved={m['solved']}, "
+                    f"error_code={m['error_code']}"
+                )
             all_solved = len(vm) > 0 and all(m.get("solved") for m in vm)
-            gate("width_mate_solved", all_solved,
-                 f"total={len(vm)}, solved={sum(1 for m in vm if m.get('solved'))}")
+            gate(
+                "width_mate_solved",
+                all_solved,
+                f"total={len(vm)}, solved={sum(1 for m in vm if m.get('solved'))}",
+            )
             if all_solved:
                 results["overall"] = "GREEN"
                 return "GREEN"
@@ -351,7 +400,9 @@ def run() -> str:
         return "WALL"
     finally:
         try:
-            title = asm_doc.GetTitle() if callable(asm_doc.GetTitle) else asm_doc.GetTitle
+            title = (
+                asm_doc.GetTitle() if callable(asm_doc.GetTitle) else asm_doc.GetTitle
+            )
             sw.CloseDoc(title)
         except Exception:
             pass

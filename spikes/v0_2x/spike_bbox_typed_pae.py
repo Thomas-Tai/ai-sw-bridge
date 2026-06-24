@@ -15,6 +15,7 @@ ghost) to the callout-free ``verify.find_feature_by_name`` (GetFeatures(True) wa
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_bbox_typed_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -53,7 +54,9 @@ def gate(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _RESULTS.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -93,10 +96,12 @@ def main() -> int:
     client = SolidWorksClient()
     _RESULTS.mkdir(parents=True, exist_ok=True)
     try:
-        gate("facade_seam",
-             hasattr(client.mutate, "propose_feature_add")
-             and hasattr(client.mutate, "commit_feature_add"),
-             "lifecycle verbs present")
+        gate(
+            "facade_seam",
+            hasattr(client.mutate, "propose_feature_add")
+            and hasattr(client.mutate, "commit_feature_add"),
+            "lifecycle verbs present",
+        )
 
         path = _RESULTS / "bbox_typed_pae.sldprt"
         _build_block_to_disk(sw, path)
@@ -108,20 +113,37 @@ def main() -> int:
             str(path), {"type": "bounding_box"}, {"plane": "Front Plane"}
         )
         pid = prop.get("proposal_id")
-        dr = client.mutate.dry_run_feature_add(pid) if pid else {"error": "no proposal_id"}
+        dr = (
+            client.mutate.dry_run_feature_add(pid)
+            if pid
+            else {"error": "no proposal_id"}
+        )
         results["propose"] = prop
         results["dry_run"] = dr
-        ok_b = (pid is not None and dr.get("state") == "dry_run_ok"
-                and not dr.get("error"))
-        gate("dry_run", bool(ok_b),
-             f"pid={pid} state={dr.get('state')} err={dr.get('error')}")
+        ok_b = (
+            pid is not None and dr.get("state") == "dry_run_ok" and not dr.get("error")
+        )
+        gate(
+            "dry_run",
+            bool(ok_b),
+            f"pid={pid} state={dr.get('state')} err={dr.get('error')}",
+        )
 
         # C: commit through the TYPED transaction.
-        cm = client.mutate.commit_feature_add(pid) if pid else {"error": "no proposal_id"}
+        cm = (
+            client.mutate.commit_feature_add(pid)
+            if pid
+            else {"error": "no proposal_id"}
+        )
         results["commit"] = cm
-        ok_c = cm.get("ok") is True and cm.get("doc_saved") is True and not cm.get("error")
-        gate("commit", bool(ok_c),
-             f"ok={cm.get('ok')} saved={cm.get('doc_saved')} err={cm.get('error')}")
+        ok_c = (
+            cm.get("ok") is True and cm.get("doc_saved") is True and not cm.get("error")
+        )
+        gate(
+            "commit",
+            bool(ok_c),
+            f"ok={cm.get('ok')} saved={cm.get('doc_saved')} err={cm.get('error')}",
+        )
 
         # D: reopen witness — a BoundingBox-typed node really exists.
         doc = _reopen(sw, path)
@@ -134,8 +156,11 @@ def main() -> int:
             except Exception:
                 tname = "<type?>"
         _close_all(sw)
-        gate("reopen_witness", node is not None,
-             f"bbox_node_present={node is not None} type={tname!r}")
+        gate(
+            "reopen_witness",
+            node is not None,
+            f"bbox_node_present={node is not None} type={tname!r}",
+        )
     finally:
         _close_all(sw)
         pythoncom.CoUninitialize()

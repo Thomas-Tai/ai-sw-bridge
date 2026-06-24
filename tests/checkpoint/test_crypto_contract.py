@@ -36,9 +36,7 @@ def _child_env() -> dict[str, str]:
     ``python -m ai_sw_bridge.*`` resolves the package regardless of cwd."""
     env = dict(os.environ)
     existing = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = (
-        _SRC_DIR + os.pathsep + existing if existing else _SRC_DIR
-    )
+    env["PYTHONPATH"] = _SRC_DIR + os.pathsep + existing if existing else _SRC_DIR
     return env
 
 

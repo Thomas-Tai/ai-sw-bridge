@@ -61,8 +61,10 @@ def create_linear_pattern(
             return False, "target.seed must be a non-empty feature name"
         seed_names = [single]
     else:
-        if not isinstance(seeds, list) or not seeds or not all(
-            isinstance(s, str) and s for s in seeds
+        if (
+            not isinstance(seeds, list)
+            or not seeds
+            or not all(isinstance(s, str) and s for s in seeds)
         ):
             return False, "target.seeds must be a non-empty list of feature names"
         seed_names = seeds
@@ -87,13 +89,21 @@ def create_linear_pattern(
             return False, "target.direction2 must be a dict with x, y, z (mm)"
         count2 = feature.get("count2") if isinstance(feature, dict) else None
         if not isinstance(count2, int) or count2 < 2:
-            return False, "feature.count2 must be an integer >= 2 when direction2 is set"
+            return (
+                False,
+                "feature.count2 must be an integer >= 2 when direction2 is set",
+            )
         spacing2_mm = feature.get("spacing2_mm") if isinstance(feature, dict) else None
         if not isinstance(spacing2_mm, (int, float)) or spacing2_mm <= 0:
-            return False, "feature.spacing2_mm must be a positive number when direction2 is set"
+            return (
+                False,
+                "feature.spacing2_mm must be a positive number when direction2 is set",
+            )
         num2 = count2
         spacing2_m = float(spacing2_mm) / 1000.0
-        flip2 = bool(feature.get("flip2", False)) if isinstance(feature, dict) else False
+        flip2 = (
+            bool(feature.get("flip2", False)) if isinstance(feature, dict) else False
+        )
 
     doc.ForceRebuild3(False)
     try:
@@ -143,15 +153,35 @@ def create_linear_pattern(
         # 3. FeatureLinearPattern5 (22 args)
         spacing_m = float(spacing_mm) / 1000.0
         feat = fm.FeatureLinearPattern5(
-            count, spacing_m, num2, spacing2_m,
-            flip, flip2, "", "",
-            False, False, False, False,
-            False, False, False, False,
-            False, False, 0.0, 0.0, False, False,
+            count,
+            spacing_m,
+            num2,
+            spacing2_m,
+            flip,
+            flip2,
+            "",
+            "",
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
         )
         if _materialized(feat):
             return True, None
-        return False, "FeatureLinearPattern5 returned None (the seed feature was rejected by the API — e.g. an incompatible seed type)"
+        return (
+            False,
+            "FeatureLinearPattern5 returned None (the seed feature was rejected by the API — e.g. an incompatible seed type)",
+        )
     except Exception as exc:
         return False, f"linear pattern pipeline failed: {exc!r}"
 
@@ -180,7 +210,9 @@ def create_circular_pattern(
     count = feature.get("count") if isinstance(feature, dict) else None
     if not isinstance(count, int) or count < 2:
         return False, "feature.count must be an integer >= 2"
-    equal_spacing = bool(feature.get("equal_spacing", True)) if isinstance(feature, dict) else True
+    equal_spacing = (
+        bool(feature.get("equal_spacing", True)) if isinstance(feature, dict) else True
+    )
     angle_deg = feature.get("angle_deg", 360.0) if isinstance(feature, dict) else 360.0
     if not isinstance(angle_deg, (int, float)) or angle_deg <= 0:
         return False, "feature.angle_deg must be a positive number"
@@ -207,9 +239,20 @@ def create_circular_pattern(
         # 3. FeatureCircularPattern5 (14 args)
         # NOTE: Spacing is in DEGREES (not radians) — seat-proven W21 S4.
         feat = fm.FeatureCircularPattern5(
-            count, float(angle_deg), flip, "",
-            False, equal_spacing, False, False,
-            False, False, 1, 0.0, "", False,
+            count,
+            float(angle_deg),
+            flip,
+            "",
+            False,
+            equal_spacing,
+            False,
+            False,
+            False,
+            False,
+            1,
+            0.0,
+            "",
+            False,
         )
         if _materialized(feat):
             return True, None

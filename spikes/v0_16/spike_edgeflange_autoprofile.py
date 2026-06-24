@@ -19,6 +19,7 @@ v2 corrections:
 Usage:
     python spikes/v0_16/spike_edgeflange_autoprofile.py
 """
+
 from __future__ import annotations
 
 import json
@@ -79,7 +80,8 @@ def _rank_linear_edges(edges: list, mod: Any) -> list[dict]:
         ranked.append(info)
     linear = sorted(
         (r for r in ranked if r["is_line"]),
-        key=lambda r: r["length"], reverse=True,
+        key=lambda r: r["length"],
+        reverse=True,
     )
     return linear or sorted(ranked, key=lambda r: r["length"], reverse=True)
 
@@ -106,9 +108,15 @@ def _feature_types(doc: Any, mod: Any) -> list[dict[str, str]]:
 
 
 def _probe_legacy(
-    doc: Any, fm: Any, edge: Any, ranked_info: dict,
-    mark: int, opt_label: str, opts: int,
-    angle: float, radius: float,
+    doc: Any,
+    fm: Any,
+    edge: Any,
+    ranked_info: dict,
+    mark: int,
+    opt_label: str,
+    opts: int,
+    angle: float,
+    radius: float,
 ) -> dict[str, Any]:
     """InsertSheetMetalEdgeFlange2 with edge arg + VARIANT nulls."""
     vt_disp = w32.VARIANT(pythoncom.VT_DISPATCH, None)
@@ -122,8 +130,19 @@ def _probe_legacy(
     n_before = _feature_count(doc)
     try:
         ret = fm.InsertSheetMetalEdgeFlange2(
-            edge, vt_disp, opts, angle, radius,
-            1, OFFSET_50MM, 2, 0.5, 0.0, 0.0, 0, vt_disp,
+            edge,
+            vt_disp,
+            opts,
+            angle,
+            radius,
+            1,
+            OFFSET_50MM,
+            2,
+            0.5,
+            0.0,
+            0.0,
+            0,
+            vt_disp,
         )
         err = None
     except Exception as e:
@@ -148,9 +167,15 @@ def _probe_legacy(
 
 
 def _probe_preselect_only(
-    doc: Any, fm: Any, edge: Any, ranked_info: dict,
-    mark: int, opt_label: str, opts: int,
-    angle: float, radius: float,
+    doc: Any,
+    fm: Any,
+    edge: Any,
+    ranked_info: dict,
+    mark: int,
+    opt_label: str,
+    opts: int,
+    angle: float,
+    radius: float,
 ) -> dict[str, Any]:
     """InsertSheetMetalEdgeFlange2 with pre-selected edge only (None edge arg)."""
     vt_disp = w32.VARIANT(pythoncom.VT_DISPATCH, None)
@@ -164,8 +189,19 @@ def _probe_preselect_only(
     n_before = _feature_count(doc)
     try:
         ret = fm.InsertSheetMetalEdgeFlange2(
-            vt_disp, vt_disp, opts, angle, radius,
-            1, OFFSET_50MM, 2, 0.5, 0.0, 0.0, 0, vt_disp,
+            vt_disp,
+            vt_disp,
+            opts,
+            angle,
+            radius,
+            1,
+            OFFSET_50MM,
+            2,
+            0.5,
+            0.0,
+            0.0,
+            0,
+            vt_disp,
         )
         err = None
     except Exception as e:
@@ -190,8 +226,13 @@ def _probe_preselect_only(
 
 
 def _probe_legacy_no2(
-    doc: Any, fm: Any, edge: Any, ranked_info: dict,
-    mark: int, angle: float, radius: float,
+    doc: Any,
+    fm: Any,
+    edge: Any,
+    ranked_info: dict,
+    mark: int,
+    angle: float,
+    radius: float,
 ) -> dict[str, Any]:
     """InsertSheetMetalEdgeFlange (without "2") — 6-arg variant."""
     doc.ClearSelection2(True)
@@ -204,7 +245,12 @@ def _probe_legacy_no2(
     n_before = _feature_count(doc)
     try:
         ret = fm.InsertSheetMetalEdgeFlange(
-            edge, None, angle, radius, False, False,
+            edge,
+            None,
+            angle,
+            radius,
+            False,
+            False,
         )
         err = None
     except Exception as e:
@@ -264,7 +310,11 @@ def run() -> dict[str, Any]:
 
         ranked = _rank_linear_edges(edges, mod)
         result["edge_ranking"] = [
-            {"idx": r["index"], "line": r["is_line"], "mm": round(r["length"] * 1000, 2)}
+            {
+                "idx": r["index"],
+                "line": r["is_line"],
+                "mm": round(r["length"] * 1000, 2),
+            }
             for r in ranked[:6]
         ]
 
@@ -284,7 +334,9 @@ def run() -> dict[str, Any]:
                 for angle in angles:
                     for r in top_edges:
                         e = r["edge"]
-                        a = _probe_legacy(doc, fm, e, r, mark, opt_label, opts, angle, RADIUS_2MM)
+                        a = _probe_legacy(
+                            doc, fm, e, r, mark, opt_label, opts, angle, RADIUS_2MM
+                        )
                         attempts.append(a)
                         if a["materialized"]:
                             overall = "GREEN"
@@ -300,7 +352,17 @@ def run() -> dict[str, Any]:
             for mark in marks:
                 for opt_label, opts in opt_sets:
                     for r in top_edges[:2]:
-                        a = _probe_preselect_only(doc, fm, r["edge"], r, mark, opt_label, opts, ANGLE_90, RADIUS_2MM)
+                        a = _probe_preselect_only(
+                            doc,
+                            fm,
+                            r["edge"],
+                            r,
+                            mark,
+                            opt_label,
+                            opts,
+                            ANGLE_90,
+                            RADIUS_2MM,
+                        )
                         attempts.append(a)
                         if a["materialized"]:
                             overall = "GREEN"
@@ -313,7 +375,9 @@ def run() -> dict[str, Any]:
         if overall != "GREEN":
             for mark in marks:
                 for r in top_edges[:2]:
-                    a = _probe_legacy_no2(doc, fm, r["edge"], r, mark, ANGLE_90, RADIUS_2MM)
+                    a = _probe_legacy_no2(
+                        doc, fm, r["edge"], r, mark, ANGLE_90, RADIUS_2MM
+                    )
                     attempts.append(a)
                     if a["materialized"]:
                         overall = "GREEN"
@@ -328,11 +392,16 @@ def run() -> dict[str, Any]:
         if overall == "GREEN":
             winner = next(a for a in attempts if a["materialized"])
             result["winner"] = winner
-            feats = _feature_types(doc, fm, mod) if hasattr(fm, "unused") else _feature_types(doc, mod)
+            feats = (
+                _feature_types(doc, fm, mod)
+                if hasattr(fm, "unused")
+                else _feature_types(doc, mod)
+            )
             result["features_after"] = feats
             result["interpretation"] = (
                 "Auto-profile edge flange materialized via %s (mark=%d, opts=%s). "
-                "Ship as 14th kind." % (winner["route"], winner["mark"], winner.get("opts", "?"))
+                "Ship as 14th kind."
+                % (winner["route"], winner["mark"], winner.get("opts", "?"))
             )
         else:
             result["features_after"] = _feature_types(doc, mod)
@@ -366,7 +435,10 @@ def main() -> int:
     out = RESULTS_DIR / "edgeflange_autoprofile.json"
     out.write_text(payload, encoding="utf-8")
     print("wrote %s" % out)
-    print("overall: %s (%d attempts)" % (result.get("overall"), result.get("attempt_count", 0)))
+    print(
+        "overall: %s (%d attempts)"
+        % (result.get("overall"), result.get("attempt_count", 0))
+    )
     return {"GREEN": 0, "WALL": 2, "FAIL": 1}.get(result.get("overall"), 1)
 
 

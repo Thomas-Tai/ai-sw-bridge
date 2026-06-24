@@ -399,6 +399,10 @@ class TestDurableEdgeRef:
             )
 
     def test_frozen_and_equality(self):
-        a = DurableEdgeRef(persist_id=b"\x01", start=(0.0, 0.0, 0.0), end=(0.0, 0.0, 1.0), length=1.0)
-        b = DurableEdgeRef(persist_id=b"\x01", start=(0.0, 0.0, 0.0), end=(0.0, 0.0, 1.0), length=1.0)
+        a = DurableEdgeRef(
+            persist_id=b"\x01", start=(0.0, 0.0, 0.0), end=(0.0, 0.0, 1.0), length=1.0
+        )
+        b = DurableEdgeRef(
+            persist_id=b"\x01", start=(0.0, 0.0, 0.0), end=(0.0, 0.0, 1.0), length=1.0
+        )
         assert a == b and hash(a) == hash(b)

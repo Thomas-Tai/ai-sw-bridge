@@ -29,6 +29,7 @@ from ai_sw_bridge.features.scale import create_scale
 # Fake COM objects
 # ---------------------------------------------------------------------------
 
+
 class _FakeBody:
     """Fake IBody2 — whole-body select is the body's OWN native Select."""
 
@@ -70,6 +71,7 @@ class _FakeDoc:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _feat(**kw) -> dict:
     base = {"scale_factor": 1.5}
     base.update(kw)
@@ -105,10 +107,16 @@ def _wire(monkeypatch, *, vols=(1000.0, 3375.0), bodies=None) -> None:
 # flip without a second edit; W0 flips the sentinel after the seat proof).
 # ---------------------------------------------------------------------------
 
+
 class TestRegistrationGate:
     def test_spike_status_is_a_known_sentinel(self) -> None:
         assert sc.SPIKE_STATUS in {
-            "GREEN", "UNFIRED", "UNRUN", "DEFERRED", "WALLED", "DORMANT",
+            "GREEN",
+            "UNFIRED",
+            "UNRUN",
+            "DEFERRED",
+            "WALLED",
+            "DORMANT",
         }
 
     def test_registration_matches_spike_status(self) -> None:
@@ -124,6 +132,7 @@ class TestRegistrationGate:
 # ---------------------------------------------------------------------------
 # Validation — runs before any COM access
 # ---------------------------------------------------------------------------
+
 
 class TestValidation:
     def test_feature_not_dict(self):
@@ -174,6 +183,7 @@ class TestValidation:
 # Green path — ratio matches the commanded f**3
 # ---------------------------------------------------------------------------
 
+
 class TestGreen:
     def test_uniform_1p5_green(self, monkeypatch):
         _wire(monkeypatch, vols=(1000.0, 3375.0))
@@ -203,7 +213,9 @@ class TestGreen:
         _wire(monkeypatch, vols=(1000.0, 3375.0))
         doc = _FakeDoc()
         ok, _ = create_scale(
-            doc, _feat(scale_factor=1.5, origin="coordinate_system"), {},
+            doc,
+            _feat(scale_factor=1.5, origin="coordinate_system"),
+            {},
         )
         assert ok is True
         assert doc.FeatureManager.calls[0][0] == 2
@@ -233,6 +245,7 @@ class TestGreen:
 # ---------------------------------------------------------------------------
 # Ghost / wrong-magnitude rejection — the anti-ghost crux
 # ---------------------------------------------------------------------------
+
 
 class TestGhostRejection:
     def test_noop_ratio_one_rejected(self, monkeypatch):
@@ -265,6 +278,7 @@ class TestGhostRejection:
 # Never raises
 # ---------------------------------------------------------------------------
 
+
 class TestNeverRaises:
     def test_none_inputs(self):
         for _ in range(5):
@@ -273,4 +287,5 @@ class TestNeverRaises:
 
     def test_kind_disjoint_from_builtins(self):
         from ai_sw_bridge.mutate import _SUPPORTED_FEATURE_TYPES
+
         assert "scale" not in _SUPPORTED_FEATURE_TYPES

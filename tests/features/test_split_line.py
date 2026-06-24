@@ -122,9 +122,11 @@ def _patch(
       Shared fake data object — pass the SAME instance to ``_FakeFM(data=...)``
       so Mode-A tests can inspect AccessSelections/SplitType/ISetFaces afterwards.
     """
+
     def fake_typed_qi(obj: object, iface: str, **kw: object) -> object:
         if typed_qi_result == "raise":
             from ai_sw_bridge.com.earlybind import EarlyBindError
+
             raise EarlyBindError(f"E_NOINTERFACE: {iface}")
         if typed_qi_result == "none":
             return None
@@ -132,7 +134,8 @@ def _patch(
 
     monkeypatch.setattr(sl, "typed_qi", fake_typed_qi)
     monkeypatch.setattr(
-        sl, "select_entity",
+        sl,
+        "select_entity",
         lambda entity, *, append=False, mark=0: select_ok,
     )
 
@@ -168,6 +171,7 @@ class TestModeAQuarantined:
 
     def test_mode_a_returns_none_always(self) -> None:
         from ai_sw_bridge.features import split_line as sl
+
         assert sl._try_mode_a(_FakeDoc(), "Sketch2", object(), 0) is None
         assert sl._try_mode_a(None, "", object(), 1) is None
 
@@ -178,7 +182,9 @@ class TestModeAQuarantined:
 
 
 class TestModeB:
-    def test_mode_b_fallback_on_qi_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_mode_b_fallback_on_qi_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """typed_qi raises EarlyBindError → Mode-A fails → Mode-B fires."""
         _patch(monkeypatch, typed_qi_result="raise")
         ok, note = create_split_line(_FakeDoc(), {}, _target())
@@ -186,7 +192,8 @@ class TestModeB:
         assert note is not None and "mode-B" in note
 
     def test_mode_b_fallback_on_create_definition_none(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """CreateDefinition returns None → Mode-A fails → Mode-B fires."""
         fm = _FakeFM(data=None)
@@ -196,17 +203,22 @@ class TestModeB:
         assert note is not None and "mode-B" in note
 
     def test_mode_b_calls_insert_split_line_project(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         _patch(monkeypatch, typed_qi_result="raise")
         doc = _FakeDoc()
         ok, _ = create_split_line(
-            doc, {"reverse": True, "single_direction": True}, _target(),
+            doc,
+            {"reverse": True, "single_direction": True},
+            _target(),
         )
         assert ok
         assert doc._split_calls == [(True, True)]
 
-    def test_mode_b_selects_sketch_then_face(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_mode_b_selects_sketch_then_face(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Mode-B calls ClearSelection2 then InsertSplitLineProject after selecting."""
         _patch(monkeypatch, typed_qi_result="raise")
         doc = _FakeDoc()
@@ -230,14 +242,17 @@ class TestModeB:
 
 class TestBothModesFail:
     def test_both_modes_fail_qi_and_insert(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Mode-A QI fails AND Mode-B Insert raises → (False, reason)."""
         _patch(monkeypatch, typed_qi_result="raise")
         doc = _FakeDoc()
+
         # Make InsertSplitLineProject raise
         def bad_insert(*a: object, **kw: object) -> None:
             raise RuntimeError("COM dead")
+
         doc.InsertSplitLineProject = bad_insert  # type: ignore[assignment]
         ok, err = create_split_line(doc, {}, _target())
         assert ok is False
@@ -304,25 +319,33 @@ class TestValidation:
 
     def test_missing_face_entity(self) -> None:
         ok, err = create_split_line(
-            _FakeDoc(), {}, {"sketch_name": "Sketch2"},
+            _FakeDoc(),
+            {},
+            {"sketch_name": "Sketch2"},
         )
         assert ok is False and "face_entity" in err
 
     def test_bad_split_type_string(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch(monkeypatch)
         ok, err = create_split_line(
-            _FakeDoc(), {"split_type": "bogus"}, _target(),
+            _FakeDoc(),
+            {"split_type": "bogus"},
+            _target(),
         )
         assert ok is False and "split_type" in err
 
     def test_bad_split_type_type(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch(monkeypatch)
         ok, err = create_split_line(
-            _FakeDoc(), {"split_type": [1, 2]}, _target(),
+            _FakeDoc(),
+            {"split_type": [1, 2]},
+            _target(),
         )
         assert ok is False and "split_type" in err
 
-    def test_int_split_type_passes_through(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_int_split_type_passes_through(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Even with int split_type, validation passes through to Mode-B
         (Mode-A is quarantined; the int isn't routed anywhere meaningful,
         but the handler must not raise on the input shape)."""
@@ -339,7 +362,8 @@ class TestValidation:
 
 class TestDualMode:
     def test_mode_a_quarantined_falls_to_mode_b(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Mode-A always returns None (quarantined); Mode-B carries the call."""
         _patch(monkeypatch)

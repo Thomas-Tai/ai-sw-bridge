@@ -35,6 +35,7 @@ from ai_sw_bridge.features import bounding_box as bb
 # Fake COM infrastructure
 # ---------------------------------------------------------------------------
 
+
 class _FakeFeatureNode:
     def __init__(self, type_name: str | None = None):
         self._type_name = type_name
@@ -136,14 +137,25 @@ class _FakeFeatureManager:
     def CreateFeature(self, data):
         self._create_feature_called = True
         result = self._create_feature_result
-        if self._post_nodes is not None and result is not None and not isinstance(result, int):
+        if (
+            self._post_nodes is not None
+            and result is not None
+            and not isinstance(result, int)
+        ):
             self._switched = True
         return result
 
-    def InsertGlobalBoundingBox(self, bbox_type, include_hidden, include_surface, status_placeholder=0):
+    def InsertGlobalBoundingBox(
+        self, bbox_type, include_hidden, include_surface, status_placeholder=0
+    ):
         # W63 B1 patch: dispid expects 4 slots (3 inputs + [out] Status placeholder).
         self._insert_bbox_called = True
-        self._insert_bbox_args = (bbox_type, include_hidden, include_surface, status_placeholder)
+        self._insert_bbox_args = (
+            bbox_type,
+            include_hidden,
+            include_surface,
+            status_placeholder,
+        )
         if self._insert_bbox_raises:
             raise RuntimeError("COM error: InsertGlobalBoundingBox failed")
         if self._post_nodes is not None:
@@ -261,6 +273,7 @@ class _FakeDocNoInsertBBox:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_pre_nodes():
     """A baseline feature tree (Origin + 3 planes + 1 boss = 5 nodes)."""
     return [
@@ -327,6 +340,7 @@ def _patch_typed_qi_fail(monkeypatch):
 # ---------------------------------------------------------------------------
 # Tests — Mode-A success
 # ---------------------------------------------------------------------------
+
 
 class TestModeASuccess:
     def test_mode_a_returns_true(self, monkeypatch):
@@ -446,6 +460,7 @@ class TestModeASuccess:
 # Tests — Mode-A failure → Mode-B fallback
 # ---------------------------------------------------------------------------
 
+
 class TestModeAFailureFallsToModeB:
     def test_create_definition_none_falls_to_mode_b(self):
         """CreateDefinition returns None → falls to Mode-B."""
@@ -508,6 +523,7 @@ class TestModeAFailureFallsToModeB:
 # ---------------------------------------------------------------------------
 # Tests — Mode-B success (Mode-A disabled via create_def_result=None)
 # ---------------------------------------------------------------------------
+
 
 class TestModeBSuccess:
     def test_callable_insert_returns_true(self):
@@ -575,6 +591,7 @@ class TestModeBSuccess:
 # Tests — Mode-B ghost trap (no node delta)
 # ---------------------------------------------------------------------------
 
+
 class TestModeBGhostTrap:
     def test_no_node_delta_returns_false(self):
         doc = _FakeDoc(
@@ -603,6 +620,7 @@ class TestModeBGhostTrap:
 # Tests — Mode-B wrong type name
 # ---------------------------------------------------------------------------
 
+
 class TestModeBWrongType:
     def test_node_added_but_no_bbox_type_returns_false(self):
         doc = _FakeDoc(
@@ -619,6 +637,7 @@ class TestModeBWrongType:
 # ---------------------------------------------------------------------------
 # Tests — Mode-B exception path
 # ---------------------------------------------------------------------------
+
 
 class TestModeBException:
     def test_insert_raises_returns_false(self):
@@ -652,17 +671,21 @@ class TestModeBException:
 # Tests — Mode-B not on typelib
 # ---------------------------------------------------------------------------
 
+
 class TestModeBNotOnTypelib:
     def test_insert_bbox_absent_returns_false(self):
         doc = _FakeDocNoInsertBBox(pre_nodes=_make_pre_nodes())
         ok, reason = bb.create_bounding_box(doc, {"kind": "bounding_box"}, {})
         assert ok is False
-        assert "not available" in (reason or "") or "both modes failed" in (reason or "")
+        assert "not available" in (reason or "") or "both modes failed" in (
+            reason or ""
+        )
 
 
 # ---------------------------------------------------------------------------
 # Tests — count_feature_nodes helper
 # ---------------------------------------------------------------------------
+
 
 class TestCountFeatureNodes:
     def test_returns_zero_when_get_features_returns_none(self):
@@ -699,6 +722,7 @@ class TestCountFeatureNodes:
 # ---------------------------------------------------------------------------
 # Tests — handler signature and SPIKE_STATUS
 # ---------------------------------------------------------------------------
+
 
 class TestHandlerContract:
     def test_handler_signature(self):

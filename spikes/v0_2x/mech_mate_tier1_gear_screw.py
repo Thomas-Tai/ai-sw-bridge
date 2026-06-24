@@ -31,6 +31,7 @@ that "solved" but dropped its ratio is a kinematic ghost.
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/mech_mate_tier1_gear_screw.py
 """
+
 from __future__ import annotations
 
 import json
@@ -223,7 +224,11 @@ def _first_cyl_face(comp: Any, mod: Any) -> Any | None:
 
 
 def _read_back_scalars(
-    sw: Any, mod: Any, asm_path: str, iface_name: str, props: tuple[str, ...],
+    sw: Any,
+    mod: Any,
+    asm_path: str,
+    iface_name: str,
+    props: tuple[str, ...],
 ) -> dict[str, Any]:
     """Reopen the saved .sldasm and re-read the mate's coupling scalar(s).
 
@@ -340,7 +345,9 @@ def _probe_mechanical_mate(
         mate_data = typed_asm.CreateMateData(enum_val)
         if mate_data is None:
             r["status"] = "CREATEMATEDATA_NONE"
-            r["note"] = f"CreateMateData({enum_val}) -> None (enum may be wrong despite name)"
+            r["note"] = (
+                f"CreateMateData({enum_val}) -> None (enum may be wrong despite name)"
+            )
             return r
 
         # typed_qi to a candidate interface; record which one binds + dump it.
@@ -431,6 +438,7 @@ def main() -> int:
             result["swmate_enum_dump"] = _dump_swmate_enum()
         except Exception as exc:  # noqa: BLE001
             result["swmate_enum_dump_error"] = repr(exc)
+
         # Gear: ratio is a NUMERATOR/DENOMINATOR pair (dump-confirmed). 2:1.
         def _set_gear(ti: Any) -> dict[str, Any]:
             ti.GearRatioNumerator = 2.0
@@ -438,7 +446,11 @@ def main() -> int:
             return {"GearRatioNumerator": 2.0, "GearRatioDenominator": 1.0}
 
         result["legs"]["gear"] = _probe_mechanical_mate(
-            sw, mod, "gear", _GEAR_NAME, _GEAR_IFACE_CANDIDATES,
+            sw,
+            mod,
+            "gear",
+            _GEAR_NAME,
+            _GEAR_IFACE_CANDIDATES,
             set_scalar=_set_gear,
             readback_props=("GearRatioNumerator", "GearRatioDenominator"),
         )
@@ -458,7 +470,11 @@ def main() -> int:
             }
 
         result["legs"]["screw"] = _probe_mechanical_mate(
-            sw, mod, "screw", _SCREW_NAME, _SCREW_IFACE_CANDIDATES,
+            sw,
+            mod,
+            "screw",
+            _SCREW_NAME,
+            _SCREW_IFACE_CANDIDATES,
             set_scalar=_set_screw,
             readback_props=("RevolutionVal", "RevolutionType"),
         )

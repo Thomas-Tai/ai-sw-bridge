@@ -35,7 +35,10 @@ from typing import Any
 import pythoncom
 from win32com.client import VARIANT
 
-from ..com.earlybind import EarlyBindError, typed_qi  # noqa: F401 — module surface; test_split_line patches sl.typed_qi (historical Mode-A fixture)
+from ..com.earlybind import (
+    EarlyBindError,
+    typed_qi,
+)  # noqa: F401 — module surface; test_split_line patches sl.typed_qi (historical Mode-A fixture)
 from ..selection.live import select_entity
 from . import verify
 
@@ -69,7 +72,9 @@ def _metrics(doc: Any) -> tuple[int, float]:
 
 
 def create_split_line(
-    doc: Any, feature: dict, target: dict,
+    doc: Any,
+    feature: dict,
+    target: dict,
 ) -> tuple[bool, str | None]:
     """Project a sketch onto a face, splitting it. Fail-closed, dual-mode.
 
@@ -110,7 +115,10 @@ def create_split_line(
     elif isinstance(split_type_val, int):
         st = split_type_val
     else:
-        return False, f"split_type must be str or int, got {type(split_type_val).__name__}"
+        return (
+            False,
+            f"split_type must be str or int, got {type(split_type_val).__name__}",
+        )
 
     faces_before, vol_before = _metrics(doc)
     if faces_before == 0:
@@ -146,7 +154,10 @@ def create_split_line(
 
 
 def _try_mode_a(
-    doc: Any, sketch_name: str, face_entity: Any, split_type: int,
+    doc: Any,
+    sketch_name: str,
+    face_entity: Any,
+    split_type: int,
 ) -> Any | None:
     """Mode-A: QUARANTINED — documented unreachable for CREATION.
 
@@ -168,8 +179,11 @@ def _try_mode_a(
 
 
 def _try_mode_b(
-    doc: Any, sketch_name: str, face_entity: Any,
-    reverse: bool, single_direction: bool,
+    doc: Any,
+    sketch_name: str,
+    face_entity: Any,
+    reverse: bool,
+    single_direction: bool,
 ) -> Any | None:
     """Mode-B: select sketch (mark=1) + face (mark=2) + InsertSplitLineProject.
 
@@ -202,9 +216,7 @@ def _try_mode_b(
     except Exception as e:
         logger.warning("[B] select_entity(sketch) RAISED: %r", e)
         return None
-    logger.warning(
-        "[B] select_entity(sketch, mark=%d) -> %r", _MARK_SKETCH, sk_ok
-    )
+    logger.warning("[B] select_entity(sketch, mark=%d) -> %r", _MARK_SKETCH, sk_ok)
     if not sk_ok:
         return None
 
@@ -222,12 +234,16 @@ def _try_mode_b(
     try:
         isp = doc.InsertSplitLineProject
         result = (
-            isp(reverse, single_direction) if callable(isp)
+            isp(reverse, single_direction)
+            if callable(isp)
             else None  # property-bool resolution would already have been auto-invoked
         )
         logger.warning(
             "[B] InsertSplitLineProject(reverse=%r, single=%r) callable=%s -> %r",
-            reverse, single_direction, callable(isp), result,
+            reverse,
+            single_direction,
+            callable(isp),
+            result,
         )
     except Exception as e:
         logger.warning("[B] InsertSplitLineProject RAISED: %r", e)

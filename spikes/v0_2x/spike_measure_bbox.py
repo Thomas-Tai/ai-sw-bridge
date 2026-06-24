@@ -62,8 +62,10 @@ SW_DOC_PART = 1
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
+
 def _find_part_template() -> str | None:
     import glob
+
     for pat in [
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.PRTDOT",
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\part.prtdot",
@@ -80,7 +82,9 @@ def _retry(fn, *args, retries=3, delay=5, label=""):
             return fn(*args)
         except Exception as exc:
             if attempt < retries - 1:
-                print(f"  [{label}] Attempt {attempt+1} failed: {exc!r}, retrying in {delay}s …")
+                print(
+                    f"  [{label}] Attempt {attempt+1} failed: {exc!r}, retrying in {delay}s …"
+                )
                 time.sleep(delay)
             else:
                 raise
@@ -92,8 +96,12 @@ def _make_box_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, str 
         doc = _retry(
             sw_typed.NewDocument,
             _find_part_template(),
-            0, 0, 0,
-            retries=3, delay=5, label="part_new",
+            0,
+            0,
+            0,
+            retries=3,
+            delay=5,
+            label="part_new",
         )
         if doc is None:
             return None, "NewDocument(part) returned None"
@@ -110,13 +118,28 @@ def _make_box_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, str 
         dt.ClearSelection2(True)
         dt.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
         feat = dt.FeatureManager.FeatureExtrusion2(
-            True, False, False, 0, 0,
-            DZ_M, 0.0,  # DZ is extrusion depth
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0,
+            True,
+            False,
+            False,
+            0,
+            0,
+            DZ_M,
+            0.0,  # DZ is extrusion depth
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
             False,
         )
         if feat is None:
@@ -139,8 +162,20 @@ def _probe_bbox_ext(doc: Any, mod: Any, dt: Any) -> dict[str, Any]:
     """
     result: dict[str, Any] = {
         "verdict": "PENDING",
-        "partbox": {"raw": None, "dx_mm": None, "dy_mm": None, "dz_mm": None, "error": None},
-        "ext_getbox": {"raw": None, "dx_mm": None, "dy_mm": None, "dz_mm": None, "error": None},
+        "partbox": {
+            "raw": None,
+            "dx_mm": None,
+            "dy_mm": None,
+            "dz_mm": None,
+            "error": None,
+        },
+        "ext_getbox": {
+            "raw": None,
+            "dx_mm": None,
+            "dy_mm": None,
+            "dz_mm": None,
+            "error": None,
+        },
         "expected": {"dx_mm": DX_MM, "dy_mm": DY_MM, "dz_mm": DZ_MM},
         "errors": [],
     }
@@ -223,10 +258,14 @@ def _probe_bbox_ext(doc: Any, mod: Any, dt: Any) -> dict[str, Any]:
     elif eg_match:
         result["verdict"] = "GREEN"
         result["preferred_api"] = "IModelDocExtension.GetBox(0)"
-        result["note"] = "Extension.GetBox matches expected (GetPartBox may have issues)"
+        result["note"] = (
+            "Extension.GetBox matches expected (GetPartBox may have issues)"
+        )
     elif pb["dx_mm"] is not None and pb["dx_mm"] > 0:
         result["verdict"] = "PARTIAL"
-        result["note"] = f"bbox returned but dimensions mismatch: got {pb['dx_mm']},{pb['dy_mm']},{pb['dz_mm']}"
+        result["note"] = (
+            f"bbox returned but dimensions mismatch: got {pb['dx_mm']},{pb['dy_mm']},{pb['dz_mm']}"
+        )
     else:
         result["verdict"] = "NO-GO"
         result["note"] = "bbox returned degenerate or None"
@@ -332,7 +371,11 @@ def _probe_measure(doc: Any, dt: Any, mod: Any) -> dict[str, Any]:
             "error": None,
         },
         "expected": {"diagonal_mm": EXPECTED_DIAGONAL_MM},
-        "selection": {"vertex_count": None, "corner1_found": False, "corner2_found": False},
+        "selection": {
+            "vertex_count": None,
+            "corner1_found": False,
+            "corner2_found": False,
+        },
         "errors": [],
     }
 
@@ -495,6 +538,7 @@ def _probe_measure(doc: Any, dt: Any, mod: Any) -> dict[str, Any]:
 
 # ── Main ────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     pythoncom.CoInitialize()
     sw = get_sw_app()
@@ -538,11 +582,15 @@ def main() -> None:
         result["bbox"] = bbox_result
         result["errors"].extend(bbox_result.get("errors", []))
         print(f"[S1] bbox verdict: {bbox_result['verdict']}")
-        print(f"  GetPartBox: dx={bbox_result['partbox']['dx_mm']}, "
-              f"dy={bbox_result['partbox']['dy_mm']}, dz={bbox_result['partbox']['dz_mm']}")
+        print(
+            f"  GetPartBox: dx={bbox_result['partbox']['dx_mm']}, "
+            f"dy={bbox_result['partbox']['dy_mm']}, dz={bbox_result['partbox']['dz_mm']}"
+        )
         if bbox_result["ext_getbox"]["dx_mm"]:
-            print(f"  Ext.GetBox: dx={bbox_result['ext_getbox']['dx_mm']}, "
-                  f"dy={bbox_result['ext_getbox']['dy_mm']}, dz={bbox_result['ext_getbox']['dz_mm']}")
+            print(
+                f"  Ext.GetBox: dx={bbox_result['ext_getbox']['dx_mm']}, "
+                f"dy={bbox_result['ext_getbox']['dy_mm']}, dz={bbox_result['ext_getbox']['dz_mm']}"
+            )
 
         # ── Step 3: Probe MEASURE ────────────────────────────────────────
         print("[S1] Probing IMeasure API …")
@@ -550,8 +598,10 @@ def main() -> None:
         result["measure"] = measure_result
         result["errors"].extend(measure_result.get("errors", []))
         print(f"[S1] measure verdict: {measure_result['verdict']}")
-        print(f"  Distance: {measure_result['measure']['distance_mm']}mm "
-              f"(expected: {EXPECTED_DIAGONAL_MM}mm)")
+        print(
+            f"  Distance: {measure_result['measure']['distance_mm']}mm "
+            f"(expected: {EXPECTED_DIAGONAL_MM}mm)"
+        )
 
         # ── Overall verdict ──────────────────────────────────────────────
         bbox_ok = result["bbox"]["verdict"] == "GREEN"
@@ -597,7 +647,9 @@ def main() -> None:
         _write_result(result)
         print(f"\n[S1] OVERALL: {result['overall']}")
         print(f"[S1] bbox: {result['bbox']['verdict'] if result['bbox'] else 'N/A'}")
-        print(f"[S1] measure: {result['measure']['verdict'] if result['measure'] else 'N/A'}")
+        print(
+            f"[S1] measure: {result['measure']['verdict'] if result['measure'] else 'N/A'}"
+        )
 
 
 def _write_result(result: dict[str, Any]) -> None:

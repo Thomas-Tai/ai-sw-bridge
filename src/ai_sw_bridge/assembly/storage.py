@@ -204,9 +204,7 @@ class AssemblyManifest:
             components=[
                 ComponentInstance.from_dict(c) for c in data.get("components", [])
             ],
-            legacy_mates=[
-                MateRecord.from_dict(m) for m in data.get("mates", [])
-            ],
+            legacy_mates=[MateRecord.from_dict(m) for m in data.get("mates", [])],
         )
 
     def to_json(self, indent: int = 2) -> str:

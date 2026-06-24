@@ -40,6 +40,7 @@ tests; the seat witness is the local-change round-trip the directive named.
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_m1_gate_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -101,7 +102,11 @@ def _under_warnings_as_errors(fn) -> tuple[dict[str, Any], bool, str]:
         try:
             return fn(), True, ""
         except PendingDeprecationWarning as exc:  # noqa: BLE001
-            return {"ok": False}, False, f"internal PendingDeprecationWarning leaked: {exc}"
+            return (
+                {"ok": False},
+                False,
+                f"internal PendingDeprecationWarning leaked: {exc}",
+            )
 
 
 def _locals_has(token: str) -> bool:
@@ -112,7 +117,9 @@ def _locals_has(token: str) -> bool:
 
 
 def _finish() -> int:
-    all_pass = bool(results["gates"]) and all(g["ok"] for g in results["gates"].values())
+    all_pass = bool(results["gates"]) and all(
+        g["ok"] for g in results["gates"].values()
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
@@ -141,20 +148,28 @@ def main() -> int:
 
         # ── A: propose via the CLI runner (cli -> client -> _impl, no leak) ──
         prop, cleanA, whyA = _under_warnings_as_errors(
-            lambda: cli_mutate._run_propose(Namespace(var="BOX_W", new_value="30")))
+            lambda: cli_mutate._run_propose(Namespace(var="BOX_W", new_value="30"))
+        )
         results["propose_report"] = prop
         pid = prop.get("proposal_id")
-        gate("propose_clean",
-             cleanA and bool(prop.get("ok")) and isinstance(pid, str) and len(pid) == 12
-             and str(prop.get("old_expression")).strip() == "20",
-             whyA or f"ok={prop.get('ok')} pid={pid} old={prop.get('old_expression')!r} "
-             f"(cli->client->_impl, no warning)")
+        gate(
+            "propose_clean",
+            cleanA
+            and bool(prop.get("ok"))
+            and isinstance(pid, str)
+            and len(pid) == 12
+            and str(prop.get("old_expression")).strip() == "20",
+            whyA
+            or f"ok={prop.get('ok')} pid={pid} old={prop.get('old_expression')!r} "
+            f"(cli->client->_impl, no warning)",
+        )
         if not pid:
             raise SystemExit(_finish())
 
         # ── B: dry_run via the CLI runner — proves the disk link crossed the boundary ─
         dry, cleanB, whyB = _under_warnings_as_errors(
-            lambda: cli_mutate._run_dry_run(Namespace(proposal_id=pid)))
+            lambda: cli_mutate._run_dry_run(Namespace(proposal_id=pid))
+        )
         results["dry_run_report"] = dry
         before = (dry.get("before") or {}).get("var_value")
         after = (dry.get("after") or {}).get("var_value")
@@ -162,49 +177,73 @@ def main() -> int:
         def _near(v, target):
             return isinstance(v, (int, float)) and abs(float(v) - target) < 1e-6
 
-        gate("dryrun_disklink",
-             cleanB and bool(dry.get("ok")) and bool(dry.get("rebuild_ok"))
-             and bool(dry.get("rolled_back")) and _near(before, 20.0) and _near(after, 30.0),
-             whyB or f"ok={dry.get('ok')} rebuild_ok={dry.get('rebuild_ok')} "
-             f"rolled_back={dry.get('rolled_back')} var {before}->{after} "
-             f"(client dry_run loaded client propose's pid across the boundary)")
+        gate(
+            "dryrun_disklink",
+            cleanB
+            and bool(dry.get("ok"))
+            and bool(dry.get("rebuild_ok"))
+            and bool(dry.get("rolled_back"))
+            and _near(before, 20.0)
+            and _near(after, 30.0),
+            whyB
+            or f"ok={dry.get('ok')} rebuild_ok={dry.get('rebuild_ok')} "
+            f"rolled_back={dry.get('rolled_back')} var {before}->{after} "
+            f"(client dry_run loaded client propose's pid across the boundary)",
+        )
 
         # ── C: commit via the CLI runner — the locals file on disk gains "30" ──
         com, cleanC, whyC = _under_warnings_as_errors(
-            lambda: cli_mutate._run_commit(Namespace(proposal_id=pid)))
+            lambda: cli_mutate._run_commit(Namespace(proposal_id=pid))
+        )
         results["commit_report"] = com
-        gate("commit_geometry",
-             cleanC and bool(com.get("ok")) and _locals_has("30"),
-             whyC or f"ok={com.get('ok')} locals_file_has_30={_locals_has('30')} "
-             f"(committed change propagated to disk through a live rebuild)")
+        gate(
+            "commit_geometry",
+            cleanC and bool(com.get("ok")) and _locals_has("30"),
+            whyC
+            or f"ok={com.get('ok')} locals_file_has_30={_locals_has('30')} "
+            f"(committed change propagated to disk through a live rebuild)",
+        )
 
         # ── D: undo via the CLI runner — the locals file is restored to "20" ──
         undo, cleanD, whyD = _under_warnings_as_errors(
-            lambda: cli_mutate._run_undo_last_commit(Namespace()))
+            lambda: cli_mutate._run_undo_last_commit(Namespace())
+        )
         results["undo_report"] = undo
-        gate("undo_restores",
-             cleanD and bool(undo.get("ok")) and _locals_has("20") and not _locals_has("30"),
-             whyD or f"ok={undo.get('ok')} locals_restored_to_20="
-             f"{_locals_has('20') and not _locals_has('30')}")
+        gate(
+            "undo_restores",
+            cleanD
+            and bool(undo.get("ok"))
+            and _locals_has("20")
+            and not _locals_has("30"),
+            whyD
+            or f"ok={undo.get('ok')} locals_restored_to_20="
+            f"{_locals_has('20') and not _locals_has('30')}",
+        )
 
         # ── E: legacy free-fn shim STILL warns AND still reaches the engine ──
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             legacy = sw_propose_local_change("BOX_W", "30")
         warned = any(issubclass(w.category, PendingDeprecationWarning) for w in caught)
-        gate("shim_still_warns",
-             warned and bool(legacy.get("ok")) and bool(legacy.get("proposal_id")),
-             f"legacy warned={warned}, still_functions(ok={legacy.get('ok')}, "
-             f"fresh pid={legacy.get('proposal_id')})")
+        gate(
+            "shim_still_warns",
+            warned and bool(legacy.get("ok")) and bool(legacy.get("proposal_id")),
+            f"legacy warned={warned}, still_functions(ok={legacy.get('ok')}, "
+            f"fresh pid={legacy.get('proposal_id')})",
+        )
 
         # ── F: legacy v0.14 ProposalStore facade quiet (repointed to _impl) ──
         ps, cleanF, whyF = _under_warnings_as_errors(
-            lambda: ProposalStore().propose(var="BOX_W", new_value="30"))
+            lambda: ProposalStore().propose(var="BOX_W", new_value="30")
+        )
         results["proposalstore_report"] = ps
-        gate("proposalstore_quiet",
-             cleanF and bool(ps.get("ok")) and bool(ps.get("proposal_id")),
-             whyF or f"ProposalStore().propose ok={ps.get('ok')} "
-             f"pid={ps.get('proposal_id')} (no warning leak — bodies on _impl)")
+        gate(
+            "proposalstore_quiet",
+            cleanF and bool(ps.get("ok")) and bool(ps.get("proposal_id")),
+            whyF
+            or f"ProposalStore().propose ok={ps.get('ok')} "
+            f"pid={ps.get('proposal_id')} (no warning leak — bodies on _impl)",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)

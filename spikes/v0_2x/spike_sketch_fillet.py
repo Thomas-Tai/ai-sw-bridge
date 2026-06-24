@@ -38,7 +38,10 @@ def main() -> int:
         register(OP)
         doc = fx.new_part(sw)
         sketch, n0 = fx.build_rect_sketch(doc)  # ("Sketch1", 4) corner rect
-        params = {"radius_mm": 5, "entities": [0, 1]}  # two adjacent sides share a corner
+        params = {
+            "radius_mm": 5,
+            "entities": [0, 1],
+        }  # two adjacent sides share a corner
         res = apply_sketch_edit(doc, sketch, "sketch_fillet", params)
 
         delta_ok = res["segments_after"] > res["segments_before"]
@@ -49,11 +52,7 @@ def main() -> int:
         verdict = (
             "PASS"
             if (res["ok"] and delta_ok and survived)
-            else (
-                "NO_OP"
-                if res["call_ok"] and res["segment_delta"] == 0
-                else "FAIL"
-            )
+            else ("NO_OP" if res["call_ok"] and res["segment_delta"] == 0 else "FAIL")
         )
         print(
             json.dumps(

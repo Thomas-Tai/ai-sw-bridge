@@ -54,8 +54,10 @@ SW_DOC_PART = 1
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
+
 def _find_part_template() -> str | None:
     import glob
+
     for pat in [
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.PRTDOT",
     ]:
@@ -64,7 +66,9 @@ def _find_part_template() -> str | None:
     return None
 
 
-def _make_box_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any, Any | None, str | None]:
+def _make_box_part(
+    sw_typed: Any, mod: Any, path: str
+) -> tuple[Any, Any | None, str | None]:
     """Create a 20×30×40mm box part. Returns (doc, typed_doc, error)."""
     try:
         doc = sw_typed.NewDocument(_find_part_template(), 0, 0, 0)
@@ -83,13 +87,28 @@ def _make_box_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any, Any | None,
         dt.ClearSelection2(True)
         dt.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
         feat = dt.FeatureManager.FeatureExtrusion2(
-            True, False, False, 0, 0,
-            DZ_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0,
+            True,
+            False,
+            False,
+            0,
+            0,
+            DZ_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
             False,
         )
         if feat is None:
@@ -175,6 +194,7 @@ def _find_corner_vertices(vertices: list[Any]) -> tuple[Any | None, Any | None]:
 
 # ── Main ────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     pythoncom.CoInitialize()
     sw = get_sw_app()
@@ -218,23 +238,40 @@ def main() -> None:
         result["bbox"]["dy_mm"] = bb.get("dy_mm")
         result["bbox"]["dz_mm"] = bb.get("dz_mm")
 
-        print(f"[PAE] bbox: dx={result['bbox']['dx_mm']}, dy={result['bbox']['dy_mm']}, dz={result['bbox']['dz_mm']}")
+        print(
+            f"[PAE] bbox: dx={result['bbox']['dx_mm']}, dy={result['bbox']['dy_mm']}, dz={result['bbox']['dz_mm']}"
+        )
 
         # Gate 1: bbox ok=True
         gate1 = bbox_result.get("ok") is True
         result["gates"].append(f"bbox_ok: {gate1}")
 
         # Gate 2: dx=20mm
-        gate2 = result["bbox"]["dx_mm"] is not None and abs(result["bbox"]["dx_mm"] - DX_MM) < TOLERANCE_MM
-        result["gates"].append(f"bbox_dx={DX_MM}mm: {gate2} (got {result['bbox']['dx_mm']})")
+        gate2 = (
+            result["bbox"]["dx_mm"] is not None
+            and abs(result["bbox"]["dx_mm"] - DX_MM) < TOLERANCE_MM
+        )
+        result["gates"].append(
+            f"bbox_dx={DX_MM}mm: {gate2} (got {result['bbox']['dx_mm']})"
+        )
 
         # Gate 3: dy=30mm
-        gate3 = result["bbox"]["dy_mm"] is not None and abs(result["bbox"]["dy_mm"] - DY_MM) < TOLERANCE_MM
-        result["gates"].append(f"bbox_dy={DY_MM}mm: {gate3} (got {result['bbox']['dy_mm']})")
+        gate3 = (
+            result["bbox"]["dy_mm"] is not None
+            and abs(result["bbox"]["dy_mm"] - DY_MM) < TOLERANCE_MM
+        )
+        result["gates"].append(
+            f"bbox_dy={DY_MM}mm: {gate3} (got {result['bbox']['dy_mm']})"
+        )
 
         # Gate 4: dz=40mm
-        gate4 = result["bbox"]["dz_mm"] is not None and abs(result["bbox"]["dz_mm"] - DZ_MM) < TOLERANCE_MM
-        result["gates"].append(f"bbox_dz={DZ_MM}mm: {gate4} (got {result['bbox']['dz_mm']})")
+        gate4 = (
+            result["bbox"]["dz_mm"] is not None
+            and abs(result["bbox"]["dz_mm"] - DZ_MM) < TOLERANCE_MM
+        )
+        result["gates"].append(
+            f"bbox_dz={DZ_MM}mm: {gate4} (got {result['bbox']['dz_mm']})"
+        )
 
         # ── Test measure_selection ────────────────────────────────────────
         print("[PAE] Testing measure_selection …")
@@ -285,8 +322,14 @@ def main() -> None:
         result["gates"].append(f"measure_ok: {gate5}")
 
         # Gate 6: distance = expected diagonal
-        gate6 = result["measure"]["distance_mm"] is not None and abs(result["measure"]["distance_mm"] - EXPECTED_DIAGONAL_MM) < TOLERANCE_MM
-        result["gates"].append(f"measure_distance={EXPECTED_DIAGONAL_MM:.2f}mm: {gate6} (got {result['measure']['distance_mm']})")
+        gate6 = (
+            result["measure"]["distance_mm"] is not None
+            and abs(result["measure"]["distance_mm"] - EXPECTED_DIAGONAL_MM)
+            < TOLERANCE_MM
+        )
+        result["gates"].append(
+            f"measure_distance={EXPECTED_DIAGONAL_MM:.2f}mm: {gate6} (got {result['measure']['distance_mm']})"
+        )
 
         # ── VERDICT ───────────────────────────────────────────────────────
         if all([gate1, gate2, gate3, gate4, gate5, gate6]):

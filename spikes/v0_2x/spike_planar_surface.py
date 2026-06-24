@@ -38,9 +38,7 @@ def _select_top_face(doc):
     from win32com.client import VARIANT
 
     null_disp = VARIANT(pythoncom.VT_DISPATCH, None)
-    doc.Extension.SelectByID2(
-        "", "FACE", 0.0, 0.0, 0.010, False, 0, null_disp, 0
-    )
+    doc.Extension.SelectByID2("", "FACE", 0.0, 0.0, 0.010, False, 0, null_disp, 0)
     face = doc.SelectionManager.GetSelectedObject6(1, -1)
     doc.ClearSelection2(True)
     return face
@@ -58,8 +56,12 @@ def _seed_planar_sketch(doc):
     face.Select2(False, 0)
     doc.SketchManager.InsertSketch(True)
     doc.SketchManager.CreateCornerRectangle(
-        -0.015, -0.010, 0.0,
-         0.015,  0.010, 0.0,
+        -0.015,
+        -0.010,
+        0.0,
+        0.015,
+        0.010,
+        0.0,
     )
     doc.SketchManager.InsertSketch(True)
     doc.ClearSelection2(True)
@@ -116,7 +118,9 @@ def main() -> None:
 
     if not ok:
         print("[planar_surface] FAIL — handler returned False")
-        print("[planar_surface] direct-API diagnostic: attempting InsertPlanarRefSurface directly...")
+        print(
+            "[planar_surface] direct-API diagnostic: attempting InsertPlanarRefSurface directly..."
+        )
         try:
             doc.ClearSelection2(True)
             feat = doc.FeatureByName(sketch_name)
@@ -124,10 +128,14 @@ def main() -> None:
                 feat.Select2(False, 0)
                 ips = doc.InsertPlanarRefSurface
                 direct_result = ips() if callable(ips) else ips
-                print(f"[planar_surface] direct InsertPlanarRefSurface -> {direct_result!r}")
+                print(
+                    f"[planar_surface] direct InsertPlanarRefSurface -> {direct_result!r}"
+                )
                 direct_count = _sheet_body_count(doc)
                 direct_area = _total_sheet_area_mm2(doc)
-                print(f"[planar_surface] direct: sheet_bodies={direct_count}, area={direct_area:.3f}")
+                print(
+                    f"[planar_surface] direct: sheet_bodies={direct_count}, area={direct_area:.3f}"
+                )
             else:
                 print(f"[planar_surface] FeatureByName({sketch_name!r}) returned None")
         except Exception as exc:

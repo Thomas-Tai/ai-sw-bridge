@@ -4,9 +4,11 @@ Builds two overlapping box parts in an assembly via AddComponent5 + IMathTransfo
 Then enumerates IInterference results: Volume, GetComponents, GetBodies.
 Captures JSON shape for observe.py wiring.
 """
+
 from __future__ import annotations
 import argparse, json, os, sys, tempfile, time
 from pathlib import Path
+
 _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 _V15 = Path(__file__).resolve().parents[1] / "v0_15"
 _V16 = Path(__file__).resolve().parent
@@ -19,33 +21,59 @@ from ai_sw_bridge.com.earlybind import typed
 from ai_sw_bridge.com.sw_type_info import wrapper_module
 from spike_earlybind_persist import connect_running_sw, ensure_sw_module
 
+
 def _title(doc):
     t = doc.GetTitle
     return t() if callable(t) else t
 
-def _try_close(sw, doc):
-    try: sw.CloseDoc(_title(doc))
-    except: pass
 
+def _try_close(sw, doc):
+    try:
+        sw.CloseDoc(_title(doc))
+    except:
+        pass
 
 
 def _build_box(sw, path, size=0.02):
     """Build a box part and save to path."""
     template = sw.GetUserPreferenceStringValue(8)
     doc = sw.NewDocument(template, 0, 0.1, 0.1)
-    if doc is None: raise RuntimeError("NewDocument None")
+    if doc is None:
+        raise RuntimeError("NewDocument None")
     doc.ClearSelection2(True)
     doc.SelectByID("Front Plane", "PLANE", 0, 0, 0)
     doc.InsertSketch2(True)
     sk = doc.SketchManager
-    sk.CreateCornerRectangle(-size/2, -size/2, 0, size/2, size/2, 0)
+    sk.CreateCornerRectangle(-size / 2, -size / 2, 0, size / 2, size / 2, 0)
     doc.InsertSketch2(False)
     doc.ClearSelection2(True)
     doc.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
     fm = doc.FeatureManager
-    fm.FeatureExtrusion3(True, False, False, 0, 0, size, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0, False)
+    fm.FeatureExtrusion3(
+        True,
+        False,
+        False,
+        0,
+        0,
+        size,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0,
+        False,
+    )
     doc.ClearSelection2(True)
     doc.SaveAs3(path, 0, 2)
     sw.CloseDoc(_title(doc))
@@ -192,7 +220,9 @@ def main():
         print("wrote %s" % args.out, file=sys.stderr)
     else:
         print(payload)
-    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(result.get("overall"), 1)
+    return {"GREEN": 0, "PARTIAL": 2, "WALL": 2, "FAIL": 1}.get(
+        result.get("overall"), 1
+    )
 
 
 if __name__ == "__main__":

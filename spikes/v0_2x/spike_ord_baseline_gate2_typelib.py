@@ -2,6 +2,7 @@
 
 NO mutation. Just reports what the typelib declares for these APIs.
 """
+
 from __future__ import annotations
 
 TLB_PATH = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\sldworks.tlb"
@@ -123,7 +124,9 @@ def main() -> None:
         results = found_methods[mname]
         for iface, sig in results:
             inv_kind = sig["invoke_kind"]
-            inv_name = {1: "METHOD", 2: "PROPGET", 4: "PROPPUT"}.get(inv_kind, f"inv_{inv_kind}")
+            inv_name = {1: "METHOD", 2: "PROPGET", 4: "PROPPUT"}.get(
+                inv_kind, f"inv_{inv_kind}"
+            )
             print(f"{iface}.{mname}:")
             print(f"  memid: {sig['memid']}")
             print(f"  kind: {inv_name}")

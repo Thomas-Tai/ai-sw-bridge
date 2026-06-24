@@ -13,6 +13,7 @@ Verify: MakeClosed returns truthy AND the open-spline segment count is
 unchanged-or-grown (the contour closed, not errored). Non-destructive: own
 blank Parts, never saves, closes own docs.
 """
+
 from __future__ import annotations
 
 import json
@@ -100,7 +101,8 @@ def probe_makeclosed(sw: Any) -> dict[str, Any]:
         rec["overall"] = "FAIL"
     finally:
         try:
-            sm.InsertSketch(True); sw.CloseDoc(title)
+            sm.InsertSketch(True)
+            sw.CloseDoc(title)
         except Exception:  # noqa: BLE001
             pass
     return rec

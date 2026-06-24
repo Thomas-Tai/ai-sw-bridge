@@ -16,6 +16,7 @@ not guessed.
 Each candidate runs on a FRESH typed reopen (no cross-contamination).
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/probe_ref_axis_typed_select.py
 """
+
 from __future__ import annotations
 
 import json
@@ -57,9 +58,31 @@ def _build_box(sw: Any, path: str) -> bool:
     sm.InsertSketch(True)
     sm.CreateCornerRectangle(-0.01, -0.01, 0, 0.01, 0.01, 0)
     sm.InsertSketch(True)
-    fm.FeatureExtrusion3(True, False, False, 0, 0, 0.01, 0.0,
-                         False, False, False, False, 0.0, 0.0,
-                         False, False, False, False, True, True, True, 0.0, 0.0, False)
+    fm.FeatureExtrusion3(
+        True,
+        False,
+        False,
+        0,
+        0,
+        0.01,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0.0,
+        0.0,
+        False,
+    )
     doc.ForceRebuild3(False)
     doc.SaveAs3(path, 0, 0)
     sw.CloseAllDocuments(True)
@@ -78,7 +101,7 @@ def _open_typed(sw: Any, path: str) -> Any:
 
 
 def _has_refaxis(doc: Any) -> bool:
-    for f in (doc.FeatureManager.GetFeatures(False) or []):
+    for f in doc.FeatureManager.GetFeatures(False) or []:
         for attr in ("GetTypeName2", "GetTypeName"):
             try:
                 v = getattr(f, attr)
@@ -123,12 +146,19 @@ def main() -> int:
             doc.ClearSelection2(True)
             doc.SelectByID(p1, "PLANE", 0, 0, 0)
             ext = doc.Extension
-            ext.SelectByID2(p2, "PLANE", 0, 0, 0, True, 0,
-                            VARIANT(pythoncom.VT_DISPATCH, None), 0)
-            out["R0_repro"] = {"raised": False, "note": "callout did NOT raise (unexpected)"}
+            ext.SelectByID2(
+                p2, "PLANE", 0, 0, 0, True, 0, VARIANT(pythoncom.VT_DISPATCH, None), 0
+            )
+            out["R0_repro"] = {
+                "raised": False,
+                "note": "callout did NOT raise (unexpected)",
+            }
         except Exception as exc:  # noqa: BLE001
-            out["R0_repro"] = {"raised": True, "exc": repr(exc),
-                               "ext_type": type(doc.Extension).__name__}
+            out["R0_repro"] = {
+                "raised": True,
+                "exc": repr(exc),
+                "ext_type": type(doc.Extension).__name__,
+            }
         finally:
             sw.CloseAllDocuments(True)
 
@@ -142,8 +172,11 @@ def main() -> int:
             ax = doc.InsertAxis2(True)
             doc.ForceRebuild3(False)
             out["A_two_selectbyid"] = {
-                "r1": bool(r1), "r2": bool(r2), "sel_count": cnt,
-                "insertaxis_ret": repr(ax), "refaxis_node": _has_refaxis(doc),
+                "r1": bool(r1),
+                "r2": bool(r2),
+                "sel_count": cnt,
+                "insertaxis_ret": repr(ax),
+                "refaxis_node": _has_refaxis(doc),
             }
         except Exception as exc:  # noqa: BLE001
             out["A_two_selectbyid"] = {"exc": repr(exc)}
@@ -163,8 +196,11 @@ def main() -> int:
             ax = doc.InsertAxis2(True)
             doc.ForceRebuild3(False)
             out["B_selectbyid_plus_feature_select2"] = {
-                "r1": bool(r1), "feat2_found": feat2 is not None, "r2": r2,
-                "sel_count": cnt, "insertaxis_ret": repr(ax),
+                "r1": bool(r1),
+                "feat2_found": feat2 is not None,
+                "r2": r2,
+                "sel_count": cnt,
+                "insertaxis_ret": repr(ax),
                 "refaxis_node": _has_refaxis(doc),
             }
         except Exception as exc:  # noqa: BLE001

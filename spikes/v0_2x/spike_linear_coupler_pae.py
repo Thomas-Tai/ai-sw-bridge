@@ -11,6 +11,7 @@ intact (faithful round-trip, no gear-style transpose).
 
 Run: PYTHONPATH=<repo>/src python spikes/v0_2x/spike_linear_coupler_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -76,7 +77,9 @@ def main() -> int:
             "type": "linear_coupler",
             "a": {"component": "a", "face_ref": {"linear_edge": True}},
             "b": {"component": "b", "face_ref": {"linear_edge": True}},
-            "ratio_numerator": 1.0, "ratio_denominator": 2.0, "reverse": False,
+            "ratio_numerator": 1.0,
+            "ratio_denominator": 2.0,
+            "reverse": False,
         }
         feat, mate_err = create_mate(asm, placed, mate, mod=mod)
         if feat is None:
@@ -100,16 +103,24 @@ def main() -> int:
                 tf = typed(f, "IFeature", module=mod)
                 tn = tf.GetTypeName2()
                 if "LinearCoupler" in tn:
-                    lc = typed_qi(tf.GetDefinition(), "ILinearCouplerMateFeatureData", module=mod)
-                    found = {"type": tn, "num": lc.CouplerRatioNumerator,
-                             "den": lc.CouplerRatioDenominator}
+                    lc = typed_qi(
+                        tf.GetDefinition(), "ILinearCouplerMateFeatureData", module=mod
+                    )
+                    found = {
+                        "type": tn,
+                        "num": lc.CouplerRatioNumerator,
+                        "den": lc.CouplerRatioDenominator,
+                    }
                     break
             except Exception:
                 continue
         results["reopen"] = found
         gate("reopen_persists", found["type"] is not None, f"type={found['type']}")
-        gate("ratio_round_trips", found["num"] == 1.0 and found["den"] == 2.0,
-             f"num={found['num']} den={found['den']} (expect 1/2, faithful)")
+        gate(
+            "ratio_round_trips",
+            found["num"] == 1.0 and found["den"] == 2.0,
+            f"num={found['num']} den={found['den']} (expect 1/2, faithful)",
+        )
     finally:
         try:
             sw.CloseAllDocuments(True)
@@ -120,7 +131,9 @@ def main() -> int:
 
 
 def _finish() -> int:
-    all_pass = all(g["ok"] for g in results["gates"].values()) and bool(results["gates"])
+    all_pass = all(g["ok"] for g in results["gates"].values()) and bool(
+        results["gates"]
+    )
     results["verdict"] = "GREEN" if all_pass else "PARTIAL"
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")

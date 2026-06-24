@@ -13,6 +13,7 @@ THIS VERSION:
   3. Try ShowExploded2 via raw dispid lookup
   4. Verify delta matches commanded distance (50mm along direction axis)
 """
+
 from __future__ import annotations
 
 import json
@@ -71,9 +72,19 @@ def run() -> dict[str, Any]:
             "schema_version": 1,
             "name": "W32vBox",
             "features": [
-                {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-                 "width": 10.0, "height": 10.0},
-                {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 5.0},
+                {
+                    "type": "sketch_rectangle_on_plane",
+                    "name": "SK",
+                    "plane": "Front",
+                    "width": 10.0,
+                    "height": 10.0,
+                },
+                {
+                    "type": "boss_extrude_blind",
+                    "name": "EX",
+                    "sketch": "SK",
+                    "depth": 5.0,
+                },
             ],
         }
         br = part_build(box_spec, save_as=part_path, save_format="current", no_dim=True)
@@ -81,12 +92,14 @@ def run() -> dict[str, Any]:
             return {"overall": "NO-GO", "failure_point": f"part build: {br.error}"}
 
         # === Assembly ===
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("Assembly setup")
-        print("="*80)
+        print("=" * 80)
 
         typed_sw = typed(sw, "ISldWorks", module=sw_mod)
-        asm_template = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        asm_template = (
+            r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Assembly.ASMDOT"
+        )
         asm_doc = sw.NewDocument(asm_template, 0, 0.0, 0.0)
         if asm_doc is None:
             return {"overall": "NO-GO", "failure_point": "NewDocument failed"}
@@ -109,17 +122,19 @@ def run() -> dict[str, Any]:
         print("\n  BASELINE transform (before explode):")
         xform_base = comp2_typed.Transform2
         base_arr = xform_base.ArrayData
-        pos_base = [base_arr[9]*1000, base_arr[10]*1000, base_arr[11]*1000]
-        print(f"    comp2: X={pos_base[0]:.1f} Y={pos_base[1]:.1f} Z={pos_base[2]:.1f} mm")
+        pos_base = [base_arr[9] * 1000, base_arr[10] * 1000, base_arr[11] * 1000]
+        print(
+            f"    comp2: X={pos_base[0]:.1f} Y={pos_base[1]:.1f} Z={pos_base[2]:.1f} mm"
+        )
         result["baseline_pos_mm"] = pos_base
 
         # Save
         typed_model.SaveAs3(asm_path, 0, 0)
 
         # === Create exploded view ===
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("CreateExplodedView + Selection + AddExplodeStep")
-        print("="*80)
+        print("=" * 80)
 
         view_ok = typed_asm.CreateExplodedView()
         print(f"  CreateExplodedView() = {view_ok}")
@@ -132,44 +147,59 @@ def run() -> dict[str, Any]:
 
         # Selection: component + direction plane
         comp2_typed.Select2(False, 1)
-        model_ext.SelectByID2(f"Front Plane@{asm_name}", "PLANE", 0, 0, 0, True, 0, None, 0)
+        model_ext.SelectByID2(
+            f"Front Plane@{asm_name}", "PLANE", 0, 0, 0, True, 0, None, 0
+        )
 
         # Create step
         step = typed_config.AddExplodeStep(EXPLODE_DIST_M, False, False, False)
         print(f"  AddExplodeStep({EXPLODE_DIST_M}, False, False, False) = {step}")
 
         if step is None or step == 0:
-            return {"overall": "NO-GO", "failure_point": "AddExplodeStep returned None/0"}
+            return {
+                "overall": "NO-GO",
+                "failure_point": "AddExplodeStep returned None/0",
+            }
 
         result["step_created"] = True
 
         # Check step state
-        step_obj = step._oleobj_ if hasattr(step, '_oleobj_') else step
+        step_obj = step._oleobj_ if hasattr(step, "_oleobj_") else step
         try:
             typed_step = early_mod.IExplodeStep(step_obj)
             num = typed_step.GetNumOfComponents()
             dist = typed_step.ExplodeDistance
             print(f"  Step: {num} component(s), distance={dist}m ({dist*1000:.1f}mm)")
             result["step_num_components"] = num
-            result["step_distance_mm"] = dist * 1000 if isinstance(dist, (int, float)) else str(dist)
+            result["step_distance_mm"] = (
+                dist * 1000 if isinstance(dist, (int, float)) else str(dist)
+            )
         except Exception as e:
             print(f"  Step check error: {e}")
 
         # === TRANSFORM AFTER STEP (collapsed state?) ===
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("TRANSFORM AFTER STEP CREATION")
-        print("="*80)
+        print("=" * 80)
 
         try:
             xform_after = comp2_typed.Transform2
             after_arr = xform_after.ArrayData
-            pos_after = [after_arr[9]*1000, after_arr[10]*1000, after_arr[11]*1000]
-            print(f"  comp2 pos: X={pos_after[0]:.1f} Y={pos_after[1]:.1f} Z={pos_after[2]:.1f} mm")
+            pos_after = [
+                after_arr[9] * 1000,
+                after_arr[10] * 1000,
+                after_arr[11] * 1000,
+            ]
+            print(
+                f"  comp2 pos: X={pos_after[0]:.1f} Y={pos_after[1]:.1f} Z={pos_after[2]:.1f} mm"
+            )
             result["post_step_pos_mm"] = pos_after
 
             delta = [pos_after[i] - pos_base[i] for i in range(3)]
-            mag = (delta[0]**2 + delta[1]**2 + delta[2]**2)**0.5
-            print(f"  Delta from baseline: X={delta[0]:.1f} Y={delta[1]:.1f} Z={delta[2]:.1f} mm")
+            mag = (delta[0] ** 2 + delta[1] ** 2 + delta[2] ** 2) ** 0.5
+            print(
+                f"  Delta from baseline: X={delta[0]:.1f} Y={delta[1]:.1f} Z={delta[2]:.1f} mm"
+            )
             print(f"  Magnitude: {mag:.1f} mm")
             result["post_step_delta_mm"] = [round(d, 1) for d in delta]
             result["post_step_magnitude_mm"] = round(mag, 1)
@@ -177,9 +207,9 @@ def run() -> dict[str, Any]:
             print(f"  Transform2 error: {e}")
 
         # === ShowExploded2 via dispid lookup ===
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("ShowExploded2 attempts")
-        print("="*80)
+        print("=" * 80)
 
         # First, look up the actual dispid
         asm_ole = asm_doc._oleobj_
@@ -230,7 +260,9 @@ def run() -> dict[str, Any]:
         # Try IModelDoc2 dispatch instead of IAssemblyDoc
         try:
             model_ole = asm_doc._oleobj_  # same object but different interface QI
-            ret = typed_model._oleobj_.InvokeTypes(show_dispid or 156, 0, 1, (11, 0), ((11, 1),), -1)
+            ret = typed_model._oleobj_.InvokeTypes(
+                show_dispid or 156, 0, 1, (11, 0), ((11, 1),), -1
+            )
             print(f"  typed_model.InvokeTypes = {ret}")
             show_ok = True
         except Exception as e:
@@ -242,13 +274,23 @@ def run() -> dict[str, Any]:
             try:
                 xform_expl = comp2_typed.Transform2
                 expl_arr = xform_expl.ArrayData
-                pos_expl = [expl_arr[9]*1000, expl_arr[10]*1000, expl_arr[11]*1000]
-                print(f"  Exploded pos: X={pos_expl[0]:.1f} Y={pos_expl[1]:.1f} Z={pos_expl[2]:.1f} mm")
+                pos_expl = [
+                    expl_arr[9] * 1000,
+                    expl_arr[10] * 1000,
+                    expl_arr[11] * 1000,
+                ]
+                print(
+                    f"  Exploded pos: X={pos_expl[0]:.1f} Y={pos_expl[1]:.1f} Z={pos_expl[2]:.1f} mm"
+                )
                 result["exploded_pos_mm"] = pos_expl
 
                 delta_expl = [pos_expl[i] - pos_base[i] for i in range(3)]
-                mag_expl = (delta_expl[0]**2 + delta_expl[1]**2 + delta_expl[2]**2)**0.5
-                print(f"  Exploded delta: X={delta_expl[0]:.1f} Y={delta_expl[1]:.1f} Z={delta_expl[2]:.1f} mm, mag={mag_expl:.1f}")
+                mag_expl = (
+                    delta_expl[0] ** 2 + delta_expl[1] ** 2 + delta_expl[2] ** 2
+                ) ** 0.5
+                print(
+                    f"  Exploded delta: X={delta_expl[0]:.1f} Y={delta_expl[1]:.1f} Z={delta_expl[2]:.1f} mm, mag={mag_expl:.1f}"
+                )
                 result["exploded_delta_mm"] = [round(d, 1) for d in delta_expl]
             except Exception as e:
                 print(f"  Exploded transform error: {e}")
@@ -262,14 +304,18 @@ def run() -> dict[str, Any]:
         commanded_mm = EXPLODE_DIST_M * 1000  # 50mm
 
         if abs(mag - commanded_mm) < 1.0:
-            print(f"\n  *** LIVENESS PASSED: transform delta {mag:.1f}mm matches commanded {commanded_mm:.1f}mm ***")
+            print(
+                f"\n  *** LIVENESS PASSED: transform delta {mag:.1f}mm matches commanded {commanded_mm:.1f}mm ***"
+            )
             liveness["passed"] = True
             liveness["mechanism"] = "transform_delta_on_step_creation"
             liveness["delta_mm"] = mag
         elif show_ok and result.get("exploded_delta_mm"):
-            mag_expl = (sum(d**2 for d in result["exploded_delta_mm"]))**0.5
+            mag_expl = (sum(d**2 for d in result["exploded_delta_mm"])) ** 0.5
             if abs(mag_expl - commanded_mm) < 1.0:
-                print(f"\n  *** LIVENESS PASSED (show): delta {mag_expl:.1f}mm matches commanded {commanded_mm:.1f}mm ***")
+                print(
+                    f"\n  *** LIVENESS PASSED (show): delta {mag_expl:.1f}mm matches commanded {commanded_mm:.1f}mm ***"
+                )
                 liveness["passed"] = True
                 liveness["mechanism"] = "transform_delta_after_show"
         else:
@@ -279,9 +325,9 @@ def run() -> dict[str, Any]:
 
         # === PERSISTENCE ===
         if liveness.get("passed"):
-            print("\n" + "="*80)
+            print("\n" + "=" * 80)
             print("PERSISTENCE")
-            print("="*80)
+            print("=" * 80)
             persist: dict[str, Any] = {}
             try:
                 typed_model.Save()
@@ -300,9 +346,13 @@ def run() -> dict[str, Any]:
                     print(f"  Reopened: EV count = {ev_count}")
 
                     # Check if step survived
-                    reopened_config = typed(reopened, "IModelDoc2", module=sw_mod).GetActiveConfiguration()
+                    reopened_config = typed(
+                        reopened, "IModelDoc2", module=sw_mod
+                    ).GetActiveConfiguration()
                     try:
-                        reopened_cfg_typed = early_mod.IConfiguration(reopened_config._oleobj_)
+                        reopened_cfg_typed = early_mod.IConfiguration(
+                            reopened_config._oleobj_
+                        )
                         step0 = reopened_cfg_typed.GetExplodeStep(0)
                         if step0:
                             typed_s0 = early_mod.IExplodeStep(step0._oleobj_)
@@ -315,14 +365,22 @@ def run() -> dict[str, Any]:
                     except Exception as e:
                         print(f"  Step check on reopen: {e}")
 
-                    sw.CloseDoc(reopened.GetTitle() if callable(reopened.GetTitle) else reopened.GetTitle)
+                    sw.CloseDoc(
+                        reopened.GetTitle()
+                        if callable(reopened.GetTitle)
+                        else reopened.GetTitle
+                    )
             except Exception as e:
                 persist["error"] = str(e)
                 print(f"  Persistence error: {e}")
             result["persistence"] = persist
 
         # === Final verdict ===
-        if result.get("step_created") and liveness.get("passed") and result.get("persistence", {}).get("passed"):
+        if (
+            result.get("step_created")
+            and liveness.get("passed")
+            and result.get("persistence", {}).get("passed")
+        ):
             result["overall"] = "GREEN"
         elif result.get("step_created") and liveness.get("passed"):
             result["overall"] = "PARTIAL"
@@ -337,6 +395,7 @@ def run() -> dict[str, Any]:
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         return {"overall": "NO-GO", "failure_point": f"Unexpected: {e}"}
     finally:
@@ -345,17 +404,21 @@ def run() -> dict[str, Any]:
 
 if __name__ == "__main__":
     r = run()
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print(f"FINAL VERDICT: {r.get('overall')}")
     if r.get("overall") in ("GREEN", "PARTIAL"):
-        print(f"Step: created={r.get('step_created')}, comps={r.get('step_num_components')}, dist={r.get('step_distance_mm')}mm")
+        print(
+            f"Step: created={r.get('step_created')}, comps={r.get('step_num_components')}, dist={r.get('step_distance_mm')}mm"
+        )
         print(f"Baseline: {r.get('baseline_pos_mm')} mm")
         print(f"Post-step: {r.get('post_step_pos_mm')} mm")
-        print(f"Delta: {r.get('post_step_delta_mm')} mm, mag={r.get('post_step_magnitude_mm')} mm")
+        print(
+            f"Delta: {r.get('post_step_delta_mm')} mm, mag={r.get('post_step_magnitude_mm')} mm"
+        )
         print(f"Liveness: {r.get('liveness')}")
         if r.get("persistence"):
             print(f"Persistence: {r['persistence']}")
-    print("="*80)
+    print("=" * 80)
 
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(RESULTS_PATH, "w") as f:

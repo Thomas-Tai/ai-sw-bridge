@@ -27,9 +27,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_tol_diag2.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_tol_diag2.json"
 
 SW_TOL_SYMMETRIC = 4
 
@@ -42,7 +40,9 @@ results: dict[str, Any] = {
 
 def save_results() -> None:
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(results, indent=2, default=str), encoding="utf-8"
+    )
 
 
 def run() -> None:
@@ -58,7 +58,7 @@ def run() -> None:
 
     # Close all docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -77,10 +77,14 @@ def run() -> None:
         "schema_version": 1,
         "name": "TolDiag2Box",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 25.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 15.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 25.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 15.0},
         ],
     }
     r = part_build(spec, save_as=PART_PATH, save_format="current", no_dim=False)
@@ -105,7 +109,9 @@ def run() -> None:
     drw_mdoc2 = typed_qi(doc_raw, "IModelDoc2", module=mod)
 
     # Create front view + insert dims
-    view_raw = drawing_doc.CreateDrawViewFromModelView3(PART_PATH, "*Front", 0.15, 0.15, 0.0)
+    view_raw = drawing_doc.CreateDrawViewFromModelView3(
+        PART_PATH, "*Front", 0.15, 0.15, 0.0
+    )
     front_view = typed_qi(view_raw, "IView", module=mod)
     drawing_doc.InsertModelAnnotations3(0, -1, True, False, True, 0)
 
@@ -140,7 +146,10 @@ def run() -> None:
     post_tol = dim.GetToleranceType()
     post_vals = dim.GetToleranceValues()
     print(f"  Drawing dim after set: type={post_tol}, vals={post_vals}")
-    results["tests"]["drawing_dim_after_set"] = {"type": post_tol, "vals": str(post_vals)}
+    results["tests"]["drawing_dim_after_set"] = {
+        "type": post_tol,
+        "vals": str(post_vals),
+    }
 
     # Now check PART's dimension - is it affected?
     # Get the part's dimension via a different route
@@ -194,7 +203,9 @@ def run() -> None:
     else:
         # Try alternative: the drawing's IDimension might actually be the PART's
         # IDimension object (same COM pointer). Check if it has a feature owner
-        print("    Could not find part dim separately - checking if drawing dim IS part dim")
+        print(
+            "    Could not find part dim separately - checking if drawing dim IS part dim"
+        )
         try:
             feat_owner = dim.GetFeatureOwner()
             if feat_owner is not None:
@@ -276,7 +287,9 @@ def run() -> None:
     if reopen_dim is not None:
         reopen_tol = reopen_dim.GetToleranceType()
         reopen_vals = reopen_dim.GetToleranceValues()
-        print(f"    Reopened PART dim {dim_name}: type={reopen_tol}, vals={reopen_vals}")
+        print(
+            f"    Reopened PART dim {dim_name}: type={reopen_tol}, vals={reopen_vals}"
+        )
         results["tests"]["reopen_part_dim"] = {
             "name": dim_name,
             "type": reopen_tol,
@@ -298,7 +311,9 @@ def run() -> None:
     if "reopen_part_dim" in results["tests"]:
         persisted = results["tests"]["reopen_part_dim"].get("persisted", False)
         results["verdict"] = "GO" if persisted else "NO-GO"
-        print(f"\n  VERDICT: {results['verdict']} (tolerance {'persisted' if persisted else 'NOT persisted'} in PART)")
+        print(
+            f"\n  VERDICT: {results['verdict']} (tolerance {'persisted' if persisted else 'NOT persisted'} in PART)"
+        )
     else:
         results["verdict"] = "UNKNOWN"
 

@@ -86,15 +86,21 @@ def _build_parser() -> argparse.ArgumentParser:
     p = subs.add_parser("export", help="Export the assembly to a URDF package.")
     p.add_argument("--assembly", required=True, help="Path to the .SLDASM.")
     p.add_argument(
-        "--output-dir", dest="output_dir", required=True,
+        "--output-dir",
+        dest="output_dir",
+        required=True,
         help="Directory to write <robot_name>.urdf and meshes/ into.",
     )
     p.add_argument(
-        "--robot-name", dest="robot_name", default="robot",
+        "--robot-name",
+        dest="robot_name",
+        default="robot",
         help="URDF <robot> name and .urdf filename stem (default: robot).",
     )
     p.add_argument(
-        "--ascii-stl", dest="ascii_stl", action="store_true",
+        "--ascii-stl",
+        dest="ascii_stl",
+        action="store_true",
         help="Write ASCII STL meshes (default: binary).",
     )
     p.set_defaults(func=_run_export)

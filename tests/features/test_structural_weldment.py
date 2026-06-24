@@ -29,6 +29,7 @@ from ai_sw_bridge.features.structural_weldment import create_structural_weldment
 # Fake COM objects
 # ---------------------------------------------------------------------------
 
+
 class _FakeGroup:
     def __init__(self) -> None:
         self.Segments = None
@@ -102,8 +103,13 @@ def _feat(**kw) -> dict:
     return base
 
 
-def _wire(monkeypatch, *, metrics=((0, 0.0), (36, 26739.822)),
-          bodies_after=2, profile_exists=True) -> None:
+def _wire(
+    monkeypatch,
+    *,
+    metrics=((0, 0.0), (36, 26739.822)),
+    bodies_after=2,
+    profile_exists=True,
+) -> None:
     """Patch the COM-marshalling, typed-FM, sketch-resolution, and verify seams.
 
     The REAL ``verify.gate_additive_solid`` is NOT patched — it runs against
@@ -132,15 +138,24 @@ def _wire(monkeypatch, *, metrics=((0, 0.0), (36, 26739.822)),
 # Registration gate (survives the UNFIRED→GREEN flip without a second edit)
 # ---------------------------------------------------------------------------
 
+
 class TestRegistrationGate:
     def test_spike_status_is_a_known_sentinel(self):
         assert swm.SPIKE_STATUS in {
-            "GREEN", "UNFIRED", "UNRUN", "DEFERRED", "WALLED", "DORMANT",
+            "GREEN",
+            "UNFIRED",
+            "UNRUN",
+            "DEFERRED",
+            "WALLED",
+            "DORMANT",
         }
 
     def test_registration_matches_spike_status(self):
         if swm.SPIKE_STATUS == "GREEN":
-            assert HANDLER_REGISTRY.get("structural_weldment") is create_structural_weldment
+            assert (
+                HANDLER_REGISTRY.get("structural_weldment")
+                is create_structural_weldment
+            )
         else:
             assert "structural_weldment" not in HANDLER_REGISTRY
 
@@ -151,6 +166,7 @@ class TestRegistrationGate:
 # ---------------------------------------------------------------------------
 # Validation — fail closed before / around COM access
 # ---------------------------------------------------------------------------
+
 
 class TestValidation:
     def test_feature_not_dict(self):
@@ -184,13 +200,16 @@ class TestValidation:
     def test_zero_ghost_trap_unreachable(self, monkeypatch):
         """connected_segments must map to {1,2}; '0'/'none' rejected at validation."""
         _wire(monkeypatch)
-        ok, err = create_structural_weldment(_FakeDoc(), _feat(connected_segments="none"), {})
+        ok, err = create_structural_weldment(
+            _FakeDoc(), _feat(connected_segments="none"), {}
+        )
         assert ok is False and "connected_segments" in err
 
     def test_bad_corner_treatment_type(self, monkeypatch):
         _wire(monkeypatch)
         ok, err = create_structural_weldment(
-            _FakeDoc(), _feat(corner_treatment_type="miter"), {})
+            _FakeDoc(), _feat(corner_treatment_type="miter"), {}
+        )
         assert ok is False and "corner_treatment_type" in err
 
     def test_unresolvable_sketch(self, monkeypatch):
@@ -208,6 +227,7 @@ class TestValidation:
 # ---------------------------------------------------------------------------
 # Green path — ΔFaces > 0 ∧ ΔVol > 0
 # ---------------------------------------------------------------------------
+
 
 class TestGreen:
     def test_simple_cut_green(self, monkeypatch):
@@ -245,7 +265,8 @@ class TestGreen:
         _wire(monkeypatch, bodies_after=1)
         fm = _FakeFM()
         ok, note = create_structural_weldment(
-            _FakeDoc(fm=fm), _feat(corner_treatment=True, miter_merge=True), {})
+            _FakeDoc(fm=fm), _feat(corner_treatment=True, miter_merge=True), {}
+        )
         assert ok is True
         assert fm.group.MiterMergeCondition is True
         assert fm.group.ApplyCornerTreatment is True
@@ -254,6 +275,7 @@ class TestGreen:
 # ---------------------------------------------------------------------------
 # Ghost rejection — Feature returned but no geometry
 # ---------------------------------------------------------------------------
+
 
 class TestGhostRejection:
     def test_no_geometry_change_rejected(self, monkeypatch):

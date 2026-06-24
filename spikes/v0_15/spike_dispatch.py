@@ -116,8 +116,12 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk = doc.SketchManager
     sk.InsertSketch(True)
     seg = sk.CreateCornerRectangle(
-        -BOX_W_M / 2, -BOX_H_M / 2, 0.0,
-         BOX_W_M / 2,  BOX_H_M / 2,  0.0,
+        -BOX_W_M / 2,
+        -BOX_H_M / 2,
+        0.0,
+        BOX_W_M / 2,
+        BOX_H_M / 2,
+        0.0,
     )
     if seg is None:
         sk.InsertSketch(True)
@@ -125,14 +129,33 @@ def _build_box(doc: Any) -> dict[str, Any]:
     sk.InsertSketch(True)
     fm = doc.FeatureManager
     base_args = (
-        True, False, False, 0, 0, BOX_D_M, 0.0,
-        False, False, False, False, 0.0, 0.0,
-        False, False, False, False, True, True, True, 0, 0.0,
+        True,
+        False,
+        False,
+        0,
+        0,
+        BOX_D_M,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        0.0,
+        0.0,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True,
+        True,
+        0,
+        0.0,
     )
     try:
-        feat = fm.FeatureExtrusion2(*base_args, False)   # 23-arg
+        feat = fm.FeatureExtrusion2(*base_args, False)  # 23-arg
     except Exception:
-        feat = fm.FeatureExtrusion2(*base_args)           # 22-arg fallback
+        feat = fm.FeatureExtrusion2(*base_args)  # 22-arg fallback
     if feat is None:
         return {"built": False, "error": "FeatureExtrusion2 returned None"}
     return {"built": True, "feature_name": getattr(feat, "Name", None)}
@@ -142,22 +165,32 @@ def _build_box(doc: Any) -> dict[str, Any]:
 # Dispatch-mode acquisition
 # ---------------------------------------------------------------------------
 
+
 def _acquire_default() -> dict[str, Any]:
     """The bridge's current path: win32com.client.Dispatch."""
     t0 = time.perf_counter()
     try:
         sw = win32com.client.Dispatch("SldWorks.Application")
-        rec = {"status": "OK", "proxy_class": _proxy_class(sw),
-               "elapsed_ms": (time.perf_counter() - t0) * 1000.0, "_sw": sw}
+        rec = {
+            "status": "OK",
+            "proxy_class": _proxy_class(sw),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+            "_sw": sw,
+        }
     except pywintypes.com_error as e:
-        rec = {"status": "COM_ERROR",
-               "hresult": f"{getattr(e, 'hresult', None):#010x}",
-               "description": getattr(e, "strerror", str(e)),
-               "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+        rec = {
+            "status": "COM_ERROR",
+            "hresult": f"{getattr(e, 'hresult', None):#010x}",
+            "description": getattr(e, "strerror", str(e)),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
     except Exception as e:
-        rec = {"status": "PY_EXCEPTION",
-               "exception_type": type(e).__name__, "message": str(e),
-               "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+        rec = {
+            "status": "PY_EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
     return rec
 
 
@@ -166,17 +199,26 @@ def _acquire_dynamic() -> dict[str, Any]:
     t0 = time.perf_counter()
     try:
         sw = win32com.client.dynamic.Dispatch("SldWorks.Application")
-        rec = {"status": "OK", "proxy_class": _proxy_class(sw),
-               "elapsed_ms": (time.perf_counter() - t0) * 1000.0, "_sw": sw}
+        rec = {
+            "status": "OK",
+            "proxy_class": _proxy_class(sw),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+            "_sw": sw,
+        }
     except pywintypes.com_error as e:
-        rec = {"status": "COM_ERROR",
-               "hresult": f"{getattr(e, 'hresult', None):#010x}",
-               "description": getattr(e, "strerror", str(e)),
-               "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+        rec = {
+            "status": "COM_ERROR",
+            "hresult": f"{getattr(e, 'hresult', None):#010x}",
+            "description": getattr(e, "strerror", str(e)),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
     except Exception as e:
-        rec = {"status": "PY_EXCEPTION",
-               "exception_type": type(e).__name__, "message": str(e),
-               "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+        rec = {
+            "status": "PY_EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
     return rec
 
 
@@ -185,23 +227,33 @@ def _acquire_getactive() -> dict[str, Any]:
     t0 = time.perf_counter()
     try:
         sw = win32com.client.GetActiveObject("SldWorks.Application")
-        rec = {"status": "OK", "proxy_class": _proxy_class(sw),
-               "elapsed_ms": (time.perf_counter() - t0) * 1000.0, "_sw": sw}
+        rec = {
+            "status": "OK",
+            "proxy_class": _proxy_class(sw),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+            "_sw": sw,
+        }
     except pywintypes.com_error as e:
-        rec = {"status": "COM_ERROR",
-               "hresult": f"{getattr(e, 'hresult', None):#010x}",
-               "description": getattr(e, "strerror", str(e)),
-               "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+        rec = {
+            "status": "COM_ERROR",
+            "hresult": f"{getattr(e, 'hresult', None):#010x}",
+            "description": getattr(e, "strerror", str(e)),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
     except Exception as e:
-        rec = {"status": "PY_EXCEPTION",
-               "exception_type": type(e).__name__, "message": str(e),
-               "elapsed_ms": (time.perf_counter() - t0) * 1000.0}
+        rec = {
+            "status": "PY_EXCEPTION",
+            "exception_type": type(e).__name__,
+            "message": str(e),
+            "elapsed_ms": (time.perf_counter() - t0) * 1000.0,
+        }
     return rec
 
 
 # ---------------------------------------------------------------------------
 # SelectByID2 probe matrix
 # ---------------------------------------------------------------------------
+
 
 def _probe_selectbyid2(doc: Any, label: str) -> list[dict[str, Any]]:
     """Try every plausible Callout-arg shape on SelectByID2, against one
@@ -214,20 +266,29 @@ def _probe_selectbyid2(doc: Any, label: str) -> list[dict[str, Any]]:
     attempts: list[dict[str, Any]] = []
 
     forms: list[tuple[str, tuple]] = [
-        ("all-9 Callout=None",
-         ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0, None, 0)),
-        ("all-9 Callout=Missing",
-         ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0, pythoncom.Missing, 0)),
-        ("all-9 Callout=0",
-         ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0, 0, 0)),
-        ("all-9 Callout='' (empty str)",
-         ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0, "", 0)),
-        ("kwarg Callout=None",
-         ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0),
-         {"Callout": None, "SelectOption": 0}),
-        ("kwarg Callout=Missing",
-         ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0),
-         {"Callout": pythoncom.Missing, "SelectOption": 0}),
+        (
+            "all-9 Callout=None",
+            ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0, None, 0),
+        ),
+        (
+            "all-9 Callout=Missing",
+            ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0, pythoncom.Missing, 0),
+        ),
+        ("all-9 Callout=0", ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0, 0, 0)),
+        (
+            "all-9 Callout='' (empty str)",
+            ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0, "", 0),
+        ),
+        (
+            "kwarg Callout=None",
+            ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0),
+            {"Callout": None, "SelectOption": 0},
+        ),
+        (
+            "kwarg Callout=Missing",
+            ("Front Plane", "PLANE", 0.0, 0.0, 0.0, False, 0),
+            {"Callout": pythoncom.Missing, "SelectOption": 0},
+        ),
     ]
 
     ext = doc.Extension
@@ -246,8 +307,9 @@ def _probe_selectbyid2(doc: Any, label: str) -> list[dict[str, Any]]:
             result = ext.SelectByID2(*args, **kwargs)
             rec["status"] = "OK"
             rec["return_type"] = _type_tag(result)
-            rec["return_value"] = (bool(result) if isinstance(result, (bool, int))
-                                   else str(result))
+            rec["return_value"] = (
+                bool(result) if isinstance(result, (bool, int)) else str(result)
+            )
         except pywintypes.com_error as e:
             hr = getattr(e, "hresult", None)
             rec["status"] = "COM_ERROR"
@@ -255,7 +317,7 @@ def _probe_selectbyid2(doc: Any, label: str) -> list[dict[str, Any]]:
             rec["description"] = getattr(e, "strerror", str(e))
             # DISP_E_TYPEMISMATCH = -2147352571 / 0x80020005 — the expected
             # marshaling wall on the Callout OUT-IDispatch.
-            rec["is_typemismatch"] = (hr in (-2147352571, 0x80020005, -2146827830))
+            rec["is_typemismatch"] = hr in (-2147352571, 0x80020005, -2146827830)
         except Exception as e:
             rec["status"] = "PY_EXCEPTION"
             rec["exception_type"] = type(e).__name__
@@ -269,13 +331,14 @@ def _probe_selectbyid2(doc: Any, label: str) -> list[dict[str, Any]]:
 # IEntity.Select4 probe (secondary — same Callout failure class)
 # ---------------------------------------------------------------------------
 
+
 def _probe_entity_select4(entity: Any, label: str) -> list[dict[str, Any]]:
     """IEntity.Select4(Append, Callout) — same OUT-IDispatch marshaling risk."""
     attempts: list[dict[str, Any]] = []
     forms = [
-        ("Select4(False, None)",           (False, None)),
-        ("Select4(False, Missing)",        (False, pythoncom.Missing)),
-        ("Select4(False, 0)",              (False, 0)),
+        ("Select4(False, None)", (False, None)),
+        ("Select4(False, Missing)", (False, pythoncom.Missing)),
+        ("Select4(False, 0)", (False, 0)),
     ]
     for form_label, args in forms:
         t0 = time.perf_counter()
@@ -284,14 +347,15 @@ def _probe_entity_select4(entity: Any, label: str) -> list[dict[str, Any]]:
             result = entity.Select4(*args)
             rec["status"] = "OK"
             rec["return_type"] = _type_tag(result)
-            rec["return_value"] = (bool(result) if isinstance(result, (bool, int))
-                                   else str(result))
+            rec["return_value"] = (
+                bool(result) if isinstance(result, (bool, int)) else str(result)
+            )
         except pywintypes.com_error as e:
             hr = getattr(e, "hresult", None)
             rec["status"] = "COM_ERROR"
             rec["hresult"] = f"{hr:#010x}" if isinstance(hr, int) else str(hr)
             rec["description"] = getattr(e, "strerror", str(e))
-            rec["is_typemismatch"] = (hr in (-2147352571, 0x80020005, -2146827830))
+            rec["is_typemismatch"] = hr in (-2147352571, 0x80020005, -2146827830)
         except Exception as e:
             rec["status"] = "PY_EXCEPTION"
             rec["exception_type"] = type(e).__name__
@@ -304,6 +368,7 @@ def _probe_entity_select4(entity: Any, label: str) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # GetSelectByIDString on IFace2 (E2.1 follow-up — does dispatch mode revive it?)
 # ---------------------------------------------------------------------------
+
 
 def _probe_get_select_by_id_string(body: Any, label: str) -> dict[str, Any]:
     """E2.1 found GetSelectByIDString UNREACHABLE on IFace2 proxies. Re-test
@@ -338,9 +403,9 @@ def _probe_get_select_by_id_string(body: Any, label: str) -> dict[str, Any]:
 # Top-level COM run
 # ---------------------------------------------------------------------------
 
+
 def _classify(attempts: list[dict[str, Any]]) -> str:
-    if any(a.get("status") == "OK" and a.get("return_value") is True
-           for a in attempts):
+    if any(a.get("status") == "OK" and a.get("return_value") is True for a in attempts):
         return "OK"
     if any(a.get("is_typemismatch") is True for a in attempts):
         return "TYPEMISMATCH"
@@ -349,8 +414,7 @@ def _classify(attempts: list[dict[str, Any]]) -> str:
     return "OTHER"
 
 
-def _probe_one_dispatch(label: str, acquire_fn,
-                        skip_build: bool) -> dict[str, Any]:
+def _probe_one_dispatch(label: str, acquire_fn, skip_build: bool) -> dict[str, Any]:
     """Run the full probe matrix under one dispatch mode."""
     rec: dict[str, Any] = {"label": label}
     acq = acquire_fn()
@@ -417,9 +481,11 @@ def _probe_one_dispatch(label: str, acquire_fn,
         rec["verdict"] = "PASS"
     elif rec["SelectByID2_class"] == "TYPEMISMATCH":
         rec["verdict"] = "PARTIAL"
-        rec["reason"] = ("SelectByID2 failed with DISP_E_TYPEMISMATCH on the "
-                         "Callout OUT-IDispatch under this dispatch mode — "
-                         "the pywin32 marshaler, not the wrapper, is the wall.")
+        rec["reason"] = (
+            "SelectByID2 failed with DISP_E_TYPEMISMATCH on the "
+            "Callout OUT-IDispatch under this dispatch mode — "
+            "the pywin32 marshaler, not the wrapper, is the wall."
+        )
     else:
         rec["verdict"] = "PARTIAL"
         rec["reason"] = "no form succeeded; not a clean TYPEMISMATCH"
@@ -429,12 +495,21 @@ def _probe_one_dispatch(label: str, acquire_fn,
 def run_com(skip_build: bool) -> dict[str, Any]:
     modes: list[dict[str, Any]] = []
 
-    modes.append(_probe_one_dispatch(
-        "win32com.client.Dispatch (current)", _acquire_default, skip_build))
-    modes.append(_probe_one_dispatch(
-        "win32com.client.dynamic.Dispatch (forced)", _acquire_dynamic, skip_build))
-    modes.append(_probe_one_dispatch(
-        "win32com.client.GetActiveObject (ROT)", _acquire_getactive, skip_build))
+    modes.append(
+        _probe_one_dispatch(
+            "win32com.client.Dispatch (current)", _acquire_default, skip_build
+        )
+    )
+    modes.append(
+        _probe_one_dispatch(
+            "win32com.client.dynamic.Dispatch (forced)", _acquire_dynamic, skip_build
+        )
+    )
+    modes.append(
+        _probe_one_dispatch(
+            "win32com.client.GetActiveObject (ROT)", _acquire_getactive, skip_build
+        )
+    )
 
     # 5. Derive overall verdict.
     any_pass = any(m.get("verdict") == "PASS" for m in modes)
@@ -482,6 +557,7 @@ def run_com(skip_build: bool) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # VBA oracle (early-binding cross-check)
 # ---------------------------------------------------------------------------
+
 
 def emit_vba() -> str:
     """Early-binding oracle. If Python is PARTIAL but this PASSes, the
@@ -568,22 +644,28 @@ End Sub
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
-        "--mode", choices=["com", "vba"], default="com",
+        "--mode",
+        choices=["com", "vba"],
+        default="com",
         help="com = drive SW from Python under each dispatch mode; "
-             "vba = emit the .bas oracle.",
+        "vba = emit the .bas oracle.",
     )
     p.add_argument(
-        "--skip-build", action="store_true",
+        "--skip-build",
+        action="store_true",
         help="Probe the solid body already in the active part.",
     )
     p.add_argument(
-        "--out", type=Path, default=None,
+        "--out",
+        type=Path,
+        default=None,
         help="Write JSON report to this path instead of stdout.",
     )
     args = p.parse_args()

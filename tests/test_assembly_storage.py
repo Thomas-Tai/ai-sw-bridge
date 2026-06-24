@@ -78,10 +78,14 @@ class TestMateRecord:
         mr = MateRecord(
             type="width",
             alignment=None,
-            width_faces=[{"component": "a", "face_ref": {}},
-                         {"component": "a", "face_ref": {}}],
-            tab_faces=[{"component": "b", "face_ref": {}},
-                       {"component": "b", "face_ref": {}}],
+            width_faces=[
+                {"component": "a", "face_ref": {}},
+                {"component": "a", "face_ref": {}},
+            ],
+            tab_faces=[
+                {"component": "b", "face_ref": {}},
+                {"component": "b", "face_ref": {}},
+            ],
         )
         d = mr.to_dict()
         assert "a" not in d and "width_faces" in d
@@ -114,23 +118,42 @@ def _sample_spec() -> dict:
         "kind": "assembly",
         "name": "gearbox",
         "components": [
-            {"id": "housing", "part": "parts/housing.sldprt",
-             "transform": {"xyz_mm": [0, 0, 0]}},
-            {"id": "shaft", "part_spec": "specs/shaft.aisw.json",
-             "transform": {"xyz_mm": [0, 0, 40], "rpy_deg": [0, 0, 90]}},
+            {
+                "id": "housing",
+                "part": "parts/housing.sldprt",
+                "transform": {"xyz_mm": [0, 0, 0]},
+            },
+            {
+                "id": "shaft",
+                "part_spec": "specs/shaft.aisw.json",
+                "transform": {"xyz_mm": [0, 0, 40], "rpy_deg": [0, 0, 90]},
+            },
         ],
         "mates": [
-            {"type": "distance", "alignment": "aligned", "value_mm": 5.0,
-             "a": {"component": "housing", "face_ref": {"normal": [0, 0, 1]}},
-             "b": {"component": "shaft", "face_ref": {"normal": [0, 0, -1]}}},
-            {"type": "angle", "value_deg": 45.0,
-             "a": {"component": "housing", "face_ref": {"normal": [1, 0, 0]}},
-             "b": {"component": "shaft", "face_ref": {"normal": [0, 1, 0]}}},
-            {"type": "width",
-             "width_faces": [{"component": "housing", "face_ref": {"normal": [1, 0, 0]}},
-                             {"component": "housing", "face_ref": {"normal": [-1, 0, 0]}}],
-             "tab_faces": [{"component": "shaft", "face_ref": {"normal": [1, 0, 0]}},
-                           {"component": "shaft", "face_ref": {"normal": [-1, 0, 0]}}]},
+            {
+                "type": "distance",
+                "alignment": "aligned",
+                "value_mm": 5.0,
+                "a": {"component": "housing", "face_ref": {"normal": [0, 0, 1]}},
+                "b": {"component": "shaft", "face_ref": {"normal": [0, 0, -1]}},
+            },
+            {
+                "type": "angle",
+                "value_deg": 45.0,
+                "a": {"component": "housing", "face_ref": {"normal": [1, 0, 0]}},
+                "b": {"component": "shaft", "face_ref": {"normal": [0, 1, 0]}},
+            },
+            {
+                "type": "width",
+                "width_faces": [
+                    {"component": "housing", "face_ref": {"normal": [1, 0, 0]}},
+                    {"component": "housing", "face_ref": {"normal": [-1, 0, 0]}},
+                ],
+                "tab_faces": [
+                    {"component": "shaft", "face_ref": {"normal": [1, 0, 0]}},
+                    {"component": "shaft", "face_ref": {"normal": [-1, 0, 0]}},
+                ],
+            },
         ],
     }
 
@@ -141,12 +164,16 @@ def _sample_manifest(spec: dict | None = None) -> AssemblyManifest:
         spec=spec,
         assembly_path="gearbox.sldasm",
         components=[
-            ComponentInstance(id="housing", sw_name="housing-1",
-                              part_path="parts/housing.sldprt"),
-            ComponentInstance(id="shaft", sw_name="shaft-1",
-                              part_path="parts/shaft.sldprt",
-                              part_spec_path="specs/shaft.aisw.json",
-                              part_spec_sha256="deadbeef"),
+            ComponentInstance(
+                id="housing", sw_name="housing-1", part_path="parts/housing.sldprt"
+            ),
+            ComponentInstance(
+                id="shaft",
+                sw_name="shaft-1",
+                part_path="parts/shaft.sldprt",
+                part_spec_path="specs/shaft.aisw.json",
+                part_spec_sha256="deadbeef",
+            ),
         ],
     )
 
@@ -218,8 +245,11 @@ class TestRelativePathPortability:
             spec=_sample_spec(),
             assembly_path=str(tmp_path / "gearbox.sldasm"),
             components=[
-                ComponentInstance(id="housing", sw_name="housing-1",
-                                  part_path=str(tmp_path / "parts" / "housing.sldprt")),
+                ComponentInstance(
+                    id="housing",
+                    sw_name="housing-1",
+                    part_path=str(tmp_path / "parts" / "housing.sldprt"),
+                ),
             ],
         )
         path = tmp_path / "gearbox.sldasm.manifest.json"
@@ -238,8 +268,13 @@ class TestRelativePathPortability:
         m = AssemblyManifest(
             spec=_sample_spec(),
             assembly_path=str(dir_a / "gearbox.sldasm"),
-            components=[ComponentInstance(id="housing", sw_name="housing-1",
-                                          part_path=str(dir_a / "parts" / "x.sldprt"))],
+            components=[
+                ComponentInstance(
+                    id="housing",
+                    sw_name="housing-1",
+                    part_path=str(dir_a / "parts" / "x.sldprt"),
+                )
+            ],
         )
         path_a = dir_a / "m.manifest.json"
         m.save(path_a)
@@ -263,13 +298,20 @@ class TestV1BackCompat:
         v1 = {
             "schema_version": 1,
             "components": [
-                {"id": "housing", "sw_name": "housing-1",
-                 "part_path": "/parts/housing.sldprt", "transform": {}},
+                {
+                    "id": "housing",
+                    "sw_name": "housing-1",
+                    "part_path": "/parts/housing.sldprt",
+                    "transform": {},
+                },
             ],
             "mates": [
-                {"type": "coincident", "alignment": "aligned",
-                 "a": {"component": "housing", "face_ref": {}},
-                 "b": {"component": "shaft", "face_ref": {}}},
+                {
+                    "type": "coincident",
+                    "alignment": "aligned",
+                    "a": {"component": "housing", "face_ref": {}},
+                    "b": {"component": "shaft", "face_ref": {}},
+                },
             ],
         }
         m = AssemblyManifest.from_dict(v1)

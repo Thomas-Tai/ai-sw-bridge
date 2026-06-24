@@ -301,7 +301,18 @@ def _parse_dxf_entities(dxf_path: str) -> dict[str, int]:
 
     Returns dict of entity_type -> count for common geometry entities.
     """
-    entity_types = ["LINE", "LWPOLYLINE", "POLYLINE", "CIRCLE", "ARC", "SPLINE", "ELLIPSE", "POINT", "TEXT", "MTEXT"]
+    entity_types = [
+        "LINE",
+        "LWPOLYLINE",
+        "POLYLINE",
+        "CIRCLE",
+        "ARC",
+        "SPLINE",
+        "ELLIPSE",
+        "POINT",
+        "TEXT",
+        "MTEXT",
+    ]
     counts: dict[str, int] = {et: 0 for et in entity_types}
     total_entities = 0
 
@@ -334,7 +345,7 @@ def _parse_dxf_entities(dxf_path: str) -> dict[str, int]:
         entities_section_match = re.search(
             r"SECTION\s*\n\s*2\s*\n\s*ENTITIES\s*\n(.*?)\s*ENDSEC",
             content,
-            re.DOTALL | re.IGNORECASE
+            re.DOTALL | re.IGNORECASE,
         )
         if entities_section_match:
             entities_section = entities_section_match.group(1)
@@ -408,14 +419,14 @@ def _export_dxf_route1_extension_saveas(
         # dispid 93, return BOOL, args: BSTR, I4, I4, IDispatch, [out] VARIANT, [out] VARIANT
         result = ext._oleobj_.InvokeTypes(
             93,  # dispid for SaveAs
-            0,   # LCID
-            1,   # DISPATCH_METHOD
+            0,  # LCID
+            1,  # DISPATCH_METHOD
             (11, 0),  # Return: BOOL
             (
-                (8, 1),      # Name: BSTR in
-                (3, 1),      # Version: I4 in
-                (3, 1),      # Options: I4 in
-                (9, 1),      # ExportData: IDispatch in (None for DXF)
+                (8, 1),  # Name: BSTR in
+                (3, 1),  # Version: I4 in
+                (3, 1),  # Options: I4 in
+                (9, 1),  # ExportData: IDispatch in (None for DXF)
                 (16387, 3),  # Errors: VARIANT|BYREF, in/out
                 (16387, 3),  # Warnings: VARIANT|BYREF, in/out
             ),
@@ -485,16 +496,20 @@ def _export_dxf_route2_exporttodwg2(
                     0,  # Options: default DXF export
                     False,  # UseSheetMetal: False for drawing
                     False,  # UseSelectedObjects
-                    True,   # UseModelViews
-                    None,   # Selections
-                    None,   # Views
-                    1.0,    # Scale
+                    True,  # UseModelViews
+                    None,  # Selections
+                    None,  # Views
+                    1.0,  # Scale
                 )
                 if result:
                     p = Path(out_path)
                     if p.exists():
                         size = p.stat().st_size
-                        return True, size, f"DXF via late-bound ExportToDWG2 ({size} bytes)"
+                        return (
+                            True,
+                            size,
+                            f"DXF via late-bound ExportToDWG2 ({size} bytes)",
+                        )
                 return False, 0, f"late-bound ExportToDWG2 returned {result}"
             except Exception as e2:
                 return False, 0, f"late-bound ExportToDWG2 raised: {e2}"
@@ -517,25 +532,25 @@ def _export_dxf_route2_exporttodwg2(
             1,  # DISPATCH_METHOD
             (VT_BOOL, 0),  # Return: BOOL
             (
-                (VT_BSTR, 1),     # FileName
-                (VT_DISPATCH, 1), # Model (drawing doc)
-                (VT_I4, 1),       # Options
-                (VT_BOOL, 1),     # UseSheetMetal
-                (VT_BOOL, 1),     # UseSelectedObjects
-                (VT_BOOL, 1),     # UseModelViews
+                (VT_BSTR, 1),  # FileName
+                (VT_DISPATCH, 1),  # Model (drawing doc)
+                (VT_I4, 1),  # Options
+                (VT_BOOL, 1),  # UseSheetMetal
+                (VT_BOOL, 1),  # UseSelectedObjects
+                (VT_BOOL, 1),  # UseModelViews
                 (VT_VARIANT, 1),  # Selections
                 (VT_VARIANT, 1),  # Views
-                (VT_R8, 1),       # Scale
+                (VT_R8, 1),  # Scale
             ),
             out_path,
             doc_m2._oleobj_,  # Pass the underlying COM object
-            0,   # Options: default
+            0,  # Options: default
             False,  # UseSheetMetal
             False,  # UseSelectedObjects
-            True,   # UseModelViews
-            None,   # Selections
-            None,   # Views
-            1.0,    # Scale
+            True,  # UseModelViews
+            None,  # Selections
+            None,  # Views
+            1.0,  # Scale
         )
 
         if result:
@@ -651,7 +666,9 @@ def run() -> str:
     print("\n=== ROUTE 1b: IModelDocExtension.SaveAs ===")
     dxf_path1b = str(_tmp / f"w33_spike_dxf_route1b_{_ts}.dxf")
 
-    ok1b, size1b, detail1b = _export_dxf_route1_extension_saveas(doc_m2, mod, dxf_path1b)
+    ok1b, size1b, detail1b = _export_dxf_route1_extension_saveas(
+        doc_m2, mod, dxf_path1b
+    )
     gate("route1b_ext_saveas", ok1b, f"size={size1b}, {detail1b}")
     results["dxf_paths"]["route1b"] = dxf_path1b
     results["dxf_size_bytes"]["route1b"] = size1b
@@ -767,7 +784,9 @@ if __name__ == "__main__":
         verdict = run()
     except Exception:
         traceback.print_exc()
-        results["verdict"] = f"NO-GO (unhandled exception: {traceback.format_exc()[:200]})"
+        results["verdict"] = (
+            f"NO-GO (unhandled exception: {traceback.format_exc()[:200]})"
+        )
         save_results()
         verdict = "NO-GO"
     sys.exit(0 if verdict == "GREEN" else 1)

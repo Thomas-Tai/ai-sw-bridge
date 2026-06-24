@@ -43,13 +43,17 @@ import pythoncom  # noqa: E402
 from ai_sw_bridge.com.earlybind import typed, typed_extension  # noqa: E402
 from ai_sw_bridge.com.sw_type_info import wrapper_module  # noqa: E402
 from ai_sw_bridge.sw_com import get_sw_app, get_active_doc  # noqa: E402
-from ai_sw_bridge.observe_selection import read_selection, sw_get_selection  # noqa: E402
+from ai_sw_bridge.observe_selection import (
+    read_selection,
+    sw_get_selection,
+)  # noqa: E402
 
 BOX_SIZE_M = 0.020  # 20 mm cube
 
 
 def _find_part_template() -> str | None:
     import glob
+
     for pat in [
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.PRTDOT",
         r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\part.prtdot",
@@ -65,7 +69,9 @@ def _retry(fn, *args, retries=3, delay=5, label=""):
             return fn(*args)
         except Exception as exc:
             if attempt < retries - 1:
-                print(f"  [{label}] Attempt {attempt+1} failed: {exc!r}, retrying in {delay}s ...")
+                print(
+                    f"  [{label}] Attempt {attempt+1} failed: {exc!r}, retrying in {delay}s ..."
+                )
                 time.sleep(delay)
             else:
                 raise
@@ -77,8 +83,12 @@ def _make_box_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, str 
         doc = _retry(
             sw_typed.NewDocument,
             _find_part_template(),
-            0, 0, 0,
-            retries=3, delay=5, label="part_new",
+            0,
+            0,
+            0,
+            retries=3,
+            delay=5,
+            label="part_new",
         )
         if doc is None:
             return None, "NewDocument(part) returned None"
@@ -92,13 +102,28 @@ def _make_box_part(sw_typed: Any, mod: Any, path: str) -> tuple[Any | None, str 
         dt.ClearSelection2(True)
         dt.SelectByID("Sketch1", "SKETCH", 0, 0, 0)
         feat = dt.FeatureManager.FeatureExtrusion2(
-            True, False, False, 0, 0,
-            BOX_SIZE_M, 0.0,
-            False, False, False, False,
-            0.0, 0.0,
-            False, False, False, False,
-            True, True, True,
-            0, 0,
+            True,
+            False,
+            False,
+            0,
+            0,
+            BOX_SIZE_M,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            0.0,
+            0.0,
+            False,
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            0,
+            0,
             False,
         )
         if feat is None:
@@ -164,9 +189,23 @@ def main() -> None:
 
     result: dict[str, Any] = {
         "verdict": "PENDING",
-        "test_1_face": {"ok": False, "count": None, "type": None, "type_name": None, "has_durable_ref": False, "error": None},
+        "test_1_face": {
+            "ok": False,
+            "count": None,
+            "type": None,
+            "type_name": None,
+            "has_durable_ref": False,
+            "error": None,
+        },
         "test_0_empty": {"ok": False, "count": None, "error": None},
-        "test_2_mixed": {"ok": False, "count": None, "types": [], "type_names": [], "durable_refs": [], "error": None},
+        "test_2_mixed": {
+            "ok": False,
+            "count": None,
+            "types": [],
+            "type_names": [],
+            "durable_refs": [],
+            "error": None,
+        },
         "test_no_doc": {"ok": None, "error": None},
         "test_persist_roundtrip": {"captured": False, "resolved": False, "error": None},
         "errors": [],
@@ -219,11 +258,15 @@ def main() -> None:
                     t1["type"] = s0.get("type")
                     t1["type_name"] = s0.get("type_name")
                     t1["has_durable_ref"] = s0.get("durable_ref") is not None
-                    print(f"[S1]   count={t1['count']}, type={t1['type']} ({t1['type_name']}), durable_ref={'YES' if t1['has_durable_ref'] else 'NO'}")
+                    print(
+                        f"[S1]   count={t1['count']}, type={t1['type']} ({t1['type_name']}), durable_ref={'YES' if t1['has_durable_ref'] else 'NO'}"
+                    )
 
             if not t1["ok"]:
                 t1["error"] = sel_result.get("error")
-                result["errors"].append(f"test_1: selection not ok: {sel_result.get('error')}")
+                result["errors"].append(
+                    f"test_1: selection not ok: {sel_result.get('error')}"
+                )
 
         # ── Test 2: Clear selection, read back (should be count==0) ─────
         print("[S1] TEST 2: Clear selection ...")
@@ -262,7 +305,9 @@ def main() -> None:
                         t2["types"].append(s.get("type"))
                         t2["type_names"].append(s.get("type_name"))
                         t2["durable_refs"].append(s.get("durable_ref") is not None)
-                print(f"[S1]   count={t2['count']}, types={t2['types']}, names={t2['type_names']}, durable_refs={t2['durable_refs']}")
+                print(
+                    f"[S1]   count={t2['count']}, types={t2['types']}, names={t2['type_names']}, durable_refs={t2['durable_refs']}"
+                )
                 if not t2["ok"]:
                     t2["error"] = sel_result_2.get("error")
         else:
@@ -294,12 +339,16 @@ def main() -> None:
                         result["test_persist_roundtrip"]["resolved"] = (
                             entity is not None and (err_code is None or err_code == 0)
                         )
-                        print(f"[S1]   persist-ref: captured=True, resolved={result['test_persist_roundtrip']['resolved']}, err_code={err_code}")
+                        print(
+                            f"[S1]   persist-ref: captured=True, resolved={result['test_persist_roundtrip']['resolved']}, err_code={err_code}"
+                        )
                     except Exception as exc:
                         result["test_persist_roundtrip"]["error"] = f"resolve: {exc!r}"
                         print(f"[S1]   persist-ref resolve error: {exc!r}")
                 else:
-                    result["test_persist_roundtrip"]["error"] = "no durable_ref captured"
+                    result["test_persist_roundtrip"][
+                        "error"
+                    ] = "no durable_ref captured"
                     print("[S1]   persist-ref: no durable_ref captured")
         else:
             result["test_persist_roundtrip"]["error"] = "face select failed"
@@ -310,6 +359,7 @@ def main() -> None:
         time.sleep(1)
 
         from ai_sw_bridge.observe import SolidWorksObserver
+
         no_doc_result = SolidWorksObserver().selection()
         tnd = result["test_no_doc"]
         tnd["ok"] = no_doc_result.get("ok")
@@ -355,7 +405,10 @@ def main() -> None:
         checks.append(("no_doc", c4))
 
         # Check 5: persist round-trip
-        c5 = result["test_persist_roundtrip"]["captured"] and result["test_persist_roundtrip"]["resolved"]
+        c5 = (
+            result["test_persist_roundtrip"]["captured"]
+            and result["test_persist_roundtrip"]["resolved"]
+        )
         checks.append(("persist_rt", c5))
 
         all_pass = all(c for _, c in checks)
@@ -370,6 +423,7 @@ def main() -> None:
         result["errors"].append(f"top-level: {exc!r}")
         result["verdict"] = "NO-GO"
         import traceback
+
         traceback.print_exc()
     finally:
         try:

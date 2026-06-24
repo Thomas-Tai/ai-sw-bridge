@@ -47,9 +47,16 @@ _SW_DOC_ASSEMBLY = 2
 _SW_DOC_DRAWING = 3
 
 # 3D formats require Part or Assembly (NOT Drawing) — W34 doc-type guard.
-_3D_FORMATS: frozenset[str] = frozenset({
-    "step214", "step203", "iges", "parasolid", "stl", "3mf",
-})
+_3D_FORMATS: frozenset[str] = frozenset(
+    {
+        "step214",
+        "step203",
+        "iges",
+        "parasolid",
+        "stl",
+        "3mf",
+    }
+)
 
 # swExportDataFileType_e
 _SW_EXPORT_PDF_DATA = 1
@@ -299,9 +306,7 @@ def _export_pdf(
         except Exception as exc:
             # If we can't validate sheet names, let the COM call fail
             # naturally — don't block the export attempt
-            logger.warning(
-                "Could not validate sheet names against drawing: %s", exc
-            )
+            logger.warning("Could not validate sheet names against drawing: %s", exc)
     else:
         return ExportResult(
             format=fmt.name,
@@ -365,14 +370,14 @@ def _export_pdf(
         # dispid 93, return BOOL, arg types: BSTR, I4, I4, IDispatch, [out] VARIANT, [out] VARIANT
         result = ext._oleobj_.InvokeTypes(
             93,  # dispid for SaveAs
-            0,   # LCID
-            1,   # DISPATCH_METHOD
+            0,  # LCID
+            1,  # DISPATCH_METHOD
             (11, 0),  # Return: BOOL
             (
-                (8, 1),      # Name: BSTR in
-                (3, 1),      # Version: I4 in
-                (3, 1),      # Options: I4 in
-                (9, 1),      # ExportData: IDispatch in
+                (8, 1),  # Name: BSTR in
+                (3, 1),  # Version: I4 in
+                (3, 1),  # Options: I4 in
+                (9, 1),  # ExportData: IDispatch in
                 (16387, 3),  # Errors: VARIANT|BYREF, in/out
                 (16387, 3),  # Warnings: VARIANT|BYREF, in/out
             ),
@@ -428,7 +433,10 @@ def _export_pdf(
 
 
 def _apply_export_preferences(
-    doc: Any, fmt: ExportFormat, *, binary: bool | None = None,
+    doc: Any,
+    fmt: ExportFormat,
+    *,
+    binary: bool | None = None,
 ) -> None:
     """Set export user-preferences on the doc BEFORE SaveAs3 (W52).
 
@@ -463,7 +471,11 @@ def _apply_export_preferences(
                 getattr(get_sw_app(), method)(pref_id, value)
             except Exception:
                 logger.warning(
-                    "%s(%s, %s) failed: %s", method, pref_id, value, first,
+                    "%s(%s, %s) failed: %s",
+                    method,
+                    pref_id,
+                    value,
+                    first,
                 )
 
     # STL binary/ASCII toggle
@@ -475,7 +487,9 @@ def _apply_export_preferences(
             )
         else:
             _set_pref(
-                "SetUserPreferenceToggle", _SW_STL_BINARY_TOGGLE, bool(binary),
+                "SetUserPreferenceToggle",
+                _SW_STL_BINARY_TOGGLE,
+                bool(binary),
             )
 
     # STEP AP selection (format name determines the AP)
@@ -488,13 +502,18 @@ def _apply_export_preferences(
         else:
             ap_val = _SW_STEP_AP203 if fmt.name == "step203" else _SW_STEP_AP214
             _set_pref(
-                "SetUserPreferenceIntegerValue", _SW_STEP_AP_INTEGER, ap_val,
+                "SetUserPreferenceIntegerValue",
+                _SW_STEP_AP_INTEGER,
+                ap_val,
             )
 
 
 def _saveas3_direct(
-    doc: Any, fmt: ExportFormat, out_path: Path,
-    *, binary: bool | None = None,
+    doc: Any,
+    fmt: ExportFormat,
+    out_path: Path,
+    *,
+    binary: bool | None = None,
 ) -> ExportResult:
     """SaveAs3-direct export path.
 
@@ -596,9 +615,7 @@ def _saveas3_direct(
     return ExportResult(format=fmt.name, path=path_str, ok=True)
 
 
-def _flat_pattern_dxf(
-    doc: Any, fmt: ExportFormat, out_path: Path
-) -> ExportResult:
+def _flat_pattern_dxf(doc: Any, fmt: ExportFormat, out_path: Path) -> ExportResult:
     """Export a sheet-metal part's flat pattern to DXF via ExportToDWG2.
 
     Requires a Part document (``.SLDPRT``) that contains a Flat-Pattern
@@ -731,9 +748,15 @@ def _flat_pattern_dxf(
         )
         try:
             success = doc.ExportToDWG2(
-                path_str, source_path,
+                path_str,
+                source_path,
                 _SW_EXPORT_SHEETMETAL,
-                True, False, False, False, False, 0,
+                True,
+                False,
+                False,
+                False,
+                False,
+                0,
             )
         except Exception as exc2:
             return ExportResult(
@@ -835,12 +858,16 @@ def _flat_pattern_dxf_drawing(
         doc_type = _get_doc_type(doc)
     except Exception as exc:
         return ExportResult(
-            format=fmt.name, path=path_str, ok=False,
+            format=fmt.name,
+            path=path_str,
+            ok=False,
             error=f"Cannot determine document type: {exc}",
         )
     if doc_type != _SW_DOC_PART:
         return ExportResult(
-            format=fmt.name, path=path_str, ok=False,
+            format=fmt.name,
+            path=path_str,
+            ok=False,
             error=(
                 f"format:'dxf_flat_bends' requires a Part (.SLDPRT) document, "
                 f"but doc type is {doc_type} (1=Part, 2=Assembly, 3=Drawing)"
@@ -860,13 +887,17 @@ def _flat_pattern_dxf_drawing(
             err = doc.SaveAs3(str(tmp_part), 0, 0)
             if (int(err) if err is not None else 0) != 0:
                 return ExportResult(
-                    format=fmt.name, path=path_str, ok=False,
+                    format=fmt.name,
+                    path=path_str,
+                    ok=False,
                     error=f"Cannot save part for flat-pattern export: SaveAs3 error {err}",
                 )
             source_path = str(tmp_part)
         except Exception as exc:
             return ExportResult(
-                format=fmt.name, path=path_str, ok=False,
+                format=fmt.name,
+                path=path_str,
+                ok=False,
                 error=f"Cannot save part for flat-pattern export: {exc}",
             )
 
@@ -874,7 +905,9 @@ def _flat_pattern_dxf_drawing(
     flat_found, config_name = _find_flat_pattern_and_config(doc)
     if not flat_found:
         return ExportResult(
-            format=fmt.name, path=path_str, ok=False,
+            format=fmt.name,
+            path=path_str,
+            ok=False,
             error=(
                 "No Flat-Pattern feature found in this part. "
                 "format:'dxf_flat_bends' requires a sheet-metal part with a "
@@ -897,7 +930,9 @@ def _flat_pattern_dxf_drawing(
     drw_template = _find_drawing_template()
     if not drw_template:
         return ExportResult(
-            format=fmt.name, path=path_str, ok=False,
+            format=fmt.name,
+            path=path_str,
+            ok=False,
             error="No .DRWDOT drawing template found for the bend-line route.",
         )
 
@@ -907,7 +942,9 @@ def _flat_pattern_dxf_drawing(
         drw_raw = sw.NewDocument(drw_template, 0, 0.420, 0.297)
         if drw_raw is None or isinstance(drw_raw, int):
             return ExportResult(
-                format=fmt.name, path=path_str, ok=False,
+                format=fmt.name,
+                path=path_str,
+                ok=False,
                 error="NewDocument(.DRWDOT) returned None for the bend-line route.",
             )
         drawing_doc = typed_qi(drw_raw, "IDrawingDoc", module=mod)
@@ -919,7 +956,9 @@ def _flat_pattern_dxf_drawing(
         )
         if view is None or isinstance(view, int):
             return ExportResult(
-                format=fmt.name, path=path_str, ok=False,
+                format=fmt.name,
+                path=path_str,
+                ok=False,
                 error=(
                     "CreateFlatPatternViewFromModelView3 returned no view "
                     f"(config={config_name!r})"
@@ -929,23 +968,28 @@ def _flat_pattern_dxf_drawing(
 
         # Export the DRAWING to a raw DXF (W33-proven Drawing-only DXF route).
         tmp_dxf = (
-            Path(tempfile.mkdtemp(prefix="w48_flatbends_"))
-            / f"{out_path.stem}_raw.dxf"
+            Path(tempfile.mkdtemp(prefix="w48_flatbends_")) / f"{out_path.stem}_raw.dxf"
         )
         derr = drw_raw.SaveAs3(str(tmp_dxf), 0, 0)
         if (int(derr) if derr is not None else 0) != 0:
             return ExportResult(
-                format=fmt.name, path=path_str, ok=False,
+                format=fmt.name,
+                path=path_str,
+                ok=False,
                 error=f"Drawing SaveAs3(.dxf) returned {derr}",
             )
         if not tmp_dxf.exists() or tmp_dxf.stat().st_size == 0:
             return ExportResult(
-                format=fmt.name, path=path_str, ok=False,
+                format=fmt.name,
+                path=path_str,
+                ok=False,
                 error="Drawing->DXF produced no file for the bend-line route.",
             )
     except Exception as exc:
         return ExportResult(
-            format=fmt.name, path=path_str, ok=False,
+            format=fmt.name,
+            path=path_str,
+            ok=False,
             error=f"Bend-line drawing-view route failed: {exc!r}",
         )
 
@@ -955,7 +999,9 @@ def _flat_pattern_dxf_drawing(
     out_path.write_text(rewritten, encoding="utf-8")
     if not out_path.exists() or out_path.stat().st_size == 0:
         return ExportResult(
-            format=fmt.name, path=path_str, ok=False,
+            format=fmt.name,
+            path=path_str,
+            ok=False,
             error="Bend-layer DXF write produced no file.",
         )
     logger.info(

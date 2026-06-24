@@ -35,7 +35,10 @@ sys.path.insert(0, str(_SRC))
 
 RESULTS_PATH = (
     Path(__file__).resolve().parents[2]
-    / "spikes" / "v0_2x" / "_results" / "mbd_probe.json"
+    / "spikes"
+    / "v0_2x"
+    / "_results"
+    / "mbd_probe.json"
 )
 results: dict[str, Any] = {
     "probe": "w72_mbd_dimxpert",
@@ -58,11 +61,18 @@ def note(key: str, value: Any) -> None:
 
 def _build_cube(path: str) -> bool:
     from ai_sw_bridge.spec.builder import build as part_build
+
     spec = {
-        "schema_version": 1, "name": "W72_MBDCube",
+        "schema_version": 1,
+        "name": "W72_MBDCube",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
-             "width": 10.0, "height": 10.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 10.0,
+                "height": 10.0,
+            },
             {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10.0},
         ],
     }
@@ -78,6 +88,7 @@ def _call(obj: Any, attr: str, *args: Any) -> Any:
     A COM dispatch property value (CDispatch) is itself callable but must NOT
     be invoked — that was the 'Member not found' footgun on .DimXpertPart."""
     import inspect
+
     v = getattr(obj, attr)
     if inspect.isroutine(v):
         return v(*args)
@@ -92,13 +103,21 @@ def _call(obj: Any, attr: str, *args: Any) -> Any:
 # property/method auto-invoke ambiguity that yields spurious 'Member not found').
 def _m(disp: Any, name: str, ret_vt: int = 24, arg_vts: tuple = (), *args: Any) -> Any:
     import pythoncom
+
     ole = disp._oleobj_ if hasattr(disp, "_oleobj_") else disp
-    return ole.InvokeTypes(ole.GetIDsOfNames(name), 0, pythoncom.DISPATCH_METHOD,
-                           (ret_vt, 0), arg_vts, *args)
+    return ole.InvokeTypes(
+        ole.GetIDsOfNames(name),
+        0,
+        pythoncom.DISPATCH_METHOD,
+        (ret_vt, 0),
+        arg_vts,
+        *args,
+    )
 
 
 def _putp(disp: Any, name: str, val: Any) -> None:
     import pythoncom
+
     ole = disp._oleobj_ if hasattr(disp, "_oleobj_") else disp
     ole.Invoke(ole.GetIDsOfNames(name), 0, pythoncom.DISPATCH_PROPERTYPUT, 0, val)
 
@@ -147,8 +166,9 @@ def run() -> str:
     except Exception as exc:
         gate("Q1_manager_pointer", False, f"{type(exc).__name__}: {exc}")
         return "WALL"
-    if not gate("Q1_manager_pointer", mgr_raw is not None,
-                f"DimXpertManager(True)={mgr_raw!r}"):
+    if not gate(
+        "Q1_manager_pointer", mgr_raw is not None, f"DimXpertManager(True)={mgr_raw!r}"
+    ):
         return "WALL"
 
     # ---- Q2: DimXpertPart ----
@@ -188,8 +208,11 @@ def run() -> str:
     feat_before, anno_before = _fc(), _ac()
     note("feature_count_initial", feat_before)
     note("annotation_count_initial", anno_before)
-    gate("Q3_auto_recognition_readable", feat_before >= 0 and anno_before >= 0,
-         f"features={feat_before} annotations={anno_before}")
+    gate(
+        "Q3_auto_recognition_readable",
+        feat_before >= 0 and anno_before >= 0,
+        f"features={feat_before} annotations={anno_before}",
+    )
 
     # ---- Q4: AutoDimensionScheme (boundary-law materialize test) ----
     auto_ret = None
@@ -198,8 +221,8 @@ def run() -> str:
         try:
             _putp(opt, "FeatureFilters", 0xFFFF)  # recognize ALL feature types
             _putp(opt, "ScopeAllFeature", True)
-            _putp(opt, "PartType", 0)             # Prismatic
-            _putp(opt, "ToleranceType", 0)        # PlusMinus
+            _putp(opt, "PartType", 0)  # Prismatic
+            _putp(opt, "ToleranceType", 0)  # PlusMinus
         except Exception as exc:
             note("autodim_option_set_err", f"{type(exc).__name__}: {exc}")
         # ret VT_BOOL(11), one VT_DISPATCH(9) arg
@@ -214,11 +237,16 @@ def run() -> str:
     note("autodim_ret", auto_ret)
     note("feature_count_after_auto", feat_after_auto)
     note("annotation_count_after_auto", anno_after_auto)
-    auto_materialized = (feat_after_auto > feat_before) or (anno_after_auto > anno_before)
-    gate("Q4_autodim_materializes", auto_materialized,
-         f"ret={auto_ret} dFeat={feat_after_auto - feat_before} "
-         f"dAnno={anno_after_auto - anno_before} "
-         f"({'MATERIALIZE' if auto_materialized else 'GHOST/ret-only'})")
+    auto_materialized = (feat_after_auto > feat_before) or (
+        anno_after_auto > anno_before
+    )
+    gate(
+        "Q4_autodim_materializes",
+        auto_materialized,
+        f"ret={auto_ret} dFeat={feat_after_auto - feat_before} "
+        f"dAnno={anno_after_auto - anno_before} "
+        f"({'MATERIALIZE' if auto_materialized else 'GHOST/ret-only'})",
+    )
 
     # ---- Q5: selection model — IFace2 via IEntity.Select2 ----
     size_ret = None
@@ -263,10 +291,12 @@ def run() -> str:
     note("size_ret", size_ret)
     note("annotation_count_after_size", anno_after_size)
     size_materialized = anno_after_size > anno_before_size
-    gate("Q5_size_dim_from_iface2_selection",
-         sel_ok and size_materialized,
-         f"face_sel={sel_ok} ret={size_ret} "
-         f"dAnno={anno_after_size - anno_before_size}")
+    gate(
+        "Q5_size_dim_from_iface2_selection",
+        sel_ok and size_materialized,
+        f"face_sel={sel_ok} ret={size_ret} "
+        f"dAnno={anno_after_size - anno_before_size}",
+    )
 
     # ---- Q6: persistence on save -> close -> reopen ----
     feat_live, anno_live = _fc(), _ac()
@@ -310,15 +340,21 @@ def run() -> str:
         note("reopen_err", f"{type(exc).__name__}: {exc}")
     note("feature_count_reopen", feat_reopen)
     note("annotation_count_reopen", anno_reopen)
-    persisted = (feat_reopen >= feat_live and feat_live > feat_before) or \
-                (anno_reopen >= anno_live and anno_live > anno_before)
-    gate("Q6_persists_on_reopen", persisted,
-         f"feat live={feat_live}->reopen={feat_reopen} "
-         f"anno live={anno_live}->reopen={anno_reopen}")
+    persisted = (feat_reopen >= feat_live and feat_live > feat_before) or (
+        anno_reopen >= anno_live and anno_live > anno_before
+    )
+    gate(
+        "Q6_persists_on_reopen",
+        persisted,
+        f"feat live={feat_live}->reopen={feat_reopen} "
+        f"anno live={anno_live}->reopen={anno_reopen}",
+    )
 
     # ---- verdict ----
-    accessible = results["gates"]["Q1_manager_pointer"]["ok"] and \
-        results["gates"]["Q2_dimxpert_part"]["ok"]
+    accessible = (
+        results["gates"]["Q1_manager_pointer"]["ok"]
+        and results["gates"]["Q2_dimxpert_part"]["ok"]
+    )
     can_write = auto_materialized or size_materialized
     if accessible and can_write and persisted:
         return "GREEN"
@@ -331,25 +367,32 @@ def run() -> str:
 
 def main() -> int:
     import pythoncom
+
     pythoncom.CoInitialize()
     try:
         verdict = run()
     except Exception as exc:
         import traceback
+
         results["gates"]["UNEXPECTED"] = {
-            "ok": False, "detail": f"{type(exc).__name__}: {exc}"}
+            "ok": False,
+            "detail": f"{type(exc).__name__}: {exc}",
+        }
         results["telemetry"]["traceback"] = traceback.format_exc()
         verdict = "WALL"
     finally:
         try:
             import win32com.client as w32
+
             w32.Dispatch("SldWorks.Application").CloseAllDocuments(True)
         except Exception:
             pass
         pythoncom.CoUninitialize()
     results["verdict"] = verdict
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS_PATH.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    RESULTS_PATH.write_text(
+        json.dumps(results, indent=2, default=str), encoding="utf-8"
+    )
     print(f"\nVerdict: {verdict}  (wrote {RESULTS_PATH})")
     return 0 if verdict in ("GREEN", "WRITES_NO_PERSIST") else 1
 

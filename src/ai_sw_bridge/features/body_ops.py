@@ -6,6 +6,7 @@ IBody2-array marshaling; split's fixtures only built 1 body) — registered
 DORMANT (WALLED) so propose keeps fail-closing; kept for provenance.
 Bodies byte-identical to the mutate originals.
 """
+
 from __future__ import annotations
 
 import pythoncom
@@ -37,8 +38,10 @@ def _get_body_count_and_volumes(
     # GetBodies2 is an IPartDoc member; the caller may hand a typed
     # IModelDoc2 (which lacks it). QI to IPartDoc — the W37 lesson.
     try:
-        pdoc = doc if hasattr(doc, "GetBodies2") else typed(
-            doc, "IPartDoc", module=wrapper_module()
+        pdoc = (
+            doc
+            if hasattr(doc, "GetBodies2")
+            else typed(doc, "IPartDoc", module=wrapper_module())
         )
         bodies = pdoc.GetBodies2(_SW_SOLID_BODY, True)
     except Exception:
@@ -77,8 +80,10 @@ def _select_body_by_index(doc: Any, index: int) -> bool:
     """
     # GetBodies2 is IPartDoc-only — QI from a typed IModelDoc2 (W37 lesson).
     try:
-        pdoc = doc if hasattr(doc, "GetBodies2") else typed(
-            doc, "IPartDoc", module=wrapper_module()
+        pdoc = (
+            doc
+            if hasattr(doc, "GetBodies2")
+            else typed(doc, "IPartDoc", module=wrapper_module())
         )
         bodies = pdoc.GetBodies2(_SW_SOLID_BODY, True)
     except Exception:
@@ -104,9 +109,7 @@ def _select_body_by_name(doc: Any, name: str) -> bool:
     try:
         mod = wrapper_module()
         ext = typed(doc.Extension, "IModelDocExtension", module=mod)
-        return bool(
-            ext.SelectByID2(name, "SOLIDBODY", 0, 0, 0, False, 0, None, 0)
-        )
+        return bool(ext.SelectByID2(name, "SOLIDBODY", 0, 0, 0, False, 0, None, 0))
     except Exception:
         return False
 
@@ -115,9 +118,9 @@ def _select_body_by_name(doc: Any, name: str) -> bool:
 # W41 body-ops handlers — delete_body, combine, split.
 # ---------------------------------------------------------------------------
 
-_SW_BODY_OP_ADD = 0       # swBodyOperationType_e.swBodyOperationAdd
+_SW_BODY_OP_ADD = 0  # swBodyOperationType_e.swBodyOperationAdd
 _SW_BODY_OP_SUBTRACT = 1  # swBodyOperationType_e.swBodyOperationSubtract
-_SW_BODY_OP_COMMON = 2    # swBodyOperationType_e.swBodyOperationCommon
+_SW_BODY_OP_COMMON = 2  # swBodyOperationType_e.swBodyOperationCommon
 
 _COMBINE_OP_MAP = {
     "add": _SW_BODY_OP_ADD,
@@ -146,9 +149,7 @@ def _create_delete_body(
     doc.ForceRebuild3(False)
     before_count, before_vols = _get_body_count_and_volumes(doc)
     if before_count < 2:
-        return False, (
-            f"delete_body requires >= 2 bodies, found {before_count}"
-        )
+        return False, (f"delete_body requires >= 2 bodies, found {before_count}")
 
     try:
         doc.ClearSelection2(True)
@@ -192,9 +193,7 @@ def _create_delete_body(
         return False, f"delete_body pipeline failed: {exc!r}"
 
 
-def _create_combine(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_combine(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Boolean combine of solid bodies via ``InsertCombineFeature``.
 
     Seat-validated approach (W41, MEDIUM risk): select main body + tool
@@ -219,8 +218,7 @@ def _create_combine(
     operation = feature.get("operation", "subtract")
     if operation not in _COMBINE_OP_MAP:
         return False, (
-            f"operation must be one of {sorted(_COMBINE_OP_MAP)}, "
-            f"got {operation!r}"
+            f"operation must be one of {sorted(_COMBINE_OP_MAP)}, " f"got {operation!r}"
         )
     op_type = _COMBINE_OP_MAP[operation]
 
@@ -317,16 +315,13 @@ def _create_combine(
         if after_count < before_count:
             return True, None
         return False, (
-            f"combine did not reduce body count "
-            f"({before_count} -> {after_count})"
+            f"combine did not reduce body count " f"({before_count} -> {after_count})"
         )
     except Exception as exc:
         return False, f"combine pipeline failed: {exc!r}"
 
 
-def _create_split(
-    doc: Any, feature: dict, target: dict
-) -> tuple[bool, str | None]:
+def _create_split(doc: Any, feature: dict, target: dict) -> tuple[bool, str | None]:
     """Split a solid body by a cutting entity.
 
     W41 HIGH risk — may hit the solver-deep COM wall. Fail-closed if the
@@ -392,8 +387,7 @@ def _create_split(
         if after_count > before_count:
             return True, None
         return False, (
-            f"split did not increase body count "
-            f"({before_count} -> {after_count})"
+            f"split did not increase body count " f"({before_count} -> {after_count})"
         )
     except Exception as exc:
         return False, f"split pipeline failed: {exc!r}"

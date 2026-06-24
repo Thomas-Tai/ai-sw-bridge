@@ -42,6 +42,7 @@ def _edge_ref(length: float = 0.06) -> dict:
 
 class _FakeSketchFeat:
     """Minimal fake of an IFeature returned by FeatureByName for a sketch."""
+
     def __init__(self, name: str) -> None:
         self._name = name
         self.selected = False
@@ -78,8 +79,14 @@ class _FakeDoc:
         return None
 
 
-def _wire(monkeypatch, *, entity: object = None, select_ok: bool = True,
-          metrics=((6, 4800.0), (10, 5500.0)), bbox_changes: bool = True) -> None:
+def _wire(
+    monkeypatch,
+    *,
+    entity: object = None,
+    select_ok: bool = True,
+    metrics=((6, 4800.0), (10, 5500.0)),
+    bbox_changes: bool = True,
+) -> None:
     """Patch resolve/select/metrics/bbox seams on the sketched_bend lane module.
 
     Fold-class gate (W65): a bend is volume-preserving, so success = ΔFaces>0 ∧
@@ -90,7 +97,8 @@ def _wire(monkeypatch, *, entity: object = None, select_ok: bool = True,
     if entity is False:  # explicit "unresolved" sentinel
         ent = None
     monkeypatch.setattr(
-        sb, "resolve_edge_ref",
+        sb,
+        "resolve_edge_ref",
         lambda doc, ref: type("R", (), {"entity": ent, "note": "test"})(),
     )
     monkeypatch.setattr(sb, "select_entity", lambda e, mark=0: select_ok)
@@ -119,6 +127,7 @@ def _wire(monkeypatch, *, entity: object = None, select_ok: bool = True,
 
 # --- SPIKE_STATUS pin -------------------------------------------------------
 
+
 class TestSpikeStatus:
     def test_green_after_seat_proof(self):
         # Seat-proven W0 2026-06-18: InsertSheetMetal3dBend -> SM3dBend,
@@ -127,6 +136,7 @@ class TestSpikeStatus:
 
 
 # --- enum mapper -----------------------------------------------------------
+
 
 class TestEnumMapping:
     def test_maps_strings_ints_and_rejects_garbage(self):
@@ -140,6 +150,7 @@ class TestEnumMapping:
 
 
 # --- happy path + recipe pin ----------------------------------------------
+
 
 class TestEffectGate:
     def test_green_bend_via_sketch_name(self, monkeypatch):
@@ -169,20 +180,25 @@ class TestEffectGate:
         doc = _FakeDoc()
         ok, err = create_sketched_bend(
             doc,
-            {"angle_deg": 45, "radius_mm": 2, "use_default_radius": False,
-             "flip": True, "position": "bend_outside"},
+            {
+                "angle_deg": 45,
+                "radius_mm": 2,
+                "use_default_radius": False,
+                "flip": True,
+                "position": "bend_outside",
+            },
             {"sketch": "Sketch2"},
         )
         assert ok, err
         args = doc.FeatureManager.calls[0]
         assert len(args) == 6
-        assert args[0] == pytest.approx(math.radians(45))   # 45 deg -> rad
-        assert args[1] is False                              # use_default_radius=False
-        assert args[2] == pytest.approx(0.002)               # 2 mm -> m
-        assert args[3] is True                               # flip
-        assert args[4] == 3                                  # bend_outside
+        assert args[0] == pytest.approx(math.radians(45))  # 45 deg -> rad
+        assert args[1] is False  # use_default_radius=False
+        assert args[2] == pytest.approx(0.002)  # 2 mm -> m
+        assert args[3] is True  # flip
+        assert args[4] == 3  # bend_outside
         pcba = args[5]
-        assert pcba.varianttype == pythoncom.VT_DISPATCH     # Tactic-1 null
+        assert pcba.varianttype == pythoncom.VT_DISPATCH  # Tactic-1 null
         assert pcba.value is None
 
     def test_default_radius_true_ignores_radius(self, monkeypatch):
@@ -201,7 +217,9 @@ class TestEffectGate:
         _wire(monkeypatch)
         doc = _FakeDoc()
         ok, err = create_sketched_bend(
-            doc, {"position": 2}, {"sketch": "Sketch2"},
+            doc,
+            {"position": 2},
+            {"sketch": "Sketch2"},
         )
         assert ok, err
         assert doc.FeatureManager.calls[0][4] == 2
@@ -212,7 +230,9 @@ class TestEffectGate:
         # preserving; ΔVol is no longer the discriminator — W65 seat finding.)
         _wire(monkeypatch, metrics=((6, 4800.0), (8, 4800.0)), bbox_changes=False)
         ok, err = create_sketched_bend(
-            _FakeDoc(), {"angle_deg": 90}, {"sketch": "Sketch2"},
+            _FakeDoc(),
+            {"angle_deg": 90},
+            {"sketch": "Sketch2"},
         )
         assert ok is False
         assert "did not fold" in err
@@ -220,12 +240,15 @@ class TestEffectGate:
     def test_no_solid_bodies_fails_closed(self, monkeypatch):
         _wire(monkeypatch, metrics=((0, 0.0), (0, 0.0)))
         ok, err = create_sketched_bend(
-            _FakeDoc(), {"angle_deg": 90}, {"sketch": "Sketch2"},
+            _FakeDoc(),
+            {"angle_deg": 90},
+            {"sketch": "Sketch2"},
         )
         assert ok is False and "no solid bodies" in err
 
 
 # --- fail-closed contract --------------------------------------------------
+
 
 class TestValidation:
     def test_missing_target_rejected(self):
@@ -234,7 +257,8 @@ class TestValidation:
 
     def test_invalid_edge_ref_rejected(self):
         ok, err = create_sketched_bend(
-            _FakeDoc(), {"angle_deg": 90},
+            _FakeDoc(),
+            {"angle_deg": 90},
             {"edge_ref": {"start": [0, 0, 0]}},  # missing end/length
         )
         assert ok is False and "edge_ref" in err
@@ -242,32 +266,42 @@ class TestValidation:
     def test_edge_unresolved_rejected(self, monkeypatch):
         _wire(monkeypatch, entity=False)
         ok, err = create_sketched_bend(
-            _FakeDoc(), {"angle_deg": 90}, {"edge_ref": _edge_ref()},
+            _FakeDoc(),
+            {"angle_deg": 90},
+            {"edge_ref": _edge_ref()},
         )
         assert ok is False and "did not resolve" in err
 
     def test_select_failure_rejected(self, monkeypatch):
         _wire(monkeypatch, select_ok=False)
         ok, err = create_sketched_bend(
-            _FakeDoc(), {"angle_deg": 90}, {"edge_ref": _edge_ref()},
+            _FakeDoc(),
+            {"angle_deg": 90},
+            {"edge_ref": _edge_ref()},
         )
         assert ok is False and "select" in err
 
     def test_sketch_not_found_rejected(self):
         ok, err = create_sketched_bend(
-            _FakeDoc(), {"angle_deg": 90}, {"sketch": "NoSuchSketch"},
+            _FakeDoc(),
+            {"angle_deg": 90},
+            {"sketch": "NoSuchSketch"},
         )
         assert ok is False and "not found" in err
 
     def test_bad_position_rejected(self):
         ok, err = create_sketched_bend(
-            _FakeDoc(), {"position": "sideways"}, {"sketch": "Sketch2"},
+            _FakeDoc(),
+            {"position": "sideways"},
+            {"sketch": "Sketch2"},
         )
         assert ok is False and "position" in err
 
     def test_bad_angle_rejected(self):
         ok, err = create_sketched_bend(
-            _FakeDoc(), {"angle_deg": "not_a_number"}, {"sketch": "Sketch2"},
+            _FakeDoc(),
+            {"angle_deg": "not_a_number"},
+            {"sketch": "Sketch2"},
         )
         assert ok is False and "numeric" in err
 
@@ -282,6 +316,7 @@ class TestValidation:
 
 # --- never-raise -----------------------------------------------------------
 
+
 class TestNeverRaise:
     def test_com_exception_caught(self, monkeypatch):
         """InsertSheetMetal3dBend raising does not propagate — returns (False, …)."""
@@ -293,16 +328,20 @@ class TestNeverRaise:
 
         doc.FeatureManager.InsertSheetMetal3dBend = boom
         ok, err = create_sketched_bend(
-            doc, {"angle_deg": 90}, {"sketch": "Sketch2"},
+            doc,
+            {"angle_deg": 90},
+            {"sketch": "Sketch2"},
         )
         assert ok is False and "raised" in err
 
 
 # --- registry gate ---------------------------------------------------------
 
+
 class TestRegistryGate:
     def test_kind_registered_when_green(self):
         from ai_sw_bridge.features import HANDLER_REGISTRY
+
         assert sb.SPIKE_STATUS == "GREEN"
         assert "sketched_bend" in HANDLER_REGISTRY
         assert HANDLER_REGISTRY["sketched_bend"] is sb.create_sketched_bend

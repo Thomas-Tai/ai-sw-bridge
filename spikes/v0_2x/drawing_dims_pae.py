@@ -20,9 +20,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(_PKG_ROOT))
 
 WORKTREE = Path(__file__).resolve().parents[2]
-RESULTS_PATH = (
-    WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_dims_pae.json"
-)
+RESULTS_PATH = WORKTREE / "spikes" / "v0_2x" / "_results" / "drawing_dims_pae.json"
 
 POPUP_SUPPRESS_TOGGLES = [9, 10, 22, 23]
 
@@ -69,7 +67,7 @@ def run() -> str:
 
     # Close all docs
     try:
-        for d in (sw.GetDocuments() or []):
+        for d in sw.GetDocuments() or []:
             try:
                 t = d.GetTitle
                 t = t() if callable(t) else t
@@ -98,17 +96,19 @@ def run() -> str:
         "schema_version": 1,
         "name": "PaeDimBox",
         "features": [
-            {"type": "sketch_rectangle_on_plane", "name": "SK",
-             "plane": "Front", "width": 40.0, "height": 25.0},
-            {"type": "boss_extrude_blind", "name": "EX",
-             "sketch": "SK", "depth": 15.0},
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 25.0,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 15.0},
         ],
     }
 
-    r = part_build(PART_SPEC, save_as=PART_PATH, save_format="current",
-                   no_dim=False)
-    gate("build_dim_part", r.ok and os.path.isfile(PART_PATH),
-         f"ok={r.ok}")
+    r = part_build(PART_SPEC, save_as=PART_PATH, save_format="current", no_dim=False)
+    gate("build_dim_part", r.ok and os.path.isfile(PART_PATH), f"ok={r.ok}")
 
     if not os.path.isfile(PART_PATH):
         save_results()
@@ -127,8 +127,7 @@ def run() -> str:
     }
 
     dp = sw_propose_drawing(drawing_spec)
-    gate("drw_propose", dp.get("ok", False),
-         f"pid={dp.get('proposal_id')}")
+    gate("drw_propose", dp.get("ok", False), f"pid={dp.get('proposal_id')}")
 
     if not dp.get("ok"):
         results["propose_error"] = dp.get("error")
@@ -141,22 +140,26 @@ def run() -> str:
 
     print("\n--- Drawing: commit ---")
     dc = sw_commit_drawing(dp["proposal_id"], DRW_PATH)
-    gate("drw_commit", dc.get("ok", False),
-         f"views={dc.get('views_placed')}, "
-         f"annotations={dc.get('total_annotations')}")
+    gate(
+        "drw_commit",
+        dc.get("ok", False),
+        f"views={dc.get('views_placed')}, "
+        f"annotations={dc.get('total_annotations')}",
+    )
 
     # Verify file on disk
     print("\n--- Verify drawing ---")
-    gate("drw_file_exists", os.path.isfile(DRW_PATH),
-         f"size={os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0}")
+    gate(
+        "drw_file_exists",
+        os.path.isfile(DRW_PATH),
+        f"size={os.path.getsize(DRW_PATH) if os.path.isfile(DRW_PATH) else 0}",
+    )
 
     # Verify dimensions were inserted
     dims_inserted = dc.get("dimensions_inserted", False)
     total_annots = dc.get("total_annotations", 0)
-    gate("dimensions_inserted", dims_inserted,
-         f"dimensions_inserted={dims_inserted}")
-    gate("annotations_gt_zero", total_annots > 0,
-         f"total_annotations={total_annots}")
+    gate("dimensions_inserted", dims_inserted, f"dimensions_inserted={dims_inserted}")
+    gate("annotations_gt_zero", total_annots > 0, f"total_annotations={total_annots}")
 
     # Re-open drawing and verify annotations persist
     print("\n--- Re-open and verify ---")
@@ -188,9 +191,11 @@ def run() -> str:
             except Exception as e:
                 gate("reopen_walk", False, str(e)[:80])
 
-            gate("reopen_annotations",
-                 reopen_total > 0,
-                 f"views={view_count}, total_annotations={reopen_total}")
+            gate(
+                "reopen_annotations",
+                reopen_total > 0,
+                f"views={view_count}, total_annotations={reopen_total}",
+            )
 
             try:
                 t = drw_doc.GetTitle
@@ -205,9 +210,12 @@ def run() -> str:
 
     # Overall
     all_pass = all(g["ok"] for g in results["gates"].values())
-    gate("OVERALL_GREEN", all_pass,
-         f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
-         f"{len(results['gates'])} gates pass")
+    gate(
+        "OVERALL_GREEN",
+        all_pass,
+        f"{sum(1 for g in results['gates'].values() if g['ok'])}/"
+        f"{len(results['gates'])} gates pass",
+    )
 
     return "GREEN" if all_pass else "PARTIAL"
 

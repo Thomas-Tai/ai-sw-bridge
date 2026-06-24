@@ -18,6 +18,7 @@ for any closed profile, not just circular ones.
 
 Run:  PYTHONPATH=<repo>/src python spikes/v0_2x/pierce_general_pae.py
 """
+
 from __future__ import annotations
 
 import json
@@ -226,19 +227,27 @@ def main() -> int:
         except Exception:
             pass
         result["legs"]["centroid_rect"] = _leg_centroid_rect(sw, mod)
-        print(f"[pg] centroid_rect -> {result['legs']['centroid_rect'].get('verdict')} "
-              f"vol={result['legs']['centroid_rect'].get('volume_mm3')}")
+        print(
+            f"[pg] centroid_rect -> {result['legs']['centroid_rect'].get('verdict')} "
+            f"vol={result['legs']['centroid_rect'].get('volume_mm3')}"
+        )
         result["legs"]["centroid_polygon"] = _leg_centroid_polygon(sw, mod)
-        print(f"[pg] centroid_polygon -> {result['legs']['centroid_polygon'].get('verdict')} "
-              f"vol={result['legs']['centroid_polygon'].get('volume_mm3')}")
+        print(
+            f"[pg] centroid_polygon -> {result['legs']['centroid_polygon'].get('verdict')} "
+            f"vol={result['legs']['centroid_polygon'].get('volume_mm3')}"
+        )
         result["legs"]["non_front_plane"] = _leg_non_front_plane(sw, mod)
-        print(f"[pg] non_front_plane -> {result['legs']['non_front_plane'].get('verdict')} "
-              f"note={result['legs']['non_front_plane'].get('note')}")
+        print(
+            f"[pg] non_front_plane -> {result['legs']['non_front_plane'].get('verdict')} "
+            f"note={result['legs']['non_front_plane'].get('note')}"
+        )
         # Overall PASS if legs 1+2 are GREEN (centroid anchor works).
         # Leg 3 is characterize (may wall; valid finding either way).
         legs_mandatory = ["centroid_rect", "centroid_polygon"]
         result["overall"] = (
-            "PASS" if all(result["legs"][k].get("ok") for k in legs_mandatory) else "FAIL"
+            "PASS"
+            if all(result["legs"][k].get("ok") for k in legs_mandatory)
+            else "FAIL"
         )
         try:
             sw.CloseAllDocuments(True)
