@@ -473,7 +473,9 @@ _ANNOTATIONS_SCHEMA: dict[str, Any] = {
         "tags (InsertDatumTag2), weld symbols (InsertWeldSymbol3), BOM "
         "balloons (InsertBOMBalloon2), and geometric tolerances (InsertGtol) "
         "— ALL seat-proven; the Insert*-placeable annotation family is complete. "
-        "Hole/revision/weld tables are the next (separate API family) lane."
+        "The table family (hole/revision/weldment-cut-list/general) shipped W71 "
+        "via the top-level table flags; the weld-bead table (InsertWeldTable) is "
+        "the lone unshipped table."
     ),
 }
 

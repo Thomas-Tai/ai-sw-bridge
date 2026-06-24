@@ -47,3 +47,32 @@ programmatically.
 
 Until then the lane ships read-only with the symmetric fallback as the
 guaranteed contract and the asymmetric bounds as a documented enhancement.
+
+---
+
+## `weld-bead table` — `IDrawingDoc.InsertWeldTable` (deferred 2026-06-24)
+
+**Status:** unimplemented; deliberately deferred. The drawing TABLE family is
+otherwise complete and shipped (W71): hole (`InsertHoleTable2`), revision
+(`InsertRevisionTable2`), weldment cut-list (`InsertWeldmentTable`), general
+(`InsertGeneralTableAnnotation`), plus BOM (`InsertBomTable4`, W23). The weld-bead
+*summary* table is the lone remaining table type.
+
+**Why deferred (not built):** `IDrawingDoc.InsertWeldTable(UseAnchorPoint,
+IncludeAnnotations, CombineSameType, X, Y, AnchorType, Configuration,
+TableTemplate) -> Boolean` summarizes **weld beads**, so it needs a model that
+already carries weld-bead features (fillet/groove welds). Authoring weld beads
+out-of-process (`IFeatureManager.InsertFilletWeldBead`-class calls) is **unprobed
+and of uncertain feasibility** — manufacturing-annotation geometry has repeatedly
+hit the OOP authoring wall (cf. the MBD PMI Catch-22 above: `AutoDimensionScheme`
+/ `InsertSizeDimension` ghost). The ROI on a weld-bead *summary* table does not
+justify a bash against a probable `InsertFilletWeldBead` OOP wall.
+
+**To close the gate (if ever pursued):**
+1. A human authors a `.sldprt` weldment containing weld beads at the seat (do NOT
+   attempt to author beads programmatically — assume the OOP wall until a probe
+   says otherwise).
+2. Drop the part into a drawing and probe `IDrawingDoc.InsertWeldTable(...)` —
+   classify materialize-vs-ghost against the returned Boolean + a visible table.
+3. If it materializes, add a `weld_table` spec flag mirroring the W71 table family
+   wiring in `drawing/lifecycle.py`.
