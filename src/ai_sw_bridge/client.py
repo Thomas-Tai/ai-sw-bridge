@@ -282,9 +282,13 @@ class SolidWorksObserverFacade:
         """
         if file_path is not None:
             return self._mbd_from_path(file_path)
-        doc = doc if doc is not None else self._client.active_doc()
         if doc is None:
-            return dict(_NO_DOC)
+            # Mirror the sibling impls: a missing seat/doc yields the full
+            # no_active_doc shape (not a raise), so the MCP snapshot stays green.
+            try:
+                doc = self._client.active_doc()
+            except Exception:  # noqa: BLE001
+                doc = None
         return _sw_get_mbd_impl(doc)
 
     def _mbd_from_path(self, file_path: str) -> dict[str, Any]:

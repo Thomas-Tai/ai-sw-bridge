@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-24
+
+**The PMI Observability Release.** Adds a read-only lane that serializes a part's
+DimXpert / MBD **Product & Manufacturing Information** — datums, size dimensions
+with tolerances, and geometric tolerances — to structured JSON, exposed both on
+the `SolidWorksClient` class API and over the wire as an MCP tool so an agent can
+read a model's manufacturing definition directly (no drawing required). The lane
+is the product of measure-first reconnaissance that mapped 50 `IDimXpert*`
+interfaces and proved the read graph marshals cleanly out-of-process while the
+authoring path walls — so this ships pure-read by design. Backward compatible;
+the public surface grows only additively. Offline suite green at 3648 tests; the
+live-seat `destructive_sw` lane green (36 payload snapshots incl. the new tool).
+
+### Added
+
+- **`client.observe.mbd(file_path=None)`** (`observe_mbd.py`) — serialize DimXpert
+  / MBD PMI on a part to categorized JSON: `datums` (`{label, attached_feature,
+  name}`), `dimensions` (`{type, nominal, symmetric_tolerance, fit_code,
+  asymmetric_extracted, upper_deviation, lower_deviation, attached_feature}`), and
+  `geometric_tolerances` (`{symbol, tolerance_value, primary_datum,
+  secondary_datum, tertiary_datum}`). Read-only and parts only; with `file_path`
+  the part is opened, read, and closed (never modified or saved), otherwise the
+  active doc is read in place. Uses the adaptive `DimXpertManager("", False)` call
+  so it reads a part's *authored* schema rather than spinning up a fresh one.
+- **`sw_observe_mbd` MCP tool** (`mcp/_tool_observe.py`) — the agentic wire surface
+  for the lane, decorated with `@com_tool` (ComExecutor STA-thread dispatch). Its
+  description instructs the model on exactly which PMI it can expect and on the
+  asymmetric-tolerance fallback behavior.
+
+### Known limitations
+
+- **Asymmetric tolerance extraction is best-effort / live-PAE-pending.** The
+  DimXpert API exposes no native upper/lower (+/-) deviation getters — only a
+  nominal value, a single symmetric tolerance band, and the fit code. Asymmetric
+  bounds (e.g. `+0.2 / -0.05`) are recovered via a defensive bridge to the display
+  dimension (`GetDisplayEntity → IDisplayDimension → IDimension.Tolerance →
+  ITolerance.{GetMaxValue, GetMinValue}`). On success `asymmetric_extracted` is
+  `true` and the bounds are populated; on any fault the lane degrades to the
+  symmetric base fields with `asymmetric_extracted=false` — it never raises.
+  **Proven:** datum labels, nominal values, symmetric tolerances, fit codes, GTOL
+  values, and datum references (offline dual-branch suite, 12 tests). **Pending:**
+  the asymmetric success path awaits a GUI-authored PMI fixture for live-seat
+  validation — authoring DimXpert PMI walls out-of-process, so the fixture cannot
+  be generated programmatically (tracked in `docs/pending_gates.md`).
+
 ## [1.3.0] - 2026-06-24
 
 **The Single-Surface Approval & Telemetry Release.** The human-in-the-loop batch

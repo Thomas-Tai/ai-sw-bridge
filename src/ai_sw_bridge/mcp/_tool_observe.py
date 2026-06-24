@@ -1,6 +1,6 @@
 """Observation MCP tools (W5.4, §6.1, W30, W37, W43).
 
-Twenty read-only tools that mirror the ``ai-sw-observe`` CLI
+Twenty-one read-only tools that mirror the ``ai-sw-observe`` CLI
 subcommands. Each tool is a thin wrapper around a
 :class:`ai_sw_bridge.observe.SolidWorksObserver` method, decorated
 with ``@com_tool`` so the body runs on the ComExecutor's STA
@@ -266,3 +266,35 @@ def register(mcp: Any) -> None:
         return SolidWorksClient().observe.min_wall_thickness(
             samples_per_face=samples_per_face
         )
+
+    @mcp.tool()
+    @com_tool
+    def sw_observe_mbd(file_path: str | None = None) -> dict[str, Any]:
+        """Serialize DimXpert / MBD PMI on a part to structured JSON (read-only).
+
+        Extracts the Product & Manufacturing Information defined directly on the
+        3D model (no drawing needed), categorized into three arrays:
+
+          - datums: [{label, attached_feature, name}] — e.g. label "A".
+          - dimensions: [{type, nominal, symmetric_tolerance, fit_code,
+              asymmetric_extracted, upper_deviation, lower_deviation,
+              attached_feature}] — size/location dimensions with their tolerance.
+          - geometric_tolerances: [{symbol, tolerance_value, primary_datum,
+              secondary_datum, tertiary_datum}] — GTOLs and their datum refs.
+
+        PROVEN extractions: datum labels, nominal values, symmetric tolerances,
+        fit codes (e.g. "h7"), GTOL values, and datum references.
+
+        ASYMMETRIC TOLERANCE CAVEAT: the DimXpert API exposes no native upper/
+        lower deviation getters, so asymmetric bounds (e.g. +0.2 / -0.05) are
+        recovered via a best-effort bridge to the display dimension. When it
+        succeeds, ``asymmetric_extracted`` is true and ``upper_deviation`` /
+        ``lower_deviation`` are populated; when it cannot, that flag is false and
+        only the symmetric ``Tolerance`` band is reported — the tool never fails
+        on this. (This bridge awaits live-seat hardware validation.)
+
+        Read-only and parts only. With ``file_path`` the part is opened, read, and
+        closed (never modified or saved); with no path the active document is read.
+        """
+        # v0.18 slice: route through the class-based SolidWorksClient.
+        return SolidWorksClient().observe.mbd(file_path)

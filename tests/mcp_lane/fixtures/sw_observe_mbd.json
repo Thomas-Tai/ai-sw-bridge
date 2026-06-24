@@ -1,0 +1,121 @@
+{
+  "tool": "sw_observe_mbd",
+  "args": {},
+  "result": {
+    "ok": false,
+    "doc_path": null,
+    "schema_name": null,
+    "datums": [],
+    "dimensions": [],
+    "geometric_tolerances": [],
+    "annotation_count": null,
+    "feature_count": null,
+    "error": "no_active_doc",
+    "errors": []
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "doc_path": [
+      "$str",
+      "$none"
+    ],
+    "schema_name": [
+      "$str",
+      "$none"
+    ],
+    "datums": {
+      "__list__": true,
+      "len": "*",
+      "item": {
+        "label": "$str",
+        "attached_feature": [
+          "$str",
+          "$none"
+        ],
+        "name": [
+          "$str",
+          "$none"
+        ]
+      }
+    },
+    "dimensions": {
+      "__list__": true,
+      "len": "*",
+      "item": {
+        "type": "$str",
+        "nominal": [
+          "$float",
+          "$int"
+        ],
+        "symmetric_tolerance": [
+          "$float",
+          "$int",
+          "$none"
+        ],
+        "fit_code": [
+          "$str",
+          "$none"
+        ],
+        "asymmetric_extracted": "$bool",
+        "upper_deviation": [
+          "$float",
+          "$int",
+          "$none"
+        ],
+        "lower_deviation": [
+          "$float",
+          "$int",
+          "$none"
+        ],
+        "attached_feature": [
+          "$str",
+          "$none"
+        ]
+      }
+    },
+    "geometric_tolerances": {
+      "__list__": true,
+      "len": "*",
+      "item": {
+        "symbol": [
+          "$str",
+          "$none"
+        ],
+        "tolerance_value": [
+          "$float",
+          "$int"
+        ],
+        "primary_datum": [
+          "$str",
+          "$none"
+        ],
+        "secondary_datum": [
+          "$str",
+          "$none"
+        ],
+        "tertiary_datum": [
+          "$str",
+          "$none"
+        ]
+      }
+    },
+    "annotation_count": [
+      "$int",
+      "$none"
+    ],
+    "feature_count": [
+      "$int",
+      "$none"
+    ],
+    "error": [
+      "$str",
+      "$none"
+    ],
+    "errors": {
+      "__list__": true,
+      "len": "*",
+      "item": "$str"
+    }
+  },
+  "error": null
+}
