@@ -314,6 +314,21 @@ from .structural_weldment import create_structural_weldment  # noqa: E402
 
 _register_lane("structural_weldment", create_structural_weldment, _structural_weldment_status)
 
+# post-GA — intersect (the boundary-law refinement; FALSIFIED the combine/split
+# wall prediction). The Intersect feature is TWO-PHASE: IFeatureManager.
+# PreIntersect2(CapPlanar, RegionType) RETURNS the mutual region list to the
+# caller (the OOP hand-back), then PostIntersect(exclude, Merge, Consume) commits
+# a 'Sculpt' feature. The explicit region hand-back is the materialize-class
+# signature — single-call combine/split solve-and-commit internally and wall
+# ret=None, but the two-phase contract materializes (probe 2026-06-24: 2 boxes ->
+# 3 regions, solid bodies 2->3). No _latebound (no SelectByID2 callout). Target
+# bodies via the IBody2.Select doctrine; BOOLEAN_INTERSECT gate = Sculpt node ∧
+# topology changed. SPIKE_STATUS gate: UNFIRED until W0 fires the seat PAE.
+from .intersect import SPIKE_STATUS as _intersect_status  # noqa: E402
+from .intersect import create_intersect  # noqa: E402
+
+_register_lane("intersect", create_intersect, _intersect_status)
+
 # Recipe-C — pattern family (linear/circular/mirror). Relocated from mutate.py
 # into the registry (the first 1.0.0 strangler-fig cut). Seat-proven W21
 # (spike 5a94b05); the handlers and their propose-time validation are unchanged,

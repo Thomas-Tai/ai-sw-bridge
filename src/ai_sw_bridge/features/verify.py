@@ -21,6 +21,7 @@ the conserved/measurable witness is feature-class-specific —
     REF_NODE            feature-node delta + type-name     (bbox/com_point/materef)
     BODY_MOVE           centroid delta                     (move_copy_body)
     VOLUME_TRANSFORM    volume ratio == commanded f**3     (scale)
+    BOOLEAN_INTERSECT   Sculpt node ∧ topology changed     (intersect)
 
 A node/Feature return ALONE is never success — that is the W21/W42 ghost trap.
 
@@ -76,6 +77,7 @@ class FeatureClass(enum.Enum):
     REF_NODE = "ref_node"
     BODY_MOVE = "body_move"
     VOLUME_TRANSFORM = "volume_transform"
+    BOOLEAN_INTERSECT = "boolean_intersect"
 
 
 # ===========================================================================
@@ -613,6 +615,28 @@ def gate_volume_transform(
         return False
     ratio = vol_after_mm3 / vol_before_mm3
     return abs(ratio - expected_ratio) <= rel_tol * expected_ratio
+
+
+def gate_boolean_intersect(
+    node_materialized: bool, d_solid_count: int, d_vol_mm3: float
+) -> bool:
+    """BOOLEAN_INTERSECT (intersect): a real Sculpt feature node materialized
+    AND the solid topology actually changed.
+
+    The Intersect feature splits/merges overlapping bodies (and surfaces/planes)
+    into their mutual regions via the two-phase ``PreIntersect2`` → ``PostIntersect``
+    contract (the W-post-GA boundary-law refinement: the kernel hands the region
+    list back to the caller, so it materializes OOP unlike single-call
+    combine/split).  ``node_materialized`` (a new ``Sculpt`` node appeared) alone
+    is the W21/W42 ghost trap; the anti-ghost witness is a topology change —
+    either the solid-body **count** moved (regions kept separate, or merged) OR
+    the total solid **volume** moved (overlapping double-counted bodies resolve
+    to true disjoint volume; for the canonical 2-box fixture Δvol = −overlap).
+    A silent no-op leaves both unchanged and fails closed.
+    """
+    return node_materialized and (
+        d_solid_count != 0 or abs(d_vol_mm3) > VOL_EPS_MM3
+    )
 
 
 def gate_curve(d_nodes: int, total_len_mm: float | None) -> bool:
