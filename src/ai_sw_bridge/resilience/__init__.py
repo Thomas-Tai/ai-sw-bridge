@@ -1,0 +1,23 @@
+"""Resilience layer — supervised, crash-recoverable COM sessions.
+
+The commercial session layer that wraps the (fail-soft, atomic-save) batch
+transaction in a detect -> respawn -> idempotent-replay envelope, shielding the
+agent from upstream SOLIDWORKS deaths. See ``docs/supervised_session_spec.md`` and
+``docs/supervised_session_test_spec.md``.
+"""
+
+from .session import (
+    FileSnapshotter,
+    InMemoryJournal,
+    SeatRespawnTimeout,
+    SupervisedSession,
+    SystemClock,
+)
+
+__all__ = [
+    "SupervisedSession",
+    "SeatRespawnTimeout",
+    "FileSnapshotter",
+    "InMemoryJournal",
+    "SystemClock",
+]
