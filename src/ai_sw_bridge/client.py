@@ -57,6 +57,7 @@ from .observe_clearance import (
 from .observe_body_interference import _sw_get_body_interference_impl
 from .observe_draft import _sw_get_draft_analysis_impl
 from .observe_import_diag import _sw_get_import_diagnostics_impl
+from .observe_mbd import _sw_get_mbd_impl
 from .observe_inertia import _sw_get_inertia_impl
 from .observe_interference import _sw_get_interference_impl
 from .observe_measure import (
@@ -89,7 +90,7 @@ from .mutate import (
     _sw_dry_run_properties_impl,
     _sw_commit_properties_impl,
 )
-from .sw_com import get_active_doc, get_sw_app
+from .sw_com import SW_DOC_PART, get_active_doc, get_sw_app
 
 _NO_DOC = {"ok": False, "error": "no_active_doc"}
 
@@ -269,6 +270,50 @@ class SolidWorksObserverFacade:
         IBody2.Check3 topology faults (decoded), and the IPartDoc.ImportDiagnosis
         status flag. Read-only; parts only."""
         return _sw_get_import_diagnostics_impl()
+
+    def mbd(self, file_path: str | None = None, *, doc: Any = None) -> dict[str, Any]:
+        """Serialize DimXpert / MBD PMI (datums, dimensions w/ tolerances,
+        geometric tolerances) on a part to JSON. Read-only; parts only.
+
+        ``file_path`` opens that part, reads, and closes it (the lane never
+        mutates or saves). With no ``file_path`` the active (or given) doc is
+        read in place. The asymmetric +/- deviation bridge is best-effort:
+        ``dimensions[].asymmetric_extracted`` flags whether it succeeded.
+        """
+        if file_path is not None:
+            return self._mbd_from_path(file_path)
+        doc = doc if doc is not None else self._client.active_doc()
+        if doc is None:
+            return dict(_NO_DOC)
+        return _sw_get_mbd_impl(doc)
+
+    def _mbd_from_path(self, file_path: str) -> dict[str, Any]:
+        """Open ``file_path`` read-only, run the MBD extraction, close it.
+
+        Mirrors the proven spike open path (OpenDoc6 swDocPART; late-bound may
+        return a byref tuple). Always closes, even on extraction failure.
+        """
+        sw = self._client.app
+        title = None
+        try:
+            opened = sw.OpenDoc6(file_path, SW_DOC_PART, 1, "", 0, 0)
+            doc = opened[0] if isinstance(opened, (list, tuple)) else opened
+            if doc is None:
+                return {"ok": False, "error": f"could not open {file_path!r}"}
+            try:
+                t = doc.GetTitle
+                title = t() if callable(t) else t
+            except Exception:  # noqa: BLE001
+                title = None
+            return _sw_get_mbd_impl(doc)
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "error": f"open/read failed: {exc!r}"}
+        finally:
+            if title:
+                try:
+                    sw.CloseDoc(title)
+                except Exception:  # noqa: BLE001
+                    pass
 
     def screenshot(
         self,
