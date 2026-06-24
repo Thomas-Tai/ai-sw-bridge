@@ -226,11 +226,25 @@ class TestPayloadSnapshots:
 
         _assert_shape_match(result, expected_shape, path=f"${tool_name}")
 
+    # Tools that CANNOT be driven by this read-only snapshot harness.
+    # The harness calls ``tool.fn(**args)`` synchronously with a MockAdapter
+    # and JSON-compares the return. sw_batch_execute is an ``async def`` tool
+    # that (a) returns a coroutine (not a dict) from a direct .fn call, (b)
+    # requires an injected FastMCP ``ctx`` the harness does not supply, and (c)
+    # only produces a payload after an interactive elicitation round-trip. It is
+    # exercised instead by the dedicated offline suite ``test_batch_execute.py``
+    # (which mocks the Context + elicitation) and the live Seat PAE.
+    UNSNAPSHOTTABLE_TOOLS = frozenset({"sw_batch_execute"})
+
     def test_every_registered_tool_has_fixture(self, mcp_server) -> None:
-        """No tool may ship without a corresponding snapshot fixture."""
+        """No tool may ship without a corresponding snapshot fixture.
+
+        Except UNSNAPSHOTTABLE_TOOLS — async/interactive tools the read-only
+        ``.fn(**args)`` harness structurally cannot drive (see that set's note).
+        """
         registered = {t.name for t in mcp_server.iter_tools()}
         captured = set(_fixture_names())
-        missing = registered - captured
+        missing = registered - captured - self.UNSNAPSHOTTABLE_TOOLS
         assert not missing, (
             f"tools without snapshot fixture: {sorted(missing)} — run "
             "`python tools/probe_mcp_tools.py` and commit the new JSON."

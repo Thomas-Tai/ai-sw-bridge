@@ -70,13 +70,19 @@ def create_server(runtime: ServerRuntime) -> Any:
       validation pass over a multi-feature batch; never writes to
       disk (the §6.5-aligned write-PLANNING surface; the irreversible
       commit stays a human-gated CLI action).
+    * Batch-execute (1 tool): sw_batch_execute — PLAN (dry-run) then
+      elicit human approval IN-CHAT (MCP elicitation) then COMMIT. The
+      ``ai-sw-batch`` CLI ``[y/N]`` gate moved into the agent surface;
+      the human-in-the-loop is preserved, only the surface changes.
+      Async (NOT @com_tool) — it awaits ctx.elicit between two STA COM
+      phases; capability-gated, degrades to sw_batch_plan + CLI.
     * API doc (5 tools): sw_apidoc_search, sw_apidoc_detail,
       sw_apidoc_members, sw_apidoc_examples, sw_apidoc_enum.
     * History (4 tools): sw_history_part, sw_history_since,
       sw_history_diff, sw_checkpoint_info.
     * Reconnect (1 tool): sw_reconnect.
 
-    Total: 33 tools.
+    Total: 34 tools.
 
     Tools NOT registered (per §6.5): the four mutate operations
     (sw_propose_local_change, sw_dry_run, sw_commit,
@@ -106,6 +112,7 @@ def create_server(runtime: ServerRuntime) -> Any:
     from . import (
         _tool_apidoc,
         _tool_batch,
+        _tool_batch_execute,
         _tool_build,
         _tool_history,
         _tool_observe,
@@ -115,6 +122,7 @@ def create_server(runtime: ServerRuntime) -> Any:
     _tool_observe.register(mcp)
     _tool_build.register(mcp)
     _tool_batch.register(mcp)
+    _tool_batch_execute.register(mcp)
     _tool_apidoc.register(mcp)
     _tool_history.register(mcp)
     _tool_reconnect.register(mcp)

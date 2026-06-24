@@ -95,6 +95,9 @@ class TestToolRegistration:
             "sw_build",
             # Batch-plan (1) — read-only dry-run validation; never writes to disk
             "sw_batch_plan",
+            # Batch-execute (1) — PLAN→elicit-in-chat→COMMIT; async, NOT
+            # @com_tool (awaits ctx.elicit between two STA COM phases).
+            "sw_batch_execute",
             # API doc (5)
             "sw_apidoc_search",
             "sw_apidoc_detail",
@@ -159,8 +162,23 @@ class TestToolRegistration:
                 f"{excluded!r} must NOT be exposed via MCP " "(design doc §6.5)"
             )
 
+    # Documented exemption from the @com_tool audit. sw_batch_execute is
+    # COM-touching but is an `async def` tool: it awaits ctx.elicit (a stdio
+    # JSON-RPC round-trip that lives on the asyncio event loop) BETWEEN two COM
+    # phases (dry-run plan, then live commit). @com_tool would submit the whole
+    # coroutine to the ComExecutor STA worker, which has NO event loop — so the
+    # decorator is structurally incompatible. COM safety is instead preserved by
+    # routing each COM phase through tools.run_on_executor() (the same STA
+    # dispatch @com_tool wraps). See _tool_batch_execute.py module docstring.
+    COM_SAFE_VIA_MANUAL_DISPATCH = frozenset({"sw_batch_execute"})
+
     def test_all_com_tools_have_decorator(self) -> None:
-        """Every tool that touches the adapter MUST be @com_tool-wrapped."""
+        """Every tool that touches the adapter MUST be @com_tool-wrapped.
+
+        Exception: tools in COM_SAFE_VIA_MANUAL_DISPATCH preserve the
+        STA-dispatch invariant imperatively (run_on_executor) because they are
+        async and cannot wear the sync decorator — asserted separately below.
+        """
         # See note on _registered_tool_names: server.py needs the `mcp` SDK.
         pytest.importorskip("mcp", reason="requires `ai-sw-bridge[mcp]` extra")
 
@@ -200,6 +218,40 @@ class TestToolRegistration:
             assert is_com_tool(tool.fn), (
                 f"{tool.name!r} is COM-touching but missing @com_tool — "
                 "see docs/mcp_server_design.md §10"
+            )
+
+    def test_manual_dispatch_tools_are_registered_and_not_com_tool(self) -> None:
+        """The async COM tools must be REGISTERED, async, and NOT @com_tool.
+
+        Locks in the exemption's intent: sw_batch_execute is genuinely exposed,
+        is a coroutine (so it can await ctx.elicit), and deliberately does NOT
+        carry the @com_tool tag — its COM safety comes from run_on_executor.
+        If someone "fixes" it by adding @com_tool, the elicitation await would
+        run on the event-loop-less STA thread and deadlock; this test fails
+        loudly first.
+        """
+        pytest.importorskip("mcp", reason="requires `ai-sw-bridge[mcp]` extra")
+
+        import inspect
+
+        from ai_sw_bridge.mcp.runtime import ServerRuntime
+        from ai_sw_bridge.mcp.server import create_server
+        from ai_sw_bridge.mcp.tools import is_com_tool
+
+        runtime = ServerRuntime.create(adapter_type="mock")
+        mcp = create_server(runtime)
+        by_name = {t.name: t for t in mcp.iter_tools()}
+
+        for name in self.COM_SAFE_VIA_MANUAL_DISPATCH:
+            assert name in by_name, f"{name!r} must be registered"
+            fn = by_name[name].fn
+            assert inspect.iscoroutinefunction(
+                fn
+            ), f"{name!r} must be async (it awaits ctx.elicit)"
+            assert not is_com_tool(fn), (
+                f"{name!r} must NOT be @com_tool — the await would run on the "
+                "STA thread (no event loop) and deadlock; COM safety is via "
+                "run_on_executor instead. See _tool_batch_execute.py."
             )
 
 
