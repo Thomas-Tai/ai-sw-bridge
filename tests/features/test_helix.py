@@ -31,6 +31,17 @@ from ai_sw_bridge.features.helix import create_helix
 
 
 @pytest.fixture(autouse=True)
+def _identity_latebound(monkeypatch):
+    """The typed-transaction binding fix (2026-06-24): create_helix re-wraps the
+    doc + Extension via ``_latebound`` (win32com.client.dynamic.Dispatch) so the
+    SelectByID2 VARIANT callout AND InsertHelix marshal on the typed disk-
+    transaction doc — proven broken otherwise (probe_curve_lanes_typed_txn).
+    Offline there is no live COM proxy to re-wrap, so patch the seam to identity
+    and let the fakes drive directly. The binding itself is proven on the seat."""
+    monkeypatch.setattr(helix, "_latebound", lambda obj: obj)
+
+
+@pytest.fixture(autouse=True)
 def _mock_curve_length(monkeypatch):
     """Offline, the COM-heavy arc-length read (typed IReferenceCurve.GetSegments
     → ICurve.GetLength) is mocked to a positive default — the geometric CURVE
@@ -162,6 +173,22 @@ class TestModeB:
         assert args[6] == pytest.approx(3.0)    # Revolution
         assert args[7] == pytest.approx(0.030)  # Height = 0.010 * 3
         assert args[8] == pytest.approx(math.radians(90))
+
+    def test_uses_latebound_seam(self, monkeypatch):
+        """Regression guard for the typed-transaction binding defect: both
+        SelectByID2 and InsertHelix must route through _latebound (the doc and
+        its Extension are re-wrapped), else the VARIANT callout raises TypeError
+        through mutate._open_doc_typed (probe_curve_lanes_typed_txn 2026-06-24)."""
+        calls = []
+        monkeypatch.setattr(helix, "_latebound",
+                            lambda obj: (calls.append(obj), obj)[1])
+        doc = _FakeDoc()
+        ok, _ = create_helix(
+            doc, {"pitch_mm": 5, "revolutions": 4}, {"sketch": "Sketch2"},
+        )
+        assert ok is True
+        assert doc in calls            # _latebound(doc) for InsertHelix
+        assert doc.Extension in calls  # _latebound(doc.Extension) for SelectByID2
 
     def test_select_failure_short_circuits(self):
         doc = _FakeDoc(select_ok=False)

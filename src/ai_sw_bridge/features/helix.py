@@ -35,6 +35,7 @@ import math
 from typing import Any
 
 import pythoncom
+import win32com.client.dynamic as _w32dyn
 from win32com.client import VARIANT
 
 from . import verify
@@ -51,6 +52,23 @@ VERIFY_CLASS = verify.FeatureClass.CURVE
 
 # swHelixDefinedBy_e — pitch and revolution (the default parametrisation).
 _SW_HELIX_DEFINED_BY_PITCH_AND_REVOLUTION = 0
+
+
+def _latebound(com_obj: Any) -> Any:
+    """Re-wrap a COM proxy as LATE-BOUND (``win32com.client.dynamic.Dispatch``).
+
+    The ref_axis / spiral binding trap: the disk-transaction path opens docs
+    TYPED (``mutate._open_doc_typed``). On a TYPED ``IModelDocExtension`` proxy,
+    ``SelectByID2``'s arg-8 ICallout ``VARIANT(VT_DISPATCH, None)`` raises
+    ``TypeError('The Python instance can not be converted to a COM object')``,
+    and ``InsertHelix`` is likewise late-bound-only. A late-bound re-wrap
+    marshals both regardless of how the doc was opened. Seam so offline tests
+    patch to identity. PROVEN broken through the typed transaction
+    (probe_curve_lanes_typed_txn 2026-06-24, helix dry_run reproduced the exact
+    TypeError) — fixed here per the ref_axis precedent (commit 794a7c4) and the
+    spiral lane (features/spiral._latebound).
+    """
+    return _w32dyn.Dispatch(com_obj)
 
 
 def _count_helices(doc: Any) -> int:
@@ -114,6 +132,12 @@ def create_helix(
 
     helices_before = _count_helices(doc)
 
+    # Late-bound re-wrap: the typed transaction doc rejects the SelectByID2
+    # VARIANT callout AND InsertHelix marshaling (ref_axis / spiral binding
+    # trap — PROVEN broken through the typed transaction, probe_curve_lanes_
+    # typed_txn 2026-06-24). Both calls go through _latebound.
+    ldoc = _latebound(doc)
+
     # Select the sketch on the model. Extension.SelectByID2 with a VARIANT
     # null callout is the W60/W61 selection-proven idiom for named features.
     try:
@@ -122,7 +146,7 @@ def create_helix(
         pass
     try:
         null_callout = VARIANT(pythoncom.VT_DISPATCH, None)
-        sel_ok = doc.Extension.SelectByID2(
+        sel_ok = _latebound(doc.Extension).SelectByID2(
             sketch, "SKETCH", 0.0, 0.0, 0.0, False, 0, null_callout, 0,
         )
         logger.warning("[helix] Extension.SelectByID2(%r,'SKETCH') -> %r", sketch, sel_ok)
@@ -134,7 +158,7 @@ def create_helix(
 
     # Mode-B: doc.InsertHelix (legacy, 10 args, returns void).
     try:
-        doc.InsertHelix(
+        ldoc.InsertHelix(
             True,           # ConstantPitch
             False,          # Reverse
             False,          # Dimension
