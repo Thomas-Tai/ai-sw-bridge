@@ -111,12 +111,20 @@ class _FakeFeatureManager:
         self._create_def_called = False
         self._create_feature_called = False
         self._insert_bbox_called = False
+        # find_feature_by_name walks GetFeatures(True) (top-level) — decoupled
+        # from the GetFeatures(False) node-count path. _FakeDoc seeds this with
+        # the Front Plane node so the callout-free lookup resolves.
+        self._top_level_nodes: list = []
+        self.get_features_top_level_calls = 0
 
     def set_post_nodes(self, nodes):
         self._post_nodes = nodes
         self._switched = False
 
-    def GetFeatures(self, _top_level):
+    def GetFeatures(self, top_level):
+        if top_level:
+            self.get_features_top_level_calls += 1
+            return self._top_level_nodes
         if self._switched and self._post_nodes is not None:
             return self._post_nodes
         return self._nodes
@@ -144,10 +152,12 @@ class _FakeFeatureManager:
 
 
 class _FakePlane:
-    """Sentinel returned by _FakeDoc.FeatureByName('Front Plane')."""
+    """Sentinel Front Plane node — resolved via the callout-free
+    ``verify.find_feature_by_name`` GetFeatures(True) walk (``.Name`` match)."""
 
     def __init__(self, name="Front Plane"):
         self.name = name
+        self.Name = name  # find_feature_by_name matches on .Name
 
 
 class _FakeDoc:
@@ -171,21 +181,16 @@ class _FakeDoc:
         self._fm._insert_bbox_result = insert_bbox_result
         self._fm._insert_bbox_raises = insert_bbox_raises
         self._rebuild_count = 0
-        # W63 round-4: handler now looks up the Front Plane via FeatureByName.
-        # Default to a sentinel _FakePlane so existing test setups keep working;
-        # tests can override via `front_plane=...`.
+        # Typed-doc hardening (2026-06-24): the handler resolves the Front Plane
+        # via the callout-free verify.find_feature_by_name (GetFeatures(True)
+        # walk), NOT IModelDoc2.FeatureByName (absent on the typed proxy). Seed
+        # the FM's top-level nodes with the plane so the lookup resolves.
         self._front_plane = front_plane if front_plane is not None else _FakePlane()
-        self._feature_by_name_calls = []
+        self._fm._top_level_nodes = [self._front_plane]
 
     @property
     def FeatureManager(self):
         return self._fm
-
-    def FeatureByName(self, name):
-        self._feature_by_name_calls.append(name)
-        if name == "Front Plane":
-            return self._front_plane
-        return None
 
     def ForceRebuild3(self, _force):
         self._rebuild_count += 1
@@ -353,8 +358,8 @@ class TestModeASuccess:
         assert fake_bd.include_surfaces is False
 
     def test_mode_a_sets_reference_face_or_plane(self, monkeypatch):
-        """W63 round-4 A5: ReferenceFaceOrPlane must be set to the Front Plane
-        the handler looked up via FeatureByName."""
+        """A5: ReferenceFaceOrPlane must be set to the Front Plane the handler
+        resolved via the callout-free GetFeatures(True) walk (typed-doc safe)."""
         fake_bd = _patch_typed_qi_success(monkeypatch)
         fake_feat = MagicMock()
         plane = _FakePlane()
@@ -367,7 +372,9 @@ class TestModeASuccess:
         )
         bb.create_bounding_box(doc, {"kind": "bounding_box"}, {})
         assert fake_bd.reference_face_or_plane is plane
-        assert "Front Plane" in doc._feature_by_name_calls
+        # the callout-free lookup path was taken (NOT IModelDoc2.FeatureByName)
+        assert doc._fm.get_features_top_level_calls >= 1
+        assert not hasattr(doc, "FeatureByName")
 
     def test_mode_a_calls_access_selections(self, monkeypatch):
         """W63 round-4 (round-2 A2 was self-inflicted regression): the iface

@@ -168,13 +168,21 @@ def _try_mode_a(
     # toggle in this iface) — best-fit-vs-axis-aligned is a function of WHICH
     # plane/face you supply as the reference (a body face → best-fit-to-body;
     # a principal plane → axis-aligned-to-that-plane).
-    plane = None
-    try:
-        plane = doc.FeatureByName("Front Plane")
-    except Exception as exc:
-        logger.warning("[bounding_box] mode_a Front Plane lookup raised: %r", exc)
+    # CALLOUT-FREE plane lookup (typed-transaction hardening, 2026-06-24): the
+    # makepy-TYPED proxy that ``mutate._open_doc_typed`` produces does NOT expose
+    # ``IModelDoc2.FeatureByName`` (AttributeError) — so through the typed commit/
+    # batch path the plane silently resolved to None, the PlanarEntity setter
+    # no-op'd, and CreateFeature ghosted (an advertised-GREEN kind failing only on
+    # the production path). ``verify.find_feature_by_name`` walks
+    # ``GetFeatures(True)`` and matches on ``.Name`` — callout-free, works on both
+    # the typed proxy and a raw late-bound doc (GetFeatures marshals on both; the
+    # same walk powers _count_feature_nodes above). Returns the IFeature object the
+    # PlanarEntity setter needs, mirroring ref_plane's callout-free selection.
+    plane = verify.find_feature_by_name(doc, "Front Plane")
     if plane is None:
-        logger.warning("[bounding_box] mode_a Front Plane not resolvable via FeatureByName")
+        logger.warning(
+            "[bounding_box] mode_a Front Plane not resolvable via GetFeatures walk"
+        )
 
     # AccessSelections — open the FeatureData for editing (round-2 A2 dropped
     # this in error; round-3 reflection confirmed the iface DOES expose it).
