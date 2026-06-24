@@ -1839,6 +1839,212 @@ def _sw_commit_feature_add_impl(proposal_id: str) -> dict[str, Any]:
                 pass
 
 
+def _sw_batch_feature_add_impl(
+    doc_path: str,
+    proposals: "list[dict]",
+    strict: bool = False,
+) -> dict[str, Any]:
+    """Apply a SEQUENCE of feature-add proposals in ONE open-doc transaction.
+
+    The throughput primitive for agent-generated multi-feature edits: instead
+    of N propose→dry-run→commit round-trips (each opening + closing the doc),
+    ``batch`` opens *doc_path* ONCE via :func:`_open_doc_typed`, runs each
+    proposal's handler in order through :func:`_apply_feature`, saves the green
+    features, and closes.
+
+    **Fail-fast best-effort (default, ``strict=False``):** execute proposals in
+    order; on the FIRST handler ``False`` return or raised exception, HALT
+    immediately (subsequent features almost always depend on the topological
+    success of prior ones — continuing would cascade meaningless faults). The
+    green features that already materialized ARE saved. Returns the recovery
+    manifest. ``strict=True`` is all-or-nothing: on any fault the doc is closed
+    WITHOUT saving (SW has no native transaction rollback, so unsaved ==
+    discarded) — clean atomicity at the cost of throwing away the greens.
+
+    Each proposal is ``{"feature": dict, "target": dict}`` — the same shapes
+    :func:`_apply_feature` consumes (``feature["type"]`` keys ``HANDLER_REGISTRY``).
+
+    Manifest (ratified schema — designed for agent recovery)::
+
+        ok               bool   — True iff EVERY proposal committed
+        doc_path         str
+        total            int    — proposals submitted
+        attempted        int    — how many actually ran (fail-fast: halted_at+1)
+        committed_count  int
+        doc_saved        bool   — were the green features written to disk
+        halted_at        int|None — 0-based index of the terminal fault
+        strict           bool   — the semantic in force
+        committed        [{index, kind, note}]      — the SUCCESS TRAIL (ordered)
+        fault            {index, kind, stage, error, feature, target} | None
+                                 — the SINGULAR terminal fault (fail-fast ⇒ ≤1);
+                                   stage ∈ {"open_doc","apply","save"}; feature/
+                                   target echoed VERBATIM for re-edit
+        skipped          [{index, kind}]            — the RESUME QUEUE (unattempted)
+        error            str|None — top-level human summary
+
+    Fail-soft: never raises; every failure mode lands in the manifest.
+    """
+    manifest: dict[str, Any] = {
+        "ok": False,
+        "doc_path": doc_path,
+        "total": len(proposals) if isinstance(proposals, (list, tuple)) else 0,
+        "attempted": 0,
+        "committed_count": 0,
+        "doc_saved": False,
+        "halted_at": None,
+        "strict": bool(strict),
+        "committed": [],
+        "fault": None,
+        "skipped": [],
+        "error": None,
+    }
+
+    # --- validation (fail closed BEFORE any COM is touched) ---
+    if not isinstance(doc_path, str) or not doc_path:
+        manifest["error"] = "doc_path must be a non-empty string"
+        return manifest
+    if not isinstance(proposals, (list, tuple)):
+        manifest["error"] = "proposals must be a list of {'feature','target'} dicts"
+        return manifest
+    if not proposals:
+        manifest["error"] = "proposals list is empty"
+        return manifest
+    proposals = list(proposals)
+    for i, p in enumerate(proposals):
+        if (
+            not isinstance(p, dict)
+            or not isinstance(p.get("feature"), dict)
+            or not isinstance(p.get("target"), dict)
+        ):
+            manifest["error"] = (
+                f"proposal[{i}] must be {{'feature': dict, 'target': dict}}"
+            )
+            return manifest
+
+    total = len(proposals)
+
+    def _kind(p: dict) -> Any:
+        feat = p.get("feature")
+        return feat.get("type") if isinstance(feat, dict) else None
+
+    def _skipped_from(start: int) -> "list[dict]":
+        return [{"index": j, "kind": _kind(proposals[j])} for j in range(start, total)]
+
+    doc = None
+    sw = None
+    try:
+        sw = get_sw_app()
+        # Active-doc guard (mirror the single-commit contract): refuse if the
+        # target is the active document — an open doc can't be re-opened typed.
+        active = get_active_doc(sw)
+        if active is not None:
+            try:
+                active_path = str(resolve(active, "GetPathName"))
+                if (
+                    active_path
+                    and Path(active_path).resolve() == Path(doc_path).resolve()
+                ):
+                    manifest["error"] = (
+                        f"target doc is the active document ({doc_path}); "
+                        "close it before batch"
+                    )
+                    return manifest
+            except Exception:
+                pass
+
+        doc = _open_doc_typed(doc_path)
+        if doc is None:
+            # open_doc-stage fault: nothing attempted, everything skipped.
+            manifest["halted_at"] = 0
+            manifest["fault"] = {
+                "index": 0,
+                "kind": _kind(proposals[0]),
+                "stage": "open_doc",
+                "error": f"failed to open doc: {doc_path}",
+                "feature": proposals[0].get("feature"),
+                "target": proposals[0].get("target"),
+            }
+            manifest["skipped"] = _skipped_from(1)
+            manifest["error"] = (
+                f"batch halted at 0/{total} (open_doc): failed to open {doc_path}"
+            )
+            return manifest
+
+        # --- the sequential, fail-fast execution loop ---
+        for i, p in enumerate(proposals):
+            feature, target, kind = p["feature"], p["target"], _kind(p)
+            manifest["attempted"] = i + 1
+            try:
+                ok, note = _apply_feature(doc, feature, target)
+            except Exception as exc:  # noqa: BLE001 — a handler raised; treat as fault
+                ok, note = False, f"handler raised: {exc!r}"
+            if not ok:
+                manifest["halted_at"] = i
+                manifest["fault"] = {
+                    "index": i,
+                    "kind": kind,
+                    "stage": "apply",
+                    "error": note,
+                    "feature": feature,
+                    "target": target,
+                }
+                manifest["skipped"] = _skipped_from(i + 1)
+                manifest["error"] = (
+                    f"batch halted at {i}/{total} ({kind}): {note}"
+                )
+                break
+            manifest["committed"].append({"index": i, "kind": kind, "note": note})
+            manifest["committed_count"] += 1
+
+        green = manifest["committed_count"]
+        faulted = manifest["fault"] is not None
+
+        # --- save policy ---
+        if faulted and strict:
+            # all-or-nothing: the greens are discarded (finally closes w/o save).
+            manifest["error"] = (
+                f"{manifest['error']} [strict — {green} green feature(s) "
+                "discarded, doc NOT saved]"
+            )
+            return manifest
+
+        if green > 0:
+            try:
+                manifest["doc_saved"] = _save_doc(doc)
+            except Exception as exc:  # noqa: BLE001
+                manifest["doc_saved"] = False
+                save_err = f"doc.Save raised: {exc!r}"
+                if not faulted:
+                    # all-green but the SAVE is the terminal fault.
+                    manifest["fault"] = {
+                        "index": None,
+                        "kind": None,
+                        "stage": "save",
+                        "error": save_err,
+                        "feature": None,
+                        "target": None,
+                    }
+                    manifest["error"] = save_err
+                else:
+                    manifest["error"] = f"{manifest['error']} ; ALSO {save_err}"
+                return manifest
+
+        if not faulted:
+            manifest["ok"] = True
+        return manifest
+
+    except Exception as exc:  # noqa: BLE001 — never raise out of the batch engine
+        manifest["error"] = f"unexpected: {exc!r}"
+        return manifest
+
+    finally:
+        if doc is not None and sw is not None:
+            try:
+                sw.CloseDoc(_doc_title(doc))
+            except Exception:
+                pass
+
+
 # ---------------------------------------------------------------------------
 # v0.14 — class-based facade over the legacy ``sw_*`` free functions.
 #

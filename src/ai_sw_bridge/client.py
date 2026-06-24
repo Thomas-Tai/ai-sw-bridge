@@ -72,6 +72,7 @@ from .mutate import (
     _sw_propose_feature_add_impl,
     _sw_dry_run_feature_add_impl,
     _sw_commit_feature_add_impl,
+    _sw_batch_feature_add_impl,
     # Batch M2: assembly verbs
     _sw_propose_assembly_impl,
     _sw_dry_run_assembly_impl,
@@ -414,6 +415,28 @@ class SolidWorksMutatorFacade:
     def commit_feature_add(self, proposal_id: str) -> dict[str, Any]:
         """Re-run a dry-run-ok feature-add and save the SW document."""
         return _sw_commit_feature_add_impl(proposal_id=proposal_id)
+
+    def batch(
+        self,
+        file_path: str,
+        proposals: "list[dict]",
+        strict: bool = False,
+    ) -> dict[str, Any]:
+        """Apply a SEQUENCE of feature-add proposals in ONE open-doc transaction.
+
+        The high-throughput primitive for agent-generated multi-feature edits:
+        opens *file_path* once, runs each ``{"feature", "target"}`` proposal's
+        registry handler in order, saves the green features, and closes.
+
+        Fail-fast best-effort (default): HALT on the first handler failure or
+        exception; the greens that materialized ARE saved; a recovery manifest
+        (success trail / singular fault / skipped resume-queue) is returned.
+        ``strict=True`` closes WITHOUT saving on any fault (all-or-nothing — SW
+        has no native rollback, so unsaved == discarded).
+        """
+        return _sw_batch_feature_add_impl(
+            doc_path=file_path, proposals=list(proposals), strict=strict
+        )
 
     # ── Batch M2: assembly verbs ─────────────────────────────────────────
 
