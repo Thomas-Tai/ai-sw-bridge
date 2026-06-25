@@ -1,5 +1,11 @@
-# Runtime dependencies for ai-sw-bridge
-# Windows-only because pywin32 only supports Windows; SOLIDWORKS itself is Windows-only.
-pywin32>=305
-Pillow>=10.0
-oletools>=0.60
+# Runtime dependencies for ai-sw-bridge.
+#
+# pyproject.toml [project.dependencies] is the source of truth; this file
+# mirrors it for the conventional `pip install -r requirements.txt` path.
+# Keep the two in sync. Windows-only: pywin32 and SOLIDWORKS are Windows-only.
+pywin32>=305,<400
+Pillow>=10.0,<12
+oletools>=0.60,<1
+jsonschema>=4.0,<5
+numpy>=1.24,<3
+sqlite-vec>=0.1,<0.2

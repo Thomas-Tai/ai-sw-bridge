@@ -76,7 +76,9 @@ jobs:
         run: lint-imports
 
       - name: Run tests
-        run: pytest -v
+        # Coverage floor (audit CI-2): measured 64% at v1.5.0; gate at 60% with
+        # headroom for cross-version variance — ratchet up as coverage grows.
+        run: pytest -v --cov=ai_sw_bridge --cov-report=term-missing --cov-fail-under=60
 
   import-check:
     # Pin runner version (see comment on test job).

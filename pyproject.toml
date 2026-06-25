@@ -27,12 +27,15 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "pywin32>=305",
-    "Pillow>=10.0",
-    "oletools>=0.60",
-    "jsonschema>=4.0",
-    "numpy>=1.24",
-    "sqlite-vec>=0.1",
+    # Upper bounds guard a shipped product against breaking upstream majors
+    # (CI exercises the latest within each range). numpy spans the 1.x/2.x ABI
+    # line; sqlite-vec is young pre-1.0, so it is held to the 0.1.x series.
+    "pywin32>=305,<400",
+    "Pillow>=10.0,<12",
+    "oletools>=0.60,<1",
+    "jsonschema>=4.0,<5",
+    "numpy>=1.24,<3",
+    "sqlite-vec>=0.1,<0.2",
 ]
 
 [project.optional-dependencies]
