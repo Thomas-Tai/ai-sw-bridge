@@ -53,8 +53,8 @@ try:
     import pythoncom
     from win32com.client import VARIANT
 except ImportError:
-    pythoncom = None  # type: ignore[assignment]
-    VARIANT = None  # type: ignore[assignment,misc]
+    pythoncom = None
+    VARIANT = None
 
 # Verify class (W67): surface AGGREGATION (INVERTED) — sheet-body count goes
 # DOWN as bodies are sewn; the surface-knit path also uses gate_surface_to_solid.
@@ -258,7 +258,7 @@ def create_knit(
     else:
         sel_ok, sel_err = _select_all_sheet_bodies(doc)
     if not sel_ok:
-        return False, sel_err  # type: ignore[return-value]
+        return False, sel_err
 
     try:
         fm = doc.FeatureManager

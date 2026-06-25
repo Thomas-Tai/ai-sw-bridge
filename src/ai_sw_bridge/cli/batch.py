@@ -153,6 +153,7 @@ def main(argv: "list[str] | None" = None) -> int:
     if err:
         print(json.dumps({"ok": False, "error": err}, indent=2))
         return 1
+    assert proposals is not None  # _load_proposals returns (proposals, None) XOR (None, err)
 
     # The approval ceremony — summary + [y/N], both on stderr.
     print(_summarize(args.file_path, proposals, args.strict), file=sys.stderr)

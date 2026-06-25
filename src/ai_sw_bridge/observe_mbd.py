@@ -101,7 +101,7 @@ def _asymmetric_bridge(anno: Any) -> dict[str, Any]:
     IDimension.Tolerance -> ITolerance.{GetMaxValue, GetMinValue}. On ANY fault,
     returns ``{"asymmetric_extracted": False}`` — never raises.
     """
-    out = {
+    out: dict[str, Any] = {
         "asymmetric_extracted": False,
         "upper_deviation": None,
         "lower_deviation": None,

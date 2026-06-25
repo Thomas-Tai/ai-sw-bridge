@@ -129,7 +129,7 @@ def resolve_clearance(
     step_si = sign * (float(step_mm) / 1000.0)
 
     cur_si = orig_si
-    best = {"dist_mm": None, "count": None, "volume_mm3": math.inf}
+    best: dict[str, Any] = {"dist_mm": None, "count": None, "volume_mm3": math.inf}
     solved = False
     drive_err: str | None = None
     worsened = False

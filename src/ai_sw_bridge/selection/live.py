@@ -341,6 +341,7 @@ def resolve_by_fingerprint(doc: Any, ref: Any) -> RefResolution:
                 best_face = face
 
     if best_face is not None:
+        assert best_key is not None  # set together with best_face in the loop
         return RefResolution(
             best_face,
             "fingerprint_geom",
@@ -410,6 +411,7 @@ def resolve_by_edge_fingerprint(doc: Any, ref: Any) -> RefResolution:
             best_edge = edge
 
     if best_edge is not None:
+        assert best_key is not None  # set together with best_edge in the loop
         return RefResolution(
             best_edge,
             "edge_fingerprint",
@@ -467,7 +469,7 @@ def resolve_ref(doc: Any, ref: Any, *, allow_fingerprint: bool = True) -> RefRes
 
 
 def resolve_manifest_face(
-    doc: Any, face: dict[str, Any], *, allow_fingerprint: bool = True
+    doc: Any, face: Any, *, allow_fingerprint: bool = True
 ) -> RefResolution:
     """Resolve a serialized manifest *face* dict to a live entity.
 

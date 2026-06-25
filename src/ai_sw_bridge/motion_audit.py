@@ -130,9 +130,11 @@ def summarize_motion(profile: list[dict[str, Any]]) -> dict[str, Any]:
             prev_pos = pos
         else:
             if run_start is not None:
+                assert prev_pos is not None
                 clear_ranges.append([run_start, prev_pos])
                 run_start = None
     if run_start is not None:
+        assert prev_pos is not None
         clear_ranges.append([run_start, prev_pos])
 
     # Tightest positive clearance among collision-free positions.

@@ -203,7 +203,7 @@ def _apply_feature(doc: Any, feature: dict, target: dict) -> tuple[bool, str | N
     # W56 seam: kinds wired as per-lane modules under features/ dispatch here.
     # Recipe-C cuts #1–#6 relocated all handlers into the registry; this
     # function is now a pure registry dispatch (no inline branches).
-    handler = HANDLER_REGISTRY.get(ftype)
+    handler = HANDLER_REGISTRY.get(ftype) if isinstance(ftype, str) else None
     if handler is not None:
         return handler(doc, feature, target)
     return False, f"unsupported feature type {ftype!r}"
@@ -1046,11 +1046,11 @@ def _sw_propose_feature_add_impl(
                     "linear_pattern target.direction must be a dict with x, y, z"
                 )
                 return result
-            for k in ("x", "y", "z"):
-                v = direction.get(k)
+            for axis in ("x", "y", "z"):
+                v = direction.get(axis)
                 if not isinstance(v, (int, float)):
                     result["error"] = (
-                        f"linear_pattern target.direction.{k} must be a number"
+                        f"linear_pattern target.direction.{axis} must be a number"
                     )
                     return result
             spacing = feature.get("spacing_mm")

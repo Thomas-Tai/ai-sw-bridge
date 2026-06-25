@@ -2164,6 +2164,7 @@ def commit_drawing(
                 # Rename sheet 1 if the spec asked for a specific name
                 if sheet_spec["name"] and sheet_spec["name"] != current_name:
                     try:
+                        assert active_sheet is not None
                         active_sheet.SetName(sheet_spec["name"])
                         current_name = sheet_spec["name"]
                     except Exception as exc:

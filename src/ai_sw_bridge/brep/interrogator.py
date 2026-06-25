@@ -63,7 +63,7 @@ class BrepFace:
     is_surface: bool = False
     is_hidden: bool = False
     persist_id: str = ""  # base64url (no pad) durable token; "" when uncaptured
-    surface_uv: dict = (
+    surface_uv: dict | None = (
         None  # Wave-5 E2: {point_mm, normal} at UV midpoint; None when not evaluated
     )
 

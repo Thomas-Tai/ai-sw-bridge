@@ -401,7 +401,7 @@ from .dress_up import (  # noqa: E402
 
 # _create_fillet original signature: (doc, target, radius_mm) — non-standard.
 # Wrap to the standard (doc, feature, target) calling convention.
-def _fillet_adapter(doc: Any, feature: dict, target: dict):  # type: ignore[return]
+def _fillet_adapter(doc: Any, feature: dict, target: dict):
     return _create_fillet(doc, target, feature["radius_mm"])
 
 
@@ -410,7 +410,7 @@ _register_lane("chamfer", _create_chamfer, _dress_up_status)
 
 
 # _create_variable_fillet original signature: (doc, edges) — non-standard.
-def _varfil_adapter(doc: Any, feature: dict, target: dict):  # type: ignore[return]
+def _varfil_adapter(doc: Any, feature: dict, target: dict):
     return _create_variable_fillet(doc, target["edges"])
 
 
@@ -463,7 +463,7 @@ from .flanges import (  # noqa: E402
 
 
 # _create_base_flange original signature: (doc, target, thickness_mm, bend_radius_mm).
-def _base_flange_adapter(doc: Any, feature: dict, target: dict):  # type: ignore[return]
+def _base_flange_adapter(doc: Any, feature: dict, target: dict):
     return _create_base_flange(
         doc, target, feature["thickness_mm"], feature["bend_radius_mm"]
     )

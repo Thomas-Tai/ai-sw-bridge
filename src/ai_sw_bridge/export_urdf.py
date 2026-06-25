@@ -309,6 +309,7 @@ def _export_part_stl(
             format="stl", output_dir=meshes_dir, filename=stl_name, binary=binary_stl
         )
     ]
+    err: str | None = None
     try:
         exp = SolidWorksClient().export.run(opened_doc, reqs, stl_name)
     except Exception as exc:  # noqa: BLE001
@@ -431,7 +432,7 @@ def export_urdf(
     # ── PHASE 2 (assembly CLOSED): isolated mesh generation ──────────────
     # One STL per UNIQUE part file (instances of the same part share a mesh).
     exported: list[str] = []
-    mesh_by_path: dict[str, str | None] = {}
+    mesh_by_path: dict[str | None, str | None] = {}
     mesh_used: set[str] = set()
     for r in records:
         if not r.get("ok"):

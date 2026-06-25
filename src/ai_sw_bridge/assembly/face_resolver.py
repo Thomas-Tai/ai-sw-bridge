@@ -256,6 +256,11 @@ def _resolve_via_fingerprint(
             None, "unresolved", "no cylindrical face found on component"
         )
 
+    if target_normal is None:
+        return ComponentFaceResolution(
+            None, "unresolved", "no target_normal for generic face match"
+        )
+
     best_face = None
     best_score = float("inf")
 
