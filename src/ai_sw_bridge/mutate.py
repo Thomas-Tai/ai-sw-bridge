@@ -37,7 +37,10 @@ from .sw_com import get_active_doc, get_sw_app, resolve
 
 
 from .com.earlybind import typed
-from .com.earlybind import typed_qi  # noqa: F401 — module surface; tests patch mutate.typed_qi
+
+# typed_qi is re-exported on this module's surface so the test-suite can patch
+# ``mutate.typed_qi``; intentionally imported-but-unused here.
+from .com.earlybind import typed_qi  # noqa: F401
 from .com.sw_type_info import wrapper_module
 from .features import HANDLER_REGISTRY
 

@@ -78,7 +78,7 @@ def _build_sheet_metal_fixture(sw: Any) -> tuple[Any, str, str]:
       set Thickness/BendRadius → CreateFeature.
     """
     from ..spec.builder import create_blank_part
-    from ..mutate import _create_base_flange
+    from ..features.flanges import _create_base_flange
 
     doc = create_blank_part(sw)
 
