@@ -7,7 +7,7 @@ name = "ai-sw-bridge"
 version = "1.5.0"
 description = "A semi-automated bridge that lets an AI assistant (Claude, ChatGPT, Codex, etc.) drive SOLIDWORKS through the COM API for design-guide tuning and parametric part creation."
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "Proprietary — see LICENSE" }
 requires-python = ">=3.10"
 authors = [{ name = "ai-sw-bridge contributors" }]
 keywords = ["solidworks", "cad", "automation", "ai", "claude", "codex", "com", "pywin32"]
@@ -16,7 +16,7 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Manufacturing",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: Other/Proprietary License",
     "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

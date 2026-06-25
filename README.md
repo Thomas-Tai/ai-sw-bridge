@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/Thomas-Tai/ai-sw-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomas-Tai/ai-sw-bridge/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12%20%7C%203.14-blue)](pyproject.toml)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)](#prerequisites)
 
 **Language**: English · [繁體中文](docs/i18n/zh-TW/README.md) · [简体中文](docs/i18n/zh-CN/README.md)
@@ -115,9 +115,10 @@ Nine CLI commands + one MCP server on your PATH after `pip install -e ".[mcp]"`:
 | `ai-sw-codegen` | Parameterize a recorded `.swp` macro against a locals file | — |
 | `ai-sw-build` | **Build a part from a JSON spec via direct-COM.** Three modes (`--no-dim`, `--deferred-dim`, parametric default). Validation: `--validate-only`, `--dry-run`, `--lint`. Reliability: `--checkpoint[-encrypt]`, `--auto-retry`, `--reconnect`, `--verify-mass`. Output: `--save-as`, `--save-format`. Environment: `--disable-addins`/`--strict-addins`, `--enable-flag`/`--disable-flag`, `--log-level`/`--verbose`/`--quiet`, `--locale`. Run `ai-sw-build --help` for the canonical list. | — |
 | `ai-sw-apidoc` | RAG over the SOLIDWORKS API CHM corpus — `search` / `detail` / `members` / `examples` / `enum` subcommands. First run after a fresh clone: `python tools/build_api_index.py` to materialize the committed index. | ✅ |
+| `ai-sw-memory` | **Design-Memory RAG** — semantic search over *your own* design history (past proposals/checkpoints). `build` (backfill the local index) / `search` / `stats`. Embeddings are computed **on-device**; the index is a private, gitignored artifact. | ✅ |
 | `ai-sw-history` | Query L4 checkpoint history — `part` / `since` / `diff` / `rollback` subcommands | ⚠️ rollback writes |
 | `ai-sw-checkpoint` | Manage L4 encryption — `info` (no key needed) / `genkey` / `rekey` / `migrate` | — |
-| `ai-sw-mcp` | **MCP server (stdio transport)** for Claude Desktop, Cursor, Continue.dev, and other MCP-capable clients. Exposes 21 tools mapping 1:1 to the CLI surface. Install with `pip install ai-sw-bridge[mcp]`. | mixed |
+| `ai-sw-mcp` | **MCP server (stdio transport)** for Claude Desktop, Cursor, Continue.dev, and other MCP-capable clients. Exposes 37 tools mapping 1:1 to the CLI surface. Install with `pip install ai-sw-bridge[mcp]`. | mixed |
 
 Three build modes for `ai-sw-build` (use `--no-dim` for AI workflows; the others trade speed for live equation links). [Why `--no-dim` exists →](docs/why_no_addim2.md)
 
@@ -188,6 +189,17 @@ selects `sw_bbox`, the result renders in the chat.
 **API doc (5)** — read-only, SQLite-backed, mirror `ai-sw-apidoc`:
 `sw_apidoc_search`, `sw_apidoc_detail`, `sw_apidoc_members`,
 `sw_apidoc_examples`, `sw_apidoc_enum`
+
+**Design-Memory (1)** — read-only, on-device `sqlite-vec`, mirrors `ai-sw-memory`:
+`sw_retrieve_design_memory` (semantic retrieval over the operator's own past
+designs; `kind` / `recipe_kind` metadata filters)
+
+**MBD / PMI (1)** — read-only DimXpert/PMI serialization (v1.4.0):
+`sw_observe_mbd`
+
+**Session-health (1)** — read-only resilience observability:
+`sw_session_health` (seat presence + durable transaction-ledger audit + last
+recovery → a degraded/recovered/healthy verdict)
 
 **History + checkpoint info (4)** — read-only, mirror `ai-sw-history` + `ai-sw-checkpoint info`:
 `sw_history_part`, `sw_history_since`, `sw_history_diff`,
@@ -263,10 +275,14 @@ ai-sw-bridge/
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Commercial / proprietary — see [LICENSE](LICENSE) (a counsel-review template as
+of v1.5.0). Releases v1.0.0–v1.4.0 were published under the MIT License and
+remain available under those terms. Incorporated third-party components keep
+their own licenses — see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Contributions are accepted under the [CLA](CLA.md).
 
 ## Acknowledgments
 
 SOLIDWORKS API patterns: [CodeStack](https://www.codestack.net/solidworks-api/). The Path C dim-binding fix (`EquationMgr.Add2` 3-arg form) came from their `document/dimensions/add-equation/` example.
 
-Includes adapted code from [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) (MIT, ESPO Corporation 2025).
+Includes adapted code from [SolidworksMCP-python](https://github.com/andrewbartels1/SolidworksMCP-python) (MIT, ESPO Corporation 2025); see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

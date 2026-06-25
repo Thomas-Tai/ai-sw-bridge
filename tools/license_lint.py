@@ -181,20 +181,38 @@ def _check_license_classification(upstream_repo: str, file_path: Path) -> list[s
 
 
 def _check_top_level_license(root_dir: Path) -> list[str]:
-    """Verify top-level LICENSE and pyproject.toml agree on MIT."""
+    """Verify the proprietary commercial license is in place and consistent.
+
+    The project went proprietary at v1.5.0 (the commercial LICENSE template);
+    pyproject must declare it, and the bundled MIT upstream (SolidworksMCP-python)
+    must keep its attribution in THIRD-PARTY-NOTICES.md.
+    """
     errors: list[str] = []
     license_file = root_dir / "LICENSE"
     pyproject = root_dir / "pyproject.toml"
-    is_mit = False
+    notices = root_dir / "THIRD-PARTY-NOTICES.md"
+
     if license_file.exists():
-        text = license_file.read_text(encoding="utf-8")
-        is_mit = "MIT License" in text
-    if not is_mit:
-        errors.append("LICENSE file does not contain 'MIT License'")
+        if "Commercial Software License" not in license_file.read_text(
+            encoding="utf-8"
+        ):
+            errors.append("LICENSE is not the proprietary commercial license")
+    else:
+        errors.append("LICENSE file missing")
+
     if pyproject.exists():
-        text = pyproject.read_text(encoding="utf-8")
-        if 'license = { text = "MIT" }' not in text and '"MIT"' not in text:
-            errors.append("pyproject.toml does not declare MIT license")
+        if "Proprietary" not in pyproject.read_text(encoding="utf-8"):
+            errors.append("pyproject.toml does not declare a Proprietary license")
+
+    if notices.exists():
+        ntext = notices.read_text(encoding="utf-8")
+        if "SolidworksMCP-python" not in ntext or "MIT" not in ntext:
+            errors.append(
+                "THIRD-PARTY-NOTICES.md missing the SolidworksMCP-python MIT notice"
+            )
+    else:
+        errors.append("THIRD-PARTY-NOTICES.md missing (bundled MIT attribution)")
+
     return errors
 
 

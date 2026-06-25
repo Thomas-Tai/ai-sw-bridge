@@ -123,4 +123,9 @@ required (see `docs/central_idea/harvest_plan.md` §5 for the full process):
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+The project ships under a commercial/proprietary [LICENSE](LICENSE) as of v1.5.0.
+By contributing, you agree to the [Contributor License Agreement](CLA.md), which
+grants the right to license your contribution under that commercial license
+(and open-source terms). Third-party material in a contribution must be declared
+so it can be recorded in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and the
+port-attribution table above.
