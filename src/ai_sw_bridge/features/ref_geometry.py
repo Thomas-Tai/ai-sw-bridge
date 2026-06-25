@@ -16,10 +16,10 @@ import base64
 from typing import Any
 
 import pythoncom
-import win32com.client.dynamic as _w32dyn
 from win32com.client import VARIANT
 
 from ..com.earlybind import typed
+from ..com.latebound import latebound as _latebound
 from ..com.sw_type_info import wrapper_module
 from ..selection import (
     DurableEdgeRef,
@@ -31,19 +31,6 @@ from ..selection import (
 from .verify import materialized as _materialized
 
 SPIKE_STATUS = "GREEN"
-
-
-def _latebound(com_obj: Any) -> Any:
-    """Re-wrap a COM proxy as LATE-BOUND (``win32com.client.dynamic.Dispatch``).
-
-    A ``VARIANT(VT_DISPATCH, None)`` ICallout argument marshals on a late-bound
-    proxy but NOT on a makepy-typed one (raises ``TypeError('The Python
-    instance can not be converted to a COM object')``). The disk-transaction
-    path opens docs TYPED (``mutate._open_doc_typed``), so any Extension callout
-    must be late-bound first. Isolated as a seam so offline tests can
-    monkeypatch it to identity and still spy the underlying COM call.
-    """
-    return _w32dyn.Dispatch(com_obj)
 
 
 # swRefPlaneReferenceConstraint_e (duplicated — also used by the edge_flange

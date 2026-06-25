@@ -56,20 +56,20 @@ class _Server(FastMCP):
 def create_server(runtime: ServerRuntime) -> Any:
     """Create and configure the FastMCP server.
 
-    Registers every tool from the §6 inventory:
+    Registers every tool from the §6 inventory (the authoritative set is
+    pinned in ``tests/mcp_lane/test_server_contract.py::EXPECTED_TOOLS``):
 
-    * Observation (21 tools): sw_active_doc, sw_feature_errors,
+    * Observation (22 tools): sw_active_doc, sw_feature_errors,
       sw_equations, sw_bbox, sw_volume, sw_screenshot, sw_measure,
-      sw_mate_errors, sw_custom_props, sw_enabled_addins,
-      sw_interference, sw_bounding_box, sw_measure_selection,
-      sw_inertia, sw_clearance, sw_draft_analysis, sw_undercut_faces,
-      sw_current_selection, sw_min_wall_thickness,
-      sw_feature_statistics, sw_analyze_stackup.
-    * Build (1 tool): sw_build.
+      sw_measure_selection, sw_mate_errors, sw_custom_props,
+      sw_enabled_addins, sw_interference, sw_bounding_box, sw_inertia,
+      sw_clearance, sw_draft_analysis, sw_current_selection,
+      sw_undercut_faces, sw_min_wall_thickness, sw_feature_statistics,
+      sw_analyze_stackup, sw_observe_mbd.
+    * Build (1 tool): sw_build — validator-gated build pipeline.
     * Batch-plan (1 tool): sw_batch_plan — a READ-ONLY (dry-run)
-      validation pass over a multi-feature batch; never writes to
-      disk (the §6.5-aligned write-PLANNING surface; the irreversible
-      commit stays a human-gated CLI action).
+      validation pass over a multi-feature batch; HARD-WIRED dry-run,
+      never writes to disk (the §6.5 write-PLANNING surface).
     * Batch-execute (1 tool): sw_batch_execute — PLAN (dry-run) then
       elicit human approval IN-CHAT (MCP elicitation) then COMMIT. The
       ``ai-sw-batch`` CLI ``[y/N]`` gate moved into the agent surface;
@@ -78,19 +78,26 @@ def create_server(runtime: ServerRuntime) -> Any:
       phases; capability-gated, degrades to sw_batch_plan + CLI.
     * API doc (5 tools): sw_apidoc_search, sw_apidoc_detail,
       sw_apidoc_members, sw_apidoc_examples, sw_apidoc_enum.
-    * History (4 tools): sw_history_part, sw_history_since,
-      sw_history_diff, sw_checkpoint_info.
-    * Reconnect (1 tool): sw_reconnect.
+    * Design-Memory (1 tool): sw_retrieve_design_memory — local,
+      on-device semantic retrieval over the operator's design history.
+    * History + checkpoint info (4 tools): sw_history_part,
+      sw_history_since, sw_history_diff, sw_checkpoint_info.
+    * Resilience + lifecycle (2 tools): sw_session_health (read-only),
+      sw_reconnect.
 
-    Total: 34 tools.
+    Total: 37 tools.
 
-    Tools NOT registered (per §6.5): the four mutate operations
+    Write-gate policy (§6.5). The four free-standing mutate operations
     (sw_propose_local_change, sw_dry_run, sw_commit,
-    sw_undo_last_commit) stay CLI-only because each one COMMITS an
-    irreversible write and requires a human approval in the loop.
-    sw_batch_plan is the EXCEPTION that proves the rule — it is
-    exposed precisely because it CANNOT commit (hard-wired dry-run,
-    document never saved). sw_codegen, sw_probe, and
+    sw_undo_last_commit) stay CLI-only: each commits an irreversible
+    write and the MCP surface deliberately does not re-expose them.
+    The batch lane DOES reach disk over MCP, but only through a human
+    in the loop: sw_batch_plan is hard-wired dry-run (it CANNOT commit),
+    and sw_batch_execute commits ONLY after an explicit in-chat
+    elicitation approval (capability-gated; degrades to the CLI when the
+    client cannot elicit). So no MCP tool persists a mutation without a
+    human approval in the loop — the approval surface is CLI [y/N] OR MCP
+    elicitation, not autonomous. sw_codegen, sw_probe, and
     sw_checkpoint_genkey/rekey/migrate are also CLI-only.
 
     Args:
@@ -136,12 +143,16 @@ def create_server(runtime: ServerRuntime) -> Any:
 
 _SERVER_INSTRUCTIONS = (
     "ai-sw-bridge MCP server. Read-only observation tools mirror the "
-    "`ai-sw-observe` CLI; `sw_build` runs the validator-gated build "
-    "pipeline; `sw_reconnect` re-acquires SldWorks.Application after "
-    "the SW process dies (ComExecutor.is_sw_dead=True). Never call "
-    "`sw_build` on a spec you haven't reviewed — the validator "
-    "catches most mistakes, but COM writes are irreversible within "
-    "a single SW session."
+    "`ai-sw-observe` CLI; `sw_build` validates a spec then builds it only "
+    "after you approve the plan via the in-chat elicitation prompt; "
+    "`sw_batch_plan` validates a multi-feature batch without writing "
+    "(hard-wired dry-run); `sw_batch_execute` commits a batch only after "
+    "you approve the plan via the in-chat elicitation prompt; `sw_reconnect` "
+    "re-acquires SldWorks.Application after the SW process dies "
+    "(ComExecutor.is_sw_dead=True). The two write tools (`sw_build`, "
+    "`sw_batch_execute`) never persist without your in-chat approval — COM "
+    "writes are irreversible within a single SW session, so review the plan "
+    "before approving."
 )
 
 

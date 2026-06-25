@@ -105,20 +105,41 @@ For the longer story (field survey of existing tools, why fluent APIs lose, why 
 
 ## What ships in the box
 
-Nine CLI commands + one MCP server on your PATH after `pip install -e ".[mcp]"`:
+**21 CLI commands + one MCP server** on your PATH after `pip install -e ".[mcp]"`.
+Each command declares a stability **tier** (`stable` / `experimental` / `deprecated`),
+printed in its `--help` banner and enforced by `tests/test_cli_stability.py`. The
+authoritative tier-per-command list + the SemVer promise live in
+[`docs/PUBLIC_API.md`](docs/PUBLIC_API.md) — that file is the supported-surface
+contract; this table is the friendly tour.
 
-| Command | What it does | Read-only? |
-|---|---|---|
-| `ai-sw-probe` | COM connectivity check | ✅ |
-| `ai-sw-observe` | Inspect doc / features / equations / mates / bbox / volume / custom-props / screenshots / mates / add-ins — JSON output | ✅ |
-| `ai-sw-mutate` | Propose → dry-run → commit (or undo) `*_locals.txt` variable changes. Subcommands: `propose` / `dry_run` / `commit` / `undo`. Proposals persist to `./proposals/` (override via `AI_SW_BRIDGE_PROPOSALS`). | ⚠️ approval-gated |
-| `ai-sw-codegen` | Parameterize a recorded `.swp` macro against a locals file | — |
-| `ai-sw-build` | **Build a part from a JSON spec via direct-COM.** Three modes (`--no-dim`, `--deferred-dim`, parametric default). Validation: `--validate-only`, `--dry-run`, `--lint`. Reliability: `--checkpoint[-encrypt]`, `--auto-retry`, `--reconnect`, `--verify-mass`. Output: `--save-as`, `--save-format`. Environment: `--disable-addins`/`--strict-addins`, `--enable-flag`/`--disable-flag`, `--log-level`/`--verbose`/`--quiet`, `--locale`. Run `ai-sw-build --help` for the canonical list. | — |
-| `ai-sw-apidoc` | RAG over the SOLIDWORKS API CHM corpus — `search` / `detail` / `members` / `examples` / `enum` subcommands. First run after a fresh clone: `python tools/build_api_index.py` to materialize the committed index. | ✅ |
-| `ai-sw-memory` | **Design-Memory RAG** — semantic search over *your own* design history (past proposals/checkpoints). `build` (backfill the local index) / `search` / `stats`. Embeddings are computed **on-device**; the index is a private, gitignored artifact. | ✅ |
-| `ai-sw-history` | Query L4 checkpoint history — `part` / `since` / `diff` / `rollback` subcommands | ⚠️ rollback writes |
-| `ai-sw-checkpoint` | Manage L4 encryption — `info` (no key needed) / `genkey` / `rekey` / `migrate` | — |
-| `ai-sw-mcp` | **MCP server (stdio transport)** for Claude Desktop, Cursor, Continue.dev, and other MCP-capable clients. Exposes 37 tools mapping 1:1 to the CLI surface. Install with `pip install ai-sw-bridge[mcp]`. | mixed |
+Every mutating command follows the same **propose → approve → execute** state
+machine: the AI never changes a model without an explicit human / `--yes` gate.
+There is no `--yolo` flag.
+
+| Command | Tier | What it does | Read-only? |
+|---|---|---|---|
+| `ai-sw-probe` | experimental | COM connectivity check — confirms SW is reachable via `GetActiveObject` | ✅ |
+| `ai-sw-observe` | stable | Inspect doc / features / equations / mates / bbox / volume / custom-props / screenshots / add-ins / MBD-PMI — JSON output | ✅ |
+| `ai-sw-mutate` | stable | Propose → dry-run → commit (or undo) `*_locals.txt` variable changes. Subcommands: `propose` / `dry_run` / `commit` / `undo`. Proposals persist to `./proposals/` (override via `AI_SW_BRIDGE_PROPOSALS`). | ⚠️ approval-gated |
+| `ai-sw-batch` | experimental | Human-gated batch feature-commit. Executes a multi-feature plan (from MCP `sw_batch_plan`) behind a `[y/N]` gate; greens persist, fail-fast on the first fault. | ⚠️ approval-gated |
+| `ai-sw-assembly` | stable | Propose-Approve-Execute assembly lifecycle (components + mates). Subcommands: `propose` / `dry_run` / `commit`. CLI-only, never MCP. | ⚠️ approval-gated |
+| `ai-sw-drawing` | stable | Propose-Approve-Execute drawing lifecycle (views + annotations). Subcommands: `propose` / `dry_run` / `commit`. CLI-only, never MCP. | ⚠️ approval-gated |
+| `ai-sw-properties` | stable | Propose-Approve-Execute custom-properties lifecycle. Subcommands: `propose` / `dry_run` / `commit`. CLI-only, never MCP. | ⚠️ approval-gated |
+| `ai-sw-configurations` | stable | Multifile variant materialization. Subcommands: `propose` / `materialize`. Deep-merges variants over a base spec, builds each as a separate `.sldprt`. | — |
+| `ai-sw-sketch-relations` | experimental | Propose-Approve-Execute sketch geometric relations (constraints). Subcommands: `propose` / `dry_run` / `commit`. CLI-only. | ⚠️ approval-gated |
+| `ai-sw-sketch-edit` | experimental | Propose-Approve-Execute sketch editing ops (Convert / Offset / Trim / Pattern). Subcommands: `propose` / `dry_run` / `commit`. CLI-only. | ⚠️ approval-gated |
+| `ai-sw-codegen` | experimental | Parameterize a recorded `.swp` macro against a locals file | — |
+| `ai-sw-build` | stable | **Build a part from a JSON spec via direct-COM.** Three modes (`--no-dim`, `--deferred-dim`, parametric default). Validation: `--validate-only`, `--dry-run`, `--lint`. Reliability: `--checkpoint[-encrypt]`, `--auto-retry`, `--reconnect`, `--verify-mass`. Output: `--save-as`, `--save-format`. Environment: `--disable-addins`/`--strict-addins`, `--enable-flag`/`--disable-flag`, `--log-level`/`--verbose`/`--quiet`, `--locale`. Run `ai-sw-build --help` for the canonical list. | — |
+| `ai-sw-history` | experimental | Query L4 checkpoint history — `part` / `since` / `diff` / `rollback` subcommands | ⚠️ rollback writes |
+| `ai-sw-apidoc` | experimental | RAG over the SOLIDWORKS API CHM corpus — `search` / `detail` / `members` / `examples` / `enum` subcommands. First run after a fresh clone: `python tools/build_api_index.py` to materialize the committed index. | ✅ |
+| `ai-sw-memory` | experimental | **Design-Memory RAG** — semantic search over *your own* design history (past proposals/checkpoints). `build` (backfill the local index) / `search` / `stats`. Embeddings are computed **on-device**; the index is a private, gitignored artifact. | ✅ |
+| `ai-sw-checkpoint` | experimental | Manage L4 encryption — `info` (no key needed) / `genkey` / `rekey` / `migrate` | — |
+| `ai-sw-import` | experimental | Foreign-geometry import (STEP / IGES → `.sldprt`) with import diagnostics. Options: `--source`, `--output`, `--dry-run`, `--verify-volume`. | — |
+| `ai-sw-export-dxf-flat` | experimental | Sheet-metal flat-pattern DXF export (`export` subcommand) — exports via `ExportToDWG2`, verifies entity count. | — |
+| `ai-sw-motion` | experimental | Dynamic kinematic verification (`audit`) — drives a mate through its DOF, reports interference / clearance per step. | — |
+| `ai-sw-solver` | experimental | Autonomous clearance solver (`resolve-clearance`) — drives a distance mate until clash-free, reverts on failure. | ⚠️ approval-gated |
+| `ai-sw-urdf` | experimental | URDF export (assembly → ROS robot model). `export` writes `.urdf` + per-component STL meshes. No SW mutation. | ✅ |
+| `ai-sw-mcp` | daemon | **MCP server (stdio transport)** for Claude Desktop, Cursor, Continue.dev, and other MCP-capable clients. Exposes 37 tools (read lanes + plan/elicit-gated writes). Install with `pip install ai-sw-bridge[mcp]`. | mixed |
 
 Three build modes for `ai-sw-build` (use `--no-dim` for AI workflows; the others trade speed for live equation links). [Why `--no-dim` exists →](docs/why_no_addim2.md)
 
@@ -135,8 +156,11 @@ Three build modes for `ai-sw-build` (use `--no-dim` for AI workflows; the others
 
 ## MCP server — drive the bridge from Claude Desktop / Cursor / etc.
 
-The MCP server (new in v0.13) exposes 21 tools to MCP-capable AI clients
-over stdio. Same tool surface as the CLI; just a different transport.
+The MCP server (new in v0.13) exposes 37 tools to MCP-capable AI clients
+over stdio. Same observation + planning surface as the CLI; just a different
+transport. The tool set is pinned by name and payload shape in
+`tests/mcp_lane/test_server_contract.py` (`EXPECTED_TOOLS`) — that test is the
+contract, so any add/remove/rename fails CI loudly.
 
 ```mermaid
 flowchart LR
@@ -172,19 +196,29 @@ Windows Store / MSIX build — see [`docs/mcp_server_design.md`](docs/mcp_server
 ```
 
 Restart Claude Desktop fully. The MCP server appears under
-**Settings → Connectors / Local MCP servers** with 21 tools listed.
+**Settings → Connectors / Local MCP servers** with 37 tools listed.
 Type "What's the bounding box of the active part?" in chat; the model
 selects `sw_bbox`, the result renders in the chat.
 
-### Tool inventory (21 tools)
+### Tool inventory (37 tools)
 
-**Observation (10)** — read-only, mirror `ai-sw-observe`:
+**Observation (22)** — read-only, mirror `ai-sw-observe`:
 `sw_active_doc`, `sw_feature_errors`, `sw_equations`, `sw_bbox`,
-`sw_volume`, `sw_screenshot`, `sw_measure`, `sw_mate_errors`,
-`sw_custom_props`, `sw_enabled_addins`
+`sw_volume`, `sw_screenshot`, `sw_measure`, `sw_measure_selection`,
+`sw_mate_errors`, `sw_custom_props`, `sw_enabled_addins`, `sw_interference`,
+`sw_bounding_box`, `sw_inertia`, `sw_clearance`, `sw_draft_analysis`,
+`sw_current_selection`, `sw_undercut_faces`, `sw_min_wall_thickness`,
+`sw_feature_statistics`, `sw_analyze_stackup`, `sw_observe_mbd`
 
-**Build (1)** — write, validator-gated:
-`sw_build` (full `ai-sw-build` surface incl. checkpoint + encryption)
+**Build + batch (3)**:
+`sw_build` (validate → **elicit human approval in-chat** → build — full
+`ai-sw-build` surface incl. checkpoint + encryption; no build or `save_as`
+without an explicit approval, degrades to the `ai-sw-build` CLI when the client
+can't elicit); `sw_batch_plan` (**hard-wired `dry_run=True`** — validates a
+multi-feature batch on the live kernel but can never persist to disk);
+`sw_batch_execute` (PLAN → **elicit human approval in-chat** → COMMIT, degrades
+to the `ai-sw-batch` CLI). The two write tools both gate their disk write behind
+MCP elicitation — no autonomous writes.
 
 **API doc (5)** — read-only, SQLite-backed, mirror `ai-sw-apidoc`:
 `sw_apidoc_search`, `sw_apidoc_detail`, `sw_apidoc_members`,
@@ -194,21 +228,15 @@ selects `sw_bbox`, the result renders in the chat.
 `sw_retrieve_design_memory` (semantic retrieval over the operator's own past
 designs; `kind` / `recipe_kind` metadata filters)
 
-**MBD / PMI (1)** — read-only DimXpert/PMI serialization (v1.4.0):
-`sw_observe_mbd`
-
-**Session-health (1)** — read-only resilience observability:
-`sw_session_health` (seat presence + durable transaction-ledger audit + last
-recovery → a degraded/recovered/healthy verdict)
-
 **History + checkpoint info (4)** — read-only, mirror `ai-sw-history` + `ai-sw-checkpoint info`:
-`sw_history_part`, `sw_history_since`, `sw_history_diff`,
-`sw_checkpoint_info`
+`sw_history_part`, `sw_history_since`, `sw_history_diff`, `sw_checkpoint_info`
 
-**Lifecycle (1)** — STA reconnect after SW process death:
-`sw_reconnect`
+**Resilience + lifecycle (2)** — read-only health + STA reconnect:
+`sw_session_health` (seat presence + durable transaction-ledger audit + last
+recovery → a degraded/recovered/healthy verdict); `sw_reconnect` (re-attach
+after SW process death)
 
-**Deliberately NOT exposed via MCP** (CLI-only per [`docs/mcp_server_design.md`](docs/mcp_server_design.md) §6.5): the four mutate operations — `sw_propose_local_change`, `sw_dry_run`, `sw_commit`, `sw_undo_last_commit` — require human approval per call. `sw_checkpoint_genkey` / `sw_checkpoint_rekey` / `sw_checkpoint_migrate` are key-management operations. `sw_codegen` and `sw_probe` are not request/response shaped.
+**Deliberately NOT exposed via MCP** (CLI-only per [`docs/mcp_server_design.md`](docs/mcp_server_design.md) §6.5): the four mutate operations — `sw_propose_local_change`, `sw_dry_run`, `sw_commit`, `sw_undo_last_commit` — require human approval per call. `sw_checkpoint_genkey` / `sw_checkpoint_rekey` / `sw_checkpoint_migrate` are key-management operations. `sw_codegen` and `sw_probe` are not request/response shaped. The batch *commit* still requires a human: `sw_batch_execute` collects the `[y/N]` via in-chat elicitation, and `sw_batch_plan` is plan-only by construction.
 
 [Full MCP server design + protocol detail →](docs/mcp_server_design.md)
 
@@ -219,7 +247,7 @@ A short list. The [full known-limitations doc](docs/known_limitations.md) is req
 - **Windows only.** Non-negotiable — `pywin32` only runs on Windows.
 - **`AddDimension2` opens a blocking popup in parametric mode.** Cannot be suppressed via any user preference toggle we've tried on SW 2024 SP1. Workaround: `--no-dim` mode skips the call entirely (geometry at literal target size, no equation link); `--deferred-dim` batches the popups at the end. AI-driven flows should default to `--no-dim`.
 - **Face-sketch origin is the part-origin projection, not the face centroid.** A `center` offset on a face sketch resolves relative to where SW projects (0,0,0) onto the face, not to the visual face center. Bites everyone once. Documented.
-- **No assemblies, no mates, no drawings.** Part-level workflows only.
+- **Some advanced features are walled out-of-process.** A handful of feature kinds (e.g. `loft`, `combine`, `split`, `wrap`, the profile-sketch sheet-metal flanges) cannot be materialized through the COM boundary and are registered `DORMANT`/`WALLED` — they fail loud rather than silently no-op. See [`docs/DEFERRED.md`](docs/DEFERRED.md) for the kernel-wall classification.
 - **No "describe the part in English and get geometry" for free.** The spec language is precise; the AI generates spec JSON, not freehand prose. The natural-language step happens in your chat with the agent, before the spec is drafted.
 
 ## Project status
@@ -249,7 +277,7 @@ ai-sw-bridge/
 │   ├── mcp/                  # Lane M — MCP server (FastMCP + @com_tool decorator)
 │   ├── telemetry/            # local SQLite metrics + trace IDs (no PII / no auto-upload)
 │   ├── flags/                # feature-flag registry + precedence resolver
-│   └── cli/                  # nine CLI entry points
+│   └── cli/                  # 21 CLI entry points (tiered in cli/stability.py)
 ├── examples/                 # worked specs (start here when authoring)
 ├── docs/
 │   ├── AGENTS.md             #   agent briefing — what the AI reads first

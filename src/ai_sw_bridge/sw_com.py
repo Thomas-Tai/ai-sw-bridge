@@ -36,6 +36,11 @@ DOC_TYPE_NAMES = {
     SW_DOC_DRAWING: "Drawing",
 }
 
+# swOpenDocOptions_e.swOpenDocOptions_Silent — the OpenDoc6 options flag that
+# suppresses the open dialog. Canonical home for the OpenDoc6 call shape shared
+# by mutate / export_urdf (was duplicated as a private `_SW_OPEN_SILENT = 1`).
+SW_OPEN_SILENT = 1
+
 
 def resolve(obj: Any, name: str) -> Any:
     """

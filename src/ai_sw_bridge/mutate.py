@@ -33,7 +33,13 @@ from .locals_io import (
     parse,
     replace_rhs,
 )
-from .sw_com import get_active_doc, get_sw_app, resolve
+from .sw_com import (
+    SW_DOC_PART as _SW_DOC_PART,
+    SW_OPEN_SILENT as _SW_OPEN_SILENT,
+    get_active_doc,
+    get_sw_app,
+    resolve,
+)
 
 
 from .com.earlybind import typed
@@ -95,8 +101,9 @@ def _save_proposal(proposal_id: str, data: dict[str, Any]) -> None:
 
 # ---- feature_add support ----------------------------------------------------
 
-_SW_DOC_PART = 1
-_SW_OPEN_SILENT = 1
+# _SW_DOC_PART / _SW_OPEN_SILENT are imported from sw_com (the canonical home
+# for the OpenDoc6 call shape) under their original private aliases so the
+# OpenDoc6 call site below reads unchanged.
 
 # swWzdGeneralHoleTypes_e — used by propose-time validation only; handler
 # moved to features/advanced_shapes.py (Recipe-C cut #4).

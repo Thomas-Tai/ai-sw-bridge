@@ -171,15 +171,18 @@ class TestToolRegistration:
                 f"{excluded!r} must NOT be exposed via MCP " "(design doc §6.5)"
             )
 
-    # Documented exemption from the @com_tool audit. sw_batch_execute is
-    # COM-touching but is an `async def` tool: it awaits ctx.elicit (a stdio
-    # JSON-RPC round-trip that lives on the asyncio event loop) BETWEEN two COM
-    # phases (dry-run plan, then live commit). @com_tool would submit the whole
-    # coroutine to the ComExecutor STA worker, which has NO event loop — so the
-    # decorator is structurally incompatible. COM safety is instead preserved by
-    # routing each COM phase through tools.run_on_executor() (the same STA
-    # dispatch @com_tool wraps). See _tool_batch_execute.py module docstring.
-    COM_SAFE_VIA_MANUAL_DISPATCH = frozenset({"sw_batch_execute"})
+    # Documented exemption from the @com_tool audit. These are COM-touching but
+    # `async def` tools: each awaits ctx.elicit (a stdio JSON-RPC round-trip
+    # that lives on the asyncio event loop) BEFORE/BETWEEN COM phase(s).
+    # @com_tool would submit the whole coroutine to the ComExecutor STA worker,
+    # which has NO event loop — so the decorator is structurally incompatible.
+    # COM safety is instead preserved by routing each COM phase through
+    # tools.run_on_executor() (the same STA dispatch @com_tool wraps). See the
+    # _tool_batch_execute.py / _tool_build.py module docstrings.
+    #   * sw_batch_execute — PLAN(dry-run) → elicit → COMMIT(live).
+    #   * sw_build — validate → elicit → BUILD(live) (write-gate unification,
+    #     2026-06-25 audit Option 3; no MCP write without approve=True).
+    COM_SAFE_VIA_MANUAL_DISPATCH = frozenset({"sw_batch_execute", "sw_build"})
 
     def test_all_com_tools_have_decorator(self) -> None:
         """Every tool that touches the adapter MUST be @com_tool-wrapped.
@@ -207,7 +210,9 @@ class TestToolRegistration:
                 "sw_mate_errors",
                 "sw_custom_props",
                 "sw_enabled_addins",
-                "sw_build",
+                # NOTE: sw_build is NOT here — it is now an async elicit-gated
+                # tool (COM_SAFE_VIA_MANUAL_DISPATCH), not @com_tool. See the
+                # write-gate unification note above.
                 # batch-plan opens the doc + fires handlers on the kernel
                 "sw_batch_plan",
             }

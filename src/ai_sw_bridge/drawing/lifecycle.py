@@ -1637,14 +1637,33 @@ def _apply_tolerance_to_dims(
             dims_processed += 1
 
             try:
-                dim.SetToleranceType(sw_tol_type)
-                dim.SetToleranceValues(tol_min, tol_max)
-                tolerance_applied_count += 1
+                # SW Set* methods can no-op and return False WITHOUT raising —
+                # the "a return alone is never success" class this codebase
+                # guards against elsewhere (features/verify.py). Treat an
+                # EXPLICIT False as a kernel-refused no-op and surface it; a
+                # void/None return (the documented sub shape) is left to count
+                # as before, so we never regress the happy path on a method
+                # that legitimately returns nothing.
+                type_ret = dim.SetToleranceType(sw_tol_type)
+                values_ret = dim.SetToleranceValues(tol_min, tol_max)
+                if type_ret is False or values_ret is False:
+                    dim_name = ""
+                    try:
+                        dim_name = dim.FullName
+                    except Exception:  # noqa: BLE001 — name is best-effort
+                        pass
+                    errors.append(
+                        f"sheet[{sheet_index}] dim '{dim_name}': "
+                        f"SetTolerance* returned False (kernel no-op; "
+                        f"type_ret={type_ret!r}, values_ret={values_ret!r})"
+                    )
+                else:
+                    tolerance_applied_count += 1
             except Exception as e:
                 dim_name = ""
                 try:
                     dim_name = dim.FullName
-                except Exception:
+                except Exception:  # noqa: BLE001 — name is best-effort
                     pass
                 errors.append(
                     f"sheet[{sheet_index}] dim '{dim_name}': "

@@ -169,8 +169,22 @@ def _load_fixture(name: str) -> dict:
         return json.load(f)
 
 
+# Tools that CANNOT be driven by this read-only snapshot harness. The harness
+# calls ``tool.fn(**args)`` synchronously with a MockAdapter and JSON-compares
+# the return. These are ``async def`` tools that (a) return a coroutine (not a
+# dict) from a direct .fn call, (b) require an injected FastMCP ``ctx`` the
+# harness does not supply, and (c) only produce a payload after an interactive
+# elicitation round-trip. They are exercised instead by dedicated offline suites
+# (``test_batch_execute.py`` / ``test_build_elicit.py``) + the live Seat PAE.
+UNSNAPSHOTTABLE_TOOLS = frozenset({"sw_batch_execute", "sw_build"})
+
+
 def _fixture_names() -> list[str]:
     return sorted(p.stem for p in FIXTURES_ROOT.glob("*.json"))
+
+
+def _snapshottable_fixture_names() -> list[str]:
+    return [n for n in _fixture_names() if n not in UNSNAPSHOTTABLE_TOOLS]
 
 
 @pytest.fixture
@@ -209,7 +223,7 @@ def mcp_server():
 class TestPayloadSnapshots:
     """One parametrized test per fixture file under ``fixtures/``."""
 
-    @pytest.mark.parametrize("tool_name", _fixture_names())
+    @pytest.mark.parametrize("tool_name", _snapshottable_fixture_names())
     def test_tool_payload_matches_snapshot(self, mcp_server, tool_name: str) -> None:
         fixture = _load_fixture(tool_name)
         tools = {t.name: t for t in mcp_server.iter_tools()}
@@ -242,16 +256,6 @@ class TestPayloadSnapshots:
 
         _assert_shape_match(result, expected_shape, path=f"${tool_name}")
 
-    # Tools that CANNOT be driven by this read-only snapshot harness.
-    # The harness calls ``tool.fn(**args)`` synchronously with a MockAdapter
-    # and JSON-compares the return. sw_batch_execute is an ``async def`` tool
-    # that (a) returns a coroutine (not a dict) from a direct .fn call, (b)
-    # requires an injected FastMCP ``ctx`` the harness does not supply, and (c)
-    # only produces a payload after an interactive elicitation round-trip. It is
-    # exercised instead by the dedicated offline suite ``test_batch_execute.py``
-    # (which mocks the Context + elicitation) and the live Seat PAE.
-    UNSNAPSHOTTABLE_TOOLS = frozenset({"sw_batch_execute"})
-
     def test_every_registered_tool_has_fixture(self, mcp_server) -> None:
         """No tool may ship without a corresponding snapshot fixture.
 
@@ -260,7 +264,7 @@ class TestPayloadSnapshots:
         """
         registered = {t.name for t in mcp_server.iter_tools()}
         captured = set(_fixture_names())
-        missing = registered - captured - self.UNSNAPSHOTTABLE_TOOLS
+        missing = registered - captured - UNSNAPSHOTTABLE_TOOLS
         assert not missing, (
             f"tools without snapshot fixture: {sorted(missing)} — run "
             "`python tools/probe_mcp_tools.py` and commit the new JSON."

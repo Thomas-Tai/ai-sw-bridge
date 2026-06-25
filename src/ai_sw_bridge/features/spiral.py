@@ -37,9 +37,9 @@ import math
 from typing import Any
 
 import pythoncom
-import win32com.client.dynamic as _w32dyn
 from win32com.client import VARIANT
 
+from ..com.latebound import latebound as _latebound
 from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.spiral")
@@ -50,18 +50,6 @@ VERIFY_CLASS = verify.FeatureClass.CURVE
 
 # swHelixDefinedBy_e — 3 = spiral (seat-confirmed: only db=3 of 0..5 is flat).
 _SW_HELIX_DEFINED_BY_SPIRAL = 3
-
-
-def _latebound(com_obj: Any) -> Any:
-    """Re-wrap a COM proxy as LATE-BOUND (``win32com.client.dynamic.Dispatch``).
-
-    ``InsertHelix`` and ``Extension.SelectByID2``'s VARIANT(VT_DISPATCH,None)
-    callout marshal on a late-bound proxy but NOT on the makepy-typed one the
-    transaction path produces (``mutate._open_doc_typed``). Seam so offline
-    tests can patch to identity and still drive the fakes. See ref_axis
-    (``features.ref_geometry._latebound``) for the same fix.
-    """
-    return _w32dyn.Dispatch(com_obj)
 
 
 def _count_spirals(doc: Any) -> int:

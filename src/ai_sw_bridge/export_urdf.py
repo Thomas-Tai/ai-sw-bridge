@@ -44,10 +44,13 @@ from .com.earlybind import typed
 from .com.sw_type_info import wrapper_module
 from .observe_bbox import _read_component_transform
 from .observe_inertia import _sw_get_inertia_impl
-from .sw_com import SW_DOC_ASSEMBLY, SW_DOC_PART, get_sw_app, resolve
-
-# swOpenDocOptions_Silent — open the part standalone without UI prompts.
-_SW_OPEN_SILENT = 1
+from .sw_com import (
+    SW_DOC_ASSEMBLY,
+    SW_DOC_PART,
+    SW_OPEN_SILENT as _SW_OPEN_SILENT,
+    get_sw_app,
+    resolve,
+)
 
 # ── Pure helpers (no COM; fully offline-testable) ───────────────────────────
 

@@ -35,9 +35,9 @@ import math
 from typing import Any
 
 import pythoncom
-import win32com.client.dynamic as _w32dyn
 from win32com.client import VARIANT
 
+from ..com.latebound import latebound as _latebound
 from . import verify
 
 logger = logging.getLogger("ai_sw_bridge.features.helix")
@@ -54,23 +54,6 @@ VERIFY_CLASS = verify.FeatureClass.CURVE
 
 # swHelixDefinedBy_e — pitch and revolution (the default parametrisation).
 _SW_HELIX_DEFINED_BY_PITCH_AND_REVOLUTION = 0
-
-
-def _latebound(com_obj: Any) -> Any:
-    """Re-wrap a COM proxy as LATE-BOUND (``win32com.client.dynamic.Dispatch``).
-
-    The ref_axis / spiral binding trap: the disk-transaction path opens docs
-    TYPED (``mutate._open_doc_typed``). On a TYPED ``IModelDocExtension`` proxy,
-    ``SelectByID2``'s arg-8 ICallout ``VARIANT(VT_DISPATCH, None)`` raises
-    ``TypeError('The Python instance can not be converted to a COM object')``,
-    and ``InsertHelix`` is likewise late-bound-only. A late-bound re-wrap
-    marshals both regardless of how the doc was opened. Seam so offline tests
-    patch to identity. PROVEN broken through the typed transaction
-    (probe_curve_lanes_typed_txn 2026-06-24, helix dry_run reproduced the exact
-    TypeError) — fixed here per the ref_axis precedent (commit 794a7c4) and the
-    spiral lane (features/spiral._latebound).
-    """
-    return _w32dyn.Dispatch(com_obj)
 
 
 def _count_helices(doc: Any) -> int:

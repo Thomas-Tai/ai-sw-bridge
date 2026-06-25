@@ -43,9 +43,12 @@ tool add/remove/rename or a payload-shape change fails CI loudly. Groups:
   `sw_bounding_box`, `sw_inertia`, `sw_clearance`, `sw_draft_analysis`,
   `sw_current_selection`, `sw_undercut_faces`, `sw_min_wall_thickness`,
   `sw_feature_statistics`, `sw_analyze_stackup`, `sw_observe_mbd`.
-- **Build / batch:** `sw_build`; `sw_batch_plan` (**hard-wired `dry_run=True`** —
-  the MCP surface can never persist to disk); `sw_batch_execute` (PLAN →
-  elicit-in-chat → COMMIT, the only MCP write path, human-gated).
+- **Build / batch:** `sw_build` (validate → **elicit-in-chat approval** → build;
+  no build or `save_as` without an explicit `approve=true`); `sw_batch_plan`
+  (**hard-wired `dry_run=True`** — can never persist to disk); `sw_batch_execute`
+  (PLAN → elicit-in-chat → COMMIT). The two write tools (`sw_build`,
+  `sw_batch_execute`) are the only MCP paths that reach disk, and both are
+  human-gated by MCP elicitation.
 - **API docs:** `sw_apidoc_search`, `sw_apidoc_detail`, `sw_apidoc_members`,
   `sw_apidoc_examples`, `sw_apidoc_enum`.
 - **History / resilience:** `sw_history_part`, `sw_history_since`,
@@ -54,8 +57,11 @@ tool add/remove/rename or a payload-shape change fails CI loudly. Groups:
 - **Design-Memory (RAG):** `sw_retrieve_design_memory` (local, on-device).
 
 **Autonomous-write safety:** no MCP tool persists to disk without an explicit
-in-chat human approval (`sw_batch_execute`'s elicitation); `sw_batch_plan` is
-plan-only by construction.
+in-chat human approval. Both write tools (`sw_build`, `sw_batch_execute`) gate
+their COM write behind an MCP elicitation `approve=true`; `sw_batch_plan` is
+plan-only by construction. Pinned by `tests/mcp_lane/test_build_elicit.py` +
+`test_batch_execute.py` (the COM write callable is invoked only on approval) and
+the `COM_SAFE_VIA_MANUAL_DISPATCH` contract in `test_server_contract.py`.
 
 ## 3. Python facade
 
