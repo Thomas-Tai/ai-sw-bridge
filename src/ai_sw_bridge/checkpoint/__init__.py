@@ -19,6 +19,7 @@ from .history import by_locals, by_part, feature_diff, since
 from .rollback import RollbackError, rollback_to
 from .snapshot import commit_post_feature, write_pre_feature
 from .store import Checkpoint, CheckpointStatus, CheckpointStore
+from .transaction_store import Transaction, TransactionStatus, TransactionStore
 
 __all__ = [
     "Checkpoint",
@@ -27,6 +28,9 @@ __all__ = [
     "GCPolicy",
     "GCReport",
     "RollbackError",
+    "Transaction",
+    "TransactionStatus",
+    "TransactionStore",
     "by_locals",
     "by_part",
     "commit_post_feature",

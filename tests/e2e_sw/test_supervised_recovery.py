@@ -13,6 +13,7 @@ on temp copies; never touches tracked files.
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import tempfile
@@ -21,6 +22,7 @@ from pathlib import Path
 import pytest
 
 import ai_sw_bridge.mutate as mutate
+from ai_sw_bridge.checkpoint import TransactionStore
 from ai_sw_bridge.checkpoint.rollback import _read_current_tree_hash
 from ai_sw_bridge.mutate import (
     HANDLER_REGISTRY,
@@ -28,6 +30,7 @@ from ai_sw_bridge.mutate import (
     _open_doc_typed,
     _sw_batch_feature_add_impl,
 )
+from ai_sw_bridge.resilience import TransactionStoreJournal
 from ai_sw_bridge.resilience.session import (
     ExecutorSeatController,
     FileSnapshotter,
@@ -282,10 +285,15 @@ def test_case9_save_death_restores_snapshot_tier2(monkeypatch):
             return super().restore(token)
 
     _SpySnap.restores = 0
+    # DURABLE journal: the SQLite ledger lives in its own file, untouched by the
+    # SLDWORKS taskkill — proving the PENDING marker survives the seat death and
+    # flips to COMMITTED only when the supervised recovery completes.
+    store = TransactionStore(root=Path(tmp))
     session = SupervisedSession(
         batch_runner=_sw_batch_feature_add_impl,
         seat=ExecutorSeatController(),
         snapshotter=_SpySnap(),
+        journal=TransactionStoreJournal(store),
     )
     out = session.execute(rpath, _proposals())
 
@@ -297,6 +305,21 @@ def test_case9_save_death_restores_snapshot_tier2(monkeypatch):
     recovered = _witness(rpath)
     assert recovered["node_count"] == golden["node_count"]
     assert recovered["tree_hash"] == golden["tree_hash"]
+
+    # the durable ledger survived the kill and recorded exactly one COMMITTED txn.
+    assert store.db_path.is_file()
+    assert store.get_pending_transactions() == []  # nothing left dangling
+    reopened = TransactionStore(root=Path(tmp))  # fresh handle = a 'next process'
+    rows = (
+        reopened._connect()
+        .execute(  # noqa: SLF001 — test introspection
+            "SELECT status, intent_payload FROM transactions"
+        )
+        .fetchall()
+    )
+    assert len(rows) == 1
+    assert rows[0][0] == "committed"
+    assert json.loads(rows[0][1]) == _proposals()
     shutil.rmtree(tmp, ignore_errors=True)
 
 

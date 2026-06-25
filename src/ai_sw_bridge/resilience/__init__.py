@@ -6,6 +6,7 @@ agent from upstream SOLIDWORKS deaths. See ``docs/supervised_session_spec.md`` a
 ``docs/supervised_session_test_spec.md``.
 """
 
+from .journal_adapter import TransactionStoreJournal
 from .session import (
     FileSnapshotter,
     InMemoryJournal,
@@ -20,4 +21,5 @@ __all__ = [
     "FileSnapshotter",
     "InMemoryJournal",
     "SystemClock",
+    "TransactionStoreJournal",
 ]
