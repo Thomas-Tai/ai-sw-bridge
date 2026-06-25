@@ -476,6 +476,8 @@ class SolidWorksMutatorFacade:
         file_path: str,
         proposals: "list[dict]",
         strict: bool = False,
+        *,
+        supervised: bool = True,
     ) -> dict[str, Any]:
         """Apply a SEQUENCE of feature-add proposals in ONE open-doc transaction.
 
@@ -488,10 +490,60 @@ class SolidWorksMutatorFacade:
         (success trail / singular fault / skipped resume-queue) is returned.
         ``strict=True`` closes WITHOUT saving on any fault (all-or-nothing — SW
         has no native rollback, so unsaved == discarded).
+
+        **Supervised by default.** The transaction runs inside the
+        :class:`~ai_sw_bridge.resilience.SupervisedSession` crash-recovery
+        envelope: a live SOLIDWORKS death mid-batch is detected, the seat is
+        respawned, and the full declarative proposal list is idempotently
+        replayed (Tier-1 pristine / Tier-2 snapshot-restore), with a durable
+        PENDING|COMMITTED ledger (`sw_session_health` reads it) and a
+        windowless-orphan reaper on teardown. The returned manifest carries a
+        ``recovery`` block. Pass ``supervised=False`` for the bare best-effort
+        engine (e.g. CI / no recoverable seat); the envelope also degrades to the
+        bare engine automatically if it cannot be constructed.
         """
-        return _sw_batch_feature_add_impl(
-            doc_path=file_path, proposals=list(proposals), strict=strict
-        )
+        proposals = list(proposals)
+        if not supervised:
+            return _sw_batch_feature_add_impl(
+                doc_path=file_path, proposals=proposals, strict=strict
+            )
+        # Supervised path (default). Construct lazily (keeps the facade import
+        # light + matches the codebase's lazy-import idiom and the resilience >
+        # mutate layer order); fall back to the bare engine if the resilience
+        # layer can't be set up or the pre-run snapshot fails.
+        try:
+            from .checkpoint import TransactionStore
+            from .resilience import (
+                ExecutorSeatController,
+                SupervisedSession,
+                TransactionStoreJournal,
+            )
+
+            seat = ExecutorSeatController()
+            session = SupervisedSession(
+                batch_runner=_sw_batch_feature_add_impl,
+                seat=seat,
+                journal=TransactionStoreJournal(TransactionStore()),
+            )
+        except Exception:  # noqa: BLE001 — resilience unavailable; degrade gracefully
+            return _sw_batch_feature_add_impl(
+                doc_path=file_path, proposals=proposals, strict=strict
+            )
+        try:
+            return session.execute(file_path, proposals, strict=strict)
+        except Exception:  # noqa: BLE001 — envelope setup (e.g. snapshot) failed
+            return _sw_batch_feature_add_impl(
+                doc_path=file_path, proposals=proposals, strict=strict
+            )
+        finally:
+            # Teardown reap: kill any windowless SLDWORKS orphan a respawn left
+            # (no-op when nothing was spawned; never touches baseline/bound seats).
+            reap = getattr(seat, "reap_orphans", None)
+            if callable(reap):
+                try:
+                    reap()
+                except Exception:  # noqa: BLE001
+                    pass
 
     # ── Batch M2: assembly verbs ─────────────────────────────────────────
 

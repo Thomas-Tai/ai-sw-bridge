@@ -236,6 +236,28 @@ Author the individual parts with the bridge, then assemble + mate them by hand i
 
 ---
 
+## SOLIDWORKS / seat death during a batch
+
+Since v1.6.0, `client.mutate.batch()` and `ai-sw-batch` run inside a crash-recovery
+envelope **by default**: if SOLIDWORKS dies mid-batch, the bridge respawns the seat
+and replays your proposal list to an identical result (Tier-1 replays onto the
+pristine file; Tier-2 restores a pre-save snapshot if the death struck during the
+atomic save). The returned manifest carries a `recovery` block, and a headless-orphan
+reaper prevents leaked windowless `SLDWORKS.exe` processes from pinning a license seat.
+
+Caveats:
+
+- The MCP in-process reconnect path (`sw_reconnect`) does **not** auto-replay — after a
+  reconnect there, verify your document. Only the supervised batch path auto-restores.
+- Respawn timing is calibrated against SOLIDWORKS 2024 SP1 (~8–9 s, ~3.5× headroom).
+  On much slower hardware a respawn may exceed the budget and return a clean
+  `SeatRespawnTimeout` instead of recovering — fail-actionable, never a hang.
+- Pass `supervised=False` to opt out (e.g. CI, or an environment with no recoverable
+  seat); the envelope also degrades to the bare best-effort engine automatically if it
+  cannot be constructed.
+
+---
+
 ## Reporting new sharp edges
 
 If you hit something that's reproducible and not in this list, please open an issue with: the spec JSON, the full CLI output (including the traceback), the SW build (Help → About → revision string), and the `doc.GetPartBox(True)` output after the (partial) build.

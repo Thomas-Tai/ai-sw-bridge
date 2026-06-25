@@ -407,6 +407,23 @@ def _find_sw_pid() -> int | None:
     return pids[0] if pids else None
 
 
+def _kill_pid(pid: int) -> bool:
+    """taskkill a single PID *by id* (NEVER ``/IM``). True if the command ran.
+
+    By-PID only is the safety boundary: the bridge attaches to the operator's
+    live seat via the ROT, so a name-based ``/IM`` kill could murder it.
+    """
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/PID", str(pid)],
+            capture_output=True,
+            timeout=20,
+        )
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _pid_alive(pid: int) -> bool:
     try:
         out = subprocess.run(
@@ -437,10 +454,32 @@ class ExecutorSeatController:
     def __init__(self, clock: Clock | None = None) -> None:
         self._clock = clock or SystemClock()
         self._pid = _find_sw_pid()
+        # Baseline = every SLDWORKS.exe present at session entry (the operator's
+        # pre-existing interactive seats). The reaper NEVER touches these — the
+        # safety boundary that keeps a respawn cleanup from killing a live seat.
+        self._baseline_pids: set[int] = set(_find_sw_pids())
 
     @property
     def pid(self) -> int | None:
         return self._pid
+
+    def reap_orphans(self) -> list[int]:
+        """Kill windowless SLDWORKS orphans spawned DURING this session.
+
+        A respawn can leave a headless ``SLDWORKS.exe`` that pins a (costly)
+        licensed seat and leaks RAM until reboot (measured). Safety boundary
+        (same as the destructive-lane fixture): reap ONLY PIDs that are neither
+        in the entry baseline nor the currently-bound seat, and kill strictly by
+        PID — never ``/IM``. Returns the reaped PIDs (for logging/telemetry).
+        """
+        protected = set(self._baseline_pids)
+        if self._pid is not None:
+            protected.add(self._pid)
+        reaped: list[int] = []
+        for pid in set(_find_sw_pids()) - protected:
+            if _kill_pid(pid):
+                reaped.append(pid)
+        return reaped
 
     def is_alive(self) -> bool:
         from ..sw_com import get_sw_app
@@ -458,7 +497,6 @@ class ExecutorSeatController:
 
         from ..sw_com import get_sw_app, release_sw_app
 
-        dead_pid = self._pid
         release_sw_app()
         try:
             pythoncom.CoUninitialize()
@@ -470,11 +508,10 @@ class ExecutorSeatController:
             try:
                 sw = get_sw_app()
                 _rev(sw)  # the authoritative "accepts commands" gate
-                new_pid = _find_sw_pid()
-                if new_pid is not None and new_pid != dead_pid:
-                    self._pid = new_pid
-                    return
-                self._pid = new_pid
+                self._pid = _find_sw_pid()
+                # Reap any headless orphan the death/respawn left behind — never
+                # the baseline seats or the freshly-bound one (reap_orphans guard).
+                self.reap_orphans()
                 return
             except Exception:  # noqa: BLE001
                 self._clock.sleep(2.0)

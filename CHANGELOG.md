@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-06-25
+
+**Self-healing batch by default (Wave 2).** The `SupervisedSession` crash-recovery
+envelope that shipped in 1.5.0 as an opt-in layer is now WIRED into the default
+batch path: `client.mutate.batch()` and the `ai-sw-batch` CLI run inside the
+envelope unless `supervised=False` is passed. A live SOLIDWORKS death mid-batch is
+detected, the seat respawned, and the proposal list idempotently replayed (Tier-1
+pristine / Tier-2 snapshot-restore) on the path a customer actually calls — and the
+durable PENDING|COMMITTED ledger now has a production writer, so `sw_session_health`
+reports real recovery data.
+
+### Added
+
+- **`client.mutate.batch(..., supervised=True)`** — the batch transaction runs
+  inside the resilience envelope by default; pass `supervised=False` for the bare
+  best-effort engine. Degrades gracefully to the bare engine if the resilience
+  layer cannot be constructed or the pre-run snapshot fails.
+- **Production windowless-orphan reaper** (`ExecutorSeatController.reap_orphans`) —
+  a respawn could leak a headless `SLDWORKS.exe` that pins a (costly) licensed
+  seat; the reaper kills, **by PID only — never `/IM`**, any SLDWORKS spawned
+  during the session that is neither a pre-session baseline seat nor the bound
+  seat. Runs after each respawn and on batch teardown.
+- `ExecutorSeatController` is now exported from `ai_sw_bridge.resilience`.
+
+### Verification
+
+- Offline: the supervised wiring is unit-proven — envelope engages, durable ledger
+  written, `supervised=False` escape hatch, graceful fallback, teardown reap
+  (`tests/test_batch_supervised.py`).
+- Live (armed, operator-gated): `test_customer_batch_api_survives_seat_death`
+  re-runs the Case-7 Parasolid assassination **through `client.mutate.batch()`** (the
+  customer path) and asserts geometry identical to the golden run; auto-skipped
+  until fired on a real seat (`-m destructive_sw`).
+
 ## [1.5.0] - 2026-06-25
 
 **Runtime Resilience & Design Intelligence.** Two layers on top of the v1.4.0

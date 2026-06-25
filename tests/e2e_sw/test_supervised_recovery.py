@@ -221,6 +221,51 @@ def test_supervised_session_catches_real_seat_death():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_customer_batch_api_survives_seat_death():
+    """Case 7b (Wave 2, RES-1): the SAME mid-apply assassination, but routed
+    through the CUSTOMER API ``client.mutate.batch()`` (supervised by default) —
+    not a hand-built SupervisedSession. Proves the production path a buyer
+    actually calls recovers to geometry identical to the golden run."""
+    from ai_sw_bridge.client import SolidWorksClient
+
+    assert _FIXTURE.is_file(), f"fixture missing: {_FIXTURE}"
+    tmp = Path(tempfile.mkdtemp(prefix="supervised_api_pae_"))
+    golden_path = str(tmp / "golden.SLDPRT")
+    assassin_path = str(tmp / "assassin.SLDPRT")
+    shutil.copy2(_FIXTURE, golden_path)
+    shutil.copy2(_FIXTURE, assassin_path)
+
+    _KILLED["done"] = False
+    HANDLER_REGISTRY["__assassin__"] = _assassin
+    try:
+        golden_manifest = _sw_batch_feature_add_impl(
+            golden_path, _proposals(), strict=False
+        )
+        assert golden_manifest["ok"] is True, golden_manifest
+        golden = _witness(golden_path)
+
+        _BOUND_PID["pid"] = _assert_single_seat()
+        # THE CUSTOMER PATH — supervised=True is the default; no hand-built session.
+        out = SolidWorksClient().mutate.batch(assassin_path, _proposals(assassin_at=1))
+    finally:
+        HANDLER_REGISTRY.pop("__assassin__", None)
+
+    rec = out["recovery"]
+    assert out["ok"] is True, out  # the agent/customer sees SUCCESS
+    assert rec["recovered"] is True
+    assert rec["replays"] == 1
+    assert rec["tier"] == 1  # mid-apply death -> pristine disk -> Tier 1
+    assert len(rec["deaths"]) == 1
+
+    recovered = _witness(assassin_path)
+    assert recovered["node_count"] == golden["node_count"]
+    assert recovered["tree_hash"] == golden["tree_hash"]
+    if recovered["volume"] is not None and golden["volume"] is not None:
+        assert recovered["volume"] == pytest.approx(golden["volume"], rel=1e-6)
+
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
 # ===========================================================================
 # Cases 8-10 — the edge-case gauntlet
 # ===========================================================================

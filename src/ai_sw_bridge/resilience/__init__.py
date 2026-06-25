@@ -8,6 +8,7 @@ agent from upstream SOLIDWORKS deaths. See ``docs/supervised_session_spec.md`` a
 
 from .journal_adapter import TransactionStoreJournal
 from .session import (
+    ExecutorSeatController,
     FileSnapshotter,
     InMemoryJournal,
     SeatRespawnTimeout,
@@ -17,6 +18,7 @@ from .session import (
 
 __all__ = [
     "SupervisedSession",
+    "ExecutorSeatController",
     "SeatRespawnTimeout",
     "FileSnapshotter",
     "InMemoryJournal",
