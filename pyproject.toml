@@ -31,7 +31,7 @@ dependencies = [
     # (CI exercises the latest within each range). numpy spans the 1.x/2.x ABI
     # line; sqlite-vec is young pre-1.0, so it is held to the 0.1.x series.
     "pywin32>=305,<400",
-    "Pillow>=10.0,<12",
+    "Pillow>=10.0,<13",
     "oletools>=0.60,<1",
     "jsonschema>=4.0,<5",
     "numpy>=1.24,<3",
