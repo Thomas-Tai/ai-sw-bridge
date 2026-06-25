@@ -98,7 +98,7 @@ When the drift check flags an upstream:
 3. **Behavioral changes** — if the upstream fixed bugs or changed behavior our port depends on, file a re-port issue for the next MINOR release.
 4. **Cosmetic drift** (renames, docs, dependency bumps) — no action; note the review date in the next quarterly audit.
 5. **License change** — if the upstream relicensed to copyleft, initiate port rollback per `harvest_plan.md` §5.7.
-6. **Record** — log the review in `docs/supply_chain_audit.md` (§4.2) with the drift count and triage outcome.
+6. **Record** — log the review in **Appendix A** (the upstream-port CVE ledger) with the drift count and triage outcome.
 
 For testing and CI tuning, lower the threshold: `python tools/check_upstream_drift.py --threshold 0` simulates the flag on any drift.
 
@@ -116,9 +116,9 @@ For each upstream MIT repo:
    - Severity (CVSS score)?
    - Affected versions — does our pin fall in the affected range?
 3. If our port is affected: open a private security issue; follow §3.2 with the security-fix path.
-4. If our port is not affected: document the evaluation in `docs/supply_chain_audit.md` (new — created on first CVE evaluation); close the loop.
+4. If our port is not affected: document the evaluation in **Appendix A**; close the loop.
 
-### 4.2 `docs/supply_chain_audit.md` format
+### 4.2 Ledger format (Appendix A)
 
 ```
 ## CVE Log
@@ -241,7 +241,7 @@ The default is "don't add a dependency." Stdlib-first; selective adoption only w
 
 1. Verify our port is affected (the upstream might fix lines we didn't port).
 2. If affected: §3.2 security-fix path + §8.1 PATCH process.
-3. If not affected: log in `docs/supply_chain_audit.md` (§4.2) and move on.
+3. If not affected: log in **Appendix A** and move on.
 4. Notify the upstream maintainer if our investigation surfaces something they don't yet know.
 
 ### 8.3 If we discover a malicious commit in an upstream
@@ -274,3 +274,57 @@ This document does NOT cover:
 - **Cryptographic operations.** The bridge does not implement crypto; it consumes hashing (SHA-256 for fingerprints) via stdlib. Any cryptographic vulnerabilities are inherited from Python's `hashlib` and out of bridge scope.
 - **Authentication / authorization.** The bridge runs as the user; there is no multi-user authentication model.
 - **Code signing of releases.** Documented separately in [`release_engineering.md`](release_engineering.md) §6.3.
+
+---
+
+## Appendix A — Upstream-port CVE ledger
+
+> Merged from the former `supply_chain_audit.md` (v1.6.0). A flat, append-only
+> ledger of reviewed upstream CVEs and license/repo events for every harvested
+> dependency in `CONTRIBUTING.md` §"Port attribution". **Authority:** the project
+> lead reviews and signs off each entry. **Cadence:** quarterly even with no
+> events; per-event on each new GitHub Security Advisory or upstream license change.
+
+### A.1 CVE / advisory review log
+
+| Date | Upstream | Advisory | Affects ported code? | Action | Reviewer | PR |
+|---|---|---|---|---|---|---|
+
+*(empty as of 2026-05-27 — no advisories filed against pinned upstream repos.)*
+
+When a (1) GitHub Security Advisory, (2) upstream license change, (3) compromised
+commit, or (4) repo deletion/transfer/rename fires against a repo we port from,
+add a row above cross-linking the GHSA ID, the shipped commit range, and the
+reviewing PR.
+
+### A.2 Drift-review checklist
+
+When `tools/check_upstream_drift.py` flags an upstream (>50 commits drift):
+
+- [ ] Pull the commit range `<pinned_sha>..<latest_sha>` from the upstream.
+- [ ] Filter to files we ported (CONTRIBUTING.md "Third-party derivations" table).
+- [ ] Review each change: behavior change · API surface delta · new failure mode · CVE fix.
+- [ ] Decide: behavior-neutral cleanup → bump pin; API delta not affecting us → bump pin + note A.3;
+      behavior change affecting us → port + attribute + record A.3; CVE fix → port + bump + record A.1;
+      license change → record A.1, remove the port if incompatible.
+
+### A.3 Drift-review outcomes
+
+| Date | Upstream | Pinned SHA | Latest SHA | Commit count | Outcome | PR |
+|---|---|---|---|---|---|---|
+| 2026-05-27 | SolidworksMCP-python | `82e505d88da0` | (pinned via E4.2 bump) | 0 | Pin already advanced to current as of v0.12 cycle | (v0.12 release a9eb518) |
+
+### A.4 Scope boundaries
+
+This ledger covers only **source-harvested ports** (currently SolidworksMCP-python).
+Transitive-dependency CVEs (numpy, sqlite-vec, jsonschema, pywin32) are covered by
+**pip-audit in CI** (`.github/workflows/security.yml`). Vulnerabilities in the
+bridge's own code are handled via the GitHub repo's private security advisories.
+
+### A.5 Subscription setup (one-time)
+
+```powershell
+gh repo watch andrewbartels1/SolidworksMCP-python --custom-events security-advisories
+```
+
+Repeat for every repo added to the port-attribution table.

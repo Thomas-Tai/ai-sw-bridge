@@ -97,10 +97,13 @@ encryption implementation, telemetry local-only + consent-gated.
   batch path (`client.mutate.batch` / `ai-sw-batch`); ✅ RES-3 production orphan-reaper; ✅ RES-4
   save-death note in `known_limitations.md`. Offline-proven; the through-API destructive proof is
   armed (`test_customer_batch_api_survives_seat_death`, operator-gated seat fire).
-- **Wave 3 — remaining (next):** ◻ SEC-1 checkpoint-encryption loud-warning/default; ◻ write
-  `docs/PUBLIC_API.md` + SemVer compatibility promise; ◻ RES-5 OOP-wall list in `known_limitations.md`;
-  ◻ supply_chain_audit→security merge; ◻ promote pip-audit/license_lint to blocking.
-- **Strategic:** finalize licensing (EULA + CLA) with counsel.
+- **Wave 3 — final hardening (DONE, v1.6.0):** ✅ SEC-1 checkpoint **encrypt-by-default** (auto
+  `.sw_agent_key` + `AI_SW_CHECKPOINT_KEY` override + loud one-time warning; read path resolves the
+  key; `--no-checkpoint-encrypt` opt-out); ✅ `docs/PUBLIC_API.md` + SemVer promise; ✅ all 21 user
+  CLIs tiered (added `sketch-relations`/`sketch-edit`); ✅ RES-5 OOP-wall list in `known_limitations.md`;
+  ✅ `supply_chain_audit` merged into `supply_chain_security` (Appendix A); ✅ pip-audit + license_lint
+  promoted to BLOCKING.
+- **Strategic (open):** finalize the licensing EULA + CLA with counsel (templates committed).
 
 **Then:** once GitHub Actions billing is restored — tag `v1.5.0` @ `8cefd01` (CI-gated), then push
 Wave 2 + tag `v1.6.0`. (Branch pushed to `origin/master`; CI/release currently blocked by an

@@ -33,8 +33,7 @@ Large generated references (`sw_api_full.*`, `api_reference.*`, `ribbon_api_prog
 
 ## Security & compliance
 - [privacy_review.md](privacy_review.md) — data inventory, sensitivity tiers, egress paths.
-- [supply_chain_security.md](supply_chain_security.md) — pinned-commit policy, CVE response, license audit.
-- [supply_chain_audit.md](supply_chain_audit.md) — the upstream-CVE ledger (appendix to the above).
+- [supply_chain_security.md](supply_chain_security.md) — pinned-commit policy, CVE response, license audit; **Appendix A** is the upstream-port CVE ledger (merged from the former `supply_chain_audit.md`).
 
 ## Process, releases & history
 - [commercial_readiness_audit.md](commercial_readiness_audit.md) — **current** commercial-hardening audit + plan.

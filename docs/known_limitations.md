@@ -258,6 +258,26 @@ Caveats:
 
 ---
 
+## Features not available out-of-process (the OOP boundary)
+
+A class of SOLIDWORKS features cannot be created via the COM API out-of-process: the
+call returns `None` / no-ops because the kernel must **traverse or solve geometry
+mid-invocation** to derive the result (arc-length curve marches, boolean shells,
+deform frames, external/symbolic tables). The bridge **fails these closed** —
+`propose_feature_add` rejects an unsupported feature `type` with an explicit error
+naming the supported kinds, so you never silently get a no-op part.
+
+Walled (deferred) feature types include: `loft`, `rib`, `wrap`, `indent`, `flex`,
+`chain` fillet/chamfer, `curve_driven_pattern`, `table_driven_pattern`, `combine`,
+`split`, `edge_flange`, `miter_flange`, `jog`, `thicken`, `equation_curve`,
+`dimension_pattern` / `derived_pattern`.
+
+The forensic record of each wall (spike, HRESULT, falsification) is in
+[DEFERRED.md](DEFERRED.md). If you need a walled feature, author it interactively in
+SOLIDWORKS, then continue with the bridge.
+
+---
+
 ## Reporting new sharp edges
 
 If you hit something that's reproducible and not in this list, please open an issue with: the spec JSON, the full CLI output (including the traceback), the SW build (Help → About → revision string), and the `doc.GetPartBox(True)` output after the (partial) build.
