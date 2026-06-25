@@ -52,7 +52,11 @@ class Journal(Protocol):
     # row_id is opaque to the session (insert -> pass back to commit), so the
     # durable adapter may return a UUID string while InMemoryJournal returns int.
     def insert_pending(self, doc_path: str, proposals: list) -> Any: ...
-    def commit(self, row_id: Any) -> None: ...
+
+    # recovery: the (recovery-annotated) summary, persisted by durable journals
+    # so sw_session_health can report the last recovery; in-memory journals
+    # ignore it.
+    def commit(self, row_id: Any, recovery: dict | None = None) -> None: ...
 
 
 class Snapshotter(Protocol):
@@ -121,8 +125,8 @@ class InMemoryJournal:
         self._rows[row_id] = "PENDING"
         return row_id
 
-    def commit(self, row_id: int) -> None:
-        self._rows[row_id] = "COMMITTED"
+    def commit(self, row_id: int, recovery: dict | None = None) -> None:
+        self._rows[row_id] = "COMMITTED"  # in-memory journal ignores recovery
 
     def status(self, row_id: int) -> str | None:
         return self._rows.get(row_id)
@@ -189,8 +193,12 @@ class SupervisedSession:
 
                 if death is None:
                     # clean success OR a genuine (seat-alive) fault — terminal.
-                    self._journal.commit(row_id)
                     recovery["recovered"] = True
+                    # persist the recovery summary ONLY when a death was actually
+                    # caught (else it's a clean commit — recovery=None on disk).
+                    self._journal.commit(
+                        row_id, recovery if recovery["deaths"] else None
+                    )
                     return self._annotate(manifest, recovery)
 
                 # --- a seat death was detected ---

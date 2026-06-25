@@ -110,6 +110,9 @@ class TestToolRegistration:
             # Design-Memory RAG (1) — semantic retrieval over the operator's own
             # design history; non-COM, local sqlite-vec index (2026-06-25)
             "sw_retrieve_design_memory",
+            # Session-health (1) — read-only resilience observability; non-COM,
+            # reads seat PIDs + the durable TransactionStore (2026-06-25)
+            "sw_session_health",
             # History (4)
             "sw_history_part",
             "sw_history_since",

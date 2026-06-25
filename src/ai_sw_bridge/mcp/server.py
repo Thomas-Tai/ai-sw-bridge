@@ -115,6 +115,7 @@ def create_server(runtime: ServerRuntime) -> Any:
         _tool_batch_execute,
         _tool_build,
         _tool_design_memory,
+        _tool_health,
         _tool_history,
         _tool_observe,
         _tool_reconnect,
@@ -126,6 +127,7 @@ def create_server(runtime: ServerRuntime) -> Any:
     _tool_batch_execute.register(mcp)
     _tool_apidoc.register(mcp)
     _tool_design_memory.register(mcp)
+    _tool_health.register(mcp)
     _tool_history.register(mcp)
     _tool_reconnect.register(mcp)
 

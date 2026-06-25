@@ -52,20 +52,27 @@ CREATE TABLE IF NOT EXISTS transactions (
     intent_payload  TEXT    NOT NULL,
     status          TEXT    NOT NULL,
     created_at      TEXT    NOT NULL,
-    updated_at      TEXT    NOT NULL
+    updated_at      TEXT    NOT NULL,
+    recovery_json   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_txn_status ON transactions(status);
 CREATE INDEX IF NOT EXISTS idx_txn_doc ON transactions(doc_path);
 """
 
 _SELECT_COLUMNS = (
-    "id, doc_path, spec_hash, intent_payload, status, created_at, updated_at"
+    "id, doc_path, spec_hash, intent_payload, status, created_at, updated_at, "
+    "recovery_json"
 )
 
 
 @dataclass(frozen=True)
 class Transaction:
-    """One row of the ``transactions`` table."""
+    """One row of the ``transactions`` table.
+
+    ``recovery_json`` is the supervised-session recovery summary (tier, replays,
+    deaths) recorded at commit — ``None`` for a clean (never-recovered) commit or
+    a still-pending row. It is the durable source for ``sw_session_health``.
+    """
 
     id: str
     doc_path: str
@@ -74,6 +81,7 @@ class Transaction:
     status: TransactionStatus
     created_at: str
     updated_at: str
+    recovery_json: str | None = None
 
 
 def _row(row: tuple[Any, ...]) -> Transaction:
@@ -85,6 +93,7 @@ def _row(row: tuple[Any, ...]) -> Transaction:
         status=TransactionStatus(row[4]),
         created_at=row[5],
         updated_at=row[6],
+        recovery_json=row[7] if len(row) > 7 else None,
     )
 
 
@@ -119,6 +128,11 @@ class TransactionStore:
         conn = sqlite3.connect(str(self._db_path))
         conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(_SCHEMA_SQL)
+        # Defensive forward-migration: a DB created before recovery_json landed
+        # lacks the column (CREATE TABLE IF NOT EXISTS won't add it). Add it.
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(transactions)")}
+        if "recovery_json" not in cols:
+            conn.execute("ALTER TABLE transactions ADD COLUMN recovery_json TEXT")
         conn.commit()
         self._conn = conn
         return conn
@@ -155,20 +169,43 @@ class TransactionStore:
         conn.commit()
         return tid
 
-    def mark_committed(self, txn_id: str, *, now: str | None = None) -> None:
-        """Transition a pending row to ``status='committed'``."""
-        self._transition(txn_id, TransactionStatus.COMMITTED, now)
+    def mark_committed(
+        self, txn_id: str, *, now: str | None = None, recovery_json: str | None = None
+    ) -> None:
+        """Transition a pending row to ``status='committed'``.
+
+        *recovery_json* persists the supervised-session recovery summary (tier /
+        replays / deaths) so ``sw_session_health`` can report the last recovery
+        durably — ``None`` for a clean commit.
+        """
+        self._transition(
+            txn_id, TransactionStatus.COMMITTED, now, recovery_json=recovery_json
+        )
 
     def mark_failed(self, txn_id: str, *, now: str | None = None) -> None:
         """Transition a pending row to ``status='failed'``."""
         self._transition(txn_id, TransactionStatus.FAILED, now)
 
-    def _transition(self, txn_id: str, to: TransactionStatus, now: str | None) -> None:
+    def _transition(
+        self,
+        txn_id: str,
+        to: TransactionStatus,
+        now: str | None,
+        *,
+        recovery_json: str | None = None,
+    ) -> None:
         conn = self._connect()
         cur = conn.execute(
-            "UPDATE transactions SET status = ?, updated_at = ? "
+            "UPDATE transactions SET status = ?, updated_at = ?, "
+            "recovery_json = COALESCE(?, recovery_json) "
             "WHERE id = ? AND status = ?",
-            (to.value, now or _utcnow(), txn_id, TransactionStatus.PENDING.value),
+            (
+                to.value,
+                now or _utcnow(),
+                recovery_json,
+                txn_id,
+                TransactionStatus.PENDING.value,
+            ),
         )
         conn.commit()
         if cur.rowcount == 0:
@@ -195,6 +232,37 @@ class TransactionStore:
             (TransactionStatus.PENDING.value,),
         ).fetchall()
         return [_row(r) for r in rows]
+
+    def status_counts(self) -> dict[str, int]:
+        """{status: count} across the ledger (the session-health audit)."""
+        conn = self._connect()
+        counts = {s.value: 0 for s in TransactionStatus}
+        for status, n in conn.execute(
+            "SELECT status, COUNT(*) FROM transactions GROUP BY status"
+        ).fetchall():
+            counts[status] = n
+        return counts
+
+    def recent(self, limit: int = 5) -> list[Transaction]:
+        """The *limit* most-recently-updated transactions (newest first)."""
+        conn = self._connect()
+        rows = conn.execute(
+            f"SELECT {_SELECT_COLUMNS} FROM transactions "
+            "ORDER BY updated_at DESC, id DESC LIMIT ?",
+            (int(limit),),
+        ).fetchall()
+        return [_row(r) for r in rows]
+
+    def last_recovered(self) -> Transaction | None:
+        """The most-recent committed transaction that carried a recovery summary
+        (i.e. the last time a death was actually caught + replayed)."""
+        conn = self._connect()
+        row = conn.execute(
+            f"SELECT {_SELECT_COLUMNS} FROM transactions "
+            "WHERE recovery_json IS NOT NULL "
+            "ORDER BY updated_at DESC, id DESC LIMIT 1"
+        ).fetchone()
+        return _row(row) if row is not None else None
 
     def close(self) -> None:
         if self._conn is not None:

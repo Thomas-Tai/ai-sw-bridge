@@ -1,0 +1,49 @@
+{
+  "tool": "sw_session_health",
+  "args": {},
+  "result": {
+    "ok": true,
+    "health": "healthy",
+    "seat": {
+      "instance_count": 0,
+      "pids": [],
+      "liveness": "none",
+      "note": "PID-level presence, not a COM responsiveness ping"
+    },
+    "transactions": {
+      "ledger_present": false,
+      "pending": 0,
+      "committed": 0,
+      "failed": 0,
+      "recent": []
+    },
+    "last_recovery": null
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "health": "$str",
+    "seat": {
+      "instance_count": "$int",
+      "pids": {
+        "__list__": true,
+        "len": "*",
+        "item": "$int"
+      },
+      "liveness": "$str",
+      "note": "$str"
+    },
+    "transactions": {
+      "ledger_present": "$bool",
+      "pending": "$int",
+      "committed": "$int",
+      "failed": "$int",
+      "recent": {
+        "__list__": true,
+        "len": 0,
+        "item": null
+      }
+    },
+    "last_recovery": "$none"
+  },
+  "error": null
+}

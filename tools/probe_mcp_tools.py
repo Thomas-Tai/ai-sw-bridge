@@ -109,6 +109,9 @@ def main() -> int:
         # Design-memory — the index is a gitignored per-operator artifact, absent
         # in CI, so this captures the deterministic index-not-found branch.
         "sw_retrieve_design_memory": {"query": "bracket linear pattern", "k": 2},
+        # Session-health — read-only; no ledger + no seat in CI = the healthy/
+        # empty branch (shape-only assertion tolerates a live seat locally).
+        "sw_session_health": {},
         # History — no part DB present, so these hit the empty/error branch.
         "sw_history_part": {"part_name": "NonexistentPart"},
         "sw_history_since": {

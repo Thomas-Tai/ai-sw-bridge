@@ -95,6 +95,22 @@ def _fresh_seat_cache():
     release_sw_app()
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _reap_respawn_orphans():
+    """Leave no headless corpses: kill any SLDWORKS that APPEARED during this
+    module's run (the envelope's respawns — windowless, they don't always
+    self-close), while NEVER touching a PID that pre-existed the run. The
+    baseline-diff is the safety boundary — a developer's interactive seat was
+    open before the tests and stays in the baseline, so it is never reaped.
+    """
+    baseline = set(_find_sw_pids())
+    yield
+    for pid in set(_find_sw_pids()) - baseline:
+        subprocess.run(
+            ["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=20
+        )
+
+
 _FIXTURE = (
     Path(__file__).resolve().parents[2]
     / "captures"

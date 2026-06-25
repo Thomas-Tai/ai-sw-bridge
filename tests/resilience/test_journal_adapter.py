@@ -140,6 +140,30 @@ def test_tier1_recovery_commits_and_payload_is_the_intent(tmp_path):
     assert json.loads(row.intent_payload) == PROPOSALS
 
 
+def test_tier1_recovery_persists_recovery_summary(tmp_path):
+    """A caught death -> the committed row carries the recovery summary
+    (tier/replays/deaths) so sw_session_health can report it durably."""
+    store = TransactionStore(root=tmp_path)
+    j = TransactionStoreJournal(store)
+    runner = ScriptedRunner([_fault("apply", 2), _ok()])
+    out = _session(runner, FakeSeat([False]), j).execute("doc", PROPOSALS)
+    assert out["ok"] is True
+
+    lr = store.last_recovered()
+    assert lr is not None
+    rec = json.loads(lr.recovery_json)
+    assert rec["tier"] == 1 and rec["replays"] == 1
+    assert len(rec["deaths"]) == 1
+
+
+def test_clean_success_persists_no_recovery_summary(tmp_path):
+    """A non-recovered (clean) commit leaves recovery_json NULL."""
+    store = TransactionStore(root=tmp_path)
+    j = TransactionStoreJournal(store)
+    _session(ScriptedRunner([_ok()]), FakeSeat([]), j).execute("doc", PROPOSALS)
+    assert store.last_recovered() is None  # nothing carried a recovery summary
+
+
 def test_fatal_poison_leaves_row_pending_as_resume_anchor(tmp_path):
     """Same proposal dies twice -> poison-fatal. The session does NOT commit,
     so the durable row stays PENDING — the host-crash/resume anchor."""

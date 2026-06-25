@@ -49,8 +49,11 @@ class TransactionStoreJournal:
             doc_path=doc_path, intent_payload=payload, spec_hash=spec_hash
         )
 
-    def commit(self, row_id: str) -> None:
-        self._store.mark_committed(row_id)
+    def commit(self, row_id: str, recovery: dict | None = None) -> None:
+        self._store.mark_committed(
+            row_id,
+            recovery_json=json.dumps(recovery, default=str) if recovery else None,
+        )
 
     def mark_failed(self, row_id: str) -> None:
         """Optional terminal-failure marker (not on the Journal protocol; the
