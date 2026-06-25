@@ -74,6 +74,15 @@ docs/regression_checks/
 # themselves, they bloat the repo and are public elsewhere).
 references/
 
+# External skills clone (anthropics/skills) — a nested git checkout that landed
+# in the worktree by accident. Re-fetchable; never part of this repo's history.
+skills/
+
+# Spike research outputs — regenerable probe/PAE dumps (JSON + proposal dirs).
+# The corpus is provenance scratch, not product; keep it out of `git status`.
+spikes/_results/
+spikes/v0_2x/_results/
+
 # PR body + release-note drafts (one-shot artifacts; not part of the repo)
 .github/pr_body_*.md
 .github/release_notes_*.md
