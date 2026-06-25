@@ -24,7 +24,7 @@ jobs:
       - name: Secret scan (gitleaks)
         # Honors the repo-root .gitleaksignore allowlist (documented SOLIDWORKS
         # sketch-relation enum false positives from the W68 IP-scrub).
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
