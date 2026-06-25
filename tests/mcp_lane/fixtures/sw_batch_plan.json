@@ -49,48 +49,32 @@
     "attempted": "$int",
     "committed_count": "$int",
     "doc_saved": "$bool",
-    "halted_at": [
-      "$int",
-      "$none"
-    ],
+    "halted_at": "$int",
     "strict": "$bool",
     "dry_run": "$bool",
     "committed": {
       "__list__": true,
-      "len": "*",
-      "item": {
-        "index": "$int",
-        "kind": "$str",
-        "note": [
-          "$str",
-          "$none"
-        ]
-      }
-    },
-    "fault": [
-      {
-        "index": "$int",
-        "kind": "$str",
-        "stage": "$str",
-        "error": "$str",
-        "feature": {
-          "type": "$str"
-        },
-        "target": {
-          "edge": "$str"
-        }
-      },
-      "$none"
-    ],
-    "skipped": {
-      "__list__": true,
-      "len": "*",
+      "len": 0,
       "item": null
     },
-    "error": [
-      "$str",
-      "$none"
-    ],
+    "fault": {
+      "index": "$int",
+      "kind": "$str",
+      "stage": "$str",
+      "error": "$str",
+      "feature": {
+        "type": "$str"
+      },
+      "target": {
+        "edge": "$str"
+      }
+    },
+    "skipped": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "error": "$str",
     "mcp_mode": "$str",
     "committed_to_disk": "$bool",
     "next_step": "$str"

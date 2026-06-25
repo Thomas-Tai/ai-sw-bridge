@@ -18,69 +18,21 @@
   },
   "result_shape": {
     "ok": "$bool",
-    "doc_path": [
-      "$str",
-      "$none"
-    ],
-    "part_name": [
-      "$str",
-      "$none"
-    ],
-    "feature_count": [
-      "$int",
-      "$none"
-    ],
-    "solid_bodies_count": [
-      "$int",
-      "$none"
-    ],
-    "surface_bodies_count": [
-      "$int",
-      "$none"
-    ],
-    "total_rebuild_time": [
-      "$float",
-      "$int",
-      "$none"
-    ],
-    "feature_names": [
-      {
-        "__list__": true,
-        "len": "*",
-        "item": "$str"
-      },
-      "$none"
-    ],
-    "feature_types": [
-      {
-        "__list__": true,
-        "len": "*",
-        "item": "$str"
-      },
-      "$none"
-    ],
-    "feature_update_times": [
-      {
-        "__list__": true,
-        "len": "*",
-        "item": "$float"
-      },
-      {
-        "__list__": true,
-        "len": "*",
-        "item": "$int"
-      },
-      "$none"
-    ],
+    "doc_path": "$none",
+    "part_name": "$none",
+    "feature_count": "$none",
+    "solid_bodies_count": "$none",
+    "surface_bodies_count": "$none",
+    "total_rebuild_time": "$none",
+    "feature_names": "$none",
+    "feature_types": "$none",
+    "feature_update_times": "$none",
     "refreshed": "$bool",
-    "error": [
-      "$str",
-      "$none"
-    ],
+    "error": "$str",
     "errors": {
       "__list__": true,
-      "len": "*",
-      "item": "$str"
+      "len": 0,
+      "item": null
     }
   },
   "error": null

@@ -15,30 +15,15 @@
   },
   "result_shape": {
     "ok": "$bool",
-    "doc_path": [
-      "$str",
-      "$none"
-    ],
-    "min_wall_mm": [
-      "$float",
-      "$none"
-    ],
-    "min_wall_m": [
-      "$float",
-      "$none"
-    ],
-    "mean_wall_mm": [
-      "$float",
-      "$none"
-    ],
+    "doc_path": "$none",
+    "min_wall_mm": "$none",
+    "min_wall_m": "$none",
+    "mean_wall_mm": "$none",
     "sample_count": "$int",
     "valid_sample_count": "$int",
     "samples_per_face": "$int",
     "method": "$str",
-    "error": [
-      "$str",
-      "$none"
-    ]
+    "error": "$str"
   },
   "error": null
 }

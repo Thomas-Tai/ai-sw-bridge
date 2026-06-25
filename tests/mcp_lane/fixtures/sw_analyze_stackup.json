@@ -13,10 +13,7 @@
   },
   "result_shape": {
     "ok": "$bool",
-    "error": [
-      "$str",
-      "$none"
-    ]
+    "error": "$str"
   },
   "error": null
 }
