@@ -36,6 +36,9 @@ jobs:
       - name: Lint (flake8)
         run: flake8 src/
 
+      - name: Type check (mypy)
+        run: mypy --config-file mypy.ini src/ai_sw_bridge
+
       - name: Import-linter lane-boundary contracts
         run: lint-imports
 

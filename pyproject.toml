@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-sw-bridge"
-version = "1.4.0"
+version = "1.5.0"
 description = "A semi-automated bridge that lets an AI assistant (Claude, ChatGPT, Codex, etc.) drive SOLIDWORKS through the COM API for design-guide tuning and parametric part creation."
 readme = "README.md"
 license = { text = "MIT" }
@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 authors = [{ name = "ai-sw-bridge contributors" }]
 keywords = ["solidworks", "cad", "automation", "ai", "claude", "codex", "com", "pywin32"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Manufacturing",
     "Intended Audience :: Developers",
@@ -52,7 +52,8 @@ dev = [
     "pytest-xdist>=3",
     "black==25.12.0",
     "flake8>=7",
-    "mypy>=1.13",
+    "mypy==2.1.0",
+    "types-jsonschema",
     "pre-commit>=3",
     "sentence-transformers>=2.2",
     "import-linter>=2",

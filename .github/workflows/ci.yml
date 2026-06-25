@@ -54,6 +54,11 @@ jobs:
         # the formatter. Driven to zero 2026-06-25; new violations fail CI.
         run: flake8 src/
 
+      - name: Type check (mypy)
+        # Pinned to mypy==2.1.0 (pyproject dev extras) so local + CI agree.
+        # Driven to zero 2026-06-25; new type errors fail CI.
+        run: mypy --config-file mypy.ini src/ai_sw_bridge
+
       - name: Doc coverage gate
         # Fails if any schema.ALL_TYPES feature type lacks a section in
         # docs/spec_reference.md (enhancement plan P1.5).
