@@ -740,8 +740,6 @@ def _apply_title_block(
         return result
     result["count_before"] = count_before
 
-    existing_names = set(typed_cpm.GetNames() or ())
-
     for name, value in title_block.items():
         try:
             add_result = typed_cpm.Add3(

@@ -298,7 +298,6 @@ def commit_assembly(
         A result dict with ``ok``, ``manifest``, ``component_count``,
         ``mate_count``, and ``error``.
     """
-    from ..com.earlybind import typed
     from ..com.sw_type_info import wrapper_module
 
     if mod is None:
@@ -464,8 +463,6 @@ def commit_assembly(
             return result
 
         # Build the manifest
-        typed_asm = typed(asm_doc, "IAssemblyDoc", module=mod)
-
         # L4 (W14): persist a v2 manifest (verbatim spec + runtime overlay)
         # alongside the .sldasm so the assembly is durable and losslessly
         # re-openable. Provenance: when a component was built from a part_spec,

@@ -287,9 +287,9 @@ _register_lane("curve_through_xyz", create_curve_through_xyz, _curve_through_xyz
 # Seat-proven 2026-06-21: fm.FeatureSketchDrivenPattern(use_centroid, geom_patt)
 # on seed(mark 4) + ref-sketch(mark 1) materializes a 'SketchPattern' node
 # (+5 faces/+423mm³ from a 3-point sketch, survives reopen). gate_additive_solid.
-from .sketch_driven_pattern import (
+from .sketch_driven_pattern import (  # noqa: E402
     SPIKE_STATUS as _sketch_driven_pattern_status,
-)  # noqa: E402
+)
 from .sketch_driven_pattern import create_sketch_driven_pattern  # noqa: E402
 
 _register_lane(
@@ -317,9 +317,9 @@ _register_lane("scale", create_scale, _scale_status)
 # (0 ghosts the whole feature). Segments + Groups marshal via
 # VARIANT(VT_ARRAY|VT_DISPATCH). ADDITIVE_SOLID gate (Δfaces>0 ∧ |ΔVol|>eps).
 # SPIKE_STATUS gate: UNFIRED until W0 fires the production seat-proof.
-from .structural_weldment import (
+from .structural_weldment import (  # noqa: E402
     SPIKE_STATUS as _structural_weldment_status,
-)  # noqa: E402
+)
 from .structural_weldment import create_structural_weldment  # noqa: E402
 
 _register_lane(

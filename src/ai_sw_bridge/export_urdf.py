@@ -86,7 +86,7 @@ def rotmat_to_rpy(t: list[float]) -> tuple[float, float, float]:
 
     URDF rpy is the fixed-axis convention ``R = Rz(yaw)·Ry(pitch)·Rx(roll)``.
     """
-    r00, r01, r02 = t[0], t[1], t[2]
+    r00, _, _ = t[0], t[1], t[2]
     r10, r11, r12 = t[4], t[5], t[6]
     r20, r21, r22 = t[8], t[9], t[10]
     sy = math.sqrt(r00 * r00 + r10 * r10)

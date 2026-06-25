@@ -244,7 +244,6 @@ def create_knit(
         )
 
     sheet_before = _sheet_body_count(doc)
-    area_before = _total_sheet_area_mm2(doc)
     solids_before = _solid_body_count(doc)
     vol_before = _solid_volume_mm3(doc)
 

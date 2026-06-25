@@ -4,12 +4,19 @@
 # disagree. E203 (whitespace before ':') and W503 (line break before binary
 # operator) are disabled per black's documented guidance.
 #
+# E501 (line too long) is delegated to black: black is the CI-enforced
+# formatter and owns the 88-col limit, so the only lines that survive it are
+# ones it cannot split (long string/URL literals, alignment tables). flake8
+# re-flagging those is noise, so we focus flake8 on logical defects (F-codes,
+# E4xx/E7xx) instead of duplicating black's line-length check. (The remaining
+# per-file E501 entries below are now redundant no-ops, kept until next touch.)
+#
 # Pattern note: per-file-ignores keys use a leading `*` so they match
 # regardless of the OS path separator -- flake8 fnmatch-compares against the
 # reported path, which uses backslashes on Windows.
 [flake8]
 max-line-length = 88
-extend-ignore = E203, W503
+extend-ignore = E203, W503, E501
 exclude =
     .git,
     __pycache__,

@@ -149,7 +149,9 @@ def _create_one(
     name?) and the per-configuration equation-link mechanism need
     a live seat to confirm.
     """
-    effective_text = apply_overrides(base_locals_text, variant.overrides)
+    # Validate/compute the per-configuration override text now; wiring it into
+    # the configuration (equation-link) is SEAT-gated and deferred (see docstring).
+    apply_overrides(base_locals_text, variant.overrides)
 
     try:
         cm = doc.ConfigurationManager

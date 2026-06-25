@@ -1163,7 +1163,7 @@ def create_exploded_view(
         # Append direction reference plane with mark=0
         dir_ref = f"{plane_name}@{asm_name}"
         try:
-            sel_dir = model_ext.SelectByID2(dir_ref, "PLANE", 0, 0, 0, True, 0, None, 0)
+            model_ext.SelectByID2(dir_ref, "PLANE", 0, 0, 0, True, 0, None, 0)
         except Exception as exc:
             return step_count, (f"step[{i}]: SelectByID2({dir_ref!r}) raised: {exc!r}")
 

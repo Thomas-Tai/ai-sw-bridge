@@ -84,8 +84,10 @@ def _wire(
 ) -> None:
     """Patch metric seams on the knit lane module.
 
-    ``sheet_counts`` and ``areas`` drive (before, after) for the AGGREGATION
-    gate; ``solid_counts`` and ``volumes`` drive the solid-knit sub-mode.
+    ``sheet_counts`` drives (before, after) for the AGGREGATION gate;
+    ``solid_counts`` and ``volumes`` drive the solid-knit sub-mode. ``areas``
+    is given as (before, after) for readability, but the lane reads sheet area
+    only once post-knit, so only the after-value (last element) is consumed.
     """
     seq_sheet = list(sheet_counts)
     seq_area = list(areas)
@@ -99,9 +101,11 @@ def _wire(
         return v
 
     def fake_area(doc):
-        v = seq_area[min(state["area"], len(seq_area) - 1)]
+        # The lane reads sheet area exactly once (post-knit "after"); map the
+        # single call to the after-value. The before-area is not read (it is
+        # unused by the surface-aggregation gate, which checks area_after > 0).
         state["area"] += 1
-        return v
+        return seq_area[-1]
 
     def fake_solid_count(doc):
         v = seq_solid[min(state["solid"], len(seq_solid) - 1)]

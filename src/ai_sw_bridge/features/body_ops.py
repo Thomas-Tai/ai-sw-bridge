@@ -178,7 +178,7 @@ def _create_delete_body(
         # the 2-arg form raises "Invalid number of parameters". With the target
         # body selected via SelectByID2 SOLIDBODY, InsertDeleteBody2(False)
         # drops the body (2→1, returns an IFeature).
-        feat = fm.InsertDeleteBody2(False)
+        fm.InsertDeleteBody2(False)
         doc.ForceRebuild3(False)
 
         after_count, after_vols = _get_body_count_and_volumes(doc)
@@ -307,7 +307,7 @@ def _create_combine(doc: Any, feature: dict, target: dict) -> tuple[bool, str | 
         )
 
         fm = doc.FeatureManager
-        feat = fm.InsertCombineFeature(main_body, op_type, tool_array)
+        fm.InsertCombineFeature(main_body, op_type, tool_array)
         doc.ForceRebuild3(False)
 
         after_count, after_vols = _get_body_count_and_volumes(doc)
@@ -379,7 +379,7 @@ def _create_split(doc: Any, feature: dict, target: dict) -> tuple[bool, str | No
 
     try:
         fm = doc.FeatureManager
-        feat = fm.InsertSplitBody(True, False)
+        fm.InsertSplitBody(True, False)
         doc.ForceRebuild3(False)
 
         after_count, after_vols = _get_body_count_and_volumes(doc)

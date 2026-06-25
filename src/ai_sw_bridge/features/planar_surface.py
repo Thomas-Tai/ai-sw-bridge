@@ -86,7 +86,8 @@ def create_planar_surface(
 
     try:
         ips = doc.InsertPlanarRefSurface
-        result = ips() if callable(ips) else ips
+        if callable(ips):
+            ips()
     except Exception as exc:
         return False, f"InsertPlanarRefSurface raised: {exc!r}"
 

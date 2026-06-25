@@ -360,16 +360,11 @@ def _try_mode_b(doc: Any, best_fit: bool) -> tuple[bool, str | None]:
     # placeholder. See [[reference_makepy_wrong_argtype]] for the [out]-param
     # marshaling family.
     try:
-        _result = _v(bbox_type, False, False, 0) if callable(_v) else _v
+        if callable(_v):
+            _v(bbox_type, False, False, 0)
     except Exception as exc:
         logger.warning("[bounding_box] mode_b InsertGlobalBoundingBox raised: %r", exc)
         return False, f"InsertGlobalBoundingBox raised: {exc!r}"
-
-    # Under early binding the [out] Status may arrive as a trailing tuple
-    # element; extract the feature object if so.
-    feat = _result
-    if isinstance(_result, tuple) and len(_result) >= 1:
-        feat = _result[0]
 
     try:
         doc.ForceRebuild3(False)
