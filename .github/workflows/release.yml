@@ -9,7 +9,41 @@ permissions:
   contents: write
 
 jobs:
+  # A tag push must NOT publish a release off an untested commit. This job
+  # re-runs the core gates (format + lint + architecture + the offline suite)
+  # and `release` depends on it, so a red commit can never be tagged into a
+  # signed, published artifact. (ci.yml runs on branches/PRs, not on tags, and
+  # a workflow cannot `needs:` a job in another workflow — hence this guard.)
+  test:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,ci]"
+          pip install "black==25.12.0"
+
+      - name: Check formatting
+        run: black --check .
+
+      - name: Lint (flake8)
+        run: flake8 src/
+
+      - name: Import-linter lane-boundary contracts
+        run: lint-imports
+
+      - name: Run tests
+        run: pytest -q
+
   release:
+    needs: [test]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5

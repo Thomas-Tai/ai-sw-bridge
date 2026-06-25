@@ -48,6 +48,12 @@ jobs:
       - name: Check formatting
         run: black --check .
 
+      - name: Lint (flake8)
+        # Logical-defect lint (F-codes, E4xx/E7xx). Line length is owned by
+        # black (E501 is delegated in .flake8), so this never conflicts with
+        # the formatter. Driven to zero 2026-06-25; new violations fail CI.
+        run: flake8 src/
+
       - name: Doc coverage gate
         # Fails if any schema.ALL_TYPES feature type lacks a section in
         # docs/spec_reference.md (enhancement plan P1.5).
