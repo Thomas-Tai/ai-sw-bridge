@@ -8,6 +8,7 @@ on:
       - "CONTRIBUTING.md"
       - "README.md"
       - "LICENSE"
+      - "THIRD-PARTY-NOTICES.md"
       - "pyproject.toml"
   pull_request:
     branches: [master]
@@ -16,6 +17,7 @@ on:
       - "CONTRIBUTING.md"
       - "README.md"
       - "LICENSE"
+      - "THIRD-PARTY-NOTICES.md"
       - "pyproject.toml"
 
 jobs:
@@ -29,9 +31,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Non-blocking initially (continue-on-error: true).
-      # Promote to blocking (remove the line) after one clean cycle
-      # per harvest_plan.md §9.2.
+      # BLOCKING as of v1.6.0 (the clean cycle has passed): a license/attribution
+      # regression — the proprietary LICENSE, the pyproject license declaration, or
+      # the THIRD-PARTY-NOTICES MIT attribution for the bundled SolidworksMCP-python
+      # port — now fails the build. See harvest_plan.md §9.2.
       - name: Run license lint
-        continue-on-error: true
         run: python tools/license_lint.py src/

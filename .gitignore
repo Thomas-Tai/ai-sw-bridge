@@ -114,6 +114,11 @@ docs/sw_api_full.json
 docs/sw_api_full.md
 docs/ribbon_api_progress_relation_audit.md
 
+# Checkpoint encryption key (SEC-1: encrypt-by-default auto-generates this if no
+# AI_SW_CHECKPOINT_KEY is set). NEVER commit it — it decrypts the operator's
+# proprietary design-intent snapshots.
+.sw_agent_key
+
 # Design-Memory RAG: per-operator private design history (runtime, never committed)
 src/ai_sw_bridge/rag/data/design_memory_index.sqlite
 **/design_memory_index.sqlite

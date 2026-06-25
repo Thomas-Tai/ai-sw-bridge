@@ -70,7 +70,16 @@ def _open_store(part_name: str, root: Path) -> CheckpointStore:
     if not db_path.exists():
         _emit_stderr(f"no checkpoints for part {part_name!r} (no {db_path})")
         sys.exit(0)
-    return CheckpointStore(part_name=part_name, root=root)
+    # SEC-1: checkpoints are encrypted by default, so resolve the default key
+    # (AI_SW_CHECKPOINT_KEY env or local .sw_agent_key) so an encrypted DB reads
+    # transparently. Fall back to a keyless open for a plaintext DB.
+    from ..checkpoint.crypto import default_key_source
+
+    key_source = default_key_source(create=False)
+    try:
+        return CheckpointStore(part_name=part_name, root=root, key_source=key_source)
+    except Exception:  # noqa: BLE001 — plaintext DB / key mismatch: open keyless
+        return CheckpointStore(part_name=part_name, root=root)
 
 
 # ---------------------------------------------------------------------------

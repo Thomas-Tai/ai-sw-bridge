@@ -29,6 +29,7 @@ import base64
 import getpass
 import hashlib
 import os
+import sys
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -42,10 +43,16 @@ __all__ = [
     "KeySourceError",
     "PromptKeySource",
     "decrypt_cell",
+    "default_key_source",
     "encrypt_cell",
     "generate_key",
     "rekey_db",
 ]
+
+# SEC-1: the default checkpoint-encryption key (encrypt-by-default).
+_DEFAULT_KEY_ENV = "AI_SW_CHECKPOINT_KEY"
+_DEFAULT_KEY_FILE = ".sw_agent_key"
+_keyfile_warned = {"done": False}
 
 
 _CELL_PREFIX_V1 = "fernet_v1:"
@@ -329,6 +336,71 @@ def generate_key() -> bytes:
     Exposed for the ``ai-sw-checkpoint genkey`` CLI.
     """
     return Fernet.generate_key()
+
+
+def _ensure_gitignored(name: str) -> None:
+    """Append *name* to ``./.gitignore`` (creating it) if not already ignored.
+
+    Best-effort: the operator's working dir may not be a git repo. Never raises.
+    """
+    from pathlib import Path
+
+    gi = Path(".gitignore")
+    try:
+        existing = gi.read_text(encoding="utf-8") if gi.exists() else ""
+        if name not in existing.split():
+            with open(gi, "a", encoding="utf-8") as f:
+                if existing and not existing.endswith("\n"):
+                    f.write("\n")
+                f.write(f"{name}\n")
+    except OSError:
+        pass
+
+
+def default_key_source(*, create: bool = True) -> "KeySource | None":
+    """Resolve the default checkpoint-encryption key (SEC-1: encrypt-by-default).
+
+    Resolution order:
+
+    1. ``AI_SW_CHECKPOINT_KEY`` env var (a managed Fernet key) → :class:`EnvKeySource`.
+    2. A local ``.sw_agent_key`` file → :class:`FileKeySource`.
+    3. Absent and ``create`` is True → generate a fresh key, write it to
+       ``.sw_agent_key``, ensure that file is gitignored, print a loud one-time
+       stderr warning, and return a :class:`FileKeySource` for it.
+    4. Absent and ``create`` is False → ``None`` (read a plaintext DB / no key).
+
+    Writers (``ai-sw-build --checkpoint``) call with ``create=True``; readers
+    (``ai-sw-history``) call with ``create=False`` so an encrypted DB is
+    transparently readable while a plaintext DB still opens keyless.
+    """
+    if os.environ.get(_DEFAULT_KEY_ENV):
+        return EnvKeySource(_DEFAULT_KEY_ENV)
+
+    from pathlib import Path
+
+    keyfile = Path(_DEFAULT_KEY_FILE)
+    if keyfile.exists():
+        return FileKeySource(str(keyfile))
+    if not create:
+        return None
+
+    keyfile.write_bytes(generate_key())
+    try:
+        os.chmod(keyfile, 0o600)
+    except OSError:
+        pass
+    _ensure_gitignored(_DEFAULT_KEY_FILE)
+    if not _keyfile_warned["done"]:
+        _keyfile_warned["done"] = True
+        print(
+            "\n*** ai-sw-bridge: checkpoints are ENCRYPTED by default. A new key was\n"
+            f"*** generated at ./{_DEFAULT_KEY_FILE} (gitignored). BACK IT UP — without\n"
+            "*** it your encrypted checkpoints are unrecoverable. Set "
+            f"{_DEFAULT_KEY_ENV} to use a\n"
+            "*** managed key, or pass --no-checkpoint-encrypt to opt out.\n",
+            file=sys.stderr,
+        )
+    return FileKeySource(str(keyfile))
 
 
 def rekey_db(db_path: str, from_key: KeySource, to_key: KeySource) -> int:

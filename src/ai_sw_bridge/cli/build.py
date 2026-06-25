@@ -310,7 +310,17 @@ def main() -> int:
             "[experimental] Enable at-rest encryption for checkpoint "
             "locals_snapshot and com_call_log columns. SOURCE is one of: "
             "env:NAME, file:/path, keyring:SERVICE, or prompt. "
-            "Implies --checkpoint."
+            "Implies --checkpoint. Overrides the encrypt-by-default key."
+        ),
+    )
+    parser.add_argument(
+        "--no-checkpoint-encrypt",
+        dest="no_checkpoint_encrypt",
+        action="store_true",
+        help=(
+            "[experimental] Opt OUT of encrypt-by-default: write checkpoint "
+            "locals/com-log columns in cleartext. Not recommended — checkpoints "
+            "hold proprietary design intent."
         ),
     )
     parser.add_argument(
@@ -429,6 +439,13 @@ def main() -> int:
             checkpoint_key_source = KeySource.parse(args.checkpoint_encrypt)
         except KeySourceError as exc:
             return _emit({"ok": False, "error": str(exc)}, 2)
+    elif args.checkpoint and not args.no_checkpoint_encrypt:
+        # SEC-1: encrypt checkpoints by DEFAULT — they hold proprietary design
+        # intent (locals snapshots). Auto-resolve AI_SW_CHECKPOINT_KEY or a
+        # local .sw_agent_key (generated + gitignored + loudly announced once).
+        from ..checkpoint.crypto import default_key_source
+
+        checkpoint_key_source = default_key_source(create=True)
 
     p = Path(args.spec_path)
     if not p.exists():

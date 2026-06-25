@@ -42,7 +42,8 @@ jobs:
           python -m pip install --upgrade pip pip-audit
           pip install -e .
       - name: Audit installed dependencies for known CVEs
-        # Report-only for now (the audit recommended ratcheting to blocking once
-        # the baseline is clean). Remove `continue-on-error` to enforce.
-        continue-on-error: true
+        # BLOCKING as of v1.6.0: a known CVE in a runtime dependency fails the
+        # build. Triage an accepted / awaiting-upstream-fix advisory explicitly
+        # with `pip-audit --ignore-vuln <GHSA-id> --desc` (record the rationale in
+        # supply_chain_security.md Appendix A).
         run: pip-audit --desc
