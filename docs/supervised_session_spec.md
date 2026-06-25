@@ -316,9 +316,18 @@ Full dual-tier gauntlet specified in **`docs/supervised_session_test_spec.md`**
    `spike_seat_recovery_ui.py`): the fresh seat boots with `ActiveDoc=None` and no
    blocking Document-Recovery modal on the batch timescale; the watchdog-timed
    readiness probe is the hard backstop, the `swxauto` clear the defensive belt.
-3. **CheckpointStore reuse** — confirm `insert_pending`/`commit` semantics fit the
-   batch-commit-marker role, or add a thin `batch_journal` table. (API surface
-   exists; binding is an impl detail.)
+3. **CheckpointStore reuse — RESOLVED (2026-06-25): a dedicated table, NOT reuse.**
+   Measure-first found `CheckpointStore` is a per-FEATURE geometry ledger whose
+   every row carries NOT-NULL `pre_tree_hash`/`post_tree_hash`; a batch
+   transaction has an intent payload + status but no geometry hash, so reusing it
+   would mean injecting dummy hashes to satisfy those constraints. Shipped instead
+   as a dedicated `checkpoint.TransactionStore` (id/doc_path/spec_hash/
+   intent_payload/status/recovery_json) bound via `resilience.TransactionStoreJournal`
+   — the schema now matches the architectural model. PENDING→COMMITTED on
+   recovery; a fatal run stays PENDING (the host-crash resume anchor). The
+   in-memory `InMemoryJournal` remains the seat-free default for the offline
+   gauntlet. (Note: §6.2's pseudo-code above still shows the original
+   `CheckpointStore`-reuse sketch — superseded by this dedicated-table decision.)
 4. **CoUninitialize necessity** — the spike recovered first-attempt *with* the
    apartment reset; we did not isolate whether the cache-drop alone suffices. Cheap
    to keep; flag for a follow-up micro-probe if respawn latency matters.

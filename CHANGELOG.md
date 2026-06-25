@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-06-25
+
+**Runtime Resilience & Design Intelligence.** Two layers on top of the v1.4.0
+batch/observability surface: an opt-in, live-proven supervised-session envelope
+(`ai_sw_bridge.resilience`) that detects a SOLIDWORKS death mid-transaction and
+replays the geometric intent — available to embed, **not yet the default batch
+path** — and a local, on-device semantic memory over the operator's own design
+history. Cross-cutting session/intelligence layers — no part-feature ribbon
+surfaces change. Offline suite green at 3697 tests; the live destructive
+`destructive_sw` lane proved Cases 7–10 on a real seat.
+
+### Added
+
+- **`SupervisedSession` crash-recovery envelope** (`ai_sw_bridge.resilience`) —
+  wraps the fail-soft batch transaction in detect → respawn → idempotent-replay.
+  A mid-transaction seat death is caught (a liveness oracle disambiguates a
+  genuine geometric fault from a dead seat), the seat is auto-respawned (~8–9 s),
+  and the full declarative proposal list is replayed to a geometrically identical
+  result. **Tier 1** (open/apply death → pristine disk → replay) vs **Tier 2**
+  (save death → restore a file snapshot → replay); a poison-proposal quarantine
+  plus retry / wall-clock caps prevent an infinite respawn loop. All collaborators
+  are injected so the state machine is unit-tested offline with no seat and no
+  real sleep. Measured seat-death signatures: early-bound `com_error 0x800706BA`
+  (RPC_S_SERVER_UNAVAILABLE), open-stage `0x800706BE` (RPC_S_CALL_FAILED), and
+  dynamic-dispatch `AttributeError` — the envelope catches all three. Ships as
+  an opt-in envelope you wrap around a batch run; the default `ai-sw-batch` /
+  `client.mutate.batch()` path is unchanged (best-effort, fault-manifest) until
+  you adopt it.
+- **Durable Tier-2 ledger** (`checkpoint.TransactionStore` +
+  `resilience.TransactionStoreJournal`) — a dedicated SQLite table for batch
+  transactions (distinct from the per-feature `CheckpointStore`; a transaction
+  carries an intent payload + status, not a geometry hash). PENDING → COMMITTED
+  on recovery; a fatal/unrecovered run leaves the row PENDING as the host-crash
+  resume anchor. The recovery summary (tier / replays / deaths) is persisted to a
+  nullable `recovery_json` column when a death was actually caught.
+- **Design-Memory RAG** (`ai_sw_bridge.rag.design_verbalizer` +
+  `design_memory`) — a second, local `sqlite-vec` index over the operator's own
+  design history so the agent can ground new proposals in proven past sequences.
+  A kind-dispatched **verbalizer** turns each design into a syntax-free "recipe"
+  (feature-add / drawing / assembly / part-build) — embedding raw JSON would
+  cluster vectors on JSON-ness instead of intent. Backfilled from `proposals/` +
+  `.checkpoints/` (≈169 recipes); `spikes/_results` excluded and reported.
+  Embeddings are computed **on-device** (all-MiniLM-L6-v2 / a deterministic hash
+  backend) — proprietary design history never leaves the machine. The index is a
+  private, gitignored runtime artifact.
+- **`ai-sw-memory` CLI** — `build` (backfill the index) / `search` / `stats`.
+- **MCP tools** (all read-only, non-COM):
+  - `sw_retrieve_design_memory` — semantic retrieval over the design-memory
+    index, with `kind` / `recipe_kind` metadata filters.
+  - `sw_session_health` — seat presence (PID-level) + the durable
+    transaction-ledger audit (pending / committed / failed + recent + last
+    recovery) → a degraded / attention / healthy verdict, so an agent can tell
+    whether it is operating in a degraded or recently-recovered environment.
+
+### Fixed
+
+- **MCP tool-inventory contract** trued up — `sw_observe_mbd` (shipped in v1.4.0)
+  was never added to the `EXPECTED_TOOLS` registration audit; the staleness was
+  hidden because the `mcp_lane` suite is `destructive_sw` (skip-by-default). Added
+  it alongside the two new tools.
+
+### Internal
+
+- Destructive-test hygiene: a respawn-orphan reaper kills only SLDWORKS processes
+  that appeared *during* a test run (the envelope's windowless respawns), never a
+  pre-existing PID — the baseline-diff is the safety boundary that protects an
+  operator's interactive seat. Every destructive kill remains singleton-guarded +
+  PID-bind-checked (never `/IM`).
+
 ## [1.4.0] - 2026-06-24
 
 **The PMI Observability Release.** Adds a read-only lane that serializes a part's
@@ -293,7 +362,8 @@ This release also folds in the work tagged (but never changelogged) across
 v0.15–v0.17: surfaces, sheet-metal completion, thread features, reference
 geometry, drawing-annotation axis, and the read-only Evaluate cluster.
 
-Design notes: [`docs/v1_0_commercialization_rfc.md`](docs/v1_0_commercialization_rfc.md).
+Design notes: [`docs/history/v1_0_commercialization_rfc.md`](docs/history/v1_0_commercialization_rfc.md)
+(superseded by [`docs/commercial_readiness_audit.md`](commercial_readiness_audit.md)).
 
 ### Added
 
