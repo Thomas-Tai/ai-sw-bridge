@@ -10,6 +10,12 @@ dist/
 .mypy_cache/
 .ruff_cache/
 
+# Coverage artifacts (pytest --cov)
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
 # Virtual environments
 .venv/
 .venv-*/
