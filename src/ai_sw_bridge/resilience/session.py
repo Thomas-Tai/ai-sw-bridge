@@ -14,6 +14,7 @@ fakes (no seat, no real sleep). See ``docs/supervised_session_test_spec.md``.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -285,6 +286,26 @@ class SupervisedSession:
             return manifest, None  # clean success
         fault = manifest.get("fault")
         if not fault:
+            # No formal fault dict. Two sub-cases:
+            #   (a) a benign terminal error (validation, e.g. empty proposals) —
+            #       no COM was touched, seat is fine -> propagate unchanged.
+            #   (b) an ESCAPED com_error: the seat died DURING _open_doc_typed
+            #       (measured 0x800706BE RPC_S_CALL_FAILED), which the batch
+            #       engine's top-level except surfaces as error="unexpected:
+            #       com_error(...)" with fault=None. The liveness oracle is the
+            #       arbiter — a dead seat reclassifies this as a Tier-1 death.
+            err = str(manifest.get("error") or "")
+            if err and _looks_like_com_failure(err) and not self._seat.is_alive():
+                hr = _com_hr_from_text(err)
+                sig = (
+                    f"com_error {hex(hr)}" if hr is not None else "escaped_com_failure"
+                )
+                return manifest, {
+                    "attempt": attempt,
+                    "phase": "open_doc",  # pre-save escape -> pristine disk -> Tier 1
+                    "proposal_index": None,
+                    "fault": f"seat_dead@open_doc ({sig})",
+                }
             return manifest, None  # validation/other terminal non-death
         # there is a fault: death only if the seat is actually dead.
         if self._seat.is_alive():
@@ -324,13 +345,35 @@ def _signature(exc: BaseException) -> str:
     return type(exc).__name__
 
 
+# A com_error whose repr escaped the batch engine into manifest["error"].
+# We match on the textual signature (the runner has already caught the
+# exception object, so we only get its repr). The dead-seat liveness check is
+# the authoritative arbiter; this just gates OUT benign validation errors.
+_COM_FAILURE_RE = re.compile(r"com_error|remote procedure call|RPC server", re.I)
+_COM_HR_RE = re.compile(r"com_error\((-?\d+)")
+
+
+def _looks_like_com_failure(text: str) -> bool:
+    """True if *text* (a manifest['error']) smells like an escaped COM/RPC fault."""
+    return bool(_COM_FAILURE_RE.search(text))
+
+
+def _com_hr_from_text(text: str) -> int | None:
+    """Pull the HRESULT out of an escaped ``com_error(<int>, ...)`` repr."""
+    m = _COM_HR_RE.search(text)
+    if not m:
+        return None
+    return int(m.group(1)) & 0xFFFFFFFF
+
+
 # ---------------------------------------------------------------------------
 # Live seat controller (production; exercised by the destructive_sw lane, not
 # offline). The liveness oracle + respawn sequence from spec §2.2 / §3.
 # ---------------------------------------------------------------------------
 
 
-def _find_sw_pid() -> int | None:
+def _find_sw_pids() -> list[int]:
+    """All live SLDWORKS.exe PIDs (for the destructive singleton guard)."""
     try:
         out = subprocess.run(
             ["tasklist", "/FI", "IMAGENAME eq SLDWORKS.exe", "/NH", "/FO", "CSV"],
@@ -339,13 +382,19 @@ def _find_sw_pid() -> int | None:
             timeout=15,
         ).stdout
     except Exception:  # noqa: BLE001
-        return None
+        return []
+    pids: list[int] = []
     for line in out.splitlines():
         if "SLDWORKS.EXE" in line.upper():
             parts = [p.strip('" ') for p in line.split(",")]
             if len(parts) >= 2 and parts[1].isdigit():
-                return int(parts[1])
-    return None
+                pids.append(int(parts[1]))
+    return pids
+
+
+def _find_sw_pid() -> int | None:
+    pids = _find_sw_pids()
+    return pids[0] if pids else None
 
 
 def _pid_alive(pid: int) -> bool:

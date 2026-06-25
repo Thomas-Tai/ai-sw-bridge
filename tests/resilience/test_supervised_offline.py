@@ -25,6 +25,12 @@ try:
 except Exception:  # pragma: no cover - pywin32 always present on the target
     RPC_DEAD = OSError("RPC server unavailable")
 DYN_DEAD = AttributeError("SldWorks.Application.RevisionNumber")
+# The open-stage death repr that ESCAPES the batch engine into manifest["error"]
+# (measured live: 0x800706BE RPC_S_CALL_FAILED, distinct from the mid-apply
+# 0x800706BA above). It carries no formal fault dict.
+RPC_CALL_FAILED_TEXT = (
+    "com_error(-2147023170, 'The remote procedure call failed.', None, None)"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +130,20 @@ def manifest_ok(committed_idx: list[int]) -> dict:
     }
 
 
+def manifest_escaped_death(hr_text: str = RPC_CALL_FAILED_TEXT) -> dict:
+    """The open-stage death shape: the com_error escaped the batch engine's
+    top-level except, so there is NO formal ``fault`` dict — only a top-level
+    ``error`` carrying the com_error repr (measured 0x800706BE on live open)."""
+    return {
+        "ok": False,
+        "doc_path": "p",
+        "doc_saved": False,
+        "committed": [],
+        "fault": None,
+        "error": f"unexpected: {hr_text}",
+    }
+
+
 def manifest_fault(
     stage: str, index: int | None, *, committed_idx: list[int] = ()
 ) -> dict:
@@ -218,6 +238,56 @@ def test_raised_error_seat_alive_is_wrapped_not_respawned():
     assert "seat alive" in out["error"]
     assert seat.respawn_calls == 0
     assert out["recovery"]["deaths"] == []
+
+
+def test_escaped_open_death_no_fault_dict_seat_dead_recovers_tier1():
+    """Open-stage death (0x800706BE) escapes as error=...,fault=None. A DEAD
+    seat reclassifies this fault-dict-less manifest as a Tier-1 death."""
+    runner = ScriptedRunner([manifest_escaped_death(), manifest_ok([0, 1, 2])])
+    seat = FakeSeat([False])  # the escaped com_error came from a dead seat
+    snap = FakeSnapshotter()
+    out = _session(runner, seat, snap=snap).execute("p", PROPOSALS)
+
+    assert out["ok"] is True
+    rec = out["recovery"]
+    assert rec["recovered"] is True
+    assert rec["replays"] == 1
+    assert rec["tier"] == 1  # pre-save escape -> pristine disk
+    assert rec["deaths"][0]["phase"] == "open_doc"
+    assert "0x800706be" in rec["deaths"][0]["fault"].lower()
+    assert snap.restores == 0  # Tier 1 never restores
+    assert seat.respawn_calls == 1
+
+
+def test_escaped_com_error_seat_alive_is_NOT_a_death():
+    """Same shape, but a LIVE seat -> a transient COM blip, not a death:
+    propagate the manifest unchanged, no respawn."""
+    runner = ScriptedRunner([manifest_escaped_death()])
+    seat = FakeSeat([True])  # alive -> the oracle vetoes the respawn
+    out = _session(runner, seat).execute("p", PROPOSALS)
+    assert out["ok"] is False  # preserved terminal manifest
+    assert out["recovery"]["deaths"] == []
+    assert seat.respawn_calls == 0
+
+
+def test_benign_validation_error_no_com_signature_is_not_a_death():
+    """A non-COM terminal error (e.g. empty proposals) must NEVER be mistaken
+    for a death even if the seat probe says dead — the com-signature gate."""
+    runner = ScriptedRunner(
+        [
+            {
+                "ok": False,
+                "doc_path": "p",
+                "fault": None,
+                "error": "proposals list is empty",
+            }
+        ]
+    )
+    seat = FakeSeat([False])  # even with a 'dead' probe, no COM smell -> propagate
+    out = _session(runner, seat).execute("p", PROPOSALS)
+    assert out["ok"] is False
+    assert out["recovery"]["deaths"] == []
+    assert seat.respawn_calls == 0
 
 
 # ---------------------------------------------------------------------------

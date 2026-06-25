@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 
+import ai_sw_bridge.mutate as mutate
 from ai_sw_bridge.checkpoint.rollback import _read_current_tree_hash
 from ai_sw_bridge.mutate import (
     HANDLER_REGISTRY,
@@ -29,12 +30,67 @@ from ai_sw_bridge.mutate import (
 )
 from ai_sw_bridge.resilience.session import (
     ExecutorSeatController,
+    FileSnapshotter,
     SupervisedSession,
-    _find_sw_pid,
+    _find_sw_pids,
 )
-from ai_sw_bridge.sw_com import get_sw_app
+from ai_sw_bridge.sw_com import get_sw_app, release_sw_app
 
 pytestmark = pytest.mark.destructive_sw
+
+
+# ---------------------------------------------------------------------------
+# SAFETY HARNESS (2026-06-25 incident: an unguarded kill murdered the operator's
+# live seat — the bridge attaches to the running SLDWORKS via the ROT). Every
+# kill is now (a) SINGLETON-GUARDED — refuses if >1 SLDWORKS.exe exists, so a
+# developer instance can never be the target — and (b) BIND-CHECKED against the
+# captured seat PID. See memory reference_destructive_seat_kill_safety.
+# ---------------------------------------------------------------------------
+
+
+def _assert_single_seat() -> int:
+    """Exactly one SLDWORKS.exe must exist; return its PID. Refuses on 0 or >1."""
+    pids = _find_sw_pids()
+    assert len(pids) == 1, (
+        f"destructive guard: expected exactly 1 SLDWORKS.exe, found {len(pids)} "
+        f"({pids}); refusing to run a process-killing test while another seat is "
+        "open — it could be a developer instance. Close all but the bound seat."
+    )
+    return pids[0]
+
+
+def _kill_seat(expected_pid: int) -> None:
+    """Kill ONLY the bound seat: assert the sole live PID == *expected_pid*
+    (singleton-guarded) immediately before pulling the trigger."""
+    pid = _assert_single_seat()
+    assert pid == expected_pid, (
+        f"kill guard: live pid {pid} != bound {expected_pid}; refusing to kill an "
+        "unbound/developer instance"
+    )
+    subprocess.run(
+        ["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=20
+    )
+
+
+def _kill_sole_seat() -> int:
+    """Kill whatever the SINGLE live seat currently is (singleton-guarded), for
+    multi-kill assassins whose bound PID rotates across respawns. Still refuses
+    if a second (developer) instance is present."""
+    pid = _assert_single_seat()
+    subprocess.run(
+        ["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=20
+    )
+    return pid
+
+
+@pytest.fixture(autouse=True)
+def _fresh_seat_cache():
+    """Drop any stale cached SW app so a killed-seat handle from a prior test
+    can't leak in (the batched-run COM-state contamination)."""
+    release_sw_app()
+    yield
+    release_sw_app()
+
 
 _FIXTURE = (
     Path(__file__).resolve().parents[2]
@@ -53,15 +109,7 @@ def _assassin(doc, feature, target):
     replaced (so the recovered geometry equals the golden run)."""
     if not _KILLED["done"]:
         _KILLED["done"] = True
-        pid = _find_sw_pid()
-        assert pid is not None, "assassin: no bound SW pid — refusing to kill"
-        assert pid == _BOUND_PID["pid"], (
-            f"assassin: live pid {pid} != bound {_BOUND_PID['pid']} — "
-            "refusing to kill an unbound/developer instance"
-        )
-        subprocess.run(
-            ["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=20
-        )
+        _kill_seat(_BOUND_PID["pid"])  # singleton-guarded + bind-checked
         return False, "assassin fired — seat assassinated"
     # replay: delegate to the real plane handler with the same distance.
     real = HANDLER_REGISTRY["ref_plane"]
@@ -124,7 +172,7 @@ def test_supervised_session_catches_real_seat_death():
         assert golden["tree_hash"] is not None
 
         # --- ASSASSIN RUN: same batch, index 1 assassinates the seat mid-flight ---
-        _BOUND_PID["pid"] = _find_sw_pid()
+        _BOUND_PID["pid"] = _assert_single_seat()
         session = SupervisedSession(
             batch_runner=_sw_batch_feature_add_impl,
             seat=ExecutorSeatController(),
@@ -151,4 +199,132 @@ def test_supervised_session_catches_real_seat_death():
     if recovered["volume"] is not None and golden["volume"] is not None:
         assert recovered["volume"] == pytest.approx(golden["volume"], rel=1e-6)
 
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ===========================================================================
+# Cases 8-10 — the edge-case gauntlet
+# ===========================================================================
+
+
+def _golden(path: str) -> dict:
+    """Clean 3-plane batch + witness — the non-interrupted baseline."""
+    m = _sw_batch_feature_add_impl(path, _proposals(), strict=False)
+    assert m["ok"] is True, m
+    return _witness(path)
+
+
+def _two_copies(prefix: str) -> tuple[Path, str, str]:
+    tmp = Path(tempfile.mkdtemp(prefix=prefix))
+    g, a = str(tmp / "golden.SLDPRT"), str(tmp / "run.SLDPRT")
+    shutil.copy2(_FIXTURE, g)
+    shutil.copy2(_FIXTURE, a)
+    return tmp, g, a
+
+
+def test_case8_open_death_recovers_tier1(monkeypatch):
+    """Seat dies during _open_doc_typed (before the apply loop) -> Tier-1 recover."""
+    assert _FIXTURE.is_file()
+    tmp, gpath, rpath = _two_copies("supervised_open_")
+    golden = _golden(gpath)
+
+    bound = _assert_single_seat()
+    fired = {"done": False}
+    real_open = mutate._open_doc_typed
+
+    def _killing_open(doc_path):
+        if not fired["done"]:
+            fired["done"] = True
+            _kill_seat(bound)  # the real open below now faults on the dead seat
+        return real_open(doc_path)
+
+    monkeypatch.setattr(mutate, "_open_doc_typed", _killing_open)
+    session = SupervisedSession(
+        batch_runner=_sw_batch_feature_add_impl, seat=ExecutorSeatController()
+    )
+    out = session.execute(rpath, _proposals())
+
+    rec = out["recovery"]
+    assert out["ok"] is True, out
+    assert rec["recovered"] is True and rec["replays"] == 1
+    assert rec["tier"] == 1  # open-stage death -> pristine disk
+    assert rec["deaths"][0]["phase"] in ("open_doc", "raised")
+    recovered = _witness(rpath)
+    assert recovered["node_count"] == golden["node_count"]
+    assert recovered["tree_hash"] == golden["tree_hash"]
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_case9_save_death_restores_snapshot_tier2(monkeypatch):
+    """Seat dies during the atomic _save_doc (after PENDING) -> Tier-2 snapshot
+    restore -> replay. Proves the checkpoint-boundary recovery path."""
+    assert _FIXTURE.is_file()
+    tmp, gpath, rpath = _two_copies("supervised_save_")
+    golden = _golden(gpath)
+
+    bound = _assert_single_seat()
+    fired = {"done": False}
+    real_save = mutate._save_doc
+
+    def _killing_save(doc):
+        if not fired["done"]:
+            fired["done"] = True
+            _kill_seat(bound)  # save now faults -> fault{stage:"save"}
+        return real_save(doc)
+
+    monkeypatch.setattr(mutate, "_save_doc", _killing_save)
+
+    class _SpySnap(FileSnapshotter):
+        restores = 0
+
+        def restore(self, token):
+            _SpySnap.restores += 1
+            return super().restore(token)
+
+    _SpySnap.restores = 0
+    session = SupervisedSession(
+        batch_runner=_sw_batch_feature_add_impl,
+        seat=ExecutorSeatController(),
+        snapshotter=_SpySnap(),
+    )
+    out = session.execute(rpath, _proposals())
+
+    rec = out["recovery"]
+    assert out["ok"] is True, out
+    assert rec["recovered"] is True and rec["replays"] == 1
+    assert rec["tier"] == 2  # save-stage death
+    assert _SpySnap.restores == 1  # the pristine snapshot was restored before replay
+    recovered = _witness(rpath)
+    assert recovered["node_count"] == golden["node_count"]
+    assert recovered["tree_hash"] == golden["tree_hash"]
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_case10_live_poison_cap_does_not_wedge():
+    """An assassin that kills on EVERY attempt -> poison-proposal quarantine ->
+    fatal ok=False, bounded (no infinite respawn loop)."""
+    assert _FIXTURE.is_file()
+    tmp, _gpath, rpath = _two_copies("supervised_poison_")
+
+    def _assassin_always(doc, feature, target):
+        # Kills the CURRENT sole seat every time (its PID rotates after each
+        # respawn); singleton-guarded so a developer instance is never hit.
+        _kill_sole_seat()
+        return False, "assassin (always) fired"
+
+    HANDLER_REGISTRY["__assassin__"] = _assassin_always
+    try:
+        session = SupervisedSession(
+            batch_runner=_sw_batch_feature_add_impl, seat=ExecutorSeatController()
+        )
+        out = session.execute(rpath, _proposals(assassin_at=1))
+    finally:
+        HANDLER_REGISTRY.pop("__assassin__", None)
+
+    rec = out["recovery"]
+    assert out["ok"] is False, out  # the agent gets an actionable terminal error
+    assert rec["recovered"] is False, out
+    # same index dies twice -> poison quarantine (bounded), not the global cap
+    assert rec["poison_proposal"] == 1
+    assert "reproducible seat death" in rec["fatal_reason"]
     shutil.rmtree(tmp, ignore_errors=True)
