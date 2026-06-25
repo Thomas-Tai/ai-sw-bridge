@@ -90,16 +90,21 @@ encryption implementation, telemetry local-only + consent-gated.
 ## 5. Enhancement plan (the one-time fix-all) — waves
 
 - **Wave 0 — release integrity (DONE):** CQ-1, CQ-3, GIT-1, version → 1.5.0, classifier.
-- **Wave 1 — enforce health in CI (in progress):** ✅ `release.yml` test-gate, flake8 in CI;
-  ◻ mypy → green + CI, coverage floor, entry-point smoke (all 22), gitleaks + pip-audit +
-  Dependabot, dependency ceilings + lockfile, drop/regenerate `requirements.txt`.
-- **Wave 2 — commercial hardening (next epoch):** wire `SupervisedSession` into the batch path +
-  production orphan-reaper (RES-1/3); checkpoint-encryption loud-warning/default (SEC-1); write
-  `docs/PUBLIC_API.md` + SemVer compatibility promise; add OOP-wall + save-death notes to
-  `known_limitations.md` (RES-4/5).
-- **Strategic:** finalize licensing (EULA + CLA) with counsel; promote `license_lint` to blocking.
+- **Wave 1 — enforce health in CI (DONE):** ✅ `release.yml` test-gate, flake8=0 in CI, mypy=0
+  (pinned 2.1.0) in CI, coverage floor (≥60%, measured 65%), all-22 entry-point smoke, gitleaks +
+  pip-audit + Dependabot, dependency ceilings, regenerated `requirements.txt`.
+- **Wave 2 — wire the engine (DONE, v1.6.0):** ✅ RES-1 `SupervisedSession` is now the DEFAULT
+  batch path (`client.mutate.batch` / `ai-sw-batch`); ✅ RES-3 production orphan-reaper; ✅ RES-4
+  save-death note in `known_limitations.md`. Offline-proven; the through-API destructive proof is
+  armed (`test_customer_batch_api_survives_seat_death`, operator-gated seat fire).
+- **Wave 3 — remaining (next):** ◻ SEC-1 checkpoint-encryption loud-warning/default; ◻ write
+  `docs/PUBLIC_API.md` + SemVer compatibility promise; ◻ RES-5 OOP-wall list in `known_limitations.md`;
+  ◻ supply_chain_audit→security merge; ◻ promote pip-audit/license_lint to blocking.
+- **Strategic:** finalize licensing (EULA + CLA) with counsel.
 
-**Then:** tag `v1.5.0` (now gated by the in-workflow test job) as the clean commercial cut.
+**Then:** once GitHub Actions billing is restored — tag `v1.5.0` @ `8cefd01` (CI-gated), then push
+Wave 2 + tag `v1.6.0`. (Branch pushed to `origin/master`; CI/release currently blocked by an
+account-level Actions billing limit, not by code.)
 
 ## 6. Recovery / provenance
 
