@@ -106,6 +106,9 @@ def main() -> int:
         "sw_apidoc_detail": {"retrieval_key": "does-not-exist"},
         "sw_apidoc_members": {},
         "sw_apidoc_examples": {"limit": 2},
+        # Design-memory — the index is a gitignored per-operator artifact, absent
+        # in CI, so this captures the deterministic index-not-found branch.
+        "sw_retrieve_design_memory": {"query": "bracket linear pattern", "k": 2},
         # History — no part DB present, so these hit the empty/error branch.
         "sw_history_part": {"part_name": "NonexistentPart"},
         "sw_history_since": {

@@ -1,0 +1,28 @@
+{
+  "tool": "sw_retrieve_design_memory",
+  "args": {
+    "query": "bracket linear pattern",
+    "k": 2
+  },
+  "result": {
+    "ok": false,
+    "query": "bracket linear pattern",
+    "error": "design-memory index not found: <repo>/src/ai_sw_bridge/rag/data/design_memory_index.sqlite",
+    "hint": "Build it with `ai-sw-memory build` (backfills from proposals/ + .checkpoints/).",
+    "hits": [],
+    "count": 0
+  },
+  "result_shape": {
+    "ok": "$bool",
+    "query": "$str",
+    "error": "$str",
+    "hint": "$str",
+    "hits": {
+      "__list__": true,
+      "len": 0,
+      "item": null
+    },
+    "count": "$int"
+  },
+  "error": null
+}

@@ -91,6 +91,9 @@ class TestToolRegistration:
             # isolated destructive_sw job, so the staleness had hidden)
             "sw_feature_statistics",
             "sw_analyze_stackup",
+            # v1.4.0 MBD/DimXpert read lane (was registered but unlisted —
+            # trued up 2026-06-25; same isolated-job staleness as above)
+            "sw_observe_mbd",
             # Build (1)
             "sw_build",
             # Batch-plan (1) — read-only dry-run validation; never writes to disk
@@ -104,6 +107,9 @@ class TestToolRegistration:
             "sw_apidoc_members",
             "sw_apidoc_examples",
             "sw_apidoc_enum",
+            # Design-Memory RAG (1) — semantic retrieval over the operator's own
+            # design history; non-COM, local sqlite-vec index (2026-06-25)
+            "sw_retrieve_design_memory",
             # History (4)
             "sw_history_part",
             "sw_history_since",

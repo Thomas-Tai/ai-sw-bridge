@@ -163,10 +163,22 @@ class DesignMemoryIndex:
                 "SELECT kind, COUNT(*) FROM recipes GROUP BY kind"
             ).fetchall()
         }
+        # Recover the embedding dim from the vec0 virtual-table DDL so a reader
+        # can pick a dimension-matching embedder (mirrors VectorIndex.stats).
+        dim: int | None = None
+        ddl = self._conn.execute(
+            "SELECT sql FROM sqlite_master WHERE name='vec_recipes'"
+        ).fetchone()
+        if ddl and ddl[0]:
+            try:
+                dim = int(ddl[0].rsplit("[", 1)[1].rstrip("])"))
+            except (IndexError, ValueError):
+                dim = None
         return {
             "path": str(self._path) if self._path else None,
             "recipes": count,
             "by_kind": by_kind,
+            "dim": dim,
         }
 
     def search(
