@@ -98,3 +98,7 @@ docs/api_reference.md
 docs/sw_api_full.json
 docs/sw_api_full.md
 docs/ribbon_api_progress_relation_audit.md
+
+# Design-Memory RAG: per-operator private design history (runtime, never committed)
+src/ai_sw_bridge/rag/data/design_memory_index.sqlite
+**/design_memory_index.sqlite
