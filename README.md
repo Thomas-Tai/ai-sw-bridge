@@ -143,6 +143,32 @@ There is no `--yolo` flag.
 
 Three build modes for `ai-sw-build` (use `--no-dim` for AI workflows; the others trade speed for live equation links). [Why `--no-dim` exists →](docs/why_no_addim2.md)
 
+### Feature kinds you can add (36)
+
+Beyond the base part, `ai-sw-build` / `ai-sw-batch` (and `sw_batch_plan` over MCP)
+can add these **36 seat-proven** `feature_add` kinds to a model. Each is verified by
+its geometric *effect* (volume / face / area / arc-length / ratio delta), never by a
+bare "no error". The live source of truth is `client.features.list_kinds()`; kinds
+that are walled out-of-process are listed in [`docs/DEFERRED.md`](docs/DEFERRED.md).
+
+| Group | Kinds |
+|---|---|
+| Dress-up | `fillet_constant_radius`, `fillet_face`, `variable_radius_fillet`, `chamfer`, `shell`, `draft` |
+| Patterns | `linear_pattern`, `circular_pattern`, `mirror_feature`, `sketch_driven_pattern` |
+| Reference geometry | `ref_plane`, `ref_axis`, `ref_point`, `coordinate_system`, `bounding_box`, `com_point`, `mate_reference` |
+| Curves | `composite`, `helix`, `spiral`, `project_curve`, `curve_through_xyz` |
+| Surfaces | `planar_surface`, `offset_surface`, `knit` |
+| Sheet metal | `base_flange`, `hem`, `sketched_bend` |
+| Sweeps & shapes | `sweep`, `sweep_cut`, `dome`, `wizard_hole` |
+| Bodies & boolean | `delete_body`, `intersect`, `scale` |
+| Weldment | `structural_weldment` |
+
+```python
+from ai_sw_bridge.client import SolidWorksClient
+SolidWorksClient().features.list_kinds()   # -> the 36 kinds above, sorted
+SolidWorksClient().features.supports("helix")   # -> True
+```
+
 ### Environment variables
 
 | Variable | Default | What it controls |
