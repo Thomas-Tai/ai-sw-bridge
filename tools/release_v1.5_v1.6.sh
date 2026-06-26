@@ -108,23 +108,44 @@ echo "== Tags on remote (AFTER) =="
 git ls-remote --tags "$REMOTE" | grep -E 'v1\.(5|6)\.0$' || echo "  (none yet — check push output above)"
 echo
 
-# --- 5) Actions-free publish (ONLY if CI/release.yml is NOT restored) --------
-#  If Gate 1 is resolved and release.yml runs on tag push, it publishes the
-#  GitHub Releases for you — SKIP this step. If you took the manual path
-#  (Gate 1 Option A), publish them here. `gh release create` is a REST call,
-#  not an Actions run, so it works even while the billing block stands.
-cat <<'MSG'
-NEXT — publish the GitHub Releases:
+# --- 5) Actions-free publish (idempotent) ------------------------------------
+#  Publishes the GitHub Releases via `gh release create` — a REST call, not an
+#  Actions run, so it works even while the billing block stands. IDEMPOTENT: a
+#  tag whose release already exists (a prior run, OR release.yml auto-publishing
+#  on the tag push) is left untouched, so this step is safe whether or not CI is
+#  restored.
+#
+#  Notes are written to a real temp file (mktemp), NOT a process substitution
+#  `<(sed …)`. `gh` is a native Windows binary; under Git-Bash it cannot open the
+#  /proc/<pid>/fd path a `<(…)` produces ("open /proc/.../fd/63: cannot find
+#  path"), but it opens a real mktemp file fine. The trap removes the temp file
+#  on any exit so the script never leaks an orphaned notes file.
+NOTES_TMP="$(mktemp)"
+trap 'rm -f "$NOTES_TMP"' EXIT
 
-  If CI (release.yml) is restored, it auto-publishes on the tag push — you are done.
+publish_release() {  # $1=tag $2=title $3=latest-flag("--latest"|"") $4=from-ver $5=to-ver
+  local tag="$1" title="$2" latest="$3" from="$4" to="$5"
+  if gh release view "$tag" >/dev/null 2>&1; then
+    echo "-- release $tag already published — leaving it untouched --"
+    return 0
+  fi
+  # Scope the CHANGELOG section, EXCLUDING the next version's header line (an
+  # inclusive `/A/,/B/p` range would bleed the `## [B]` header into the notes).
+  sed -n "/## \\[$from\\]/,/## \\[$to\\]/{/## \\[$to\\]/!p;}" CHANGELOG.md > "$NOTES_TMP"
+  if [[ ! -s "$NOTES_TMP" ]]; then
+    echo "ABORT: extracted empty release notes for $tag (CHANGELOG anchors moved?)." >&2
+    exit 1
+  fi
+  echo "-- publishing release $tag --"
+  # shellcheck disable=SC2086  # $latest is an intentional optional flag, not a word-split bug
+  gh release create "$tag" $latest --title "$title" --notes-file "$NOTES_TMP"
+}
 
-  If you are on the Actions-free manual path, publish by hand:
-    gh release create v1.5.0 --title "v1.5.0 — Runtime Resilience & Design Intelligence" \
-      --notes-file <(sed -n '/## \[1.5.0\]/,/## \[1.4.0\]/{/## \[1.4.0\]/!p;}' CHANGELOG.md)
-    gh release create v1.6.0 --latest --title "v1.6.0 — Self-healing batch + unified MCP write-gate" \
-      --notes-file <(sed -n '/## \[1.6.0\]/,/## \[1.5.0\]/{/## \[1.5.0\]/!p;}' CHANGELOG.md)
+publish_release v1.5.0 "v1.5.0 — Runtime Resilience & Design Intelligence" "" "1.5.0" "1.4.0"
+publish_release v1.6.0 "v1.6.0 — Self-healing batch + unified MCP write-gate" "--latest" "1.6.0" "1.5.0"
 
-  Then confirm: gh release list
-MSG
+echo
+echo "== Releases (AFTER) =="
+gh release list | head -5
 
-echo "Done. Tags pushed; master fast-forwarded to the v1.6.0 tip."
+echo "Done. Tags pushed; master fast-forwarded; releases published."
