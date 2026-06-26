@@ -1,21 +1,23 @@
-# SupervisedSession — Crash-Recovery Envelope Spec (Resilience Epoch)
+# SupervisedSession — crash-recovery envelope (design + test spec)
 
-> **Status:** DRAFT for architecture lock · **Authored:** 2026-06-24 ·
-> **Grounded in:** `spikes/spike_seat_death_recovery.py` telemetry +
-> `mutate.py` transaction model + `checkpoint/` + `sw_com` cache.
-> **Scope:** the single-seat, mid-hold crash — the 99% commercial path.
-> Dual-instance ghost-PID and mid-`OpenDoc6` deaths are explicitly out of scope.
+> **Status:** Implemented in `src/ai_sw_bridge/resilience/session.py` (shipped). This
+> document is the design rationale and test specification behind it.
+> **Grounded in:** the seat-death recovery experiment
+> (`spikes/spike_seat_death_recovery.py`) + the `mutate.py` transaction model +
+> `checkpoint/` + the `sw_com` cache.
+> **Scope:** the single-seat, mid-hold crash — the dominant commercial path.
+> Dual-instance orphaned-PID and mid-`OpenDoc6` deaths are explicitly out of scope.
 
 ## 0. Premise (measured, not assumed)
 
-From the murder-spike telemetry (`_results/seat_death_recovery.json`):
+From the seat-death recovery experiment (`_results/seat_death_recovery.json`):
 
 | Fact | Value | Source |
 |---|---|---|
-| Early-bound (`typed`) post-death fault | `com_error` HRESULT **`0x800706BA`** RPC_S_SERVER_UNAVAILABLE | spike Phase 3 |
-| Dynamic (`Dispatch`) post-death fault | **`AttributeError`** (`GetIDsOfNames` on dead server) | spike Phase 3 |
-| Fault latency | **immediate, 0.0s** — never hangs (property reads AND method calls) | spike Phase 3 |
-| Re-bind | **~8–9s**, first `Dispatch`, **new PID**, ROT self-clears | spike Phase 4 (×3) |
+| Early-bound (`typed`) post-death fault | `com_error` HRESULT **`0x800706BA`** RPC_S_SERVER_UNAVAILABLE | experiment Phase 3 |
+| Dynamic (`Dispatch`) post-death fault | **`AttributeError`** (`GetIDsOfNames` on dead server) | experiment Phase 3 |
+| Fault latency | **immediate, 0.0s** — never hangs (property reads AND method calls) | experiment Phase 3 |
+| Re-bind | **~8–9s**, first `Dispatch`, **new PID**, running-object table self-clears | experiment Phase 4 (×3) |
 | Batch persistence | **single terminal `_save_doc`** — disk untouched until the end | `mutate.py:2038–2081` |
 
 The terminal-save model means the on-disk file is a **naturally pristine rollback
@@ -50,7 +52,7 @@ class SupervisedSession:
 
 ---
 
-## 2. Fault Detection Boundary  *(directive §1)*
+## 2. Fault detection boundary
 
 ### 2.1 Where the `try/except` sits
 
@@ -109,7 +111,7 @@ triggers one.
 
 ---
 
-## 3. Respawn Orchestration  *(directive §2)*
+## 3. Respawn orchestration
 
 Executed on the STA executor thread, after `_seat_is_dead` returns True:
 
@@ -138,11 +140,11 @@ Executed on the STA executor thread, after `_seat_is_dead` returns True:
   *corroboration* (guards against a stale ROT entry pointing at the corpse), not the
   primary signal.
 - **PID acquisition:** `find_sw_pid()` parses `tasklist /FI "IMAGENAME eq
-  SLDWORKS.exe" /NH /FO CSV` (proven in the spike; robust to display formatting).
+  SLDWORKS.exe" /NH /FO CSV` (proven in the experiment; robust to display formatting).
 - **No manual ROT surgery** — the dead entry self-clears; `release_sw_app()` +
   fresh `Dispatch` is sufficient (measured ×3).
 
-### 3.1 UI-blocker suppression  *(resolved by `spike_seat_recovery_ui.py`, 2026-06-24)*
+### 3.1 UI-blocker suppression  *(verified by `spike_seat_recovery_ui.py`)*
 
 **Measured finding: an unsaved-work crash does NOT block the respawn on the
 agent-batch timescale.** Two dirty-doc crash→respawn cycles (a real unsaved 3D-sketch
@@ -175,7 +177,7 @@ gone before it can paint UI). On this seat `swxauto` never even came into existe
 
 ---
 
-## 4. Replay Engine — Tier 1 & Tier 2  *(directive §3)*
+## 4. Replay engine — Tier 1 & Tier 2
 
 ### 4.1 Phase tracking → Tier selection
 
@@ -288,8 +290,8 @@ manifest itself is unchanged):
 
 ## 7. Testing plan
 
-Full dual-tier gauntlet specified in **`docs/supervised_session_test_spec.md`**
-(locked before any session code). In brief:
+Full dual-tier test plan in the **Test specification** section below (written before
+any session code). In brief:
 
 - **Offline (every CI run, no seat):** dependency-injected fakes; both measured fault
   signatures reconstructed as plain objects (`pywintypes.com_error(-2147023174, …)` /
@@ -307,7 +309,7 @@ Full dual-tier gauntlet specified in **`docs/supervised_session_test_spec.md`**
 
 ---
 
-## 8. Open questions for the lock
+## 8. Design decisions & open questions
 
 1. **Scope of "intent" replayed** — only `proposals` (current design), or also any
    pre-batch document mutations? Recommend: supervised batch owns the whole
@@ -326,9 +328,9 @@ Full dual-tier gauntlet specified in **`docs/supervised_session_test_spec.md`**
    — the schema now matches the architectural model. PENDING→COMMITTED on
    recovery; a fatal run stays PENDING (the host-crash resume anchor). The
    in-memory `InMemoryJournal` remains the seat-free default for the offline
-   gauntlet. (Note: §6.2's pseudo-code above still shows the original
+   test suite. (Note: §6.2's pseudo-code above still shows the original
    `CheckpointStore`-reuse sketch — superseded by this dedicated-table decision.)
-4. **CoUninitialize necessity** — the spike recovered first-attempt *with* the
+4. **CoUninitialize necessity** — the experiment recovered first-attempt *with* the
    apartment reset; we did not isolate whether the cache-drop alone suffices. Cheap
    to keep; flag for a follow-up micro-probe if respawn latency matters.
 
@@ -339,16 +341,16 @@ Full dual-tier gauntlet specified in **`docs/supervised_session_test_spec.md`**
 _Consolidated from the former `supervised_session_test_spec.md`._
 
 
-> **Status:** DRAFT for lock · **Authored:** 2026-06-24 · companion to
-> `docs/supervised_session_spec.md`. We write this BEFORE `resilience/session.py`:
-> a recovery envelope is only as trustworthy as the assassination it survives.
+> Companion to the design spec above. This was written *before*
+> `resilience/session.py`: a recovery envelope is only as trustworthy as the
+> crash it survives.
 
 ## 0. The two tiers, and why both
 
 | Tier | Runs | Proves | Pays the ~8s respawn tax? |
 |---|---|---|---|
 | **Offline mocks** | every CI run (no seat) | the Python state machine: detect → tier-select → respawn → replay → cap, and manifest shaping | **No** — faults & respawn are injected, clock is faked |
-| **Live destructive** | `-m destructive_sw` only | the physical PAE: a real `taskkill` mid-transaction recovers to a geometrically identical model | Yes — one real respawn per case |
+| **Live destructive** | `-m destructive_sw` only | the live end-to-end proof: a real `taskkill` mid-transaction recovers to a geometrically identical model | Yes — one real respawn per case |
 
 Offline proves the **logic** is correct in milliseconds; live proves the **physics**
 hold. Neither alone is sufficient — offline can't prove COM actually faults
@@ -356,7 +358,7 @@ hold. Neither alone is sufficient — offline can't prove COM actually faults
 
 ---
 
-## 1. Offline mock strategy  *(directive §1)*
+## 1. Offline mock strategy
 
 ### 1.1 Dependency injection at the seams
 
@@ -438,9 +440,9 @@ backstop are all validated **deterministically in microseconds**.
 
 ---
 
-## 2. Live assassin injection — the `destructive_sw` lane  *(directive §2)*
+## 2. Live kill-injection — the `destructive_sw` suite
 
-### 2.1 The Assassin handler (deterministic timing by construction)
+### 2.1 The kill-injection handler (deterministic timing by construction)
 
 Rather than race a `taskkill` against the batch, we inject the kill **at the seam**,
 so timing is exact, not timed. A test-only handler registered in
@@ -455,15 +457,15 @@ def _assassin(doc, feature, target):
 ```
 
 Place it as **proposal index 2 of 3** (`[real_a, real_b, __assassin__]` — or
-`[a, b, assassin, c, d]` to also prove the tail replays). The death lands
+`[a, b, __assassin__, c, d]` to also prove the tail replays). The death lands
 deterministically mid-apply-loop **after two greens are in memory and BEFORE the
 terminal `_save_doc`** → Tier 1, disk pristine. No sleeps, no flakiness.
 
-> **Why the user's "shell out at index 2" instinct is right — and sharpened:** the
-> shell-out lives INSIDE the index-2 handler, so the crash point is the handler
-> invocation itself. We make it precise by injection rather than approximate by
-> timing, and we kill **by PID** (the spike proved `/PID` works and is safe;
-> `/IM` would nuke a developer's unrelated SW instance — forbidden in the lane).
+> **Why inject the kill rather than time it:** the `taskkill` lives INSIDE the
+> index-2 handler, so the crash point is the handler invocation itself — precise by
+> construction, not approximate by timing. We kill **by PID** (the experiment proved
+> `/PID` works and is safe; `/IM` would terminate a developer's unrelated SOLIDWORKS
+> instance — forbidden in this suite).
 
 ### 2.2 Tier-2 variant (save-window death)
 
@@ -474,8 +476,8 @@ restored before replay.
 
 ### 2.3 Poison-proposal cap (anti-infinite-loop)
 
-An assassin that fires on **every** invocation of index 2 (kills, and on replay kills
-again). Assert: the envelope stops after the **2nd same-index death**, returns
+A kill-injection that fires on **every** invocation of index 2 (kills, and on replay
+kills again). Assert: the envelope stops after the **2nd same-index death**, returns
 `recovered=False, poison_proposal=2`, within the wall-clock backstop — proving a
 reproducible kernel-crasher cannot wedge the agent.
 
@@ -484,22 +486,22 @@ reproducible kernel-crasher cannot wedge the agent.
 - **Marker:** `@pytest.mark.destructive_sw` (SEH-crash isolation; the existing
   conftest auto-skips unless `-m destructive_sw`).
 - **Kill by PID only**, captured from the bound seat (`find_sw_pid()` at setup).
-  Never `/IM`. A guard asserts `BOUND_PID` is set before any assassin can fire.
+  Never `/IM`. A guard asserts `BOUND_PID` is set before any kill can fire.
 - **Throwaway fixtures:** each test `shutil.copy2`s a `captures/*.SLDPRT` into a
   temp dir; never touches tracked files or the developer's documents.
 - **Teardown:** restore `HANDLER_REGISTRY`, `CloseAllDocuments`, leave no orphan
-  (the respawned headless seat self-closes — verified by the spike).
+  (the respawned headless seat self-closes — verified by the experiment).
 
 ---
 
-## 3. The assertion contract  *(directive §3)*
+## 3. The assertion contract
 
 A "passed recovery" is **strict geometric equivalence to a non-interrupted run** —
 not merely "it didn't throw".
 
 ### 3.1 The golden baseline
 
-Run the SAME proposal list (assassin removed) on an **identical fresh fixture copy**,
+Run the SAME proposal list (the `__assassin__` handler removed) on an **identical fresh fixture copy**,
 capture the golden witnesses:
 
 ```
@@ -511,7 +513,7 @@ golden = {
 }
 ```
 
-### 3.2 The five assertions (recovery run, assassin at index 2)
+### 3.2 The five assertions (recovery run, kill at index 2)
 
 1. **Transparency** — the agent-facing manifest is a SUCCESS: `ok == True`, and the
    `recovery` block records exactly the death we injected:
@@ -531,7 +533,7 @@ golden = {
    (a save genuinely happened) and the whole recovery completed within a time budget
    (< 30s incl. one real respawn).
 
-> **On the directive's "mtime + node count":** `mtime` cannot be *equal* across two
+> **On asserting "mtime + node count":** `mtime` cannot be *equal* across two
 > runs (it's wall-clock); we assert `mtime > pre_batch_baseline` to prove a save
 > occurred. **Geometric identity is carried by `tree_hash` + `node_count` + `volume`,
 > not byte-equality** — SW embeds timestamps/GUIDs in the `.sldprt` binary, so two
@@ -547,7 +549,7 @@ model despite the corrupt-save window).
 
 ## 4. Test matrix
 
-| # | Lane | Case | Asserts |
+| # | Suite | Case | Asserts |
 |---|---|---|---|
 | 1 | offline | liveness oracle (4 rows of §1.3) | dead/alive verdict; benign-AttributeError ≠ respawn |
 | 2 | offline | death at apply-i → Tier-1 replay | manifest shape, full committed[], 1 replay |
@@ -555,9 +557,9 @@ model despite the corrupt-save window).
 | 4 | offline | retry cap | 3rd death → fatal, no 4th respawn |
 | 5 | offline | poison proposal | same-index ×2 → fatal w/ poison_proposal, < backstop |
 | 6 | offline | faked clock | respawn budget / cap timing, zero real sleep |
-| 7 | **live** | assassin @ index 2 of 3 → Tier 1 | the full §3.2 contract vs golden |
-| 8 | **live** | assassin @ index 2 of 5 → Tier 1 | tail (3,4) replays; equivalence vs golden |
-| 9 | **live** | save-window assassin → Tier 2 | §3.3 |
+| 7 | **live** | kill @ index 2 of 3 → Tier 1 | the full §3.2 contract vs golden |
+| 8 | **live** | kill @ index 2 of 5 → Tier 1 | tail (3,4) replays; equivalence vs golden |
+| 9 | **live** | save-window kill → Tier 2 | §3.3 |
 | 10 | **live** | reproducible crasher → poison | recovered=False, named, bounded |
 
 ---
@@ -569,5 +571,6 @@ model despite the corrupt-save window).
   single-threaded, PID-targeted kills, temp fixture copies.
 - Shared `conftest`: `_golden_run(fixture, proposals)` helper, `BOUND_PID` capture,
   `HANDLER_REGISTRY` monkeypatch guard, tree-hash/node-count/volume witness readers.
-- The murder-spike (`spike_seat_death_recovery.py`) is the provenance for the live
-  kill mechanics; this suite productionizes it behind deterministic seam-injection.
+- The seat-death recovery experiment (`spike_seat_death_recovery.py`) is the
+  provenance for the live kill mechanics; this suite productionizes it behind
+  deterministic seam-injection.
