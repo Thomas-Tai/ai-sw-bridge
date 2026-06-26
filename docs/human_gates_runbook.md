@@ -180,8 +180,19 @@ audit below confirms they are a clean package for counsel.
 | `CLA.md` | Inbound CLA granting relicense-to-commercial right; DCO `Signed-off-by` accepted as interim | `<LICENSOR>` |
 | `THIRD-PARTY-NOTICES.md` | SolidworksMCP-python (MIT, ESPO 2025) + full MIT text; **all 7 attributed source files verified present** this pass | — (factual; keep the upstream-commit pin current) |
 
-**To close:** qualified counsel reviews and fills the bracketed placeholders; replace
-the banners with the finalized terms. No code change is required for this gate.
+**Out-of-band brief for counsel.** A structured, engineering-verified technical
+specification for the four gaps the templates don't yet cover (telemetry/privacy,
+liability carve-outs, IP indemnification, CLA employer/work-for-hire) has been
+prepared and is delivered to counsel **out-of-band** — it is deliberately kept out of
+this repository (a git tree is not the place to record unmitigated legal-gap analysis
+for a repo bound for public launch). Ask the maintainer for the "ai-sw-bridge counsel
+brief"; it states what the software actually does (storage locations, retention,
+masking, the third-party-kernel risk surface) so counsel drafts clauses matched to the
+architecture.
+
+**To close:** qualified counsel reviews the out-of-band brief, then fills the bracketed
+placeholders in `LICENSE` / `CLA.md` and replaces the banners with the finalized terms.
+No code change is required for this gate.
 
 ---
 
