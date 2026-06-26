@@ -208,7 +208,10 @@ the *technical* readiness only.
    placeholder license text.
 3. **Prune the remote to its intended public face** — delete the stale
    `feat/w58-*` / `feat/w68-*` worker branches and resolve/close the open dependabot
-   PRs, leaving `master` (+ the release branch + tags). Re-run `git ls-remote origin`
+   PRs (#2–#6), leaving `master` (+ the release branch + tags). The exact, guarded,
+   copy-paste sequence is drafted in [`tools/remote_prune_plan.sh`](../tools/remote_prune_plan.sh)
+   (refuses to run until `I_HAVE_DECIDED_TO_GO_PUBLIC=yes`; never touches `master`
+   or tags; notes the Dependabot-respawn caveat). Re-run `git ls-remote origin`
    to confirm.
 4. Re-run this scan on the final ref set; confirm `no leaks found`.
 
