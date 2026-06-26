@@ -21,7 +21,6 @@ prompts, session reconstructions, R&D research/spike reports) is kept out of the
 - [architecture.md](architecture.md) — system structure.
 - [CLASS_RELATION_MAP.md](CLASS_RELATION_MAP.md) — the client/facades/registry/verify/COM relation map (mermaid + layer hierarchy).
 - [decisions.md](decisions.md) — the running architecture decision log (ADRs).
-- [lane_designs.md](lane_designs.md) — per-lane design notes.
 - [mcp_server_design.md](mcp_server_design.md) — the MCP server contract.
 - [checkpoint_encryption_design.md](checkpoint_encryption_design.md) — at-rest encryption design.
 - [supervised_session_spec.md](supervised_session_spec.md) — crash-recovery envelope (spec + test specification).

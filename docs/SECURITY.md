@@ -4,6 +4,31 @@ Privacy posture and supply-chain security for ai-sw-bridge.
 
 ---
 
+# Reporting a vulnerability
+
+**Please do not report security vulnerabilities through public GitHub issues.**
+
+Report a suspected vulnerability privately via GitHub's
+[private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
+(the **Report a vulnerability** button under the repository's **Security** tab),
+or by email to **<SECURITY-CONTACT>**.
+
+Please include:
+
+- a description of the issue and its impact,
+- the affected version (`ai-sw-bridge --version` / the git SHA),
+- reproduction steps or a proof of concept, and
+- any known mitigations.
+
+**Response targets:** acknowledgement within 3 business days; an initial
+assessment within 10 business days. We will coordinate a disclosure timeline
+with you and credit you in the advisory unless you prefer to remain anonymous.
+
+**Supported versions:** security fixes target the latest released minor version.
+Older versions may receive fixes at the maintainers' discretion.
+
+---
+
 # Privacy review
 
 

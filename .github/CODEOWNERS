@@ -1,0 +1,16 @@
+# Code owners — auto-requested for review on matching paths.
+# See https://docs.github.com/articles/about-code-owners
+
+# Default owner for everything in the repo.
+*                       @Thomas-Tai
+
+# Public contract surfaces — changes here are API/compat-sensitive.
+/docs/PUBLIC_API.md     @Thomas-Tai
+/src/ai_sw_bridge/client.py    @Thomas-Tai
+/CHANGELOG.md           @Thomas-Tai
+
+# Security & legal.
+/docs/SECURITY.md       @Thomas-Tai
+/LICENSE                @Thomas-Tai
+/CLA.md                 @Thomas-Tai
+/THIRD-PARTY-NOTICES.md @Thomas-Tai
