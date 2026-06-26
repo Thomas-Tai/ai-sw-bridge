@@ -180,9 +180,7 @@ def _run(
     spy = _patch(monkeypatch, timeout=timeout)
     fn = _get_tool()
     ctx = FakeContext(FakeSession(supports, behavior))
-    out = asyncio.run(
-        fn(_spec_path(tmp_path), ctx, mode="no_dim", save_as=save_as)
-    )
+    out = asyncio.run(fn(_spec_path(tmp_path), ctx, mode="no_dim", save_as=save_as))
     return out, spy
 
 
@@ -203,7 +201,9 @@ def test_approve_builds(monkeypatch, tmp_path) -> None:
 
 def test_approve_with_save_as_writes(monkeypatch, tmp_path) -> None:
     out, spy = _run(
-        "accept_yes", save_as="C:/out/widget.sldprt", monkeypatch=monkeypatch,
+        "accept_yes",
+        save_as="C:/out/widget.sldprt",
+        monkeypatch=monkeypatch,
         tmp_path=tmp_path,
     )
     assert len(spy.calls) == 1
@@ -240,9 +240,7 @@ def test_timeout_walkaway_does_not_build_and_does_not_hang(
     # Human walks away: elicit_form never resolves. asyncio.wait_for must fire;
     # the build phase must never run. This IS the regression guard against a
     # missing timeout bound (it would hang the process otherwise).
-    out, spy = _run(
-        "hang", monkeypatch=monkeypatch, tmp_path=tmp_path, timeout=0.05
-    )
+    out, spy = _run("hang", monkeypatch=monkeypatch, tmp_path=tmp_path, timeout=0.05)
     assert spy.calls == []
     assert out["aborted"] is True
     assert out["reason"] == "elicit_timeout"

@@ -252,13 +252,43 @@ A short list. The [full known-limitations doc](docs/known_limitations.md) is req
 
 ## Project status
 
-- **v0.1 — production-validated** on SOLIDWORKS 2024 SP1. `probe` / `observe` / `mutate` / Path C `codegen` all working.
-- **v0.2 (JSON-spec builder) — Phase 1 GREEN.** Motor Mount Plate builds 10/10 features with 7 parametric bindings, in all three modes. Rectangle equation-link demotion fixed 2026-05-20 (Spike ZF).
-- **v0.3 — primitives shipped:** chamfer, linear pattern, mirror, revolve, simple hole.
-- **v0.10 — reliability + DX bundle GREEN.** `--lint`, `--verify-mass`, `_expect`, structured logging, `build_metrics.json`, pre-commit framework, doc-coverage gate, golden-volume regression check, SW version floor.
-- **v0.11 — reliability / observability / supply-chain GREEN** (2026-05-27). 15-lane Phase 1: feature flags, circuit breaker, SLI baselines (p50/p95/p99), local telemetry SQLite, license-lint, upstream-drift, AGENTS.md drift, quickstart smoke, CLI stability tiers, bug-report bundler, two-stream contract, COM reconnect, fault-injection harness, release-engineering CI, anti-loop retry guard. Validated against SW 32.1.0; 342/342 tests pass; CI green on Win-2025 × Py 3.10/3.12/3.14.
-- **v0.12 — four capability lanes GREEN** (2026-05-27). 27-task Phase 2 across E1–E6: **L1 B-rep interrogation** (per-feature topological fingerprint manifest), **L2 COM error envelope + 9-entry hint catalog with hint-aware RetryGuard**, **L3 RAG API-doc retrieval** (committed 262-chunk index + `ai-sw-apidoc` CLI with 5 subcommands), **L4 SQLite per-feature checkpoints + `ai-sw-history` CLI**. All lanes behind default-OFF flags — every v0.11 spec builds byte-identical. 647/647 tests pass. [See CHANGELOG →](CHANGELOG.md) · [migration notes →](docs/migration_to_v0.12.md) · [ROADMAP →](docs/ROADMAP.md)
-- **v0.13 — Lane M (MCP server) + checkpoint encryption + STA-thread COM safety GREEN** (2026-05-28). New `ai-sw-mcp` stdio server exposes 21 tools to Claude Desktop / Cursor / Continue.dev (Wave 5 audit verified end-to-end with real-data rendering). At-rest Fernet encryption for L4 checkpoints (`--checkpoint-encrypt env:NAME|file:|keyring:|prompt`). STA-threaded `ComExecutor` + pywin32 adapter factory ported from `SolidworksMCP-python` so out-of-process callers (MCP subprocess, IDE plugins) cleanly attach to the user's foreground SW via `GetActiveObject`. Add-in interference detection (`ai-sw-build --disable-addins --strict-addins`). 947 tests pass + 13 e2e_sw tests against a live SW workstation. Wave 5 audit caught + fixed 5 ship blockers pre-tag. [See CHANGELOG →](CHANGELOG.md) · [MCP design →](docs/mcp_server_design.md) · [deferred items →](docs/DEFERRED.md)
+**Current release: `v1.6.0` — commercial, Production/Stable.** One public Python
+entry point (`SolidWorksClient`), 21 CLI commands, a 37-tool MCP server, and a
+36-kind `feature_add` registry behind the `ai-sw-batch` / `ai-sw-mutate` surface.
+Validated against SOLIDWORKS 32.1.0 (2024 SP1); CI green on Win-2025 × Python
+3.10 / 3.12 / 3.14. The offline suite is **3,700+ tests**, plus a live-SW
+end-to-end lane (`solidworks_only`) and a destructive seat-death recovery lane
+(`destructive_sw`).
+
+Milestone arc (full detail in [CHANGELOG.md](CHANGELOG.md)):
+
+- **v0.1–v0.3 — foundations.** `probe` / `observe` / `mutate` / Path C `codegen`;
+  the JSON-spec builder (Motor Mount Plate, three build modes); first primitives.
+- **v0.10–v0.13 — reliability & intelligence.** Feature flags, circuit breaker,
+  SLI baselines, two-stream contract, CLI stability tiers; B-rep interrogation,
+  the COM error envelope, RAG API-doc retrieval, L4 SQLite checkpoints + at-rest
+  Fernet encryption; the `ai-sw-mcp` server + STA-threaded `ComExecutor`.
+- **v0.14–v0.18 — capability epochs.** Assemblies & mates, drawings & annotations,
+  custom properties, multifile configurations, sketch editing, surfaces,
+  sheet-metal, curves, reference geometry, weldments — and the consolidation to a
+  single `SolidWorksClient` facade (the free `sw_*` functions removed).
+- **v1.0.0 — GA** (2026-06-23). First stable release; the `SolidWorksClient` facade
+  is the sole supported Python API, SemVer in force.
+- **v1.1–v1.4 — agentic batch & observability.** Transactional multi-feature
+  `client.mutate.batch()` + `sw_batch_plan` / `sw_batch_execute`; the `intersect`
+  lane; MBD/DimXpert PMI observability (`sw_observe_mbd`).
+- **v1.5.0 — runtime resilience & design intelligence.** The `SupervisedSession`
+  crash-recovery envelope (detect → respawn → idempotent replay, live-proven on a
+  real seat) and a local, on-device Design-Memory RAG (`ai-sw-memory`).
+- **v1.6.0 — self-healing batch + unified write-gate** (2026-06-26). Supervised
+  recovery is the **default** batch path; **both** MCP write tools (`sw_build`,
+  `sw_batch_execute`) gate every disk write behind in-chat human approval (MCP
+  elicitation); proprietary commercial licensing; CI hardened (black / flake8 /
+  mypy / import-linter / coverage / secret + CVE scanning, all blocking).
+
+See [`docs/PUBLIC_API.md`](docs/PUBLIC_API.md) for the supported-surface contract
+and [`docs/human_gates_runbook.md`](docs/human_gates_runbook.md) for the release /
+live-proof checklist.
 
 ## Layout
 
@@ -292,7 +322,7 @@ ai-sw-bridge/
 │   └── ai_driven_architecture_review.md  # field survey + design rationale
 ├── tools/                    # CHM extractor, drift/license lint, bundle, perf baselines, probe_mcp_tools, checkpoint_redact, spec_redact, example_roundtrip
 ├── spikes/                   # Phase 0 / v0.3 / v0.5 / v0.6 API probes
-├── tests/                    # 947 tests, all green on Python 3.10 / 3.12 / 3.14
+├── tests/                    # 3,750 offline tests, green on Python 3.10 / 3.12 / 3.14
 │   ├── e2e_sw/               # end-to-end suite against live SW (solidworks_only marker)
 │   ├── fault_injection/      # COM HRESULT injection (separate CI job)
 │   ├── mcp_lane/             # MCP server contract + wire-level + snapshot fixtures

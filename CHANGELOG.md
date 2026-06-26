@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.6.0] - 2026-06-25
+## [1.6.0] - 2026-06-26
 
 **Self-healing batch by default (Wave 2).** The `SupervisedSession` crash-recovery
 envelope that shipped in 1.5.0 as an opt-in layer is now WIRED into the default
@@ -40,6 +40,33 @@ reports real recovery data.
   re-runs the Case-7 Parasolid assassination **through `client.mutate.batch()`** (the
   customer path) and asserts geometry identical to the golden run; auto-skipped
   until fired on a real seat (`-m destructive_sw`).
+
+### Security
+
+- **Unified MCP write-gate (Option 3).** `sw_build` is now async and
+  **elicitation-gated**, matching `sw_batch_execute`: it validates the spec, then
+  secures an explicit in-chat `approve=true` via MCP elicitation **before any COM
+  write or `save_as` to disk**. No MCP tool persists geometry without a human in the
+  loop — the approval surface is the CLI `[y/N]` **or** MCP elicitation, never
+  autonomous. Degrades to the `ai-sw-build` CLI when the client cannot elicit.
+  Pinned by `tests/mcp_lane/test_build_elicit.py` (the COM build callable is invoked
+  only on approval; never on decline / cancel / timeout / unsupported) and the
+  `COM_SAFE_VIA_MANUAL_DISPATCH` contract in `test_server_contract.py`.
+
+### Changed
+
+- **Documentation realigned to the shipped surface.** `README.md` and the new
+  `docs/PUBLIC_API.md` contract now reflect 21 CLI commands (with stability tiers)
+  and 37 MCP tools; the stale "no assemblies / mates / drawings" limitation was
+  removed. `com/latebound.py` consolidates the previously-duplicated `_latebound`
+  COM re-wrap (was byte-identical in three feature modules).
+
+### Fixed
+
+- **Drawing tolerance no-op now surfaces.** `_apply_tolerance_to_dims` previously
+  counted a tolerance as applied without checking the kernel return; an explicit
+  `False` from `SetToleranceType` / `SetToleranceValues` is now reported in the
+  error manifest instead of being silently swallowed (live-seat PAE pending).
 
 ## [1.5.0] - 2026-06-25
 
