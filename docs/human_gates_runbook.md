@@ -80,7 +80,20 @@ pass's pre-flight commit. The unreleased `v1.6.0` should tag at **HEAD**, not
 `a2cbee4`. Tags currently stop at `v1.4.0`; `origin/master` is `8cefd01` (the
 v1.5.0 boundary).
 
-**Turnkey sequence (run once Gate 1 clears). Re-confirm the SHAs first:**
+**Turnkey path:** the sequence below is packaged as a guarded, idempotent,
+human-run script — [`tools/release_v1.5_v1.6.sh`](../tools/release_v1.5_v1.6.sh).
+It enforces the W0 invariants in code (refuses unless the repo is private; pushes
+master **fast-forward only**, never `--force`; tag creation is idempotent so a
+re-run is safe) and prints the live SHAs before acting:
+
+```bash
+I_HAVE_RESOLVED_BILLING_AND_AM_RELEASING=yes bash tools/release_v1.5_v1.6.sh
+```
+
+The inline sequence below is the readable equivalent — use it to audit what the
+script does, or to run the steps by hand.
+
+**Manual sequence (run once Gate 1 clears). Re-confirm the SHAs first:**
 
 ```bash
 # 0. Sanity — confirm the boundaries before tagging.
