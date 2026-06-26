@@ -44,9 +44,27 @@ the hardening session. This is owner-only (billing/plan settings on
 `github.com/Thomas-Tai/ai-sw-bridge`). **Not a code problem.**
 
 **To close:** restore Actions minutes / payment on the repo's billing plan, then
-confirm a normal push triggers `ci.yml` and it goes green. Until this clears,
-Gate 2 cannot publish (a tag would either not build or publish off an unverified
-commit).
+confirm a normal push triggers `ci.yml` and it goes green. Private repos include
+2,000 free Actions minutes/month, so an "account-level limit" is often an exhausted
+quota or a $0 spending cap — check the billing page before assuming you must pay.
+
+**Option A — ship without waiting for billing (Actions-free manual release).**
+You do **not** need CI to cut a release. The billing wall blocks the *automated*
+`release.yml` pipeline, but the release itself can be done by hand:
+
+- **Tagging is pure git** (`git tag` / `git push`) — no Actions.
+- **Publishing is `gh release create`** — a REST API call, not an Actions run; it
+  does not touch the billing block.
+- **The release gate is already satisfied** — the pre-flight table above reproduces
+  every check `release.yml` runs (`black`/`flake8`/`mypy`/import-linter/`pytest
+  3750✓/65% cov`). That local run **is** the evidence the commit is green.
+
+So you can execute Gate 2 today, privately, with the local pre-flight as the gate —
+then restore automated CI later (paid minutes or a self-hosted runner), decoupled
+from the publication decision. Do **not** flip the repo to public merely to get
+free Actions minutes — that trades a few-dollar billing line for the irreversible
+publication of a commercial product's full source + history (see the
+pre-publication appendix below).
 
 ---
 
@@ -153,6 +171,48 @@ audit below confirms they are a clean package for counsel.
 the banners with the finalized terms. No code change is required for this gate.
 
 ---
+
+## Appendix — pre-publication secret/IP scan (2026-06-26)
+
+Run before any decision to flip the repo **private → public**. Going public is a
+separate, irreversible, business/legal call (the product is proprietary-commercial
+and the license is still a counsel-review template — Gate 4). This appendix records
+the *technical* readiness only.
+
+**Scan results (gitleaks 8.30.1, full history + remote ref audit):**
+
+- ✅ **IP scrub held.** Zero `.dll` / `.pfx` / `.snk` / key blobs reachable from any
+  ref (including the stale `origin/feat/w68-*` remote-tracking branches). The W68
+  `RouteCAddin.dll` removal is complete.
+- ✅ **Pushable branch is clean.** `gitleaks git . --log-opts=feat/w67-phase3`
+  (CI-equivalent single-branch scan, 684 commits) → **no leaks found**. The only
+  gitleaks hits in the repo are the 9 documented SOLIDWORKS sketch-relation enum
+  false positives (`"token": "sgHORIZONTAL2D"` …), allowlisted in `.gitleaksignore`
+  by their on-branch SHA `a06ea3e3`. (They only re-surface on a `--all` scan, which
+  pulls in the parallel-SHA stale worker branches — a local artifact, not a CI or
+  push concern. Note: gitleaks fingerprints embed the commit SHA, so a future
+  history rewrite would require regenerating that allowlist.)
+- ⚠️ **The remote exposes more than the clean master.** `git ls-remote origin` shows
+  the public surface would include, beyond `master` (`8cefd01`, scrubbed): four
+  stale worker branches on the pre-scrub history line (`feat/w58-doc-trueup`,
+  `feat/w68-curve-driven-pattern`, `feat/w68-fill-pattern`,
+  `feat/w68-fillet-faceround`), five `dependabot/*` branches, and their
+  `refs/pull/*` PR refs. None carry the DLL (verified), but half-finished worker
+  branches and bot noise should not be a product's public face.
+
+**Pre-publication checklist (human-gated, do NOT auto-execute):**
+
+1. Decide that **source-available is the actual strategy** (not a default; the
+   license is proprietary-commercial).
+2. Finalize `LICENSE` / `CLA.md` with counsel (Gate 4) — never publish source under
+   placeholder license text.
+3. **Prune the remote to its intended public face** — delete the stale
+   `feat/w58-*` / `feat/w68-*` worker branches and resolve/close the open dependabot
+   PRs, leaving `master` (+ the release branch + tags). Re-run `git ls-remote origin`
+   to confirm.
+4. Re-run this scan on the final ref set; confirm `no leaks found`.
+
+Only then is a public flip + a tagged release a coherent launch moment.
 
 ## What an agent CAN keep doing between gates
 
