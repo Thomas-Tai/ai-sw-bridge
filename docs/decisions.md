@@ -232,8 +232,7 @@ code) in a single pass.
 **Decision:** Apply all doc-only audit findings in one pass:
 `requirements.md`, `spec.md`, `UIUX.md`, `harvest_plan.md` (all in
 the v0.11 scratch space) plus create seven new docs at the public
-level (`docs/ROADMAP.md`, `docs/release_engineering.md`,
-`docs/supply_chain_security.md`, etc.). The code-level findings
+level (`docs/ROADMAP.md`, `docs/SECURITY.md`, etc.). The code-level findings
 (telemetry module, feature flags module, anti-loop logic) remain on
 the execution plan and are not blocked by this doc pass.
 

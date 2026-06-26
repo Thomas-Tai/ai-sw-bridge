@@ -84,8 +84,7 @@ runbook; promoted to real entries once observed):
 
 Placeholder rows for add-in-related failure modes. Populated when
 `spikes/v0_13/spike_addin_enumeration.py` returns results from a live
-SW session. See [`docs/addins_research.md`](addins_research.md) for
-the full research note.
+SW session.
 
 | # | Symptom | Real cause | Diagnostic | Mitigation | First seen |
 |---|---|---|---|---|---|

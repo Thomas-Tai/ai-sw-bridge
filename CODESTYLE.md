@@ -343,7 +343,7 @@ surface is consumed by downstream log aggregators that don't render
 ANSI.
 
 **Never log PII or trade secrets.** Locals values, customer
-filenames, full file paths — all SENSITIVE per `docs/privacy_review.md`.
+filenames, full file paths — all SENSITIVE per `docs/SECURITY.md` (Privacy review).
 Either skip the field or log a stable token like
 `"<redacted:locals>"`. The redactor in `tools/bundle_bug_report.py`
 applies the trade-secret patterns from `.ai-sw-bridge.toml` to log

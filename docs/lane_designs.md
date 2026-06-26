@@ -180,7 +180,7 @@ Alternatives rejected:
   binary format; not practical.
 - *Use an external embedding API.* Requires network egress;
   violates the local-only privacy posture (see
-  `docs/privacy_review.md`).
+  `docs/SECURITY.md`, Privacy review).
 - *Single corpus mixing programmer's guide + API reference.*
   Currently kept separate (programmer's guide only ships); see
   `docs/DEFERRED.md` for the open decision on whether to merge.

@@ -4,7 +4,7 @@
 **Authors:** v0.13 closure track.
 **Cross-refs:** *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §6
 (Lane M deferred design), [`docs/decisions.md`](decisions.md)
-2026-05-23 "Lane M adoption-driven", [`docs/addins_research.md`](addins_research.md),
+2026-05-23 "Lane M adoption-driven",
 [`docs/com_failure_modes.md`](com_failure_modes.md) row M-XX.
 
 This document is the binding design for the MCP server (Lane M). It

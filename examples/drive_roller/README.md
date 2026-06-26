@@ -91,4 +91,4 @@ ai-sw-build examples/drive_roller/spec.json --verify-mass
 
 ## Axis reference
 
-See [docs/sketch_axes.md](../../docs/sketch_axes.md) for the complete verified axis mappings across all three default reference planes.
+See [docs/spec_reference.md](../../docs/spec_reference.md) (Sketch axes reference) for the complete verified axis mappings across all three default reference planes.

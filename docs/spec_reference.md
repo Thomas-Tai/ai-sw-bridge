@@ -67,7 +67,7 @@ Creates a centered rectangle on one of the three default reference planes.
 | `height` | yes | length | Rectangle height (mm) |
 | `center` | no | object | `{x, y, z}` offset in sketch-local mm. Default `{"x": 0, "y": 0}` (part origin). See **center.z** below. |
 
-**center.z** (Top/Right Plane sketches): The optional `z` field offsets the sketch geometry along the part-frame Z axis. On Front Plane, `z` is redundant (the plane already lies at Z=0). On Top Plane, `center.z` positions the rectangle at the given part-Z — the builder applies a sign flip (`sketch_Y = -part_Z`) internally. On Right Plane, `center.z` positions along part-Z similarly. This is essential when a Top/Right Plane sketch must land at a non-zero Z position (e.g. a groove at mid-length of a cylinder). See [sketch_axes.md](sketch_axes.md) for the full axis-mapping reference.
+**center.z** (Top/Right Plane sketches): The optional `z` field offsets the sketch geometry along the part-frame Z axis. On Front Plane, `z` is redundant (the plane already lies at Z=0). On Top Plane, `center.z` positions the rectangle at the given part-Z — the builder applies a sign flip (`sketch_Y = -part_Z`) internally. On Right Plane, `center.z` positions along part-Z similarly. This is essential when a Top/Right Plane sketch must land at a non-zero Z position (e.g. a groove at mid-length of a cylinder). See the **Sketch axes reference** section below for the full axis-mapping reference.
 
 **Axis mapping:**
 - Front Plane: X = width, Y = height, extrude direction = +Z
@@ -87,7 +87,7 @@ Creates a centered rectangle on one of the three default reference planes.
 |---|---|---|---|
 | `centerline` | no | object | `{start, end}` — each endpoint has `{x, y}` (required) and optional `z` (same meaning as `center.z`). One centerline per sketch. Coordinates are literal mm; no `{rhs}` bindings. |
 
-The centerline `start`/`end` use the same projection as `center`: on Top Plane, the `y` component maps to part-Z (with sign flip) and the optional `z` provides an additional part-frame Z offset. See [sketch_axes.md](sketch_axes.md) for details.
+The centerline `start`/`end` use the same projection as `center`: on Top Plane, the `y` component maps to part-Z (with sign flip) and the optional `z` provides an additional part-frame Z offset. See the **Sketch axes reference** section below for details.
 
 **Lint warning:** A Top Plane sketch with a `centerline` but no `center.z` triggers a lint finding — the centerline will default to part Z=0, which is almost never what you want for a revolved feature. Run `--lint` to catch this.
 
@@ -960,3 +960,68 @@ Lint findings are warnings, not errors. The spec is valid but likely buggy. Exit
 | [`patterned_plate`](../examples/patterned_plate/) | 5 | adds `sketch_circle_on_face`, `cut_extrude_through_all`, `linear_pattern` |
 | [`mirrored_holes`](../examples/mirrored_holes/) | 5 | same as patterned_plate but `mirror_feature` instead of `linear_pattern` |
 | [`drive_roller`](../examples/drive_roller/) | 9 | `sketch_circle_on_plane`, `boss_extrude_blind`, `cut_extrude_through_all`, `cut_extrude_blind`, `sketch_rectangle_on_plane` (Top Plane + center.z + centerline), `revolve_cut` |
+
+---
+
+# Sketch axes reference
+
+_Consolidated from the former `sketch_axes.md`._
+
+
+This document records the mapping between part-frame coordinates and
+sketch-local 2D coordinates on each default reference plane. These were
+determined by building geometry at known part coordinates and reading
+back the resulting body bounding box.
+
+## Verified Mappings (2026-05-22, SW 2024 SP1)
+
+| Plane | sketch_X | sketch_Y | Verification |
+|-------|----------|----------|--------------|
+| Front (XY) | +part_X | +part_Y | Identity — trivially correct |
+| Top (XZ) | +part_X | **-part_Z** | DriveRoller groove at center.z=40 lands at part Z=[37.5, 42.5] via `ai-sw-observe bbox` |
+| Right (YZ) | +part_Z | +part_Y | Not exercised by shipped specs; derived from ModelToSketchTransform and geometric consistency |
+
+## How to read this table
+
+Given a spec `center: {"x": 12, "y": 0, "z": 40}` on Top Plane:
+
+1. The builder projects part-frame center to sketch-local 2D:
+   - `sx = cx = 12` (sketch_X = +part_X)
+   - `sy = -cz = -40` (sketch_Y = -part_Z)
+2. The COM call `CreateCenterRectangle(sx_m, sy_m, 0, ...)` receives meters.
+3. The resulting geometry lands at part Z=+40 (verified by bounding box).
+
+## ModelToSketchTransform caveat
+
+Reading `ISketch.ModelToSketchTransform.ArrayData` on Top Plane shows a
+3x3 rotation matrix with `sketch_Y = +part_Z` (no sign flip). This
+appears to contradict the empirical mapping above. The discrepancy is
+likely due to SW's internal transform convention differing from the
+simple `sketch = R * part + t` interpretation. **The actual geometry
+takes precedence over the transform matrix reading.** Do not "fix" the
+sign flip based on the transform alone.
+
+## Centerline endpoint projection
+
+Centerline `start`/`end` coordinates use the same projection. For Top
+Plane, the `z` component of start/end is negated the same way as
+`center.z`:
+
+```python
+# _draw_centerline_if_present (in _sketch_primitives.py)
+if plane == "Top":
+    sz_m = -cz_m  # same sign flip as rectangle/circle center
+```
+
+## Code locations
+
+- Rectangle handler: `spec/sketches/rectangle_on_plane.py:73-79`
+- Circle handler: `spec/sketches/circle_on_plane.py:44-49`
+- Centerline drawing: `spec/_sketch_primitives.py:90`
+- Extrude origin remap: `spec/builder.py:420-426`
+
+## When to re-verify
+
+- New SW version (the sign flip may change across builds)
+- Adding a new plane type (user-created reference planes)
+- Any change to the sketch handler projection logic
