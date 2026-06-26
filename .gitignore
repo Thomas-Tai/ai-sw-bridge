@@ -30,6 +30,12 @@ ENV/
 .claude/
 *.swp
 
+# Internal-only docs — maintainer operational context relocated during the
+# public-boundary sanitization (2026-06-26): release runbooks, AI-agent
+# orchestration prompts (W*-era), session reconstructions, R&D spike reports,
+# and the git-history scrub target list. NEVER tracked; not for a public repo.
+_internal/
+
 # OS
 .DS_Store
 Thumbs.db

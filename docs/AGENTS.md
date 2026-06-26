@@ -148,7 +148,7 @@ Type stubs in [`src/ai_sw_bridge/_sw_stubs/sw_stubs.pyi`](../src/ai_sw_bridge/_s
 
 ## Session handoff
 
-When ending a session, fill in [`docs/handoff_template.md`](handoff_template.md) and paste it into the next session's opening message. This preserves context across the two-session workflow (Sonnet part-build sessions + Opus primitive-development sessions).
+When ending a session, summarize the current build state and paste it into the next session's opening message. This preserves context across a multi-session workflow.
 
 **Memory enforcement**: Before ending any session, write at least one memory file (project, feedback, or reference type) covering what you learned. The memory index at `~/.claude/projects/.../memory/MEMORY.md` must stay current.
 

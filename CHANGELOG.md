@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Documentation sanitization for the public boundary.** Trimmed `docs/` to the
+  user/contributor-facing surface (71 → 36 tracked files). Internal maintainer-only
+  material — release runbooks, AI-agent orchestration prompts (`docs/history/`),
+  session reconstructions, and R&D spike reports — was relocated to an untracked
+  `_internal/` directory (kept locally, off the repository). Stale pre-1.0 migration
+  guides and the v0.14 hardening plan were removed. The `docs/README.md` index now
+  reflects the sanitized structure. No code change.
+
 ## [1.6.1] - 2026-06-26
 
 **Documentation & audit release.** No code behavior change — this release captures
@@ -459,8 +469,8 @@ This release also folds in the work tagged (but never changelogged) across
 v0.15–v0.17: surfaces, sheet-metal completion, thread features, reference
 geometry, drawing-annotation axis, and the read-only Evaluate cluster.
 
-Design notes: [`docs/history/v1_0_commercialization_rfc.md`](docs/history/v1_0_commercialization_rfc.md)
-(superseded by [`docs/commercial_readiness_audit.md`](commercial_readiness_audit.md)).
+Design notes: `v1_0_commercialization_rfc.md` (internal, superseded by the
+internal commercial-readiness dossier).
 
 ### Added
 
@@ -526,8 +536,8 @@ the only breaking change is the removal of `sw_run_macro` /
 `ai-sw-mutate run_macro` (workaround unchanged: paste `.bas` into
 VBE manually).
 
-Audit + execution plan: [`docs/v0.14_commercial_hardening_plan.md`](docs/v0.14_commercial_hardening_plan.md).
-Migration guide: [`docs/migration_to_v0.14.md`](docs/migration_to_v0.14.md).
+Audit + execution plan and migration guide were tracked in internal/superseded
+docs (v0.14 era).
 
 ### Fixed
 
@@ -988,9 +998,8 @@ pass; flake8/black/mypy clean on Py 3.10).
 ### Migration
 
 Upgrading from v0.11 is additive-only. All new functionality sits
-behind default-OFF feature flags. See
-[`docs/migration_to_v0.12.md`](docs/migration_to_v0.12.md) for the full
-schema / CLI / sidecar diff.
+behind default-OFF feature flags. (The detailed v0.12 migration diff was a
+pre-1.0 doc, since retired.)
 
 ### Dependencies
 

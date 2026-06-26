@@ -101,7 +101,7 @@ What's different here:
 3. **Safety is structural, not aspirational.** `ai-sw-mutate` ships a literal `propose → dry-run → review → commit` state machine. Rollback verification reads the file back from disk and compares. There is no `--yolo` flag.
 4. **CHM is the source of truth for API signatures.** When a call returns `PARAMNOTOPTIONAL`, we don't guess — we re-extract from `sldworksapi.chm` and assert the arg count at runtime. [See the API reference →](docs/api_reference.md)
 
-For the longer story (field survey of existing tools, why fluent APIs lose, why JSON wins), read [`docs/ai_driven_architecture_review.md`](docs/ai_driven_architecture_review.md).
+For the architecture and design rationale (why JSON specs over a fluent API, the layer model), read [`docs/architecture.md`](docs/architecture.md) and the [`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md).
 
 ## What ships in the box
 
@@ -313,8 +313,7 @@ Milestone arc (full detail in [CHANGELOG.md](CHANGELOG.md)):
   mypy / import-linter / coverage / secret + CVE scanning, all blocking).
 
 See [`docs/PUBLIC_API.md`](docs/PUBLIC_API.md) for the supported-surface contract
-and [`docs/human_gates_runbook.md`](docs/human_gates_runbook.md) for the release /
-live-proof checklist.
+and [`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md) for the architecture map.
 
 ## Layout
 
@@ -345,7 +344,7 @@ ai-sw-bridge/
 │   ├── ROADMAP.md
 │   ├── mcp_server_design.md  # ← MCP server protocol + tool inventory + design rationale
 │   ├── checkpoint_encryption_design.md  # ← L4 at-rest encryption (Fernet, 4 key sources)
-│   └── ai_driven_architecture_review.md  # field survey + design rationale
+│   └── CLASS_RELATION_MAP.md  # client / facades / registry / COM relation map
 ├── tools/                    # CHM extractor, drift/license lint, bundle, perf baselines, probe_mcp_tools, checkpoint_redact, spec_redact, example_roundtrip
 ├── spikes/                   # Phase 0 / v0.3 / v0.5 / v0.6 API probes
 ├── tests/                    # 3,750 offline tests, green on Python 3.10 / 3.12 / 3.14

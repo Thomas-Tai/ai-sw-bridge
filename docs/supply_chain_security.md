@@ -229,7 +229,7 @@ The default is "don't add a dependency." Stdlib-first; selective adoption only w
 2. Assess severity + affected versions.
 3. Develop a fix on a private branch.
 4. Coordinate disclosure timeline with the reporter.
-5. Release a PATCH per [`release_engineering.md`](release_engineering.md) §10.2.
+5. Release a PATCH following the project's standard release process.
 6. Public disclosure includes:
    - CVE allocation (when applicable).
    - Affected versions.
@@ -273,7 +273,7 @@ This document does NOT cover:
 - **User data privacy.** See *(retired v0.13.0; see decisions.md 2026-05-28 entry)*.
 - **Cryptographic operations.** The bridge does not implement crypto; it consumes hashing (SHA-256 for fingerprints) via stdlib. Any cryptographic vulnerabilities are inherited from Python's `hashlib` and out of bridge scope.
 - **Authentication / authorization.** The bridge runs as the user; there is no multi-user authentication model.
-- **Code signing of releases.** Documented separately in [`release_engineering.md`](release_engineering.md) §6.3.
+- **Code signing of releases.** Planned; tracked in the project's internal release-engineering notes.
 
 ---
 

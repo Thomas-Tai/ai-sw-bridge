@@ -25,8 +25,8 @@ and mutate modules.
   remain as backward-compatible shims through v0.14 and are slated
   for removal in v0.15 (D-v0.14-06 in DEFERRED.md).
 - **Removed (BREAKING):** `ai-sw-mutate run_macro` subcommand +
-  `mutate.sw_run_macro` Python function. Migration:
-  [`docs/migration_to_v0.14.md`](migration_to_v0.14.md).
+  `mutate.sw_run_macro` Python function. Migration: see the v0.14 entry in
+  [`CHANGELOG.md`](../CHANGELOG.md).
 
 Full details: [`CHANGELOG.md`](../CHANGELOG.md) v0.14.0.
 

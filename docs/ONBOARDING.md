@@ -136,7 +136,6 @@ Source: [`cli/observe.py`](../src/ai_sw_bridge/cli/observe.py) (subcommand
 | Capability matrix | [`docs/CAPABILITIES.md`](CAPABILITIES.md) |
 | Spec JSON reference | [`docs/spec_reference.md`](spec_reference.md) |
 | CLI + MCP tool reference | [`docs/tools_reference.md`](tools_reference.md) |
-| Face roles + manifest reference | [`docs/ROLES.md`](ROLES.md) |
 | Known gotchas | [`docs/known_gotchas.md`](known_gotchas.md) |
 | Working example specs | [`examples/`](../examples/) |
 
