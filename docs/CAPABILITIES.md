@@ -1,216 +1,151 @@
-# ai-sw-bridge — Capability Matrix
+# Capability Matrix
 
-> **Source of truth** for the shipped declarative→SOLIDWORKS-COM surface.
-> Generated from the live repo (`_SUPPORTED_FEATURE_TYPES`, `export/formats.py`,
-> the `ai-sw-*` CLI entry points, the `sw_*` MCP tools) cross-checked with
-> `docs/DEFERRED.md`. Paradigm: **declarative JSON is the only authoring surface;
-> propose→approve→execute; zero arbitrary code exec; out-of-process Python.**
->
-> Last reconciled: 2026-06-10 (through W51 — motion audit, mechanical-mate
-> epoch W46–W48, auto-pierce v2, dxf_flat_bends, DFM observe). Suite:
-> **2085 passed** (serial; xdist unavailable in this env), 58 skipped.
+What the bridge can build, observe, and export today. This is the affirmative
+counterpart to [`DEFERRED.md`](DEFERRED.md) (what it cannot do, and why) — together
+they bound the supported surface.
 
-## 0. Surfaces
-
-**15 CLI entry points:** `ai-sw-build` · `ai-sw-mutate` · `ai-sw-assembly` ·
-`ai-sw-drawing` · `ai-sw-properties` · `ai-sw-configurations` ·
-`ai-sw-sketch-relations` · `ai-sw-observe` · `ai-sw-probe` ·
-`ai-sw-checkpoint` · `ai-sw-history` · `ai-sw-codegen` · `ai-sw-apidoc` ·
-`ai-sw-mcp` · `ai-sw-bridge`
-
-**§6.5 rule:** approval-gated **mutations** (propose/dry_run/commit) are **CLI-only,
-never MCP**. **Read-only** interrogation (`observe`) may be both CLI **and** MCP.
-
-## 1. Part features — `feature_add` (18 advertised kinds)
-
-The `feature_add` mutation in `mutate.py`; each kind is in `_SUPPORTED_FEATURE_TYPES`
-(propose fails-closed on anything outside it).
-
-| Kind | COM recipe (abbrev.) | Origin |
-|---|---|---|
-| `fillet_constant_radius` | CreateDefinition(1)→typed_qi→CreateFeature | F1 |
-| `variable_radius_fillet` | IsMultipleRadius + per-edge SetRadius | F2 |
-| `chamfer` | legacy `InsertFeatureChamfer` (8-arg) | W24 |
-| `base_flange` | CreateDefinition(34)→typed_qi | F2 |
-| `wizard_hole` | CreateDefinition(25)→InitializeHole→CreateFeature | F2 |
-| `shell` | `IModelDoc2.InsertFeatureShell` | F2 |
-| `draft` | `InsertMultiFaceDraft` (neutral mark=1 / faces mark=2) | F2 |
-| `dome` | `InsertDome` (via durable face_ref) | W6 |
-| `sweep` | CreateDefinition(17)→ISweepFeatureData; **auto-pierce** (W50/W51-A): `sgATPIERCE` self-anchors profile↔path for generative use | D4, W50 |
-| `sweep_cut` | CreateDefinition(18) (path must pierce solid) | W6 |
-| `ref_plane` | `InsertRefPlane` — offset OR normal-to-edge (edge_ref) | W3/W6 |
-| `ref_axis` | `IModelDoc2.InsertAxis2(True)` | W3 |
-| `coordinate_system` | `InsertCoordinateSystem` | W3 |
-| `ref_point` | `InsertReferencePoint(4,…)` (face-centroid via face_ref) | W5.3 |
-| `linear_pattern` | `FeatureLinearPattern5` (22-arg, seed mark=4/dir mark=1) | W21 |
-| `circular_pattern` | `FeatureCircularPattern5` (14-arg; spacing in RADIANS) | W21 |
-| `mirror_feature` | `InsertMirrorFeature2` (5-arg, seed mark=1/plane mark=2) | W21 |
-| `delete_body` | `InsertDeleteBody2(False)` (1-arg) on a `SelectByID2(…,"SOLIDBODY")` body | W41 |
-
-*(Plus the pre-W1 core: extrude / cut / revolve / 7 sketch primitives with
-construction + text fidelity — `spec/builder.py`.)*
-
-**Load-bearing lessons:** instance-count gate = measure **volume/face delta**, not
-count+type+reopen (caught the circular-pattern radians bug); SAFEARRAY args must be
-`VARIANT(VT_ARRAY|VT_DISPATCH, (obj,))` — a bare object silently no-ops.
-
-**⛔ `edge_flange` QUARANTINED 2026-06-09 (W42 ghost finding):** it was advertised
-(W7) but is a **ghost** — `_create_edge_flange` returns `ok=True` + an
-error-code-0 `Edge-Flange1` node yet adds **ZERO** geometry (ΔVol=0, reproduced
-3×). The W7 PAE verified node-**presence**, never the B-rep. De-advertised
-(propose fails-closed); handler kept as characterized code. This exposed a
-**systemic verification gap** — ~6 other kinds (`base_flange`, `shell`, `draft`,
-`sweep`, `sweep_cut`, `dome`) shipped on the same node-presence proof. **W44
-CLOSED 2026-06-09:** B-rep-effect re-verification 6/6 GREEN (ΔVol>0 or face-angle
-proof for each); `_create_draft` handler defect (`InsertMultiFaceDraft` returns
-None on success) fixed `40842eb`. `edge_flange` remains the sole ghost; re-advertise
-only after a ΔVol>0 seat proof. See `docs/DEFERRED.md` Wave-44.
-
-## 2. Assembly — `ai-sw-assembly` (W9–W49)
-
-| Capability | Detail |
-|---|---|
-| Multi-part placement | W8 `OpenDoc6` pre-open → `AddComponent4` (real B-rep) |
-| Rotated placement | `rpy_deg` via CreateTransform→`SetTransformAndSolve` |
-| **13 mate types** | coincident · distance · concentric · parallel · perpendicular · tangent · angle · **width** · **gear** (W46, transposed-setter fix) · **rack-pinion** (W47) · **cam-follower** (W47) · **slot** (W48) · **hinge** (W48) |
-| Limit modifier | distance/angle limit mates (hinge angle-limit re-deferred W51-B: angle-ref role GREEN, limit values SW-reparametrize; branch `feat/w51-hinge-limit` preserved) |
-| **Motion audit** (W49) | parametric DOF sweep — `Parameter().SystemValue` drives a mate through its travel; collision-in-motion verification |
-| **`choose_clearance_pair`** (W51-C1) | nearest-pair auto-selection for motion audit (assembly clearance min-distance) |
-| **component_arrays** | linear + circular via **placement expansion** (zero new COM) |
-| **mirror component** | `IAssemblyDoc.MirrorComponents` v1 (9-arg, raw Plane + VT_ARRAY\|VT_DISPATCH) |
-| **Exploded views** | `CreateExplodedView` → `AddExplodeStep` with 2-entity selection (component + direction ref plane); Transform delta verified (W32) |
-| Interactive edit | declarative add/remove component+mate → re-commit |
-| L4 persistence | manifest v2 (verbatim spec + runtime overlay, lossless `to_spec()`) |
-
-**`screw` mate FROZEN (W46):** pitch (`RevolutionVal`) clamps to 1 mm kernel
-default regardless of setter — three paths characterized and exhausted (COM wall).
-
-**Walls:** linear/circular **component** patterns (assembly-level) = no `IAssemblyDoc`
-creation method → Route-C/VBA. `ShowExploded2` VARIANT dispatch fails (but transform
-proves effect). `IDragOperator` free-DOF drag is UI-only (W51-C2: marshaling cracked
-but headless `Drag()` computes-without-committing — needs real UI context).
-*Deferred: hinge angle-limit v-next, rotational steps, radial patterns,
-explode-line sketches, multiple views per config, animation.*
-
-## 3. Export — `ai-sw-` export (W25v + W33 + W34 + W48)
-
-| Format | Flag | verify-the-bytes proof |
-|---|---|---|
-| `pdf` | ✅ | **W25v** — page-count discrimination (Solo=1pg, Quad=1pg, all=2pg) |
-| `dxf` | ✅ | **W33** — entity parse (box front view → 4 LINE) |
-| `step214` | ✅ | **W34** — 27 CARTESIAN_POINT + 6 ADVANCED_FACE + 1 CLOSED_SHELL |
-| `iges` | ✅ | **W34** — 79 DE entities + 109 P lines (⚠️ only `.igs` ext works; `.iges` → error 256) |
-| `stl` | ✅ | **W34** — binary, 12 triangles (box = 6 faces × 2) |
-| `step203` | ⚠️ | same SaveAs3_DIRECT path as step214 (save_version=1); not independently byte-verified |
-| `parasolid` | ⚠️ | same SaveAs3_DIRECT path; not independently byte-verified |
-| `3mf` | ⚠️ | same SaveAs3_DIRECT path; not independently byte-verified |
-| `dxf_flat` | ✅ | **W42** — developed flat-pattern OUTLINE (part-space); L-bracket 86.28×40.0 mm |
-| `dxf_flat_bends` | ✅ | **W48** — CAM-ready flat pattern via drawing-space `CreateFlatPatternViewFromModelView3` + geometric classifier (`dxf_bend_layers.py`); interior fold lines on `BEND` layer; PAE GREEN (1-bend L-bracket → 1 BEND LINE + 4 outline LINEs, bbox 40×86.28 mm) |
-
-## 4. Drawing — `ai-sw-drawing` (W4, W16–W28)
-
-| Capability | COM recipe (abbrev.) | Origin |
-|---|---|---|
-| Ortho + iso views | `CreateDrawViewFromModelView3` (IDrawingDoc via typed_qi) | W4/W16 |
-| Section view | `CreateSectionViewAt5` (cut line via SketchManager) | W19 |
-| Detail view | `CreateDetailViewAt4` | W19 |
-| Multi-sheet | per-sheet view placement | W23 |
-| Model dimensions | `InsertModelAnnotations3` (suppress popup via toggles 9/10/22/23) | W17 |
-| **Dim tolerances** | `IDimension.SetToleranceType/Values` (model-owned, persists in .SLDPRT) | W28 |
-| BOM table | `IView.InsertBomTable4` (dispid 414) | W18 |
-| **Title block** | `title_block:{field:value}` → drawing custom props (W29 `Add3`/`Get4`); fields resolve via `$PRP:`/`$PRPSHEET:`; DRAWING-owned (.SLDDRW) | W38 |
-
-**Tolerance types:** symmetric=4 / bilateral=2 / limit=3.
-**Title-block fields:** DrawingNo · Title · Revision · DrawnBy · CheckedBy ·
-ApprovedBy · Date · Scale · Material · SheetOf · Company · Project (closed vocab,
-unknown field rejected).
-
-## 5. Observe — read-only perception (CLI **+ MCP**)
-
-| Capability | MCP tool | COM recipe | Origin |
-|---|---|---|---|
-| Inertia / mass-props | `sw_inertia` | `GetMomentOfInertia(0)` 9-tuple → `eigh` | E1 |
-| Interference | `sw_interference` | `InterferenceDetectionManager` (dispid 126, prop-get) | W27 |
-| Measure (selection) | `sw_measure` / `sw_measure_selection` | `CreateMeasure`→`Calculate(None)` | W30 |
-| Bounding box (part) | `sw_bbox` / `sw_bounding_box` | `IPartDoc.GetPartBox(True)` (part-only) | W30 |
-| **Clearance (min-distance)** | `sw_clearance` | `IComponent2.Select2`×2 → `IMeasure.Distance` (assembly-only) | W35 |
-| **Draft analysis (DFM)** | `sw_draft_analysis` | `IPartDoc.GetBodies2` (QI from IModelDoc2) → `GetFaces` → `IFace2.Normal` vs pull (part-only) | W37 |
-| **Undercut (DFM)** | `sw_undercut` | draft-analysis faces classified by undercut angle threshold (part-only) | W45 |
-| **Min wall thickness (DFM)** | `sw_min_wall` | body voxel / nearest-opposite-face probe (part-only) | W45 |
-| **Current selection** | `sw_current_selection` | `SelectionManager` (memid 65537 prop-get) → `GetSelectedObjectCount2`/`GetSelectedObjectType3`/`GetSelectedObject6` → durable persist-ref; `swSelectType_e` table (edge=1/face=2/…/solid_body=76) | W43 |
-
-## 5b. Metadata — `ai-sw-properties` (W29, **CLI-only mutation**)
-
-Custom **file** properties (TEXT, file-level) via a `kind:"properties"` spec
-through the `metadata/` module + `ai-sw-properties` CLI (propose→dry_run→commit;
-**CLI-only per §6.5 — properties is a MUTATION, never MCP**).
-
-| Capability | COM recipe (abbrev.) | Origin |
-|---|---|---|
-| Set custom props (TEXT) | `CustomPropertyManager("")` → `Add3(name, 30, value, 1)` | W29 |
-| Read-back verify | `Get4(name, False)` 3-tuple (Get6 dead) + `GetNames()` existence | W29 |
-| Save | `SaveAs3(path, 0, 0)` → `swFileSaveError_e` (Save3 dead) | W29 |
-| `overwrite:false` skip | `name in GetNames()` → preserve existing | W29 |
-
-**W29 seat lessons (three makepy out-param traps, offline-test-blind):** `Count`
-is a **property** not a method; `Get6`/`Save3` both **raise "Type mismatch"** on
-early-bind ([out]-param mis-marshaling) → use `Get4`/`SaveAs3`. PAE 7/7 GREEN
-(count 0→3, read-back exact across close+reopen). *Deferred: Number/Date/YesOrNo
-types, configuration-specific props, linked props, deletion.*
-
-## 5c. Sketch relations — `ai-sw-sketch-relations` (W39, **CLI-only mutation**)
-
-Geometric constraints between sketch entities, added to a feature spec's sketch
-block as `relations:[{type, entities:[seg_idx…]}]`. **6 effect-verified relations**
-(each proven to MOVE geometry on the seat, not just "no error"):
-
-| Relation | Token | Arity | Seat proof |
-|---|---|---|---|
-| `horizontal` | `sgHORIZONTAL2D` | 1 | dy→0 |
-| `vertical` | `sgVERTICAL2D` | 1 | dx→0 |
-| `parallel` | `sgPARALLEL` | 2 | cross→0 |
-| `perpendicular` | `sgPERPENDICULAR2D` | 2 | dot→0 |
-| `equal` | `sgSAMELENGTH` | 2 | lengths equalize |
-| `concentric` | `sgCONCENTRIC` | 2 | centers coincide |
-
-**Recipe:** raw `seg.Select2(append,mark)` → **`IModelDoc2.SketchAddConstraints(token)`**
-(NOT `ISketchManager`); `GetSketchSegments` read as a property (no parens). **W39
-seat lessons:** the W21 no-op trap — guessed tokens pass with no error but no effect
-(`sgEQUAL`/`sgPARALLEL2D` were silent no-ops → corrected to `sgSAMELENGTH`/`sgPARALLEL`).
-*Deferred (fail-closed, tokens unproven): `collinear`, `coincident` (endpoint selection),
-`symmetric` (3-ref centerline) — DEFERRED.md Wave-39.*
-
-## 5d. Configurations — `ai-sw-configurations` (W36v, **CLI-only mutation**, multi-file)
-
-Family-of-parts as **N distinct part files** (NOT in-file SW configs — that's an earned
-COM wall, DEFERRED.md Wave-36). A `variants:[{name, overrides}]` spec → one proven
-`.SLDPRT` per variant via `builder.build(no_dim=True, save_as=…)` + `CreateMassProperty`
-volume-discrimination. `propose` (offline validate) + `materialize` (build+measure).
-Overrides: flat string (locals) OR nested dict/list (deep-merged into the spec). Seat-
-proven: 3 variants → 3 distinct volumes (4000/13500/50000 mm³ exact). *Deferred: in-file
-native configs, suppress-state, design tables.*
-
-## 6. Persistence / infra
-
-Durable selection (persist-ref, edge/face match predicates) · checkpoint + history
-(`ai-sw-checkpoint` / `ai-sw-history`, L4 SQLite per-feature) · L1 B-rep
-interrogation · L2 COM error envelope + hint catalog + RetryGuard · L3 RAG API-doc
-retrieval (`ai-sw-apidoc`) · codegen (`ai-sw-codegen`) · MCP lane (`ai-sw-mcp`).
-
-## 7. Characterized walls (NO-GO — by design / deferred)
-
-| Wall | Why |
-|---|---|
-| `loft` | CreateDefinition(9)→None with 2 profiles pre-selected; legacy paths None too (W20 re-confirmed) |
-| `rib` / `wrap` / `boundary-boss` | solver-deep, out-of-process COM wall |
-| `miter flange` | no SW2024 interface |
-| `edge_flange` | **ghost** — node-presence proof (error-code 0) but ΔVol=0; de-advertised W42/W44; handler kept as characterized code |
-| `screw` mate | pitch (`RevolutionVal`) clamps to 1 mm kernel default — three setter paths characterized and exhausted (W46 COM wall) |
-| `IDragOperator` free-DOF drag | marshaling cracked but `Drag()` computes-without-committing headless — requires real UI/mouse context (W51-C2 UI-only wall) |
-| linear/circular **component** patterns | no `IAssemblyDoc` creation method |
-| drawing **ordinate / baseline** dims | all 6 Insert*/Add*/baseline methods produce zero dims with confirmed datum; interactive-mode starters, not one-shot creators (W31v2 earned NO-GO) |
+Reflects **v1.6.1**, derived from the live repository (the feature-handler registry,
+the `ai-sw-*` entry points, the MCP tool contract, and `export/formats.py`). The
+authoring model is the same everywhere: **declarative JSON in, propose → approve →
+execute, no arbitrary code execution, driven out-of-process.** Mutations are
+approval-gated and CLI-only; read-only observation is available over both the CLI and
+the MCP server.
 
 ---
 
-*Per-feature COM recipes, marshaling gotchas, and full wall characterizations live in
-`docs/DEFERRED.md` and the persistent memory. This file is the at-a-glance index.*
+## Surfaces
+
+- **21 command-line tools** (`ai-sw-build`, `ai-sw-mutate`, `ai-sw-assembly`,
+  `ai-sw-drawing`, `ai-sw-properties`, `ai-sw-configurations`, `ai-sw-sketch-edit`,
+  `ai-sw-sketch-relations`, `ai-sw-observe`, `ai-sw-import`, `ai-sw-export-dxf-flat`,
+  `ai-sw-motion`, `ai-sw-solver`, `ai-sw-urdf`, `ai-sw-checkpoint`, `ai-sw-history`,
+  `ai-sw-memory`, `ai-sw-apidoc`, `ai-sw-codegen`, `ai-sw-probe`) — see
+  [`PUBLIC_API.md`](PUBLIC_API.md) for stability tiers.
+- **One MCP server** (`ai-sw-mcp`) exposing 37 tools to MCP-capable AI clients.
+
+---
+
+## Build — part features
+
+The core builder produces a part from a declarative spec: **extrude, cut, and
+revolve** over seven sketch primitives (with construction geometry and text). On top
+of that, **36 additional feature kinds** can be added to a model. Each is verified by
+its geometric *effect* (a volume / face / area / length change), never by a bare
+"no error".
+
+| Group | Features |
+|---|---|
+| Dress-up | constant-radius fillet, face fillet, variable-radius fillet, chamfer, shell, draft |
+| Patterns | linear, circular, mirror, sketch-driven |
+| Reference geometry | plane, axis, point, coordinate system, bounding box, center-of-mass point, mate reference |
+| Curves | composite, helix, spiral, projected, through-XYZ-points |
+| Surfaces | planar, offset, knit |
+| Sheet metal | base flange, hem, sketched bend |
+| Sweeps & shapes | sweep, sweep cut, dome, hole wizard |
+| Bodies & boolean | delete body, intersect, scale |
+| Weldment | structural weldment |
+
+The runtime source of truth is `client.features.list_kinds()`.
+
+---
+
+## Observe — read-only perception (CLI + MCP)
+
+| Capability | What it returns |
+|---|---|
+| Mass properties / inertia | Inertia tensor, center of mass, principal moments |
+| Bounding box | Axis-aligned part box; combined assembly box |
+| Measure | Distance/angle/area over the current selection or a durable entity pair |
+| Interference | Assembly component clashes; body-to-body clashes within a multibody part |
+| Clearance | Minimum distance between components or named faces |
+| Draft / undercut (DFM) | Faces classified against a pull direction |
+| Minimum wall thickness (DFM) | Thinnest-wall probe over a solid |
+| Section properties | Properties of a selected planar face |
+| Import diagnostics | Body breakdown and geometry-health faults of imported parts |
+| MBD / PMI | Read existing datums, dimensions, and geometric tolerances |
+| Feature & mate health | Per-feature and per-mate status; equations; custom properties |
+| Selection | The current selection as durable references |
+| Add-ins | Currently-loaded SOLIDWORKS add-ins |
+| Screenshot | Capture the active viewport to PNG |
+
+---
+
+## Assembly — `ai-sw-assembly`
+
+| Capability | Detail |
+|---|---|
+| Component placement | Place prebuilt parts or parts built from an inline spec; positioned and rotated (roll/pitch/yaw) |
+| Mates (13 types) | coincident, distance, concentric, parallel, perpendicular, tangent, angle, width, gear, rack-and-pinion, cam-follower, slot, hinge |
+| Limit mates | Distance and angle limit modifiers |
+| Component arrays | Linear and circular, via placement expansion |
+| Mirror components | Mirror a component across a plane |
+| Exploded views | Build an exploded view with per-component explode steps |
+| Motion audit | Drive a mate through its travel and check for collisions / clearance in motion |
+| Interactive edit | Add/remove components and mates, then re-commit |
+| Persistence | Durable assembly manifest (lossless round-trip of the spec) |
+
+---
+
+## Drawing — `ai-sw-drawing`
+
+| Capability | Detail |
+|---|---|
+| Views | Orthographic, isometric, section, and detail views |
+| Multi-sheet | Multiple sheets, with per-sheet view placement |
+| Dimensions | Insert model dimensions; apply symmetric / bilateral / limit tolerances |
+| BOM | Insert a bill-of-materials table (assemblies) |
+| Title block | Populate title-block fields from a closed vocabulary |
+
+---
+
+## Export
+
+All formats below are seat-confirmed.
+
+| Format | Notes |
+|---|---|
+| STEP (AP203 / AP214) | Solid model exchange |
+| IGES | Use the `.igs` extension |
+| Parasolid | Native kernel format |
+| STL | ASCII or binary |
+| 3MF | Additive-manufacturing format |
+| PDF | Drawing → PDF, single or multi-sheet |
+| DXF / DWG | 2D vector from a drawing |
+| Flat-pattern DXF | Sheet-metal developed outline, with optional bend lines (`ai-sw-export-dxf-flat`) |
+| URDF | Assembly → ROS robot model with per-link meshes (`ai-sw-urdf`) |
+
+---
+
+## Sketch authoring
+
+| Capability | Detail |
+|---|---|
+| Geometric relations (`ai-sw-sketch-relations`) | horizontal, vertical, parallel, perpendicular, equal, concentric |
+| Sketch editing (`ai-sw-sketch-edit`) | Convert-entities, offset, sketch pattern |
+
+---
+
+## Configurations — `ai-sw-configurations`
+
+A family of parts as **multiple part files**: a `variants` spec builds one distinct
+`.SLDPRT` per variant, each volume-verified. (In-file native configurations are a
+platform constraint — see [`DEFERRED.md`](DEFERRED.md).)
+
+---
+
+## Reliability & infrastructure
+
+| Capability | Detail |
+|---|---|
+| Approval workflow | Every mutation is propose → dry-run → commit, human-gated |
+| Self-healing batch | Multi-feature batches survive a SOLIDWORKS crash (detect → respawn → replay) |
+| Checkpoints & history | Per-feature snapshots with optional at-rest encryption; query and roll back |
+| Durable selection | Edge/face references that survive rebuilds |
+| Foreign import | STEP / IGES → `.sldprt` with import diagnostics |
+| API documentation (`ai-sw-apidoc`) | Searchable SOLIDWORKS API reference |
+| Design memory (`ai-sw-memory`) | On-device semantic search over your own past designs |
+
+---
+
+*For the boundaries of each domain — what is unsupported and why — see
+[`DEFERRED.md`](DEFERRED.md).*

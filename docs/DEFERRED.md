@@ -93,7 +93,7 @@ Technically feasible; awaiting implementation priority.
 | **Advanced hole** | High-configuration feature; needs a full near/far element-data spec |
 | **Sheet-metal tables** — bend / flat-pattern / gauge | Backlog |
 | **Multi-profile configurations** | Build one spec against multiple config profiles, diff the results |
-| **Additional exports** — flat-pattern DXF, DWG, 3D PDF, eDrawings | Beyond the shipped STEP / IGES / PDF / DXF |
+| **Additional exports** — 3D PDF, eDrawings, export quality options (DPI / layers / units) | Beyond the shipped STEP / IGES / STL / 3MF / Parasolid / PDF / DXF / DWG / flat-pattern DXF |
 | **Drawing enhancements** — GD&T frames, cross-sheet section/detail, additional dimension types | Beyond the shipped views / dimensions / tolerances / BOM |
 | **Interference detail** — body-level, clearance/min-distance, ignored-clash sets | Beyond the shipped assembly-level interference detection |
 
