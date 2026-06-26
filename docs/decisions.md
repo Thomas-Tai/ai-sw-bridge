@@ -257,7 +257,7 @@ quality at the doc level. Code-level audit items remained on the
 
 ### 2026-05-28 — Adopt `CODESTYLE.md`; do not adopt per-decision ADR files
 
-**Context:** v0.13 W4.1 task: pick how the project records
+**Context:** A v0.13 task: pick how the project records
 architectural decisions and code-level conventions. Two patterns to
 choose between: per-decision ADR files under `docs/adr/0001-*.md`
 (the industry-standard "Architecture Decision Record" pattern), or a
@@ -309,7 +309,7 @@ to `CODESTYLE.md` for code rules.
 - New doc: `CODESTYLE.md` at repo root (not under `docs/`, because
   contributors find it via GitHub's top-level rendering).
 - `CONTRIBUTING.md` §"Code style" reduces to a stub linking to
-  `CODESTYLE.md`. The W4.2 contributor pass executed this
+  `CODESTYLE.md`. A subsequent v0.13 contributor pass executed this
   consolidation.
 - Future code-level conventions land in `CODESTYLE.md`, not as
   scattered comments. Conventions that change still go through
@@ -377,9 +377,10 @@ indefinitely-deferred items) and `CHANGELOG.md` for shipped state.
   from the session record during the cleanup — they live in git
   now and can't be lost.
 - The MCP design that lived in `central_idea/spec.md` §6 had
-  already been promoted to `docs/mcp_server_design.md` during W5.4.
+  already been promoted to `docs/mcp_server_design.md` during the
+  v0.13 cycle.
 - The checkpoint-encryption design from `central_idea/` was already
-  in `docs/checkpoint_encryption_design.md` (W3.1).
+  in `docs/checkpoint_encryption_design.md` (also during v0.13).
 - Future strategic initiatives create their design doc in
   `docs/<initiative>_design.md` from day one rather than going
   through a scratch phase.
@@ -397,14 +398,14 @@ indefinitely-deferred items) and `CHANGELOG.md` for shipped state.
 `api_coverage_roadmap.md` §4 — Phase 0, the precondition for edit-robust
 output) depends on `IModelDocExtension.GetObjectByPersistReference3`, whose
 `[out] long` error parameter is the late-binding failure class. The
-seat-run spikes (SW 2024 SP1, 2026-05-29) confirmed the wall empirically:
-S-PERSIST and S-DISPATCH came back **PARTIAL** — read works, the OUT-param /
-Callout write-back does not marshal under dynamic (late) binding. Read
+seat-run experiments (SW 2024 SP1, 2026-05-29) confirmed the wall empirically:
+the persist-token and dispatch experiments came back **PARTIAL** — read works, the
+OUT-param / Callout write-back does not marshal under dynamic (late) binding. Read
 literally, that was the documented trigger for the in-process .NET
 conversation ("Route-C", L5).
 
-A decisive follow-up spike, `spikes/v0_15/spike_earlybind_persist.py`
-(**S-EARLYBIND = PASS**), tested whether the wall is the *API* or the
+A decisive follow-up experiment, `spikes/v0_15/spike_earlybind_persist.py`
+(**PASS**), tested whether the wall is the *API* or the
 *late-binding marshaler*. Under a Python **early-bound** typed
 `IModelDocExtension`, `GetObjectByPersistReference3(pid)` returns
 `(<entity>, 0)`: the OUT error code arrives as the 2nd tuple element, the
@@ -444,7 +445,7 @@ the out-of-process, `pip`-installable, JSON-only-agent design.
   keystone path: it would add a .NET SDK to the install story (violating
   the deployment half of invariant #4) to solve a problem hybrid binding
   solves in-process-free. The S-tier reference (SolidPilot) uses it, but
-  S-EARLYBIND shows we don't need to.
+  the early-binding experiment shows we don't need to.
 - *Route-B — VBA emit-and-run.* Rejected: violates invariant #3
   (`run_macro` was deliberately removed in v0.14, a documented BREAKING
   change); reopening it is a security-model reversal.
@@ -469,26 +470,26 @@ the out-of-process, `pip`-installable, JSON-only-agent design.
   exception for OUT-param / Callout objects via `com.earlybind`." The
   `gencache.EnsureDispatch` ban stands (it fails on SW anyway); the
   committed-`gen_py/` ban stands.
-- Unblocks the Phase-0 keystone lane out-of-process: open-existing-doc
+- Unblocks the Phase-0 keystone work out-of-process: open-existing-doc
   build target + `mutate.py` feature-additions anchored to a durable
-  persist token. These are gated on their own spikes per the spike-first
-  law before shipping.
-- The four FAIL feature spikes (sheet metal / shell / draft / variable
-  fillet / hole-wizard) must be **re-spiked under early binding** before
+  persist token. These are gated on their own experiments per the
+  measure-first rule before shipping.
+- The four FAIL feature experiments (sheet metal / shell / draft / variable
+  fillet / hole-wizard) must be **re-tested under early binding** before
   being declared blocked — their late-bound FAIL may be the same
   marshaler limitation, not an API one.
 
-**Owner:** W0 (orchestrator), with the seat operator.
+**Owner:** Lead maintainer, with the seat operator.
 **Status:** Active.
 
 ---
 
 ## 2026-06-11
 
-### 2026-06-11 — Multi-body booleans are terminal out-of-process walls; ship merge-on-create (W54-A), park an OPTIONAL in-process add-in (Route-D)
+### 2026-06-11 — Multi-body booleans are terminal out-of-process walls; ship merge-on-create, park an OPTIONAL in-process add-in (Route-D)
 
-**Context:** The W52/W53 seat batches proved `combine` and `split` cannot
-**commit** out-of-process. `PreSplitBody` computes the temp bodies but
+**Context:** The multibody-boolean seat experiments proved `combine` and `split`
+cannot **commit** out-of-process. `PreSplitBody` computes the temp bodies but
 `PostSplitBody` will not commit (all `BodiesToMark` forms no-op);
 `InsertCombineFeature` no-ops across 8 variants; no `swFmCombineBodies`
 enum exists; and the `IInsertCombineFeature` array path cannot marshal a
@@ -508,7 +509,7 @@ in-process execution to commit.
 
 **Decision:**
 
-1. **Execute the tactical stand-in (W54-A, `feat/w54-merge-on-create`).**
+1. **Execute the tactical stand-in (`feat/w54-merge-on-create`).**
    Modeling-time boolean **UNION** via `FeatureExtrusion2` arg 18 `Merge`
    — `boss_extrude_blind` gains `merge: bool` (default `true`): `true`
    fuses the boss into the solid it overlaps, `false` keeps it a separate
@@ -548,7 +549,7 @@ in-process execution to commit.
 
 - *Early-bind the combine/split FeatureData (the 2026-05-30 fix).*
   Rejected for this wall: it clears `[out]` scalars, not
-  SAFEARRAY-of-dispatch commits; W52/W53 confirmed the bodies drop at
+  SAFEARRAY-of-dispatch commits; the experiments confirmed the bodies drop at
   finalize under both bindings.
 - *Route-B — VBA emit-and-run.* Rejected again: violates invariant #3
   (`run_macro` removed v0.14, a security-model reversal). Re-affirms
@@ -563,7 +564,7 @@ in-process execution to commit.
 
 **Consequences:**
 
-- `merge: bool` ships on `boss_extrude_blind` (W54-A); offline-guarded
+- `merge: bool` ships on `boss_extrude_blind`; offline-guarded
   (`tests/spec/test_boss_merge_threading.py`, 4 tests) + seat-proven.
 - Route-D logged as the strategic drain for the commit-time wall class
   (combine / split / edge-flange / loft / in-file-configs / drag), each of
@@ -571,7 +572,7 @@ in-process execution to commit.
   as **one class with one answer**. Gated on the invariant-#4
   optional-component carve-out being written first.
 
-**Owner:** W0 (orchestrator) + strategy lead.
+**Owner:** Lead maintainer + strategy lead.
 **Status:** Active (Option A shipped; Route-D parked, unscheduled).
 
 ---

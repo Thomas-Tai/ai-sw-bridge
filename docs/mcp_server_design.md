@@ -1,17 +1,15 @@
-# MCP Server — Design (W5.4)
+# MCP Server — Design
 
-**Status:** Design approved, implementation pending (W5.4-impl).
-**Authors:** v0.13 closure track.
-**Cross-refs:** *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §6
-(Lane M deferred design), [`docs/decisions.md`](decisions.md)
-2026-05-23 "Lane M adoption-driven",
-[`docs/com_failure_modes.md`](com_failure_modes.md) row M-XX.
+**Status:** Implemented and shipped. This is the original design record for the
+first MCP server (v0.13, ~10 tools); the live server has since grown — see
+[`CAPABILITIES.md`](CAPABILITIES.md) for the current tool surface.
+**Cross-refs:** [`docs/decisions.md`](decisions.md) 2026-05-23 "MCP wrapper
+adoption-driven", [`docs/com_failure_modes.md`](com_failure_modes.md).
 
-This document is the binding design for the MCP server (Lane M). It
-commits to the framework choice, the cross-thread COM-safety wiring,
-the tool surface, the wire format, the lifecycle, and the test
-contract. The impl task (W5.4-impl, Sonnet/GLM) fills in the bodies;
-behavior must match this document.
+This document is the binding design for the MCP server. It commits to the
+framework choice, the cross-thread COM-safety wiring, the tool surface, the wire
+format, the lifecycle, and the test contract; the shipped server's behavior
+matches it.
 
 ---
 
@@ -94,9 +92,9 @@ audit ourselves. Not worth it.
 ## 4. Cross-thread COM safety — `@com_tool` decorator
 
 **Decision:** The MCP server owns STA discipline at the **tool-handler
-layer** via a `@com_tool` decorator. The adapter (`PyWin32Adapter`
-from W5.2) stays thin; the executor (`ComExecutor` from W5.1) is held
-by the server runtime and wraps every COM-touching call.
+layer** via a `@com_tool` decorator. The `PyWin32Adapter` stays thin;
+the `ComExecutor` is held by the server runtime and wraps every
+COM-touching call.
 
 Pattern:
 
@@ -115,10 +113,10 @@ def wrapper(*args, **kwargs):
     return runtime.executor.run(lambda: fn(*args, **kwargs))
 ```
 
-**Why this resolves the W5.2 audit finding (Track E):**
+**Why this resolves the cross-thread-safety audit finding:**
 
-The Track E audit (2026-05-28) noted that `PyWin32Adapter` does not
-hold a `ComExecutor` internally. Upstream did; Track E simplified it
+The cross-thread-safety audit (2026-05-28) noted that `PyWin32Adapter` does not
+hold a `ComExecutor` internally. Upstream did; the audit simplified it
 out. Two options were considered:
 
 1. **Wire executor at the MCP tool layer** (this design choice).
@@ -126,7 +124,7 @@ out. Two options were considered:
 
 We chose Option 1 because:
 
-- **Additive change only.** No revisit of already-shipped W5.2 code.
+- **Additive change only.** No revisit of already-shipped adapter code.
 - **Adapter stays single-purpose.** Non-MCP callers (the existing
   CLI builds, which are single-threaded) don't pay the executor
   overhead and don't depend on a worker thread.
@@ -137,12 +135,12 @@ We chose Option 1 because:
 
 The cost: `PyWin32Adapter` is still unsafe if used directly from a
 non-main thread *outside* MCP. We document this constraint in
-`CODESTYLE.md` §6 (lane boundaries) — anyone using the adapter
+`CODESTYLE.md` §6 — anyone using the adapter
 from a multi-threaded context must wrap calls explicitly.
 
 ## 5. Module layout
 
-New lane: `ai_sw_bridge.mcp` — between `mutate` and `com` in the
+New module: `ai_sw_bridge.mcp` — between `mutate` and `com` in the
 import-linter layer ordering. Sits above `com/` (depends on adapter +
 executor), below `cli/` (CLI shouldn't import MCP server; they're
 peers, not a chain).
@@ -312,8 +310,7 @@ return the same `{ok: False, …}` dict as their normal return value.
 The agent sees a structured error payload it can recover from, not a
 JSON-RPC `-32603` internal-error envelope. Success paths match the CLI
 stdout byte-for-byte — no MCP-layer `ok: True` is added (the shared
-library in `checkpoint/__init__.py` doesn't emit one). Audit record:
-`docs/audit_s1_cli_mcp_parallelism.md` (W5.5 follow-up).
+library in `checkpoint/__init__.py` doesn't emit one).
 
 ### 7.3 Tool error path
 
@@ -363,7 +360,7 @@ declares:
 
 ### 8.3 Add-in detection on first build call
 
-Per W7.1, the first `sw_build` call enumerates add-ins. If
+The first `sw_build` call enumerates add-ins. If
 known-problematic add-ins are loaded, the build's payload includes
 a `warnings` field naming them. The server does NOT auto-block —
 MCP clients should surface the warning and let the user proceed
@@ -373,7 +370,7 @@ MCP clients should surface the warning and let the user proceed
 
 ### 8.4 SW reconnect
 
-When `ComExecutor.is_sw_dead` flips (W5.6 wires this), the next tool
+When `ComExecutor.is_sw_dead` flips, the next tool
 call gets a `RuntimeError`. The MCP error response includes a hint
 to call `sw_reconnect` (one tool that calls `runtime.reconnect()`,
 which stops the dead executor, starts a fresh one, re-Dispatches
@@ -445,9 +442,9 @@ def com_tool(fn: Callable[..., T]) -> Callable[..., T]:
 
 ## 11. Test contract
 
-Tests live in `tests/mcp_lane/`. Initial state has all tests marked
-`@pytest.mark.skip(reason="W5.4-impl pending")` until the impl task
-lands.
+Tests live in `tests/mcp_lane/`. The initial state had all tests marked
+`@pytest.mark.skip(reason="implementation pending")` until the implementation
+landed.
 
 ### 11.1 Runtime smoke (no SW needed)
 
@@ -499,7 +496,7 @@ lands.
 - `test_call_observe_bbox_against_mock` — `tools/call` with
   `name=sw_bbox`, adapter is MockAdapter, returns the expected dict.
 
-## 12. Acceptance criteria (W5.4-impl ships when ALL pass)
+## 12. Acceptance criteria (the implementation shipped when ALL passed)
 
 - All §11 tests green (markers removed).
 - `mcp>=1.0.0` added to `pyproject.toml [project.optional-dependencies] mcp`.
@@ -542,10 +539,10 @@ response-cache + agent-history-db.
 
 We port only the structural concepts:
 
-- ComExecutor (✅ W5.1)
-- Adapter ABC + factory (✅ W5.2)
-- sw_type_info flagging (✅ W5.3 — Sonnet/GLM)
-- Death-recovery semantics (✅ W5.6 — Sonnet/GLM)
+- ComExecutor (✅ shipped)
+- Adapter ABC + factory (✅ shipped)
+- sw_type_info flagging (✅ shipped)
+- Death-recovery semantics (✅ shipped)
 
 The MCP server itself is **clean-room** because:
 
@@ -558,9 +555,9 @@ The MCP server itself is **clean-room** because:
 3. The upstream's agent-history-db is the bridge's `checkpoint/`
    already. Re-porting would conflict.
 
-So the W5.4 attribution is **none** — no upstream code is lifted.
-The architectural debt is captured in the W5.1/W5.2/W5.3/W5.6
-attributions; the MCP server is a thin wrapper our team writes.
+So the MCP server's attribution is **none** — no upstream code is lifted.
+The architectural debt is captured in the ComExecutor / adapter / type-info /
+death-recovery attributions; the MCP server is a thin wrapper our team writes.
 
 This is recorded for license-lint clarity: `mcp/server.py` and
 `mcp/runtime.py` and `mcp/tools.py` have **no SPDX-Port-* tags**
@@ -569,7 +566,7 @@ expects no CONTRIBUTING.md row — consistent.
 
 ## Appendix B — Why `@com_tool` is correct enough
 
-The Track E audit (2026-05-28) noted that `PyWin32Adapter` doesn't
+The cross-thread-safety audit (2026-05-28) noted that `PyWin32Adapter` doesn't
 hold a `ComExecutor` internally. Option 2 (refactor the adapter)
 would be architecturally cleaner. We chose Option 1 (decorate at
 the MCP layer) because:
