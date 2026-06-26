@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-sw-bridge"
-version = "1.6.0"
+version = "1.6.1"
 description = "A semi-automated bridge that lets an AI assistant (Claude, ChatGPT, Codex, etc.) drive SOLIDWORKS through the COM API for design-guide tuning and parametric part creation."
 readme = "README.md"
 license = { text = "Proprietary — see LICENSE" }

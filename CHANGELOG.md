@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-06-26
+
+**Documentation & audit release.** No code behavior change — this release captures
+the v1.6.0 commercial-hardening artifacts in the public history and closes a
+fresh-user documentation gap. Cut after the four-human-gates pass: the release was
+published (Gate 2) and the resilience proofs were fired on a live seat (Gate 3).
+
+### Added
+
+- **`docs/CLASS_RELATION_MAP.md`** — navigational map of the architecture: the
+  `SolidWorksClient` + five facades, the `_impl` cores they delegate to, the
+  `feature_add` `HANDLER_REGISTRY`, the `verify.py` substrate, the RES-1 resilience
+  envelope, and the COM substrate — with mermaid diagrams and the 22-layer
+  import-linter hierarchy.
+- **`docs/CODEBASE_AUDIT_2026-06-26.md`** — a commercial-standard audit (duplication /
+  mode selection / redundancy / README completeness / commercial posture) with
+  per-dimension verdicts and prioritized recommendations.
+- **README — "Feature kinds you can add (36)"** — the 36 seat-proven `feature_add`
+  kinds are now enumerated (grouped) with a `client.features.list_kinds()` pointer;
+  previously a fresh user had to introspect the registry to discover them.
+
+### Changed
+
+- **Resilience claim upgraded to live-proven.** The five `SupervisedSession`
+  destructive-recovery proofs (`tests/e2e_sw/test_supervised_recovery.py`) — apply-
+  death, the customer `batch()` path (RES-1), open-death (Tier-1), save-death
+  (Tier-2 snapshot restore), and the poison-cap — all passed on a live SOLIDWORKS
+  2024 (v32.1) seat on 2026-06-26, with zero orphan seats after teardown. The 1.6.0
+  "Live (armed, operator-gated)" status is now verified.
+
+### Tooling
+
+- `tools/release_v1.5_v1.6.sh` (guarded, idempotent release script) and
+  `tools/remote_prune_plan.sh` (guarded pre-public remote sanitization) are included
+  for the human-gated release/launch workflow (`docs/human_gates_runbook.md`).
+
 ## [1.6.0] - 2026-06-26
 
 **Self-healing batch by default (Wave 2).** The `SupervisedSession` crash-recovery
