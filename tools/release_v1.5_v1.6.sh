@@ -120,9 +120,9 @@ NEXT — publish the GitHub Releases:
 
   If you are on the Actions-free manual path, publish by hand:
     gh release create v1.5.0 --title "v1.5.0 — Runtime Resilience & Design Intelligence" \
-      --notes-file <(sed -n '/## \[1.5.0\]/,/## \[1.4.0\]/p' CHANGELOG.md)
+      --notes-file <(sed -n '/## \[1.5.0\]/,/## \[1.4.0\]/{/## \[1.4.0\]/!p;}' CHANGELOG.md)
     gh release create v1.6.0 --latest --title "v1.6.0 — Self-healing batch + unified MCP write-gate" \
-      --notes-file <(sed -n '/## \[1.6.0\]/,/## \[1.5.0\]/p' CHANGELOG.md)
+      --notes-file <(sed -n '/## \[1.6.0\]/,/## \[1.5.0\]/{/## \[1.5.0\]/!p;}' CHANGELOG.md)
 
   Then confirm: gh release list
 MSG
