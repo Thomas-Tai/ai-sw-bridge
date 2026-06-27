@@ -6,7 +6,7 @@ real, often subtly. The rationale is part of the rule.
 
 For onboarding, branch flow, and PR mechanics, see
 [`CONTRIBUTING.md`](CONTRIBUTING.md). Strategic decisions live in
-[`docs/central_idea/decisions.md`](docs/central_idea/decisions.md).
+[`docs/decisions.md`](docs/decisions.md).
 
 ## Table of contents
 
@@ -39,9 +39,9 @@ Pinned in `pyproject.toml`. Match the pin, not your local install.
 **Run `black --check .` (the whole tree), not just `black --check src tests tools`.**
 The narrower form misses `spikes/`, `examples/`, and any new top-level
 directory. CI runs the wider form — two incidents (`82f1900` post-v0.12.2,
-`14196ce` post-W2.2) traced to this exact gap. The 8-step verification
-gate in `docs/central_idea/parallel_dev_prompt.md` codifies the full-repo
-sweep; follow it for any task that ends in a commit.
+`14196ce` post-W2.2) traced to this exact gap. The `pre-commit` hooks and
+CI both run the full-repo form; the `[tool.black]` `target-version` pin in
+`pyproject.toml` keeps local and CI output identical.
 
 `pre-commit install` after cloning so the same gates run locally before
 every commit.
@@ -625,7 +625,7 @@ documented.
 
 When you're about to make a code choice that contradicts something
 in this file, write up the rationale and add an entry to
-[`docs/central_idea/decisions.md`](docs/central_idea/decisions.md).
+[`docs/decisions.md`](docs/decisions.md).
 Strategic deviations are tracked; silent ones rot.
 
 When you're not sure whether a rule applies — ask. The cheap thing

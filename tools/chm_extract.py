@@ -562,7 +562,7 @@ def main() -> int:
                             "Decompile sldworksapiprogguide.chm first: "
                             "hh.exe -decompile "
                             f"{root} "
-                            "docs/central_idea/reference/solidworks_api/sldworksapiprogguide.chm"
+                            "path/to/sldworksapiprogguide.chm"
                         ),
                     },
                     indent=2,

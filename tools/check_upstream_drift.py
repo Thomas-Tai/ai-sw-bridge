@@ -1,15 +1,15 @@
 """Check upstream repo drift against pinned commits.
 
-Reads port-recipe metadata from ``harvest_plan.md`` §5 and/or
-``CONTRIBUTING.md`` "Third-party derivations" table. For each pinned
-upstream, queries the GitHub API for the commit count since the pin.
-Flags repos with >50 commits of drift (exit 1).
+Reads port-recipe metadata from the ``CONTRIBUTING.md`` "Third-party
+derivations" table. For each pinned upstream, queries the GitHub API for
+the commit count since the pin. Flags repos with >50 commits of drift
+(exit 1).
 
 Usage::
 
     python tools/check_upstream_drift.py [--threshold N] [--format table|json]
 
-Refs: supply_chain_security.md §3, harvest_plan.md §7.1.
+Refs: docs/SECURITY.md §3.
 """
 
 from __future__ import annotations
@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-HARVEST_PLAN = REPO_ROOT / "docs" / "central_idea" / "harvest_plan.md"
 CONTRIBUTING = REPO_ROOT / "CONTRIBUTING.md"
 
 GITHUB_API = "https://api.github.com"
@@ -58,11 +57,6 @@ class DriftResult:
 # ---------------------------------------------------------------------------
 # Pin extraction
 # ---------------------------------------------------------------------------
-
-_RECIPE_HEADER_RE = re.compile(r"### Recipe 5\.\d+ .*\n")
-_SOURCE_RE = re.compile(r"\*\*Source:\*\*\s+`?([^`\n]+)`?")
-_TARGET_RE = re.compile(r"\*\*Target:\*\*\s+`?([^`\n]+)`?")
-_COMMIT_SHA_RE = re.compile(r"Commit:\s+([0-9a-f]{40})")
 
 _CONTRIB_TABLE_ROW_RE = re.compile(
     r"\|\s*`?(src/[^`|\n]+)`?\s*\|"  # group 1: target file
@@ -106,45 +100,6 @@ def _resolve_repo_name(raw: str) -> str:
     return _UPSTREAM_REPO_MAP.get(raw, raw)
 
 
-def read_pins_from_harvest_plan(path: Path | None = None) -> list[UpstreamPin]:
-    """Extract pinned commits from harvest_plan.md §5 recipes."""
-    if path is None:
-        path = HARVEST_PLAN
-    if not path.exists():
-        return []
-    text = path.read_text(encoding="utf-8")
-    pins: list[UpstreamPin] = []
-    for m in _RECIPE_HEADER_RE.finditer(text):
-        # Scan from this header until the next header or end of file
-        start = m.end()
-        next_header = _RECIPE_HEADER_RE.search(text, start)
-        end = next_header.start() if next_header else len(text)
-        block = text[start:end]
-
-        source_match = _SOURCE_RE.search(block)
-        target_match = _TARGET_RE.search(block)
-        sha_match = _COMMIT_SHA_RE.search(block)
-
-        if not source_match:
-            continue
-        source_raw = source_match.group(1).strip()
-        target_raw = target_match.group(1).strip() if target_match else ""
-        if not sha_match:
-            continue
-        pinned_sha = sha_match.group(1)
-        repo = _resolve_repo_name(source_raw.split("/")[0].replace("-main", ""))
-        if repo and "/" in repo:
-            pins.append(
-                UpstreamPin(
-                    repo=repo,
-                    pinned_sha=pinned_sha,
-                    source_file=str(path),
-                    target_file=target_raw,
-                )
-            )
-    return pins
-
-
 def read_pins_from_contributing(path: Path | None = None) -> list[UpstreamPin]:
     """Extract pinned commits from CONTRIBUTING.md 'Third-party derivations' table."""
     if path is None:
@@ -171,15 +126,10 @@ def read_pins_from_contributing(path: Path | None = None) -> list[UpstreamPin]:
 
 
 def collect_pins() -> list[UpstreamPin]:
-    """Collect all pins from both sources, deduplicating by repo."""
+    """Collect pins from the CONTRIBUTING.md table, deduplicating by repo."""
     seen: set[str] = set()
     pins: list[UpstreamPin] = []
     for pin in read_pins_from_contributing():
-        key = f"{pin.repo}:{pin.pinned_sha}"
-        if key not in seen:
-            seen.add(key)
-            pins.append(pin)
-    for pin in read_pins_from_harvest_plan():
         key = f"{pin.repo}:{pin.pinned_sha}"
         if key not in seen:
             seen.add(key)
@@ -324,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
     pins = collect_pins()
     if not pins:
         print(
-            "No upstream pins found in harvest_plan.md or CONTRIBUTING.md.",
+            "No upstream pins found in CONTRIBUTING.md.",
             file=sys.stderr,
         )
         return 0

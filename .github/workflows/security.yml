@@ -45,5 +45,5 @@ jobs:
         # BLOCKING as of v1.6.0: a known CVE in a runtime dependency fails the
         # build. Triage an accepted / awaiting-upstream-fix advisory explicitly
         # with `pip-audit --ignore-vuln <GHSA-id> --desc` (record the rationale in
-        # supply_chain_security.md Appendix A).
+        # docs/SECURITY.md Appendix A).
         run: pip-audit --desc

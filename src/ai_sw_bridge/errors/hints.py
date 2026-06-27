@@ -51,9 +51,9 @@ HINT_CATALOG: dict[str, Hint] = {
             "Re-resolve the face via the brep manifest: use face_role "
             "(e.g., 'top', '+z_outboard') or fingerprint match against "
             "the parent feature's brep block rather than literal "
-            "GetSelectByIDString ids. See spec.md §2.6."
+            "GetSelectByIDString ids. See known_gotchas.md."
         ),
-        ref_doc="docs/central_idea/spec.md §2.6",
+        ref_doc="docs/known_gotchas.md (face id re-resolution)",
     ),
     "sketch_under_constrained": Hint(
         key="sketch_under_constrained",
@@ -117,7 +117,7 @@ HINT_CATALOG: dict[str, Hint] = {
             "sketches pollute the brep manifest and can confuse "
             "face_role resolution."
         ),
-        ref_doc="docs/central_idea/spec.md §7 (lint rules)",
+        ref_doc="docs/spec_reference.md (Lint checks)",
     ),
     "addim_popup_blocking": Hint(
         key="addim_popup_blocking",
@@ -161,9 +161,9 @@ HINT_CATALOG: dict[str, Hint] = {
             "Keep the face-sketch origin offset within the positive "
             "quadrant of the target face's bounding box. The "
             "face_role + centroid in the brep manifest lets you "
-            "compute a safe offset vector; see spec.md §2.10."
+            "compute a safe offset vector; see known_limitations.md §1."
         ),
-        ref_doc="docs/central_idea/spec.md §2.10",
+        ref_doc="docs/known_limitations.md §1 (face-sketch origin)",
     ),
     "parametric_value_out_of_range": Hint(
         key="parametric_value_out_of_range",
@@ -179,9 +179,9 @@ HINT_CATALOG: dict[str, Hint] = {
             "The validator's error envelope names the offending "
             "variable and its bounds."
         ),
-        ref_doc="docs/central_idea/spec.md §6 (locals validation)",
+        ref_doc="docs/spec_reference.md (Validation)",
     ),
-    # Sketch contour validity entries — audit §6.4. SW silently degrades
+    # Sketch contour validity entries. SW silently degrades
     # on the four cases below; without these hints the LLM gets a
     # cryptic HRESULT with no path to a fix.
     "sketch_self_intersect": Hint(
@@ -200,7 +200,7 @@ HINT_CATALOG: dict[str, Hint] = {
             "emitting the spec — the bridge does not currently lint "
             "for this."
         ),
-        ref_doc="docs/central_idea/audit_review.md §6.4",
+        ref_doc="docs/known_limitations.md §6 (geometry not validated)",
     ),
     "sketch_open_contour_needed_closed": Hint(
         key="sketch_open_contour_needed_closed",
@@ -217,7 +217,7 @@ HINT_CATALOG: dict[str, Hint] = {
             "selecting all sketch endpoints — every endpoint should "
             "be coincident with another."
         ),
-        ref_doc="docs/central_idea/audit_review.md §6.4",
+        ref_doc="docs/known_limitations.md §6 (geometry not validated)",
     ),
     "sketch_construction_only": Hint(
         key="sketch_construction_only",
@@ -234,7 +234,7 @@ HINT_CATALOG: dict[str, Hint] = {
             "sketch cannot drive a boss/cut. Verify with Tools > "
             "Sketch Tools > Repair Sketch."
         ),
-        ref_doc="docs/central_idea/audit_review.md §6.4",
+        ref_doc="docs/known_limitations.md §6 (geometry not validated)",
     ),
     "sketch_tangent_dim_conflict": Hint(
         key="sketch_tangent_dim_conflict",
@@ -252,7 +252,7 @@ HINT_CATALOG: dict[str, Hint] = {
             "Check Tools > Sketch Tools > Display/Delete Relations "
             "to see which the solver chose."
         ),
-        ref_doc="docs/central_idea/audit_review.md §6.4",
+        ref_doc="docs/known_limitations.md §6 (geometry not validated)",
     ),
 }
 

@@ -281,7 +281,7 @@ For each upstream, "drift" is `count of commits between (our pin) and (upstream 
 
 `tools/check_upstream_drift.py`:
 
-- Reads pinned commits from `CONTRIBUTING.md` "Third-party derivations" table and/or `harvest_plan.md` §5 recipes.
+- Reads pinned commits from the `CONTRIBUTING.md` "Third-party derivations" table.
 - For each upstream + commit pin, queries the GitHub compare API (`/repos/{owner}/{repo}/compare/{sha}...HEAD`).
 - Emits a table (or JSON with `--format json`) of `(repo, pinned_sha, commits_since_pin, last_commit_date, latest_sha)`.
 - Flags (exit 1) when any repo exceeds the configurable threshold (default 50; override with `--threshold N`).
@@ -295,7 +295,7 @@ When the drift check flags an upstream:
 2. **Security commits** — if any commit since the pin is a security fix touching our ported lines, re-port within 7 days (per §3.2).
 3. **Behavioral changes** — if the upstream fixed bugs or changed behavior our port depends on, file a re-port issue for the next MINOR release.
 4. **Cosmetic drift** (renames, docs, dependency bumps) — no action; note the review date in the next quarterly audit.
-5. **License change** — if the upstream relicensed to copyleft, initiate port rollback per `harvest_plan.md` §5.7.
+5. **License change** — if the upstream relicensed to copyleft, roll the port back (remove the derived file or replace it with a clean-room implementation).
 6. **Record** — log the review in **Appendix A** (the upstream-port CVE ledger) with the drift count and triage outcome.
 
 For testing and CI tuning, lower the threshold: `python tools/check_upstream_drift.py --threshold 0` simulates the flag on any drift.
@@ -338,13 +338,13 @@ Automated CVE feed monitoring is a v0.13+ target. Implementation depends on a ma
 
 ### 5.1 Per-port license verification
 
-Every port docstring states the upstream LICENSE (file name + copyright holder + year). The `harvest_plan.md` §1 matrix is the source of truth for license classification.
+Every port docstring states the upstream LICENSE (file name + copyright holder + year). The per-port SPDX docstrings and the `CONTRIBUTING.md` "Third-party derivations" table are the source of truth for license classification.
 
 CI gate (`tools/license_lint.py`, v0.11):
 
 - Scan every file in `src/` whose docstring matches the port pattern.
-- Cross-reference upstream + license against `harvest_plan.md` §1 classification.
-- Reject if classification disagrees, or if the file claims to port from a GPL or no-LICENSE repo (those are study-only per harvest plan).
+- Cross-reference upstream + license against the `CONTRIBUTING.md` "Third-party derivations" table.
+- Reject if classification disagrees, or if the file claims to port from a GPL or no-LICENSE repo (those are study-only and must not be ported).
 
 ### 5.2 Top-level license consistency
 

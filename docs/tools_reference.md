@@ -143,8 +143,8 @@ _Consolidated from the former `sw_version_matrix_runner.md`._
 
 `tests/version_matrix/` provides a parametrise-based harness so seat tests can
 run against two SOLIDWORKS major versions (N and N-1) in one pytest invocation.
-The scaffold was introduced in W58 to address D-4 (the one open cross-cutting
-recommendation in `central_idea_vs_implementation_audit.md`).
+The scaffold addresses cross-version seat testing — running the seat suite
+against two SOLIDWORKS majors without duplicating it.
 
 **Revision map** (from `src/ai_sw_bridge/spec/_version_resolver.py`):
 
@@ -227,11 +227,3 @@ and is gated on the first real seat-gated N/N-1 test being authored.
 Both markers combine: an N-1 seat test should carry both `solidworks_only`
 (needs any SW session) and the implicit `sw_version_n1` mark from
 `pytest.param("N-1", marks=pytest.mark.sw_version_n1)`.
-
----
-
-## Backlog reference
-
-- Audit item: **D-4** (`central_idea_vs_implementation_audit.md` §5 #24)
-- Burndown entry: `BACKLOG_BURNDOWN.md` §A #24 — `OFFLINE`, Gate R5
-- Wave: **W58**

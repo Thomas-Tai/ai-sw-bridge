@@ -3,25 +3,25 @@
 
 Walks ``src/`` for files whose docstring contains a port marker
 (``Ported from`` or ``Adapted from``), then verifies three attribution
-surfaces per harvest_plan.md §9.1:
+surfaces:
 
   (a) Docstring: SPDX-style license name + source repo + commit hash.
   (b) CONTRIBUTING.md: a row in the "Third-party derivations" table
       referencing the same file and upstream.
   (c) README.md: an Acknowledgments line for the upstream repo.
 
-Cross-references the upstream repo against the license matrix in
-harvest_plan.md §1. Fails on GPL or no-LICENSE upstreams — those are
-study-only per the harvest plan.
+Cross-references the upstream repo against the license matrix below
+(mirrored from the CONTRIBUTING.md "Third-party derivations" table).
+Fails on GPL or no-LICENSE upstreams — those are study-only.
 
 Also checks that the top-level LICENSE file and pyproject.toml declared
-license agree (both MIT per supply_chain_security.md §5.2).
+license agree (both MIT; see docs/SECURITY.md §5).
 
 Exit 0 if clean, 1 if violations found. Run from repo root::
 
     python tools/license_lint.py src/
 
-Ref: harvest_plan.md §9, supply_chain_security.md §5, audit §1.4.
+Ref: docs/SECURITY.md §5, CONTRIBUTING.md.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Repos classified as GPL or no-license in harvest_plan.md §1.
+# Repos classified as GPL or no-license (see docs/SECURITY.md §5).
 # Ports from these are forbidden; the lint rejects them outright.
 FORBIDDEN_REPOS: dict[str, str] = {
     "pySolidWorks-main": "GPL-3.0",
@@ -40,7 +40,7 @@ FORBIDDEN_REPOS: dict[str, str] = {
     "AI-SolidWorks-main": "NO LICENSE",
 }
 
-# Allowed upstream repos with their license classification (harvest_plan.md §1).
+# Allowed upstream repos with their license classification (see CONTRIBUTING.md).
 ALLOWED_REPOS: dict[str, str] = {
     "SolidworksMCP-python-main": "MIT",
     "mcp-server-solidworks-main": "MIT",
@@ -170,12 +170,12 @@ def _check_license_classification(upstream_repo: str, file_path: Path) -> list[s
         lic = FORBIDDEN_REPOS[_NORMALIZED_FORBIDDEN[canonical]]
         errors.append(
             f"{file_path}: upstream {upstream_repo} is {lic} — "
-            f"study-only, porting is forbidden (harvest_plan.md §1)"
+            f"study-only, porting is forbidden (see docs/SECURITY.md §5)"
         )
     elif canonical not in _NORMALIZED_ALLOWED:
         errors.append(
             f"{file_path}: upstream {upstream_repo} not found in "
-            f"license matrix (harvest_plan.md §1) — classify before porting"
+            f"license matrix (see CONTRIBUTING.md) — classify before porting"
         )
     return errors
 

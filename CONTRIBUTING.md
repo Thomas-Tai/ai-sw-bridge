@@ -105,7 +105,7 @@ See [`docs/i18n/TRANSLATION_PROMPT.md`](docs/i18n/TRANSLATION_PROMPT.md) for the
 ## Port attribution
 
 When porting code from upstream repositories, three attribution surfaces are
-required (see `docs/central_idea/harvest_plan.md` §5 for the full process):
+required:
 
 1. **Docstring** — module-level SPDX tags + upstream commit SHA
 2. **This table** — one row per ported file

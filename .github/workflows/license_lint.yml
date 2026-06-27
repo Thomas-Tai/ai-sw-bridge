@@ -34,6 +34,6 @@ jobs:
       # BLOCKING as of v1.6.0 (the clean cycle has passed): a license/attribution
       # regression — the proprietary LICENSE, the pyproject license declaration, or
       # the THIRD-PARTY-NOTICES MIT attribution for the bundled SolidworksMCP-python
-      # port — now fails the build. See harvest_plan.md §9.2.
+      # port — now fails the build. See docs/SECURITY.md §5.
       - name: Run license lint
         run: python tools/license_lint.py src/
