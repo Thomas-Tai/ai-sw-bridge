@@ -4,15 +4,20 @@ Shared SOLIDWORKS COM helpers.
 Every observation/mutation tool imports from here. Keeps the late-binding
 property-vs-method handling and SW constants in one place.
 
-Why late binding only:
-    SldWorks.Application does not support typelib generation via
+Why we prefer late binding:
+    SldWorks.Application usually refuses typelib generation via
     win32com.client.gencache.EnsureDispatch (raises "this COM object can
-    not automate the makepy process" on most installs). We stick with
-    win32com.client.Dispatch.
+    not automate the makepy process" on most installs), so we Dispatch
+    late-bound. But a gen_py typelib cached by some *other* tool means
+    GetActiveObject can still hand back an early-bound object, where a
+    zero-arg method is a real bound method rather than an auto-invoked
+    property. `resolve()` below tolerates both bindings so the entry
+    points (probe, version gate, observe reads) stay correct either way.
 """
 
 from __future__ import annotations
 
+import inspect
 import logging
 from typing import Any
 
@@ -44,17 +49,31 @@ SW_OPEN_SILENT = 1
 
 def resolve(obj: Any, name: str) -> Any:
     """
-    Read `obj.name` via late-bound COM Dispatch.
+    Read `obj.name`, tolerating both COM binding modes.
 
-    pywin32 late-binding (without a typelib / makepy) auto-invokes zero-arg
-    methods on attribute access. So both properties and zero-arg methods
-    are reached the same way: plain `getattr`. Sub-Dispatch objects come
-    back as `CDispatch` instances and are *always* reported `callable=True`
-    even though they are not actually callable - calling them throws
-    DISP_E_MEMBERNOTFOUND (-2147352573). Never call the result here; let
-    callers invoke explicitly for methods that take arguments.
+    pywin32 *late*-binding (no typelib / makepy) auto-invokes zero-arg
+    methods on attribute access, so properties and zero-arg methods are
+    both reached the same way: plain `getattr`. But if a makepy / gen_py
+    typelib is cached for SOLIDWORKS (the SW installer or any prior
+    `EnsureDispatch` anywhere on the box can create one), `GetActiveObject`
+    hands back an *early*-bound object where a zero-arg method is a real
+    Python bound method, NOT an auto-invoked property. A plain `getattr`
+    then returns the *method object* instead of its value -- e.g.
+    `RevisionNumber` comes back as ``<bound method ...>`` instead of
+    ``"32.1.0"``, which silently broke the version gate and `ai-sw-probe`.
+
+    So: if the attribute is a genuine bound method, invoke it. We key on
+    `inspect.ismethod`, NOT `callable()`, on purpose -- late-bound
+    `CDispatch` sub-objects report ``callable() == True`` but must never be
+    called (calling one throws DISP_E_MEMBERNOTFOUND, -2147352573). A
+    `CDispatch` is not a bound method, so `ismethod` correctly leaves it
+    untouched. Callers still invoke methods that take *arguments*
+    explicitly; this only auto-reads the zero-arg case `resolve` is for.
     """
-    return getattr(obj, name)
+    attr = getattr(obj, name)
+    if inspect.ismethod(attr):
+        return attr()
+    return attr
 
 
 _CACHED_SW_APP: Any | None = None
@@ -116,7 +135,11 @@ def _check_sw_version(sw: Any) -> None:
     COM error, refuse up front with a clear message. (Enhancement plan P3.3.)
     """
     try:
-        rev = sw.RevisionNumber  # e.g. "32.1.0"
+        # Route through resolve() so the version gate reads a real value
+        # under BOTH bindings. Reading sw.RevisionNumber directly returns a
+        # bound method (not "32.1.0") on an early-bound handle, which made
+        # this gate silently no-op on any box with a cached gen_py typelib.
+        rev = resolve(sw, "RevisionNumber")  # e.g. "32.1.0"
         parts = tuple(int(x) for x in str(rev).split("."))
     except Exception:
         # RevisionNumber unreadable -- log and continue rather than block.
