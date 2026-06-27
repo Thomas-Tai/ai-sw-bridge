@@ -121,6 +121,55 @@ Rules for the exception:
   no agent COM access. Proven by `spikes/v0_15/spike_earlybind_persist.py`
   (S-EARLYBIND = PASS).
 
+### 2.1.2 Binding-safe property reads: the three-layer defense
+
+§2.1 makes late binding the default; §2.1.1 the narrow early-binding
+exception. A zero-arg COM method read as a *bare attribute* behaves
+differently under the two: late-bound it auto-invokes to the value
+(`doc.GetTitle` → `"Part1"`); early-bound it returns the *bound method*
+(`doc.GetTitle` → `<bound method ...>`). Using the method object as if it
+were the value is the **binding trap** — it silently broke `ai-sw-probe`,
+the `SW_VERSION_VERIFIED` gate, and `spec._version_resolver` (which
+degraded to the newest-signature COM args, a SOLIDWORKS-2021 back-compat
+hazard).
+
+Because both bindings genuinely coexist here, property reads are protected
+by **three complementary layers**, each guarding a distinct surface. They
+are **not** redundant — do not remove any of them for minimalism.
+
+1. **The root forcing function** — `sw_com._force_late_bound`, applied in
+   `get_sw_app()`. Re-wraps the Application via
+   `win32com.client.dynamic.Dispatch`, so the *default* object graph
+   (docs, managers, features reached from the app) is late-bound and
+   auto-invokes correctly — neutralizing the gen_py-cache anomaly where
+   `GetActiveObject`/`Dispatch` hand back an early-bound graph.
+
+2. **The `resolve()` router** — `sw_com.resolve(obj, "Name")`, the single
+   sanctioned reader for a property-style COM value. Binding-agnostic:
+   invokes a genuine bound method, keyed on `inspect.ismethod`, **never**
+   on `callable()` (late-bound `CDispatch` sub-objects report
+   `callable() == True` but must never be called — `DISP_E_MEMBERNOTFOUND`).
+   This self-defends reads against the objects that are *intentionally*
+   early-bound via §2.1.1's `typed()`/`typed_qi()` casts — those still
+   exist deep in the mutation lanes, so layer 1 does **not** make
+   `resolve()` obsolete.
+
+3. **The AST guard** — `tests/test_no_direct_com_reads.py`. Fails CI on any
+   bare attribute read of a known property-style method
+   (`RevisionNumber` / `GetTitle` / `GetType` / `GetPathName`) instead of
+   `resolve()`, keeping the single-reader convention enforced and
+   preventing the trap class from creeping back.
+
+**Why all three.** Layer 1 alone couples the correctness of every bare read
+to a single line in `get_sw_app()` — one refactor away from re-detonating on
+a field install, and blind to the early-bound objects the `typed_qi()` casts
+deliberately create. Layers 2–3 decouple each read so it is self-defending
+and hold the line on that early-bound surface. For a bridge to a fragile
+legacy COM API, minimalism is the liability and the redundancy is the point.
+Proven live 2026-06-27: forced late-bound root + `typed(sw,"ISldWorks")`
+still early-bound + `typed_qi(IFeatureManager).InsertScale` geometry mutation
+green.
+
 ### 2.2 OUT-typed parameters
 
 Some SW API entry points have OUT-typed `IDispatch` parameters that
