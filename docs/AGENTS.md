@@ -68,7 +68,7 @@ Full spec reference: [`docs/spec_reference.md`](spec_reference.md).
 
 ## Which feature type to pick
 
-16 feature types ship today. The right starting example by goal:
+The base spec primitives map to a starting example by goal:
 
 | Goal | Best example to copy | Primitives it uses |
 |---|---|---|
@@ -129,11 +129,24 @@ If the human's part has a `*_locals.txt` equation file (Equation Manager linked 
 4. **`SelectByID returned False`**: face-select failed. Most common cause: an earlier feature changed the geometry and the seed coord is now on a curved/missing face. Reduce the spec until you find which feature breaks the select; adjust `center` offsets accordingly.
 5. **The build returns a feature but the geometry looks wrong**: probably a `center` offset from the wrong origin (see the face-sketch-origin gotcha above). The runtime stderr warning fires with the exact offset to add.
 
-## Roadmap awareness
+## Capability awareness
 
-16 feature primitives ship as of v0.10. **Not yet supported**: sweep, loft, sheet metal, custom reference planes/axes, assemblies, mates, drawings, HoleWizard countersink/counterbore, variable-radius fillet. If the human asks for one of these, say so — don't fake it with a worse primitive.
+Two build surfaces ship today — don't confuse them, and don't trust this list over the code:
 
-The full not-yet-shipped list and the v0.6+ plan: [`README.md`](../README.md) bottom section.
+- **The spec language** (`ai-sw-build` consumes a `spec.json`) — the base part-modelling primitives in the table above: sketches, extrudes/revolves (blind, midplane, through-all, two-direction, up-to-surface, cuts), `simple_hole`, `fillet_constant_radius`, `chamfer_edge`, and linear/circular/mirror patterns.
+- **The `feature_add` registry** (`ai-sw-build` / `ai-sw-batch`, and `sw_batch_plan` over MCP) — **36 additional kinds** added onto a model: dress-up (`shell`, `draft`, `variable_radius_fillet`, `fillet_face`), reference geometry (`ref_plane`, `ref_axis`, `ref_point`, `coordinate_system`, `bounding_box`), curves (`helix`, `spiral`, `composite`, `project_curve`, `curve_through_xyz`), surfaces (`planar_surface`, `offset_surface`, `knit`), sheet metal (`base_flange`, `hem`, `sketched_bend`), `sweep` / `sweep_cut`, `dome`, `wizard_hole`, `intersect`, `scale`, `structural_weldment`, and more.
+
+**This paragraph is a tour, not the source of truth. Query the code:**
+
+```python
+from ai_sw_bridge.client import SolidWorksClient
+SolidWorksClient().features.list_kinds()        # the 36 feature_add kinds, sorted
+SolidWorksClient().features.supports("sweep")   # -> True
+```
+
+Assemblies, mates, drawings, custom properties, and multi-file configurations are **separate CLIs** (`ai-sw-assembly`, `ai-sw-drawing`, `ai-sw-properties`, `ai-sw-configurations`) — see the command table in [`README.md`](../README.md).
+
+**Genuinely unsupported — fail loud, don't fake it:** `loft`, `combine` / `split`, `wrap`, `rib`, `boundary boss`, `thicken`, the profile-sketch sheet-metal flanges (`edge_flange` / `miter_flange` / `jog`), `indent`, `flex`, the table / dimension / derived / chain / fill pattern variants, `split_line`, path mates, and equation-driven curves. The per-feature kernel-wall rationale and the workaround for each is in [`docs/DEFERRED.md`](DEFERRED.md). If the human asks for one of these, say so and point them at its DEFERRED.md workaround — don't substitute a worse primitive.
 
 ## Why late binding (and the type stubs)
 
