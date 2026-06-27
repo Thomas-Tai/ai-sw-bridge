@@ -40,6 +40,110 @@ def _emit(payload: dict, code: int) -> int:
     return code
 
 
+def _eprint(msg: str) -> None:
+    """Write an operator banner line to stderr, surviving consoles that can't
+    encode every glyph in it.
+
+    The seat banner interpolates the active document's title, which on this
+    user's machines is routinely CJK. A bare ``print`` to a cp1252 console
+    raises ``UnicodeEncodeError`` on the first un-encodable glyph -- and the
+    banner print sits *before* the build, so that exception would abort the
+    very build the gate exists to protect. Degrade the offending glyphs to a
+    placeholder instead; the PID is the real seat identifier either way.
+    """
+    try:
+        print(msg, file=sys.stderr)
+    except UnicodeEncodeError:
+        enc = sys.stderr.encoding or "ascii"
+        sys.stderr.write(msg.encode(enc, "replace").decode(enc) + "\n")
+        sys.stderr.flush()
+
+
+def _seat_gate(assume_yes: bool) -> int | None:
+    """Identify the foreground SOLIDWORKS seat and gate the build (Issue #7).
+
+    ``ai-sw-build`` attaches to whatever SOLIDWORKS instance is in the COM
+    Running Object Table and starts mutating. Before any geometry call, print
+    which seat is about to be driven (PID + active doc) so the operator is
+    never surprised by a build landing in their foreground session.
+
+    Returns ``None`` to proceed, or an exit code to abort.
+
+    - ``--yes`` skips the prompt (non-interactive automation). The banner is
+      still printed.
+    - A non-TTY stdin (piped / agent-driven) PROCEEDS after the banner: the
+      banner is the audit record, and human approval happens upstream in the
+      propose -> approve -> execute loop. This is why build differs from the
+      ``ai-sw-batch`` commit gate (which aborts a non-TTY without ``--yes``):
+      a build creates a NEW doc, it is not an irreversible write to an
+      existing part.
+    - An interactive TTY without ``--yes`` pauses for a ``[y/N]`` confirmation.
+    """
+    # PID via the proven tasklist helper (no COM call -> never auto-launches SW
+    # just to render the banner). cli -> resilience is a legal layer edge.
+    pids: list[int] = []
+    try:
+        from ..resilience.session import _find_sw_pids
+
+        pids = _find_sw_pids()
+    except Exception:  # noqa: BLE001 -- the banner is best-effort, never fatal
+        pids = []
+
+    if not pids:
+        _eprint(
+            "ai-sw-build: no running SOLIDWORKS found - a fresh instance will "
+            "be launched for this build."
+        )
+    else:
+        pid_str = (
+            str(pids[0])
+            if len(pids) == 1
+            else f"{pids[0]} (1 of {len(pids)} running - ambiguous)"
+        )
+        active = "None"
+        try:
+            from ..sw_com import get_active_doc, get_sw_app, resolve
+
+            doc = get_active_doc(get_sw_app())
+            if doc is not None:
+                active = str(resolve(doc, "GetTitle")) or "None"
+        except Exception:  # noqa: BLE001 -- active-doc read is best-effort
+            active = "unknown"
+        _eprint(
+            f"ai-sw-build: attached to SOLIDWORKS [PID: {pid_str}] "
+            f"(active doc: {active})."
+        )
+
+    if assume_yes or not sys.stdin.isatty():
+        return None
+
+    sys.stderr.write("Proceed with build? [y/N] ")
+    sys.stderr.flush()
+    try:
+        resp = input("").strip().lower()
+    except EOFError:
+        # No interactive input stream — a pseudo-TTY (CI / agent harness)
+        # reports isatty()==True but EOFs on read. Treat "no stream" as
+        # non-interactive and PROCEED (the banner is the record); aborting
+        # here would break automation that runs under a PTY. A real human
+        # pressing Enter returns "" (handled below as the [y/N] default: no).
+        return None
+    if resp in ("y", "yes"):
+        return None
+    print(
+        json.dumps(
+            {
+                "ok": False,
+                "aborted": True,
+                "error": "user declined - no build performed",
+            },
+            indent=2,
+        )
+    )
+    _eprint("Aborted. No build performed.")
+    return 0  # a clean decline is not an error
+
+
 def _write_build_metrics(result: Any, spec: dict[str, Any], sldprt_path: str) -> str:
     """Write a build_metrics.json sidecar next to the saved .sldprt.
 
@@ -271,6 +375,16 @@ def main() -> int:
             "failures, not just ERRORS (==2). By default a part with warnings "
             "still reports ok=True; with --strict any non-OK feature fails the "
             "build. See BuildResult.feature_health (X2 success-gate)."
+        ),
+    )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        dest="yes",
+        action="store_true",
+        help=(
+            "Skip the pre-build seat-confirmation prompt (non-interactive "
+            "automation). The seat banner is still printed for the record."
         ),
     )
     parser.add_argument(
@@ -548,6 +662,12 @@ def main() -> int:
         # failure so CI can tell apart "spec is malformed" from "spec refs
         # missing vars in locals".
         return _emit(payload, 0 if payload["ok"] else 5)
+
+    # Issue #7 — identify the foreground seat and gate BEFORE the first COM
+    # write, so a build never silently lands in the operator's session.
+    gate_rc = _seat_gate(args.yes)
+    if gate_rc is not None:
+        return gate_rc
 
     # W7.1 — pre-build add-in check (docs/addins_research.md §7).
     # Runs BEFORE the first COM write so --strict-addins can abort
