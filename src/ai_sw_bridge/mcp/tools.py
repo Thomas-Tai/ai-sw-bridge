@@ -4,7 +4,7 @@ The ``@com_tool`` decorator is the **single load-bearing safety
 invariant** of the MCP server: every COM-touching tool MUST go
 through the ComExecutor's STA-threaded worker, or pywin32 surfaces
 the cross-thread bug as ``AttributeError`` at attribute lookup
-(see ``docs/com_failure_modes.md`` row M-XX).
+(see ``docs/com_failure_modes.md`` row M-02).
 
 Forgetting the decorator on a COM-touching tool is a real bug. The
 contract test ``test_all_com_tools_have_decorator`` walks the

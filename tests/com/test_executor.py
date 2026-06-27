@@ -8,7 +8,7 @@ cross-thread submit — are real; only the COM apartment calls are stubbed.
 
 The load-bearing test is :func:`test_submit_from_different_thread_works` —
 that is the specific cross-thread scenario the executor exists to make
-safe (see ``docs/com_failure_modes.md`` row M-XX).
+safe (see ``docs/com_failure_modes.md`` row M-02).
 """
 
 from __future__ import annotations

@@ -421,7 +421,7 @@ def com_tool(fn: Callable[..., T]) -> Callable[..., T]:
     The body is closed over with its args/kwargs and submitted to
     runtime.executor. Cross-thread COM safety is the load-bearing
     invariant — see docs/mcp_server_design.md §4 and
-    docs/com_failure_modes.md row M-XX.
+    docs/com_failure_modes.md row M-02.
 
     Forgetting this decorator on a COM-touching tool is a real bug.
     The contract test (test_all_com_tools_wrapped) walks the registered

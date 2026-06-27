@@ -28,24 +28,24 @@ same pattern: stop trusting "the call returned, therefore it worked."
 
 | # | Symptom | Real cause | Diagnostic | Mitigation | First seen |
 |---|---|---|---|---|---|
-| S-01 | `SaveAs3` returns 0 (NoError) but file is not on disk; `doc.GetSaveFlag` stays True | OneDrive / Dropbox sync client briefly holds an exclusive handle on the target folder; SW's write is queued but not yet visible when `out_path.exists()` is probed | `out_path.exists()` False AND `bool(doc.GetSaveFlag)` True after `SaveAs3` returns 0 | `_save_as_with_verification` in `src/ai_sw_bridge/spec/builder.py` — 3 independent postconditions with retry (200/400/600 ms) | 2026-05 DriveRoller session (P0.1) |
-| S-02 | Early `SaveAs3` code returned `bool(err)` which is False for 0=NoError, so the success case was misreported as failure | `swFileSaveError_e` enum: 0 means NoError, non-zero means failure. Wrapping in `bool()` inverts the contract. | Compare with `int(err) == 0` instead of `bool(err)` | Same as S-01; the verifier checks `int(err) != 0` explicitly | Pre-P0.1 builder.py |
+| S-01 | `SaveAs3` returns 0 (NoError) but file is not on disk; `doc.GetSaveFlag` stays True | OneDrive / Dropbox sync client briefly holds an exclusive handle on the target folder; SW's write is queued but not yet visible when `out_path.exists()` is probed | `out_path.exists()` False AND `bool(doc.GetSaveFlag)` True after `SaveAs3` returns 0 | `_save_as_with_verification` in `src/ai_sw_bridge/spec/builder.py` — 3 independent postconditions with retry (200/400/600 ms) | 2026-05 DriveRoller session |
+| S-02 | Early `SaveAs3` code returned `bool(err)` which is False for 0=NoError, so the success case was misreported as failure | `swFileSaveError_e` enum: 0 means NoError, non-zero means failure. Wrapping in `bool()` inverts the contract. | Compare with `int(err) == 0` instead of `bool(err)` | Same as S-01; the verifier checks `int(err) != 0` explicitly | Early builder.py |
 
 ### Sketch / geometry creation
 
 | # | Symptom | Real cause | Diagnostic | Mitigation | First seen |
 |---|---|---|---|---|---|
-| G-01 | `FeatureRevolve2` returns None for a sketch that looks valid in UI | Sketch geometry misses the body (wrong plane mapping). Most common: sketcher's local +Y mapped to wrong part axis on Top / Right Plane | `tools/feature_tree_diff.py capture` shows feature missing, OR `ai-sw-observe volume` reports `volume_mm3` unchanged across the revolve. Add a slug extrude on the same sketch and read its bbox to confirm sketch coords. | `_call_feature_revolve` emits an explicit diagnostic that names the most common causes; `_face_geometry._sketch_uv_to_part` is the canonical plane-axis remap | v0.7 revolve_cut development (Spikes ZG–ZN, 2026-05-21); [[feedback_sw_bridge_verify_geometry_first]] |
+| G-01 | `FeatureRevolve2` returns None for a sketch that looks valid in UI | Sketch geometry misses the body (wrong plane mapping). Most common: sketcher's local +Y mapped to wrong part axis on Top / Right Plane | `tools/feature_tree_diff.py capture` shows feature missing, OR `ai-sw-observe volume` reports `volume_mm3` unchanged across the revolve. Add a slug extrude on the same sketch and read its bbox to confirm sketch coords. | `_call_feature_revolve` emits an explicit diagnostic that names the most common causes; `_face_geometry._sketch_uv_to_part` is the canonical plane-axis remap | v0.7 revolve_cut development (2026-05-21) |
 | G-02 | `FeatureCut4` returns None silently when the spec looks fine | Profile sketch is geometrically empty after a `Merge=True` boolean (e.g. parent body smaller than cut profile due to placeholder size in deferred-dim mode) | `ai-sw-observe volume` before vs after; delta=0 → silent no-op | `build()` per-feature `_apply_bindings` runs before the next downstream feature so cuts see resized geometry, not placeholders. Comment chain at `builder.py:1681–1693`. | MMP `Cut_FlangeRecess` debug 2026-05-16 |
-| G-03 | `FeatureRevolve2` returns None — sketch contains no centerline | API requires a construction-line centerline INSIDE the sketch for SW to auto-pick the revolve axis | Walk the sketch via `inspect_sketch` (if it existed) or check that handler called `_draw_centerline_if_present` | Validator's `_check_references` rejects `revolve_boss` / `revolve_cut` whose target sketch has no `centerline` field (`validator.py:139–148`) | Pre-Spike X (2026-05-19) |
-| G-04 | `AddDimension2` rejects coordinates / commits but D2 silently becomes DRIVEN (reference) | API `CreateCenterRectangle` adds a spurious Type-14 Midpoint relation absent from the UI's version, collapsing 2-DOF to 1-DOF | `Sketch.GetRelations` lists a Type-14 Midpoint not visible in the UI's Display/Delete Relations pane | `_strip_centerrectangle_midpoint_relation` in `_sketch_primitives.py`, called by both rectangle handlers AFTER `CreateCenterRectangle` and BEFORE `AddDimension2` | Spike ZF (2026-05-20); [[project_sw_bridge_deferred_dim_spike]] |
+| G-03 | `FeatureRevolve2` returns None — sketch contains no centerline | API requires a construction-line centerline INSIDE the sketch for SW to auto-pick the revolve axis | Walk the sketch via `inspect_sketch` (if it existed) or check that handler called `_draw_centerline_if_present` | Validator's `_check_references` rejects `revolve_boss` / `revolve_cut` whose target sketch has no `centerline` field (`validator.py:139–148`) | 2026-05-19 |
+| G-04 | `AddDimension2` rejects coordinates / commits but D2 silently becomes DRIVEN (reference) | API `CreateCenterRectangle` adds a spurious Type-14 Midpoint relation absent from the UI's version, collapsing 2-DOF to 1-DOF | `Sketch.GetRelations` lists a Type-14 Midpoint not visible in the UI's Display/Delete Relations pane | `_strip_centerrectangle_midpoint_relation` in `_sketch_primitives.py`, called by both rectangle handlers AFTER `CreateCenterRectangle` and BEFORE `AddDimension2` | 2026-05-20 |
 
 ### Selection / accumulator
 
 | # | Symptom | Real cause | Diagnostic | Mitigation | First seen |
 |---|---|---|---|---|---|
-| X-01 | `SelectByID2(... Append=True ...)` raises `com_error('Type mismatch', ..., 8)` | The 8th positional arg (`Callout`, OUT-typed IDispatch) cannot be marshalled by pywin32 late-binding | Try the same call without the Append arg — works. Confirms it's the Callout, not your inputs. | Use 5-arg legacy `SelectByID(name, type, x, y, z)` and apply marks retroactively via `SelectionMgr.SetSelectedObjectMark`. See `_mark_first_selection` in `builder.py`. | Spike R 2026-05-17 (linear_pattern), and prior MMP debug session |
-| X-02 | Loop of `SelectByID('', 'EDGE', x, y, z)` only selects the LAST edge | 5-arg `SelectByID` is non-appending: every call replaces the prior selection | `SelectionMgr.GetSelectedObjectCount2(-1)` stays at 1 across N calls | Walk bodies, find edges by `GetClosestPointOn`, call `IEntity.Select2(Append=True, Mark=0)` — see `_select_edges_by_points` in `builder.py:673–758` | Spike Q3 2026-05-17 |
+| X-01 | `SelectByID2(... Append=True ...)` raises `com_error('Type mismatch', ..., 8)` | The 8th positional arg (`Callout`, OUT-typed IDispatch) cannot be marshalled by pywin32 late-binding | Try the same call without the Append arg — works. Confirms it's the Callout, not your inputs. | Use 5-arg legacy `SelectByID(name, type, x, y, z)` and apply marks retroactively via `SelectionMgr.SetSelectedObjectMark`. See `_mark_first_selection` in `builder.py`. | 2026-05-17 (linear_pattern), and prior MMP debug session |
+| X-02 | Loop of `SelectByID('', 'EDGE', x, y, z)` only selects the LAST edge | 5-arg `SelectByID` is non-appending: every call replaces the prior selection | `SelectionMgr.GetSelectedObjectCount2(-1)` stays at 1 across N calls | Walk bodies, find edges by `GetClosestPointOn`, call `IEntity.Select2(Append=True, Mark=0)` — see `_select_edges_by_points` in `builder.py:673–758` | 2026-05-17 |
 | X-03 | `GetErrorCode2(...)` raises pywin32 marshalling error | OUT parameter pywin32 can't unmarshal in late-binding mode | Try legacy `GetErrorCode` (auto-invoked property) — returns int directly | `observe.sw_get_feature_errors` uses `GetErrorCode` not `GetErrorCode2` | Pre-v0.2 (architecture.md) |
 
 ### Equation manager
@@ -61,26 +61,22 @@ same pattern: stop trusting "the call returned, therefore it worked."
 | # | Symptom | Real cause | Diagnostic | Mitigation | First seen |
 |---|---|---|---|---|---|
 | U-01 | `AddDimension2` opens Modify-Dimension popup mid-build | App-level `swInputDimValOnCreate` toggle (ID=8) is read True but does NOT suppress the popup on SW 2024 SP1. No combination of doc-level toggles works either. | Set the toggle to False, call `AddDimension2`, popup still fires | Three build modes — see `build()` docstring (`builder.py:1534+`). Production paths: `--no-dim` (zero popups, no equation link) and `--deferred-dim` (popups batched per sketch). | Pre-v0.2 |
-| U-02 | `_dismiss_dim_pane` is a no-op; PM-pane stays leaky after `AddDimension2` | `RunCommand(-1)` regressed cylinder; no clean dismiss API found yet | Tick a popup, observe pane state via UI inspector | Known limitation; documented in `_sketch_primitives.py`. Spike P1.6 (`spikes/v0_10/spike_p16_pm_dismiss.py`) prepared with untested approaches (RunCommand(2421), ClosePM after ForceRebuild3, toggle 78) — requires live SW session to run | MMP debug 2026-05 |
+| U-02 | `_dismiss_dim_pane` is a no-op; PM-pane stays leaky after `AddDimension2` | `RunCommand(-1)` regressed cylinder; no clean dismiss API found yet | Tick a popup, observe pane state via UI inspector | Known limitation; documented in `_sketch_primitives.py`. A probe script (`spikes/v0_10/spike_p16_pm_dismiss.py`) prepared with untested approaches (RunCommand(2421), ClosePM after ForceRebuild3, toggle 78) — requires live SW session to run | MMP debug 2026-05 |
 
-### Lane M — MCP transport (placeholder, populates when Lane M opens)
+### Lane M — MCP transport
 
-Reserved for FastMCP-specific (or chosen-framework-specific)
-failure modes per *(retired v0.13.0; see decisions.md 2026-05-28 entry)*
-§6.8 risk register. Lane M is deferred per
-[`decisions.md`](decisions.md) 2026-05-23 entry #2
-("adoption-driven"); rows below get populated only after the lane
-opens.
-
-Anticipated rows (sketched from `SolidworksMCP-python/CLAUDE.md`
-runbook; promoted to real entries once observed):
+Failure modes specific to the MCP transport (async worker threads
+driving STA-bound COM). `M-01` (SW-process death) is an observed,
+mitigated failure; `M-02` (cross-thread invocation) is mitigated
+pre-emptively by the `@com_tool` decorator, so it is documented here
+rather than waited for.
 
 | # | Symptom | Real cause | Diagnostic | Mitigation | First seen |
 |---|---|---|---|---|---|
-| M-XX | (placeholder) `AttributeError` at attribute lookup on a COM call from an MCP-handler thread | pywin32 late-binding surfaces cross-thread invocation as `AttributeError`, not `pywintypes.com_error` — boundaries that catch only the latter miss it | The error trace shows attribute access in the MCP transport thread, not the STA worker | Route every COM-touching call through `ComExecutor.submit(...)` (FR-v0.11-M-02); cross-thread `AttributeError` becomes a typed `MCPThreadingError` at the boundary | TBD (Lane M E1 port) |
-| M-01 | `0x800401FD` / `0x80010108` after user closes SW mid-MCP-session; pending callers deadlock | SW process death; cached `IDispatch` handle goes stale. Subsequent COM calls raise `pywintypes.com_error` with HRESULTs in `_DEAD_HRESULTS`. Without explicit handling, pending queue items block forever. | `ComExecutor.is_sw_dead` flag flips True when a worker call raises with HRESULT in `_DEAD_HRESULTS` (`0x800401FD`, `0x80010108`); pending futures complete with `ConnectionError` | `ComExecutor._worker` catches dead HRESULTs, sets `_sw_app_is_dead`, drains queue with `ConnectionError`, exits loop. `reconnect()` resets state, restarts worker thread. See `src/ai_sw_bridge/com/executor.py` `_DEAD_HRESULTS`, `is_sw_dead`, `reconnect()`. | W5.6 (2026-05) |
+| M-02 | `AttributeError` at attribute lookup on a COM call from an MCP-handler thread | pywin32 late-binding surfaces cross-thread invocation as `AttributeError`, not `pywintypes.com_error` — boundaries that catch only the latter miss it | The error trace shows attribute access in the MCP transport thread, not the STA worker | Route every COM-touching call through `ComExecutor.submit(...)`; the cross-thread `AttributeError` becomes a typed `MCPThreadingError` at the boundary. Enforced by the `@com_tool` decorator on every COM-touching MCP tool. | Mitigated pre-emptively by `@com_tool`; not observed in production |
+| M-01 | `0x800401FD` / `0x80010108` after user closes SW mid-MCP-session; pending callers deadlock | SW process death; cached `IDispatch` handle goes stale. Subsequent COM calls raise `pywintypes.com_error` with HRESULTs in `_DEAD_HRESULTS`. Without explicit handling, pending queue items block forever. | `ComExecutor.is_sw_dead` flag flips True when a worker call raises with HRESULT in `_DEAD_HRESULTS` (`0x800401FD`, `0x80010108`); pending futures complete with `ConnectionError` | `ComExecutor._worker` catches dead HRESULTs, sets `_sw_app_is_dead`, drains queue with `ConnectionError`, exits loop. `reconnect()` resets state, restarts worker thread. See `src/ai_sw_bridge/com/executor.py` `_DEAD_HRESULTS`, `is_sw_dead`, `reconnect()`. | 2026-05 |
 
-### Add-in interference (W7.1)
+### Add-in interference
 
 Placeholder rows for add-in-related failure modes. Populated when
 `spikes/v0_13/spike_addin_enumeration.py` returns results from a live
@@ -88,10 +84,10 @@ SW session.
 
 | # | Symptom | Real cause | Diagnostic | Mitigation | First seen |
 |---|---|---|---|---|---|
-| A-01 | (placeholder) Build succeeds but output dimensions differ from spec targets between runs | SOLIDWORKS Toolbox add-in auto-resizes inserted hardware or rewrites mate references | `ai-sw-observe addins` lists "SOLIDWORKS Toolbox" in `known_problematic` | `--disable-addins` flag warns at build start; `--strict-addins` blocks build (rc=4) until user disables via Tools → Add-Ins | TBD (spike pending) |
-| A-02 | (placeholder) `SaveAs3` returns 0 but file is unchanged; S-01 verifier reports misleading cause | SOLIDWORKS PDM add-in intercepts save events; vault-bound files require check-out | `ai-sw-observe addins` lists "SOLIDWORKS PDM Standard" or "SOLIDWORKS PDM Professional" in `known_problematic` | `--disable-addins` / `--strict-addins` pre-flight check; user must check out file or disable PDM add-in | TBD (spike pending) |
-| A-03 | (placeholder) Custom properties contain unexpected values after build | 3DEXPERIENCE PLM Connector captures save events and modifies custom properties | `ai-sw-observe addins` lists "3DEXPERIENCE PLM Connector" in `known_problematic`; `ai-sw-observe custom_props` shows unexpected entries | `--disable-addins` / `--strict-addins` pre-flight check | TBD (spike pending) |
-| A-04 | (placeholder) `GetEnabledAddIns` returns None or raises; enumeration fails entirely | SW build does not expose the API when no add-ins are loaded, or the method is absent on older versions | `sw_get_enabled_addins()` returns `ok=True, addins=[], error="api_not_present"` | Fail-soft: build proceeds with a stderr warning. No add-in interference possible when the API is absent. | TBD (spike pending) |
+| A-01 | (placeholder) Build succeeds but output dimensions differ from spec targets between runs | SOLIDWORKS Toolbox add-in auto-resizes inserted hardware or rewrites mate references | `ai-sw-observe addins` lists "SOLIDWORKS Toolbox" in `known_problematic` | `--disable-addins` flag warns at build start; `--strict-addins` blocks build (rc=4) until user disables via Tools → Add-Ins | TBD (probe pending) |
+| A-02 | (placeholder) `SaveAs3` returns 0 but file is unchanged; S-01 verifier reports misleading cause | SOLIDWORKS PDM add-in intercepts save events; vault-bound files require check-out | `ai-sw-observe addins` lists "SOLIDWORKS PDM Standard" or "SOLIDWORKS PDM Professional" in `known_problematic` | `--disable-addins` / `--strict-addins` pre-flight check; user must check out file or disable PDM add-in | TBD (probe pending) |
+| A-03 | (placeholder) Custom properties contain unexpected values after build | 3DEXPERIENCE PLM Connector captures save events and modifies custom properties | `ai-sw-observe addins` lists "3DEXPERIENCE PLM Connector" in `known_problematic`; `ai-sw-observe custom_props` shows unexpected entries | `--disable-addins` / `--strict-addins` pre-flight check | TBD (probe pending) |
+| A-04 | (placeholder) `GetEnabledAddIns` returns None or raises; enumeration fails entirely | SW build does not expose the API when no add-ins are loaded, or the method is absent on older versions | `sw_get_enabled_addins()` returns `ok=True, addins=[], error="api_not_present"` | Fail-soft: build proceeds with a stderr warning. No add-in interference possible when the API is absent. | TBD (probe pending) |
 
 ## How to add a row
 
@@ -106,7 +102,7 @@ happened" failure:
    - `X-*` selection / accumulator
    - `E-*` equation manager
    - `U-*` popup / UX
-   - `A-*` add-in interference (W7.1; see `docs/addins_research.md`)
+   - `A-*` add-in interference (see `docs/addins_research.md`)
    - `M-*` Lane M / MCP transport (populates when Lane M opens)
    - new prefix if none fit (document the convention here)
 3. Cross-link: the **Mitigation** column MUST point to the file/function

@@ -22,7 +22,7 @@ Background: SOLIDWORKS COM is STA (single-threaded apartment). An
 B — pywin32 late binding surfaces this as ``AttributeError:
 SldWorks.Application.<method>`` at attribute lookup, NOT as
 ``pywintypes.com_error``. Boundaries that catch only the latter miss
-the cross-thread case (see ``docs/com_failure_modes.md`` row M-XX).
+the cross-thread case (see ``docs/com_failure_modes.md`` row M-02).
 
 Lane M (MCP) tool handlers run on async worker threads distinct from
 the thread where the SW process was Dispatch'd. Every COM-touching
