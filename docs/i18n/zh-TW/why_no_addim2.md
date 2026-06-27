@@ -27,7 +27,7 @@ translated-from: c8ce816
 
 ## 我們嘗試了什麼以及每種方法失敗的原因
 
-| 方法 | Spike | 結果 | 失敗原因 |
+| 方法 | 實驗 | 結果 | 失敗原因 |
 |---|---|---|---|
 | 切換 8（`swInputDimValOnCreate`）`SetUserPreferenceToggle(8, False)` | [spike_i_verify_toggle.py](../../../spikes/phase0/spike_i_verify_toggle.py) | 失敗 | `GetUserPreferenceToggle(8)` 在 Set 呼叫前後都讀回 False，但 `AddDimension2` 仍阻擋 ~12 秒。可能是 ID 8 在此版本上不是 `swInputDimValOnCreate`，或者該偏好根本不從外部 COM 上下文管控 `AddDimension2`。 |
 | 切換 78（`swSketchEnableOnScreenNumericInput` 類別，論壇建議為「真正的」切換） | [spike_m_toggle_78.py](../../../spikes/phase0/spike_m_toggle_78.py) | 失敗 | 結果與切換 8 相同。Pywin32 + SW 2024 SP1 兩者皆忽略。 |
@@ -40,7 +40,7 @@ translated-from: c8ce816
 
 ## 為什麼社群建議不適用
 
-至少有三個獨立的社群公認建議（angelsix/codestack/論壇）指向 `swInputDimValOnCreate`（切換 8）作為 Modify-Dim 彈窗的修復方案。它們有效 — 但**僅在 SW 的 VBA 編輯器內部**，在那裡切換值在同一個處理程序 / COM 上下文中與尺寸建立一起生效。從 SW 2024 SP1 上的**外部 pywin32 COM 用戶端**，切換 8 和切換 78 都無效。Spike I 和 M 獨立確認了這一點。
+至少有三個獨立的社群公認建議（angelsix/codestack/論壇）指向 `swInputDimValOnCreate`（切換 8）作為 Modify-Dim 彈窗的修復方案。它們有效 — 但**僅在 SW 的 VBA 編輯器內部**，在那裡切換值在同一個處理程序 / COM 上下文中與尺寸建立一起生效。從 SW 2024 SP1 上的**外部 pywin32 COM 用戶端**，切換 8 和切換 78 都無效。實驗 I 和 M 獨立確認了這一點。
 
 這是我們部署上下文（外部 Python 處理程序透過晚期繫結 COM 驅動 SW）特有的病理情況，不是 API 的誤用。
 
@@ -68,19 +68,19 @@ translated-from: c8ce816
 
 未來的工程師可能會走的路：
 
-- **VBA 巨集回退方案。** 每次建構輸出一個 `.bas`，然後透過 `RunMacro2` 從 SW 的 VBA 上下文內部叫用它，切換 8 在那裡可能實際有效。估計成本：~1-2 小時，包含 `.swp` 封裝調查（`RunMacro2` 不能直接使用純文字 `.bas` — 參見 [../CHANGELOG.md](../../../CHANGELOG.md) 中的 v0.1 已知限制）。這恢復了完整的可連結性。參見 [[project_sw_bridge_next]] Direction B'（引用自專案記憶；不在本儲存庫中）。
+- **VBA 巨集回退方案。** 每次建構輸出一個 `.bas`，然後透過 `RunMacro2` 從 SW 的 VBA 上下文內部叫用它，切換 8 在那裡可能實際有效。估計成本：~1-2 小時，包含 `.swp` 封裝調查（`RunMacro2` 不能直接使用純文字 `.bas` — 參見 [../CHANGELOG.md](../../../CHANGELOG.md) 中的 v0.1 已知限制）。這恢復了完整的可連結性。
 
 - **切換 ID 探測掃描。** 已撰寫但未執行
   [spike_n_toggle_discovery.py](../../../spikes/phase0/spike_n_toggle_discovery.py)。
-  將暴力探測 4 個候選切換 ID（8、78、95、167），搭配新文件循環。跳過是因為 Spike I + M 共同表明切換方法在 pywin32 層**無論哪個 ID 是「正確的」**都已死路。可能結果：更多無效切換。
+  將暴力探測 4 個候選切換 ID（8、78、95、167），搭配新文件循環。跳過是因為實驗 I + M 共同表明切換方法在 pywin32 層**無論哪個 ID 是「正確的」**都已死路。可能結果：更多無效切換。
 
-- **不同的 SW 版本。** SW 2025+ 可能有不同行為 — Anthropic 尚未在其他版本上重現此問題。未測試。
+- **不同的 SW 版本。** SW 2025+ 可能有不同行為 — 我們尚未在其他版本上重現此問題。未測試。
 
 ## 如果你忍不住想再試一次切換 8
 
 別試。
 
-我們有**三個** spike 產物證明它在此版本上無效（[spike_i_verify_toggle.py](../../../spikes/phase0/spike_i_verify_toggle.py)、
+我們有**三個**實驗產物證明它在此版本上無效（[spike_i_verify_toggle.py](../../../spikes/phase0/spike_i_verify_toggle.py)、
 [spike_m_toggle_78.py](../../../spikes/phase0/spike_m_toggle_78.py)、
 [spike_o_param_without_dim.py](../../../spikes/phase0/spike_o_param_without_dim.py)）。
 切換讀回值是你設定的值，但 `AddDimension2` 仍阻擋 ~12 秒等待手動點擊。
@@ -91,4 +91,4 @@ translated-from: c8ce816
 
 如果你必須重新調查，請先完整閱讀
 [../spikes/phase0/MMP_DEBUG_SESSION.md](../../../spikes/phase0/MMP_DEBUG_SESSION.md)
-— 上面的每條死路都可以從 [../spikes/phase0/](../../../spikes/phase0/) 中的 spike 腳本重現。
+— 上面的每條死路都可以從 [../spikes/phase0/](../../../spikes/phase0/) 中的實驗腳本重現。

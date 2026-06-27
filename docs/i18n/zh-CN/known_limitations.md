@@ -100,13 +100,13 @@ ai-sw-build my_spec.json --no-dim
 
 ### 为什么这个问题尚未修复
 
-三种失败的抑制方法记录于 [spikes/phase0/MMP_DEBUG_SESSION.md](../../../spikes/phase0/MMP_DEBUG_SESSION.md) 以及 Spike M / Spike O 扫描中：
+三种失败的抑制方法记录于 [spikes/phase0/MMP_DEBUG_SESSION.md](../../../spikes/phase0/MMP_DEBUG_SESSION.md) 以及实验 M 和 O 中：
 
 - `SetUserPreferenceToggle(swInputDimValOnCreate=8, False)` — 切换读回值为已设置，弹窗仍然出现
 - `SetUserPreferenceToggle(78, False)`（swSketchEnableOnScreenNumericInput 类别）— 同样：无效
 - `SendKeys("{ENTER}")` 关闭对话框 — 无法路由到模态子窗口
 - `keybd_event(VK_RETURN)` 通过 Win32 — 可以关闭浮动弹窗，但 PM 窗格仍阻塞
-- 完全绕过 AddDimension2，改用可查询的内部 SW 尺寸（Spike O）— SW 不会自动创建可链接的尺寸对象
+- 完全绕过 AddDimension2，改用可查询的内部 SW 尺寸（实验 O）— SW 不会自动创建可链接的尺寸对象
 
 论坛上公认的建议（设置切换 8）据报在 SW 自身的 VBA 编辑器中有效，但不会传播到此版本上的外部 pywin32 COM 客户端。VBA 宏回退方案（输出 `.bas`，通过 `RunMacro2` 执行）是唯一剩余的途径，但也有其自身的风险；参见 [CHANGELOG "Not on the roadmap"](../../../CHANGELOG.md)。
 
@@ -129,9 +129,9 @@ ai-sw-build my_spec.json --deferred-dim
 
 如果你需要零弹窗，请使用 `--no-dim`（无方程式链接）。不存在同时提供实时链接和零弹窗的第四种模式 — 在测试了 12 种候选抑制路径后已经实证证伪（参见 [deferred_dim_investigation.md](../../deferred_dim_investigation.md)）。
 
-**矩形支持（已于 2026-05-20 修复，Spike ZF）：** 矩形草图（`sketch_rectangle_on_plane`、`sketch_rectangle_on_face`）先前在 SW 2024 SP1 上的第二个边尺寸会被降级为从动 (driven)，破坏了该尺寸的方程式链接。根本原因：API 端的 `CreateCenterRectangle` 会加入一个 UI 绘制等价物中不存在的多余 Midpoint 关系，将 2-DOF 坍缩为 1-DOF。修复是 [`builder.py`](../../../src/ai_sw_bridge/spec/builder.py) 中的 `_strip_centerrectangle_midpoint_relation()`，从两个矩形处理器在 `CreateCenterRectangle()` 之后立即调用。矩形规格现在在三种模式（默认内联、`--deferred-dim`、`--no-dim`）下都能提供完整的方程式链接。已在 `motor_mount_plate` 端到端验证，D1 和 D2 都正确驱动其 `S1B_MMP_H`/`S1B_MMP_W` 链接。
+**矩形支持（已于 2026-05-20 修复，实验 ZF）：** 矩形草图（`sketch_rectangle_on_plane`、`sketch_rectangle_on_face`）先前在 SW 2024 SP1 上的第二个边尺寸会被降级为从动 (driven)，破坏了该尺寸的方程式链接。根本原因：API 端的 `CreateCenterRectangle` 会加入一个 UI 绘制等价物中不存在的多余 Midpoint 关系，将 2-DOF 坍缩为 1-DOF。修复是 [`builder.py`](../../../src/ai_sw_bridge/spec/builder.py) 中的 `_strip_centerrectangle_midpoint_relation()`，从两个矩形处理器在 `CreateCenterRectangle()` 之后立即调用。矩形规格现在在三种模式（默认内联、`--deferred-dim`、`--no-dim`）下都能提供完整的方程式链接。已在 `motor_mount_plate` 端到端验证，D1 和 D2 都正确驱动其 `S1B_MMP_H`/`S1B_MMP_W` 链接。
 
-Spike 轨迹 Z1–ZF（2026-05-19 至 2026-05-20）探索了 11 条缓解路线，最终 ZF 通过用户 UI 检查找到了根本原因。以下路线无效并记录供历史参考：逐草图尺寸分组、构造对角线删除、`IDisplayDimension.DrivenState` 覆写（通过 pywin32 及通过 VBA 注入器 — 两者皆不可达）、编辑中 `EditRebuild3`、手动 `CornerRectangle` + Midpoint、`gencache.EnsureModule` 依明确 GUID、`MakeSelectedDriving`、`LinkValue` 属性、`Add3` 搭配 `swAllConfiguration`、`SetEquationAndConfigurationOption`、内联尺寸搭配延迟链接。
+实验轨迹 Z1–ZF（2026-05-19 至 2026-05-20）探索了 11 条缓解路线，最终 ZF 通过用户 UI 检查找到了根本原因。以下路线无效并记录供历史参考：逐草图尺寸分组、构造对角线删除、`IDisplayDimension.DrivenState` 覆写（通过 pywin32 及通过 VBA 注入器 — 两者皆不可达）、编辑中 `EditRebuild3`、手动 `CornerRectangle` + Midpoint、`gencache.EnsureModule` 依明确 GUID、`MakeSelectedDriving`、`LinkValue` 属性、`Add3` 搭配 `swAllConfiguration`、`SetEquationAndConfigurationOption`、内联尺寸搭配延迟链接。
 
 ---
 

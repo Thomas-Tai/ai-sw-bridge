@@ -94,13 +94,13 @@ In `--no-dim` mode the builder resolves every `{"rhs": "..."}` reference against
 
 ### Why this isn't fixed
 
-Three failed suppression approaches documented in [spikes/phase0/MMP_DEBUG_SESSION.md](../spikes/phase0/MMP_DEBUG_SESSION.md) and the Spike M / Spike O sweep:
+Three failed suppression approaches documented in [spikes/phase0/MMP_DEBUG_SESSION.md](../spikes/phase0/MMP_DEBUG_SESSION.md) and experiments M and O:
 
 - `SetUserPreferenceToggle(swInputDimValOnCreate=8, False)` — toggle reads back as set, popup still fires
 - `SetUserPreferenceToggle(78, False)` (swSketchEnableOnScreenNumericInput class) — same: no effect
 - `SendKeys("{ENTER}")` to dismiss the dialog — doesn't route to modal child windows
 - `keybd_event(VK_RETURN)` via Win32 — dismisses the floating popup but PM pane still blocks
-- Bypassing AddDimension2 entirely with queryable internal SW dims (Spike O) — SW doesn't auto-create the linkable dim objects
+- Bypassing AddDimension2 entirely with queryable internal SW dims (experiment O) — SW doesn't auto-create the linkable dim objects
 
 The forum-canonical advice (set toggle 8) is reported to work inside SW's own VBA editor but does not propagate to external pywin32 COM clients on this build. A VBA-macro fallback (emit `.bas`, run via `RunMacro2`) is the only remaining avenue and carries its own risks; see [Roadmap "Not on the roadmap"](../README.md#roadmap).
 
@@ -123,9 +123,9 @@ You still tick the same number of popups. They just arrive in predictable cluste
 
 If you need zero popups, use `--no-dim` (no equation link). There is no fourth mode that gives both live-link AND no-popups — empirically falsified after 12 candidate suppression paths tested (see [deferred_dim_investigation.md](deferred_dim_investigation.md)).
 
-**Rectangle support (fixed 2026-05-20, Spike ZF):** rectangle sketches (`sketch_rectangle_on_plane`, `sketch_rectangle_on_face`) previously had their second edge-dim demoted to driven on SW 2024 SP1, breaking the equation binding for that dim. Root cause: the API-side `CreateCenterRectangle` adds a spurious Midpoint relation absent from the UI-drawn equivalent, collapsing 2-DOF to 1-DOF. Fix is `_strip_centerrectangle_midpoint_relation()` in [`builder.py`](../src/ai_sw_bridge/spec/builder.py), called from both rectangle handlers immediately after `CreateCenterRectangle()`. Rectangle specs now ship clean equation links in all three modes (default-inline, `--deferred-dim`, `--no-dim`). Verified on `motor_mount_plate` end-to-end with both D1 and D2 driving their `S1B_MMP_H`/`S1B_MMP_W` bindings.
+**Rectangle support (fixed 2026-05-20, experiment ZF):** rectangle sketches (`sketch_rectangle_on_plane`, `sketch_rectangle_on_face`) previously had their second edge-dim demoted to driven on SW 2024 SP1, breaking the equation binding for that dim. Root cause: the API-side `CreateCenterRectangle` adds a spurious Midpoint relation absent from the UI-drawn equivalent, collapsing 2-DOF to 1-DOF. Fix is `_strip_centerrectangle_midpoint_relation()` in [`builder.py`](../src/ai_sw_bridge/spec/builder.py), called from both rectangle handlers immediately after `CreateCenterRectangle()`. Rectangle specs now ship clean equation links in all three modes (default-inline, `--deferred-dim`, `--no-dim`). Verified on `motor_mount_plate` end-to-end with both D1 and D2 driving their `S1B_MMP_H`/`S1B_MMP_W` bindings.
 
-Spike trail Z1–ZF (2026-05-19 to 2026-05-20) explored 11 mitigation routes before ZF identified the root cause via user UI inspection. Routes that did NOT work and are documented for the historical record: per-sketch dim grouping, construction-diagonal deletion, `IDisplayDimension.DrivenState` override (via pywin32 AND via VBA injector — both unreachable), mid-edit `EditRebuild3`, manual `CornerRectangle` + Midpoint, `gencache.EnsureModule` by explicit GUID, `MakeSelectedDriving`, `LinkValue` property, `Add3` with `swAllConfiguration`, `SetEquationAndConfigurationOption`, inline-dim with deferred bindings.
+Experiment trail Z1–ZF (2026-05-19 to 2026-05-20) explored 11 mitigation routes before ZF identified the root cause via user UI inspection. Routes that did NOT work and are documented for the historical record: per-sketch dim grouping, construction-diagonal deletion, `IDisplayDimension.DrivenState` override (via pywin32 AND via VBA injector — both unreachable), mid-edit `EditRebuild3`, manual `CornerRectangle` + Midpoint, `gencache.EnsureModule` by explicit GUID, `MakeSelectedDriving`, `LinkValue` property, `Add3` with `swAllConfiguration`, `SetEquationAndConfigurationOption`, inline-dim with deferred bindings.
 
 ---
 
@@ -184,7 +184,7 @@ feature into `.checkpoints/<part_name>.sqlite`. Without a retention
 policy the store grows unbounded; on long-running projects it can
 reach hundreds of megabytes.
 
-`ai_sw_bridge.checkpoint.gc.run` (E3.4) prunes rows according to
+`ai_sw_bridge.checkpoint.gc.run` prunes rows according to
 three dimensions, all AND-combined — a row survives only if it
 satisfies every configured dimension:
 
@@ -272,7 +272,7 @@ Walled (deferred) feature types include: `loft`, `rib`, `wrap`, `indent`, `flex`
 `split`, `edge_flange`, `miter_flange`, `jog`, `thicken`, `equation_curve`,
 `dimension_pattern` / `derived_pattern`.
 
-The forensic record of each wall (spike, HRESULT, falsification) is in
+The forensic record of each wall (experiment, HRESULT, falsification) is in
 [DEFERRED.md](DEFERRED.md). If you need a walled feature, author it interactively in
 SOLIDWORKS, then continue with the bridge.
 

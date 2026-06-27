@@ -33,7 +33,7 @@ about **~12s per dim** of human attention. For MMP (~15 dims) that's
 
 ## What we tried and why each failed
 
-| Approach | Spike | Result | Why it failed |
+| Approach | Experiment | Result | Why it failed |
 |---|---|---|---|
 | Toggle 8 (`swInputDimValOnCreate`) `SetUserPreferenceToggle(8, False)` | [spike_i_verify_toggle.py](../spikes/phase0/spike_i_verify_toggle.py) | FAIL | `GetUserPreferenceToggle(8)` reads back False both before and after the Set call, but `AddDimension2` still blocks ~12s. Either ID 8 isn't `swInputDimValOnCreate` on this build, or the preference simply doesn't gate `AddDimension2` from external COM contexts. |
 | Toggle 78 (`swSketchEnableOnScreenNumericInput`-class, forum-suggested as the "real" toggle) | [spike_m_toggle_78.py](../spikes/phase0/spike_m_toggle_78.py) | FAIL | Same outcome as toggle 8. Pywin32 + SW 2024 SP1 ignores both. |
@@ -55,7 +55,7 @@ as the fix for the Modify-Dim popup. They work — but **only inside
 SW's VBA editor**, where the toggle is honored at the same process /
 COM context as the dim creation. From an **external pywin32 COM
 client** on SW 2024 SP1, neither toggle 8 nor toggle 78 has any effect.
-Spikes I and M independently confirm this.
+Experiments I and M independently confirm this.
 
 This is a pathological case specific to our deployment context
 (external Python process driving SW via late-binding COM), not a
@@ -99,24 +99,23 @@ Paths a future engineer might walk:
   actually work. Estimated cost: ~1-2hr including `.swp` packaging
   investigation (`RunMacro2` cannot consume plain-text `.bas` directly
   — see v0.1 known limitations in [../CHANGELOG.md](../CHANGELOG.md)).
-  This recovers full linkability. See [[project_sw_bridge_next]]
-  Direction B' (referenced from project memory; not in this repo).
+  This recovers full linkability.
 
 - **Toggle ID discovery sweep.** Written but not run as
   [spike_n_toggle_discovery.py](../spikes/phase0/spike_n_toggle_discovery.py).
   Would brute-force-probe 4 candidate toggle IDs (8, 78, 95, 167) with
-  fresh-doc cycles. Skipped because spikes I + M together suggest the
+  fresh-doc cycles. Skipped because experiments I + M together suggest the
   toggle approach is dead at the pywin32 layer **regardless of which
   ID is "correct"**. Likely outcome: more dead toggles.
 
-- **Different SW build.** SW 2025+ may behave differently — Anthropic
-  hasn't reproduced this on any other version. Untested.
+- **Different SW build.** SW 2025+ may behave differently — we
+  haven't reproduced this on any other version. Untested.
 
 ## If you're tempted to try toggle 8 again
 
 Don't.
 
-We have **three** spike artifacts proving it doesn't work on this
+We have **three** experiment artifacts proving it doesn't work on this
 build ([spike_i_verify_toggle.py](../spikes/phase0/spike_i_verify_toggle.py),
 [spike_m_toggle_78.py](../spikes/phase0/spike_m_toggle_78.py),
 [spike_o_param_without_dim.py](../spikes/phase0/spike_o_param_without_dim.py)).
@@ -130,5 +129,5 @@ The right path forward is:
 
 If you must re-investigate, start by reading
 [../spikes/phase0/MMP_DEBUG_SESSION.md](../spikes/phase0/MMP_DEBUG_SESSION.md)
-in full — every dead end above is reproducible from the spike scripts
+in full — every dead end above is reproducible from the experiment scripts
 in [../spikes/phase0/](../spikes/phase0/).
