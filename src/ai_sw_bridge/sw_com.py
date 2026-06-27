@@ -23,6 +23,7 @@ from typing import Any
 
 import pythoncom
 import win32com.client
+import win32com.client.dynamic
 
 logger = logging.getLogger("ai_sw_bridge.sw_com")
 
@@ -80,6 +81,34 @@ _CACHED_SW_APP: Any | None = None
 _COINIT_DONE: bool = False
 
 
+def _force_late_bound(app: Any) -> Any:
+    """Re-wrap the SW Application handle as a LATE-BOUND dynamic Dispatch.
+
+    GetActiveObject / Dispatch can return an *early*-bound object when a
+    makepy / gen_py typelib is cached for SOLIDWORKS (the installer or any
+    prior EnsureDispatch on the box can create one). Under early binding every
+    zero-arg COM method is a bound method rather than an auto-invoked property,
+    which silently broke property-style reads (RevisionNumber, GetEquationMgr,
+    GetActiveSketch2, ...) scattered through a codebase authored for late
+    binding.
+
+    Forcing late binding at this single boundary neutralizes that whole class:
+    the entire object graph reached through this handle (docs, managers,
+    features) is late-bound and auto-invokes correctly. Feature lanes that need
+    an early-bound *typed* interface still opt in explicitly via
+    ``com.earlybind.typed`` / ``typed_qi``, which re-cast from the raw
+    IDispatch and are unaffected. ``resolve()`` remains correct either way.
+
+    Best-effort: if the re-wrap fails, return the handle unchanged so startup
+    is never blocked on it.
+    """
+    try:
+        return win32com.client.dynamic.Dispatch(app)
+    except Exception as exc:  # noqa: BLE001 -- never block startup on the re-wrap
+        logger.debug("could not force late binding (%r); using handle as-is", exc)
+        return app
+
+
 def get_sw_app() -> Any:
     """Attach to the running SldWorks.Application, or launch one.
 
@@ -122,6 +151,10 @@ def get_sw_app() -> Any:
         ) as exc:  # noqa: BLE001 -- broad: pywintypes.com_error + OSError
             logger.debug("GetActiveObject failed (%r); falling back to Dispatch", exc)
             _CACHED_SW_APP = win32com.client.Dispatch("SldWorks.Application")
+        # Force late binding so the whole object graph auto-invokes zero-arg
+        # COM methods as properties (the code is authored for late binding); a
+        # cached gen_py typelib would otherwise hand back an early-bound graph.
+        _CACHED_SW_APP = _force_late_bound(_CACHED_SW_APP)
         _check_sw_version(_CACHED_SW_APP)
     return _CACHED_SW_APP
 
