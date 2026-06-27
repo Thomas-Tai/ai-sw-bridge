@@ -1,11 +1,11 @@
-# W67 Phase 2 — Verify Substrate Consolidation (`features/verify.py`)
+# Verify Substrate Consolidation (`features/verify.py`)
 
-**Status:** SHIPPED (branch `feat/w67-verify-substrate`). Pure behavior-
-preserving refactor — full suite 3040 passed / 0 failed, thresholds unchanged.
+**Status:** Shipped. A behavior-preserving refactor — full suite green
+(3040 passed / 0 failed), thresholds unchanged.
 
 ## What consolidated
 
-Before W67, 28 verify-helper defs were hand-copied across 13 feature modules,
+Before this consolidation, 28 verify-helper defs were hand-copied across 13 feature modules,
 plus the body-type and FP-epsilon constants. A fix to the `GetBodies2` +
 typed-`IPartDoc` QI fallback, or a swconst constant, had to be applied N times.
 
@@ -39,7 +39,7 @@ delegating to `verify` — the suite's dominant idiom is
 | `REF_NODE` | bounding_box, com_point, mate_reference |
 | `BODY_MOVE` | move_copy_body (UNRUN/unregistered) |
 
-## Phase-3 tracked findings (surfaced BY the consolidation)
+## Tracked follow-up findings (surfaced by the consolidation)
 
 ### 1. `GetBodies2` `visible_only` drift (latent false-negative)
 
@@ -56,29 +56,30 @@ normalized):
 
 **Risk:** a hidden/suppressed solid body is invisible to the `True` lanes'
 additive gate → false-negative. The surface lanes' `False` (count all bodies)
-is the safer choice. **Recommended Phase-3 fix:** normalize all readers to
+is the safer choice. **Recommended fix:** normalize all readers to
 `visible_only=False`, under the green suite, as a deliberate one-line change.
 
 ### 2. CURVE-class lanes lack a geometric-scalar witness
 
 composite / helix / project_curve gate on a **feature-node count delta** only —
-no curve length / edge count / `GetCurve` param-range. This is the W42 ghost
-trap the solid/surface lanes were hardened against, still live for curves. A
+no curve length / edge count / `GetCurve` param-range. This is the ghost-node
+trap (a node appears while the geometry silently failed to materialize) that
+the solid/surface lanes were hardened against, still live for curves. A
 curve that nodes-but-ghosts would pass. `composite` is weakest (any node;
-helix/project_curve at least type-filter). **Phase-3 work:** add a geometry-
+helix/project_curve at least type-filter). **Follow-up work:** add a geometry-
 grade witness for `FeatureClass.CURVE`.
 
-#### Phase-3b status — witness SCAFFOLDED, head hop SEAT-PROVEN (HEAD_PROVEN)
+#### Status — witness scaffolded, head hop seat-proven
 
 The geometric witness is **total arc length (mm)** (a real reference curve has
 positive length; a ghost node has none). Decomposed into a proven tail and a
 **now-proven** head:
 
-- **TAIL — PROVEN OOP.** `verify.icurve_length_mm(raw_curve)` reuses the
+- **Tail — proven out-of-process.** `verify.icurve_length_mm(raw_curve)` reuses the
   `brep/interrogator.py` recipe verbatim: `typed_qi(…, "ICurve")` →
   `GetEndParams()` (idx 1,2 = tmin,tmax) → `GetLength(tmin, tmax)` (metres →
   mm). Unit-tested offline.
-- **HEAD — SEAT-PROVEN** (`spike_curve_length_witness` → `HEAD_PROVEN`,
+- **Head — seat-proven** (`spike_curve_length_witness`,
   deterministic on the absolute-cold first call: **helix 80.0 mm, composite
   70.0 mm**). The real chain (`verify._node_curves`):
   ```
@@ -98,11 +99,11 @@ positive length; a ghost node has none). Decomposed into a proven tail and a
      "cold makepy gen" theory was a red herring; the real cause was lifetime.)
   - Fallbacks (unprobed): `ISketch.GetSketchSegments` for project_curve (a
     projected *sketch* — likely a different head per lane); defensive `GetCurves`.
-- **GATE — HARD, WIRED.** `verify.gate_curve(d_nodes, total_len_mm)` requires
+- **Gate — hard, wired.** `verify.gate_curve(d_nodes, total_len_mm)` requires
   `d_nodes > 0 AND total_len_mm > CURVE_LEN_EPS_MM`; `total_len_mm is None`
-  (unreadable) is **failure**, never a fall-back to node-count (adjudication:
-  no graceful degradation in a gate). **WIRED** into all three handlers
-  (W67 P3b unification): each handler, after its node-count delta, locates the
+  (unreadable) is **failure**, never a fall-back to node-count (a deliberate
+  call: no graceful degradation in a gate). **Wired** into all three handlers:
+  each handler, after its node-count delta, locates the
   new node via `verify.newest_node_by_type(...)`, measures it through a local
   `_curve_length_mm` shim (patchable in offline tests), and gates on
   `gate_curve`. All three seat-proven: **helix 80.0 mm, composite 70.0 mm,

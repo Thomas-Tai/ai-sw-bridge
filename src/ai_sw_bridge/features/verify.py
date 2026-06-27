@@ -31,7 +31,7 @@ A node/Feature return ALONE is never success — that is the W21/W42 ghost trap.
 but created body is a real effect, so the ``True`` lanes carried a latent
 false-negative.  ``visible_only`` remains a parameter (a future caller may
 genuinely want visible-only), but the default and every in-tree shim now use
-``False``.  See docs/w67_verify_substrate.md §1.
+``False``.  See docs/verify_substrate.md §1.
 """
 
 from __future__ import annotations
@@ -145,7 +145,7 @@ def solid_metrics(doc: Any, visible_only: bool = False) -> tuple[int, float]:
     The substrate for ADDITIVE_SOLID / FOLD* gates.  ``visible_only`` defaults
     to ``False`` — W67 Phase 3 normalized every reader to count ALL bodies
     (a hidden/created body is a real effect; ``True`` was a latent false-
-    negative — see docs/w67_verify_substrate.md §1).
+    negative — see docs/verify_substrate.md §1).
     """
     bs = bodies(doc, SW_SOLID_BODY, visible_only)
     if not bs:

@@ -26,7 +26,7 @@ prompts, session reconstructions, R&D research/spike reports) is kept out of the
 - [supervised_session_spec.md](supervised_session_spec.md) — crash-recovery envelope (spec + test specification).
 - [com_failure_modes.md](com_failure_modes.md) — the COM incident registry (verify-the-postcondition).
 - [why_no_addim2.md](why_no_addim2.md) — why `--no-dim` exists (the `AddDimension2` popup wall).
-- [w67_verify_substrate.md](w67_verify_substrate.md) — the verify-the-EFFECT sign convention (cited by `features/verify.py`).
+- [verify_substrate.md](verify_substrate.md) — the verify-the-EFFECT sign convention (cited by `features/verify.py`).
 - [DEFERRED.md](DEFERRED.md) — the forensic record of every OOP/kernel wall.
 
 ## Security & compliance

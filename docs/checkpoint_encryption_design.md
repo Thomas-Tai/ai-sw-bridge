@@ -1,14 +1,14 @@
-# `--checkpoint-encrypt` — Design (W3.1)
+# `--checkpoint-encrypt` — Design
 
-**Status:** Design approved, implementation pending (W3.1-impl).
+**Status:** Implemented and shipped in v0.13. This is the original binding
+design record; the live code is in `src/ai_sw_bridge/checkpoint/crypto.py`.
 **Authors:** v0.13 closure track.
 **Cross-refs:** *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §4.2, *(retired v0.13.0; see decisions.md 2026-05-28 entry)* §5.
 
 This document is the binding design for the `--checkpoint-encrypt` flag.
 It commits to the encryption library, the key-source contract, the
-schema additions, the CLI surface, and the test contract. The impl
-task (W3.1-impl, Sonnet/GLM) fills in the bodies; behavior must match
-this document.
+schema additions, the CLI surface, and the test contract. The
+implementation fills in the bodies; behavior matches this document.
 
 ---
 
@@ -43,7 +43,7 @@ directory).
   process."
 - **Not retroactive encryption of existing plain DBs.** A separate
   one-shot migration tool (`ai-sw-checkpoint migrate`) handles that;
-  it's a follow-up, not part of W3.1.
+  it's a follow-up, not part of the initial implementation.
 
 ## 3. Library choice — app-layer Fernet (vs. SQLCipher)
 
@@ -252,7 +252,7 @@ storage.
 | `--checkpoint-encrypt env:KEY` but `$KEY` unset | Missing env var | `KeySourceError` → CLI rc=2, stderr `"env var KEY not set"` |
 | Wrong key on `--checkpoint-encrypt` against an already-encrypted DB | Fingerprint mismatch on `_meta.key_fingerprint` | `KeySourceError` → CLI rc=2, stderr `"key fingerprint mismatch; refusing to write"` BEFORE any cell rewrite |
 | Key file exists but contains malformed base64 | Fernet rejects on construction | `KeySourceError` → CLI rc=2 |
-| Plain DB + `--checkpoint-encrypt` set + `_meta` absent | First-time encryption — opt-in via `--checkpoint-encrypt-init` (W3.1 ships this as a one-shot guard; without it, the bridge refuses to add `_meta` mid-build) | rc=2, stderr `"DB is plain; run 'ai-sw-checkpoint migrate' to enable encryption"` |
+| Plain DB + `--checkpoint-encrypt` set + `_meta` absent | First-time encryption — opt-in via `--checkpoint-encrypt-init` (shipped as a one-shot guard; without it, the bridge refuses to add `_meta` mid-build) | rc=2, stderr `"DB is plain; run 'ai-sw-checkpoint migrate' to enable encryption"` |
 | `rekey` partial failure (DB write error mid-rewrite) | SQLite transaction rolls back | `_meta` and cells stay consistent — either all rows have new key or all have old |
 | Concurrent builds with different key sources | Second build sees fingerprint mismatch | rc=2 BEFORE any write; existing build unaffected |
 
@@ -262,7 +262,7 @@ forgets to supply the key on a subsequent build, the DB is
 unreadable. Explicit migration via `ai-sw-checkpoint migrate` makes
 the state change visible.
 
-## 10. Interaction with `checkpoint_redact.py` (W3.2)
+## 10. Interaction with `checkpoint_redact.py`
 
 `tools/checkpoint_redact.py` consumes encrypted DBs and produces
 sanitized output. The flow:
@@ -274,18 +274,17 @@ sanitized output. The flow:
 4. Write to a fresh plain DB (no `_meta` table).
 
 The redacted output is intentionally plain — once the secrets are
-substituted out, encryption serves no purpose. This means the W3.2
+substituted out, encryption serves no purpose. This means the redaction
 tool needs to accept `--from-key-source <source>` to read an
 encrypted source, but the output is always plain.
 
-W3.2 imports `KeySource.parse` from this module; that is the entire
+`checkpoint_redact.py` imports `KeySource.parse` from this module; that is the entire
 shared surface.
 
 ## 11. Test contract
 
-Tests live in `tests/checkpoint/test_crypto_contract.py`. Initial
-state is a set of `@pytest.mark.skip(reason="W3.1-impl pending")`
-markers; the impl task removes the markers as bodies land.
+Tests live in `tests/checkpoint/test_crypto_contract.py`; the suite is
+active (the initial skip-marker scaffold was removed as the bodies landed).
 
 ### 11.1 Cell wrap/unwrap
 
@@ -338,7 +337,7 @@ markers; the impl task removes the markers as bodies land.
   end-to-end against the mock SW; assert `_meta` exists and cells
   start with `fernet_v1:`.
 
-## 12. Acceptance criteria (W3.1-impl ships when ALL pass)
+## 12. Acceptance criteria (shipped when ALL pass)
 
 - All tests in §11 green (markers removed).
 - `cryptography` added to `pyproject.toml` `[project.optional-dependencies] crypto` and to `requirements.txt`.

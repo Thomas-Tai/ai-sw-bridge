@@ -196,7 +196,7 @@ Creates multiple circles in a single sketch on the face of an earlier extrusion.
 
 Circle positions are literal mm only — no `{rhs}` on `u` or `v`.
 
-## Sketch primitives (P1.7s)
+## General-purpose sketch primitives
 
 Seven general-purpose sketch entities that host on one of the three default
 reference planes (Front / Top / Right). All seven are **seat-validated on
@@ -410,7 +410,7 @@ A plain-text annotation sketch.
 
 ### `sketch_3d_sketch`
 
-A 3D polyline sketch through a sequence of 3D points. Unlike on-plane sketch primitives, a 3D sketch is **not** constrained to a reference plane — it uses `ISketchManager.Insert3DSketch(True)` (one BOOL `UpdateEditRebuild` arg; parameterless raises 'Parameter not optional') to enter/exit sketch mode, and `CreateLine` carries real X/Y/Z coordinates. This is the Phase-5 prerequisite that unblocks weldments (FR-5-06) and swept/lofted surfaces (FR-5-02).
+A 3D polyline sketch through a sequence of 3D points. Unlike on-plane sketch primitives, a 3D sketch is **not** constrained to a reference plane — it uses `ISketchManager.Insert3DSketch(True)` (one BOOL `UpdateEditRebuild` arg; parameterless raises 'Parameter not optional') to enter/exit sketch mode, and `CreateLine` carries real X/Y/Z coordinates. This is the prerequisite that unblocks weldments and swept/lofted surfaces.
 
 ```json
 {
@@ -431,7 +431,7 @@ A 3D polyline sketch through a sequence of 3D points. Unlike on-plane sketch pri
 | `name` | yes | string | Unique feature name |
 | `points` | yes | array (min 2) | Ordered 3D control points `{x, y, z}` (mm, part frame). Consecutive points are connected by line segments. All three axes are required — use non-zero `z` extent to create a non-planar path. |
 
-> **✅ Seat-proven (W53):** `Insert3DSketch(True)` + `CreateLine(x1,y1,z1, x2,y2,z2)` — spike v0.21 S2 GREEN (3 segments, 0.06 m Z-extent). Same toggle opens and closes the 3D sketch.
+> **✅ Seat-proven:** `Insert3DSketch(True)` + `CreateLine(x1,y1,z1, x2,y2,z2)` — verified on SW 2024 SP1 (3 segments, 0.06 m Z-extent). Same toggle opens and closes the 3D sketch.
 
 ## Extrude primitives
 
@@ -852,7 +852,7 @@ Replicates an earlier feature equally spaced around a rotation axis.
 | `total_angle` | no | number | Total sweep angle in degrees. Default `360.0`. Must be > 0 and ≤ 360. |
 | `flip` | no | boolean | Reverse rotation direction. Default `false`. |
 
-**How axis selection works:** The builder calls `SelectByID2('EDGE', x, y, z)` first; if that fails (no circular edge at that point), it tries `SelectByID2('FACE', ...)`. Both paths verified on SW 2024 SP1 (Spike T).
+**How axis selection works:** The builder calls `SelectByID2('EDGE', x, y, z)` first; if that fails (no circular edge at that point), it tries `SelectByID2('FACE', ...)`. Both paths verified on SW 2024 SP1.
 
 **v1 limits:** Direction 1 only. Equal spacing always on. Single seed by name.
 

@@ -1,6 +1,6 @@
 # Class & Function Relation Map
 
-> **Generated:** 2026-06-26 · **Release:** v1.6.0 · **Branch:** `feat/w67-phase3`
+> **Generated:** 2026-06-26 · **Release:** v1.6.0
 >
 > A navigational map of how the codebase fits together: the public class API, the
 > facades and the `_impl` cores they delegate to, the feature-handler registry, the
@@ -37,7 +37,7 @@ flowchart TD
 
     REG["features.HANDLER_REGISTRY<br/>36 GREEN kinds<br/>create_&lt;kind&gt;(doc, feature, target)"]
     VERIFY["features/verify.py<br/>unified verify substrate<br/>(gates + body/curve readers)"]
-    RESIL["resilience.SupervisedSession<br/>(RES-1 crash recovery)"]
+    RESIL["resilience.SupervisedSession<br/>(crash recovery)"]
     COM["com/ + sw_com.py<br/>typed / typed_qi / executor / get_sw_app"]
     SW["SOLIDWORKS COM (ISldWorks)"]
 
@@ -182,13 +182,13 @@ The single source of truth for "did the feature actually materialize" — body/s
 readers, feature-node counters, the curve arc-length witness, the centroid reader,
 and the **class gates** (`gate_additive_solid`, `gate_fold`, `gate_surface_create`,
 `gate_surface_aggregate`, `gate_volume_transform`, `gate_boolean_intersect`,
-`gate_curve`, …). A `Feature`/node return *alone* is never success (the W21/W42
-ghost trap). Lane modules hold **thin delegating shims** (`_curve_length_mm` →
+`gate_curve`, …). A `Feature`/node return *alone* is never success (the ghost-node
+trap: a node appears while the geometry silently failed to materialize). Lane modules hold **thin delegating shims** (`_curve_length_mm` →
 `verify.curve_length_mm`) so each lane's tests can monkeypatch on its own namespace.
 
 ---
 
-## 4. The resilience envelope (RES-1)
+## 4. The resilience envelope
 
 `mutate.batch(..., supervised=True)` (the default) wraps the batch runner in a
 crash-recovery session.
