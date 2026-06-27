@@ -119,19 +119,12 @@ def _sw_get_bbox_from_doc_impl(doc: Any) -> dict[str, Any]:
 
     mod = wrapper_module()
 
-    # Check document type - try direct first, then late-bound
+    # Resolve document type (binding-agnostic via resolve()).
     try:
-        doc_type = doc.GetType
-        if callable(doc_type):
-            doc_type = doc_type()
-    except AttributeError:
-        try:
-            doc_type = resolve(doc, "GetType")
-            if callable(doc_type):
-                doc_type = doc_type()
-        except Exception as exc:
-            result["error"] = f"doc.GetType failed: {exc!r}"
-            return result
+        doc_type = resolve(doc, "GetType")
+    except Exception as exc:
+        result["error"] = f"doc.GetType failed: {exc!r}"
+        return result
 
     if doc_type != SW_DOC_PART:
         result["error"] = f"bounding-box requires part document (got type {doc_type})"
@@ -392,17 +385,10 @@ def _sw_get_assembly_bbox_from_doc_impl(doc: Any) -> dict[str, Any]:
     }
 
     try:
-        doc_type = doc.GetType
-        if callable(doc_type):
-            doc_type = doc_type()
-    except AttributeError:
-        try:
-            doc_type = resolve(doc, "GetType")
-            if callable(doc_type):
-                doc_type = doc_type()
-        except Exception as exc:
-            result["error"] = f"doc.GetType failed: {exc!r}"
-            return result
+        doc_type = resolve(doc, "GetType")
+    except Exception as exc:
+        result["error"] = f"doc.GetType failed: {exc!r}"
+        return result
 
     if doc_type != SW_DOC_ASSEMBLY:
         result["error"] = (

@@ -438,8 +438,11 @@ def _pid_alive(pid: int) -> bool:
 
 
 def _rev(sw: Any) -> Any:
-    v = sw.RevisionNumber
-    return v() if callable(v) else v
+    # Binding-agnostic read via the centralized helper. This lane first found
+    # the early-bound bound-method trap; sw_com.resolve now owns it for all.
+    from ..sw_com import resolve
+
+    return resolve(sw, "RevisionNumber")
 
 
 class ExecutorSeatController:

@@ -23,6 +23,7 @@ import os
 import time
 from typing import Any
 
+from ..sw_com import resolve
 from .spec_schema import (
     PROPERTIES_SPEC_SCHEMA,
     SW_CUSTOM_DELETE_NOT_PRESENT,
@@ -159,8 +160,7 @@ def commit_properties(
             result["errors"].append(
                 f"CustomPropertyManager({config_name!r}) returned None"
             )
-            title = mdoc2.GetTitle
-            title = title() if callable(title) else title
+            title = resolve(mdoc2, "GetTitle")
             sw.CloseDoc(title)
             return result
 
@@ -216,8 +216,7 @@ def commit_properties(
             )
 
         if result["errors"]:
-            title = mdoc2.GetTitle
-            title = title() if callable(title) else title
+            title = resolve(mdoc2, "GetTitle")
             sw.CloseDoc(title)
             return result
 
@@ -267,8 +266,7 @@ def commit_properties(
                 )
 
         if result["errors"]:
-            title = mdoc2.GetTitle
-            title = title() if callable(title) else title
+            title = resolve(mdoc2, "GetTitle")
             sw.CloseDoc(title)
             return result
 
@@ -280,20 +278,17 @@ def commit_properties(
                 result["errors"].append(
                     f"SaveAs3 returned swFileSaveError={save_err} (expected 0)"
                 )
-                title = mdoc2.GetTitle
-                title = title() if callable(title) else title
+                title = resolve(mdoc2, "GetTitle")
                 sw.CloseDoc(title)
                 return result
             result["saved"] = True
         except Exception as exc:
             result["errors"].append(f"Save failed: {exc!r}")
-            title = mdoc2.GetTitle
-            title = title() if callable(title) else title
+            title = resolve(mdoc2, "GetTitle")
             sw.CloseDoc(title)
             return result
 
-        title = mdoc2.GetTitle
-        title = title() if callable(title) else title
+        title = resolve(mdoc2, "GetTitle")
         sw.CloseDoc(title)
 
         # Reopen for verification (VERIFY THE EFFECT).
@@ -354,8 +349,7 @@ def commit_properties(
                     f"after reopen (config={config_name!r})"
                 )
 
-        title2 = mdoc2b.GetTitle
-        title2 = title2() if callable(title2) else title2
+        title2 = resolve(mdoc2b, "GetTitle")
         sw.CloseDoc(title2)
 
         all_match = all(rb["match"] for rb in result["read_back"])

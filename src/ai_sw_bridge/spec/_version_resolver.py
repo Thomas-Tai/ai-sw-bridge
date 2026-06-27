@@ -76,18 +76,22 @@ def parse_major_revision(revision: Any) -> int | None:
 
 
 def read_running_major(sw: Any) -> int | None:
-    """Read ``sw.RevisionNumber`` once (late-bound) and return its major int.
+    """Read ``RevisionNumber`` once and return its major int.
 
-    Late-bound attribute access mirrors ``sw_com.resolve`` / the
-    ``_check_sw_version`` read -- pywin32 auto-invokes the zero-arg COM
-    property on ``getattr``. Any failure (no seat, unreadable property) is
-    logged and reported as ``None`` so dispatch degrades to ``"default"``
-    instead of blocking the build.
+    Reads via :func:`sw_com.resolve`, which is binding-agnostic. Under an
+    early-bound handle (a cached gen_py typelib) ``RevisionNumber`` is a
+    bound method, not an auto-invoked property; reading it directly returned
+    the *method object*, so this resolver silently degraded to ``"default"``
+    (newest-signature) arg-variants -- a back-compat hazard on SOLIDWORKS
+    2021. Any failure (no seat, unreadable property) is logged and reported
+    as ``None`` so dispatch still degrades gracefully.
     """
     if sw is None:
         return None
+    from ..sw_com import resolve
+
     try:
-        rev = sw.RevisionNumber
+        rev = resolve(sw, "RevisionNumber")
     except Exception as exc:  # noqa: BLE001 -- pywintypes.com_error + AttributeError
         logger.warning("could not read SW RevisionNumber (%r); using default", exc)
         return None

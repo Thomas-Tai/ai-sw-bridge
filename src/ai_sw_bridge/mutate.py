@@ -160,8 +160,7 @@ def _open_doc_typed(doc_path: str) -> Any:
 
 def _doc_title(doc: Any) -> Any:
     """Get the document title (name) for CloseDoc."""
-    t = doc.GetTitle
-    return t() if callable(t) else t
+    return resolve(doc, "GetTitle")
 
 
 def _save_doc(doc: Any) -> bool:

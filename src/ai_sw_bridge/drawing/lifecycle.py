@@ -17,6 +17,7 @@ import os
 import time
 from typing import Any
 
+from ..sw_com import resolve
 from .formats import DRAWING_FORMATS, resolve_format
 from .spec_schema import (
     DEFAULT_SHEET_SIZE,
@@ -863,8 +864,7 @@ def _verify_title_block(
                 )
     finally:
         try:
-            t = drawing_doc.GetTitle
-            t = t() if callable(t) else t
+            t = resolve(drawing_doc, "GetTitle")
             sw.CloseDoc(t)
         except Exception:
             pass
@@ -1503,7 +1503,7 @@ def _verify_surface_finish_annotations(
                                             "IAnnotation",
                                             module=mod,
                                         )
-                                        ann_type = ann.GetType()
+                                        ann_type = resolve(ann, "GetType")
                                         if ann_type == _SW_ANNOTATION_SURFACE_FINISH:
                                             sf_count += 1
                                     except Exception:
@@ -1534,8 +1534,7 @@ def _verify_surface_finish_annotations(
 
     finally:
         try:
-            t = drawing_doc.GetTitle
-            t = t() if callable(t) else t
+            t = resolve(drawing_doc, "GetTitle")
             sw.CloseDoc(t)
         except Exception:
             pass
@@ -2311,8 +2310,7 @@ def commit_drawing(
         # the trap this gate catches.
         if title_block:
             try:
-                t = doc_raw.GetTitle
-                t = t() if callable(t) else t
+                t = resolve(doc_raw, "GetTitle")
                 sw.CloseDoc(t)
             except Exception:
                 pass
@@ -2344,8 +2342,7 @@ def commit_drawing(
         )
         if any_annotations:
             try:
-                t = doc_raw.GetTitle
-                t = t() if callable(t) else t
+                t = resolve(doc_raw, "GetTitle")
                 sw.CloseDoc(t)
             except Exception:
                 pass
@@ -2380,16 +2377,14 @@ def commit_drawing(
 
     finally:
         try:
-            t = doc_raw.GetTitle
-            t = t() if callable(t) else t
+            t = resolve(doc_raw, "GetTitle")
             sw.CloseDoc(t)
         except Exception:
             pass
         # W28: Also close the model doc (we kept it open for tolerance)
         if model_doc is not None:
             try:
-                mt = model_doc.GetTitle
-                mt = mt() if callable(mt) else mt
+                mt = resolve(model_doc, "GetTitle")
                 sw.CloseDoc(mt)
             except Exception:
                 pass

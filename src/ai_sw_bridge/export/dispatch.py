@@ -37,6 +37,7 @@ from .formats import (
     SaveMethod,
     resolve_format,
 )
+from ..sw_com import resolve
 
 logger = logging.getLogger("ai_sw_bridge.export")
 
@@ -145,12 +146,9 @@ class ExportResult:
 def _get_doc_type(doc: Any) -> int:
     """Return the document type (1=Part, 2=Assembly, 3=Drawing).
 
-    Handles both early-bound typed dispatch (``GetType`` is a method
-    requiring ``()``) and late-bound CDispatch (``GetType`` auto-invokes
-    on attribute access, returning the int directly).
+    Reads via ``sw_com.resolve`` (binding-agnostic) and coerces to int.
     """
-    raw = doc.GetType
-    return raw() if callable(raw) else int(raw)
+    return int(resolve(doc, "GetType"))
 
 
 def resolve_output_path(
@@ -659,9 +657,7 @@ def _flat_pattern_dxf(doc: Any, fmt: ExportFormat, out_path: Path) -> ExportResu
 
     # --- Save the part so ExportToDWG2 has a valid SourceFile ---
     try:
-        source_path = doc.GetPathName
-        if callable(source_path):
-            source_path = source_path()
+        source_path = resolve(doc, "GetPathName")
         source_path = str(source_path) if source_path else ""
     except Exception:
         source_path = ""
@@ -875,8 +871,7 @@ def _flat_pattern_dxf_drawing(
 
     # --- The drawing view needs the part on disk as its source model ---
     try:
-        source_path = doc.GetPathName
-        source_path = source_path() if callable(source_path) else source_path
+        source_path = resolve(doc, "GetPathName")
         source_path = str(source_path) if source_path else ""
     except Exception:
         source_path = ""

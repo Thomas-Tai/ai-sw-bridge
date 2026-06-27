@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from ..locals_io import parse, replace_rhs
+from ..sw_com import resolve
 from .deep_merge import deep_merge
 from .variants import (
     ConfigResult,
@@ -335,8 +336,7 @@ def _measure_part_volume(part_path: Path) -> float | None:
         if callable(mp):
             mp = mp()
         if mp is None:
-            title = mdoc2.GetTitle
-            title = title() if callable(title) else title
+            title = resolve(mdoc2, "GetTitle")
             sw.CloseDoc(title)
             return None
 
@@ -345,8 +345,7 @@ def _measure_part_volume(part_path: Path) -> float | None:
             vol = vol()
         vol_mm3 = float(vol) * 1e9
 
-        title = mdoc2.GetTitle
-        title = title() if callable(title) else title
+        title = resolve(mdoc2, "GetTitle")
         sw.CloseDoc(title)
 
         return vol_mm3

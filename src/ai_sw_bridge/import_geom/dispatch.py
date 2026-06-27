@@ -38,6 +38,7 @@ from typing import Any
 
 from .schema import SUPPORTED_EXTENSIONS
 from .validator import ImportSpec
+from ..sw_com import resolve
 
 logger = logging.getLogger("ai_sw_bridge.import_geom")
 
@@ -132,9 +133,7 @@ def import_part(spec: ImportSpec) -> ImportResult:
         # Always close the doc we just imported so the seat is left clean
         # for the next run (same hygiene as spike_export_3d.py).
         try:
-            title = doc.GetTitle()
-            if callable(title):
-                title = title()
+            title = resolve(doc, "GetTitle")
             if title:
                 sw.CloseDoc(title)
         except Exception:  # noqa: BLE001 — close failure is non-fatal
@@ -236,8 +235,7 @@ def _verify(
     from ai_sw_bridge.com.earlybind import typed_qi
 
     try:
-        doc_type_raw = doc.GetType
-        doc_type = doc_type_raw() if callable(doc_type_raw) else int(doc_type_raw)
+        doc_type = int(resolve(doc, "GetType"))
     except Exception as exc:
         return f"cannot determine document type: {exc!r}"
     if doc_type != _SW_DOC_PART:

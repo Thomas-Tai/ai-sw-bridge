@@ -90,7 +90,7 @@ from .mutate import (
     _sw_dry_run_properties_impl,
     _sw_commit_properties_impl,
 )
-from .sw_com import SW_DOC_PART, get_active_doc, get_sw_app
+from .sw_com import SW_DOC_PART, get_active_doc, get_sw_app, resolve
 
 _NO_DOC = {"ok": False, "error": "no_active_doc"}
 
@@ -305,8 +305,7 @@ class SolidWorksObserverFacade:
             if doc is None:
                 return {"ok": False, "error": f"could not open {file_path!r}"}
             try:
-                t = doc.GetTitle
-                title = t() if callable(t) else t
+                title = resolve(doc, "GetTitle")
             except Exception:  # noqa: BLE001
                 title = None
             return _sw_get_mbd_impl(doc)

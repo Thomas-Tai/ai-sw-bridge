@@ -21,6 +21,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ..sw_com import resolve
 from .handlers import (
     create_exploded_view,
     create_mate,
@@ -504,8 +505,7 @@ def commit_assembly(
 
     finally:
         try:
-            t = asm_doc.GetTitle
-            t = t() if callable(t) else t
+            t = resolve(asm_doc, "GetTitle")
             sw.CloseDoc(t)
         except Exception:
             pass

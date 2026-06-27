@@ -24,6 +24,7 @@ import win32com.client as w32
 
 from ..com.earlybind import typed, typed_qi
 from ..com.sw_type_info import wrapper_module
+from ..sw_com import resolve
 
 from .face_resolver import resolve_component_face
 
@@ -1097,9 +1098,7 @@ def create_exploded_view(
 
     # Get assembly title for direction reference SelectByID2
     try:
-        asm_title = asm_doc.GetTitle
-        if callable(asm_title):
-            asm_title = asm_title()
+        asm_title = resolve(asm_doc, "GetTitle")
         asm_name = asm_title.replace(".SLDASM", "") if asm_title else "Asm1"
     except Exception:
         asm_name = "Asm1"
