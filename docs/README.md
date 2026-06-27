@@ -18,6 +18,7 @@ prompts, session reconstructions, R&D research/spike reports) is kept out of the
 - [tools_reference.md](tools_reference.md) — the `tools/` helper scripts (incl. the SW-version compatibility matrix runner).
 
 ## Architecture & design
+- [glossary.md](glossary.md) — load-bearing terms (seat, Tier 1/2, out-of-process, feature handler, Route-A/B/C/D, Lane M).
 - [architecture.md](architecture.md) — system structure.
 - [CLASS_RELATION_MAP.md](CLASS_RELATION_MAP.md) — the client/facades/registry/verify/COM relation map (mermaid + layer hierarchy).
 - [decisions.md](decisions.md) — the running architecture decision log (ADRs).
