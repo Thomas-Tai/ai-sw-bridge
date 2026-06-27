@@ -14,14 +14,14 @@ You never call the SOLIDWORKS COM API directly. You write JSON specs or invoke C
 
 ## Quickstart (2 minutes)
 
-1. **Install**: `pip install -e ".[dev]"` from the repo root. Requires Windows + SOLIDWORKS running.
+1. **Install**: `pip install -e .` from the repo root. Requires Windows + SOLIDWORKS running. (Contributors who run the test suite want `pip install -e ".[dev]"`; the MCP server wants `pip install -e ".[mcp]"`.)
 2. **Validate a spec**: `ai-sw-build examples/filleted_box/spec.json --validate-only`
 3. **Dry-run (no SW needed)**: `ai-sw-build examples/filleted_box/spec.json --dry-run`
 4. **Lint check**: `ai-sw-build examples/filleted_box/spec.json --lint`
 5. **Build a part**: `ai-sw-build examples/filleted_box/spec.json --no-dim` (creates a fresh part in SW)
 6. **Observe the result**: `ai-sw-observe features` / `ai-sw-observe bbox` / `ai-sw-observe volume`
 
-The feature types available (16 shipped primitives + 2 cut end-condition variants + 8 sketch primitives):
+The 30 spec feature types available (13 sketch + 11 extrude/revolve + 3 modify + 3 pattern):
 
 | Category | Types |
 |---|---|
@@ -37,7 +37,7 @@ The feature types available (16 shipped primitives + 2 cut end-condition variant
 2. **The spec is the source of truth.** When in doubt, write or edit `spec.json` and rebuild. Do not hand-edit the SLDPRT in SW UI between runs unless the human asked.
 3. **Default to `--no-dim`.** It builds in seconds with zero manual clicks. Use parametric mode (no flag) only if the human explicitly needs a live equation link to `locals.txt`.
 4. **One feature at a time when debugging.** If a build fails at feature 7 of 10, trim the spec to features 1–7, fix, re-run, then add the rest back.
-5. **Read the example most like your target.** Don't write specs from scratch. The [`examples/`](../examples/) folder has 15 working specs covering every shipped feature type. Find the closest match, copy it, modify.
+5. **Read the example most like your target.** Don't write specs from scratch. The [`examples/`](../examples/) folder has 20 working specs covering every shipped feature type. Find the closest match, copy it, modify.
 
 ## What the spec looks like
 

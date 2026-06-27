@@ -1,7 +1,7 @@
 """X3 doc-coverage gate (FR-X-03, closes audit D-v0.14-05).
 
 Every shipped primitive must stay documented and exemplified. Generated from
-the descriptors so docs can't silently drift: for each of the 16 primitives,
+the descriptors so docs can't silently drift: for each of the 30 primitives,
 this asserts it has descriptor metadata (doc + example_ref), the referenced
 examples/<dir>/spec.json exists and actually uses that feature type, and the
 type name appears in both docs/AGENTS.md and docs/spec_reference.md.

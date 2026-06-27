@@ -9,23 +9,6 @@
 
 **Language**: English · [繁體中文](docs/i18n/zh-TW/README.md) · [简体中文](docs/i18n/zh-CN/README.md)
 
-<!--
-HERO ASSETS — TO RECORD AND PASTE LATER:
-
-  1. Animated GIF (10-15 seconds):
-       Side-by-side: PowerShell terminal running
-         `ai-sw-build examples/motor_mount_plate/spec.json --no-dim`
-       and SOLIDWORKS window showing the part materialise feature-by-feature.
-       Suggested tool: ScreenToGif (free, Windows).
-       Save as: assets/hero_mmp_build.gif
-       Then replace this comment with:
-         ![Building a Motor Mount Plate via ai-sw-bridge](assets/hero_mmp_build.gif)
-
-  2. Static screenshot fallback (if the GIF is heavy):
-       Final-state SW window with the completed MMP part visible.
-       Save as: assets/hero_mmp_static.png
--->
-
 ## What this is
 
 A bridge between AI agents and SOLIDWORKS. You describe a part in natural language; the agent emits a JSON spec; the bridge drives SW via the COM API to build it. Every mutation is **propose → approve → execute** — the AI never touches your CAD model without your green light.
@@ -43,7 +26,7 @@ flowchart LR
     style G fill:#e8f5e9,stroke:#388e3c,color:#000
 ```
 
-The spec language covers **16 part-modelling primitives** today (5 sketch + 5 extrude/revolve + 3 modify + 3 pattern). [See the full primitive list →](docs/spec_reference.md)
+The spec language covers **30 part-modelling feature types** today (13 sketch + 11 extrude/revolve + 3 modify + 3 pattern). [See the full list →](docs/spec_reference.md)
 
 As of **v0.13**, the same tool surface is also reachable via the MCP server (`ai-sw-mcp`) — bring your own Claude Desktop, Cursor, or Continue.dev. [Jump to the MCP section ↓](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)
 
@@ -51,9 +34,11 @@ As of **v0.13**, the same tool surface is also reachable via the MCP server (`ai
 
 ### Prerequisites
 
+> **Heads-up: this is a Python developer tool.** You'll work at a terminal with `pip`, a virtual environment, and JSON spec files. Comfort with a Python toolchain is assumed — if you've never run `python` from a command line, start with the [Python beginner's guide](https://docs.python.org/3/using/index.html) first, then come back.
+
 - **Windows** — SOLIDWORKS is Windows-only, and the bridge uses `pywin32`.
 - **SOLIDWORKS installed and running** — tested on 2024 SP1; works on 2021 SP5+.
-- **Python 3.10+** — tested on 3.10, 3.12, 3.14.
+- **Python 3.10+ on your `PATH`** — tested on 3.10, 3.12, 3.14. Verify with `python --version`; if that command isn't found, re-run the Python installer and tick **"Add python.exe to PATH"**.
 
 ### 1. Install (~2 minutes)
 
@@ -88,7 +73,7 @@ Open Claude / ChatGPT / Codex and paste:
 
 The agent will read [`docs/AGENTS.md`](docs/AGENTS.md), pick the closest [`examples/`](examples/) match, draft a spec, and **stop** for your review. You approve, run the command yourself, and watch the part build. That's the whole loop.
 
-**Stuck?** Try [`examples/README.md`](examples/README.md) (15 working specs, grouped by primitive) or [`docs/known_limitations.md`](docs/known_limitations.md) (sharp edges new users hit).
+**Stuck?** Try [`examples/README.md`](examples/README.md) (20 working specs, grouped by primitive) or [`docs/known_limitations.md`](docs/known_limitations.md) (sharp edges new users hit).
 
 ## Why an AI engineer should care
 
@@ -105,7 +90,8 @@ For the architecture and design rationale (why JSON specs over a fluent API, the
 
 ## What ships in the box
 
-**21 CLI commands + one MCP server** on your PATH after `pip install -e ".[mcp]"`.
+**21 CLI commands + one MCP server** on your PATH after `pip install -e .`
+(the MCP server needs the `[mcp]` extra to *run* — see the [MCP section](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)).
 Each command declares a stability **tier** (`stable` / `experimental` / `deprecated`),
 printed in its `--help` banner and enforced by `tests/test_cli_stability.py`. The
 authoritative tier-per-command list + the SemVer promise live in
@@ -139,7 +125,7 @@ There is no `--yolo` flag.
 | `ai-sw-motion` | experimental | Dynamic kinematic verification (`audit`) — drives a mate through its DOF, reports interference / clearance per step. | — |
 | `ai-sw-solver` | experimental | Autonomous clearance solver (`resolve-clearance`) — drives a distance mate until clash-free, reverts on failure. | ⚠️ approval-gated |
 | `ai-sw-urdf` | experimental | URDF export (assembly → ROS robot model). `export` writes `.urdf` + per-component STL meshes. No SW mutation. | ✅ |
-| `ai-sw-mcp` | daemon | **MCP server (stdio transport)** for Claude Desktop, Cursor, Continue.dev, and other MCP-capable clients. Exposes 37 tools (read lanes + plan/elicit-gated writes). Install with `pip install ai-sw-bridge[mcp]`. | mixed |
+| `ai-sw-mcp` | daemon | **MCP server (stdio transport)** for Claude Desktop, Cursor, Continue.dev, and other MCP-capable clients. Exposes 37 tools (read lanes + plan/elicit-gated writes). Install with `pip install -e ".[mcp]"`. | mixed |
 
 Three build modes for `ai-sw-build` (use `--no-dim` for AI workflows; the others trade speed for live equation links). [Why `--no-dim` exists →](docs/why_no_addim2.md)
 
