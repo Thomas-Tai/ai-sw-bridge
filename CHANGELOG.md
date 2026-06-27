@@ -7,8 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`ai-sw-build` seat-identification banner + `--yes` / `-y` flag.** Before the
+  first COM write, `ai-sw-build` now prints which SOLIDWORKS seat it is about to
+  drive — PID and active-document name — so a build can never silently land in the
+  operator's foreground session. The new `--yes` / `-y` flag skips the confirmation
+  prompt for non-interactive automation (the banner is still printed as the audit
+  record). The banner is encoding-hardened: a non-cp1252 active-document title
+  (e.g. CJK) degrades to a placeholder instead of crashing the build it guards.
+
 ### Changed
 
+- **`ai-sw-build` default behavior: interactive builds now pause for confirmation.**
+  On an interactive TTY, `ai-sw-build` prompts `Proceed with build? [y/N]` (default
+  *no*) before the first geometry mutation. Non-interactive stdin (piped /
+  agent-driven) and `--yes` proceed after the banner without prompting;
+  `--validate-only` and `--dry-run` are unaffected (they never touch COM). Pass
+  `--yes` to restore the old prompt-free behavior in scripts. Because this adds a
+  flag and changes a default, the next release is a **minor** bump (v1.7.0).
+- **README + AGENTS onboarding realignment.** README Prerequisites now flags the
+  Python-developer audience and the "Python 3.10+ on `PATH`" requirement; the base
+  install command is standardized to `pip install -e .` (the `[mcp]` extra scoped to
+  the MCP section); capability counts are corrected to the code-derived figures —
+  **30** spec feature types (`schema.ALL_TYPES`) and **36** `feature_add` registry
+  kinds (`client.features.list_kinds()`), kept as two distinct surfaces — the
+  hero-image placeholder is removed, and the example-spec count is trued to 20.
 - **Documentation sanitization for the public boundary.** Trimmed `docs/` to the
   user/contributor-facing surface (71 → 36 tracked files). Internal maintainer-only
   material — release runbooks, AI-agent orchestration prompts (`docs/history/`),
@@ -16,6 +40,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `_internal/` directory (kept locally, off the repository). Stale pre-1.0 migration
   guides and the v0.14 hardening plan were removed. The `docs/README.md` index now
   reflects the sanitized structure. No code change.
+
+### Fixed
+
+- **Eradicated the `pywin32` early-binding cache trap.** On any machine with a
+  cached `gen_py` / makepy typelib for SOLIDWORKS (the installer, or any prior
+  `EnsureDispatch` anywhere on the box, creates one), `GetActiveObject` returned an
+  *early*-bound object graph in which zero-arg COM methods are bound methods rather
+  than auto-invoked properties. Reading one bare returned the method object instead
+  of its value — which silently broke the `SW_VERSION_VERIFIED` gate (it parsed a
+  method repr and skipped the check), made `ai-sw-probe` print a bound-method repr
+  instead of the revision string, and degraded
+  `spec._version_resolver.read_running_major` to `None` (a back-compat hazard on
+  SOLIDWORKS 2021). Fixed with a three-layer defense: late binding is forced at the
+  `get_sw_app()` boundary, every property-style read routes through the
+  binding-agnostic `sw_com.resolve()`, and an AST guard
+  (`tests/test_no_direct_com_reads.py`) fails CI if a bare read reappears.
+- **Synchronized `docs/AGENTS.md` with the code.** The agent guide's capability list
+  was frozen at the v0.10-era count; it now reflects the code-derived surface and
+  the live `client.features.list_kinds()` source of truth.
 
 ## [1.6.1] - 2026-06-26
 
