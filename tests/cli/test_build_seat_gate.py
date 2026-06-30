@@ -74,17 +74,19 @@ def test_banner_reports_active_doc_title(capsys, monkeypatch):
     assert "[PID: 42]" in err and "bracket.SLDPRT" in err
 
 
-def test_multiple_pids_flagged_ambiguous(capsys, monkeypatch):
+def test_multiple_pids_listed_with_active_doc_disambiguator(capsys, monkeypatch):
+    # Several seats: list ALL pids and lean on the active-doc title as the real
+    # disambiguator (get_sw_app attaches to the ROT instance, not pids[0]).
     monkeypatch.setattr(sys, "stdin", _FakeStdin(tty=False))
     with (
-        patch(_PIDS, return_value=[10, 20, 30]),
+        patch(_PIDS, return_value=[30, 10, 20]),
         patch(_GET_APP, return_value=object()),
         patch(_GET_DOC, return_value=None),
     ):
         rc = _seat_gate(assume_yes=False)
     assert rc is None
     err = capsys.readouterr().err
-    assert "ambiguous" in err and "[PID: 10" in err
+    assert "[PID: 10, 20, 30]" in err and "3 seats running" in err
 
 
 def test_active_doc_read_failure_degrades_to_unknown(capsys, monkeypatch):

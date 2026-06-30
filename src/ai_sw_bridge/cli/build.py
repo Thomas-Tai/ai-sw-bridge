@@ -95,11 +95,20 @@ def _seat_gate(assume_yes: bool) -> int | None:
             "be launched for this build."
         )
     else:
-        pid_str = (
-            str(pids[0])
-            if len(pids) == 1
-            else f"{pids[0]} (1 of {len(pids)} running - ambiguous)"
-        )
+        # With one seat the PID is unambiguous. With several, list them all and
+        # lean on the active-doc title as the real disambiguator: get_sw_app()
+        # attaches to whichever instance is in the COM Running Object Table, so
+        # the active doc below names the seat that will actually be driven --
+        # printing one arbitrary pids[0] as "the" seat would be misleading.
+        if len(pids) == 1:
+            pid_str = str(pids[0])
+            seats_note = ""
+        else:
+            pid_str = ", ".join(str(x) for x in sorted(pids))
+            seats_note = (
+                f" ({len(pids)} seats running; COM drives the one showing "
+                f"the active doc below)"
+            )
         active = "None"
         try:
             from ..sw_com import get_active_doc, get_sw_app, resolve
@@ -110,7 +119,7 @@ def _seat_gate(assume_yes: bool) -> int | None:
         except Exception:  # noqa: BLE001 -- active-doc read is best-effort
             active = "unknown"
         _eprint(
-            f"ai-sw-build: attached to SOLIDWORKS [PID: {pid_str}] "
+            f"ai-sw-build: attached to SOLIDWORKS [PID: {pid_str}]{seats_note} "
             f"(active doc: {active})."
         )
 
@@ -274,7 +283,21 @@ def main() -> int:
         description="Build a SOLIDWORKS part from a declarative JSON spec.",
     )
     add_tier(parser, "stable")
-    parser.add_argument("spec_path", help="Path to a part spec JSON")
+    parser.add_argument(
+        "spec_path",
+        nargs="?",
+        help="Path to a part spec JSON (omit only with --list-kinds).",
+    )
+    parser.add_argument(
+        "--list-kinds",
+        dest="list_kinds",
+        action="store_true",
+        help=(
+            "Print the supported spec feature types and feature_add kinds as "
+            "JSON, then exit. Needs neither a spec nor SOLIDWORKS -- the "
+            "authoritative, scriptable answer to 'what can it build right now?'."
+        ),
+    )
     parser.add_argument(
         "--validate-only",
         action="store_true",
@@ -514,6 +537,29 @@ def main() -> int:
     apply_quiet(args)
     apply_locale(args)
 
+    # --list-kinds: print the supported surface and exit. Needs neither a spec
+    # nor SOLIDWORKS -- this is the CLI-reachable mirror of
+    # client.features.list_kinds(), so a non-Python operator can script
+    # "what can it build right now?" without opening a Python REPL.
+    if args.list_kinds:
+        from ..features import HANDLER_REGISTRY
+        from ..spec.schema import ALL_TYPES
+
+        return _emit(
+            {
+                "ok": True,
+                "spec_feature_types": sorted(ALL_TYPES),
+                "spec_feature_type_count": len(ALL_TYPES),
+                "feature_add_kinds": sorted(HANDLER_REGISTRY),
+                "feature_add_kind_count": len(HANDLER_REGISTRY),
+            },
+            0,
+        )
+
+    # spec_path is optional only to allow --list-kinds; require it otherwise.
+    if args.spec_path is None:
+        return _emit({"ok": False, "error": "the spec_path argument is required"}, 2)
+
     # Observability triad (P3.1): leveled logging. --verbose is shorthand
     # for --log-level debug. PlainFormatter strips ANSI when NO_COLOR is
     # set or stderr is not a TTY (W2.3).
@@ -566,7 +612,22 @@ def main() -> int:
         return _emit({"ok": False, "error": f"spec file not found: {p}"}, 2)
 
     try:
-        spec = json.loads(p.read_text(encoding="utf-8"))
+        raw = p.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        # A file that exists but can't be read (permissions, a non-UTF-8
+        # encoding, a directory, an I/O error) is a caller-side mistake, not a
+        # bug -- map it to the same clean exit-2 JSON error as a missing file,
+        # rather than letting it escape as an uncaught traceback.
+        return _emit(
+            {
+                "ok": False,
+                "error": f"spec file could not be read: {e}",
+                "spec_path": str(p),
+            },
+            2,
+        )
+    try:
+        spec = json.loads(raw)
     except json.JSONDecodeError as e:
         return _emit(
             {"ok": False, "error": f"spec is not valid JSON: {e}", "spec_path": str(p)},
@@ -586,15 +647,23 @@ def main() -> int:
     try:
         validate(spec, spec_path=p)
     except ValidationError as e:
-        return _emit(
-            {
-                "ok": False,
-                "error": "validation_failed",
-                "path": e.path,
-                "message": e.message,
-            },
-            3,
-        )
+        err_payload: dict[str, Any] = {
+            "ok": False,
+            "error": "validation_failed",
+            "path": e.path,
+            "message": e.message,
+        }
+        # Friendlier steer for the most common version mistake: a spec that
+        # declares schema_version > 1 fails the v1 `const: 1` check with a bare
+        # "1 was expected". The v2 surface exists but is gated behind a
+        # default-off flag, so name it instead of leaving the user stuck.
+        if e.path == "schema_version" and spec.get("schema_version") not in (None, 1):
+            err_payload["hint"] = (
+                "schema_version 2 is accepted only with the `schema_v2` feature "
+                "flag on: re-run with `--enable-flag schema_v2`. Otherwise set "
+                "schema_version to 1."
+            )
+        return _emit(err_payload, 3)
 
     if args.validate_only:
         return _emit(
