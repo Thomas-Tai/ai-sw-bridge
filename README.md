@@ -30,6 +30,33 @@ The spec language covers **30 part-modelling feature types** today (13 sketch + 
 
 As of **v0.13**, the same tool surface is also reachable via the MCP server (`ai-sw-mcp`) — bring your own Claude Desktop, Cursor, or Continue.dev. [Jump to the MCP section ↓](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)
 
+### What a spec looks like
+
+You don't write COM calls or VBA — you describe the part as JSON. This is the
+exact example the smoke test below builds (a 20 × 20 × 10 mm box with one 2 mm
+fillet):
+
+```json
+{
+  "schema_version": 1,
+  "name": "filleted_box_demo",
+  "features": [
+    { "type": "sketch_rectangle_on_plane", "name": "SK_Box",
+      "plane": "Front", "width": 20.0, "height": 20.0 },
+    { "type": "boss_extrude_blind", "name": "Extrude_Box",
+      "sketch": "SK_Box", "depth": 10.0 },
+    { "type": "fillet_constant_radius", "name": "Fillet_TopRightEdge",
+      "radius": 2.0, "edges": [ { "x": 10.0, "y": 0.0, "z": 10.0 } ] }
+  ]
+}
+```
+
+Features build in declared order; each `name` can be referenced by later
+features. Any length is either a literal (mm) or a `{"rhs": "..."}` link to a
+variable in a locals file. The full grammar is in
+[`docs/spec_reference.md`](docs/spec_reference.md) — and the AI usually writes
+this for you (step 3 below).
+
 ## 5-minute quickstart
 
 ### Prerequisites
@@ -39,6 +66,7 @@ As of **v0.13**, the same tool surface is also reachable via the MCP server (`ai
 - **Windows** — SOLIDWORKS is Windows-only, and the bridge uses `pywin32`.
 - **SOLIDWORKS installed and running** — tested on 2024 SP1; works on 2021 SP5+.
 - **Python 3.10+ on your `PATH`** — tested on 3.10, 3.12, 3.14. Verify with `python --version`; if that command isn't found, re-run the Python installer and tick **"Add python.exe to PATH"**.
+- **Git** — used by the one-line install below to clone the repo. Verify with `git --version`; if it's missing, install [Git for Windows](https://git-scm.com/download/win), or skip Git entirely by downloading the repo ZIP (**Code ▸ Download ZIP** on GitHub) and unzipping it.
 
 ### 1. Install (~2 minutes)
 
@@ -59,6 +87,10 @@ ai-sw-probe                                              # confirms COM is alive
 ai-sw-build examples/filleted_box/spec.json --no-dim     # builds a 20x20x10 box with one fillet
 ```
 
+`ai-sw-probe` prints a JSON object on success (`{"ok": true, "sw_revision": "32.1.0", ...}`) — if `ok` is `true`, COM is alive.
+
+`ai-sw-build` then prints a **seat banner** to stderr naming the exact SOLIDWORKS it's about to drive (its PID and your active document) and pauses for a `[y/N]` confirmation. That's the safety gate (Issue #7) — it's there so a build never lands in your session by surprise. Press **`y`**. (For unattended automation, add `--yes`/`-y` to skip the prompt.)
+
 If a small filleted box appears in SW within ~3 seconds, the bridge works.
 
 ### 3. Hand the keys to your AI assistant
@@ -74,6 +106,15 @@ Open Claude / ChatGPT / Codex and paste:
 The agent will read [`docs/AGENTS.md`](docs/AGENTS.md), pick the closest [`examples/`](examples/) match, draft a spec, and **stop** for your review. You approve, run the command yourself, and watch the part build. That's the whole loop.
 
 **Stuck?** Try [`examples/README.md`](examples/README.md) (20 working specs, grouped by primitive) or [`docs/known_limitations.md`](docs/known_limitations.md) (sharp edges new users hit).
+
+**First run didn't work?**
+
+| Symptom | Most likely cause | Fix |
+|---|---|---|
+| `ai-sw-probe` / `ai-sw-build`: *"command not found"* / *"not recognized"* | the virtual environment isn't active in this shell | re-run `.venv\Scripts\activate` (your prompt should show `(.venv)`), then retry — or re-do step 1 |
+| `ai-sw-probe` returns `ok: false` or a COM error | SOLIDWORKS isn't running, or it's a different bitness than your Python | start SOLIDWORKS; use 64-bit Python (SW is 64-bit) |
+| `ai-sw-build` seems to hang with a "Modify Dimension" popup in SW | parametric mode opens a blocking dialog per dimension | use `--no-dim` (the smoke test already does) — [why](docs/why_no_addim2.md) |
+| A `[y/N]` prompt appears before anything builds | that's the seat-confirmation gate, **not** an error | press `y` to proceed, or pass `--yes` for automation |
 
 ## Why an AI engineer should care
 
@@ -187,8 +228,10 @@ flowchart LR
 
 ### Quick install
 
+The `.[mcp]` suffix is pip **extras** syntax — it installs the base package *plus* the optional MCP dependencies. The quotes around `".[mcp]"` are required in PowerShell (otherwise the shell tries to glob the brackets). The same applies to `.[dev]` for contributors.
+
 ```powershell
-pip install -e ".[mcp]"   # adds the `mcp` SDK dependency
+pip install -e ".[mcp]"   # base install + the `mcp` SDK dependency
 where ai-sw-mcp           # confirms the entry point is on PATH
 ```
 
