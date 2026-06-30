@@ -51,26 +51,34 @@ The builder emits a warning to stderr when it detects a face-sketch on a non-ori
 
 ---
 
-## 2. Only `+/-z` faces of extrusions can host child sketches
+## 2. Side faces (`±x`/`±y`) are sketchable only on rectangular, Front-Plane extrusions
 
-`_select_extrude_face` in the builder currently has wiring for `+z` and `-z` only. If you write `"face": "+x"` or any `+/-y` value, the builder raises `NotImplementedError`.
+All six faces (`+z`, `-z`, `+x`, `-x`, `+y`, `-y`) of an extrusion can host a child sketch — `_face_frame` in [`spec/_face_geometry.py`](../src/ai_sw_bridge/spec/_face_geometry.py) computes the part-frame transform for each. The `±z` (outboard/inboard) faces work for any parent orientation. The **side** faces (`±x`, `±y`) carry two constraints, because the builder must derive the side-face plane from the parent profile's extents:
+
+1. **The parent's extrude axis must be `±z`** (i.e. the base sketch is on the **Front Plane**). A side face of an extrusion built on the Top or Right plane is not addressable.
+2. **The parent profile must be a rectangle** (its half-extents define where the side faces sit). A circle / arbitrary-curve profile produces a curved side surface this builder can't sketch on.
 
 ### How to recognize
 
 ```
-RuntimeError: v1 only supports +z/-z (out/in board) faces of extrusions; got +x
+RuntimeError: side face '+x' of 'Extrude_Box': v1 only supports +/-x and +/-y
+side faces when the parent extrude axis is +/-z (Front Plane). ...
+```
+or
+```
+RuntimeError: side face '+x' of 'Extrude_Box': parent has no sketch_extent_uv
+stashed. Side faces are only addressable on extrusions whose profile is a
+rectangle ...
 ```
 
 ### Workaround
 
-Reorient the parent extrusion so the face you want to sketch on becomes its `+z` or `-z` face. Since extrudes inherit their axis from the parent sketch's reference plane, this usually means picking a different reference plane for the base sketch:
-
-- Need a sketch on the +X face of a box? Sketch the box on the **Right Plane** (YZ, normal +X) instead of Front Plane. Then the +X face becomes the box's `+z` face in the bridge's local frame.
-- Need both side faces and the top face accessible? You'll need to split the part into two stacked extrudes, one whose `+z` is the original `+z` and one whose `+z` is the original `+x` — currently no clean way to do this.
+- **Unreachable side face (non-Front-Plane parent):** sketch the base on the **Front Plane** so the face you want becomes a `±x`/`±y` face of a `+z`-axis extrusion, or address it via `±z` of a child extrude.
+- **Non-rectangular profile:** there is no side-face sketch path; add the feature on a `±z` face instead.
 
 ### What's needed to lift the limit
 
-Mechanical: extend `_select_extrude_face` to compute tangent-plane offsets when the extrude axis is `+/-Y` or `+/-X` (currently only `+/-Z` is wired), and extend the mirror-u logic in the face-sketch handlers. Estimate: 60-90 min including spec tests. Tracked in the [Roadmap](../README.md#roadmap) "near-term" tier.
+Generalize `_face_frame` to derive side-face frames for `±x`/`±y`-axis parents (today only the `±z`-axis parent table is verified) and to handle non-rectangular profile extents. Tracked in the [Roadmap](../README.md#roadmap).
 
 ---
 
@@ -142,7 +150,7 @@ This is mechanical and predictable, but it means **changing an upstream dim (e.g
 
 ### How to recognize
 
-`RuntimeError: could not select edge #0 at part (X, Y, Z) mm -- point not on any edge of current geometry`
+`RuntimeError: edge #0 at part (X, Y, Z) mm matches no edge within 1um (best squared distance <d> m^2)`
 
 ### Workaround
 

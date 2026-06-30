@@ -68,9 +68,9 @@ prints a JSON object and exits 0:
 }
 ```
 
-If validation fails (bad JSON, schema error), the exit code is 3 and no COM
-calls are made. If a feature fails at build time, the exit code is 4 and
-`error` describes which feature and why.
+If schema/refs/locals validation fails, the exit code is 3 and no COM calls
+are made (a malformed-JSON or missing spec file is exit 2). If a feature fails
+at build time, the exit code is 4 and `error` describes which feature and why.
 
 **What it does:** validates the spec JSON against the schema, then drives
 SOLIDWORKS via COM to create a fresh part and build each feature in order.
@@ -114,7 +114,7 @@ Source: [`cli/observe.py`](../src/ai_sw_bridge/cli/observe.py) (subcommand
 
 - **Different part:** swap the spec path for another example —
   `examples/motor_mount_plate/spec.json` builds a plate with bolt holes.
-  Run `ls examples/` to see all 15 working specs.
+  Run `ls examples/` to see all 20 working specs.
 - **Dry-run without SOLIDWORKS:** `ai-sw-build examples/filleted_box/spec.json --dry-run`
   validates, resolves every `{rhs}` binding, and prints a planned-feature list
   without booting SW.

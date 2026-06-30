@@ -126,11 +126,21 @@ Both directories are created on first use.
 
 ## Exit codes
 
-- `0` — `ok: true` in the returned JSON
-- `1` — `ok: false` (the tool ran but reported a failure)
-- `2` — bad command-line arguments
+Shared convention across the CLIs:
 
-Stderr is unused; everything goes to stdout. If the JSON parse fails, the exit code is your fallback signal.
+- `0` — `ok: true` in the returned JSON
+- `1` — `ok: false`, a handled failure (e.g. `ai-sw-batch`, `ai-sw-checkpoint`)
+- `2` — bad command-line arguments / missing or malformed-JSON spec file
+
+`ai-sw-build` uses a richer, more specific set so a wrapping script can branch on *why* it failed — and it never returns `1`:
+
+- `3` — schema / refs / locals **validation** failed (no COM calls made)
+- `4` — **build** failed at a feature (or `--strict-addins` blocked the build)
+- `5` — `--dry-run` `{rhs}`-resolution failed (spec references a missing/cyclic local)
+- `6` — `--lint` found semantic findings
+- `7` — `--auto-retry` refused an identical re-submission
+
+Most output is one JSON object on stdout; `ai-sw-build` also writes its seat-identification banner to **stderr** (Issue #7). If the JSON parse fails, the exit code is your fallback signal.
 
 ---
 

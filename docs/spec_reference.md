@@ -119,7 +119,7 @@ Creates a rectangle on the face of an earlier extrusion.
 
 **Face-sketch origin gotcha:** The origin is the part-origin *projection* onto the face, NOT the face's geometric center. If the parent extrusion is centered on the part origin (like a `CreateCenterRectangle` at `(0,0)`), these coincide. If the parent is shifted, you need a `center` offset. See [known_limitations.md](known_limitations.md) section 1.
 
-**Current limitation:** Only `+z` and `-z` faces are implemented. `+x`, `-x`, `+y`, `-y` raise `NotImplementedError`. See [known_limitations.md](known_limitations.md) section 2.
+**Side-face limitation:** All six faces are supported, but the side faces `+x`/`-x`/`+y`/`-y` require the parent extrusion to be built on the **Front Plane** (`±z` axis) with a **rectangular** profile. See [known_limitations.md](known_limitations.md) section 2.
 
 ### `sketch_circle_on_plane`
 
