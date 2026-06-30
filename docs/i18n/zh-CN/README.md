@@ -8,10 +8,12 @@ translated-from: c8ce816
 
 [![CI](https://github.com/Thomas-Tai/ai-sw-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomas-Tai/ai-sw-bridge/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12%20%7C%203.14-blue)](../../../pyproject.toml)
-[![License](https://img.shields.io/badge/license-MIT-green)](../../../LICENSE)
+[![License](https://img.shields.io/badge/license-Proprietary-red)](../../../LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)](#前提条件)
 
 > **Language**: [English](../../../README.md) · 简体中文
+
+> ⚠️ **此翻译已过期，仅供参考。** 内容冻结于 `c8ce816`（约 v0.3 时期）：下方的 CLI 命令清单、功能范围、测试数量与项目状态均已严重落后。**许可证、兼容性与能力范围请一律以[英文 README](../../../README.md) 为准**（目前 v1.6，商业／专有许可）。完整同步追踪于 Issue #10。
 
 <!--
 HERO ASSETS — TO RECORD AND PASTE LATER:
@@ -47,7 +49,7 @@ flowchart LR
     style G fill:#e8f5e9,stroke:#388e3c,color:#000
 ```
 
-规格语言目前涵盖 **12 种零件建模基本操作**（草图 (sketch)、拉伸 (extrude)、切除、圆角 (fillet)、倒角 (chamfer)、阵列 (pattern)、镜像 (mirror)、旋转 (revolve)、孔 (hole)）。[查看完整基本操作列表 →](../../spec_reference.md)
+规格语言目前涵盖 **30 种零件建模特征类型**（13 草图 + 11 拉伸/旋转 + 3 修改 + 3 阵列）。[查看完整列表 →](../../spec_reference.md)
 
 ## 5 分钟快速入门
 
@@ -90,7 +92,7 @@ ai-sw-build examples/filleted_box/spec.json --no-dim     # 构建一个 20x20x10
 
 代理会阅读 [`docs/AGENTS.md`](../AGENTS.md)，挑选最接近的 [`examples/`](../../../examples/) 匹配，起草规格，然后**停下来**等你审查。你批准后，自己执行命令，看着零件构建完成。这就是整个循环。
 
-**卡住了？** 试试 [`examples/README.md`](../../../examples/README.md)（12 份可用规格，按基本操作分类）或 [`docs/known_limitations.md`](known_limitations.md)（新用户常踩的坑）。
+**卡住了？** 试试 [`examples/README.md`](../../../examples/README.md)（20 份可用规格，按基本操作分类）或 [`docs/known_limitations.md`](known_limitations.md)（新用户常踩的坑）。
 
 ## 为什么 AI 工程师应该关心
 
@@ -146,7 +148,7 @@ ai-sw-bridge/
 │   │   ├── sketches/         #     SketchHandler ABC + 5 个具体处理器
 │   │   └── ...
 │   └── cli/                  #   五个 CLI 入口
-├── examples/                 # 12 份可用规格（编写时从这里开始）
+├── examples/                 # 20 份可用规格（编写时从这里开始）
 ├── docs/
 │   ├── AGENTS.md             #   代理简报 — AI 首先阅读的内容
 │   ├── spec_reference.md     #   每种基本操作的 schema 参考
@@ -161,7 +163,7 @@ ai-sw-bridge/
 
 ## 许可证
 
-MIT。详见 [LICENSE](../../../LICENSE)。
+商业／专有许可 — 详见 [LICENSE](../../../LICENSE)（自 v1.5.0 起为法务审阅范本）。v1.0.0–v1.4.0 版本曾以 MIT 许可发布，并仍依该等条款提供。
 
 ## 致谢
 
