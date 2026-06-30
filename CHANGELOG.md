@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   prompt for non-interactive automation (the banner is still printed as the audit
   record). The banner is encoding-hardened: a non-cp1252 active-document title
   (e.g. CJK) degrades to a placeholder instead of crashing the build it guards.
+- **`ai-sw-build --list-kinds`.** Prints the supported surface as JSON — the 30
+  spec feature types (`schema.ALL_TYPES`) and the 36 `feature_add` registry kinds
+  (`client.features.list_kinds()`) — then exits. Needs neither a spec nor a running
+  SOLIDWORKS: the CLI-reachable, scriptable answer to "what can it build right now?"
+  for operators who don't open a Python REPL.
 
 ### Changed
 
@@ -40,6 +45,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `_internal/` directory (kept locally, off the repository). Stale pre-1.0 migration
   guides and the v0.14 hardening plan were removed. The `docs/README.md` index now
   reflects the sanitized structure. No code change.
+- **`ai-sw-build` multi-seat banner lists every seat.** When more than one
+  SOLIDWORKS instance is running, the banner now prints all PIDs and points to the
+  active-document title as the real disambiguator, instead of flagging one arbitrary
+  PID as "ambiguous" (the bound instance is the one in the COM Running Object Table,
+  not necessarily the first PID).
+- **README onboarding for a non-Python evaluator.** Added an inline example
+  `spec.json` (the artifact the tool produces, previously shown only as a diagram
+  box), a "first run didn't work?" troubleshooting table, a Git prerequisite + ZIP
+  fallback, an explanation of the `pip install -e ".[mcp]"` extras syntax, and a
+  Quickstart forewarning that the smoke-test build trips the `[y/N]` seat gate (plus
+  the `ai-sw-probe` success output).
 
 ### Fixed
 
@@ -59,6 +75,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Synchronized `docs/AGENTS.md` with the code.** The agent guide's capability list
   was frozen at the v0.10-era count; it now reflects the code-derived surface and
   the live `client.features.list_kinds()` source of truth.
+- **Documentation true-up — docs that disagreed with the code.** `known_limitations.md`
+  and `spec_reference.md` no longer claim `±x`/`±y` faces raise `NotImplementedError`
+  (all six extrusion faces are implemented; side faces require a rectangular
+  Front-Plane parent). The `tools_reference.md` exit-code table now documents
+  `ai-sw-build`'s real codes (`0`/`2`/`3`/`4`/`5`/`6`/`7`, never `1`) and that the
+  seat banner goes to stderr. The §4 fillet error string is corrected to the live
+  "matches no edge within 1um" message, and the `ONBOARDING.md` "15 working specs"
+  count is trued to 20.
+- **Localized READMEs declared the wrong license.** The zh-TW / zh-CN READMEs showed
+  an **MIT** badge and prose for what is a **Proprietary/commercial** product. Both
+  are corrected to Proprietary (with the historical note that v1.0.0–v1.4.0 were
+  MIT), counts updated, and a prominent "this translation is stale — see the English
+  README" banner added pending the full retranslation.
+- **`ai-sw-build` no longer crashes on an unreadable spec file.** A file that exists
+  but cannot be decoded (non-UTF-8) or read (permission / I/O error) now degrades to
+  the same clean exit-2 JSON error as a missing file, instead of escaping as an
+  uncaught traceback.
+- **`schema_version: 2` gives an actionable error.** With the default-off `schema_v2`
+  flag, declaring `schema_version: 2` now returns a hint naming
+  `--enable-flag schema_v2` instead of a bare "1 was expected".
+- **Regression guardrails against doc↔code drift.** New tests pin the README's
+  headline counts (30 / 36 / 21) to their source constants, the six-face support, the
+  documented exit codes, and the doc-quoted error strings — so this class of drift
+  fails CI rather than reaching a user.
 
 ## [1.6.1] - 2026-06-26
 
