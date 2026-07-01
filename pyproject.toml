@@ -70,6 +70,7 @@ markers = [
     "fault_injection: COM fault injection tests (run as separate CI job)",
     "solidworks_only: live-SW regression tests (require a running SOLIDWORKS session; run as separate CI job)",
     "destructive_sw: tests that kill the SW process (must run in isolation; SEH-crash risk in suite)",
+    "mcp_lane_live: live MCP write-gate lane (real ComExecutor; run in the isolated MCP job, not per-PR)",
 ]
 
 [tool.black]

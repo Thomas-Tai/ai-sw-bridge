@@ -18,7 +18,15 @@ import pytest
 
 
 def pytest_collection_modifyitems(items):
-    """Mark every test in this directory as destructive_sw."""
+    """Mark every test in this directory as destructive_sw and mcp_lane_live.
+
+    ``destructive_sw`` keeps the existing blanket skip (SEH-crash risk, must
+    run isolated). ``mcp_lane_live`` is the finer marker: it lets a future CI
+    job select ``-m mcp_lane_live`` to run this directory's live MCP
+    write-gate lane specifically, without pulling in every other
+    seat-killing ``destructive_sw`` test elsewhere in the suite.
+    """
     for item in items:
         if "mcp_lane" in str(item.fspath):
             item.add_marker(pytest.mark.destructive_sw)
+            item.add_marker(pytest.mark.mcp_lane_live)
