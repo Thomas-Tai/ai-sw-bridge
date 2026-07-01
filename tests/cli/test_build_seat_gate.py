@@ -49,7 +49,9 @@ def test_yes_prints_banner_and_proceeds_without_prompting(capsys):
     ):
         rc = _seat_gate(assume_yes=True)
     assert rc is None
-    assert "[PID: 1234]" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "[PID: 1234]" in err
+    assert "will not overwrite" in err
 
 
 def test_no_running_sw_proceeds_and_warns(capsys, monkeypatch):
@@ -57,7 +59,9 @@ def test_no_running_sw_proceeds_and_warns(capsys, monkeypatch):
     with patch(_PIDS, return_value=[]):
         rc = _seat_gate(assume_yes=False)
     assert rc is None
-    assert "no running SOLIDWORKS" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "no running SOLIDWORKS" in err
+    assert "will not overwrite" in err
 
 
 def test_banner_reports_active_doc_title(capsys, monkeypatch):
@@ -72,6 +76,7 @@ def test_banner_reports_active_doc_title(capsys, monkeypatch):
     assert rc is None
     err = capsys.readouterr().err
     assert "[PID: 42]" in err and "bracket.SLDPRT" in err
+    assert "will not overwrite" in err
 
 
 def test_multiple_pids_listed_with_active_doc_disambiguator(capsys, monkeypatch):

@@ -92,7 +92,8 @@ def _seat_gate(assume_yes: bool) -> int | None:
     if not pids:
         _eprint(
             "ai-sw-build: no running SOLIDWORKS found - a fresh instance will "
-            "be launched for this build."
+            "be launched for this build. This adds a new part; it will not "
+            "overwrite your open work."
         )
     else:
         # With one seat the PID is unambiguous. With several, list them all and
@@ -119,14 +120,15 @@ def _seat_gate(assume_yes: bool) -> int | None:
         except Exception:  # noqa: BLE001 -- active-doc read is best-effort
             active = "unknown"
         _eprint(
-            f"ai-sw-build: attached to SOLIDWORKS [PID: {pid_str}]{seats_note} "
-            f"(active doc: {active})."
+            f"ai-sw-build: about to build in the SOLIDWORKS window showing "
+            f"[PID: {pid_str}]{seats_note} (active doc: {active}). This adds "
+            f"a new part; it will not overwrite your open work."
         )
 
     if assume_yes or not sys.stdin.isatty():
         return None
 
-    sys.stderr.write("Proceed with build? [y/N] ")
+    sys.stderr.write("Approve? [y/N] ")
     sys.stderr.flush()
     try:
         resp = input("").strip().lower()

@@ -30,7 +30,9 @@ def probe() -> dict[str, Any]:
     except Exception as exc:
         result["error"] = (
             f"could not dispatch SldWorks.Application: {exc!r}. "
-            "Is SOLIDWORKS running?"
+            "Two common causes: (a) SOLIDWORKS is not running — open it and "
+            "retry; (b) if it IS open, your Python is 32-bit but SOLIDWORKS "
+            "is 64-bit — reinstall 64-bit Python and ai-sw-bridge."
         )
         return result
 
