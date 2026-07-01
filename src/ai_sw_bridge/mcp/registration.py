@@ -171,8 +171,19 @@ def register(
     backup_path = _backup(path)
     servers[SERVER_NAME] = entry
     data[key] = servers
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        return {
+            "ok": False,
+            "client": client,
+            "config_path": str(path),
+            "changed": False,
+            "backup_path": backup_path,
+            "entry": entry,
+            "error": f"could not write config: {exc!r}",
+        }
 
     return {
         "ok": True,

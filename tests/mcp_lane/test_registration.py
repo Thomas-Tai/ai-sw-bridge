@@ -7,6 +7,7 @@ Runs in the normal seat-safe suite (NOT an mcp_lane_live/destructive test).
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from ai_sw_bridge.mcp import registration as reg
 
@@ -52,7 +53,7 @@ def test_register_preserves_other_servers_and_backs_up(tmp_path) -> None:
     data = json.loads(cfg.read_text(encoding="utf-8"))
     assert data["mcpServers"]["other"] == {"command": "keep"}
     assert data["mcpServers"][reg.SERVER_NAME]["command"] == "Y"
-    backup = json.loads((tmp_path / out["backup_path"].split("/")[-1]).read_text())
+    backup = json.loads(Path(out["backup_path"]).read_text())
     assert "ai-sw-bridge" not in backup["mcpServers"]  # backup is pre-mutation
 
 

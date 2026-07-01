@@ -25,8 +25,10 @@ from .streams import add_quiet_flag, apply_quiet
 Check = dict[str, Any]
 
 
-def _check(name: str, ok: bool, detail: str, fix: str | None = None) -> Check:
-    return {"name": name, "ok": ok, "detail": detail, "fix": fix}
+def _check(
+    name: str, ok: bool, detail: str, fix: str | None = None, advisory: bool = False
+) -> Check:
+    return {"name": name, "ok": ok, "detail": detail, "fix": fix, "advisory": advisory}
 
 
 def _check_python_bitness() -> Check:
@@ -85,6 +87,9 @@ def _check_solidworks_seat() -> Check:
 
 
 def _check_mcp_registration() -> Check:
+    # Advisory: MCP-client registration is only needed for the chat-first
+    # / MCP flow. A CLI-only operator never touches it, so this check must
+    # never fail the overall verdict (spec: healthy CLI-only env == green).
     from ..mcp import registration as reg
 
     try:
@@ -95,18 +100,21 @@ def _check_mcp_registration() -> Check:
             False,
             f"detect failed: {exc!r}",
             "Run: ai-sw-doctor --register",
+            advisory=True,
         )
     if d.get("present"):
         return _check(
             "mcp_registration",
             True,
             f"MCP server registered in {d['config_path']}.",
+            advisory=True,
         )
     return _check(
         "mcp_registration",
         False,
         f"ai-sw-bridge not found in {d['config_path']}.",
         "Run: ai-sw-doctor --register  (writes a timestamped backup first).",
+        advisory=True,
     )
 
 
@@ -134,12 +142,25 @@ def run_doctor(*, run_probe: bool = True) -> dict[str, Any]:
     checks: list[Check] = []
     for name in _CHECK_NAMES:
         if name == "_check_solidworks_seat" and not run_probe:
-            checks.append(_check("solidworks_seat", False, "skipped (--no-seat)", None))
+            # Skipped by choice (--no-seat): non-blocking, so it must not
+            # drag down the overall verdict for an otherwise-healthy env.
+            checks.append(
+                _check(
+                    "solidworks_seat",
+                    False,
+                    "skipped (--no-seat)",
+                    None,
+                    advisory=True,
+                )
+            )
             continue
         fn = getattr(module, name)
         checks.append(fn())
-    ok = all(c["ok"] for c in checks)
-    next_steps = [c["fix"] for c in checks if not c["ok"] and c["fix"]]
+    # Only REQUIRED (non-advisory) checks drive the pass/fail verdict.
+    ok = all(c["ok"] for c in checks if not c.get("advisory"))
+    next_steps = [
+        c["fix"] for c in checks if not c["ok"] and c["fix"] and not c.get("advisory")
+    ]
     return {"ok": ok, "checks": checks, "next_steps": next_steps}
 
 
@@ -188,9 +209,16 @@ def main() -> int:
 def _print_human_summary(result: dict[str, Any]) -> None:
     for c in result["checks"]:
         mark = "OK " if c["ok"] else "FAIL"
-        print(f"[{mark}] {c['name']}: {c['detail']}", file=sys.stderr)
+        tag = " (optional)" if c.get("advisory") else ""
+        print(f"[{mark}] {c['name']}{tag}: {c['detail']}", file=sys.stderr)
     for step in result["next_steps"]:
         print(f"  -> {step}", file=sys.stderr)
+    # Advisory failures never block the verdict, but the operator should
+    # still learn they *can* act on them — kept visually distinct from the
+    # blocking next_steps above.
+    for c in result["checks"]:
+        if c.get("advisory") and not c["ok"] and c.get("fix"):
+            print(f"  optional: {c['fix']}", file=sys.stderr)
 
 
 def _do_register(client: str) -> int:
@@ -216,6 +244,8 @@ def _do_register(client: str) -> int:
         )
     elif out.get("ok"):
         print("already registered — no change.", file=sys.stderr)
+    if not out.get("ok"):
+        print(out.get("error", ""), file=sys.stderr)
     return 0 if out.get("ok") else 1
 
 
