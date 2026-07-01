@@ -67,3 +67,27 @@ def test_run_doctor_overall_false_when_any_check_fails(monkeypatch) -> None:
 
 def _ok(name: str) -> dict:
     return {"name": name, "ok": True, "detail": "fine", "fix": None}
+
+
+def test_main_register_invokes_registrar(monkeypatch, capsys) -> None:
+    calls = {}
+
+    def fake_register(client):
+        calls["client"] = client
+        return {
+            "ok": True,
+            "client": client,
+            "config_path": "X",
+            "changed": True,
+            "backup_path": None,
+            "entry": {"command": "ai-sw-mcp", "args": []},
+        }
+
+    monkeypatch.setattr("ai_sw_bridge.mcp.registration.register", fake_register)
+    monkeypatch.setattr("sys.argv", ["ai-sw-doctor", "--register"])
+
+    rc = doctor.main()
+
+    assert rc == 0
+    assert calls["client"] == "claude_desktop"
+    assert '"command": "ai-sw-mcp"' in capsys.readouterr().out

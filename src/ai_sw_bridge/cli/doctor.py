@@ -85,13 +85,28 @@ def _check_solidworks_seat() -> Check:
 
 
 def _check_mcp_registration() -> Check:
-    # Task A local shim: report 'unknown' as a benign pass so the read-only
-    # doctor is green pre-Task-B. Task B Step 6 replaces this body with a call
-    # to mcp.registration.detect('claude_desktop').
+    from ..mcp import registration as reg
+
+    try:
+        d = reg.detect("claude_desktop")
+    except Exception as exc:  # noqa: BLE001
+        return _check(
+            "mcp_registration",
+            False,
+            f"detect failed: {exc!r}",
+            "Run: ai-sw-doctor --register",
+        )
+    if d.get("present"):
+        return _check(
+            "mcp_registration",
+            True,
+            f"MCP server registered in {d['config_path']}.",
+        )
     return _check(
         "mcp_registration",
-        True,
-        "MCP registration check not yet wired (see `ai-sw-doctor --register`).",
+        False,
+        f"ai-sw-bridge not found in {d['config_path']}.",
+        "Run: ai-sw-doctor --register  (writes a timestamped backup first).",
     )
 
 
@@ -179,10 +194,29 @@ def _print_human_summary(result: dict[str, Any]) -> None:
 
 
 def _do_register(client: str) -> int:
-    # Task A placeholder — replaced wholesale in Task B Step 5.
-    print(json.dumps({"ok": False, "error": "not yet implemented"}, indent=2))
-    print("--register is not available yet.", file=sys.stderr)
-    return 1
+    from ..mcp import registration as reg  # function-local: keep import light
+
+    try:
+        out = reg.register(client)
+    except ValueError as exc:  # unknown client
+        print(json.dumps({"ok": False, "error": str(exc)}, indent=2))
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(json.dumps(out, indent=2, default=str))
+    # Transparency: name the file and show what we injected.
+    print(f"config file: {out['config_path']}", file=sys.stderr)
+    if out.get("backup_path"):
+        print(f"backup:      {out['backup_path']}", file=sys.stderr)
+    if out.get("changed"):
+        command = out["entry"].get("command", "?")
+        print(
+            f"registered the ai-sw-bridge MCP server (command: {command}).",
+            file=sys.stderr,
+        )
+    elif out.get("ok"):
+        print("already registered — no change.", file=sys.stderr)
+    return 0 if out.get("ok") else 1
 
 
 if __name__ == "__main__":

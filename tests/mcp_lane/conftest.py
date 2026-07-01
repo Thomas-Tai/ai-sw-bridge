@@ -25,8 +25,14 @@ def pytest_collection_modifyitems(items):
     job select ``-m mcp_lane_live`` to run this directory's live MCP
     write-gate lane specifically, without pulling in every other
     seat-killing ``destructive_sw`` test elsewhere in the suite.
+
+    ``test_registration.py`` is exempt: it is a pure stdlib/tmp_path unit
+    test for the MCP-client registrar (no ComExecutor, no server, no COM
+    touch at all) and must run in the normal seat-safe suite.
     """
     for item in items:
-        if "mcp_lane" in str(item.fspath):
+        if "mcp_lane" in str(item.fspath) and "test_registration.py" not in str(
+            item.fspath
+        ):
             item.add_marker(pytest.mark.destructive_sw)
             item.add_marker(pytest.mark.mcp_lane_live)
