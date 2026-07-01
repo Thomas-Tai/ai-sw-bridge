@@ -141,6 +141,19 @@ on adoption data from v0.12.
   multi-part assemblies with mate constraints.
 - **Drawing generation.** 2D drawing sheets from 3D part/assembly specs.
 - **Sheet metal primitives.** Bend tables, flat patterns, gauge tables.
+- **`_face_frame` side-face generalization (±x/±y parent axes).** Today
+  `spec/_face_geometry.py::_face_frame` only has a verified UV table for
+  `+z`-axis (Front-plane) extrudes (`_FACE_UV_AXES_PARENT_PLUSZ`); `±z` faces
+  resolve for any parent axis, but requesting an `±x`/`±y` *side* face on a
+  Top/Right-plane extrude raises a clear RuntimeError. **Scope:** derive the
+  in-face UV axes + `sketch_origin` for parents whose `extrude_axis` is `±x`
+  or `±y` (add a verified table per orientation), and handle non-rectangular
+  profile extents where `sketch_extent_uv` is absent. **Unblocks:** semantic
+  edge addressing (#9, shipped v1.7) on non-Front-plane parents, plus
+  sketch-on-face and up-to-surface on the same. **Acceptance:** `of_face` /
+  `between_faces` resolve on a Top-plane and a Right-plane extrude, seat-proven
+  per orientation; existing `+z`-parent behavior byte-unchanged. Inherited
+  limitation, not a #9 gap — see `known_limitations.md` §1 / §4.
 - **L5 — C# in-process adapter.** Stays deferred indefinitely. The
   VBA-emit-and-run alternative likely collapses it; re-evaluate after
   L1 produces stability telemetry.
