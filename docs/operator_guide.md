@@ -20,26 +20,35 @@ edges to know before you author your own part.
 - **Windows** with SOLIDWORKS installed and running (2024 SP1 tested; 2021 SP5+ works).
 - **Python 3.10+, 64-bit**, on your PATH. SOLIDWORKS is 64-bit, so a 32-bit Python
   will not attach over COM. Check with `python --version`.
-- **Git** (to clone the repo) — or download the ZIP from GitHub (**Code ▸ Download ZIP**).
+- **Git** on your `PATH` — `pipx` fetches the bridge over Git. Check with `git --version`.
+- **pipx** — the isolated-app installer. Install once: `python -m pip install --user pipx`.
 
-> **Heads-up:** this is a Python developer tool. You'll work at a terminal with
-> `pip`, a virtual environment, and JSON files. You don't need to *write* code, but
-> you do need to be comfortable copy-pasting terminal commands. If `python` from a
-> command line is brand new to you, skim the
+> **Heads-up:** this is a Python developer tool. You'll work at a terminal and
+> copy-paste a few commands. `pipx` manages the isolated environment for you, so you
+> don't set up a virtualenv by hand — but you should be comfortable running commands
+> in PowerShell. If `python` from a command line is brand new to you, skim the
 > [Python beginner's guide](https://docs.python.org/3/using/index.html) first.
 
 ### Install the bridge
 
 ```powershell
-git clone https://github.com/Thomas-Tai/ai-sw-bridge.git
-cd ai-sw-bridge
-python -m venv .venv
-.venv\Scripts\activate
-pip install -e .
+# once, if you don't have pipx:
+python -m pip install --user pipx
+python -m pipx ensurepath            # then reopen your terminal
+
+# install the bridge (with the MCP extra) straight from Git, isolated:
+pipx install "ai-sw-bridge[mcp] @ git+https://github.com/Thomas-Tai/ai-sw-bridge.git"
 ```
 
-For the MCP server (drive from Claude Desktop / Cursor), install the extra
-instead: `pip install -e ".[mcp]"`.
+**One-time `pywin32` step (do not skip — COM won't attach without it).** Register
+pywin32's DLLs *inside the pipx environment*:
+
+```powershell
+& "$(pipx environment --value PIPX_LOCAL_VENVS)\ai-sw-bridge\Scripts\python.exe" -m pywin32_postinstall -install
+```
+
+The `[mcp]` extra (bundled above) is what lets `ai-sw-mcp` run for Claude Desktop /
+Cursor. `ai-sw-doctor` (next) checks both the PATH and this pywin32 step for you.
 
 ### Preflight your machine
 
@@ -212,7 +221,7 @@ loop — propose → approve → execute, every time.
 - **Take a screenshot:** `ai-sw-observe screenshot --fit-view` saves a PNG of
   the current viewport.
 - **MCP server:** `ai-sw-mcp` exposes 37 read-only + build tools to Claude
-  Desktop, Cursor, and other MCP clients. Requires `pip install -e ".[mcp]"`.
+  Desktop, Cursor, and other MCP clients. Bundled via the `[mcp]` extra in the pipx install above.
 
 ---
 

@@ -87,19 +87,30 @@ lives in the canonical **[Operator Guide → `docs/operator_guide.md`](docs/oper
 - **Windows** — SOLIDWORKS is Windows-only, and the bridge uses `pywin32`.
 - **SOLIDWORKS installed and running** — tested on 2024 SP1; works on 2021 SP5+.
 - **Python 3.10+, 64-bit, on your `PATH`** — tested on 3.10, 3.12, 3.14. SOLIDWORKS is 64-bit, so your Python must be 64-bit too or COM won't attach. Verify with `python --version`; if that command isn't found, re-run the Python installer and tick **"Add python.exe to PATH"**.
-- **Git** — used by the one-line install below to clone the repo. Verify with `git --version`; if it's missing, install [Git for Windows](https://git-scm.com/download/win), or skip Git entirely by downloading the repo ZIP (**Code ▸ Download ZIP** on GitHub) and unzipping it.
+- **Git** on your `PATH` — `pipx` fetches the bridge over Git, so `git` must be available. Verify with `git --version`; if it's missing, install [Git for Windows](https://git-scm.com/download/win).
+- **pipx** — the isolated-app installer that puts the `ai-sw-*` commands on your `PATH` without a hand-managed virtualenv. Install it once: `python -m pip install --user pipx`.
 
 ### 1. Install (~2 minutes)
 
+Install [`pipx`](https://pipx.pypa.io/) once (if you don't have it), then install the
+bridge straight from Git into its own isolated environment — no manual clone, no venv:
+
 ```powershell
-git clone https://github.com/Thomas-Tai/ai-sw-bridge.git
-cd ai-sw-bridge
-python -m venv .venv
-.venv\Scripts\activate
-pip install -e .
+python -m pip install --user pipx
+python -m pipx ensurepath            # then close and reopen your terminal
+
+pipx install "ai-sw-bridge[mcp] @ git+https://github.com/Thomas-Tai/ai-sw-bridge.git"
 ```
 
-For the MCP server, install the extra instead: `pip install -e ".[mcp]"` (see the [MCP section](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)).
+**One-time `pywin32` step (the top footgun).** COM only attaches after pywin32's
+post-install has registered its DLLs *inside the pipx environment*:
+
+```powershell
+& "$(pipx environment --value PIPX_LOCAL_VENVS)\ai-sw-bridge\Scripts\python.exe" -m pywin32_postinstall -install
+```
+
+The `[mcp]` extra (bundled in the command above) pulls in the MCP SDK so `ai-sw-mcp`
+can run. `ai-sw-doctor` (next step) verifies both the PATH and this pywin32 step for you.
 
 ### 2. Preflight (~5 seconds)
 
@@ -153,7 +164,7 @@ The agent will read [`docs/AGENTS.md`](docs/AGENTS.md), pick the closest [`examp
 
 ## What ships in the box
 
-**22 CLI commands + one MCP server** on your PATH after `pip install -e .`
+**22 CLI commands + one MCP server** on your PATH after the `pipx install` above
 (the MCP server needs the `[mcp]` extra to *run* — see the [MCP section](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)).
 Each command declares a stability **tier** (`stable` / `experimental` / `deprecated`),
 printed in its `--help` banner and enforced by `tests/test_cli_stability.py`. The
@@ -189,7 +200,7 @@ There is no `--yolo` flag.
 | `ai-sw-motion` | experimental | Dynamic kinematic verification (`audit`) — drives a mate through its DOF, reports interference / clearance per step. | — |
 | `ai-sw-solver` | experimental | Autonomous clearance solver (`resolve-clearance`) — drives a distance mate until clash-free, reverts on failure. | ⚠️ approval-gated |
 | `ai-sw-urdf` | experimental | URDF export (assembly → ROS robot model). `export` writes `.urdf` + per-component STL meshes. No SW mutation. | ✅ |
-| `ai-sw-mcp` | daemon | **MCP server (stdio transport)** for Claude Desktop, Cursor, Continue.dev, and other MCP-capable clients. Exposes 37 tools (read lanes + plan/elicit-gated writes). Install with `pip install -e ".[mcp]"`. | mixed |
+| `ai-sw-mcp` | daemon | **MCP server (stdio transport)** for Claude Desktop, Cursor, Continue.dev, and other MCP-capable clients. Exposes 37 tools (read lanes + plan/elicit-gated writes). Bundled via the `[mcp]` extra in the `pipx install` above. | mixed |
 
 Three build modes for `ai-sw-build` (use `--no-dim` for AI workflows; the others trade speed for live equation links). [Why `--no-dim` exists →](docs/why_no_addim2.md)
 
@@ -251,10 +262,14 @@ flowchart LR
 
 ### Quick install
 
-The `.[mcp]` suffix is pip **extras** syntax — it installs the base package *plus* the optional MCP dependencies. The quotes around `".[mcp]"` are required in PowerShell (otherwise the shell tries to glob the brackets). The same applies to `.[dev]` for contributors.
+If you followed the [operator quickstart](#for-operators--5-minute-quickstart), the
+`[mcp]` extra is already installed. The `[mcp]` suffix is **extras** syntax — it pulls
+the MCP SDK in alongside the base package. The quotes around the whole
+`"…[mcp] @ git+…"` argument are required in PowerShell (otherwise the shell tries to
+glob the brackets).
 
 ```powershell
-pip install -e ".[mcp]"   # base install + the `mcp` SDK dependency
+pipx install "ai-sw-bridge[mcp] @ git+https://github.com/Thomas-Tai/ai-sw-bridge.git"
 where ai-sw-mcp           # confirms the entry point is on PATH
 ```
 
