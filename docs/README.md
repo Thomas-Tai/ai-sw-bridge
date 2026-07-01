@@ -19,8 +19,7 @@ prompts, session reconstructions, R&D research/spike reports) is kept out of the
 
 ## Architecture & design
 - [glossary.md](glossary.md) — load-bearing terms (seat, Tier 1/2, out-of-process, feature handler, Route-A/B/C/D, Lane M).
-- [architecture.md](architecture.md) — system structure.
-- [CLASS_RELATION_MAP.md](CLASS_RELATION_MAP.md) — the client/facades/registry/verify/COM relation map (mermaid + layer hierarchy).
+- [CLASS_RELATION_MAP.md](CLASS_RELATION_MAP.md) — system structure: the client/facades/registry/verify/COM relation map (mermaid + layer hierarchy). The canonical architecture doc (supersedes the retired `architecture.md`).
 - [decisions.md](decisions.md) — the running architecture decision log (ADRs).
 - [mcp_server_design.md](mcp_server_design.md) — the MCP server contract.
 - [checkpoint_encryption_design.md](checkpoint_encryption_design.md) — at-rest encryption design.

@@ -12,7 +12,7 @@ Use this prompt with Claude Sonnet, GLM-4.6, GPT-5, or any other capable LLM to 
    minimum translation surface is `README.md` and `docs/known_limitations.md`;
    `docs/why_no_addim2.md` is recommended because the new README links to it
    from the build-modes line. Other docs (`spec_reference.md`, `known_gotchas.md`,
-   `architecture.md`) can be added as the project's translation appetite grows.
+   `CLASS_RELATION_MAP.md`) can be added as the project's translation appetite grows.
 4. Run. The model should produce one output file per source file at the paths
    specified.
 5. Review the **DO-NOT-TRANSLATE list** output (the model is asked to emit this
@@ -287,7 +287,7 @@ The original prompt translated only `README.md` and `docs/known_limitations.md`.
 - `docs/why_no_addim2.md` — build-modes deep-dive (linked from README's CLI table)
 - `docs/spec_reference.md` — per-primitive schema reference
 - `docs/known_gotchas.md` — pywin32 marshalling surprises
-- `docs/architecture.md` — phases + design rationale
+- `docs/CLASS_RELATION_MAP.md` — phases + design rationale
 - `docs/AGENTS.md` — agent briefing (also user-facing as "what the AI reads first")
 
 These are not yet translated. Add any of them to the source-file list when pasting the prompt; they are user-facing and benefit from translation. The DO-NOT-TRANSLATE list above already covers identifiers that appear in them.

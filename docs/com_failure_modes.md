@@ -46,7 +46,7 @@ same pattern: stop trusting "the call returned, therefore it worked."
 |---|---|---|---|---|---|
 | X-01 | `SelectByID2(... Append=True ...)` raises `com_error('Type mismatch', ..., 8)` | The 8th positional arg (`Callout`, OUT-typed IDispatch) cannot be marshalled by pywin32 late-binding | Try the same call without the Append arg — works. Confirms it's the Callout, not your inputs. | Use 5-arg legacy `SelectByID(name, type, x, y, z)` and apply marks retroactively via `SelectionMgr.SetSelectedObjectMark`. See `_mark_first_selection` in `builder.py`. | 2026-05-17 (linear_pattern), and prior MMP debug session |
 | X-02 | Loop of `SelectByID('', 'EDGE', x, y, z)` only selects the LAST edge | 5-arg `SelectByID` is non-appending: every call replaces the prior selection | `SelectionMgr.GetSelectedObjectCount2(-1)` stays at 1 across N calls | Walk bodies, find edges by `GetClosestPointOn`, call `IEntity.Select2(Append=True, Mark=0)` — see `_select_edges_by_points` in `builder.py:673–758` | 2026-05-17 |
-| X-03 | `GetErrorCode2(...)` raises pywin32 marshalling error | OUT parameter pywin32 can't unmarshal in late-binding mode | Try legacy `GetErrorCode` (auto-invoked property) — returns int directly | `observe.sw_get_feature_errors` uses `GetErrorCode` not `GetErrorCode2` | Pre-v0.2 (architecture.md) |
+| X-03 | `GetErrorCode2(...)` raises pywin32 marshalling error | OUT parameter pywin32 can't unmarshal in late-binding mode | Try legacy `GetErrorCode` (auto-invoked property) — returns int directly | `observe.sw_get_feature_errors` uses `GetErrorCode` not `GetErrorCode2` | Pre-v0.2 (CLASS_RELATION_MAP.md) |
 
 ### Equation manager
 
@@ -111,7 +111,7 @@ happened" failure:
 
 ## What this doc is NOT
 
-- Not a tutorial. See [`docs/architecture.md`](architecture.md) and the
+- Not a tutorial. See [`docs/CLASS_RELATION_MAP.md`](CLASS_RELATION_MAP.md) and the
   spec primer for that.
 - Not a complete API reference. See
   [`docs/api_reference.md`](api_reference.md) for the CHM-extracted

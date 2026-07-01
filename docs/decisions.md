@@ -577,6 +577,69 @@ in-process execution to commit.
 
 ---
 
+## 2026-07-01
+
+### 2026-07-01 — Salvage `architecture.md`'s surviving rationale before retirement
+
+**Context:** Phase 0 Task Group G retires `docs/architecture.md` — its
+phase-by-phase module walkthrough is superseded 1:1 by
+`docs/CLASS_RELATION_MAP.md`, which reflects the current (post-facade,
+post-features-registry) module shape. But its "Why this design" section
+held three pieces of "why" that are not restated anywhere else in this
+log, and would otherwise be lost with the file.
+
+**Decision:** Preserve the three rationales here, inline, before deleting
+the file:
+
+1. **Why Propose-Approve-Execute (the `mutate.py` state machine).** An AI
+   agent that can "edit the model" needs three properties: verifiable
+   (the agent sees the delta before committing), reversible (one command
+   undoes the last change), auditable (every change leaves a permanent
+   on-disk record). `propose → dry_run → commit → undo` hits all three —
+   the dry-run shows the delta, the rollback restores the snapshot, the
+   JSON proposal records persist on disk.
+2. **Why `*_locals.txt` as the source of truth (not in-SW dimension
+   values).** SOLIDWORKS' Equation Manager can link to an external file
+   instead of storing values inline. Doing so survives a SW version
+   migration (the linked file is plain text), is version-controllable, is
+   editable from outside SW under a lock + atomic-write discipline, and
+   makes reload explicit (`EquationMgr.UpdateValuesFromExternalEquationFile`)
+   so the bridge — not SW — controls when a change propagates. Editing
+   inside SW directly is fragile: the next linked-file reload can silently
+   overwrite an in-SW edit.
+3. **Why late-binding pywin32 was the *original* choice** (context that
+   pre-dates, and grounds, the 2026-05-30 "hybrid binding" entry above).
+   `win32com.client.gencache.EnsureDispatch("SldWorks.Application")`
+   reliably fails ("This COM object can not automate the makepy process")
+   on most SW installs. Without a typelib, every COM call goes through
+   `IDispatch::Invoke`, which cannot marshal certain argument types (the
+   `Callout` OUT-object in `SelectByID2`; OUT parameters in
+   `GetErrorCode2` and `Save3`; the third arg of `RunMacro2`). The
+   original design accepted these limits and used the legacy single-call
+   methods (`SelectByID`, `GetErrorCode`, `Save`) that marshal cleanly
+   late-bound instead.
+
+**Alternatives considered:**
+
+- *Let the rationale evaporate with the file.* Rejected: a future
+  contributor re-litigating "why not just edit dimensions in the SW UI"
+  or "why not a fluent API" would have no record to check against.
+- *Reproduce the full `architecture.md` phase-by-phase walkthrough here.*
+  Rejected: that content (module list, dependency graph, per-phase
+  function tables) is superseded 1:1 by `docs/CLASS_RELATION_MAP.md`,
+  which reflects the current shape; only the "why", not the stale "what",
+  was at risk of being lost.
+
+**Consequences:** `docs/architecture.md` is removed (`git rm`);
+`docs/CLASS_RELATION_MAP.md` is the canonical architecture doc going
+forward. References to `architecture.md` across the docs tree are
+repointed to `CLASS_RELATION_MAP.md`.
+
+**Owner:** Strategy lead.
+**Status:** Active.
+
+---
+
 ## Reversed / superseded decisions
 
 - 2026-05-23 "Demote Lane M to adoption-driven" — **superseded

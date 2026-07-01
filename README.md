@@ -127,7 +127,7 @@ What's different here:
 3. **Safety is structural, not aspirational.** `ai-sw-mutate` ships a literal `propose → dry-run → review → commit` state machine. Rollback verification reads the file back from disk and compares. There is no `--yolo` flag.
 4. **CHM is the source of truth for API signatures.** When a call returns `PARAMNOTOPTIONAL`, we don't guess — we re-extract from `sldworksapi.chm` and assert the arg count at runtime. [See the API reference →](docs/api_reference.md)
 
-For the architecture and design rationale (why JSON specs over a fluent API, the layer model), read [`docs/architecture.md`](docs/architecture.md) and the [`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md).
+For the architecture and design rationale (why JSON specs over a fluent API, the layer model), read [`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md).
 
 ## What ships in the box
 

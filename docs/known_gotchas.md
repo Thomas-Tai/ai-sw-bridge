@@ -227,4 +227,4 @@ When you hit something new and weird:
 3. If there's a mechanical workaround, add a `try/except` + structured
    error message in the relevant module
 4. If the mitigation needs a global change (e.g. always set some
-   user-pref before doing X), update `architecture.md` too
+   user-pref before doing X), update `CLASS_RELATION_MAP.md` too
