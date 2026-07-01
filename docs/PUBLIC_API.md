@@ -96,6 +96,44 @@ Within a major version (`1.x`):
 
 Breaking changes to a guaranteed surface require a **major** bump (`2.0.0`).
 
+## 5. Frozen integration contracts
+
+These are the invariants packaging and downstream integrators bind to. Each is
+already enforced by an existing test — this section is the human-readable
+index, not a new check.
+
+- **Console-script names.** The 21 `ai-sw-*` entry points (`ai-sw-probe`,
+  `ai-sw-observe`, `ai-sw-mutate`, `ai-sw-batch`, `ai-sw-assembly`,
+  `ai-sw-drawing`, `ai-sw-properties`, `ai-sw-configurations`,
+  `ai-sw-sketch-relations`, `ai-sw-sketch-edit`, `ai-sw-codegen`,
+  `ai-sw-build`, `ai-sw-history`, `ai-sw-apidoc`, `ai-sw-memory`,
+  `ai-sw-checkpoint`, `ai-sw-import`, `ai-sw-export-dxf-flat`,
+  `ai-sw-motion`, `ai-sw-solver`, `ai-sw-urdf`) plus `ai-sw-mcp`, all defined
+  in `[project.scripts]` (`pyproject.toml`) and targeting
+  `ai_sw_bridge.cli.*` / `ai_sw_bridge.mcp.server`. A rename, removal, or
+  target-module change to any of these is a breaking packaging change.
+  Guarded by `tests/test_doc_truth.py` (`_cli_command_count` derives the
+  count straight from `pyproject.toml` and pins every doc surface that
+  restates it).
+- **CLI exit-code contract.** `ai-sw-build` (`src/ai_sw_bridge/cli/build.py`)
+  returns exactly `0` (success), `2` (argument/spec-file/flag errors), `3`
+  (schema validation failed), `4` (build failed, or `--strict-addins`
+  blocked), `5` (`--dry-run` rhs-resolution failure), `6` (`--lint` findings
+  present), or `7` (`--auto-retry` refused an identical resubmission) —
+  **never `1`** (`1` is the shared generic `ok:false` code used by other
+  CLIs, e.g. `ai-sw-batch` / `ai-sw-checkpoint`, not by `ai-sw-build`).
+  Guarded by `tests/cli/test_exit_codes_documented.py`, which pins that
+  `docs/tools_reference.md`'s "Exit codes" section documents codes `3`–`7`
+  and still mentions `stderr` (the seat banner writes there).
+- **MCP tool-name set.** The `ai-sw-mcp` server's tool surface (names +
+  payload shapes) is pinned by `EXPECTED_TOOLS` in
+  `tests/mcp_lane/test_server_contract.py` — currently 37 tools across the
+  observation / build-batch / API-docs / history-resilience / design-memory
+  groups listed in §2 above. A tool add/remove/rename or a payload-shape
+  change fails that test (and, transitively, `tests/test_doc_truth.py`'s
+  `_mcp_tool_count`, which imports `EXPECTED_TOOLS` to keep every doc count
+  in sync).
+
 ---
 
 ## Stability tiers (per-command)
