@@ -82,9 +82,14 @@ jobs:
         run: lint-imports
 
       - name: Run tests
-        # Coverage floor (audit CI-2): measured 64% at v1.5.0; gate at 60% with
-        # headroom for cross-version variance — ratchet up as coverage grows.
-        run: pytest -v --cov=ai_sw_bridge --cov-report=term-missing --cov-fail-under=60
+        run: pytest -v --cov=ai_sw_bridge --cov-report=term-missing --cov-report=json
+
+      - name: Coverage ratchet gate
+        # Replaces the fixed --cov-fail-under=60 floor. Fails if total coverage
+        # drops > 1pt below the checked-in baseline, or a watched package
+        # (spec/features/errors) falls below its floor. Bump the baseline via a
+        # reviewed PR (python tools/coverage_gate.py --update-baseline).
+        run: python tools/coverage_gate.py
 
   import-check:
     # Pin runner version (see comment on test job).
