@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- **Semantic edge addressing for fillet/chamfer (`--enable-flag semantic_edges`, default OFF).**
+- **Semantic edge addressing for fillet/chamfer (default ON).**
   `fillet_constant_radius` and `chamfer_edge` `edges[]` items now accept two
   topology-named forms in addition to the legacy literal `{x, y, z}` point:
   `{of_feature, face}` selects ALL edges bounding a named semantic face
@@ -18,11 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   faces. Unlike literal coordinates, these re-resolve against the current geometry
   on every build, so they survive upstream dim edits (change the box width and the
   filleted edge is still found). Forms may be mixed in one array and de-duplicate.
-  Gated behind the fail-closed `semantic_edges` feature flag pending the live-seat
-  PAE proof of `IFace2.GetEdges`; literal specs are unchanged with the flag off.
-  The validator rejects a semantic selector when the flag is off, when `of_feature`
-  is not an earlier fixed-extent boss extrude, and when `between_faces` names two
-  faces that provably share no edge (e.g. `["+z", "-z"]`).
+  Governed by the `semantic_edges` feature flag, **default ON** — the live-seat PAE
+  of `IFace2.GetEdges` is green (of_face + between_faces both resolve and survive a
+  40→80 mm width change; a literal point tuned to the old width correctly misses;
+  see `spikes/spike_semantic_edges_pae.py` and `docs/pending_gates.md`).
+  `--disable-flag semantic_edges` reverts to literal-only. The validator rejects a
+  semantic selector when the flag is off, when `of_feature` is not an earlier
+  fixed-extent boss extrude, and when `between_faces` names two faces that provably
+  share no edge (e.g. `["+z", "-z"]`).
 - **`ai-sw-build` seat-identification banner + `--yes` / `-y` flag.** Before the
   first COM write, `ai-sw-build` now prints which SOLIDWORKS seat it is about to
   drive — PID and active-document name — so a build can never silently land in the

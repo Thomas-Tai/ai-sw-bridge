@@ -2,19 +2,37 @@
 
 Features that are **code-complete and green offline** but carry a deliberate
 `default OFF` (or otherwise inert) state until a proof on a live SOLIDWORKS seat
-retires the risk. This machine has no live seat (COM is mocked in the offline
-suite), so these gates are recorded here rather than faked. Each entry names the
-exact spike to run and the one-line change that flips the feature on once it is
-green.
+retires the risk. When no live seat is available (COM is mocked in the offline
+suite), the gate is recorded here rather than faked. Each entry names the exact
+spike to run and the one-line change that flips the feature on once it is green;
+entries stay as proof-of-record after they ship.
 
 ---
 
-## `semantic_edges` — semantic edge addressing (#9)
+## `semantic_edges` — semantic edge addressing (#9) — ✅ SHIPPED
 
-**State:** implemented behind the `semantic_edges` feature flag (default OFF);
-literal `{x, y, z}` edge selection is unchanged and always on.
+**State:** **PAE GREEN (4/4), flag promoted to default ON in v1.7.** Live-seat run
+recorded in `spikes/_results/semantic_edges_pae.json`. Retained here as the
+proof-of-record. Literal `{x, y, z}` edge selection is unchanged and always on;
+`--disable-flag semantic_edges` reverts to literal-only.
 
-**Why gated:** the of_face / between_faces resolution adds exactly ONE new COM
+**PAE result (live seat, box 40mm then 80mm):**
+- `of_face_resolves` — PASS (fillet built; `IFace2.GetEdges` returns the face's 4 edges)
+- `between_faces_resolves` — PASS (chamfer built; shared edge found by set intersection)
+- `parametric_survival` — PASS (both selectors rebuild at width 80; edges relocated, still hit)
+- `literal_contrast_fails` — PASS (literal point tuned to width-40 misses at width 80, as designed)
+
+The original run also surfaced an authoring gotcha (not a bug): a fillet over a
+face's edges consumes the sharp edge, so a *later* `between_faces` across that
+now-rounded edge correctly finds 0 shared edges. The spike keeps the two
+selectors on non-interacting geometry; the gotcha is documented in
+`known_limitations.md` §4.
+
+---
+
+### Original gate record (for reference)
+
+**Why it was gated:** the of_face / between_faces resolution adds exactly ONE new COM
 call — `IFace2.GetEdges` on a face resolved by `_resolve_face_object`. It is the
 proven-class return-array analog of `IBody2.GetEdges` (already shipped), but it
 has not been exercised against a real face on this machine. Everything else in
@@ -42,7 +60,7 @@ python spikes/spike_semantic_edges_pae.py
    FAILS ("matches no edge within 1um") when the box is rebuilt at width 80. The
    negative control that makes gate 3 meaningful.
 
-**On green:** flip `flags.py::FLAG_REGISTRY["semantic_edges"].default` to `True`,
-update this entry to "SHIPPED", drop the "default OFF pending…" language from
-`known_limitations.md` §4 and `spec_reference.md`, and record the run's
-`_results/semantic_edges_pae.json` in the changelog for that release.
+**Done on green (v1.7):** flipped `flags.py::FLAG_REGISTRY["semantic_edges"].default`
+to `True`, updated this entry to SHIPPED, dropped the "default OFF pending…"
+language from `known_limitations.md` §4 and `spec_reference.md`, and recorded the
+run in the changelog.

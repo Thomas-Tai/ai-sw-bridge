@@ -94,8 +94,8 @@ FLAG_REGISTRY: dict[str, FeatureFlag] = {
     ),
     "semantic_edges": FeatureFlag(
         name="semantic_edges",
-        default=False,
-        description="Semantic edge addressing (#9) — fillet/chamfer edges by `{of_feature, face}` (all edges of a face) or `{of_feature, between_faces:[A,B]}` (the single shared edge), resolved against current geometry so they survive parametric edits. Default OFF pending the live-seat PAE proof of IFace2.GetEdges; flip on after.",
+        default=True,
+        description="Semantic edge addressing (#9) — fillet/chamfer edges by `{of_feature, face}` (all edges of a face) or `{of_feature, between_faces:[A,B]}` (the single shared edge), resolved against current geometry so they survive parametric edits. Default ON since v1.7 (live-seat PAE of IFace2.GetEdges green: of_face + between_faces + parametric-survival + literal-contrast all pass). Disable with --disable-flag semantic_edges to fall back to literal-only edges.",
         lane="core",
         removal_date="v1.9",
     ),

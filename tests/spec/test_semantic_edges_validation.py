@@ -52,6 +52,12 @@ def flag_on(monkeypatch):
     monkeypatch.setattr(validator, "_semantic_edges_enabled", lambda: True)
 
 
+@pytest.fixture
+def flag_off(monkeypatch):
+    """Force the semantic_edges flag OFF (it defaults ON since v1.7)."""
+    monkeypatch.setattr(validator, "_semantic_edges_enabled", lambda: False)
+
+
 # --- Schema layer (flag-independent grammar) -------------------------------
 
 
@@ -92,14 +98,21 @@ def test_schema_rejects_malformed_edge_items(bad_item):
 # --- Reference layer: feature-flag gate ------------------------------------
 
 
-def test_semantic_selector_rejected_when_flag_off():
-    # Default: flag OFF -> a semantic selector is fail-closed at validation.
+def test_semantic_selector_rejected_when_flag_off(flag_off):
+    # Fail-closed: with the flag forced OFF a semantic selector is rejected at
+    # validation (the flag defaults ON since v1.7, so this pins the OFF path).
     with pytest.raises(ValidationError) as ei:
         validate(_spec([{"of_feature": "Box", "face": "+z"}]))
     assert "semantic_edges" in str(ei.value)
 
 
-def test_literal_only_spec_passes_with_flag_off():
+def test_semantic_selector_accepted_by_default():
+    # The flag ships default-ON (live-seat PAE green): a semantic selector
+    # validates without any override.
+    validate(_spec([{"of_feature": "Box", "face": "+z"}]))
+
+
+def test_literal_only_spec_passes_with_flag_off(flag_off):
     # Existing literal specs must be untouched regardless of the flag.
     validate(_spec([{"x": 10.0, "y": 0.0, "z": 10.0}]))
 

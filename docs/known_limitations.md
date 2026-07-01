@@ -172,12 +172,19 @@ extrude** (blind / midplane / two-direction) — the extents whose faces the
 builder can resolve. `between_faces` naming two anti-parallel faces (e.g.
 `["+z", "-z"]`, which share no edge) is rejected at validation.
 
-The flag defaults **OFF**: with it off, a semantic selector is rejected at
-validation (`... requires the semantic_edges flag; pass --enable-flag semantic_edges`)
-and literal specs are unaffected. It is off pending the live-seat PAE proof of
-`IFace2.GetEdges` on a resolved face plus the parametric-survival check (build
-box + semantic fillet, change the box width, confirm the fillet still resolves);
-see [`pending_gates.md`](pending_gates.md). It flips default-ON once that lands.
+The flag defaults **ON** since v1.7 — the live-seat PAE of `IFace2.GetEdges` is
+green (of_face resolves, between_faces resolves, both survive a 40→80 mm width
+change, and a literal point tuned to the old width correctly misses; see
+[`pending_gates.md`](pending_gates.md) and `spikes/spike_semantic_edges_pae.py`).
+To fall back to literal-only edges, `--disable-flag semantic_edges`; with the
+flag off a semantic selector is rejected at validation and literal specs are
+unaffected.
+
+**Authoring gotcha:** filleting or chamfering a face's edges *consumes* those
+sharp edges (the fillet replaces the edge with a rounded face). A later
+`between_faces` selector naming two faces whose shared edge was already filleted
+resolves to 0 shared edges — correctly, the edge no longer exists. Order edge
+operations so a later selector doesn't target geometry an earlier one removed.
 
 ---
 

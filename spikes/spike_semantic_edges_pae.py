@@ -18,14 +18,19 @@ WHAT IT PROVES (falsifiable gates):
   2. between_faces resolves   -- chamfer {of_feature: Box, between_faces:[+z,+x]}
                                  builds; the single shared edge is found by
                                  pure set intersection (NO GetTwoAdjacentFaces2).
-  3. PARAMETRIC SURVIVAL      -- the SAME semantic spec builds at width 40 AND at
-                                 width 80. The edges relocate; the selector still
-                                 hits them. This is the property literal points
-                                 lack.
+  3. PARAMETRIC SURVIVAL      -- the SAME two semantic specs build at width 40 AND
+                                 width 80. The edges relocate; the selectors still
+                                 hit them. This is the property literal points lack.
   4. LITERAL CONTRAST         -- a literal {x,y,z} point tuned to the width-40
-                                 edge FAILS ("matches no edge within 1um") when
-                                 the box is rebuilt at width 80. This is the
-                                 negative control that makes gate 3 meaningful.
+                                 edge FAILS ("matches no edge within 1um") when the
+                                 box is rebuilt at width 80. The negative control
+                                 that makes gate 3 meaningful.
+
+DESIGN NOTE: each semantic selector is exercised on its OWN fresh box (one
+semantic feature per build). Filleting a face's edges and THEN chamfering across
+that same now-rounded edge would (correctly) find 0 shared edges -- the fillet
+consumes the sharp edge. That is a spec-authoring gotcha, not a resolver bug, so
+the PAE keeps the two selectors on non-interacting geometry.
 
 A green run here is the sole remaining blocker on the flag default; record it in
 docs/pending_gates.md and flip flags.py::semantic_edges default to True.
@@ -67,40 +72,69 @@ def gate(name, ok, detail=""):
     return bool(ok)
 
 
-def _box_spec(width, semantic_edges):
-    """A box (width x 20 x 10 mm) plus a fillet + chamfer over ``semantic_edges``."""
-    return {
-        "schema_version": 1,
-        "name": f"SemEdge_W{int(width)}",
-        "features": [
-            {
-                "type": "sketch_rectangle_on_plane",
-                "name": "SK_Box",
-                "plane": "Front",
-                "width": float(width),
-                "height": 20.0,
-            },
-            {
-                "type": "boss_extrude_blind",
-                "name": "Box",
-                "sketch": "SK_Box",
-                "depth": 10.0,
-            },
-            {
-                "type": "fillet_constant_radius",
-                "name": "F_top",
-                "radius": 2.0,
-                "edges": [{"of_feature": "Box", "face": "+z"}],
-            },
-            {
-                "type": "chamfer_edge",
-                "name": "Ch_corner",
-                "mode": "equal_distance",
-                "distance": 1.0,
-                "edges": semantic_edges,
-            },
-        ],
-    }
+def _base(width):
+    """The box base: a (width x 20 x 10 mm) blind extrude off the Front plane."""
+    return [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Box",
+            "plane": "Front",
+            "width": float(width),
+            "height": 20.0,
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "Box",
+            "sketch": "SK_Box",
+            "depth": 10.0,
+        },
+    ]
+
+
+def _spec(name, width, *extra):
+    return {"schema_version": 1, "name": name, "features": _base(width) + list(extra)}
+
+
+def _fillet_of_face(width):
+    return _spec(
+        f"OfFace_W{int(width)}",
+        width,
+        {
+            "type": "fillet_constant_radius",
+            "name": "F_top",
+            "radius": 2.0,
+            "edges": [{"of_feature": "Box", "face": "+z"}],
+        },
+    )
+
+
+def _chamfer_between(width):
+    return _spec(
+        f"Between_W{int(width)}",
+        width,
+        {
+            "type": "chamfer_edge",
+            "name": "Ch_corner",
+            "mode": "equal_distance",
+            "distance": 1.0,
+            "edges": [{"of_feature": "Box", "between_faces": ["+z", "+x"]}],
+        },
+    )
+
+
+def _literal(width):
+    # A literal point tuned to the width-40 top-right vertical corner (x=+20mm).
+    return _spec(
+        f"Literal_W{int(width)}",
+        width,
+        {
+            "type": "chamfer_edge",
+            "name": "Ch_lit",
+            "mode": "equal_distance",
+            "distance": 1.0,
+            "edges": [{"x": 20.0, "y": 0.0, "z": 5.0}],
+        },
+    )
 
 
 def _build(spec, tag):
@@ -116,67 +150,61 @@ def _build(spec, tag):
     return res, None
 
 
+def _ok_with(res, err, feature):
+    """True iff the build succeeded and named feature is present."""
+    if err:
+        return False, err
+    built = set(res.features_built)
+    return (
+        res.ok and feature in built
+    ), f"ok={res.ok}, built={sorted(built)}, error={res.error}"
+
+
 print("=" * 64)
 print("PAE: semantic edge addressing (#9)")
 print("=" * 64)
 
-CHAMFER_SEM = [{"of_feature": "Box", "between_faces": ["+z", "+x"]}]
+# --- Gate 1: of_face resolves (own build) ----------------------------------
+print("\n--- width 40: fillet of_face +z (fresh box) ---")
+r, e = _build(_fillet_of_face(40.0), "offace40")
+ok, detail = _ok_with(r, e, "F_top")
+gate("of_face_resolves", ok, detail)
 
-# --- Gate 1 + 2: both semantic forms resolve at the nominal width ----------
-print("\n--- width 40: of_face fillet + between_faces chamfer ---")
-res40, err40 = _build(_box_spec(40.0, CHAMFER_SEM), "w40")
-if err40:
-    gate("of_face_resolves", False, err40)
-    gate("between_faces_resolves", False, err40)
-else:
-    built = set(res40.features_built)
-    gate("of_face_resolves", res40.ok and "F_top" in built, f"features={sorted(built)}")
-    gate(
-        "between_faces_resolves",
-        res40.ok and "Ch_corner" in built,
-        f"ok={res40.ok}, error={res40.error}",
-    )
+# --- Gate 2: between_faces resolves (own build) ----------------------------
+print("\n--- width 40: chamfer between_faces +z/+x (fresh box) ---")
+r, e = _build(_chamfer_between(40.0), "between40")
+ok, detail = _ok_with(r, e, "Ch_corner")
+gate("between_faces_resolves", ok, detail)
 
-# --- Gate 3: parametric survival -- same spec, different width -------------
-print("\n--- width 80: SAME semantic spec, edges relocated ---")
-res80, err80 = _build(_box_spec(80.0, CHAMFER_SEM), "w80")
-if err80:
-    gate("parametric_survival", False, err80)
-else:
-    built = set(res80.features_built)
-    gate(
-        "parametric_survival",
-        res80.ok and {"F_top", "Ch_corner"} <= built,
-        f"ok={res80.ok}, features={sorted(built)}, error={res80.error}",
-    )
+# --- Gate 3: parametric survival -- SAME specs at width 80 -----------------
+print("\n--- width 80: SAME semantic specs, edges relocated ---")
+r1, e1 = _build(_fillet_of_face(80.0), "offace80")
+ok1, d1 = _ok_with(r1, e1, "F_top")
+r2, e2 = _build(_chamfer_between(80.0), "between80")
+ok2, d2 = _ok_with(r2, e2, "Ch_corner")
+gate("parametric_survival", ok1 and ok2, f"of_face[{d1}] between[{d2}]")
 
-# --- Gate 4: literal contrast (negative control) --------------------------
-# Tune a literal point to the width-40 top-right vertical edge (x = +20 mm),
-# then rebuild at width 80 (edge now at x = +40). The literal must MISS.
+# --- Gate 4: literal contrast (negative control) ---------------------------
+# Literal point tuned to the width-40 corner (x=+20mm); rebuild at width 80
+# (corner now at x=+40). The literal must MISS.
 print("\n--- literal point tuned to W40 must FAIL at W80 (negative control) ---")
-lit_spec = _box_spec(80.0, [{"x": 20.0, "y": 0.0, "z": 5.0}])
-res_lit, err_lit = _build(lit_spec, "w80_literal")
-if err_lit is not None:
-    # A build/validate exception carrying the literal-miss message counts.
-    gate(
-        "literal_contrast_fails",
-        "matches no edge within 1um" in err_lit,
-        err_lit,
-    )
+r, e = _build(_literal(80.0), "literal80")
+if e is not None:
+    gate("literal_contrast_fails", "matches no edge within 1um" in e, e)
 else:
-    # If build() returned instead of raising, it must be a non-ok result.
-    miss = (not res_lit.ok) and "1um" in (res_lit.error or "")
-    gate(
-        "literal_contrast_fails",
-        miss,
-        f"ok={res_lit.ok}, error={res_lit.error}",
-    )
+    miss = (not r.ok) and "1um" in (r.error or "")
+    gate("literal_contrast_fails", miss, f"ok={r.ok}, error={r.error}")
 
 # --- Summary ---------------------------------------------------------------
 print("\n" + "=" * 64)
 all_pass = all(g["ok"] for g in results["gates"].values())
 print(
-    f"OVERALL: {'ALL GATES PASS -- flag may flip default-ON' if all_pass else 'SOME GATES FAILED'}"
+    "OVERALL: "
+    + (
+        "ALL GATES PASS -- flag may flip default-ON"
+        if all_pass
+        else "SOME GATES FAILED"
+    )
 )
 print("=" * 64)
 

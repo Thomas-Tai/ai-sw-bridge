@@ -765,7 +765,7 @@ Applies a constant-radius fillet to one or more edges.
 | `{"of_feature": "Box", "face": "+z"}` | ALL edges bounding face `+z` of feature `Box` | yes — re-resolved each build |
 | `{"of_feature": "Box", "between_faces": ["+z", "+x"]}` | the ONE edge shared by faces `+z` and `+x` of `Box` | yes — re-resolved each build |
 
-The two semantic forms require the **`semantic_edges`** feature flag (`ai-sw-build --enable-flag semantic_edges`); default OFF pending the live-seat PAE proof. Rules:
+The two semantic forms are governed by the **`semantic_edges`** feature flag, **default ON** since v1.7 (live-seat PAE green); `ai-sw-build --disable-flag semantic_edges` falls back to literal-only edges. Rules:
 - `of_feature` must name an **earlier fixed-extent boss extrude** (`boss_extrude_blind` / `_midplane` / `_two_direction`) — the extents whose faces the builder can resolve. Faces use the outward-normal names `+x`/`-x`/`+y`/`-y`/`+z`/`-z`.
 - `between_faces` takes exactly two DISTINCT, non-anti-parallel faces; `["+z", "-z"]` (opposite faces, no shared edge) is a validation error, as is a pair whose faces share ≠ 1 edge on the current geometry.
 - All three forms may be mixed in one `edges[]` array; an edge reached more than one way (e.g. by `of_face` and by `between_faces`) is filleted once.

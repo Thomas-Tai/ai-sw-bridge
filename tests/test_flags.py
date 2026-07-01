@@ -32,10 +32,16 @@ from ai_sw_bridge.flags import (
 # ---------------------------------------------------------------------------
 
 
+# Flags that ship default-ON (a lane whose live proof landed and was promoted).
+# Everything else defaults OFF (graceful-degradation posture).
+DEFAULT_ON_FLAGS = {"semantic_edges"}  # #9, promoted after live-seat PAE (v1.7)
+
+
 class TestDefaultState:
-    def test_all_v011_flags_default_off(self):
+    def test_lane_flags_default_off_except_promoted(self):
         for name, flag in FLAG_REGISTRY.items():
-            assert flag.default is False, f"{name} should default to False"
+            expected = name in DEFAULT_ON_FLAGS
+            assert flag.default is expected, f"{name} should default to {expected}"
 
     def test_registry_contains_expected_flags(self):
         assert len(FLAG_REGISTRY) == 7
