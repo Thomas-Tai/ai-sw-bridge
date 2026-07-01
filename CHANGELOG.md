@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-01
+
+**Semantic edges & CLI ergonomics release.** Fillet/chamfer edges can now be
+addressed by topology (`{of_feature, face}` / `{of_feature, between_faces}`),
+default-on and live-seat PAE-proven, so edge selections survive parametric dim
+edits; plus `ai-sw-build --list-kinds`, a seat-identification banner with
+`--yes`, an interactive build confirmation, and doc↔code drift guardrails.
+
 ### Added
 
 - **Semantic edge addressing for fillet/chamfer (default ON).**
