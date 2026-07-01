@@ -136,3 +136,41 @@ jobs:
 
       - name: Quickstart smoke test
         run: pytest -m onboarding -v
+
+  operator-install-smoke:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel
+      - name: Install the built artifact (not -e)
+        shell: pwsh
+        run: |
+          $whl = Get-ChildItem dist/*.whl | Select-Object -First 1
+          pip install "$($whl.FullName)[mcp]"
+      - name: Scripts are on PATH
+        shell: pwsh
+        run: |
+          where.exe ai-sw-probe
+          where.exe ai-sw-mcp
+          where.exe ai-sw-doctor
+      - name: No-SW command works (list kinds)
+        run: ai-sw-build --list-kinds
+      - name: probe/doctor fail gracefully with no SW (exit 1, no traceback)
+        shell: pwsh
+        run: |
+          ai-sw-doctor --no-seat
+          if ($LASTEXITCODE -ne 1 -and $LASTEXITCODE -ne 0) {
+            throw "ai-sw-doctor --no-seat exited $LASTEXITCODE (want 0/1)"
+          }
+          $out = ai-sw-probe 2>&1
+          if ($LASTEXITCODE -ne 1) { throw "ai-sw-probe exited $LASTEXITCODE (want 1 with no seat)" }
+          if ($out -match "Traceback") { throw "ai-sw-probe leaked a traceback" }
+      - name: MCP server module imports
+        run: python -c "import ai_sw_bridge.mcp.server; print('mcp ok')"
