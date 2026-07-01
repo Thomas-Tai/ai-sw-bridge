@@ -79,6 +79,12 @@ No co-author trailers.
 
 ## Adding a new feature primitive
 
+See [`docs/extension_contract.md`](docs/extension_contract.md) for the
+canonical recipe across all five extension points (`feature_add` kind, spec
+type handler, CLI verb, MCP tool, observe lane) — directory, registration
+call, uniform signature, and CI gate for each. The steps below are the
+spec-type-handler row's detail.
+
 The recipe (established by `fillet_constant_radius` in v0.2):
 
 1. **Add the schema** in `src/ai_sw_bridge/spec/schema.py` — define a per-feature schema dict, add it to the `oneOf` list in `SCHEMA`, and add the type string to the appropriate set (`SKETCH_TYPES`, `EXTRUDE_TYPES`, or `MODIFY_TYPES`).
