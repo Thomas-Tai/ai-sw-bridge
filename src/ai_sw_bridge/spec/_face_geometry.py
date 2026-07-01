@@ -55,6 +55,30 @@ _FACE_UV_AXES_PARENT_PLUSZ: dict[
     "-y": ((1, 0, 0), (0, 0, 1)),
 }
 
+# Side-face sketch-on-face frames for +y-axis (Top Plane) and +x-axis (Right
+# Plane) parents (Task #15). These are SOLIDWORKS' OWN sketch coordinate axes
+# on each side face, read directly off ISketch.ModelToSketchTransform on a live
+# seat (Task #15 diag, 2026-07-01) -- so `sketch_origin + u*u_axis + v*v_axis`
+# lands exactly where SW maps sketch (u, v). Only the +y / +x (non-flipped)
+# orientations are measured; ±z uses the table above, everything else stays
+# uv_calibrated=False (sketch-on-face refused) until measured.
+_FACE_UV_AXES_PARENT_PLUSY: dict[
+    str, tuple[tuple[int, int, int], tuple[int, int, int]]
+] = {
+    "+x": ((0, 0, 1), (0, 1, 0)),
+    "-x": ((0, 0, -1), (0, 1, 0)),
+    "+y": ((1, 0, 0), (0, 1, 0)),
+    "-y": ((-1, 0, 0), (0, 1, 0)),
+}
+_FACE_UV_AXES_PARENT_PLUSX: dict[
+    str, tuple[tuple[int, int, int], tuple[int, int, int]]
+] = {
+    "+x": ((1, 0, 0), (0, 1, 0)),
+    "-x": ((-1, 0, 0), (0, 1, 0)),
+    "+y": ((1, 0, 0), (0, 0, 1)),
+    "-y": ((1, 0, 0), (0, 0, -1)),
+}
+
 
 @dataclass(frozen=True)
 class FaceFrame:
@@ -225,10 +249,20 @@ def _face_frame(parent: BuiltFeature, face: str) -> FaceFrame:
     d = face_center[0] * nx + face_center[1] * ny + face_center[2] * nz
     sketch_origin = (d * nx, d * ny, d * nz)
 
+    # Pick the CALIBRATED sketch-on-face u/v table for this parent orientation,
+    # if one has been measured. Front (±z) has always been calibrated; Top (+y)
+    # and Right (+x) were measured in Task #15 (SW's own sketch frame). Other
+    # orientations (flipped -y/-x axis, etc.) are not yet measured.
+    calibrated_table = None
     if abs(az) > 0.99:
-        # Front-plane parent: preserve the historical CALIBRATED sketch-on-face
-        # u/v axes exactly (byte-identical to pre-#14 behavior).
-        u_ax, v_ax = _FACE_UV_AXES_PARENT_PLUSZ[face]
+        calibrated_table = _FACE_UV_AXES_PARENT_PLUSZ  # byte-identical to pre-#14
+    elif ay > 0.99:
+        calibrated_table = _FACE_UV_AXES_PARENT_PLUSY
+    elif ax > 0.99:
+        calibrated_table = _FACE_UV_AXES_PARENT_PLUSX
+
+    if calibrated_table is not None:
+        u_ax, v_ax = calibrated_table[face]
         return FaceFrame(
             face_center=face_center,
             sketch_origin=sketch_origin,
@@ -237,11 +271,11 @@ def _face_frame(parent: BuiltFeature, face: str) -> FaceFrame:
             out_normal=out_nrm,
         )
 
-    # Top/Right (±y / ±x) parent side face. face_center + out_normal are
-    # measured-correct; the in-plane axes (the extrude axis + the other
-    # in-sketch axis) are valid tangents for the _select_extrude_face probe
-    # spiral, but they are NOT the calibrated sketch-on-face u/v -- so mark the
-    # frame uncalibrated and let _sketch_uv_to_part refuse a child sketch on it.
+    # No calibrated sketch frame for this orientation. face_center + out_normal
+    # are measured-correct (enough for fillet/chamfer edge selection and the
+    # _select_extrude_face probe), but the in-plane axes below are only valid
+    # tangents, NOT the sketch-on-face u/v -- mark uncalibrated so
+    # _sketch_uv_to_part refuses a child sketch on this face.
     axis_hat = (ax, ay, az)
     return FaceFrame(
         face_center=face_center,

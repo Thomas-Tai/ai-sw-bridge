@@ -9,17 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- **Semantic edge selection on Top/Right-plane parents.** `_face_frame` now
-  computes the correct face center + outward normal for the `±x`/`±y` side faces
-  of extrudes built on the Top (`+y`-axis) and Right (`+x`-axis) planes, not just
-  the Front plane. Fillet/chamfer `of_face` / `between_faces` selectors therefore
-  resolve on all three parent orientations (live-seat proven,
-  `spikes/spike_face_frame_axes_pae.py`). Face names stay sketch-local (`+x`/`+y`
-  = the `+u`/`+v` side of the parent's sketch). Front-plane behavior is
-  byte-unchanged. Note: **sketch**-on-face (child sketch/hole placement) on a
-  side face of a Top/Right parent remains unsupported — those frames are marked
-  `uv_calibrated=False` and refused by `_sketch_uv_to_part` with a clear error,
-  pending a separate sketch-frame calibration (see `known_limitations.md` §2).
+- **Side faces of Top/Right-plane parents are fully addressable.** `_face_frame`
+  now supports the `±x`/`±y` side faces of extrudes built on the Top (`+y`-axis)
+  and Right (`+x`-axis) planes, not just the Front plane — for BOTH:
+  - **Fillet/chamfer edge selection** (`of_face` / `between_faces`, #9): the face
+    center + outward normal are computed for all three orientations.
+  - **Sketch-on-face** (`sketch_*_on_face`, `simple_hole`): the in-face `u`/`v`
+    frame is SW's own sketch coordinate system, read off
+    `ISketch.ModelToSketchTransform` on a live seat and calibrated per face.
+
+  Both are live-seat proven (`spikes/spike_face_frame_axes_pae.py`,
+  `spikes/spike_sketch_on_side_face_pae.py`). Face names stay sketch-local
+  (`+x`/`+y` = the `+u`/`+v` side of the parent's sketch), and Front-plane
+  behavior is byte-unchanged. Flipped (`-y`/`-x`) axis orientations resolve edges
+  but keep `uv_calibrated=False` (sketch-on-face refused with a clear error)
+  until measured; non-rectangular profiles remain unaddressable
+  (see `known_limitations.md` §2).
 
 ## [1.7.0] - 2026-07-01
 

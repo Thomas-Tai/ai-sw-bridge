@@ -141,17 +141,17 @@ on adoption data from v0.12.
   multi-part assemblies with mate constraints.
 - **Drawing generation.** 2D drawing sheets from 3D part/assembly specs.
 - **Sheet metal primitives.** Bend tables, flat patterns, gauge tables.
-- **`_face_frame` side-face sketch-frame calibration (±x/±y parents).**
-  *Edge-selection half SHIPPED (v1.7+):* `spec/_face_geometry.py::_face_frame`
-  now computes the correct `face_center` + `out_normal` for the `±x`/`±y` side
-  faces of Top-plane (`+y`-axis) and Right-plane (`+x`-axis) extrudes, so
-  fillet/chamfer `of_face` / `between_faces` resolve on all three orientations
-  (seat-proven, `spikes/spike_face_frame_axes_pae.py`). *Remaining:* the in-face
-  `u`/`v` sketch frame for those side faces is still **uncalibrated**
-  (`FaceFrame.uv_calibrated=False`), so `sketch_*_on_face` / hole on a side face
-  of a Top/Right parent is refused by `_sketch_uv_to_part`. Lifting it needs a
-  U4-style seat measurement of child-sketch placement per parent orientation,
-  plus non-rectangular profile extents. See `known_limitations.md` §2.
+- **`_face_frame` side faces on flipped / non-rectangular parents.**
+  *Standard orientations SHIPPED (v1.7+):* `spec/_face_geometry.py::_face_frame`
+  resolves the `±x`/`±y` side faces of Front (`+z`), Top (`+y`), and Right
+  (`+x`) parents for BOTH fillet/chamfer edge selection (`of_face` /
+  `between_faces`) AND sketch-on-face (`sketch_*_on_face`, `simple_hole`) — the
+  sketch frame is SW's own, read off `ISketch.ModelToSketchTransform` and
+  seat-proven (`spike_face_frame_axes_pae.py`, `spike_sketch_on_side_face_pae.py`).
+  *Remaining:* flipped (`-y`/`-x`) axis orientations keep `uv_calibrated=False`
+  (edges work, sketch-on-face refused) until their frames are measured, and
+  non-rectangular profile extents are still unaddressable. See
+  `known_limitations.md` §2.
 - **L5 — C# in-process adapter.** Stays deferred indefinitely. The
   VBA-emit-and-run alternative likely collapses it; re-evaluate after
   L1 produces stability telemetry.

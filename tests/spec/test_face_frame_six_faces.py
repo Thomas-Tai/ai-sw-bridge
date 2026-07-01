@@ -54,14 +54,12 @@ def test_all_six_faces_resolve_a_frame(face: str) -> None:
     assert frame.out_normal == _EXPECTED_NORMAL[face]
 
 
-# --- Side faces of Top/Right-plane (±y/±x-axis) parents (Task #14).
-# face_center + out_normal are measured-correct (so fillet/chamfer semantic
-# edge selection resolves), but the sketch u/v are NOT calibrated, so
-# sketch-on-face is refused. Face names are sketch-LOCAL (+x/+y = the +u/+v
-# side), so on non-Front parents they map to different PART axes.
-
-# Expected side-face part-normals per parent orientation (sketch u/v -> part).
-# Measured on a live seat (Task #14 diag, 2026-07-01).
+# --- Side faces of Top/Right-plane (±y/±x-axis) parents (Tasks #14/#15).
+# face_center + out_normal are measured-correct (so fillet/chamfer semantic edge
+# selection resolves, #14), and the sketch u/v frames for the +y/+x (non-flipped)
+# orientations are SW's own calibrated frames (#15), so sketch-on-face works too.
+# Face names are sketch-LOCAL (+x/+y = the +u/+v side), so on non-Front parents
+# they map to different PART axes. All values measured on a live seat.
 _SIDE_NORMALS_TOP = {  # Top plane, axis +y: u->+x, v->+z
     "+x": (1.0, 0.0, 0.0),
     "-x": (-1.0, 0.0, 0.0),
@@ -73,6 +71,19 @@ _SIDE_NORMALS_RIGHT = {  # Right plane, axis +x: u->+z, v->+y
     "-x": (0.0, 0.0, -1.0),
     "+y": (0.0, 1.0, 0.0),
     "-y": (0.0, -1.0, 0.0),
+}
+# SW's native sketch (u, v) axes on each side face (#15 ISketch transform read).
+_SIDE_UV_TOP = {
+    "+x": ((0.0, 0.0, 1.0), (0.0, 1.0, 0.0)),
+    "-x": ((0.0, 0.0, -1.0), (0.0, 1.0, 0.0)),
+    "+y": ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0)),
+    "-y": ((-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)),
+}
+_SIDE_UV_RIGHT = {
+    "+x": ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0)),
+    "-x": ((-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)),
+    "+y": ((1.0, 0.0, 0.0), (0.0, 0.0, 1.0)),
+    "-y": ((1.0, 0.0, 0.0), (0.0, 0.0, -1.0)),
 }
 
 
@@ -89,19 +100,21 @@ def _parent(axis: tuple[float, float, float]) -> BuiltFeature:
 
 
 @pytest.mark.parametrize("face", ["+x", "-x", "+y", "-y"])
-def test_top_plane_side_faces_resolve_with_measured_normal(face: str) -> None:
+def test_top_plane_side_faces_calibrated(face: str) -> None:
     frame = _face_frame(_parent((0.0, 1.0, 0.0)), face)
     assert frame.out_normal == _SIDE_NORMALS_TOP[face]
-    assert frame.uv_calibrated is False
+    assert frame.uv_calibrated is True
+    assert (frame.u_axis, frame.v_axis) == _SIDE_UV_TOP[face]
     # Face center sits mid-depth (y = +0.005) on the box surface.
     assert abs(frame.face_center[1] - 0.005) < 1e-9
 
 
 @pytest.mark.parametrize("face", ["+x", "-x", "+y", "-y"])
-def test_right_plane_side_faces_resolve_with_measured_normal(face: str) -> None:
+def test_right_plane_side_faces_calibrated(face: str) -> None:
     frame = _face_frame(_parent((1.0, 0.0, 0.0)), face)
     assert frame.out_normal == _SIDE_NORMALS_RIGHT[face]
-    assert frame.uv_calibrated is False
+    assert frame.uv_calibrated is True
+    assert (frame.u_axis, frame.v_axis) == _SIDE_UV_RIGHT[face]
     assert abs(frame.face_center[0] - 0.005) < 1e-9
 
 
@@ -111,10 +124,21 @@ def test_front_plane_side_faces_stay_calibrated() -> None:
     assert frame.uv_calibrated is True
 
 
-def test_uncalibrated_side_face_refuses_sketch_on_face() -> None:
-    # A Top-plane side face resolves a frame, but placing a child sketch on it
-    # is refused (only center + normal are calibrated, not the sketch u/v).
+def test_calibrated_side_face_places_child_sketch() -> None:
+    # A Top-plane +x side face now accepts a child sketch: u along +z, v along
+    # +y (into the face) from the origin projection at (0.02, 0, 0).
     frame = _face_frame(_parent((0.0, 1.0, 0.0)), "+x")
+    px, py, pz = _sketch_uv_to_part(frame, 0.003, 0.002)
+    assert abs(px - 0.020) < 1e-9  # on the +x face plane
+    assert abs(py - 0.002) < 1e-9  # v -> +y
+    assert abs(pz - 0.003) < 1e-9  # u -> +z
+
+
+def test_unmeasured_orientation_refuses_sketch_on_face() -> None:
+    # A -y-axis (flipped Top) parent is not among the measured orientations, so
+    # its side faces stay uncalibrated and sketch-on-face is refused.
+    frame = _face_frame(_parent((0.0, -1.0, 0.0)), "+x")
+    assert frame.uv_calibrated is False
     with pytest.raises(RuntimeError, match="not yet supported"):
         _sketch_uv_to_part(frame, 0.001, 0.001)
 

@@ -51,18 +51,25 @@ The builder emits a warning to stderr when it detects a face-sketch on a non-ori
 
 ---
 
-## 2. Side faces (`±x`/`±y`): edge selection works everywhere; **sketch**-on-face is Front-Plane only
+## 2. Side faces (`±x`/`±y`): supported on Front/Top/Right, but not flipped or non-rectangular parents
 
 All six faces (`+z`, `-z`, `+x`, `-x`, `+y`, `-y`) of an extrusion resolve a part-frame transform via `_face_frame` in [`spec/_face_geometry.py`](../src/ai_sw_bridge/spec/_face_geometry.py). Face names are **sketch-local**: `+x`/`+y` are the `+u`/`+v` sides of the parent's own sketch, so on a Top- or Right-plane parent they point along different *part* axes than on a Front-plane parent.
 
-Two capability tiers for the **side** faces (`±x`, `±y`):
+For the **side** faces (`±x`, `±y`), both fillet/chamfer edge selection (`of_feature`/`between_faces`, #9) and sketch-on-face child features (`sketch_*_on_face`, `simple_hole`) work on the three standard-plane parents:
 
-| Operation | Front-plane parent (`±z` axis) | Top/Right-plane parent (`±y`/`±x` axis) |
-|---|---|---|
-| Fillet/chamfer **edge selection** (`of_feature`/`between_faces`, #9) | ✅ | ✅ (since v1.7 — face center + normal are measured-correct) |
-| **Sketch**-on-face child feature (`sketch_*_on_face`, hole) | ✅ | ❌ not yet — the in-face `u`/`v` are uncalibrated |
+| Parent | Base sketch plane | Extrude axis | Side-face support |
+|---|---|---|---|
+| Front | Front | `+z` | ✅ edges + sketch-on-face |
+| Top | Top | `+y` | ✅ edges + sketch-on-face (since v1.7+) |
+| Right | Right | `+x` | ✅ edges + sketch-on-face (since v1.7+) |
+| flipped / other axis | — | `-y`, `-x`, non-axis-aligned | edges ✅ where the axis is axis-aligned; **sketch-on-face ❌** (frame `uv_calibrated=False`) |
 
-Both tiers still require a **rectangular** parent profile (the half-extents define where the side faces sit); a circle/arbitrary-curve profile has a curved side surface that isn't addressable.
+Two constraints remain:
+
+1. **Sketch-on-face needs a measured orientation.** The in-face `u`/`v` frame is SW's own calibrated sketch frame for `+z`/`+y`/`+x`-axis parents. A flipped (`-y`/`-x`) or otherwise unmeasured axis leaves the frame `uv_calibrated=False` — edge selection still works, but placing a child sketch is refused.
+2. **Rectangular profile only** (the half-extents define where the side faces sit); a circle/arbitrary-curve profile has a curved side surface that isn't addressable.
+
+> **Sign convention (side faces):** on Top/Right parents, `+u`/`+v` point from the part-origin projection *into* the face (SW's native frame). The Front-plane table predates this and uses a flipped sign on the extrude-parallel axis, so the same nominal `+u` can point the opposite way on a Front side face — provide the `center` offset with the correct sign for the parent's plane.
 
 ### How to recognize
 
@@ -71,7 +78,7 @@ RuntimeError: sketch-on-face on a side face (+/-x, +/-y) of a Top/Right-plane
 (±x/±y-axis) parent is not yet supported: only the face center and normal are
 calibrated ...
 ```
-or (non-rectangular profile, any orientation):
+(This now fires only for flipped/unmeasured orientations.) Or, for a non-rectangular profile at any orientation:
 ```
 RuntimeError: side face '+x' of 'Extrude_Box': parent has no sketch_extent_uv
 stashed. Side faces are only addressable on extrusions whose profile is a
@@ -80,12 +87,12 @@ rectangle ...
 
 ### Workaround
 
-- **Sketch on a side face of a non-Front-Plane parent:** sketch the base on the **Front Plane** so the target becomes a `±x`/`±y` face of a `+z`-axis extrusion, or address it via `±z` of a child extrude. (Filleting/chamfering that face's edges needs no workaround — it already resolves.)
+- **Sketch on a side face of a flipped/unmeasured parent:** sketch the base so the extrude axis is `+z`/`+y`/`+x` (Front/Top/Right, non-flipped), or address the face via `±z` of a child extrude.
 - **Non-rectangular profile:** there is no side-face sketch path; add the feature on a `±z` face instead.
 
 ### What's needed to lift the remaining limit
 
-Calibrate the in-face `u`/`v` sketch frame for side faces of `±x`/`±y`-axis parents (a U4-style seat measurement of child-sketch placement, per parent orientation), and handle non-rectangular profile extents. Tracked in [`ROADMAP.md`](ROADMAP.md) (v0.13+ backlog).
+Measure and add the calibrated sketch frame for the flipped (`-y`/`-x`) axis orientations (same `ISketch.ModelToSketchTransform` read used for `+y`/`+x`), and handle non-rectangular profile extents. Tracked in [`ROADMAP.md`](ROADMAP.md) (v0.13+ backlog).
 
 ---
 
