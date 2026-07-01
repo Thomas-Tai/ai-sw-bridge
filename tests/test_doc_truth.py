@@ -55,8 +55,11 @@ DERIVED = {
 DOC_SURFACES = [
     ("README.md", "spec_types", "**{n} part-modelling feature types**"),
     ("README.md", "feature_kinds", "Feature kinds you can add ({n})"),
+    ("README.md", "feature_kinds", "**{n} seat-proven**"),
     ("README.md", "cli_commands", "**{n} CLI commands"),
     ("README.md", "version", "Current release: `v{n}`"),
+    ("README.md", "mcp_tools", "{n}-tool MCP server"),
+    ("README.md", "feature_kinds", "{n}-kind `feature_add` registry"),
     ("docs/ONBOARDING.md", "cli_commands", "All {n} CLI commands"),
     ("docs/ONBOARDING.md", "mcp_tools", "exposes {n} read-only + build tools"),
     ("docs/CAPABILITIES.md", "version", "v{n}"),

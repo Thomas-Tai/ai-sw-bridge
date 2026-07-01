@@ -64,7 +64,19 @@ def evaluate(
         )
     for prefix, floor in (package_floors or {}).items():
         pct = _package_percent(cov_json, prefix)
-        if pct is not None and pct < floor:
+        if pct is None:
+            # A watched package that yields no matching files (renamed/deleted)
+            # must not silently evade its floor — that's a hole in the ratchet.
+            violations.append(
+                f"watched package {prefix} absent from coverage report — "
+                "cannot verify its floor."
+            )
+            continue
+        # Same tolerance as the total check applies here: matrix (3.10/3.12/3.14)
+        # branch-coverage variance can jitter a package a fraction of a point
+        # below its floor without a real regression, so only flag it once it
+        # drops past floor - tolerance.
+        if pct < floor - tolerance:
             violations.append(
                 f"package {prefix} at {pct:.2f}% is below its floor {floor:.2f}%."
             )

@@ -43,3 +43,30 @@ def test_package_below_floor_fails() -> None:
 def test_package_meets_floor_ok() -> None:
     cov = _cov(64.0, {"src/ai_sw_bridge/spec/builder.py": 90.0})
     assert cg.evaluate(cov, {"__total__": 64.0}, package_floors=_FLOORS) == []
+
+
+def test_package_below_floor_within_tolerance_ok() -> None:
+    # floor 85, tolerance 1.0 -> effective threshold 84. 84.5 is below the
+    # floor but still inside the matrix-variance tolerance band.
+    cov = _cov(64.0, {"src/ai_sw_bridge/spec/builder.py": 84.5})
+    violations = cg.evaluate(
+        cov, {"__total__": 64.0}, tolerance=1.0, package_floors=_FLOORS
+    )
+    assert violations == []
+
+
+def test_package_below_floor_minus_tolerance_fails() -> None:
+    # 83.9 < floor(85) - tolerance(1.0) == 84 -> genuine violation.
+    cov = _cov(64.0, {"src/ai_sw_bridge/spec/builder.py": 83.9})
+    violations = cg.evaluate(
+        cov, {"__total__": 64.0}, tolerance=1.0, package_floors=_FLOORS
+    )
+    assert any("spec/" in v and "floor" in v for v in violations)
+
+
+def test_missing_watched_package_is_a_violation() -> None:
+    # A watched prefix with no matching files in the coverage report (e.g. a
+    # renamed/deleted package) must not silently evade its floor.
+    cov = _cov(64.0, {"src/ai_sw_bridge/errors/handlers.py": 95.0})
+    violations = cg.evaluate(cov, {"__total__": 64.0}, package_floors=_FLOORS)
+    assert any("spec/" in v and "absent from coverage report" in v for v in violations)
