@@ -139,7 +139,7 @@ Source: [`cli/observe.py`](../src/ai_sw_bridge/cli/observe.py) (subcommand
 | Known gotchas | [`docs/known_gotchas.md`](known_gotchas.md) |
 | Working example specs | [`examples/`](../examples/) |
 
-## All 21 CLI commands at a glance
+## All 22 CLI commands at a glance
 
 | Command | Purpose | SW needed? |
 |---|---|---|
@@ -164,6 +164,7 @@ Source: [`cli/observe.py`](../src/ai_sw_bridge/cli/observe.py) (subcommand
 | `ai-sw-memory` | **Design-Memory RAG** — semantic search over *your own* design history (past proposals/checkpoints). `build` (backfill the local index) / `search` / `stats`. Embeddings are computed **on-device**; the index is a private, gitignored artifact. | No |
 | `ai-sw-solver` | Autonomous clearance solver (`resolve-clearance`) — drives a distance mate until clash-free, reverts on failure. | Yes |
 | `ai-sw-urdf` | URDF export (assembly → ROS robot model). `export` writes `.urdf` + per-component STL meshes. No SW mutation. | Yes |
+| `ai-sw-doctor` | Operator preflight: Python/pywin32/PATH/seat + MCP registration | Optional |
 | `ai-sw-mcp` | Run the MCP server (stdio transport) | Yes |
 
 Source: [`pyproject.toml`](../pyproject.toml) `[project.scripts]` section.

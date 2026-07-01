@@ -131,7 +131,7 @@ For the architecture and design rationale (why JSON specs over a fluent API, the
 
 ## What ships in the box
 
-**21 CLI commands + one MCP server** on your PATH after `pip install -e .`
+**22 CLI commands + one MCP server** on your PATH after `pip install -e .`
 (the MCP server needs the `[mcp]` extra to *run* — see the [MCP section](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)).
 Each command declares a stability **tier** (`stable` / `experimental` / `deprecated`),
 printed in its `--help` banner and enforced by `tests/test_cli_stability.py`. The

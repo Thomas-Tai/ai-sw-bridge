@@ -23,7 +23,7 @@ enforced by `tests/test_cli_stability.py`:
 | Tier | Commands |
 |---|---|
 | **stable** | `ai-sw-build`, `ai-sw-observe`, `ai-sw-mutate`, `ai-sw-assembly`, `ai-sw-drawing`, `ai-sw-properties`, `ai-sw-configurations` |
-| **experimental** | `ai-sw-probe`, `ai-sw-batch`, `ai-sw-codegen`, `ai-sw-history`, `ai-sw-apidoc`, `ai-sw-memory`, `ai-sw-checkpoint`, `ai-sw-import`, `ai-sw-export-dxf-flat`, `ai-sw-motion`, `ai-sw-solver`, `ai-sw-urdf`, `ai-sw-sketch-relations`, `ai-sw-sketch-edit` |
+| **experimental** | `ai-sw-probe`, `ai-sw-batch`, `ai-sw-codegen`, `ai-sw-history`, `ai-sw-apidoc`, `ai-sw-memory`, `ai-sw-checkpoint`, `ai-sw-import`, `ai-sw-export-dxf-flat`, `ai-sw-motion`, `ai-sw-solver`, `ai-sw-urdf`, `ai-sw-sketch-relations`, `ai-sw-sketch-edit`, `ai-sw-doctor` |
 | **daemon** | `ai-sw-mcp` — the MCP stdio server (not an argparse CLI; see §2) |
 
 The authoritative tier per command is `cli/stability.py::TIER_REGISTRY` and the
@@ -102,13 +102,13 @@ These are the invariants packaging and downstream integrators bind to. Each is
 already enforced by an existing test — this section is the human-readable
 index, not a new check.
 
-- **Console-script names.** The 21 `ai-sw-*` entry points (`ai-sw-probe`,
+- **Console-script names.** The 22 `ai-sw-*` entry points (`ai-sw-probe`,
   `ai-sw-observe`, `ai-sw-mutate`, `ai-sw-batch`, `ai-sw-assembly`,
   `ai-sw-drawing`, `ai-sw-properties`, `ai-sw-configurations`,
   `ai-sw-sketch-relations`, `ai-sw-sketch-edit`, `ai-sw-codegen`,
   `ai-sw-build`, `ai-sw-history`, `ai-sw-apidoc`, `ai-sw-memory`,
   `ai-sw-checkpoint`, `ai-sw-import`, `ai-sw-export-dxf-flat`,
-  `ai-sw-motion`, `ai-sw-solver`, `ai-sw-urdf`) plus `ai-sw-mcp`, all defined
+  `ai-sw-motion`, `ai-sw-solver`, `ai-sw-urdf`, `ai-sw-doctor`) plus `ai-sw-mcp`, all defined
   in `[project.scripts]` (`pyproject.toml`) and targeting
   `ai_sw_bridge.cli.*` / `ai_sw_bridge.mcp.server`. A rename, removal, or
   target-module change to any of these is a breaking packaging change.

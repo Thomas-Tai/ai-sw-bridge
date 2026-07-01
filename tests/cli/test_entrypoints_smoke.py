@@ -1,6 +1,6 @@
 """Smoke test: every console_script entry point resolves and ``--help`` exits 0.
 
-Guards the *installed product surface* — the 22 ``[project.scripts]`` entry
+Guards the *installed product surface* — the 23 ``[project.scripts]`` entry
 points in pyproject.toml. A packaging/import break in any CLI (a stale
 ``module:func``, a missing ``main``, or a ``--help`` that crashes) is caught
 here in CI rather than by a user after ``pip install``.
@@ -41,9 +41,9 @@ _DAEMON_ENTRYPOINTS = {"ai-sw-mcp"}
 
 
 def test_all_console_scripts_discovered() -> None:
-    """pyproject declares 22 console_scripts; metadata must see them all."""
-    assert len(_SCRIPTS) >= 22, (
-        f"expected >= 22 ai_sw_bridge console_scripts, got "
+    """pyproject declares 23 console_scripts; metadata must see them all."""
+    assert len(_SCRIPTS) >= 23, (
+        f"expected >= 23 ai_sw_bridge console_scripts, got "
         f"{len(_SCRIPTS)}: {[s[0] for s in _SCRIPTS]}"
     )
 

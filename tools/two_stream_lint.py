@@ -54,6 +54,7 @@ CLI_EMITTERS = frozenset(
         "motion.py",
         "solver.py",
         "urdf.py",
+        "doctor.py",
     }
 )
 
