@@ -157,7 +157,7 @@ The agent will read [`docs/AGENTS.md`](docs/AGENTS.md), pick the closest [`examp
 
 | Symptom | Most likely cause | Fix |
 |---|---|---|
-| `ai-sw-probe` / `ai-sw-build`: *"command not found"* / *"not recognized"* | the virtual environment isn't active in this shell | re-run `.venv\Scripts\activate` (your prompt should show `(.venv)`), then retry — or re-do step 1 |
+| `ai-sw-probe` / `ai-sw-build`: *"command not found"* / *"not recognized"* | pipx's shim directory isn't on your `PATH` yet | run `pipx ensurepath`, then close and reopen your terminal — or run `ai-sw-doctor`, which detects this and tells you |
 | `ai-sw-probe` returns `ok: false` or a COM error | SOLIDWORKS isn't running, or it's a different bitness than your Python | start SOLIDWORKS; use 64-bit Python (SW is 64-bit) |
 | `ai-sw-build` seems to hang with a "Modify Dimension" popup in SW | parametric mode opens a blocking dialog per dimension | use `--no-dim` (the smoke test already does) — [why](docs/why_no_addim2.md) |
 | A `[y/N]` prompt appears before anything builds | that's the seat-confirmation gate, **not** an error | press `y` to proceed, or pass `--yes` for automation |
