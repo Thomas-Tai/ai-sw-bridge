@@ -125,7 +125,7 @@ Source: [`cli/observe.py`](../src/ai_sw_bridge/cli/observe.py) (subcommand
   m^3), surface area, mass, and centre of mass.
 - **Take a screenshot:** `ai-sw-observe screenshot --fit-view` saves a PNG of
   the current viewport.
-- **MCP server:** `ai-sw-mcp` exposes 26 read-only + build tools to Claude
+- **MCP server:** `ai-sw-mcp` exposes 37 read-only + build tools to Claude
   Desktop, Cursor, and other MCP clients. Requires `pip install -e ".[mcp]"`.
 
 ## Where to read more
@@ -139,7 +139,7 @@ Source: [`cli/observe.py`](../src/ai_sw_bridge/cli/observe.py) (subcommand
 | Known gotchas | [`docs/known_gotchas.md`](known_gotchas.md) |
 | Working example specs | [`examples/`](../examples/) |
 
-## All 15 CLI commands at a glance
+## All 21 CLI commands at a glance
 
 | Command | Purpose | SW needed? |
 |---|---|---|
@@ -159,6 +159,11 @@ Source: [`cli/observe.py`](../src/ai_sw_bridge/cli/observe.py) (subcommand
 | `ai-sw-import` | Import geometry into the active part | Yes |
 | `ai-sw-export-dxf-flat` | Export flat-pattern DXF | Yes |
 | `ai-sw-motion` | Motion audit (parametric DOF sweep) | Yes |
+| `ai-sw-batch` | Human-gated batch feature-commit. Executes a multi-feature plan (from MCP `sw_batch_plan`) behind a `[y/N]` gate; greens persist, fail-fast on the first fault. | Yes |
+| `ai-sw-sketch-edit` | Propose-Approve-Execute sketch editing ops (Convert / Offset / Trim / Pattern). Subcommands: `propose` / `dry_run` / `commit`. CLI-only. | Yes |
+| `ai-sw-memory` | **Design-Memory RAG** — semantic search over *your own* design history (past proposals/checkpoints). `build` (backfill the local index) / `search` / `stats`. Embeddings are computed **on-device**; the index is a private, gitignored artifact. | No |
+| `ai-sw-solver` | Autonomous clearance solver (`resolve-clearance`) — drives a distance mate until clash-free, reverts on failure. | Yes |
+| `ai-sw-urdf` | URDF export (assembly → ROS robot model). `export` writes `.urdf` + per-component STL meshes. No SW mutation. | Yes |
 | `ai-sw-mcp` | Run the MCP server (stdio transport) | Yes |
 
 Source: [`pyproject.toml`](../pyproject.toml) `[project.scripts]` section.

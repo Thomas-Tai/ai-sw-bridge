@@ -1,6 +1,6 @@
 # Class & Function Relation Map
 
-> **Generated:** 2026-06-26 · **Release:** v1.6.0
+> **Generated:** 2026-06-26 · **Release:** v1.7.0
 >
 > A navigational map of how the codebase fits together: the public class API, the
 > facades and the `_impl` cores they delegate to, the feature-handler registry, the

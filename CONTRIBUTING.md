@@ -1,6 +1,6 @@
 # Contributing to ai-sw-bridge
 
-Thanks for your interest. This project is early-stage (v0.2) and actively evolving.
+Thanks for your interest. This project is commercial and stable (v1.7.0).
 
 ## Quick start
 
@@ -50,7 +50,7 @@ any time with `pre-commit run --all-files`.
 pytest
 ```
 
-The test suite is pure-Python (no SOLIDWORKS needed). It covers schema validation, validator logic, locals file I/O, rhs resolution, and parameterization helpers. Integration tests that drive SW are manual for now.
+The test suite is pure-Python (no SOLIDWORKS needed). It covers schema validation, validator logic, locals file I/O, rhs resolution, and parameterization helpers. Integration tests that drive SW run behind the `solidworks_only`/`destructive_sw` markers (see `tests/e2e_sw/`); they are gated separately from the hermetic suite.
 
 If you add a new feature primitive, add at least:
 - A schema-level test in `tests/test_schema.py`

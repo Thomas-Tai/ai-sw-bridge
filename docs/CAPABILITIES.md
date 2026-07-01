@@ -4,7 +4,7 @@ What the bridge can build, observe, and export today. This is the affirmative
 counterpart to [`DEFERRED.md`](DEFERRED.md) (what it cannot do, and why) — together
 they bound the supported surface.
 
-Reflects **v1.6.1**, derived from the live repository (the feature-handler registry,
+Reflects **v1.7.0**, derived from the live repository (the feature-handler registry,
 the `ai-sw-*` entry points, the MCP tool contract, and `export/formats.py`). The
 authoring model is the same everywhere: **declarative JSON in, propose → approve →
 execute, no arbitrary code execution, driven out-of-process.** Mutations are

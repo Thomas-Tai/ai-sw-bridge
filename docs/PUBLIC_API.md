@@ -1,6 +1,6 @@
 # Public API & Stability Contract
 
-> **Status:** the supported surface of ai-sw-bridge as of **v1.6.0**.
+> **Status:** the supported surface of ai-sw-bridge as of **v1.7.0**.
 > Anything not listed here is **internal** and may change without notice.
 
 This is the contract a customer/integrator may rely on. It has three supported
