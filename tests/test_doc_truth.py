@@ -57,6 +57,8 @@ DOC_SURFACES = [
     ("README.md", "feature_kinds", "Feature kinds you can add ({n})"),
     ("README.md", "feature_kinds", "**{n} seat-proven**"),
     ("README.md", "cli_commands", "**{n} CLI commands"),
+    ("README.md", "cli_commands", "{n} CLI commands, a"),
+    ("README.md", "cli_commands", "{n} CLI entry points"),
     ("README.md", "version", "Current release: `v{n}`"),
     ("README.md", "mcp_tools", "{n}-tool MCP server"),
     ("README.md", "feature_kinds", "{n}-kind `feature_add` registry"),
@@ -65,6 +67,7 @@ DOC_SURFACES = [
     ("docs/CAPABILITIES.md", "version", "v{n}"),
     ("docs/PUBLIC_API.md", "version", "v{n}"),
     ("docs/CLASS_RELATION_MAP.md", "version", "v{n}"),
+    ("docs/CLASS_RELATION_MAP.md", "cli_commands", "{n} CLI commands<br/>(cli/*.py"),
     ("CONTRIBUTING.md", "version", "v{n}"),
 ]
 

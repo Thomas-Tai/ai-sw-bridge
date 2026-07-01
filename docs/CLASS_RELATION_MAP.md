@@ -15,7 +15,7 @@
 ```mermaid
 flowchart TD
     subgraph Entry["Entry layer (transports)"]
-        CLI["21 CLI commands<br/>(cli/*.py — main + _build_parser)"]
+        CLI["22 CLI commands<br/>(cli/*.py — main + _build_parser)"]
         MCP["ai-sw-mcp<br/>(mcp/*.py — 37 tools via register())"]
     end
 
