@@ -51,20 +51,27 @@ The builder emits a warning to stderr when it detects a face-sketch on a non-ori
 
 ---
 
-## 2. Side faces (`±x`/`±y`) are sketchable only on rectangular, Front-Plane extrusions
+## 2. Side faces (`±x`/`±y`): edge selection works everywhere; **sketch**-on-face is Front-Plane only
 
-All six faces (`+z`, `-z`, `+x`, `-x`, `+y`, `-y`) of an extrusion can host a child sketch — `_face_frame` in [`spec/_face_geometry.py`](../src/ai_sw_bridge/spec/_face_geometry.py) computes the part-frame transform for each. The `±z` (outboard/inboard) faces work for any parent orientation. The **side** faces (`±x`, `±y`) carry two constraints, because the builder must derive the side-face plane from the parent profile's extents:
+All six faces (`+z`, `-z`, `+x`, `-x`, `+y`, `-y`) of an extrusion resolve a part-frame transform via `_face_frame` in [`spec/_face_geometry.py`](../src/ai_sw_bridge/spec/_face_geometry.py). Face names are **sketch-local**: `+x`/`+y` are the `+u`/`+v` sides of the parent's own sketch, so on a Top- or Right-plane parent they point along different *part* axes than on a Front-plane parent.
 
-1. **The parent's extrude axis must be `±z`** (i.e. the base sketch is on the **Front Plane**). A side face of an extrusion built on the Top or Right plane is not addressable.
-2. **The parent profile must be a rectangle** (its half-extents define where the side faces sit). A circle / arbitrary-curve profile produces a curved side surface this builder can't sketch on.
+Two capability tiers for the **side** faces (`±x`, `±y`):
+
+| Operation | Front-plane parent (`±z` axis) | Top/Right-plane parent (`±y`/`±x` axis) |
+|---|---|---|
+| Fillet/chamfer **edge selection** (`of_feature`/`between_faces`, #9) | ✅ | ✅ (since v1.7 — face center + normal are measured-correct) |
+| **Sketch**-on-face child feature (`sketch_*_on_face`, hole) | ✅ | ❌ not yet — the in-face `u`/`v` are uncalibrated |
+
+Both tiers still require a **rectangular** parent profile (the half-extents define where the side faces sit); a circle/arbitrary-curve profile has a curved side surface that isn't addressable.
 
 ### How to recognize
 
 ```
-RuntimeError: side face '+x' of 'Extrude_Box': v1 only supports +/-x and +/-y
-side faces when the parent extrude axis is +/-z (Front Plane). ...
+RuntimeError: sketch-on-face on a side face (+/-x, +/-y) of a Top/Right-plane
+(±x/±y-axis) parent is not yet supported: only the face center and normal are
+calibrated ...
 ```
-or
+or (non-rectangular profile, any orientation):
 ```
 RuntimeError: side face '+x' of 'Extrude_Box': parent has no sketch_extent_uv
 stashed. Side faces are only addressable on extrusions whose profile is a
@@ -73,12 +80,12 @@ rectangle ...
 
 ### Workaround
 
-- **Unreachable side face (non-Front-Plane parent):** sketch the base on the **Front Plane** so the face you want becomes a `±x`/`±y` face of a `+z`-axis extrusion, or address it via `±z` of a child extrude.
+- **Sketch on a side face of a non-Front-Plane parent:** sketch the base on the **Front Plane** so the target becomes a `±x`/`±y` face of a `+z`-axis extrusion, or address it via `±z` of a child extrude. (Filleting/chamfering that face's edges needs no workaround — it already resolves.)
 - **Non-rectangular profile:** there is no side-face sketch path; add the feature on a `±z` face instead.
 
-### What's needed to lift the limit
+### What's needed to lift the remaining limit
 
-Generalize `_face_frame` to derive side-face frames for `±x`/`±y`-axis parents (today only the `±z`-axis parent table is verified) and to handle non-rectangular profile extents. Tracked in the [Roadmap](../README.md#roadmap).
+Calibrate the in-face `u`/`v` sketch frame for side faces of `±x`/`±y`-axis parents (a U4-style seat measurement of child-sketch placement, per parent orientation), and handle non-rectangular profile extents. Tracked in [`ROADMAP.md`](ROADMAP.md) (v0.13+ backlog).
 
 ---
 

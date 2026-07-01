@@ -86,6 +86,13 @@ class FaceFrame:
     u_axis: tuple[float, float, float]
     v_axis: tuple[float, float, float]
     out_normal: tuple[float, float, float]
+    # True when u_axis/v_axis/sketch_origin are the CALIBRATED sketch-on-face
+    # frame (safe for _sketch_uv_to_part -> child-feature placement). False for
+    # side faces of ±x/±y-axis (Top/Right-plane) parents, where face_center +
+    # out_normal are measured-correct (enough for fillet/chamfer edge selection
+    # and the _select_extrude_face probe) but the in-plane u/v are NOT yet
+    # calibrated for placing a sketch. _sketch_uv_to_part refuses those.
+    uv_calibrated: bool = True
 
 
 def _face_frame(parent: BuiltFeature, face: str) -> FaceFrame:
@@ -151,17 +158,9 @@ def _face_frame(parent: BuiltFeature, face: str) -> FaceFrame:
             out_normal=out_nrm,
         )
 
-    # ±x, ±y faces: side faces. Only supported when parent axis is +/-z
-    # (Front Plane parent) AND the parent profile has known half-extents
-    # (rectangle, not circle).
-    if abs(az) < 0.99:
-        raise RuntimeError(
-            f"side face '{face}' of '{parent.name}': v1 only supports +/-x "
-            f"and +/-y side faces when the parent extrude axis is +/-z "
-            f"(Front Plane). Parent's axis is ({ax:+.2f}, {ay:+.2f}, "
-            f"{az:+.2f}). Use a Front-Plane sketch parent for side-face "
-            f"work, or address the side face via +/-z on a child extrude."
-        )
+    # ±x, ±y faces: side faces (parallel to the extrude axis). Addressable on
+    # Front/Top/Right-plane extrudes with a rectangular profile (known
+    # half-extents); a circular/arbitrary profile has a curved side surface.
     if parent.sketch_extent_uv is None:
         raise RuntimeError(
             f"side face '{face}' of '{parent.name}': parent has no "
@@ -173,46 +172,84 @@ def _face_frame(parent: BuiltFeature, face: str) -> FaceFrame:
         )
     half_u, half_v = parent.sketch_extent_uv
 
-    # extrude_origin records the sketch's center in part-frame (X, Y) for
-    # +z-axis parents. So:
-    #   +x side face plane: x = ox + half_u
-    #   -x side face plane: x = ox - half_u
-    #   +y side face plane: y = oy + half_v
-    #   -y side face plane: y = oy - half_v
-    # Face-center along the extrude axis: midway through the extrude depth.
-    z_mid = oz + 0.5 * az * depth
-    if face == "+x":
-        face_center = (ox + half_u, oy, z_mid)
-        out_nrm = (1.0, 0.0, 0.0)
-    elif face == "-x":
-        face_center = (ox - half_u, oy, z_mid)
-        out_nrm = (-1.0, 0.0, 0.0)
-    elif face == "+y":
-        face_center = (ox, oy + half_v, z_mid)
-        out_nrm = (0.0, 1.0, 0.0)
-    elif face == "-y":
-        face_center = (ox, oy - half_v, z_mid)
-        out_nrm = (0.0, -1.0, 0.0)
+    # Sketch-plane basis in part frame, keyed by the parent's extrude axis.
+    # This is the ORIGINAL-sketch extent mapping (where the rectangle's u/v
+    # half-extents point in part frame), measured empirically (Task #14 diag,
+    # 2026-07-01) by building Top- and Right-plane boxes and reading the
+    # resulting face normals + positions:
+    #   Front (axis ∥z): sketch u -> +x, v -> +y
+    #   Top   (axis ∥y): sketch u -> +x, v -> +z
+    #   Right (axis ∥x): sketch u -> +z, v -> +y
+    # NOTE this is DISTINCT from _FACE_UV_AXES_PARENT_PLUSZ, which is the
+    # sketch-ON-a-face frame (a different operation, calibrated separately).
+    if abs(az) > 0.99:
+        ext_u, ext_v = (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)
+    elif abs(ay) > 0.99:
+        ext_u, ext_v = (1.0, 0.0, 0.0), (0.0, 0.0, 1.0)
+    elif abs(ax) > 0.99:
+        ext_u, ext_v = (0.0, 0.0, 1.0), (0.0, 1.0, 0.0)
+    else:
+        raise RuntimeError(
+            f"side face '{face}' of '{parent.name}': parent extrude axis "
+            f"({ax:+.2f}, {ay:+.2f}, {az:+.2f}) is not axis-aligned; side "
+            f"faces are only addressable on Front/Top/Right-plane extrudes."
+        )
+
+    # Face center = the extrude mid-depth point (origin + half the depth along
+    # the flip-adjusted axis) shifted by the half-extent along the in-sketch
+    # axis this face faces.
+    mx = ox + 0.5 * ax * depth
+    my = oy + 0.5 * ay * depth
+    mz = oz + 0.5 * az * depth
+    if face in ("+x", "-x"):
+        s = 1.0 if face == "+x" else -1.0
+        ext, half = ext_u, half_u
+        in_plane_v = ext_v  # the other in-sketch axis lies in the face plane
+    elif face in ("+y", "-y"):
+        s = 1.0 if face == "+y" else -1.0
+        ext, half = ext_v, half_v
+        in_plane_v = ext_u
     else:
         raise RuntimeError(f"unknown face label {face!r}")
+    out_nrm = (s * ext[0], s * ext[1], s * ext[2])
+    face_center = (
+        mx + s * half * ext[0],
+        my + s * half * ext[1],
+        mz + s * half * ext[2],
+    )
 
-    u_ax, v_ax = _FACE_UV_AXES_PARENT_PLUSZ[face]
-    # Side face sketch_origin: SW projects part origin (0,0,0) onto the
-    # face plane. The face plane equation is `face_center . out_normal = d`
-    # where d = face_center . out_normal (the signed distance from origin
-    # to the face plane along the normal). Projection of (0,0,0) onto the
-    # plane is then `d * out_normal`. For axis-aligned faces this reduces
-    # to setting the normal-component to face_center's normal-component
-    # and zeroing the in-face components.
+    # sketch_origin: SW projects the part origin (0,0,0) onto the face plane.
+    # For an axis-aligned face plane `face_center . n = d`, that projection is
+    # `d * n`.
     nx, ny, nz = out_nrm
     d = face_center[0] * nx + face_center[1] * ny + face_center[2] * nz
     sketch_origin = (d * nx, d * ny, d * nz)
+
+    if abs(az) > 0.99:
+        # Front-plane parent: preserve the historical CALIBRATED sketch-on-face
+        # u/v axes exactly (byte-identical to pre-#14 behavior).
+        u_ax, v_ax = _FACE_UV_AXES_PARENT_PLUSZ[face]
+        return FaceFrame(
+            face_center=face_center,
+            sketch_origin=sketch_origin,
+            u_axis=(float(u_ax[0]), float(u_ax[1]), float(u_ax[2])),
+            v_axis=(float(v_ax[0]), float(v_ax[1]), float(v_ax[2])),
+            out_normal=out_nrm,
+        )
+
+    # Top/Right (±y / ±x) parent side face. face_center + out_normal are
+    # measured-correct; the in-plane axes (the extrude axis + the other
+    # in-sketch axis) are valid tangents for the _select_extrude_face probe
+    # spiral, but they are NOT the calibrated sketch-on-face u/v -- so mark the
+    # frame uncalibrated and let _sketch_uv_to_part refuse a child sketch on it.
+    axis_hat = (ax, ay, az)
     return FaceFrame(
         face_center=face_center,
         sketch_origin=sketch_origin,
-        u_axis=(float(u_ax[0]), float(u_ax[1]), float(u_ax[2])),
-        v_axis=(float(v_ax[0]), float(v_ax[1]), float(v_ax[2])),
+        u_axis=axis_hat,
+        v_axis=in_plane_v,
         out_normal=out_nrm,
+        uv_calibrated=False,
     )
 
 
@@ -225,7 +262,21 @@ def _sketch_uv_to_part(
     NOT `frame.face_center`. For +/-z faces they coincide; for side faces
     sketch_origin sits on the face's bottom edge (z=0 in part frame for
     a block on Front Plane).
+
+    Refuses an uncalibrated frame (a side face of a Top/Right-plane parent):
+    face_center + normal are known there, but the sketch u/v are not yet
+    calibrated for placing a child sketch.
     """
+    if not frame.uv_calibrated:
+        raise RuntimeError(
+            "sketch-on-face on a side face (+/-x, +/-y) of a Top/Right-plane "
+            "(±x/±y-axis) parent is not yet supported: only the face center "
+            "and normal are calibrated (enough for fillet/chamfer edge "
+            "selection, not for placing a child sketch). Use a Front-plane "
+            "parent for sketch-on-side-face, or address this face via +/-z on "
+            "a child extrude. Tracked: _face_frame ±x/±y sketch-frame "
+            "calibration."
+        )
     cx, cy, cz = frame.sketch_origin
     ux, uy, uz = frame.u_axis
     vx, vy, vz = frame.v_axis
@@ -259,6 +310,10 @@ def _warn_face_sketch_offset(
     import sys
 
     frame = _face_frame(parent, face)
+    # Uncalibrated side faces (Top/Right parents) can't place a child sketch at
+    # all -- _sketch_uv_to_part will raise -- so the offset advice is moot.
+    if not frame.uv_calibrated:
+        return
     fx, fy, fz = frame.face_center
     # Project the face-center vector onto the sketch u/v axes to get the
     # in-face offset of the face center from the part-origin projection.

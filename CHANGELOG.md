@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Semantic edge selection on Top/Right-plane parents.** `_face_frame` now
+  computes the correct face center + outward normal for the `±x`/`±y` side faces
+  of extrudes built on the Top (`+y`-axis) and Right (`+x`-axis) planes, not just
+  the Front plane. Fillet/chamfer `of_face` / `between_faces` selectors therefore
+  resolve on all three parent orientations (live-seat proven,
+  `spikes/spike_face_frame_axes_pae.py`). Face names stay sketch-local (`+x`/`+y`
+  = the `+u`/`+v` side of the parent's sketch). Front-plane behavior is
+  byte-unchanged. Note: **sketch**-on-face (child sketch/hole placement) on a
+  side face of a Top/Right parent remains unsupported — those frames are marked
+  `uv_calibrated=False` and refused by `_sketch_uv_to_part` with a clear error,
+  pending a separate sketch-frame calibration (see `known_limitations.md` §2).
+
 ## [1.7.0] - 2026-07-01
 
 **Semantic edges & CLI ergonomics release.** Fillet/chamfer edges can now be
