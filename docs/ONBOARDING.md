@@ -13,15 +13,7 @@ Each command is copy-pasteable and requires only the prerequisites below.
 
 - **Windows** with SOLIDWORKS installed and running (2024 SP1 tested; 2021 SP5+ works).
 - **Python 3.10+** on your PATH.
-- The bridge installed:
-
-```powershell
-git clone https://github.com/Thomas-Tai/ai-sw-bridge.git
-cd ai-sw-bridge
-python -m venv .venv
-.venv\Scripts\activate
-pip install -e .
-```
+- **pipx** and the bridge installed — see the [Operator Guide](operator_guide.md) for the full install steps (pipx from Git URL, with the one-time pywin32 step).
 
 ## The three commands
 
@@ -132,7 +124,7 @@ Source: [`cli/observe.py`](../src/ai_sw_bridge/cli/observe.py) (subcommand
 - **Take a screenshot:** `ai-sw-observe screenshot --fit-view` saves a PNG of
   the current viewport.
 - **MCP server:** `ai-sw-mcp` exposes 37 read-only + build tools to Claude
-  Desktop, Cursor, and other MCP clients. Requires `pip install -e ".[mcp]"`.
+  Desktop, Cursor, and other MCP clients. Bundled via the `[mcp]` extra in the pipx install.
 
 ## Where to read more
 

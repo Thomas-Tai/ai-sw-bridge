@@ -82,7 +82,7 @@ lives in the canonical **[Operator Guide → `docs/operator_guide.md`](docs/oper
 
 ### Prerequisites
 
-> **Heads-up: this is a Python developer tool.** You'll work at a terminal with `pip`, a virtual environment, and JSON spec files. Comfort with a Python toolchain is assumed — if you've never run `python` from a command line, start with the [Python beginner's guide](https://docs.python.org/3/using/index.html) first, then come back.
+> **Heads-up: this is a Python developer tool.** You'll work at a terminal with `pipx` (an isolated-app installer) and JSON spec files. Comfort with a Python toolchain is assumed — if you've never run `python` from a command line, start with the [Python beginner's guide](https://docs.python.org/3/using/index.html) first, then come back.
 
 - **Windows** — SOLIDWORKS is Windows-only, and the bridge uses `pywin32`.
 - **SOLIDWORKS installed and running** — tested on 2024 SP1; works on 2021 SP5+.
