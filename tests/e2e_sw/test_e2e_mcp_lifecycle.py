@@ -5,7 +5,7 @@ Desktop / Cursor client would invoke), speaks JSON-RPC over stdio,
 and verifies the full wire protocol works against live SW:
 
 1. ``initialize`` handshake declares the ``tools`` capability.
-2. ``tools/list`` returns the 21-tool inventory.
+2. ``tools/list`` returns the full tool inventory (see ``EXPECTED_TOOLS``).
 3. ``tools/call sw_active_doc`` returns a JSON-serializable payload.
 4. ``tools/call sw_apidoc_enum`` returns the corpus_missing branch.
 
@@ -25,36 +25,13 @@ import subprocess
 
 import pytest
 
+from tests.mcp_lane.test_server_contract import (
+    TestToolRegistration as _ToolRegistrationContract,
+)
+
 pytestmark = pytest.mark.solidworks_only
 
-
-_EXPECTED_TOOLS = frozenset(
-    {
-        "sw_active_doc",
-        "sw_feature_errors",
-        "sw_equations",
-        "sw_bbox",
-        "sw_volume",
-        "sw_screenshot",
-        "sw_measure",
-        "sw_mate_errors",
-        "sw_custom_props",
-        "sw_enabled_addins",
-        "sw_undercut_faces",
-        "sw_min_wall_thickness",
-        "sw_build",
-        "sw_apidoc_search",
-        "sw_apidoc_detail",
-        "sw_apidoc_members",
-        "sw_apidoc_examples",
-        "sw_apidoc_enum",
-        "sw_history_part",
-        "sw_history_since",
-        "sw_history_diff",
-        "sw_checkpoint_info",
-        "sw_reconnect",
-    }
-)
+_EXPECTED_TOOLS = _ToolRegistrationContract.EXPECTED_TOOLS
 
 
 def _spawn_server(ai_sw_mcp_exe: str) -> subprocess.Popen:
@@ -97,7 +74,7 @@ def _recv(proc: subprocess.Popen, timeout: float = 10.0) -> dict:
 
 
 def test_e2e_mcp_handshake_and_inventory(ai_sw_mcp_exe: str) -> None:
-    """initialize -> notifications/initialized -> tools/list -> 21 tools."""
+    """initialize -> notifications/initialized -> tools/list -> full inventory."""
     proc = _spawn_server(ai_sw_mcp_exe)
     try:
         _send(
