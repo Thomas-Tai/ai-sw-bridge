@@ -158,17 +158,21 @@ jobs:
         shell: pwsh
         run: |
           where.exe ai-sw-probe
+          if ($LASTEXITCODE -ne 0) { throw "ai-sw-probe not on PATH" }
           where.exe ai-sw-mcp
+          if ($LASTEXITCODE -ne 0) { throw "ai-sw-mcp not on PATH" }
           where.exe ai-sw-doctor
+          if ($LASTEXITCODE -ne 0) { throw "ai-sw-doctor not on PATH" }
       - name: No-SW command works (list kinds)
         run: ai-sw-build --list-kinds
       - name: probe/doctor fail gracefully with no SW (exit 1, no traceback)
         shell: pwsh
         run: |
-          ai-sw-doctor --no-seat
+          $doc = ai-sw-doctor --no-seat 2>&1
           if ($LASTEXITCODE -ne 1 -and $LASTEXITCODE -ne 0) {
             throw "ai-sw-doctor --no-seat exited $LASTEXITCODE (want 0/1)"
           }
+          if ($doc -match "Traceback") { throw "ai-sw-doctor leaked a traceback" }
           $out = ai-sw-probe 2>&1
           if ($LASTEXITCODE -ne 1) { throw "ai-sw-probe exited $LASTEXITCODE (want 1 with no seat)" }
           if ($out -match "Traceback") { throw "ai-sw-probe leaked a traceback" }
