@@ -137,9 +137,9 @@ Experiment trail Z1–ZF (2026-05-19 to 2026-05-20) explored 11 mitigation route
 
 ---
 
-## 4. Edge selection uses literal part coordinates
+## 4. Edge selection: literal coordinates (default) or semantic topology (opt-in)
 
-Fillet (`fillet_constant_radius`) and any future edge-targeting primitives select edges via 3D point-on-edge:
+Fillet (`fillet_constant_radius`) and chamfer (`chamfer_edge`) select edges via 3D point-on-edge by default:
 
 ```json
 {"type": "fillet_constant_radius", "name": "F", "radius": 2.0,
@@ -152,11 +152,32 @@ This is mechanical and predictable, but it means **changing an upstream dim (e.g
 
 `RuntimeError: edge #0 at part (X, Y, Z) mm matches no edge within 1um (best squared distance <d> m^2)`
 
-### Workaround
+### Semantic edge addressing (`--enable-flag semantic_edges`)
 
-When you change a dim that affects edge positions, update the literal edge coordinates in the spec to match. There is no "edge of feature X by index" addressing yet.
+Semantic selectors name *topology* instead of coordinates, so they re-resolve
+against the current geometry on every build and survive upstream dim edits. Two
+forms, both keyed off a named parent feature's semantic face (`+x`/`-x`/`+y`/`-y`/`+z`/`-z`):
 
-A future `edges_by_face: "+z"` sugar (filllet all edges of a face) would handle the common case without per-edge coords; on the roadmap but not implemented.
+```json
+{"type": "fillet_constant_radius", "name": "F1", "radius": 2.0,
+ "edges": [
+   {"of_feature": "Box", "face": "+z"},                // ALL edges bounding the top face
+   {"of_feature": "Box", "between_faces": ["+z", "+x"]} // the ONE shared top-right edge
+ ]}
+```
+
+The three forms may be mixed in one `edges[]` array; edges reached more than one
+way are de-duplicated. `of_feature` must name an earlier **fixed-extent boss
+extrude** (blind / midplane / two-direction) — the extents whose faces the
+builder can resolve. `between_faces` naming two anti-parallel faces (e.g.
+`["+z", "-z"]`, which share no edge) is rejected at validation.
+
+The flag defaults **OFF**: with it off, a semantic selector is rejected at
+validation (`... requires the semantic_edges flag; pass --enable-flag semantic_edges`)
+and literal specs are unaffected. It is off pending the live-seat PAE proof of
+`IFace2.GetEdges` on a resolved face plus the parametric-survival check (build
+box + semantic fillet, change the box width, confirm the fillet still resolves);
+see [`pending_gates.md`](pending_gates.md). It flips default-ON once that lands.
 
 ---
 

@@ -752,9 +752,23 @@ Applies a constant-radius fillet to one or more edges.
 | `type` | yes | const `"fillet_constant_radius"` | |
 | `name` | yes | string | Unique feature name |
 | `radius` | yes | length | Fillet radius (mm) |
-| `edges` | yes | array | Minimum 1 item. Each is `{x, y, z}` — a point on the target edge in part coordinates (mm). |
+| `edges` | yes | array | Minimum 1 item. Each is one of three forms — a literal `{x, y, z}` point, or (with `semantic_edges` enabled) `{of_feature, face}` / `{of_feature, between_faces:[A, B]}`. See **Edge selectors** below. |
 
-**How edge selection works:** The builder converts each point to meters and calls `SelectByID("EDGE")` with that coordinate. The point must land on (or very near) an actual edge of the current geometry. Changing upstream dimensions that move the edge will break the selection — update edge coordinates accordingly.
+**How literal edge selection works:** The builder converts each point to meters and finds the nearest actual edge (within 1 µm) of the current geometry. The point must land on (or very near) that edge. Changing upstream dimensions that move the edge will break the selection — update edge coordinates accordingly.
+
+<a id="edge-selectors"></a>
+**Edge selectors (`fillet_constant_radius` and `chamfer_edge`):** each `edges[]` item is one of:
+
+| Form | Selects | Survives dim edits? |
+|---|---|---|
+| `{"x": …, "y": …, "z": …}` | the single edge nearest that part-frame point (mm) | no — coordinate is frozen |
+| `{"of_feature": "Box", "face": "+z"}` | ALL edges bounding face `+z` of feature `Box` | yes — re-resolved each build |
+| `{"of_feature": "Box", "between_faces": ["+z", "+x"]}` | the ONE edge shared by faces `+z` and `+x` of `Box` | yes — re-resolved each build |
+
+The two semantic forms require the **`semantic_edges`** feature flag (`ai-sw-build --enable-flag semantic_edges`); default OFF pending the live-seat PAE proof. Rules:
+- `of_feature` must name an **earlier fixed-extent boss extrude** (`boss_extrude_blind` / `_midplane` / `_two_direction`) — the extents whose faces the builder can resolve. Faces use the outward-normal names `+x`/`-x`/`+y`/`-y`/`+z`/`-z`.
+- `between_faces` takes exactly two DISTINCT, non-anti-parallel faces; `["+z", "-z"]` (opposite faces, no shared edge) is a validation error, as is a pair whose faces share ≠ 1 edge on the current geometry.
+- All three forms may be mixed in one `edges[]` array; an edge reached more than one way (e.g. by `of_face` and by `between_faces`) is filleted once.
 
 **No parent sketch needed.** Fillet operates on existing geometry, not a sketch profile.
 
@@ -783,7 +797,7 @@ Applies an edge chamfer in one of two modes.
 | `distance` | yes | length | Chamfer distance from edge (mm) |
 | `angle` | conditional | length | Angle in **degrees**. Required for `distance_angle` mode, forbidden for `equal_distance`. Reuses LENGTH_SCHEMA for parametric support; the spec author is responsible for not passing a length-typed locals var here. |
 | `flip` | no | boolean | Reverse asymmetry direction. Only meaningful for `distance_angle`. Default `false`. |
-| `edges` | yes | array | Minimum 1 item. Each is `{x, y, z}` — a point on the target edge in part coords (mm). |
+| `edges` | yes | array | Minimum 1 item. Same three selector forms as `fillet_constant_radius` — see [**Edge selectors**](#edge-selectors). |
 
 **Modes:**
 - `equal_distance` — symmetric chamfer. One distance applied to both sides of each edge.

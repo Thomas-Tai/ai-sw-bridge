@@ -20,6 +20,7 @@ from typing import Any
 
 import jsonschema
 
+from ._edge_selectors import faces_can_share_edge, is_semantic_item
 from .schema import (
     SCHEMA,
     SKETCH_TYPES,
@@ -29,6 +30,12 @@ from .schema import (
     EXPECT_SCHEMA,
     schema_for_version,
 )
+
+# Feature types whose `edges[]` array may carry semantic edge selectors
+# (`{of_feature, face}` / `{of_feature, between_faces}`). Both gate on the
+# `semantic_edges` flag and resolve faces via _face_frame, so their parents
+# must be fixed-extent bosses (UP_TO_TARGET_TYPES).
+EDGE_SELECTOR_TYPES = frozenset({"fillet_constant_radius", "chamfer_edge"})
 
 # Sketch types that reference a parent feature via `of_feature` (sketched
 # on the parent extrusion's face) rather than a reference plane. Kept as a
@@ -108,6 +115,22 @@ def _v2_enabled() -> bool:
         from ..flags import resolve as resolve_flags
 
         return bool(resolve_flags().get("schema_v2", False))
+    except Exception:  # pragma: no cover - defensive; flags is in-tree
+        return False
+
+
+def _semantic_edges_enabled() -> bool:
+    """Whether the `semantic_edges` feature flag is ON.
+
+    Gates the of_face / between_faces edge selectors. Resolved per-call (not
+    cached) so env/TOML/CLI overrides apply. Fail-closed: if the flags module is
+    unavailable, semantic selectors are rejected rather than silently built
+    (they depend on a COM path that is PAE-pending).
+    """
+    try:
+        from ..flags import resolve as resolve_flags
+
+        return bool(resolve_flags().get("semantic_edges", False))
     except Exception:  # pragma: no cover - defensive; flags is in-tree
         return False
 
@@ -291,6 +314,58 @@ def _check_references(spec: dict[str, Any]) -> None:
                     ),
                     path=f"features/{i}/angle",
                 )
+
+        # Semantic edge selectors (of_face / between_faces) on fillet/chamfer.
+        # Gate on the `semantic_edges` flag (fail-closed), then check the nested
+        # of_feature reference the JSON schema can't express. Literal {x, y, z}
+        # items carry no `of_feature`, so existing literal specs are untouched
+        # (is_semantic_item is False for them) regardless of the flag.
+        if ftype in EDGE_SELECTOR_TYPES:
+            flag_on = _semantic_edges_enabled()
+            for j, item in enumerate(feat.get("edges", [])):
+                if not is_semantic_item(item):
+                    continue
+                if not flag_on:
+                    raise ValidationError(
+                        message=(
+                            f"{ftype} edges[{j}] uses a semantic edge selector, "
+                            f"which requires the `semantic_edges` feature flag "
+                            f"(off by default, pending live-seat verification). "
+                            f"Enable it with `--enable-flag semantic_edges`, or "
+                            f"use a literal {{x, y, z}} edge point."
+                        ),
+                        path=f"features/{i}/edges/{j}",
+                    )
+                tgt = item.get("of_feature")
+                if tgt not in seen:
+                    raise ValidationError(
+                        message=(
+                            f"{ftype} edges[{j}] references '{tgt}', which is "
+                            f"not an earlier feature"
+                        ),
+                        path=f"features/{i}/edges/{j}/of_feature",
+                    )
+                if seen[tgt] not in UP_TO_TARGET_TYPES:
+                    raise ValidationError(
+                        message=(
+                            f"{ftype} semantic edge addressing requires '{tgt}' "
+                            f"to be a fixed-extent boss extrude with resolvable "
+                            f"faces (one of {sorted(UP_TO_TARGET_TYPES)}); got "
+                            f"'{seen[tgt]}'"
+                        ),
+                        path=f"features/{i}/edges/{j}/of_feature",
+                    )
+                faces = item.get("between_faces")
+                if isinstance(faces, list) and len(faces) == 2:
+                    if not faces_can_share_edge(faces[0], faces[1]):
+                        raise ValidationError(
+                            message=(
+                                f"{ftype} edges[{j}] between_faces "
+                                f"{faces[0]}/{faces[1]} can never share an edge "
+                                f"(identical or opposite faces)"
+                            ),
+                            path=f"features/{i}/edges/{j}/between_faces",
+                        )
 
         seen[name] = ftype
         features_by_name[name] = feat

@@ -403,3 +403,49 @@ def _select_extrude_face(
                 return True, cp[0], cp[1], cp[2]
 
     return False, fx0, fy0, fz0
+
+
+def _resolve_face_object(ctx: BuildContext, parent: BuiltFeature, face: str) -> Any:
+    """Return the live ``IFace2`` for a semantic face name of an extrusion.
+
+    Reuses :func:`_select_extrude_face` (the normal-verified spiral + body-face
+    enumeration probe) to select the face, then reads it back via
+    ``GetSelectedObject6(1, -1)`` -- the same idiom ``_build_simple_hole`` uses
+    (builder.py). Used by the semantic edge selectors (``of_face`` /
+    ``between_faces``) to walk to the face's bounding edges.
+
+    Note: ``_select_extrude_face`` clears the selection internally, so callers
+    resolving more than one face must read each face object back IMMEDIATELY and
+    build their incidence map in Python BEFORE any edge selection -- never rely
+    on the selection set persisting across resolves.
+
+    Raises RuntimeError if the face cannot be resolved.
+    """
+    ok, _fx, _fy, _fz = _select_extrude_face(ctx, parent, face)
+    if not ok:
+        raise RuntimeError(
+            f"could not resolve {face} face of '{parent.name}' "
+            f"(no body face matched the expected normal/position)"
+        )
+    face_obj = ctx.doc.SelectionManager.GetSelectedObject6(1, -1)
+    if face_obj is None:
+        raise RuntimeError(
+            f"resolved {face} face of '{parent.name}' but GetSelectedObject6 "
+            f"returned None"
+        )
+    return face_obj
+
+
+def _face_edge_objects(face_obj: Any) -> list:
+    """The ``IEdge`` objects bounding a face via ``IFace2.GetEdges``.
+
+    ``GetEdges`` is a return-array (the proven-class analog of the body-level
+    ``IBody2.GetEdges`` used in builder.py), so it is wrapped with the same
+    callable-or-property guard. The caller MUST keep both the returned edges and
+    their parent ``face_obj`` alive until selection completes (the W67 IEdge
+    COM-lifetime trap: an IEdge invalidates when its parent proxy is released).
+    """
+    raw = face_obj.GetEdges
+    if callable(raw):
+        raw = raw()
+    return list(raw or ())

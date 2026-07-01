@@ -1322,25 +1322,86 @@
         "type": "array",
         "minItems": 1,
         "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "x",
-            "y",
-            "z"
-          ],
-          "properties": {
-            "x": {
-              "type": "number"
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "x",
+                "y",
+                "z"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "z": {
+                  "type": "number"
+                }
+              },
+              "description": "A point on the target edge in part coordinates (mm) — the legacy literal form. The builder converts to meters and selects the nearest model edge within 1um. Brittle under dimension changes; prefer the `of_feature`/`face` semantic form for parametric models."
             },
-            "y": {
-              "type": "number"
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "of_feature",
+                "face"
+              ],
+              "properties": {
+                "of_feature": {
+                  "type": "string",
+                  "description": "Name of an EARLIER fixed-extent boss extrude; ALL edges bounding its `face` are added to the fillet/chamfer set. Re-resolved against current geometry each build, so it survives upstream dimension edits (unlike a literal point)."
+                },
+                "face": {
+                  "enum": [
+                    "+x",
+                    "-x",
+                    "+y",
+                    "-y",
+                    "+z",
+                    "-z"
+                  ],
+                  "description": "Which orthogonal face whose bounding edges to select."
+                }
+              },
+              "description": "Semantic edge selector: all edges of a named face. Requires the `semantic_edges` flag."
             },
-            "z": {
-              "type": "number"
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "of_feature",
+                "between_faces"
+              ],
+              "properties": {
+                "of_feature": {
+                  "type": "string",
+                  "description": "Name of an EARLIER fixed-extent boss extrude whose two named faces share the target edge."
+                },
+                "between_faces": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "+x",
+                      "-x",
+                      "+y",
+                      "-y",
+                      "+z",
+                      "-z"
+                    ]
+                  },
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "description": "The two faces whose shared edge to select — exactly one edge on a convex solid (the build fails if 0 or >1 edges are shared)."
+                }
+              },
+              "description": "Semantic edge selector: the single edge shared by two faces (most precise). Requires the `semantic_edges` flag."
             }
-          },
-          "description": "A point on the target edge in part coordinates (mm). The builder converts to meters and calls SelectByID with type='EDGE'. Each edge entry adds one to the selection set before CreateFeature runs."
+          ]
         }
       }
     }
@@ -1422,25 +1483,86 @@
         "type": "array",
         "minItems": 1,
         "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "x",
-            "y",
-            "z"
-          ],
-          "properties": {
-            "x": {
-              "type": "number"
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "x",
+                "y",
+                "z"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "z": {
+                  "type": "number"
+                }
+              },
+              "description": "A point on the target edge in part coordinates (mm) — the legacy literal form. Builder selects the nearest model edge within 1um. Prefer the `of_feature`/`face` semantic form for parametric models."
             },
-            "y": {
-              "type": "number"
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "of_feature",
+                "face"
+              ],
+              "properties": {
+                "of_feature": {
+                  "type": "string",
+                  "description": "Name of an EARLIER fixed-extent boss extrude; ALL edges bounding its `face` are added to the fillet/chamfer set. Re-resolved against current geometry each build, so it survives upstream dimension edits (unlike a literal point)."
+                },
+                "face": {
+                  "enum": [
+                    "+x",
+                    "-x",
+                    "+y",
+                    "-y",
+                    "+z",
+                    "-z"
+                  ],
+                  "description": "Which orthogonal face whose bounding edges to select."
+                }
+              },
+              "description": "Semantic edge selector: all edges of a named face. Requires the `semantic_edges` flag."
             },
-            "z": {
-              "type": "number"
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "of_feature",
+                "between_faces"
+              ],
+              "properties": {
+                "of_feature": {
+                  "type": "string",
+                  "description": "Name of an EARLIER fixed-extent boss extrude whose two named faces share the target edge."
+                },
+                "between_faces": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "+x",
+                      "-x",
+                      "+y",
+                      "-y",
+                      "+z",
+                      "-z"
+                    ]
+                  },
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "description": "The two faces whose shared edge to select — exactly one edge on a convex solid (the build fails if 0 or >1 edges are shared)."
+                }
+              },
+              "description": "Semantic edge selector: the single edge shared by two faces (most precise). Requires the `semantic_edges` flag."
             }
-          },
-          "description": "A point on the target edge in part coordinates (mm). Builder converts to meters and calls SelectByID('EDGE')."
+          ]
         }
       }
     }

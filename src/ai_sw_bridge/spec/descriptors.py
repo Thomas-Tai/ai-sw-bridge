@@ -320,29 +320,98 @@ _ANGLE_DEG = {
     ),
 }
 
+# --- Edge selectors (fillet/chamfer `edges[]` items) -----------------------
+# Each item is a `oneOf` of three mutually-exclusive forms. The branches are
+# disjoint by construction: each is `additionalProperties: False` with a
+# distinct required-key set, so an item matches EXACTLY one branch (or none ->
+# schema rejects). The two semantic forms are gated at the validator by the
+# `semantic_edges` feature flag (the schema accepts them unconditionally; the
+# flag controls whether a spec may USE them). See spec/_edge_selectors.py.
+
+_EDGE_OF_FACE_ITEM = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["of_feature", "face"],
+    "properties": {
+        "of_feature": {
+            "type": "string",
+            "description": (
+                "Name of an EARLIER fixed-extent boss extrude; ALL edges "
+                "bounding its `face` are added to the fillet/chamfer set. "
+                "Re-resolved against current geometry each build, so it "
+                "survives upstream dimension edits (unlike a literal point)."
+            ),
+        },
+        "face": {
+            "enum": _FACE_ENUM,
+            "description": "Which orthogonal face whose bounding edges to select.",
+        },
+    },
+    "description": (
+        "Semantic edge selector: all edges of a named face. Requires the "
+        "`semantic_edges` flag."
+    ),
+}
+
+_EDGE_BETWEEN_FACES_ITEM = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["of_feature", "between_faces"],
+    "properties": {
+        "of_feature": {
+            "type": "string",
+            "description": (
+                "Name of an EARLIER fixed-extent boss extrude whose two named "
+                "faces share the target edge."
+            ),
+        },
+        "between_faces": {
+            "type": "array",
+            "items": {"enum": _FACE_ENUM},
+            "minItems": 2,
+            "maxItems": 2,
+            "description": (
+                "The two faces whose shared edge to select — exactly one edge "
+                "on a convex solid (the build fails if 0 or >1 edges are shared)."
+            ),
+        },
+    },
+    "description": (
+        "Semantic edge selector: the single edge shared by two faces (most "
+        "precise). Requires the `semantic_edges` flag."
+    ),
+}
+
+
+def _edge_selector_item(point_description: str) -> dict[str, Any]:
+    """A fillet/chamfer `edges[]` item: literal point OR of_face OR between_faces."""
+    return {
+        "oneOf": [
+            _xyz_point(required=True, description=point_description),
+            _EDGE_OF_FACE_ITEM,
+            _EDGE_BETWEEN_FACES_ITEM,
+        ]
+    }
+
+
 _EDGE_POINT_ITEM_FILLET = {
     "type": "array",
     "minItems": 1,
-    "items": _xyz_point(
-        required=True,
-        description=(
-            "A point on the target edge in part coordinates (mm). "
-            "The builder converts to meters and calls SelectByID "
-            "with type='EDGE'. Each edge entry adds one to the "
-            "selection set before CreateFeature runs."
-        ),
+    "items": _edge_selector_item(
+        "A point on the target edge in part coordinates (mm) — the legacy "
+        "literal form. The builder converts to meters and selects the nearest "
+        "model edge within 1um. Brittle under dimension changes; prefer the "
+        "`of_feature`/`face` semantic form for parametric models."
     ),
 }
 
 _EDGE_POINT_ITEM_CHAMFER = {
     "type": "array",
     "minItems": 1,
-    "items": _xyz_point(
-        required=True,
-        description=(
-            "A point on the target edge in part coordinates (mm). "
-            "Builder converts to meters and calls SelectByID('EDGE')."
-        ),
+    "items": _edge_selector_item(
+        "A point on the target edge in part coordinates (mm) — the legacy "
+        "literal form. Builder selects the nearest model edge within 1um. "
+        "Prefer the `of_feature`/`face` semantic form for parametric models."
     ),
 }
 

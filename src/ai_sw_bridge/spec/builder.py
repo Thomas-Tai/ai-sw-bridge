@@ -61,9 +61,18 @@ from ._build_context import (
     FeatureDescriptor,
     FeatureType,
 )
+from ._edge_selectors import (
+    EdgeSelectorError,
+    LiteralPoint,
+    faces_referenced,
+    parse_edge_selectors,
+    resolve_edge_selectors,
+)
 from ._face_geometry import (
     PLANE_FULL_NAME,
+    _face_edge_objects,
     _face_frame,
+    _resolve_face_object,
     _select_extrude_face,
     _sketch_uv_to_part,
     _warn_face_sketch_offset,
@@ -1053,47 +1062,43 @@ def _build_simple_hole(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
 
-def _select_edges_by_points(
-    ctx: BuildContext, edge_points_mm: "list[dict[str, float]]"
-) -> int:
-    """Accumulate model edges into the selection set, one per (x, y, z) point.
+# Two fixed, well-separated reference points (meters) for the geometric edge
+# fingerprint. An edge's closest point to each reference, rounded to microns, is
+# its identity key. The key is GEOMETRIC (not COM identity), so the SAME
+# physical edge -- enumerated from a body, from a face, or found by literal
+# closest-match -- hashes equal. That is what lets between_faces intersect two
+# faces' edge sets and lets a corner edge reached two ways de-duplicate. Two
+# well-separated references make a collision between two distinct edges
+# effectively impossible on the orthogonal solids this addresses.
+_EDGE_FP_REFS = ((0.0, 0.0, 0.0), (1.0, 1.0, 1.0))
 
-    Replaces a naive loop of 5-arg `SelectByID("", "EDGE", x, y, z)` calls,
-    which silently fail to accumulate -- each call replaces the prior
-    selection so only the LAST edge ends up selected. Spike Q3
-    (2026-05-17) confirmed this: SelectionMgr.GetSelectedObjectCount2(-1)
-    stayed at 1 across 4 calls.
 
-    Naive alternatives that ALSO don't work under pywin32 late binding:
-      - `doc.Extension.SelectByID2(..., Append=True, ..., Callout=None, ...)`
-        raises com_error('Type mismatch', ..., 8) -- Callout OUT-IDispatch
-        marshalling failure
-      - `IEntity.Select4(Append, Callout)` -- same Callout failure (arg 2)
+def _edge_fingerprint(edge: Any) -> tuple:
+    """A stable geometric identity key for an ``IEdge`` (see ``_EDGE_FP_REFS``)."""
+    pts: list = []
+    for rx, ry, rz in _EDGE_FP_REFS:
+        cp = edge.GetClosestPointOn(rx, ry, rz)
+        if cp is None:
+            raise RuntimeError(
+                "edge fingerprint failed: GetClosestPointOn returned None"
+            )
+        pts.append((round(cp[0], 6), round(cp[1], 6), round(cp[2], 6)))
+    return tuple(pts)
 
-    Working path (Spike Q4 GREEN, 2026-05-17):
-      1. IPartDoc.GetBodies2(swSolidBody=0, bVisibleOnly=True) -> bodies
-      2. For each body, body.GetEdges() -> all IEdge instances
-      3. For each target point, find the closest edge via
-         IEdge.GetClosestPointOn(x, y, z); zero squared-distance means
-         the point is on the edge
-      4. IEntity.Select2(Append=True, Mark=0) -- the older variant, NO
-         Callout, marshalls cleanly
 
-    Args are in mm; converted to meters internally. Raises if any point
-    fails to match an edge within 1um.
+def _all_solid_edges(ctx: BuildContext) -> list:
+    """Every ``IEdge`` of every solid body, for literal closest-point matching.
+
+    ``IPartDoc.GetBodies2(swSolidBody=0, bVisibleOnly=True)`` -> bodies, then
+    ``body.GetEdges`` (callable-or-property guarded). The caller keeps the edges
+    alive across selection (W67 IEdge lifetime trap).
     """
-    ctx.doc.ClearSelection2(True)
-
-    # Walk all solid bodies and collect their edges into one list. Most
-    # parts have a single body; multi-body parts are rare in v1's scope
-    # but cheap to support.
     try:
         bodies = ctx.doc.GetBodies2(0, True)  # swBodyType_e.swSolidBody=0
     except Exception as e:
         raise RuntimeError(f"GetBodies2 failed: {e!r}")
     if bodies is None or len(bodies) == 0:
         raise RuntimeError("part has no solid bodies; cannot select edges")
-
     all_edges: list = []
     for body in bodies:
         edges = body.GetEdges
@@ -1104,16 +1109,52 @@ def _select_edges_by_points(
         all_edges.extend(edges)
     if not all_edges:
         raise RuntimeError("no edges on any body; cannot select")
+    return all_edges
 
-    n_selected = 0
-    for i, p in enumerate(edge_points_mm):
-        x_m = float(p["x"]) / 1000.0
-        y_m = float(p["y"]) / 1000.0
-        z_m = float(p["z"]) / 1000.0
 
-        # Find the closest edge. Threshold: 1 micron squared = 1e-12 m^2.
+def _select_edges(ctx: BuildContext, edge_items: "list[dict[str, Any]]") -> int:
+    """Resolve a fillet/chamfer ``edges[]`` array and add the edges to the
+    selection set, returning the count selected.
+
+    Each item is one of three forms (see ``spec/_edge_selectors.py``):
+      - literal point  ``{x, y, z}``                       -- nearest edge / 1um
+      - of_face        ``{of_feature, face}``              -- all edges of a face
+      - between_faces  ``{of_feature, between_faces:[A,B]}``-- the shared edge
+
+    TWO-PHASE by design (the load-bearing correctness rule): RESOLVE everything
+    into a Python ``edge key -> IEdge`` map FIRST -- because
+    ``_resolve_face_object`` clears the selection internally, interleaving
+    face-picking with edge accumulation would wipe earlier selections -- THEN
+    ``ClearSelection2`` once and ``IEntity.Select2(Append, Mark)`` each unique
+    edge. The set algebra (ordering, de-dup, between_faces intersection) is the
+    pure ``resolve_edge_selectors``; only fingerprinting, ``IFace2.GetEdges``,
+    and ``Select2`` touch COM here.
+
+    The naive 5-arg ``SelectByID("", "EDGE", x, y, z)`` loop does NOT accumulate
+    (each call replaces the prior selection; Spike Q3, 2026-05-17), and
+    ``SelectByID2(...Callout=None...)`` / ``IEntity.Select4`` fail to marshal the
+    Callout OUT-param under pywin32 late binding -- hence the
+    ``GetClosestPointOn`` + ``IEntity.Select2`` working path (Spike Q4 GREEN).
+
+    Legacy literal-only specs take a byte-identical closest-edge path and the
+    same "matches no edge within 1um" RuntimeError. Raises RuntimeError on any
+    malformed or unresolvable selector.
+    """
+    try:
+        parsed = parse_edge_selectors(edge_items)
+    except EdgeSelectorError as e:
+        raise RuntimeError(f"edge selector error: {e}")
+
+    edge_objects: dict = {}  # EdgeKey -> IEdge (doubles as the keepalive)
+    keepalive: list = []  # parent IFace2/IBody2/IEdge proxies (W67 trap)
+    all_edges_cache: list = []  # lazily filled; a semantic-only spec skips it
+
+    def literal_to_edge(p: LiteralPoint, index: int) -> tuple:
+        if not all_edges_cache:
+            all_edges_cache.extend(_all_solid_edges(ctx))
+        x_m, y_m, z_m = p.x / 1000.0, p.y / 1000.0, p.z / 1000.0
         best_edge, best_d2 = None, 1e18
-        for edge in all_edges:
+        for edge in all_edges_cache:
             try:
                 cp = edge.GetClosestPointOn(x_m, y_m, z_m)
             except Exception:
@@ -1126,19 +1167,64 @@ def _select_edges_by_points(
                 best_edge = edge
         if best_edge is None or best_d2 > 1e-12:
             raise RuntimeError(
-                f"edge #{i} at part ({p['x']}, {p['y']}, {p['z']}) mm "
+                f"edge #{index} at part ({p.x}, {p.y}, {p.z}) mm "
                 f"matches no edge within 1um (best squared distance "
                 f"{best_d2:.3e} m^2)"
             )
-        # IEntity.Select2(Append, Mark) -- no Callout, marshalls cleanly
-        ok = best_edge.Select2(True, 0)
-        if not ok:
+        key = _edge_fingerprint(best_edge)
+        edge_objects.setdefault(key, best_edge)
+        return key
+
+    # Build the (of_feature, face) -> frozenset[edge key] incidence map for
+    # every semantic face referenced, resolving each face object IMMEDIATELY
+    # (before any edge selection -- see the two-phase note above).
+    needed_faces = {
+        (sel.of_feature, face)
+        for sel in parsed
+        if not isinstance(sel, LiteralPoint)
+        for face in faces_referenced(sel)
+    }
+    face_edges: dict = {}
+    for of_feature, face in needed_faces:
+        parent = ctx.features_by_name.get(of_feature)
+        if parent is None or parent.extrude_axis is None:
+            # The validator enforces this; belt-and-suspenders for a direct
+            # build path that bypasses validation.
+            raise RuntimeError(
+                f"edge selector references '{of_feature}', which is not a "
+                f"built extrusion with resolvable faces"
+            )
+        face_obj = _resolve_face_object(ctx, parent, face)
+        keepalive.append(face_obj)
+        keys: set = set()
+        for edge in _face_edge_objects(face_obj):
+            key = _edge_fingerprint(edge)
+            edge_objects.setdefault(key, edge)
+            keepalive.append(edge)
+            keys.add(key)
+        if not keys:
+            raise RuntimeError(
+                f"{face} face of '{of_feature}' has no bounding edges "
+                f"(IFace2.GetEdges returned empty)"
+            )
+        face_edges[(of_feature, face)] = frozenset(keys)
+
+    try:
+        resolved_keys = resolve_edge_selectors(
+            parsed, literal_to_edge=literal_to_edge, face_edges=face_edges
+        )
+    except EdgeSelectorError as e:
+        raise RuntimeError(f"edge selector error: {e}")
+
+    # Phase 2: select. ClearSelection2 once, then append each unique edge.
+    ctx.doc.ClearSelection2(True)
+    for index, edge_key in enumerate(resolved_keys):
+        if not edge_objects[edge_key].Select2(True, 0):
             raise RuntimeError(
                 f"IEntity.Select2(append=True, mark=0) returned False on "
-                f"edge #{i} at part ({p['x']}, {p['y']}, {p['z']}) mm"
+                f"resolved edge #{index}"
             )
-        n_selected += 1
-    return n_selected
+    return len(resolved_keys)
 
 
 def _build_fillet_constant_radius(
@@ -1177,10 +1263,9 @@ def _build_fillet_constant_radius(
     # in Spike P; readback confirmed value round-trips.
     data.DefaultRadius = radius_m
 
-    # Accumulate edges via the shared helper. The naive
-    # SelectByID('', 'EDGE', x, y, z) loop does NOT accumulate -- each
-    # call replaces. See _select_edges_by_points docstring.
-    n_selected = _select_edges_by_points(ctx, feat["edges"])
+    # Accumulate edges via the shared helper (literal points and/or semantic
+    # of_face / between_faces selectors). See _select_edges docstring.
+    n_selected = _select_edges(ctx, feat["edges"])
     if n_selected == 0:
         raise RuntimeError("no edges selected; fillet would no-op")
 
@@ -1247,7 +1332,7 @@ def _build_chamfer_edge(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature
     else:
         raise RuntimeError(f"chamfer_edge: unknown mode {mode!r}")
 
-    n_selected = _select_edges_by_points(ctx, feat["edges"])
+    n_selected = _select_edges(ctx, feat["edges"])
     if n_selected == 0:
         raise RuntimeError("no edges selected; chamfer would no-op")
 

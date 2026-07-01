@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Semantic edge addressing for fillet/chamfer (`--enable-flag semantic_edges`, default OFF).**
+  `fillet_constant_radius` and `chamfer_edge` `edges[]` items now accept two
+  topology-named forms in addition to the legacy literal `{x, y, z}` point:
+  `{of_feature, face}` selects ALL edges bounding a named semantic face
+  (`+x`/`-x`/`+y`/`-y`/`+z`/`-z`) of an earlier fixed-extent boss extrude, and
+  `{of_feature, between_faces:[A, B]}` selects the single edge shared by two such
+  faces. Unlike literal coordinates, these re-resolve against the current geometry
+  on every build, so they survive upstream dim edits (change the box width and the
+  filleted edge is still found). Forms may be mixed in one array and de-duplicate.
+  Gated behind the fail-closed `semantic_edges` feature flag pending the live-seat
+  PAE proof of `IFace2.GetEdges`; literal specs are unchanged with the flag off.
+  The validator rejects a semantic selector when the flag is off, when `of_feature`
+  is not an earlier fixed-extent boss extrude, and when `between_faces` names two
+  faces that provably share no edge (e.g. `["+z", "-z"]`).
 - **`ai-sw-build` seat-identification banner + `--yes` / `-y` flag.** Before the
   first COM write, `ai-sw-build` now prints which SOLIDWORKS seat it is about to
   drive — PID and active-document name — so a build can never silently land in the
