@@ -9,6 +9,21 @@
 
 **Language**: English · [繁體中文](docs/i18n/zh-TW/README.md) · [简体中文](docs/i18n/zh-CN/README.md)
 
+## Who are you? → start here
+
+This README is a **persona router**. Pick the row that matches you and jump
+straight to the part written for you — the rest is signposted, not required
+reading. Most of this page is the operator spine; developers and contributors
+get a short teaser and a doc map.
+
+| You are… | You want to… | Go to |
+|---|---|---|
+| **An operator** — a SOLIDWORKS user, not a coder | Install the bridge and drive it from your AI assistant | [**For operators — 5-minute quickstart**](#for-operators--5-minute-quickstart) · then hand [`docs/operator_guide.md`](docs/operator_guide.md) to your AI |
+| **A developer / integrator** | Call `SolidWorksClient`, embed the MCP server, or read the supported-surface contract | [**For developers & integrators**](#for-developers--integrators) |
+| **A contributor** | Add a feature kind, fix a wall, understand the architecture | [**For contributors**](#for-contributors) |
+
+New here and you just want it working? Read **[For operators](#for-operators--5-minute-quickstart)** top to bottom, then open the canonical [Operator Guide](docs/operator_guide.md) — it's the one file to hand your AI assistant.
+
 ## What this is
 
 A bridge between AI agents and SOLIDWORKS. You describe a part in natural language; the agent emits a JSON spec; the bridge drives SW via the COM API to build it. Every mutation is **propose → approve → execute** — the AI never touches your CAD model without your green light.
@@ -57,7 +72,13 @@ variable in a locals file. The full grammar is in
 [`docs/spec_reference.md`](docs/spec_reference.md) — and the AI usually writes
 this for you (step 3 below).
 
-## 5-minute quickstart
+---
+
+## For operators — 5-minute quickstart
+
+**This is the spine of the project.** If you run SOLIDWORKS but don't write
+code, everything you need is here — and the deeper, non-coder-friendly version
+lives in the canonical **[Operator Guide → `docs/operator_guide.md`](docs/operator_guide.md)**.
 
 ### Prerequisites
 
@@ -65,7 +86,7 @@ this for you (step 3 below).
 
 - **Windows** — SOLIDWORKS is Windows-only, and the bridge uses `pywin32`.
 - **SOLIDWORKS installed and running** — tested on 2024 SP1; works on 2021 SP5+.
-- **Python 3.10+ on your `PATH`** — tested on 3.10, 3.12, 3.14. Verify with `python --version`; if that command isn't found, re-run the Python installer and tick **"Add python.exe to PATH"**.
+- **Python 3.10+, 64-bit, on your `PATH`** — tested on 3.10, 3.12, 3.14. SOLIDWORKS is 64-bit, so your Python must be 64-bit too or COM won't attach. Verify with `python --version`; if that command isn't found, re-run the Python installer and tick **"Add python.exe to PATH"**.
 - **Git** — used by the one-line install below to clone the repo. Verify with `git --version`; if it's missing, install [Git for Windows](https://git-scm.com/download/win), or skip Git entirely by downloading the repo ZIP (**Code ▸ Download ZIP** on GitHub) and unzipping it.
 
 ### 1. Install (~2 minutes)
@@ -78,7 +99,21 @@ python -m venv .venv
 pip install -e .
 ```
 
-### 2. Smoke test (~10 seconds)
+For the MCP server, install the extra instead: `pip install -e ".[mcp]"` (see the [MCP section](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)).
+
+### 2. Preflight (~5 seconds)
+
+Before the first real command, let the bridge check your machine for you:
+
+```powershell
+ai-sw-doctor      # checks Python / pywin32 / PATH / a live SW seat / MCP registration
+```
+
+`ai-sw-doctor` is the operator preflight — it green-lights the four things that
+break first-run installs (wrong bitness, missing `pywin32`, no seat, PATH gaps).
+Fix anything it flags red before continuing.
+
+### 3. Smoke test (~10 seconds)
 
 Open SOLIDWORKS (a blank state is fine), then:
 
@@ -93,7 +128,7 @@ ai-sw-build examples/filleted_box/spec.json --no-dim     # builds a 20x20x10 box
 
 If a small filleted box appears in SW within ~3 seconds, the bridge works.
 
-### 3. Hand the keys to your AI assistant
+### 4. Hand the keys to your AI assistant
 
 Open Claude / ChatGPT / Codex and paste:
 
@@ -105,7 +140,7 @@ Open Claude / ChatGPT / Codex and paste:
 
 The agent will read [`docs/AGENTS.md`](docs/AGENTS.md), pick the closest [`examples/`](examples/) match, draft a spec, and **stop** for your review. You approve, run the command yourself, and watch the part build. That's the whole loop.
 
-**Stuck?** Try [`examples/README.md`](examples/README.md) (20 working specs, grouped by primitive) or [`docs/known_limitations.md`](docs/known_limitations.md) (sharp edges new users hit).
+**Stuck?** Try [`examples/README.md`](examples/README.md) (20 working specs, grouped by primitive) or [`docs/known_limitations.md`](docs/known_limitations.md) (sharp edges new users hit). The full walkthrough — written for a SOLIDWORKS veteran who doesn't code — is the [Operator Guide](docs/operator_guide.md).
 
 **First run didn't work?**
 
@@ -115,19 +150,6 @@ The agent will read [`docs/AGENTS.md`](docs/AGENTS.md), pick the closest [`examp
 | `ai-sw-probe` returns `ok: false` or a COM error | SOLIDWORKS isn't running, or it's a different bitness than your Python | start SOLIDWORKS; use 64-bit Python (SW is 64-bit) |
 | `ai-sw-build` seems to hang with a "Modify Dimension" popup in SW | parametric mode opens a blocking dialog per dimension | use `--no-dim` (the smoke test already does) — [why](docs/why_no_addim2.md) |
 | A `[y/N]` prompt appears before anything builds | that's the seat-confirmation gate, **not** an error | press `y` to proceed, or pass `--yes` for automation |
-
-## Why an AI engineer should care
-
-CAD automation has been a decade-long graveyard of fluent builder APIs and add-in frameworks (angelsix, xCAD, codestack, pyswx, pySldWrap). None of them solved the AI authoring problem — they all assume a *human* writes VBA or chains `.box().hole()` calls. AI agents don't think that way.
-
-What's different here:
-
-1. **JSON is the AI-native surface.** The spec is pure data, validated against a schema, validated against the locals file, validated against feature topology — *before* any SW call fires. The AI is good at data; the bridge is good at making sure the data is correct.
-2. **Late-binding pywin32 works for the boring 95%.** Phase 0 proved that direct-COM dispatch covers the part-modelling API surface we need. The handful of methods that don't marshal (e.g. `SelectByID2`'s `Callout` OUT-param) have documented workarounds. [See the gotchas →](docs/known_gotchas.md)
-3. **Safety is structural, not aspirational.** `ai-sw-mutate` ships a literal `propose → dry-run → review → commit` state machine. Rollback verification reads the file back from disk and compares. There is no `--yolo` flag.
-4. **CHM is the source of truth for API signatures.** When a call returns `PARAMNOTOPTIONAL`, we don't guess — we re-extract from `sldworksapi.chm` and assert the arg count at runtime. [See the API reference →](docs/api_reference.md)
-
-For the architecture and design rationale (why JSON specs over a fluent API, the layer model), read [`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md).
 
 ## What ships in the box
 
@@ -146,6 +168,7 @@ There is no `--yolo` flag.
 | Command | Tier | What it does | Read-only? |
 |---|---|---|---|
 | `ai-sw-probe` | experimental | COM connectivity check — confirms SW is reachable via `GetActiveObject` | ✅ |
+| `ai-sw-doctor` | experimental | Operator preflight — checks Python / pywin32 / PATH / a live SW seat / MCP registration | ✅ |
 | `ai-sw-observe` | stable | Inspect doc / features / equations / mates / bbox / volume / custom-props / screenshots / add-ins / MBD-PMI — JSON output | ✅ |
 | `ai-sw-mutate` | stable | Propose → dry-run → commit (or undo) `*_locals.txt` variable changes. Subcommands: `propose` / `dry_run` / `commit` / `undo`. Proposals persist to `./proposals/` (override via `AI_SW_BRIDGE_PROPOSALS`). | ⚠️ approval-gated |
 | `ai-sw-batch` | experimental | Human-gated batch feature-commit. Executes a multi-feature plan (from MCP `sw_batch_plan`) behind a `[y/N]` gate; greens persist, fail-fast on the first fault. | ⚠️ approval-gated |
@@ -305,6 +328,43 @@ A short list. The [full known-limitations doc](docs/known_limitations.md) is req
 - **Some advanced features are walled out-of-process.** A handful of feature kinds (e.g. `loft`, `combine`, `split`, `wrap`, the profile-sketch sheet-metal flanges) cannot be materialized through the COM boundary and are registered `DORMANT`/`WALLED` — they fail loud rather than silently no-op. See [`docs/DEFERRED.md`](docs/DEFERRED.md) for the kernel-wall classification.
 - **No "describe the part in English and get geometry" for free.** The spec language is precise; the AI generates spec JSON, not freehand prose. The natural-language step happens in your chat with the agent, before the spec is drafted.
 
+---
+
+## For developers & integrators
+
+`ai-sw-bridge` is also a Python library and an embeddable MCP server. One public
+entry point — `SolidWorksClient` — fronts the whole surface; the CLI and the MCP
+server are thin shells over it. Start with these four docs:
+
+- **[`docs/PUBLIC_API.md`](docs/PUBLIC_API.md)** — the supported-surface contract: every public symbol, its stability tier, and the SemVer promise.
+- **[`docs/tools_reference.md`](docs/tools_reference.md)** — the canonical CLI + MCP tool reference (flags, subcommands, payload shapes).
+- **[`docs/AGENTS.md`](docs/AGENTS.md)** — the agent briefing: the rules, the spec format, and what needs human confirmation. Hand this to any AI you pair with.
+- **[`USAGE.md`](USAGE.md)** — end-to-end usage recipes for the Python client and the CLI.
+
+### Why an AI engineer should care
+
+CAD automation has been a decade-long graveyard of fluent builder APIs and add-in frameworks (angelsix, xCAD, codestack, pyswx, pySldWrap). None of them solved the AI authoring problem — they all assume a *human* writes VBA or chains `.box().hole()` calls. AI agents don't think that way.
+
+What's different here:
+
+1. **JSON is the AI-native surface.** The spec is pure data, validated against a schema, validated against the locals file, validated against feature topology — *before* any SW call fires. The AI is good at data; the bridge is good at making sure the data is correct.
+2. **Late-binding pywin32 works for the boring 95%.** Phase 0 proved that direct-COM dispatch covers the part-modelling API surface we need. The handful of methods that don't marshal (e.g. `SelectByID2`'s `Callout` OUT-param) have documented workarounds. [See the gotchas →](docs/known_gotchas.md)
+3. **Safety is structural, not aspirational.** `ai-sw-mutate` ships a literal `propose → dry-run → review → commit` state machine. Rollback verification reads the file back from disk and compares. There is no `--yolo` flag.
+4. **CHM is the source of truth for API signatures.** When a call returns `PARAMNOTOPTIONAL`, we don't guess — we re-extract from `sldworksapi.chm` and assert the arg count at runtime. [See the API reference →](docs/api_reference.md)
+
+For the architecture and design rationale (why JSON specs over a fluent API, the layer model), read [`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md).
+
+## For contributors
+
+Adding a feature kind, fixing a kernel wall, or trying to understand the layer
+model? These are your entry points:
+
+- **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — developer workflow, per-file port attribution, and the [CLA](CLA.md). Adding a `feature_add` kind means registering a handler *and* satisfying its contract obligations (the README kind table, an example, and a geometric-effect test).
+- **[`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md)** — the architecture map: `client` → facades → registry → COM, and the design rationale.
+- **[`CODESTYLE.md`](CODESTYLE.md)** — cross-cutting code discipline (two-stream I/O, fail-soft, STA threading).
+
+The offline test suite is the spec: it must stay green (`pytest`, 3,700+ tests), plus the live-SW `solidworks_only` lane and the destructive `destructive_sw` recovery lane for seat-proof work.
+
 ## Project status
 
 **Current release: `v1.7.0` — commercial, Production/Stable.** One public Python
@@ -365,6 +425,7 @@ ai-sw-bridge/
 ├── examples/                 # worked specs (start here when authoring)
 ├── docs/
 │   ├── AGENTS.md             #   agent briefing — what the AI reads first
+│   ├── operator_guide.md     #   canonical Operator Guide (hand this to your AI)
 │   ├── spec_reference.md     #   per-primitive schema reference
 │   ├── api_reference.md      #   CHM-verified SW API surface
 │   ├── known_limitations.md  #   sharp edges + workarounds

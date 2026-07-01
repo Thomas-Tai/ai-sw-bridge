@@ -1,5 +1,11 @@
 # Getting Started — Three-Command Hello World
 
+> **This guide has moved to [docs/operator_guide.md](operator_guide.md).** The
+> canonical Operator Guide folds this quickstart together with first-run
+> troubleshooting and the sharp edges to know before authoring a part. This page
+> is kept as a redirect (and as the authoritative full CLI-command reference
+> below).
+
 Get from a fresh install to your first observed part in exactly three commands.
 Each command is copy-pasteable and requires only the prerequisites below.
 
