@@ -307,7 +307,7 @@ A short list. The [full known-limitations doc](docs/known_limitations.md) is req
 
 ## Project status
 
-**Current release: `v1.6.0` — commercial, Production/Stable.** One public Python
+**Current release: `v1.7.0` — commercial, Production/Stable.** One public Python
 entry point (`SolidWorksClient`), 21 CLI commands, a 37-tool MCP server, and a
 36-kind `feature_add` registry behind the `ai-sw-batch` / `ai-sw-mutate` surface.
 Validated against SOLIDWORKS 32.1.0 (2024 SP1); CI green on Win-2025 × Python
