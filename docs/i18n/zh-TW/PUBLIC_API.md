@@ -2,14 +2,14 @@
 translated-from: e3bec289377be23d6673971dff79ae8c049c7c0c
 ---
 
-# 公開 API 與穩定性合約
+# Public API & Stability Contract (公開 API 與穩定性合約)
 
 > **狀態：** ai-sw-bridge 截至 **v1.7.0** 的支援範圍。
 > 未列於此處的一切都是**內部**實作，可能隨時變更且不另行通知。
 
 > **開發者介面 — 合約 (Contract)。** 支援範圍的承諾：每一個公開
 > 符號、它的穩定性分級、SemVer + 淘汰政策。若要查閱任務導向的
-> **操作指南**請見 [`../USAGE.md`](USAGE.md)；若要查閱鉅細靡遺的 CLI/MCP
+> **操作指南**請見 [`../USAGE.md`](./USAGE.md)；若要查閱鉅細靡遺的 CLI/MCP
 > **參考文件**請見 [`tools_reference.md`](../../tools_reference.md)。
 
 這是客戶／整合者可以仰賴的合約。它有三個支援範圍 — **CLI**、**MCP

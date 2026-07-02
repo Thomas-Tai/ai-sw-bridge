@@ -7,9 +7,9 @@ translated-from: da2e933cf33b28fe70d1c4a3bde378d2429254e1
 > **开发者能力面 — How-to 指南。** 面向任务的驱动桥接器食谱。要查阅详尽的 CLI
 > **参考**（每个标志、子命令、负载）见 [`docs/tools_reference.md`](../../tools_reference.md)；
 > 要查阅受支持范围的**契约**（稳定性层级、SemVer、弃用策略）
-> 见 [`docs/PUBLIC_API.md`](../../PUBLIC_API.md)。
+> 见 [`docs/PUBLIC_API.md`](./PUBLIC_API.md)。
 
-ai-sw-bridge 的详细工作流。安装方式与 60 秒快速入门见 [README.md](../../../README.md)。
+ai-sw-bridge 的详细工作流。安装方式与 60 秒快速入门见 [README.md](./README.md)。
 
 ## 工作流 1 — 设计指南校验（只读）
 

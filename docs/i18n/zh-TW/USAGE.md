@@ -8,9 +8,9 @@ translated-from: da2e933cf33b28fe70d1c4a3bde378d2429254e1
 > 任務導向食譜集。若要查閱鉅細靡遺的 CLI **參考文件**（每個旗標、子指令、payload）
 > 請見 [`docs/tools_reference.md`](../../tools_reference.md)；若要查閱
 > 支援範圍**合約**（穩定性分級、SemVer、淘汰政策）
-> 請見 [`docs/PUBLIC_API.md`](PUBLIC_API.md)。
+> 請見 [`docs/PUBLIC_API.md`](./PUBLIC_API.md)。
 
-ai-sw-bridge 的詳細工作流程。安裝方式與 60 秒快速入門，請見 [README.md](README.md)。
+ai-sw-bridge 的詳細工作流程。安裝方式與 60 秒快速入門，請見 [README.md](./README.md)。
 
 ## 工作流程 1 — 設計指南驗證（唯讀）
 
