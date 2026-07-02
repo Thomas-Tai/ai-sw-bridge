@@ -3,6 +3,11 @@
 > **Status:** the supported surface of ai-sw-bridge as of **v1.7.0**.
 > Anything not listed here is **internal** and may change without notice.
 
+> **Developer surface — Contract.** The supported-surface promise: every public
+> symbol, its stability tier, the SemVer + deprecation policy. For task-oriented
+> **how-to** recipes see [`../USAGE.md`](../USAGE.md); for the exhaustive CLI/MCP
+> **reference** see [`tools_reference.md`](tools_reference.md).
+
 This is the contract a customer/integrator may rely on. It has three supported
 surfaces — the **CLI**, the **MCP tools**, and the **Python facade** — plus an
 explicit SemVer promise (§4). Everything else under `ai_sw_bridge.*` (notably
@@ -151,7 +156,7 @@ description line and is tracked in a module-level registry
 | Tier           | Back-compat promise                                                    |
 |----------------|------------------------------------------------------------------------|
 | **stable**     | No breaking changes to CLI flags, positional args, or JSON output     |
-|                | shape without a major version bump (v0.x → v1.0). Minor additions    |
+|                | shape without a major version bump (1.x → 2.0). Minor additions       |
 |                | (new optional flags, new output keys) are allowed in any release.     |
 | **experimental**| May change or disappear in any release. Output shape and flag names  |
 |                | are not guaranteed. Use in production at your own risk.               |
@@ -174,7 +179,7 @@ description line and is tracked in a module-level registry
        ...
    ```
 
-3. Call ``add_tire()`` on the ``ArgumentParser`` **after** construction:
+3. Call ``add_tier()`` on the ``ArgumentParser`` **after** construction:
 
    ```python
    parser = argparse.ArgumentParser(...)
@@ -188,13 +193,11 @@ description line and is tracked in a module-level registry
 
 ## Current assignments
 
-| CLI entry point   | Tier           |
-|-------------------|----------------|
-| ai-sw-build       | stable         |
-| ai-sw-observe     | stable         |
-| ai-sw-mutate      | stable         |
-| ai-sw-probe       | experimental   |
-| ai-sw-codegen     | experimental   |
+The authoritative per-command tier assignment lives in `TIER_REGISTRY`
+(`cli/stability.py`) and is surfaced in each command's `--help` banner. See
+§1 above for the full stable / experimental / daemon breakdown across all CLI
+commands — this section intentionally keeps no hand-maintained copy (it had
+drifted to 5 of 22 before this note replaced it).
 
 ---
 
@@ -207,19 +210,33 @@ How ai-sw-bridge removes things, and how the spec format evolves. This
 exists so downstream specs and integrations are never broken without
 warning. (Enhancement plan P3.2.)
 
-## Semantic versioning
+### Semantic versioning
 
 The package version (`pyproject.toml`) follows [SemVer](https://semver.org/):
 
-- **MAJOR** — backwards-incompatible change to the spec schema or the CLI
-  contract (flags, exit codes, JSON output keys).
-- **MINOR** — backwards-compatible feature (new feature primitive, new flag).
+- **MAJOR** — backwards-incompatible change to the spec schema or the CLI / MCP
+  / facade contract (flags, exit codes, JSON output keys, tool names, signatures).
+- **MINOR** — backwards-compatible feature (new feature primitive, new flag,
+  new tool).
 - **PATCH** — backwards-compatible bug fix.
 
-Pre-1.0, a MINOR release may carry a small breaking change, but only when a
-`DeprecationWarning` for it shipped in the preceding MINOR release.
+### Grace period by surface class
 
-## Deprecation procedure
+Backward-compatibility and the grace period for removal depend on the surface's
+stability class:
+
+| Surface class | Announced (deprecated) in | Hard removal | Grace floor |
+|---|---|---|---|
+| **Stable** — CLI (tier `stable`), MCP tool, `SolidWorksClient` facade signature | `1.N` | **only at the next major, `2.0`** | ≥ 2 minor releases between announce and the `2.0` cut |
+| **Experimental** — CLI (tier `experimental`), spec handler | `1.N` | `1.N+1` | 1 minor release |
+
+Stable surfaces are **never** removed inside the major version that announced
+their deprecation. This grace math is machine-enforced by
+`src/ai_sw_bridge/deprecations.py` + `tests/test_deprecations.py`: the CI gate
+rejects any registry entry whose `remove_in` is not the next major boundary
+(stable) or the next minor (experimental).
+
+### Deprecation procedure
 
 Nothing user-facing is removed without a deprecation cycle:
 
@@ -228,11 +245,27 @@ Nothing user-facing is removed without a deprecation cycle:
    `warnings.warn(..., DeprecationWarning)` and is listed under a
    `### Deprecated` heading in `CHANGELOG.md`. The warning names the
    replacement.
-2. **Grace period.** It keeps working for **at least one MINOR release**.
+2. **Grace period.** It keeps working for the floor above — the rest of the
+   `1.x` line for stable surfaces, at least one minor for experimental.
 3. **Remove.** Removal lands in a later release under `### Removed` in
    `CHANGELOG.md`.
 
 A removal that skips the warning cycle is a bug, not a release.
+
+### Deprecation warnings (MCP tools)
+
+When an MCP tool is deprecated the warning surfaces on two channels (this is
+policy; the runtime wiring lands with the first real MCP-tool deprecation —
+there is no deprecated tool to exercise it against today):
+
+- **Human** — the tool description is prefixed `[DEPRECATED in 1.N → use X]`,
+  visible during tool discovery.
+- **Machine** — a `_deprecation: {replaces: "X", remove_in: "2.0"}` block is
+  injected into the tool's JSON response envelope for headless consumers.
+
+CLI deprecations emit a `DeprecationWarning` on stderr per invocation; Python
+facade deprecations emit `DeprecationWarning` (or `PendingDeprecationWarning`
+during the announce window).
 
 ## Spec `schema_version` migration
 

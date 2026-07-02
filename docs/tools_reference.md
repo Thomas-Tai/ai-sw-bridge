@@ -1,5 +1,10 @@
 # Tools Reference
 
+> **Developer surface — Reference.** Every CLI command and flag, exhaustively.
+> For task-oriented **how-to** recipes see [`../USAGE.md`](../USAGE.md); for the
+> supported-surface **contract** (stability tiers, SemVer, deprecation policy)
+> see [`PUBLIC_API.md`](PUBLIC_API.md).
+
 Every CLI command, every flag. All commands print one JSON object to stdout, exit 0 on success, non-zero on failure.
 
 ## `ai-sw-probe`

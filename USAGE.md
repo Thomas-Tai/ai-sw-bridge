@@ -1,5 +1,11 @@
 # USAGE
 
+> **Developer surface — How-to guide.** Task-oriented recipes for driving the
+> bridge. For the exhaustive CLI **reference** (every flag, subcommand, payload)
+> see [`docs/tools_reference.md`](docs/tools_reference.md); for the
+> supported-surface **contract** (stability tiers, SemVer, deprecation policy)
+> see [`docs/PUBLIC_API.md`](docs/PUBLIC_API.md).
+
 Detailed workflows for ai-sw-bridge. For installation and a 60-second quickstart, see [README.md](README.md).
 
 ## Workflow 1 — Design-guide verification (read-only)
