@@ -77,22 +77,57 @@ docs: add Simplified Chinese translation
 
 No co-author trailers.
 
-## Adding a new feature primitive
+## Adding a capability — the Extension Contract
 
-See [`docs/extension_contract.md`](docs/extension_contract.md) for the
-canonical recipe across all five extension points (`feature_add` kind, spec
-type handler, CLI verb, MCP tool, observe lane) — directory, registration
-call, uniform signature, and CI gate for each. The steps below are the
-spec-type-handler row's detail.
+There are exactly **five** places a new capability can be added. Each has one
+canonical directory, one registration call, one uniform signature, and one CI
+gate that fails the build if you skip a step. [`docs/extension_contract.md`](docs/extension_contract.md)
+is the detailed per-row reference; the summary:
 
-The recipe (established by `fillet_constant_radius` in v0.2):
+| Add a… | Directory | Register via | Uniform signature | CI gate |
+|---|---|---|---|---|
+| **`feature_add` kind** | `features/<kind>.py` | `_register_lane(kind, handler, SPIKE_STATUS)` | `create_<kind>(doc, feature, target) -> tuple[bool, str \| None]` | conformance: kind in README kind table + fail-loud registry |
+| **spec type / handler** | `spec/handlers/<family>.py` (sketches: `spec/sketches/`) | re-export into `builder.py`, wire in `_wire_handlers()`, add a `FeatureType(...)` to `DESCRIPTORS` | `_build_<kind>(ctx: BuildContext, feat) -> BuiltFeature` | `doc_coverage_gate` + import-linter handler-leaf contract + `test_every_spec_handler_lives_in_handlers_package` |
+| **CLI verb** | `cli/<verb>.py` | `@cli_stability(tier)` + `[project.scripts]` | `def main() -> int` (two-stream) | `two_stream_lint` + `TIER_REGISTRY` test |
+| **MCP tool** | `mcp/_tool_<name>.py` | `@mcp.tool()` (+ `@com_tool`) via `register(mcp)` | tool fn → JSON `dict[str, Any]` | `EXPECTED_TOOLS` contract + `com_tool` decorator test |
+| **observe lane** | `observe.py` / `observe_<x>.py` + facade method | facade property; optional MCP `_tool_observe` | `<lane>(self) -> dict[str, Any]` (read-only, verify-the-EFFECT) | facade / equivalence + contract tests |
+
+### Two feature registries — two separate surfaces
+
+Two of those rows build features and are easy to confuse. They are **two
+distinct registries for two distinct surfaces** — pick by *when* the feature
+is applied:
+
+- **Spec-build handler** — a part-modelling feature declared inside a
+  `spec.json` and materialized by `ai-sw-build`. Implement
+  `_build_<kind>(ctx: BuildContext, feat) -> BuiltFeature` in the appropriate
+  `src/ai_sw_bridge/spec/handlers/<family>.py` (dress_up, extrude, hole,
+  pattern, revolve, sketch — or a new family module). Handlers **must not**
+  live in `builder.py`: the import-linter handler-leaf contract and
+  `test_every_spec_handler_lives_in_handlers_package` fail the build if one
+  does. `builder.py` is pure orchestration.
+- **`feature_add` handler** — an imperative mutation on an *already-open*
+  model, the `client.mutate` / `ai-sw-batch` path. Register in
+  `features/HANDLER_REGISTRY` via `_register_lane(kind, handler, SPIKE_STATUS)`
+  with signature `create_<kind>(doc, feature, target) -> tuple[bool, str | None]`
+  (fail-closed: return `(False, reason)`, never raise).
+
+### Spec-build handler recipe
 
 1. **Add the schema** in `src/ai_sw_bridge/spec/schema.py` — define a per-feature schema dict, add it to the `oneOf` list in `SCHEMA`, and add the type string to the appropriate set (`SKETCH_TYPES`, `EXTRUDE_TYPES`, or `MODIFY_TYPES`).
 2. **Update the validator** in `src/ai_sw_bridge/spec/validator.py` — if the new type references a parent feature, add it to `FACE_SKETCH_TYPES` or handle it in `_check_references`.
-3. **Add the builder handler.** Non-sketch features (extrude, cut, fillet, chamfer, pattern, mirror, hole) are functions in `src/ai_sw_bridge/spec/builder.py`: implement `_build_<type>`, wire it in `_wire_handlers`, and register it in `FEATURE_REGISTRY` with any `dim_fields`. Sketch features (rectangle/circle on plane or face, circle arrays) are subclasses of `SketchHandler` in `src/ai_sw_bridge/spec/sketches/`: add a new module under `sketches/`, subclass `SketchHandler`, override `_enter_sketch` / `_draw_geometry` / `_add_dimensions_inline` / `_record_deferred_dimensions` / `_finalize` (and optionally `_strip_relations`), export the class from `sketches/__init__.py`, and wire `Handler().build` into `_wire_handlers` via the corresponding `_build_sketch_<type>` adapter. Every COM-touching handler needs the postcondition verification pattern from [`CODESTYLE.md`](CODESTYLE.md) §2.4 — verify the postcondition, not the return code.
+3. **Add the handler in the family leaf.** Implement `_build_<type>(ctx, feat) -> BuiltFeature` in the matching `src/ai_sw_bridge/spec/handlers/<family>.py`, then re-export it into `builder.py` (`from .handlers.<family> import _build_<type>  # noqa: F401`) so `_wire_handlers()` resolves it by name, wire it into the `handlers` dict inside `_wire_handlers`, and add a `FeatureType(...)` entry to `DESCRIPTORS` with any `dim_fields`. Sketch features (rectangle/circle on plane or face, circle arrays) are instead `SketchHandler` subclasses in `src/ai_sw_bridge/spec/sketches/`: subclass `SketchHandler`, override `_enter_sketch` / `_draw_geometry` / `_add_dimensions_inline` / `_record_deferred_dimensions` / `_finalize` (and optionally `_strip_relations`), export the class from `sketches/__init__.py`, and wire `Handler().build` into `_wire_handlers` via the corresponding `_build_sketch_<type>` adapter. Every COM-touching handler needs the postcondition verification pattern from [`CODESTYLE.md`](CODESTYLE.md) §2.4 — verify the postcondition, not the return code.
 4. **Spike first.** For SW API calls you haven't used before, write a spike script in `spikes/` that exercises the API via pywin32 late-binding. Verify arg counts against `sldworksapi.chm` (or `tools/chm_extract.py`).
 5. **Add an example** in `examples/` with a `spec.json` and a `README.md` explaining what it builds.
 6. **Update docs** — add the primitive to the capability matrix in `README.md` and to `docs/spec_reference.md`.
+
+### Architecture reference
+
+For how these layers fit together — the public class API, the facades and the
+`_impl` cores they delegate to, the spec handler families, the resilience
+envelope, and the CI-enforced import hierarchy — read the canonical
+[`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md) (the *structure*),
+companion to [`docs/PUBLIC_API.md`](docs/PUBLIC_API.md) (the *contract*).
 
 ## Reporting issues
 
