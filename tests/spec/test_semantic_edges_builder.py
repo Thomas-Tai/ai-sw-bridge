@@ -15,6 +15,7 @@ import pytest
 
 from ai_sw_bridge.spec import builder
 from ai_sw_bridge.spec._build_context import BuildContext, BuiltFeature
+from ai_sw_bridge.spec.handlers import dress_up
 
 
 class _FakeEdge:
@@ -93,11 +94,13 @@ def env(monkeypatch):
     # Stub the two COM helpers: resolve returns the (name, face) key, and the
     # edge enumerator maps that key to the cube's fake edges (same object across
     # faces, so a shared corner edge intersects/de-dups correctly).
+    # Patched on handlers.dress_up (not builder): _select_edges (Phase 3 Move 4)
+    # resolves these names from its own module globals, not builder's re-export.
     monkeypatch.setattr(
-        builder, "_resolve_face_object", lambda ctx, parent, face: (parent.name, face)
+        dress_up, "_resolve_face_object", lambda ctx, parent, face: (parent.name, face)
     )
     monkeypatch.setattr(
-        builder, "_face_edge_objects", lambda key: face_edges.get(key, [])
+        dress_up, "_face_edge_objects", lambda key: face_edges.get(key, [])
     )
     parent = BuiltFeature(
         name="Box",
@@ -178,7 +181,7 @@ def test_literal_point_no_match_raises_legacy_message(env):
 
 def test_of_face_with_no_bounding_edges_raises(env, monkeypatch):
     ctx, _edges = env
-    monkeypatch.setattr(builder, "_face_edge_objects", lambda key: [])
+    monkeypatch.setattr(dress_up, "_face_edge_objects", lambda key: [])
     with pytest.raises(RuntimeError) as ei:
         builder._select_edges(ctx, [{"of_feature": "Box", "face": "+z"}])
     assert "no bounding edges" in str(ei.value)

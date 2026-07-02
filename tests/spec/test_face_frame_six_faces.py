@@ -167,10 +167,13 @@ def test_side_face_without_rect_extents_raises_documented_error() -> None:
 def test_fillet_edge_error_string_quoted_in_doc_matches_source() -> None:
     # The fillet edge-selector string is raised behind a COM call (not unit-
     # reachable offline), so pin the doc quote to the source verbatim instead.
+    # Lives in handlers/dress_up.py (Phase 3 Move 4), not builder.py.
     needle = "matches no edge within 1um"
-    builder = (_ROOT / "src" / "ai_sw_bridge" / "spec" / "builder.py").read_text(
-        encoding="utf-8"
-    )
+    dress_up = (
+        _ROOT / "src" / "ai_sw_bridge" / "spec" / "handlers" / "dress_up.py"
+    ).read_text(encoding="utf-8")
     doc = (_ROOT / "docs" / "known_limitations.md").read_text(encoding="utf-8")
-    assert needle in builder, "fillet edge-selector error string changed in builder.py"
+    assert (
+        needle in dress_up
+    ), "fillet edge-selector error string changed in dress_up.py"
     assert needle in doc, "known_limitations.md no longer quotes the live fillet error"
