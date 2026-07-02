@@ -69,11 +69,11 @@ jobs:
         # contract (UIUX.md §2.3).
         run: python tools/two_stream_lint.py src/
 
-      - name: Module-size budget gate (warn)
-        # Warn-only in Phase 0: prints modules that grew past their baseline or
-        # new modules over the 800-LOC ceiling, but does not fail the build.
-        # Promoted to --strict in Phase 3 once builder.py is decomposed.
-        run: python tools/module_size_gate.py
+      - name: Module-size budget gate (strict)
+        # Strict since Phase 3: fails the build on any grandfathered module that
+        # grew past its baseline, or any new module over the 800-LOC ceiling.
+        # builder.py decomposed into spec/handlers/* and re-baselined at 1690.
+        run: python tools/module_size_gate.py --strict
 
       - name: Import-linter lane-boundary contracts
         # Layer contract lives in pyproject [tool.importlinter]. It silently

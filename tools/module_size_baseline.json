@@ -1,11 +1,11 @@
 {
   "src/ai_sw_bridge/assembly/handlers.py": 1191,
   "src/ai_sw_bridge/brep/interrogator.py": 878,
-  "src/ai_sw_bridge/cli/build.py": 811,
+  "src/ai_sw_bridge/cli/build.py": 813,
   "src/ai_sw_bridge/drawing/lifecycle.py": 2390,
   "src/ai_sw_bridge/export/dispatch.py": 1006,
   "src/ai_sw_bridge/mutate.py": 2181,
   "src/ai_sw_bridge/observe.py": 2202,
-  "src/ai_sw_bridge/spec/builder.py": 3335,
+  "src/ai_sw_bridge/spec/builder.py": 1690,
   "src/ai_sw_bridge/spec/descriptors.py": 1513
 }
