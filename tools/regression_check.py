@@ -200,6 +200,63 @@ def _make_perf_payload(
     }
 
 
+def _current_git_sha() -> str | None:
+    """Return the current HEAD commit SHA, or None if git is unavailable."""
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    sha = out.stdout.strip()
+    return sha if out.returncode == 0 and sha else None
+
+
+def _repo_rel(p: Path) -> str:
+    """Repo-relative POSIX path string (falls back to as_posix if outside)."""
+    try:
+        return p.resolve().relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return p.as_posix()
+
+
+def _build_receipt_payload(
+    percentiles: dict[str, float | None],
+    spec_times: list[float],
+    n_specs: int,
+    baseline: Path | None,
+    measured_at: str | None,
+    sw_revision: str | None = None,
+) -> dict:
+    """Build the Perf Receipt JSON payload (spec 5A Sec.5.2).
+
+    Raw measurements only -- no committed verdict. CI re-derives the SLO
+    verdict from p95/p99. A just-measured receipt is current by
+    construction: lag_acknowledged is False and lag_reason is None.
+    """
+    return {
+        "schema_version": 1,
+        "measured_at": measured_at,
+        "baseline": _repo_rel(baseline) if baseline is not None else None,
+        "p50": percentiles["p50"],
+        "p95": percentiles["p95"],
+        "p99": percentiles["p99"],
+        "n_specs": n_specs,
+        "spec_times": [round(t, 3) for t in spec_times],
+        "host_meta": {
+            "platform": platform.platform(),
+            "python": platform.python_version(),
+            "sw_revision": sw_revision,
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "lag_acknowledged": False,
+        "lag_reason": None,
+    }
+
+
 def _check_slo_and_baseline(
     percentiles: dict[str, float | None],
     baseline_path: Path | None,
@@ -307,6 +364,7 @@ def capture(
 
 def check(
     baseline_compare: Path | None = None,
+    emit_receipt: Path | None = None,
 ) -> int:
     """Rebuild every example and compare its total volume to the baseline."""
     specs = _find_specs()
@@ -317,6 +375,7 @@ def check(
     regressions = 0
     checked = 0
     spec_times: list[float] = []
+    sw_rev: str | None = None
     for spec_path in specs:
         name = spec_path.parent.name
         golden_path = spec_path.parent / "golden.json"
@@ -330,6 +389,7 @@ def check(
             print(f"FAIL {name}: build error ({elapsed:.1f}s)")
             regressions += 1
             continue
+        sw_rev = data.get("sw_revision") or sw_rev
         checked += 1
         total, _ = _total_mass_and_features(data)
         expected = golden.get("total_mass_mm3", 0.0)
@@ -349,6 +409,19 @@ def check(
     )
 
     slo_ok = _check_slo_and_baseline(percentiles, baseline_compare)
+
+    if emit_receipt is not None:
+        payload = _build_receipt_payload(
+            percentiles,
+            spec_times,
+            len(spec_times),
+            baseline_compare,
+            _current_git_sha(),
+            sw_rev,
+        )
+        emit_receipt.parent.mkdir(parents=True, exist_ok=True)
+        emit_receipt.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        print(f"Perf receipt written to {emit_receipt}", file=sys.stderr)
 
     if regressions:
         print(f"\n{regressions} regression(s) detected")
@@ -384,12 +457,19 @@ def main() -> int:
         default=None,
         help="Path to write the current perf baseline JSON after the run.",
     )
+    parser.add_argument(
+        "--emit-receipt",
+        dest="emit_receipt",
+        type=Path,
+        default=None,
+        help="Path to write the git-anchored Perf Receipt JSON after a run.",
+    )
     args = parser.parse_args()
     if args.capture:
         return capture(
             write_baseline=args.write_baseline, baseline_compare=args.baseline_compare
         )
-    return check(baseline_compare=args.baseline_compare)
+    return check(baseline_compare=args.baseline_compare, emit_receipt=args.emit_receipt)
 
 
 if __name__ == "__main__":
