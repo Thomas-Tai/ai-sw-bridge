@@ -150,6 +150,8 @@ See [`docs/i18n/TRANSLATION_PROMPT.md`](docs/i18n/TRANSLATION_PROMPT.md) for the
 
 `tests/test_i18n_staleness.py` enforces the biconditional *stale ⇔ sentinel* in CI (it runs with `fetch-depth: 0`), so a stale mirror with no banner — or a fresh one with a stale banner — fails the build. Honest lag is allowed; silent rot is not. English remains the single authoritative surface. See the "staleness gate" section of `TRANSLATION_PROMPT.md` for the full contract.
 
+**Performance freshness is also a gate.** If you change the feature-build hot path (`src/ai_sw_bridge/spec/`, `src/ai_sw_bridge/features/`, `src/ai_sw_bridge/cli/build.py`, or `examples/*/spec.json`), the committed performance receipt (`tools/perf_baselines/receipt.json`) is now stale. Before the change is merge-ready, either **re-measure on a live seat** (`python tools/regression_check.py --check --baseline-compare tools/perf_baselines/v0.10.json --emit-receipt tools/perf_baselines/receipt.json`) and commit the fresh receipt, **or** set `lag_acknowledged: true` (+ a `lag_reason`) on it. `tests/test_perf_receipt.py` enforces `stale ⇔ lag_acknowledged` and re-derives the SLO verdict from the raw numbers (it never trusts a committed pass/fail). See `docs/perf_gate.md`.
+
 ## Port attribution
 
 When porting code from upstream repositories, three attribution surfaces are
