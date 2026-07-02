@@ -21,9 +21,16 @@ COV_JSON = REPO_ROOT / "coverage.json"
 BASELINE_PATH = REPO_ROOT / "tools" / "coverage_baseline.json"
 TOLERANCE = 1.0  # pt of matrix (3.10/3.12/3.14) branch-coverage variance
 PACKAGE_FLOORS = {
-    "src/ai_sw_bridge/spec/": 67.0,  # measured 67.3% at v1.7.0
-    "src/ai_sw_bridge/features/": 71.0,  # measured 71.2% at v1.7.0
-    "src/ai_sw_bridge/errors/": 94.0,  # measured 94.3% at v1.7.0
+    # spec/ floor re-baselined to the SEATLESS-CI measurement. The prior 67.0
+    # ("measured 67.3% at v1.7.0") was a with-seat figure that the seatless CI
+    # runner can never reach: spec/handlers/* is exercised largely by
+    # solidworks_only tests, which skip with no seat, so on CI spec/ measures
+    # ~59.4%. The gate ran green historically only because it never executed to
+    # completion (the mypy step failed first). Enforce the honest seatless
+    # ratchet point here; the 1.0pt tolerance still catches real regressions.
+    "src/ai_sw_bridge/spec/": 59.0,
+    "src/ai_sw_bridge/features/": 71.0,  # measured 71.2% at v1.7.0 (seatless OK)
+    "src/ai_sw_bridge/errors/": 94.0,  # measured 94.3% at v1.7.0 (seatless OK)
 }
 
 
