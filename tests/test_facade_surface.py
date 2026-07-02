@@ -143,3 +143,22 @@ def test_facade_surface_matches_snapshot(cls_name: str) -> None:
         f"added={sorted(added)} removed={sorted(removed)} changed={changed}. "
         f"If intentional, update EXPECTED in tests/test_facade_surface.py."
     )
+
+
+@pytest.mark.parametrize("cls_name", sorted(_CLASSES))
+def test_facade_has_no_public_static_or_classmethods(cls_name: str) -> None:
+    """Guard the guard: ``_surface`` only understands instance methods and
+    properties. A public ``@staticmethod``/``@classmethod`` would fall through
+    both branches and silently escape the snapshot. The facade style uses
+    neither today; assert that so any future one fails loudly and forces
+    ``_surface`` to be extended rather than the surface leaking un-pinned.
+    """
+    cls = _CLASSES[cls_name]
+    for name in dir(cls):
+        if name.startswith("_"):
+            continue
+        attr = inspect.getattr_static(cls, name)
+        assert not isinstance(attr, (staticmethod, classmethod)), (
+            f"{cls_name}.{name} is a static/classmethod — extend _surface() to "
+            "snapshot this member kind before adding it to the public surface."
+        )
