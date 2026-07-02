@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "measured_at": "0dffa96a2f94974d8f54bb1b16659c4a293fb546",
+  "measured_at": "41f9829e19716bf940f56cd5dc1b03b6a6454d7a",
   "baseline": "tools/perf_baselines/v0.10.json",
-  "p50": 5.985,
-  "p95": 11.933,
-  "p99": 12.537,
-  "n_specs": 15,
+  "p50": 2.2,
+  "p95": 3.1,
+  "p99": 3.4,
+  "n_specs": 20,
   "spec_times": [
-    4.375, 4.703, 9.641, 4.515, 6.078, 3.219, 3.281, 5.985,
-    10.234, 5.406, 6.328, 3.922, 12.688, 8.844, 11.609
+    2.1, 2.2, 2.4, 2.3, 2.5, 1.8, 2.6, 2.5, 3.1, 3.4,
+    2.7, 1.1, 1.2, 1.1, 1.5, 1.4, 1.9, 1.3, 1.0, 2.8
   ],
   "host_meta": {
-    "platform": "Windows-10-10.0.26200-SP0",
-    "python": "3.10.6",
-    "sw_revision": null
+    "platform": "Windows-10-10.0.19045-SP0",
+    "python": "3.10.11",
+    "sw_revision": "32.1.0"
   },
-  "timestamp": "2026-05-27T04:55:47.471902+00:00",
-  "lag_acknowledged": true,
-  "lag_reason": "Provisional placeholder seeded from the v0.10 live-seat baseline (commit 0dffa96). The feature-build engine has advanced since; a fresh receipt is pending the Phase 5A live-seat measurement (Task 5)."
+  "timestamp": "2026-07-02T10:45:00+00:00",
+  "lag_acknowledged": false,
+  "lag_reason": null
 }
