@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Windows installer (unsigned).** A one-double-click `ai-sw-bridge-setup-*.exe`
+  bundling a private CPython 3.12 + an offline wheelhouse — installs per-user
+  with no admin and no pre-existing Python, runs the `pywin32` postinstall, adds
+  itself to PATH, and optionally registers the MCP server. Built reproducibly by
+  CI (`release.yml` installer job, `needs: [test]`) and attached to tagged
+  Releases; a `workflow_dispatch` run builds + silent-install-smokes it as an
+  artifact without publishing. Not code-signed — SmartScreen guidance and the
+  `pipx` alternative are documented in `docs/operator_guide.md`.
 - **Side faces of Top/Right-plane parents are fully addressable.** `_face_frame`
   now supports the `±x`/`±y` side faces of extrudes built on the Top (`+y`-axis)
   and Right (`+x`-axis) planes, not just the Front plane — for BOTH:

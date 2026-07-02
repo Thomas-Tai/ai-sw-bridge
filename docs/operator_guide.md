@@ -50,6 +50,23 @@ pywin32's DLLs *inside the pipx environment*:
 The `[mcp]` extra (bundled above) is what lets `ai-sw-mcp` run for Claude Desktop /
 Cursor. `ai-sw-doctor` (next) checks both the PATH and this pywin32 step for you.
 
+### …or install with the Windows installer (no Python required)
+
+Prefer not to touch Python at all? Download `ai-sw-bridge-setup-<version>.exe`
+from the [Releases page](https://github.com/Thomas-Tai/ai-sw-bridge/releases)
+and double-click it. It bundles a private CPython — you do **not** need Python
+installed, and it does the `pywin32` step above for you.
+
+- **Prerequisite:** SOLIDWORKS must already be installed (the bridge drives it
+  via COM; the installer bundles Python, not SOLIDWORKS).
+- **SmartScreen:** the installer is **not code-signed** (no certificate), so
+  Windows shows "Windows protected your PC." Click **More info → Run anyway**.
+  It installs per-user under `%LOCALAPPDATA%\Programs\ai-sw-bridge` (no admin
+  prompt) and is ~80–150 MB installed (numpy + pywin32 + a private CPython).
+- The installer offers a checkbox to run `ai-sw-doctor --register` for you.
+
+After either method, open a **new** terminal and run `ai-sw-build --list-kinds`.
+
 ### Preflight your machine
 
 Before anything else, let the bridge check your setup:
