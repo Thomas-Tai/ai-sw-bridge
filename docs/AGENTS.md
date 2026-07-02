@@ -125,7 +125,7 @@ If the human's part has a `*_locals.txt` equation file (Equation Manager linked 
 
 1. **Read the error message verbatim** — the bridge surfaces precise messages including which feature and which field. Don't paraphrase before showing the human.
 2. **Validation errors** (before any SW call): the spec is wrong. Fix the spec.
-3. **`PARAMNOTOPTIONAL` / `Invalid number of parameters`** at runtime: usually means an API arg count drifted. Check [`docs/api_reference.md`](api_reference.md) for the CHM-authoritative signature. If you genuinely need a new API surface, add it to [`tools/_api_extract_input.json`](../tools/_api_extract_input.json) and regenerate.
+3. **`PARAMNOTOPTIONAL` / `Invalid number of parameters`** at runtime: usually means an API arg count drifted. Regenerate the CHM-authoritative reference locally (`api_reference.md` is gitignored, not committed) from [`tools/_api_extract_input.json`](../tools/_api_extract_input.json) and check the signature. If you genuinely need a new API surface, add it there and regenerate.
 4. **`SelectByID returned False`**: face-select failed. Most common cause: an earlier feature changed the geometry and the seed coord is now on a curved/missing face. Reduce the spec until you find which feature breaks the select; adjust `center` offsets accordingly.
 5. **The build returns a feature but the geometry looks wrong**: probably a `center` offset from the wrong origin (see the face-sketch-origin gotcha above). The runtime stderr warning fires with the exact offset to add.
 
@@ -173,6 +173,6 @@ When ending a session, summarize the current build state and paste it into the n
 | CLI flags + return shapes | [`docs/tools_reference.md`](tools_reference.md) |
 | API gotchas (pywin32 limits) | [`docs/known_gotchas.md`](known_gotchas.md) |
 | User-facing limitations | [`docs/known_limitations.md`](known_limitations.md) |
-| CHM-verified SW API ref | [`docs/api_reference.md`](api_reference.md) |
+| CHM-verified SW API ref | regenerate locally from [`tools/_api_extract_input.json`](../tools/_api_extract_input.json) (gitignored); superset [`docs/sw_api_full.md`](sw_api_full.md) |
 | Schema (the actual code) | [`src/ai_sw_bridge/spec/schema.py`](../src/ai_sw_bridge/spec/schema.py) |
 | Working example specs | [`examples/`](../examples/) |
