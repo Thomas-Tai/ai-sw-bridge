@@ -8,7 +8,9 @@ handler against a fake COM seam (no pywin32, no SOLIDWORKS): they assert the
 plane is selected, the sketch is opened and closed, the right Create* call fires
 with the expected metre-converted args, and the BuiltFeature is shaped right.
 
-The spline test monkeypatches ``builder._r8_safearray`` to an identity wrap so
+The spline test monkeypatches ``ai_sw_bridge.spec.handlers.sketch._r8_safearray``
+(not ``builder``: the handler now lives in ``handlers/sketch.py`` and resolves
+the name from its own module globals -- Phase 3 Move 5) to an identity wrap so
 the SAFEARRAY/VARIANT path needs no pywin32.
 
 Live-seat validation (the geometry actually materialising) is covered by
@@ -22,6 +24,7 @@ from typing import Any
 import pytest
 
 from ai_sw_bridge.spec import builder
+from ai_sw_bridge.spec.handlers import sketch as sketch_handlers
 
 
 class _FakeSketchFeature:
@@ -189,7 +192,10 @@ class TestSketchPrimitiveHandlers:
         assert _only(ctx, "CreateArc")[-1] == -1
 
     def test_spline(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(builder, "_r8_safearray", lambda v: list(v))
+        # Patched on handlers.sketch (not builder): _build_sketch_spline
+        # (Phase 3 Move 5) resolves _r8_safearray from its own module
+        # globals, not builder's re-export.
+        monkeypatch.setattr(sketch_handlers, "_r8_safearray", lambda v: list(v))
         ctx = _Ctx()
         builder._build_sketch_spline(
             ctx,
@@ -289,7 +295,10 @@ class TestSketchPrimitiveHandlers:
     def test_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ctx = _Ctx()
         st = _FakeSketchText()
-        monkeypatch.setattr(builder, "_as_sketch_text", lambda raw: st)
+        # Patched on handlers.sketch (not builder): _build_sketch_text
+        # (Phase 3 Move 5) resolves _as_sketch_text from its own module
+        # globals, not builder's re-export.
+        monkeypatch.setattr(sketch_handlers, "_as_sketch_text", lambda raw: st)
         builder._build_sketch_text(
             ctx,
             {
@@ -321,7 +330,8 @@ class TestSketchPrimitiveHandlers:
     ) -> None:
         ctx = _Ctx()
         st = _FakeSketchText()
-        monkeypatch.setattr(builder, "_as_sketch_text", lambda raw: st)
+        # Patched on handlers.sketch (not builder): see test_text above.
+        monkeypatch.setattr(sketch_handlers, "_as_sketch_text", lambda raw: st)
         builder._build_sketch_text(
             ctx,
             {
