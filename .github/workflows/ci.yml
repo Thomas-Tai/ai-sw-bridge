@@ -20,6 +20,12 @@ jobs:
       # v5 runs on Node 24; v4 ran on Node 20 which GitHub announced
       # is deprecated and will be removed from runners 2026-09-16.
       - uses: actions/checkout@v5
+        with:
+          # Full history: tests/test_i18n_staleness.py (Model-B gate) shells
+          # out to `git rev-list <translated-from>..HEAD` / `cat-file -e` to
+          # detect mirror staleness. A shallow (depth-1) clone can't reach the
+          # frozen baseline SHAs, so the gate would skip instead of enforce.
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         # v6 runs on Node 24; v5 ran on Node 20. Our usage (just

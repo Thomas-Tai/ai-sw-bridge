@@ -268,6 +268,31 @@ When the English docs change (e.g. a new feature primitive ships), the translati
 
 Recommended: keep a `translated-from: <commit_hash>` line in the frontmatter of each translated file so future re-translation can target the diff from that commit rather than the whole file.
 
+### The staleness gate (CI-enforced) — the sentinel contract
+
+As of Phase 4, the `translated-from` frontmatter is no longer just a convenience — it is load-bearing. `tests/test_i18n_staleness.py` enforces a **Model-B honesty biconditional** over the canonical mirror set (the front-door trio — `README.md`, `USAGE.md`, `docs/PUBLIC_API.md` — for each of `zh-CN`, `zh-TW`):
+
+> **A mirror is *stale* if and only if it carries the staleness sentinel.**
+
+- **stale** ≝ the English source has commits *after* the mirror's `translated-from` SHA (`git rev-list <sha0>..HEAD -- <source>` is non-empty).
+- **sentinel** ≝ the literal HTML comment `<!-- i18n-staleness-banner -->` appears anywhere in the mirror. It is invisible in rendered Markdown; put the human-readable localized "this translation is out of date" banner prose right next to it.
+
+The four cases:
+
+| source moved past `translated-from`? | sentinel present? | verdict |
+|---|---|---|
+| no (fresh) | no | ✅ PASS — fresh and truthful |
+| yes (stale) | yes | ✅ PASS — honest lag, permitted |
+| yes (stale) | **no** | ❌ FAIL — *silent rot*, the exact thing the gate blocks |
+| no (fresh) | **yes** | ❌ FAIL — a fresh mirror *crying wolf* |
+
+So when the English front-door docs change and you cannot immediately re-translate, you have **two honest options**, and the gate forces one of them:
+
+1. **Re-translate** the affected mirror and bump its `translated-from` to the source's new SHA (mirror lands fresh → no sentinel). Snapshot discipline: translate against a frozen source SHA and do **not** co-edit the English source in the same commit, or the new mirror is born stale.
+2. **Declare it stale** — add the `<!-- i18n-staleness-banner -->` sentinel (plus localized banner prose) so readers are warned. CI stays green; the debt is visible and greppable.
+
+The gate also fails loudly on a missing/blank `translated-from`, a `translated-from` SHA that is not in git history (rebase/force-push orphan), any dead relative link in a mirror, a dropped DO-NOT-TRANSLATE token that the English source still contains, and any `docs/i18n/zh-*/*.md` file that is not listed in the test's `I18N_MIRRORS` manifest. It runs in CI on a full-history checkout (`fetch-depth: 0`); on a shallow/no-git local clone it *skips* rather than false-pass.
+
 ### Structural rewrites: do a full re-translation, not a diff
 
 If the English source has been substantially restructured (sections deleted, moved, or rewritten — not just edited paragraph-by-paragraph), the diff-based update is the *wrong* tool. The current `docs/i18n/zh-{TW,CN}/README.md` files were translated against an older 514-line README; the current English README is 164 lines after a 2026-05-20 audience-pivot rewrite. A re-translator pointed at the diff will produce a Frankenstein file with paragraphs from both versions.

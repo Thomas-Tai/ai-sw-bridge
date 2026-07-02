@@ -143,6 +143,13 @@ Please include:
 
 See [`docs/i18n/TRANSLATION_PROMPT.md`](docs/i18n/TRANSLATION_PROMPT.md) for the parameterized translation prompt. The DO-NOT-TRANSLATE list in that prompt is the authoritative reference for which technical terms must survive translation verbatim.
 
+**i18n freshness is a PR gate.** If your change touches `README.md`, `USAGE.md`, or `docs/PUBLIC_API.md`, the Simplified/Traditional Chinese mirrors under `docs/i18n/{zh-CN,zh-TW}/` are now out of date, and you must do **one** of two things before the PR is merge-ready:
+
+- **Re-translate** the affected mirror(s) and bump each `translated-from:` frontmatter SHA to the source's new commit (mirror lands *fresh*); **or**
+- **Mark them honestly stale** by adding the `<!-- i18n-staleness-banner -->` sentinel (with localized banner prose) to each affected mirror.
+
+`tests/test_i18n_staleness.py` enforces the biconditional *stale ⇔ sentinel* in CI (it runs with `fetch-depth: 0`), so a stale mirror with no banner — or a fresh one with a stale banner — fails the build. Honest lag is allowed; silent rot is not. English remains the single authoritative surface. See the "staleness gate" section of `TRANSLATION_PROMPT.md` for the full contract.
+
 ## Port attribution
 
 When porting code from upstream repositories, three attribution surfaces are
