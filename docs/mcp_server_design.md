@@ -266,6 +266,90 @@ credentials and at-rest encryption setup. They stay CLI-only.
 - `ai-sw-checkpoint genkey/rekey/migrate` — credential operations,
   CLI-only (see §6.4).
 
+### 6.6 Operator setup & current tool inventory (v1.7.0)
+
+> §6.1–6.5 above are the original **v0.13 design-time** inventory (kept as
+> design context). The current shipped surface is **37 tools**, pinned by
+> `EXPECTED_TOOLS` in `tests/mcp_lane/test_server_contract.py`. This section is
+> the operator-facing setup plus the full current inventory (relocated here from
+> the README, which now carries a short stub linking back).
+
+#### Quick install
+
+If you followed the operator quickstart, the `[mcp]` extra is already installed.
+The `[mcp]` suffix is **extras** syntax — it pulls the MCP SDK in alongside the
+base package. The quotes around the whole `"…[mcp] @ git+…"` argument are
+required in PowerShell (otherwise the shell tries to glob the brackets).
+
+```powershell
+pipx install "ai-sw-bridge[mcp] @ git+https://github.com/Thomas-Tai/ai-sw-bridge.git"
+where ai-sw-mcp           # confirms the entry point is on PATH
+```
+
+#### Register with Claude Desktop
+
+Edit `%APPDATA%\Claude\claude_desktop_config.json` (the path varies for the
+Windows Store / MSIX build):
+
+```json
+{
+  "mcpServers": {
+    "ai-sw-bridge": {
+      "command": "C:\\path\\to\\ai-sw-mcp.exe"
+    }
+  }
+}
+```
+
+Restart Claude Desktop fully. The MCP server appears under **Settings →
+Connectors / Local MCP servers** with 37 tools listed. Type "What's the bounding
+box of the active part?" in chat; the model selects `sw_bbox`, the result renders
+in the chat.
+
+#### Tool inventory (37 tools)
+
+**Observation (22)** — read-only, mirror `ai-sw-observe`:
+`sw_active_doc`, `sw_feature_errors`, `sw_equations`, `sw_bbox`,
+`sw_volume`, `sw_screenshot`, `sw_measure`, `sw_measure_selection`,
+`sw_mate_errors`, `sw_custom_props`, `sw_enabled_addins`, `sw_interference`,
+`sw_bounding_box`, `sw_inertia`, `sw_clearance`, `sw_draft_analysis`,
+`sw_current_selection`, `sw_undercut_faces`, `sw_min_wall_thickness`,
+`sw_feature_statistics`, `sw_analyze_stackup`, `sw_observe_mbd`
+
+**Build + batch (3)**:
+`sw_build` (validate → **elicit human approval in-chat** → build — full
+`ai-sw-build` surface incl. checkpoint + encryption; no build or `save_as`
+without an explicit approval, degrades to the `ai-sw-build` CLI when the client
+can't elicit); `sw_batch_plan` (**hard-wired `dry_run=True`** — validates a
+multi-feature batch on the live kernel but can never persist to disk);
+`sw_batch_execute` (PLAN → **elicit human approval in-chat** → COMMIT, degrades
+to the `ai-sw-batch` CLI). The two write tools both gate their disk write behind
+MCP elicitation — no autonomous writes.
+
+**API doc (5)** — read-only, SQLite-backed, mirror `ai-sw-apidoc`:
+`sw_apidoc_search`, `sw_apidoc_detail`, `sw_apidoc_members`,
+`sw_apidoc_examples`, `sw_apidoc_enum`
+
+**Design-Memory (1)** — read-only, on-device `sqlite-vec`, mirrors `ai-sw-memory`:
+`sw_retrieve_design_memory` (semantic retrieval over the operator's own past
+designs; `kind` / `recipe_kind` metadata filters)
+
+**History + checkpoint info (4)** — read-only, mirror `ai-sw-history` + `ai-sw-checkpoint info`:
+`sw_history_part`, `sw_history_since`, `sw_history_diff`, `sw_checkpoint_info`
+
+**Resilience + lifecycle (2)** — read-only health + STA reconnect:
+`sw_session_health` (seat presence + durable transaction-ledger audit + last
+recovery → a degraded/recovered/healthy verdict); `sw_reconnect` (re-attach
+after SW process death)
+
+**Deliberately NOT exposed via MCP** (CLI-only, per §6.5 above): the four mutate
+operations — `sw_propose_local_change`, `sw_dry_run`, `sw_commit`,
+`sw_undo_last_commit` — require human approval per call. `sw_checkpoint_genkey` /
+`sw_checkpoint_rekey` / `sw_checkpoint_migrate` are key-management operations.
+`sw_codegen` and `sw_probe` are not request/response shaped. The batch *commit*
+still requires a human: `sw_batch_execute` collects the `[y/N]` via in-chat
+elicitation, and `sw_batch_plan` is plan-only by construction.
+
 ## 7. Wire format
 
 ### 7.1 Tool input schema
