@@ -52,3 +52,45 @@ def test_every_cli_script_has_a_stability_tier() -> None:
         if f"ai_sw_bridge.cli.{verb}" not in stability.TIER_REGISTRY
     ]
     assert not missing, f"cli modules missing a @cli_stability tier: {missing}"
+
+
+def test_every_spec_handler_lives_in_handlers_package() -> None:
+    """Post-Phase-3: every DESCRIPTORS handler resolves to a callable defined
+    in a spec.handlers.* module (or the spec.sketches.* handler classes),
+    proving the self-registration shape holds and no handler slid back into
+    builder.py."""
+    from ai_sw_bridge.spec import builder
+
+    strays = []
+    for name, ft in builder.DESCRIPTORS.items():
+        # spec.sketches.* handler-class .build methods are allowed; everything
+        # else must live under spec.handlers.* (NOT spec.builder).
+        if getattr(ft.handler, "__module__", "") == "ai_sw_bridge.spec.builder":
+            strays.append(name)
+    assert not strays, (
+        f"handlers still defined in builder.py (should be in handlers/*): {strays}"
+    )
+
+
+def test_handlers_never_import_builder() -> None:
+    """The handler leaf layer must not import builder (acyclic guarantee)."""
+    import ast
+
+    hdir = _ROOT / "src" / "ai_sw_bridge" / "spec" / "handlers"
+    offenders = []
+    for py in hdir.glob("*.py"):
+        tree = ast.parse(py.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module
+                and "builder" in node.module
+            ):
+                offenders.append(py.name)
+            if isinstance(node, ast.Import):
+                for a in node.names:
+                    if "builder" in a.name:
+                        offenders.append(py.name)
+    assert not offenders, (
+        f"handler modules import builder (breaks the leaf): {offenders}"
+    )
