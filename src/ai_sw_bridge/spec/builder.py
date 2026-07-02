@@ -95,6 +95,11 @@ from .sketches import (
     RectangleOnPlaneHandler,
 )
 from .schema import SKETCH_TYPES
+from .handlers._common import (  # noqa: F401  -- re-exported for _wire_handlers + monkeypatch seams
+    _mm_to_m,
+    _r8_safearray,
+    _select_sketch,
+)
 
 # swUserPreferenceToggle.swInputDimValOnCreate -- the toggle ID is NOT
 # documented in the CHM enum (descriptions just say "see System Options").
@@ -548,13 +553,6 @@ def _call_feature_cut(
     if feature is None:
         raise RuntimeError("FeatureCut4 returned None")
     return feature
-
-
-def _select_sketch(ctx: BuildContext, sketch_name: str) -> None:
-    ctx.doc.ClearSelection2(True)
-    ok = ctx.doc.SelectByID(sketch_name, "SKETCH", 0.0, 0.0, 0.0)
-    if not ok:
-        raise RuntimeError(f"could not select sketch '{sketch_name}'")
 
 
 def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
@@ -1674,32 +1672,6 @@ def _circles_on_face_rhs_walker(feat: dict[str, Any]) -> list[tuple[str, str, st
 # ellipse — seat-proven). Unsupported-on-seat requests are rejected loudly, not
 # faked: spline `closed`, slot `construction`, text `construction`/`angle_deg`.
 # ---------------------------------------------------------------------------
-
-
-def _mm_to_m(value: Any) -> float:
-    """Convert a LENGTH_SCHEMA field (mm literal or `{rhs}` dict) to metres.
-
-    For `{rhs}` bindings the live handler substitutes the resolved numeric
-    value; here we just return a placeholder so the arg tuple has the right
-    shape for the seat pass to verify.
-    """
-    if isinstance(value, dict):
-        return 0.0  # placeholder; live path resolves via EquationMgr
-    return float(value) / 1000.0
-
-
-def _r8_safearray(values: list[float]) -> Any:
-    """Wrap a flat list of doubles as a ``VT_ARRAY|VT_R8`` VARIANT SAFEARRAY.
-
-    The point buffer shape ``ISketchManager.CreateSpline2`` requires. The
-    pywin32 import is function-local so this module stays importable (and
-    unit-testable) without SOLIDWORKS / pywin32 present — tests monkeypatch
-    this seam. Seat-proven 2026-05-31 (spline materialised first try).
-    """
-    import pythoncom
-    from win32com.client import VARIANT
-
-    return VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, list(values))
 
 
 def _enter_plane_sketch(ctx: BuildContext, feat: dict[str, Any]) -> Any:

@@ -193,3 +193,17 @@ forbidden_modules = [
     "ai_sw_bridge.observe",
     "ai_sw_bridge.features",
 ]
+
+# Phase 3 — the spec.handlers kernel is an acyclic leaf: the shared COM/transport
+# primitives may not import builder.py (nor any sibling handler), so builder can
+# safely re-export them without forming a runtime cycle. Only DIRECT imports are
+# pinned (allow_indirect_imports): _common imports only BuildContext from the
+# _build_context leaf, which itself carries a *lazy*, function-local
+# `from .builder import _default_rhs_walker` (deferred, no import-time cycle) —
+# that pre-existing indirect edge is out of scope for this leaf's contract.
+[[tool.importlinter.contracts]]
+name = "spec handlers kernel is a builder-free leaf"
+type = "forbidden"
+source_modules = ["ai_sw_bridge.spec.handlers._common"]
+forbidden_modules = ["ai_sw_bridge.spec.builder"]
+allow_indirect_imports = "true"
