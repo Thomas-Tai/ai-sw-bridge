@@ -175,12 +175,18 @@ jobs:
         shell: pwsh
         run: |
           $doc = ai-sw-doctor --no-seat 2>&1
-          if ($LASTEXITCODE -ne 1 -and $LASTEXITCODE -ne 0) {
-            throw "ai-sw-doctor --no-seat exited $LASTEXITCODE (want 0/1)"
+          $docExit = $LASTEXITCODE
+          Write-Host "--- ai-sw-doctor --no-seat (exit $docExit) ---"
+          Write-Host ($doc | Out-String)
+          if ($docExit -ne 1 -and $docExit -ne 0) {
+            throw "ai-sw-doctor --no-seat exited $docExit (want 0/1)"
           }
           if ($doc -match "Traceback") { throw "ai-sw-doctor leaked a traceback" }
           $out = ai-sw-probe 2>&1
-          if ($LASTEXITCODE -ne 1) { throw "ai-sw-probe exited $LASTEXITCODE (want 1 with no seat)" }
+          $probeExit = $LASTEXITCODE
+          Write-Host "--- ai-sw-probe (exit $probeExit) ---"
+          Write-Host ($out | Out-String)
+          if ($probeExit -ne 1) { throw "ai-sw-probe exited $probeExit (want 1 with no seat)" }
           if ($out -match "Traceback") { throw "ai-sw-probe leaked a traceback" }
       - name: MCP server module imports
         run: python -c "import ai_sw_bridge.mcp.server; print('mcp ok')"
