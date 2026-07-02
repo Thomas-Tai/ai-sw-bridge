@@ -139,7 +139,7 @@ if data["manager_status_code"] != 0:
     print("Equation manager has errors:", data["manager_status"])
 ```
 
-For Claude Code specifically, you can wrap each command in a slash-command or expose them via MCP. The package intentionally stays out of MCP transport details — point an MCP server at the CLIs and you're done.
+For Claude Code and other MCP clients, `ai-sw-bridge` ships a native MCP server — `ai-sw-mcp` — exposing 37 tools (read lanes + plan/elicit-gated writes) over stdio; you do not need to wrap the CLIs yourself. See [`docs/mcp_server_design.md`](docs/mcp_server_design.md) for setup, the tool inventory, and the protocol. The subprocess-over-CLI pattern shown above still works for bespoke harnesses that prefer it.
 
 ## Output paths & environment
 
