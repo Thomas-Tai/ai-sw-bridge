@@ -67,9 +67,9 @@ def test_every_spec_handler_lives_in_handlers_package() -> None:
         # else must live under spec.handlers.* (NOT spec.builder).
         if getattr(ft.handler, "__module__", "") == "ai_sw_bridge.spec.builder":
             strays.append(name)
-    assert not strays, (
-        f"handlers still defined in builder.py (should be in handlers/*): {strays}"
-    )
+    assert (
+        not strays
+    ), f"handlers still defined in builder.py (should be in handlers/*): {strays}"
 
 
 def test_handlers_never_import_builder() -> None:
@@ -91,6 +91,6 @@ def test_handlers_never_import_builder() -> None:
                 for a in node.names:
                     if "builder" in a.name:
                         offenders.append(py.name)
-    assert not offenders, (
-        f"handler modules import builder (breaks the leaf): {offenders}"
-    )
+    assert (
+        not offenders
+    ), f"handler modules import builder (breaks the leaf): {offenders}"
