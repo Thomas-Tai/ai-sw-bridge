@@ -176,3 +176,20 @@ ignore_imports = [
     "ai_sw_bridge.client -> ai_sw_bridge.mutate",
     "ai_sw_bridge.client -> ai_sw_bridge.resilience",
 ]
+
+# v1.7.0 — the cross-surface deprecation registry governs the four public
+# surface classes by opaque string id and must import nothing it governs, so
+# it can never form an import cycle. Pin the stdlib-only leaf property.
+[[tool.importlinter.contracts]]
+name = "deprecations registry is a stdlib-only leaf"
+type = "forbidden"
+source_modules = ["ai_sw_bridge.deprecations"]
+forbidden_modules = [
+    "ai_sw_bridge.cli",
+    "ai_sw_bridge.mcp",
+    "ai_sw_bridge.client",
+    "ai_sw_bridge.spec",
+    "ai_sw_bridge.mutate",
+    "ai_sw_bridge.observe",
+    "ai_sw_bridge.features",
+]
