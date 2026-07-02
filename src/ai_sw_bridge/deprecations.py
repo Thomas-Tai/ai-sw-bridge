@@ -58,7 +58,15 @@ def current_version() -> str:
 def validate_registry(
     entries: Sequence[DeprecationEntry], current: str
 ) -> list[Violation]:
-    """Pure validator — reads only its arguments, never the module global."""
+    """Pure validator — reads only its arguments, never the module global.
+
+    ``current`` is intentionally unused today: the structural grace-policy
+    checks (major-boundary / next-minor / announce-before-remove) are
+    version-independent. It is a reserved parameter for the future
+    present-vs-absent check (a surface whose ``remove_in`` <= ``current`` must
+    no longer exist). Keeping it in the signature now avoids a later breaking
+    change to this contract.
+    """
     out: list[Violation] = []
     for e in entries:
         try:
