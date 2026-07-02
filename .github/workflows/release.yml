@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -47,6 +48,10 @@ jobs:
 
   release:
     needs: [test]
+    # Publish a GitHub Release only on a real tag push. On workflow_dispatch
+    # (used to smoke-test the installer job) this job is skipped so no spurious
+    # release is minted off a branch ref.
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -118,3 +123,61 @@ jobs:
           body_path: ${{ steps.release_notes.outputs.path }}
           draft: false
           prerelease: ${{ contains(github.ref_name, 'a') || contains(github.ref_name, 'b') || contains(github.ref_name, 'rc') }}
+
+  installer:
+    # Build the unsigned Windows installer. needs:[test] so a red commit can
+    # never be minted into a published artifact. Attaches to the Release on a
+    # tag; on workflow_dispatch it only uploads a workflow artifact (no publish).
+    needs: [test]
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install build backend
+        run: python -m pip install --upgrade pip build
+
+      - name: Ensure Inno Setup (ISCC) is available
+        shell: pwsh
+        run: |
+          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if (-not $iscc) { choco install innosetup --no-progress -y }
+
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $ver = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { "0.0.0-dev" }
+          python tools/build_installer.py --version $ver
+
+      - name: Silent-install smoke (COM-free)
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist/ai-sw-bridge-setup-*.exe | Select-Object -First 1
+          if (-not $exe) { throw "installer .exe not produced" }
+          Start-Process -FilePath $exe.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
+          $root = Join-Path $env:LOCALAPPDATA 'Programs\ai-sw-bridge'
+          $build = Join-Path $root 'runtime\Scripts\ai-sw-build.exe'
+          if (-not (Test-Path $build)) { throw "ai-sw-build.exe missing after install" }
+          & $build --list-kinds
+          if ($LASTEXITCODE -ne 0) { throw "ai-sw-build --list-kinds failed" }
+          & (Join-Path $root 'runtime\python.exe') -c "import win32com.client; print('pywin32 ok')"
+          if ($LASTEXITCODE -ne 0) { throw "pywin32 import failed (postinstall)" }
+          & (Join-Path $root 'runtime\python.exe') -c "import ai_sw_bridge.mcp.server; print('mcp ok')"
+          if ($LASTEXITCODE -ne 0) { throw "mcp server import failed" }
+
+      - name: Attach installer to the Release (tag runs only)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ai-sw-bridge-setup-*.exe
+
+      - name: Upload installer artifact (workflow_dispatch runs)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-sw-bridge-installer
+          path: dist/ai-sw-bridge-setup-*.exe
