@@ -15,6 +15,7 @@ from __future__ import annotations
 import pytest
 
 from ai_sw_bridge.spec import builder
+from ai_sw_bridge.spec.handlers import extrude as extrude_handlers
 
 MERGE_ARG_INDEX = 17  # arg 18 (1-based) == Merge
 
@@ -76,7 +77,11 @@ def test_boss_extrude_blind_reads_feat_merge(monkeypatch):
         captured["merge"] = merge
         raise _Stop  # stop before the irrelevant downstream build steps
 
-    monkeypatch.setattr(builder, "_call_feature_extrusion", _spy)
+    # _build_boss_extrude_blind now lives in handlers.extrude and resolves
+    # _call_feature_extrusion against THAT module's namespace, so the spy must
+    # patch it there -- a patch on `builder` would be dead (the moved handler
+    # never looks it up on builder).
+    monkeypatch.setattr(extrude_handlers, "_call_feature_extrusion", _spy)
 
     ctx = builder.BuildContext(sw=None, doc=_FakeDoc())
 
