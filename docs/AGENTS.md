@@ -173,6 +173,6 @@ When ending a session, summarize the current build state and paste it into the n
 | CLI flags + return shapes | [`docs/tools_reference.md`](tools_reference.md) |
 | API gotchas (pywin32 limits) | [`docs/known_gotchas.md`](known_gotchas.md) |
 | User-facing limitations | [`docs/known_limitations.md`](known_limitations.md) |
-| CHM-verified SW API ref | regenerate locally from [`tools/_api_extract_input.json`](../tools/_api_extract_input.json) (gitignored); superset [`docs/sw_api_full.md`](sw_api_full.md) |
+| CHM-verified SW API ref | regenerate locally from [`tools/_api_extract_input.json`](../tools/_api_extract_input.json); a fuller `docs/sw_api_full.md` superset is generated the same way but is gitignored / not committed |
 | Schema (the actual code) | [`src/ai_sw_bridge/spec/schema.py`](../src/ai_sw_bridge/spec/schema.py) |
 | Working example specs | [`examples/`](../examples/) |
