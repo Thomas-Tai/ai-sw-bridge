@@ -19,7 +19,7 @@ jobs:
     steps:
       # v5 runs on Node 24; v4 ran on Node 20 which GitHub announced
       # is deprecated and will be removed from runners 2026-09-16.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # Full history: tests/test_i18n_staleness.py (Model-B gate) shells
           # out to `git rev-list <translated-from>..HEAD` / `cat-file -e` to
@@ -101,7 +101,7 @@ jobs:
     # Pin runner version (see comment on test job).
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -124,7 +124,7 @@ jobs:
   onboarding:
     runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -146,7 +146,7 @@ jobs:
   operator-install-smoke:
     runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
