@@ -28,7 +28,7 @@ The deliverable is a **build pipeline**, not a hand-built binary: a committed st
 
 - **`release.yml`** — fires on `v*.*.*` tags: a `test` job (windows-2025, re-runs format/lint/mypy/import-linter/offline suite) → a `release` job (ubuntu, `python -m build`, GPG-signs checksums, publishes a GitHub Release with the wheel + sdist). The installer job hangs off the same `test` guard.
 - **`ci.yml::operator-install-smoke`** — already proves the COM-free happy path after a real install: `where.exe ai-sw-probe/ai-sw-mcp/ai-sw-doctor`, `ai-sw-build --list-kinds`, `import ai_sw_bridge.mcp.server`. This is the exact smoke the installer job reuses post-silent-install.
-- **Runtime deps (the wheelhouse contents):** `pywin32>=305,<400`, `Pillow>=10,<12`, `oletools>=0.60,<1`, `jsonschema>=4,<5`, `numpy>=1.24,<3`, `sqlite-vec>=0.1,<0.2`, plus the `[mcp]` extra `mcp>=1.0.0`. `requires-python >=3.10`.
+- **Runtime deps (the wheelhouse contents):** `pywin32>=305,<400`, `Pillow>=12.2,<13`, `oletools>=0.60,<1`, `jsonschema>=4,<5`, `numpy>=1.24,<3`, `sqlite-vec>=0.1,<0.2`, plus the `[mcp]` extra `mcp>=1.0.0`. `requires-python >=3.10`.
 - **23 console scripts** in `[project.scripts]` (`ai-sw-probe` … `ai-sw-doctor`, `ai-sw-mcp`) — `setuptools` generates their `.exe` shims in the private `Scripts\` at pip-install time.
 - **`ai-sw-doctor --register`** — writes the MCP server into the `claude_desktop` config (timestamped backup first). The installer optionally invokes it.
 - **`keyring`** is imported by `src/ai_sw_bridge/checkpoint/crypto.py` but is a `[dev]` dep, not a runtime one — a wheelhouse-closure audit item (§9.2).

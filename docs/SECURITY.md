@@ -391,7 +391,7 @@ Until that pool exists, this is documented intent, not enforced practice.
 The bridge has runtime dependencies declared in `pyproject.toml`:
 
 - `pywin32 >= 305`
-- `Pillow >= 10.0`
+- `Pillow >= 12.2.0`  <!-- floor bumped past PYSEC-2026-165 / CVE-2026-42310 -->
 - `oletools >= 0.60`
 - `jsonschema >= 4.0`
 

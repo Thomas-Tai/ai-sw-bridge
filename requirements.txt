@@ -4,7 +4,7 @@
 # mirrors it for the conventional `pip install -r requirements.txt` path.
 # Keep the two in sync. Windows-only: pywin32 and SOLIDWORKS are Windows-only.
 pywin32>=305,<400
-Pillow>=10.0,<12
+Pillow>=12.2.0,<13
 oletools>=0.60,<1
 jsonschema>=4.0,<5
 numpy>=1.24,<3

@@ -31,7 +31,13 @@ dependencies = [
     # (CI exercises the latest within each range). numpy spans the 1.x/2.x ABI
     # line; sqlite-vec is young pre-1.0, so it is held to the 0.1.x series.
     "pywin32>=305,<400",
-    "Pillow>=10.0,<12",
+    # Floor raised to 12.2.0: all Pillow < 12.2.0 carry PYSEC-2026-165 (font
+    # glyph integer overflow) + CVE-2026-42310 (PdfParser DoS). Neither vector
+    # is reachable from our sole use (observe.py opens a SW-authored .bmp and
+    # re-saves PNG — no font rendering, no PDF parsing), but 12.2.0 keeps
+    # requires-python >=3.10 and Image.open/save is API-stable, so we remediate
+    # rather than carry a pip-audit ignore. <13 caps the next major per policy.
+    "Pillow>=12.2.0,<13",
     "oletools>=0.60,<1",
     "jsonschema>=4.0,<5",
     "numpy>=1.24,<3",
