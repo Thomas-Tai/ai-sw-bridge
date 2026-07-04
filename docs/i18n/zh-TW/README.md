@@ -1,5 +1,5 @@
 ---
-translated-from: a2245ff7ecfbfca3c643e7adc954a85dca6b2e9e
+translated-from: dd1d542dae7242fe917b52741e7d7658754d46d4
 ---
 
 # ai-sw-bridge
