@@ -19,6 +19,14 @@ jobs:
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Full history: the offline suite runs tests/test_i18n_staleness.py,
+          # which shells out to git rev-list / cat-file against each mirror's
+          # translated-from baseline SHA. A shallow (depth-1) clone can't reach
+          # those SHAs, so every mirror-existence check fails — as it did on the
+          # first REAL workflow_dispatch. ci.yml's test job already pins
+          # fetch-depth:0 for the same gate; keep the two in lockstep.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
