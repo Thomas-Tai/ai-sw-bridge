@@ -61,6 +61,14 @@ jobs:
     # release is minted off a branch ref.
     if: github.ref_type == 'tag'
     runs-on: ubuntu-24.04
+    # GPG signing is OPTIONAL: sign only when a signing key is configured
+    # (secrets are surfaced at the job level so the sign step's `if` can read
+    # them — `if` cannot reference `secrets` directly). With no key set the
+    # release publishes unsigned checksums, consistent with this project's
+    # unsigned-installer / zero-budget posture.
+    env:
+      GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -85,10 +93,8 @@ jobs:
           sha256sum *.tar.gz *.whl > ../checksums.txt
           cat ../checksums.txt
 
-      - name: Sign checksums with GPG
-        env:
-          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Sign checksums with GPG (skipped when no signing key is configured)
+        if: env.GPG_SIGNING_KEY != ''
         run: |
           echo "$GPG_SIGNING_KEY" | gpg --import --batch --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE"
           gpg --default-key "ai-sw-bridge-release" --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" --detach-sign --armor checksums.txt
@@ -123,6 +129,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # checksums.txt.asc only exists when a GPG key is configured (see the
+          # optional sign step); don't fail the release when it's absent.
+          fail_on_unmatched_files: false
           files: |
             dist/*.tar.gz
             dist/*.whl
