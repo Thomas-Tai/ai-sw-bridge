@@ -16,6 +16,6 @@
     "sw_revision": "32.1.0"
   },
   "timestamp": "2026-07-02T10:45:00+00:00",
-  "lag_acknowledged": false,
-  "lag_reason": null
+  "lag_acknowledged": true,
+  "lag_reason": "PERF_SURFACE (cli/build.py) changed after measured_at for the B1 operator fix (the ai-sw-build --demo spec-source branch, not a build hot-loop change); this session has no live SOLIDWORKS seat to re-measure. The p50/p95/p99 above predate the current code and are provisional until a fresh live-seat --emit-receipt run."
 }
