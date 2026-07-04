@@ -7,8 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-07-04
+
+**Operator-experience release.** Makes the no-Python operator path work
+end-to-end: the demo build command ships inside the wheel, the unsigned installer
+is published to this release, and the docs/CLI no longer send a CAD-only operator
+to a dead command or an empty Releases page. Full audit + per-finding
+verification in
+[`docs/operator_experience_audit_2026-07-04.md`](docs/operator_experience_audit_2026-07-04.md).
+
 ### Added
 
+- **`ai-sw-build --demo`** builds the bundled demo spec (shipped as package data
+  under `ai_sw_bridge/examples/`), so the first "does it work?" command works on
+  every install — pipx, the `.exe` installer, or a clone — not only a git
+  checkout. The quickstart now uses `ai-sw-build --demo` everywhere.
 - **Windows installer (unsigned).** A one-double-click `ai-sw-bridge-setup-*.exe`
   bundling a private CPython 3.12 + an offline wheelhouse — installs per-user
   with no admin and no pre-existing Python, runs the `pywin32` postinstall, adds
@@ -33,6 +46,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   but keep `uv_calibrated=False` (sketch-on-face refused with a clear error)
   until measured; non-rectangular profiles remain unaddressable
   (see `known_limitations.md` §2).
+
+### Fixed
+
+- **Operator-experience defects (audit 2026-07-04).** Documented
+  `ai-sw-mutate` / `ai-sw-observe` flags now match argparse (hyphens, not
+  underscores) so the "change a variable" workflow no longer errors verbatim;
+  dead links in `known_limitations.md` / `why_no_addim2.md` / README repointed or
+  removed; zh-TW README nav anchors re-slugged to the translated headings; the
+  README front door leads with the no-Python installer and the chat-first
+  `ai-sw-doctor --register` flow (Claude Desktop) instead of a "learn Python
+  first" wall; `installer/README-first.txt` installs the `[mcp]` extra so
+  `ai-sw-mcp` can start. The zh README mirrors are marked honestly stale pending
+  a focused retranslation. Tracker + verification:
+  `docs/operator_experience_audit_2026-07-04.md`.
 
 ## [1.7.0] - 2026-07-01
 
