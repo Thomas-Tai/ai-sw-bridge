@@ -36,31 +36,31 @@ Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated +
 - **Fix:** rewrite the six flags to hyphens across the 5 files (+ re-anchor the two USAGE mirrors); drop `=true` on `--fit-view` (boolean). Subcommand names (`dry_run`, `undo_last_commit`) correctly stay underscored.
 - **Verify:** `grep -rE "--(new_value|proposal_id|fit_view|entity_a|entity_b)" USAGE.md docs/tools_reference.md docs/i18n` returns nothing.
 
-### M4 — Chat-first: the one-command MCP registrar is hidden; docs steer to hand-editing JSON · Status: OPEN
+### M4 — Chat-first: the one-command MCP registrar is hidden; docs steer to hand-editing JSON · Status: FIXED
 - **Evidence:** `docs/mcp_server_design.md` §6.6 tells the operator to hand-edit `%APPDATA%\Claude\claude_desktop_config.json` with an escaped path; that section has **zero** `--register` references. `ai-sw-doctor --register` (works; idempotent; timestamped backup — `cli/doctor.py`, `mcp/registration.py`) appears in operator docs only at `operator_guide.md:66`, scoped to the `.exe` checkbox — never for the canonical pipx path.
 - **Operator impact:** a pipx operator wanting chat-first is told to hand-write escaped Windows paths into an opaque JSON file — the exact coder task the persona cannot do; one bad brace silently drops the server.
 - **Fix:** make `ai-sw-doctor --register` the **primary**, first-listed registration step in README + §6.6 + ONBOARDING + operator_guide; demote manual JSON to an advanced fallback.
 - **Verify:** README setup and mcp_server_design §6.6 both lead with `ai-sw-doctor --register`; manual JSON is labeled "advanced/fallback."
 
-### M5 — "Chat-first" is really copy-JSON-then-run-CLI-yourself; AGENTS.md steers the AI away from MCP tools · Status: OPEN
+### M5 — "Chat-first" is really copy-JSON-then-run-CLI-yourself; AGENTS.md steers the AI away from MCP tools · Status: FIXED
 - **Evidence:** `README.md:142-152` Step 4 and `operator_guide.md:204-221` = "paste prompt → agent picks a spec → **you approve and run the command yourself**." `docs/AGENTS.md:13`: "You never call the SOLIDWORKS COM API directly. You write JSON specs or invoke CLIs," and AGENTS.md has **zero** references to `sw_build`/any MCP tool. "Open Claude and paste" never says the MCP flow needs the Claude **Desktop** app.
 - **Operator impact:** the non-coder is routed into a terminal for every part; even after registering MCP, their AI briefing tells it to emit JSON for manual CLI runs instead of calling `sw_build`.
 - **Fix:** add a top-level "Talk to Claude to build a part (chat-first via MCP)" section (requires Claude **Desktop** → `--register` → restart → ask → approve elicitation); add an MCP-mode paragraph to AGENTS.md telling the agent to call `sw_build`/`sw_batch_execute` when the server is available.
 - **Verify:** README has a chat-first-via-MCP section naming Claude Desktop; AGENTS.md references the MCP tools.
 
-### M6 — README front door repels the target persona and hides the installer built for them · Status: OPEN
+### M6 — README front door repels the target persona and hides the installer built for them · Status: FIXED
 - **Evidence:** `README.md:21` routes "An operator — a SOLIDWORKS user, not a coder" to the quickstart; `README.md:85`: "**this is a Python developer tool** … if you've never run `python` from a command line, start with the Python beginner's guide first." `grep -n "installer|\.exe|Releases" README.md` → **0 hits** (the `.exe` lives only in operator_guide).
 - **Operator impact:** the router promises a non-coder lane, then the first thing under it tells them to go learn Python; they never discover the double-click installer one doc away.
 - **Fix:** add "No Python? Download the Windows installer" as the primary operator path in the README quickstart (once B2's asset exists); soften the "Python comfort assumed" framing under the operator heading.
 - **Verify:** README operator quickstart leads with the installer path and no longer opens with a "go learn Python first" wall.
 
-### M7 — Goal-1's "≤1 command" is 5–8 commands on the pipx path, incl. a PowerShell subshell · Status: OPEN
+### M7 — Goal-1's "≤1 command" is 5–8 commands on the pipx path, incl. a PowerShell subshell · Status: FIXED (installer is the one-action path; pipx/subshell now labeled the developer path)
 - **Evidence:** `README.md:87-110`: pre-install Python 3.10+/Git/pipx, `python -m pip install --user pipx`, `python -m pipx ensurepath`, reopen terminal, `pipx install …`, then `README.md:109` `& "$(pipx environment --value PIPX_LOCAL_VENVS)\ai-sw-bridge\Scripts\python.exe" -m pywin32_postinstall -install`, then doctor/probe/build.
 - **Operator impact:** a CAD operator cannot reason about `pipx environment --value`, subshell expansion, or why COM won't attach without the pywin32 line — which also errors verbatim in `cmd.exe` (it's PowerShell).
 - **Fix:** route operators to the `.exe` (runs pywin32 automatically) as the one-action path; keep pipx for developers. If pipx stays operator-facing, wrap the pywin32 step into `ai-sw-doctor --fix-pywin32`.
 - **Verify:** the operator quickstart's primary path is ≤1 action (the installer) OR the pywin32 step is a single ai-sw-* command with no subshell.
 
-### M8 — AGENTS.md (handed to the operator's AI) assumes a clone + `pip install -e .` + local `examples/` · Status: OPEN
+### M8 — AGENTS.md (handed to the operator's AI) assumes a clone + `pip install -e .` + local `examples/` · Status: FIXED
 - **Evidence:** `docs/AGENTS.md:17` "Install: `pip install -e .` from the repo root"; `:18-21`, `:40` build the workflow on copying local `examples/…`. The operator install is pipx/`.exe` — no repo root, no `examples/`.
 - **Operator impact:** the AI faithfully tells the non-coder to `pip install -e .` from a repo root they never cloned and to copy from an `examples/` folder not on disk — contradicting the README.
 - **Fix:** rewrite AGENTS.md quickstart to the operator install (pipx); draft specs inline or point at the bundled `--demo` spec instead of a local `examples/` tree.
@@ -82,7 +82,7 @@ Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated +
 
 ## MINORS
 
-### m11 — README command table names a non-existent subcommand `undo` · Status: OPEN
+### m11 — README command table names a non-existent subcommand `undo` · Status: FIXED
 - **Evidence:** `README.md:184` "Subcommands: `propose` / `dry_run` / `commit` / `undo`"; source registers `undo_last_commit` (`cli/mutate.py:96-97`). `tools_reference.md:96-98` + `USAGE.md:54` use the correct name — README is the outlier.
 - **Fix / Verify:** change `README.md:184` to `undo_last_commit`; `ai-sw-mutate undo_last_commit --help` parses.
 

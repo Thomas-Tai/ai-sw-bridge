@@ -10,15 +10,15 @@ You are pair-programming with a human engineer who has SOLIDWORKS open and this 
 - a **mutate proposal** that [`ai-sw-mutate`](../src/ai_sw_bridge/cli/mutate.py) consumes (when changing a parametric variable on an existing part), OR
 - an [`ai-sw-observe`](../src/ai_sw_bridge/cli/observe.py) command (when you just need to read the model first).
 
-You never call the SOLIDWORKS COM API directly. You write JSON specs or invoke CLIs. The bridge handles COM.
+You never call the SOLIDWORKS COM API directly — the bridge handles COM. You work through one of two surfaces: (a) **the CLIs** (`ai-sw-build`, `ai-sw-mutate`, `ai-sw-observe`) that the human runs, or (b) **the MCP tools** (`sw_build`, `sw_observe_*`, `sw_batch_execute`, …) when you are connected to the bridge's MCP server. If the MCP tools are available to you, **prefer them** — call the tool directly and the human approves your writes through the elicitation gate; otherwise propose specs/commands for the human to run.
 
 ## Quickstart (2 minutes)
 
-1. **Install**: `pip install -e .` from the repo root. Requires Windows + SOLIDWORKS running. (Contributors who run the test suite want `pip install -e ".[dev]"`; the MCP server wants `pip install -e ".[mcp]"`.)
-2. **Validate a spec**: `ai-sw-build examples/filleted_box/spec.json --validate-only`
-3. **Dry-run (no SW needed)**: `ai-sw-build examples/filleted_box/spec.json --dry-run`
-4. **Lint check**: `ai-sw-build examples/filleted_box/spec.json --lint`
-5. **Build a part**: `ai-sw-build examples/filleted_box/spec.json --no-dim` (creates a fresh part in SW)
+1. **Install**: the human has already installed the bridge (via the Windows installer or `pipx install "ai-sw-bridge[mcp] @ git+…"`), so the `ai-sw-*` commands are on their PATH — **you do not install anything**. (Only a contributor working from a git clone runs `pip install -e ".[dev]"`.) Requires Windows + SOLIDWORKS running.
+2. **Validate a spec**: `ai-sw-build --demo --validate-only`
+3. **Dry-run (no SW needed)**: `ai-sw-build --demo --dry-run`
+4. **Lint check**: `ai-sw-build --demo --lint`
+5. **Build a part**: `ai-sw-build --demo --no-dim` (creates a fresh part in SW)
 6. **Observe the result**: `ai-sw-observe features` / `ai-sw-observe bbox` / `ai-sw-observe volume`
 
 The 30 spec feature types available (13 sketch + 11 extrude/revolve + 3 modify + 3 pattern):
@@ -37,7 +37,7 @@ The 30 spec feature types available (13 sketch + 11 extrude/revolve + 3 modify +
 2. **The spec is the source of truth.** When in doubt, write or edit `spec.json` and rebuild. Do not hand-edit the SLDPRT in SW UI between runs unless the human asked.
 3. **Default to `--no-dim`.** It builds in seconds with zero manual clicks. Use parametric mode (no flag) only if the human explicitly needs a live equation link to `locals.txt`.
 4. **One feature at a time when debugging.** If a build fails at feature 7 of 10, trim the spec to features 1–7, fix, re-run, then add the rest back.
-5. **Read the example most like your target.** Don't write specs from scratch. The [`examples/`](../examples/) folder has 20 working specs covering every shipped feature type. Find the closest match, copy it, modify.
+5. **Start from a known-good shape.** Prefer adapting a working spec over writing from scratch. Run `ai-sw-build --demo --dry-run` to print a complete, valid reference spec; the [`examples/` folder on GitHub](https://github.com/Thomas-Tai/ai-sw-bridge/tree/master/examples) has 20 more covering every shipped feature type — browsable online (an installer / pipx setup won't have them on disk).
 
 ## What the spec looks like
 

@@ -4,6 +4,9 @@ translated-from: dd1d542dae7242fe917b52741e7d7658754d46d4
 
 # ai-sw-bridge
 
+<!-- i18n-staleness-banner -->
+> ⚠️ **本翻譯暫時落後於英文版 README。** 英文版剛針對操作者安裝流程（新增免 Python 的 Windows 安裝程式作為首選路徑）與 chat-first MCP 流程做了重構；在重新翻譯完成前，安裝與上手步驟請以 [英文版 README](../../../README.md) 為準。
+
 > **從 AI 助理驅動 SOLIDWORKS。** 把要建構的零件交給 Claude / ChatGPT / Codex，讓它產生、驗證並執行 JSON 規格 — 完全不需要給它一個能「為所欲為」進入你 CAD 模型的按鈕。
 
 [![CI](https://github.com/Thomas-Tai/ai-sw-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomas-Tai/ai-sw-bridge/actions/workflows/ci.yml)

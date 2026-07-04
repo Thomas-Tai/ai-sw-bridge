@@ -288,7 +288,19 @@ where ai-sw-mcp           # confirms the entry point is on PATH
 
 #### Register with Claude Desktop
 
-Edit `%APPDATA%\Claude\claude_desktop_config.json` (the path varies for the
+**The one-command way (recommended):**
+
+```powershell
+ai-sw-doctor --register
+```
+
+This writes the `ai-sw-bridge` entry into
+`%APPDATA%\Claude\claude_desktop_config.json` for you — it resolves the
+`ai-sw-mcp` path, writes a **timestamped backup** of any existing config first,
+and is idempotent (safe to re-run). Then restart Claude Desktop fully.
+
+**Manual (advanced / fallback)** — if you would rather edit the config yourself,
+add to `%APPDATA%\Claude\claude_desktop_config.json` (the path varies for the
 Windows Store / MSIX build):
 
 ```json

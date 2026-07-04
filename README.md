@@ -80,37 +80,38 @@ this for you (step 3 below).
 code, everything you need is here — and the deeper, non-coder-friendly version
 lives in the canonical **[Operator Guide → `docs/operator_guide.md`](docs/operator_guide.md)**.
 
-### Prerequisites
+### 1. Install
 
-> **Heads-up: this is a Python developer tool.** You'll work at a terminal with `pipx` (an isolated-app installer) and JSON spec files. Comfort with a Python toolchain is assumed — if you've never run `python` from a command line, start with the [Python beginner's guide](https://docs.python.org/3/using/index.html) first, then come back.
+Two ways in. **The only hard prerequisite either way is SOLIDWORKS itself** —
+installed and running (the bridge drives it via COM; nothing here installs
+SOLIDWORKS). Tested on 2024 SP1; works on 2021 SP5+.
 
-- **Windows** — SOLIDWORKS is Windows-only, and the bridge uses `pywin32`.
-- **SOLIDWORKS installed and running** — tested on 2024 SP1; works on 2021 SP5+.
-- **Python 3.10+, 64-bit, on your `PATH`** — tested on 3.10, 3.12, 3.14. SOLIDWORKS is 64-bit, so your Python must be 64-bit too or COM won't attach. Verify with `python --version`; if that command isn't found, re-run the Python installer and tick **"Add python.exe to PATH"**.
-- **Git** on your `PATH` — `pipx` fetches the bridge over Git, so `git` must be available. Verify with `git --version`; if it's missing, install [Git for Windows](https://git-scm.com/download/win).
-- **pipx** — the isolated-app installer that puts the `ai-sw-*` commands on your `PATH` without a hand-managed virtualenv. Install it once: `python -m pip install --user pipx`.
+**A. No Python? Use the Windows installer (simplest — no terminal needed).**
+Download `ai-sw-bridge-setup-<version>.exe` from the **Assets** of the
+[latest release](https://github.com/Thomas-Tai/ai-sw-bridge/releases/latest) and
+double-click it. It is **not code-signed**, so at the "Windows protected your PC"
+prompt click **More info → Run anyway**. It bundles a private Python — you do
+**not** need Python, Git, or a command line — runs the `pywin32` step for you,
+and offers a checkbox to wire the MCP server. Then open a new terminal and go to
+step 2. *(If the latest release's Assets show only "Source code," the `.exe`
+isn't attached to that release yet — use path B for now.)*
 
-### 1. Install (~2 minutes)
-
-Install [`pipx`](https://pipx.pypa.io/) once (if you don't have it), then install the
-bridge straight from Git into its own isolated environment — no manual clone, no venv:
+**B. Prefer a scripted / terminal setup (pipx).** For developers, or anyone who
+already works at a command line. You'll need 64-bit **Python 3.10+** and **Git**
+on your `PATH` (SOLIDWORKS is 64-bit, so 32-bit Python won't attach), plus `pipx`:
 
 ```powershell
 python -m pip install --user pipx
 python -m pipx ensurepath            # then close and reopen your terminal
 
 pipx install "ai-sw-bridge[mcp] @ git+https://github.com/Thomas-Tai/ai-sw-bridge.git"
-```
 
-**One-time `pywin32` step (the top footgun).** COM only attaches after pywin32's
-post-install has registered its DLLs *inside the pipx environment*:
-
-```powershell
+# one-time: register pywin32's DLLs inside the pipx env (COM won't attach without it)
 & "$(pipx environment --value PIPX_LOCAL_VENVS)\ai-sw-bridge\Scripts\python.exe" -m pywin32_postinstall -install
 ```
 
-The `[mcp]` extra (bundled in the command above) pulls in the MCP SDK so `ai-sw-mcp`
-can run. `ai-sw-doctor` (next step) verifies both the PATH and this pywin32 step for you.
+The `[mcp]` extra (in the command above) pulls in the MCP SDK so `ai-sw-mcp` can
+run. `ai-sw-doctor` (next step) verifies the PATH and the pywin32 step for you.
 
 ### 2. Preflight (~5 seconds)
 
@@ -141,15 +142,34 @@ If a small filleted box appears in SW within ~3 seconds, the bridge works.
 
 ### 4. Hand the keys to your AI assistant
 
-Open Claude / ChatGPT / Codex and paste:
+Two ways to let an AI drive the bridge — pick one.
 
-> I'm using **ai-sw-bridge** — a bridge that lets AI assistants drive SOLIDWORKS via the COM API. Before doing anything, read **[`docs/AGENTS.md`](docs/AGENTS.md)** — it tells you the rules, the spec format, which example to copy, and what needs my confirmation before running.
+**Chat-first (recommended) — talk to Claude Desktop, it builds directly.** This
+wires the bridge's MCP server into the [Claude **Desktop** app](https://claude.ai/download)
+(the installed app, *not* the browser) so Claude can call the build tool itself —
+no terminal in the loop:
+
+```powershell
+ai-sw-doctor --register     # writes the MCP server into Claude Desktop's config (timestamped backup first)
+```
+
+Restart Claude Desktop, then just ask: *"Using ai-sw-bridge, build a 40 × 30 × 10 mm
+plate with four Ø5 mm through-holes at the corners, 5 mm in from each edge."*
+Claude drafts the spec, shows it to you, and **asks you to approve** before it
+writes anything (the elicitation gate). Approve, and the part builds.
+
+**Copy-paste (any AI, no MCP) — you run the command.** Open Claude / ChatGPT /
+Codex and paste:
+
+> I'm using **ai-sw-bridge** — a bridge that lets AI assistants drive SOLIDWORKS via the COM API. Before doing anything, read **[`docs/AGENTS.md`](docs/AGENTS.md)** — it tells you the rules, the spec format, and what needs my confirmation before running.
 >
 > My goal: *describe your part here — e.g. "build a 40 × 30 × 10 mm plate with four Ø5 mm through-holes at the corners, 5 mm in from each edge."*
 >
 > Propose a JSON spec for me to review before running `ai-sw-build`.
 
-The agent will read [`docs/AGENTS.md`](docs/AGENTS.md), pick the closest [`examples/`](examples/) match, draft a spec, and **stop** for your review. You approve, run the command yourself, and watch the part build. That's the whole loop.
+The agent reads [`docs/AGENTS.md`](docs/AGENTS.md), drafts a spec, and **stops**
+for your review; you run `ai-sw-build` yourself. Same propose → approve → execute
+loop, driven from the terminal.
 
 **Stuck?** Try [`examples/README.md`](examples/README.md) (20 working specs, grouped by primitive) or [`docs/known_limitations.md`](docs/known_limitations.md) (sharp edges new users hit). The full walkthrough — written for a SOLIDWORKS veteran who doesn't code — is the [Operator Guide](docs/operator_guide.md).
 
@@ -181,7 +201,7 @@ There is no `--yolo` flag.
 | `ai-sw-probe` | experimental | COM connectivity check — confirms SW is reachable via `GetActiveObject` | ✅ |
 | `ai-sw-doctor` | experimental | Operator preflight — checks Python / pywin32 / PATH / a live SW seat / MCP registration | ✅ |
 | `ai-sw-observe` | stable | Inspect doc / features / equations / mates / bbox / volume / custom-props / screenshots / add-ins / MBD-PMI — JSON output | ✅ |
-| `ai-sw-mutate` | stable | Propose → dry-run → commit (or undo) `*_locals.txt` variable changes. Subcommands: `propose` / `dry_run` / `commit` / `undo`. Proposals persist to `./proposals/` (override via `AI_SW_BRIDGE_PROPOSALS`). | ⚠️ approval-gated |
+| `ai-sw-mutate` | stable | Propose → dry-run → commit (or undo) `*_locals.txt` variable changes. Subcommands: `propose` / `dry_run` / `commit` / `undo_last_commit`. Proposals persist to `./proposals/` (override via `AI_SW_BRIDGE_PROPOSALS`). | ⚠️ approval-gated |
 | `ai-sw-batch` | experimental | Human-gated batch feature-commit. Executes a multi-feature plan (from MCP `sw_batch_plan`) behind a `[y/N]` gate; greens persist, fail-fast on the first fault. | ⚠️ approval-gated |
 | `ai-sw-assembly` | stable | Propose-Approve-Execute assembly lifecycle (components + mates). Subcommands: `propose` / `dry_run` / `commit`. CLI-only, never MCP. | ⚠️ approval-gated |
 | `ai-sw-drawing` | stable | Propose-Approve-Execute drawing lifecycle (views + annotations). Subcommands: `propose` / `dry_run` / `commit`. CLI-only, never MCP. | ⚠️ approval-gated |
