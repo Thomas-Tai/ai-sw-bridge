@@ -51,11 +51,11 @@ def test_stage_layout_keys() -> None:
     assert layout["wheelhouse"].name == "wheelhouse"
 
 
-def test_pip_download_argv() -> None:
-    argv = bi.pip_download_argv(Path("py.exe"), Path("wh"), [".[mcp]", "keyring"])
-    assert argv[:5] == ["py.exe", "-m", "pip", "download", "--only-binary=:all:"]
+def test_pip_wheel_argv() -> None:
+    argv = bi.pip_wheel_argv(Path("py.exe"), Path("wh"), [".[mcp]", "keyring"])
+    assert argv[:4] == ["py.exe", "-m", "pip", "wheel"]
     assert argv[-2:] == [".[mcp]", "keyring"]
-    assert "--dest" in argv
+    assert "--wheel-dir" in argv
 
 
 def test_iscc_argv() -> None:

@@ -57,15 +57,23 @@ def stage_layout(staging: Path) -> dict[str, Path]:
     }
 
 
-def pip_download_argv(python_exe: Path, dest: Path, targets: list[str]) -> list[str]:
-    """argv to download the offline wheelhouse with the bundled interpreter."""
+def pip_wheel_argv(python_exe: Path, dest: Path, targets: list[str]) -> list[str]:
+    """argv to build the offline wheelhouse with the bundled interpreter.
+
+    Uses ``pip wheel`` rather than ``pip download --only-binary=:all:`` so that
+    sdist-only pure-Python transitive deps are BUILT into wheels here on the
+    networked CI machine. (win-unicode-console, pulled by oletools -> pcodedmp,
+    publishes no wheel, so ``--only-binary`` could never resolve it.) The result
+    is an all-wheels wheelhouse the offline operator install consumes without a
+    compiler; this also builds the ai-sw-bridge project wheel from ``.``, so no
+    separate ``python -m build`` step is needed.
+    """
     return [
         str(python_exe),
         "-m",
         "pip",
-        "download",
-        "--only-binary=:all:",
-        "--dest",
+        "wheel",
+        "--wheel-dir",
         str(dest),
         *targets,
     ]
@@ -107,20 +115,11 @@ def run(version: str, iscc: Path, staging: Path | None = None) -> int:
 
     python_exe = layout["runtime"] / "python.exe"
     print("Building offline wheelhouse...", file=sys.stderr)
+    # pip wheel builds the app wheel from '.' AND materialises a wheel for every
+    # dependency (including sdist-only pure-Python ones like win-unicode-console)
+    # into the wheelhouse, so the offline operator install never needs a compiler.
     subprocess.run(
-        pip_download_argv(python_exe, layout["wheelhouse"], WHEELHOUSE_TARGETS),
-        cwd=REPO_ROOT,
-        check=True,
-    )
-    subprocess.run(
-        [
-            str(python_exe),
-            "-m",
-            "build",
-            "--wheel",
-            "--outdir",
-            str(layout["wheelhouse"]),
-        ],
+        pip_wheel_argv(python_exe, layout["wheelhouse"], WHEELHOUSE_TARGETS),
         cwd=REPO_ROOT,
         check=True,
     )
