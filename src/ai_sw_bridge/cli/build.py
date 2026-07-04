@@ -40,6 +40,22 @@ def _emit(payload: dict, code: int) -> int:
     return code
 
 
+def _read_demo_spec() -> str:
+    """Return the bundled demo spec's JSON text.
+
+    The demo spec ships as package data (pyproject
+    ``[tool.setuptools.package-data]``) so ``ai-sw-build --demo`` works on every
+    install method -- pipx-from-git, the ``.exe`` installer, or a clone -- none
+    of which put the repo-root ``examples/`` tree on disk. Resolved via
+    ``importlib.resources`` so it also works from inside a wheel/zip.
+    """
+    from importlib.resources import files
+
+    return (files("ai_sw_bridge") / "examples" / "filleted_box.json").read_text(
+        encoding="utf-8"
+    )
+
+
 def _eprint(msg: str) -> None:
     """Write an operator banner line to stderr, surviving consoles that can't
     encode every glyph in it.
@@ -301,6 +317,18 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--demo",
+        dest="demo",
+        action="store_true",
+        help=(
+            "Build the bundled demo spec (a 20x20x10 mm filleted box) instead "
+            "of a spec_path. Works on every install -- pipx, the .exe installer, "
+            "or a clone -- because the spec ships inside the package, so it is "
+            "the safe 'does it work?' first command. Combine with "
+            "--dry-run/--lint/--no-dim, e.g. `ai-sw-build --demo --dry-run`."
+        ),
+    )
+    parser.add_argument(
         "--validate-only",
         action="store_true",
         help="Run schema/refs/locals validation without touching SOLIDWORKS.",
@@ -558,9 +586,20 @@ def main() -> int:
             0,
         )
 
-    # spec_path is optional only to allow --list-kinds; require it otherwise.
-    if args.spec_path is None:
+    # spec_path is optional only to allow --list-kinds / --demo; require it
+    # otherwise.
+    if args.spec_path is None and not args.demo:
         return _emit({"ok": False, "error": "the spec_path argument is required"}, 2)
+    if args.demo and args.spec_path is not None:
+        return _emit(
+            {
+                "ok": False,
+                "error": (
+                    "--demo builds the bundled example; do not also pass a " "spec_path"
+                ),
+            },
+            2,
+        )
 
     # Observability triad (P3.1): leveled logging. --verbose is shorthand
     # for --log-level debug. PlainFormatter strips ANSI when NO_COLOR is
@@ -609,25 +648,36 @@ def main() -> int:
 
         checkpoint_key_source = default_key_source(create=True)
 
-    p = Path(args.spec_path)
-    if not p.exists():
-        return _emit({"ok": False, "error": f"spec file not found: {p}"}, 2)
-
-    try:
-        raw = p.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as e:
-        # A file that exists but can't be read (permissions, a non-UTF-8
-        # encoding, a directory, an I/O error) is a caller-side mistake, not a
-        # bug -- map it to the same clean exit-2 JSON error as a missing file,
-        # rather than letting it escape as an uncaught traceback.
-        return _emit(
-            {
-                "ok": False,
-                "error": f"spec file could not be read: {e}",
-                "spec_path": str(p),
-            },
-            2,
-        )
+    if args.demo:
+        # Bundled demo: read from package data, not the filesystem. The label
+        # path is only used for messages and locals-resolution, and the demo
+        # spec declares no locals, so a synthetic label is safe.
+        p = Path("examples/filleted_box.json")
+        try:
+            raw = _read_demo_spec()
+        except (FileNotFoundError, OSError, ModuleNotFoundError) as e:
+            return _emit(
+                {"ok": False, "error": f"bundled demo spec unavailable: {e}"}, 2
+            )
+    else:
+        p = Path(args.spec_path)
+        if not p.exists():
+            return _emit({"ok": False, "error": f"spec file not found: {p}"}, 2)
+        try:
+            raw = p.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            # A file that exists but can't be read (permissions, a non-UTF-8
+            # encoding, a directory, an I/O error) is a caller-side mistake, not
+            # a bug -- map it to the same clean exit-2 JSON error as a missing
+            # file, rather than letting it escape as an uncaught traceback.
+            return _emit(
+                {
+                    "ok": False,
+                    "error": f"spec file could not be read: {e}",
+                    "spec_path": str(p),
+                },
+                2,
+            )
     try:
         spec = json.loads(raw)
     except json.JSONDecodeError as e:

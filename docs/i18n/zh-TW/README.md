@@ -120,7 +120,7 @@ ai-sw-doctor      # 檢查 Python / pywin32 / PATH / 一個存活的 SW seat / M
 
 ```powershell
 ai-sw-probe                                              # 確認 COM 連線正常
-ai-sw-build examples/filleted_box/spec.json --no-dim     # 建構一個 20x20x10 帶一個圓角的方盒
+ai-sw-build --demo --no-dim     # 建構一個 20x20x10 帶一個圓角的方盒
 ```
 
 `ai-sw-probe` 成功時會印出一個 JSON 物件（`{"ok": true, "sw_revision": "32.1.0", ...}`） — 如果 `ok` 是 `true`，表示 COM 連線正常。

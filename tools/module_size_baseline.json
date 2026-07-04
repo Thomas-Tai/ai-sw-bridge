@@ -1,7 +1,7 @@
 {
   "src/ai_sw_bridge/assembly/handlers.py": 1191,
   "src/ai_sw_bridge/brep/interrogator.py": 878,
-  "src/ai_sw_bridge/cli/build.py": 813,
+  "src/ai_sw_bridge/cli/build.py": 863,
   "src/ai_sw_bridge/drawing/lifecycle.py": 2390,
   "src/ai_sw_bridge/export/dispatch.py": 1006,
   "src/ai_sw_bridge/mutate.py": 2181,

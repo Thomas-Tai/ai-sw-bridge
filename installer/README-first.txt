@@ -19,8 +19,10 @@ PREREQUISITE
 
 PREFER PYTHON/PIPX? (the trusted alternative)
   If you already have Python 3.10+ (or are willing to install it):
-      pipx install git+https://github.com/Thomas-Tai/ai-sw-bridge
+      pipx install "ai-sw-bridge[mcp] @ git+https://github.com/Thomas-Tai/ai-sw-bridge.git"
       ai-sw-doctor --register
+  (The [mcp] extra is required for the chat-first MCP server; without it
+   ai-sw-mcp cannot start.)
 
 AFTER INSTALL
   Open a NEW terminal and run:  ai-sw-build --list-kinds

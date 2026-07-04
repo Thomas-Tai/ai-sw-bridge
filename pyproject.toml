@@ -122,7 +122,11 @@ ai-sw-mcp        = "ai_sw_bridge.mcp.server:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-ai_sw_bridge = ["py.typed"]
+# examples/*.json ships the demo spec INSIDE the wheel so `ai-sw-build --demo`
+# works on every install method (pipx-from-git / the .exe installer / a clone),
+# where the repo-root examples/ tree is not on disk. See the B1 remediation in
+# docs/operator_experience_audit_2026-07-04.md.
+ai_sw_bridge = ["py.typed", "examples/*.json"]
 
 # W4.4 — import-linter lane-boundary contracts.
 # Layer order updated 2026-06-11: the original W4.4 list predated the

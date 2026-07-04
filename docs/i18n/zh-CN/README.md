@@ -131,7 +131,7 @@ ai-sw-doctor      # checks Python / pywin32 / PATH / a live SW seat / MCP regist
 
 ```powershell
 ai-sw-probe                                              # confirms COM is alive
-ai-sw-build examples/filleted_box/spec.json --no-dim     # builds a 20x20x10 box with one fillet
+ai-sw-build --demo --no-dim     # builds a 20x20x10 box with one fillet
 ```
 
 `ai-sw-probe` 成功时会打印一个 JSON 对象（`{"ok": true, "sw_revision": "32.1.0", ...}`）

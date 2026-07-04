@@ -46,7 +46,7 @@ every subsequent command needs a live COM connection.
 ### 2. Build a part
 
 ```powershell
-ai-sw-build examples/filleted_box/spec.json --no-dim
+ai-sw-build --demo --no-dim
 ```
 
 Builds a 20x20x10 mm box with a 2 mm fillet on one edge. The `--no-dim` flag
@@ -113,10 +113,10 @@ Source: [`cli/observe.py`](../src/ai_sw_bridge/cli/observe.py) (subcommand
 - **Different part:** swap the spec path for another example —
   `examples/motor_mount_plate/spec.json` builds a plate with bolt holes.
   Run `ls examples/` to see all 20 working specs.
-- **Dry-run without SOLIDWORKS:** `ai-sw-build examples/filleted_box/spec.json --dry-run`
+- **Dry-run without SOLIDWORKS:** `ai-sw-build --demo --dry-run`
   validates, resolves every `{rhs}` binding, and prints a planned-feature list
   without booting SW.
-- **Lint check:** `ai-sw-build examples/filleted_box/spec.json --lint` runs
+- **Lint check:** `ai-sw-build --demo --lint` runs
   semantic checks (unconsumed sketches, missing `center.z`) on top of
   validation.
 - **Read the part's volume:** `ai-sw-observe volume` reports volume (mm^3 and

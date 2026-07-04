@@ -52,17 +52,24 @@ Cursor. `ai-sw-doctor` (next) checks both the PATH and this pywin32 step for you
 
 ### …or install with the Windows installer (no Python required)
 
-Prefer not to touch Python at all? Download `ai-sw-bridge-setup-<version>.exe`
-from the [Releases page](https://github.com/Thomas-Tai/ai-sw-bridge/releases)
-and double-click it. It bundles a private CPython — you do **not** need Python
-installed, and it does the `pywin32` step above for you.
+Prefer not to touch Python at all? When a release ships the installer it appears
+as `ai-sw-bridge-setup-<version>.exe` under **Assets** on the
+[Releases page](https://github.com/Thomas-Tai/ai-sw-bridge/releases) — download
+it and double-click. It bundles a private CPython (you do **not** need Python
+installed) and does the `pywin32` step above for you.
+
+> **Availability:** the installer is built and silent-install-smoke-tested by CI
+> and attaches to **tagged releases** automatically. If the latest release's
+> Assets show only "Source code" (no `.exe` yet), use the pipx path above for
+> now — it is the fully supported path.
 
 - **Prerequisite:** SOLIDWORKS must already be installed (the bridge drives it
   via COM; the installer bundles Python, not SOLIDWORKS).
 - **SmartScreen:** the installer is **not code-signed** (no certificate), so
   Windows shows "Windows protected your PC." Click **More info → Run anyway**.
   It installs per-user under `%LOCALAPPDATA%\Programs\ai-sw-bridge` (no admin
-  prompt) and is ~80–150 MB installed (numpy + pywin32 + a private CPython).
+  prompt): a ~62 MB download that expands to ~80–150 MB installed (a private
+  CPython + numpy + pywin32).
 - The installer offers a checkbox to run `ai-sw-doctor --register` for you.
 
 After either method, open a **new** terminal and run `ai-sw-build --list-kinds`.
@@ -115,7 +122,7 @@ every subsequent command needs a live COM connection.
 ### 2. Build a part
 
 ```powershell
-ai-sw-build examples/filleted_box/spec.json --no-dim
+ai-sw-build --demo --no-dim
 ```
 
 Builds a 20x20x10 mm box with a 2 mm fillet on one edge. The `--no-dim` flag
@@ -227,10 +234,10 @@ loop — propose → approve → execute, every time.
 - **Different part:** swap the spec path for another example —
   `examples/motor_mount_plate/spec.json` builds a plate with bolt holes.
   Run `ls examples/` to see all 20 working specs.
-- **Dry-run without SOLIDWORKS:** `ai-sw-build examples/filleted_box/spec.json --dry-run`
+- **Dry-run without SOLIDWORKS:** `ai-sw-build --demo --dry-run`
   validates, resolves every `{rhs}` binding, and prints a planned-feature list
   without booting SW.
-- **Lint check:** `ai-sw-build examples/filleted_box/spec.json --lint` runs
+- **Lint check:** `ai-sw-build --demo --lint` runs
   semantic checks (unconsumed sketches, missing `center.z`) on top of
   validation.
 - **Read the part's volume:** `ai-sw-observe volume` reports volume (mm^3 and
