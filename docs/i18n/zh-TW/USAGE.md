@@ -37,17 +37,17 @@ ai-sw-observe screenshot --filename=verification.png
 
 ```powershell
 # 1. 提案（尚未變更任何 SW 狀態）
-ai-sw-mutate propose --var=S1B_FOOT_W --new_value=16.0
+ai-sw-mutate propose --var=S1B_FOOT_W --new-value=16.0
 # -> proposal_id: a1b2c3d4e5f6, state: proposed
 
 # 2. Dry-run：套用、重建、擷取、回滾
-ai-sw-mutate dry_run --proposal_id=a1b2c3d4e5f6
+ai-sw-mutate dry_run --proposal-id=a1b2c3d4e5f6
 # -> before: { manager_status: 0, var_value: 15.0 }
 #    after:  { manager_status: 0, var_value: 16.0 }
 #    rebuild_ok: true, rolled_back: true, state: dry_run_ok
 
 # 3. 檢視結果。滿意的話就提交：
-ai-sw-mutate commit --proposal_id=a1b2c3d4e5f6
+ai-sw-mutate commit --proposal-id=a1b2c3d4e5f6
 # -> state: committed, doc_saved: true|false
 ```
 

@@ -33,17 +33,17 @@ Use case: The design guide says `S1B_FOOT_W` should be 16 mm but the model has 1
 
 ```powershell
 # 1. Propose (no SW state changed yet)
-ai-sw-mutate propose --var=S1B_FOOT_W --new_value=16.0
+ai-sw-mutate propose --var=S1B_FOOT_W --new-value=16.0
 # -> proposal_id: a1b2c3d4e5f6, state: proposed
 
 # 2. Dry-run: apply, rebuild, capture, roll back
-ai-sw-mutate dry_run --proposal_id=a1b2c3d4e5f6
+ai-sw-mutate dry_run --proposal-id=a1b2c3d4e5f6
 # -> before: { manager_status: 0, var_value: 15.0 }
 #    after:  { manager_status: 0, var_value: 16.0 }
 #    rebuild_ok: true, rolled_back: true, state: dry_run_ok
 
 # 3. Inspect the result. If happy, commit:
-ai-sw-mutate commit --proposal_id=a1b2c3d4e5f6
+ai-sw-mutate commit --proposal-id=a1b2c3d4e5f6
 # -> state: committed, doc_saved: true|false
 ```
 

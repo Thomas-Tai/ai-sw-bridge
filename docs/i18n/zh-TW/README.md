@@ -9,7 +9,7 @@ translated-from: dd1d542dae7242fe917b52741e7d7658754d46d4
 [![CI](https://github.com/Thomas-Tai/ai-sw-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomas-Tai/ai-sw-bridge/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12%20%7C%203.14-blue)](../../../pyproject.toml)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](../../../LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)](#prerequisites)
+[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)](#前置條件)
 
 **Language**: [English](../../../README.md) · 繁體中文 · [简体中文](../zh-CN/README.md)
 
@@ -19,11 +19,11 @@ translated-from: dd1d542dae7242fe917b52741e7d7658754d46d4
 
 | 你是… | 你想要… | 前往 |
 |---|---|---|
-| **操作者 (operator)** — SOLIDWORKS 使用者，不是工程師 | 安裝橋接器並從你的 AI 助理驅動它 | [**給操作者 — 5 分鐘快速入門**](#for-operators--5-minute-quickstart) · 接著把 [`docs/operator_guide.md`](../../operator_guide.md) 交給你的 AI |
-| **開發者／整合者** | 呼叫 `SolidWorksClient`、嵌入 MCP 伺服器，或閱讀支援範圍合約 | [**給開發者與整合者**](#for-developers--integrators) |
-| **貢獻者** | 新增特徵種類、修復牆、了解架構 | [**給貢獻者**](#for-contributors) |
+| **操作者 (operator)** — SOLIDWORKS 使用者，不是工程師 | 安裝橋接器並從你的 AI 助理驅動它 | [**給操作者 — 5 分鐘快速入門**](#給操作者--5-分鐘快速入門) · 接著把 [`docs/operator_guide.md`](../../operator_guide.md) 交給你的 AI |
+| **開發者／整合者** | 呼叫 `SolidWorksClient`、嵌入 MCP 伺服器，或閱讀支援範圍合約 | [**給開發者與整合者**](#給開發者與整合者) |
+| **貢獻者** | 新增特徵種類、修復牆、了解架構 | [**給貢獻者**](#給貢獻者) |
 
-初次使用只想讓它動起來？由上到下閱讀 **[給操作者](#for-operators--5-minute-quickstart)**，然後開啟權威版 [操作者指南](../../operator_guide.md) — 這是唯一一份要交給你 AI 助理的檔案。
+初次使用只想讓它動起來？由上到下閱讀 **[給操作者](#給操作者--5-分鐘快速入門)**，然後開啟權威版 [操作者指南](../../operator_guide.md) — 這是唯一一份要交給你 AI 助理的檔案。
 
 ## 這是什麼
 
@@ -44,7 +44,7 @@ flowchart LR
 
 規格語言目前涵蓋 **30 種零件塑型特徵類型**（13 種草圖 + 11 種擠出／旋轉 + 3 種修改 + 3 種陣列）。[查看完整清單 →](../../spec_reference.md)
 
-自 **v0.13** 起，同一套工具介面也可以透過 MCP 伺服器（`ai-sw-mcp`）存取 — 自備 Claude Desktop、Cursor 或 Continue.dev。[跳到 MCP 章節 ↓](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)
+自 **v0.13** 起，同一套工具介面也可以透過 MCP 伺服器（`ai-sw-mcp`）存取 — 自備 Claude Desktop、Cursor 或 Continue.dev。[跳到 MCP 章節 ↓](#mcp-伺服器--從-claude-desktop--cursor-等驅動橋接器)
 
 ### 規格長什麼樣子
 
@@ -155,7 +155,7 @@ ai-sw-build --demo --no-dim     # 建構一個 20x20x10 帶一個圓角的方盒
 ## 包裝盒裡有什麼
 
 `pipx install` 之後，你的 PATH 上會有**22 個 CLI 指令 + 一個 MCP 伺服器**
-（MCP 伺服器需要 `[mcp]` extra 才能*執行* — 見 [MCP 章節](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)）。
+（MCP 伺服器需要 `[mcp]` extra 才能*執行* — 見 [MCP 章節](#mcp-伺服器--從-claude-desktop--cursor-等驅動橋接器)）。
 每個指令都宣告一個穩定性**分級**（`stable` / `experimental` / `deprecated`），
 印在它的 `--help` 橫幅裡，並由 `tests/test_cli_stability.py` 強制驗證。
 權威的「每指令分級」清單 + SemVer 承諾在
@@ -251,7 +251,7 @@ flowchart LR
 目前的工具清單）。
 
 快速版本：如果你已經照著
-[操作者快速入門](#for-operators--5-minute-quickstart) 做過，`[mcp]` extra
+[操作者快速入門](#給操作者--5-分鐘快速入門) 做過，`[mcp]` extra
 已經安裝好了 — 把你的 MCP 用戶端指向 `ai-sw-mcp` 執行檔
 （`where ai-sw-mcp`），然後重新啟動用戶端。接著問，例如「目前這個零件的 bounding
 box 是多少？」，模型就會選用 `sw_bbox`。

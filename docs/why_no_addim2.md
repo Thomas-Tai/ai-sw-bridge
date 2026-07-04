@@ -127,7 +127,6 @@ The right path forward is:
 - **VBA-macro fallback** for the rare case that genuinely needs live
   equation links to `locals.txt`
 
-If you must re-investigate, start by reading
-[../spikes/phase0/MMP_DEBUG_SESSION.md](../spikes/phase0/MMP_DEBUG_SESSION.md)
-in full — every dead end above is reproducible from the experiment scripts
-in [../spikes/phase0/](../spikes/phase0/).
+If you must re-investigate, every dead end above is reproducible from the
+experiment scripts in [`spikes/phase0/`](../spikes/phase0/); the full
+`MMP_DEBUG_SESSION.md` session log itself is not committed to this repository.

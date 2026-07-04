@@ -50,7 +50,7 @@ Returns linked-file path, link_active flag, manager solver status, equation_coun
 ai-sw-observe screenshot
 ai-sw-observe screenshot --width=1280 --height=720
 ai-sw-observe screenshot --filename=\"my_view.png\"
-ai-sw-observe screenshot --fit_view=true
+ai-sw-observe screenshot --fit-view
 ```
 Captures the active viewport. Default 640×360 (about 50KB, ~300 vision tokens if loaded into a multimodal model). Pass 1280×720 for detail. Output goes to `./captures/` (or `$AI_SW_BRIDGE_CAPTURES`).
 
@@ -60,7 +60,7 @@ Captures the active viewport. Default 640×360 (about 50KB, ~300 vision tokens i
 ai-sw-observe measure
 
 # Single named: programmatically select one entity by name:
-ai-sw-observe measure --entity_a=\"Face<1>\"
+ai-sw-observe measure --entity-a=\"Face<1>\"
 ```
 Returns `distance`, `deltax/y/z`, `angle_rad`, `arc_length`, `area`, `perimeter`. SW returns these in document units (meters internally for MMGS). Two-entity *named* selection is unsupported on most builds (`SelectByID2` callout arg fails late-binding marshaling).
 
@@ -76,20 +76,20 @@ Propose-Approve-Execute mutations.
 
 ### `propose`
 ```powershell
-ai-sw-mutate propose --var=PART_DIAMETER --new_value=30.0
-ai-sw-mutate propose --var=PART_DIAMETER --new_value=\"= \\\"OTHER_VAR\\\" + 5\"
+ai-sw-mutate propose --var=PART_DIAMETER --new-value=30.0
+ai-sw-mutate propose --var=PART_DIAMETER --new-value=\"= \\\"OTHER_VAR\\\" + 5\"
 ```
 The active part must have a linked `*_locals.txt`. The new_value can be a literal number or any SW expression (mind your shell quoting). Returns `proposal_id`, `old_expression`, `new_expression`, `line_index`, `state: "proposed"`.
 
 ### `dry_run`
 ```powershell
-ai-sw-mutate dry_run --proposal_id=abc123def456
+ai-sw-mutate dry_run --proposal-id=abc123def456
 ```
 Applies the change, force-rebuilds, captures before/after manager status + var value, **rolls back**. Returns `before`, `after`, `rebuild_ok`, `rolled_back`, `state: "dry_run_ok"` or `"dry_run_broke"`. Rollback is verified by reading the file back and comparing against the snapshot.
 
 ### `commit`
 ```powershell
-ai-sw-mutate commit --proposal_id=abc123def456
+ai-sw-mutate commit --proposal-id=abc123def456
 ```
 Only allowed if proposal state is `dry_run_ok`. Re-applies the change, rebuilds, attempts `doc.Save()`. Returns `doc_saved`, `state: "committed"`. `doc_saved: false` is NOT an error — it just means the active doc has no dimensions consuming the changed variable.
 

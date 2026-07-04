@@ -30,7 +30,7 @@ Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated +
 
 ## MAJORS (severe operator friction / broken canonical workflow)
 
-### M3 — Canonical "change a variable" workflow errors verbatim (flag underscores vs hyphens) · Status: OPEN
+### M3 — Canonical "change a variable" workflow errors verbatim (flag underscores vs hyphens) · Status: FIXED
 - **Evidence:** source registers **hyphenated** flags — `cli/mutate.py:65 --new-value`, `:77/:89 --proposal-id`; `cli/observe.py:293 --fit-view` (a `store_true`, takes no value), `:316 --entity-a`, `:322 --entity-b`. Docs use **underscores** — `USAGE.md:36/40/46`, `docs/tools_reference.md:53/63/79-80/86/92`, and both mirrors `docs/i18n/zh-CN/USAGE.md` + `zh-TW/USAGE.md`. argparse rejects `--new_value` as `unrecognized arguments`.
 - **Operator impact:** USAGE Workflow 2 ("the guide says 16 mm but the model has 15 mm — change it safely"), the canonical operator task, errors on **every** command.
 - **Fix:** rewrite the six flags to hyphens across the 5 files (+ re-anchor the two USAGE mirrors); drop `=true` on `--fit-view` (boolean). Subcommand names (`dry_run`, `undo_last_commit`) correctly stay underscored.
@@ -66,13 +66,13 @@ Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated +
 - **Fix:** rewrite AGENTS.md quickstart to the operator install (pipx); draft specs inline or point at the bundled `--demo` spec instead of a local `examples/` tree.
 - **Verify:** AGENTS.md no longer says `pip install -e .`/"repo root"/"copy from examples/" as the operator path.
 
-### M9 — zh-TW README: all 8 in-page navigation anchors are dead · Status: OPEN
+### M9 — zh-TW README: all 8 in-page navigation anchors are dead · Status: FIXED
 - **Evidence:** `docs/i18n/zh-TW/README.md:22` links `(#for-operators--5-minute-quickstart)` but the heading was translated to `## 給操作者 — 5 分鐘快速入門`; same at lines 23, 24, 26, 47, 158, 254. zh-CN re-slugged correctly (`README.md:24` `(#面向操作者--5-分钟快速入门)`), proving zh-TW is an oversight. The i18n dead-link test checks file links, not anchors.
 - **Operator impact:** a Traditional-Chinese operator clicks the first "find your section" link and nothing scrolls.
 - **Fix:** re-slug the 8 anchor targets to the translated headings (mirror zh-CN); optionally extend the dead-link test to intra-file anchors.
 - **Verify:** every `](#…)` in `docs/i18n/zh-TW/README.md` matches a translated heading slug in the same file.
 
-### M10 — `known_limitations.md` ("required reading") has three dead links · Status: OPEN
+### M10 — `known_limitations.md` ("required reading") has three dead links · Status: FIXED
 - **Evidence:** `docs/known_limitations.md:119` → `../spikes/phase0/MMP_DEBUG_SESSION.md` (untracked/absent), `:146` → `deferred_dim_investigation.md` (untracked), `:127` → `../README.md#roadmap` (no such heading). Required-reading per `README.md:281`, `operator_guide.md:247`. Same D10 class, in a doc outside the fixed/guarded set.
 - **Operator impact:** told this file is mandatory before building, they open it and the three "here are the details" links 404 / scroll nowhere.
 - **Fix:** commit the referenced notes or inline/remove the links; repoint `#roadmap` to `ROADMAP.md`.
@@ -86,7 +86,7 @@ Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated +
 - **Evidence:** `README.md:184` "Subcommands: `propose` / `dry_run` / `commit` / `undo`"; source registers `undo_last_commit` (`cli/mutate.py:96-97`). `tools_reference.md:96-98` + `USAGE.md:54` use the correct name — README is the outlier.
 - **Fix / Verify:** change `README.md:184` to `undo_last_commit`; `ai-sw-mutate undo_last_commit --help` parses.
 
-### m12 — `why_no_addim2.md` dead link (reached from a common troubleshooting symptom) · Status: OPEN
+### m12 — `why_no_addim2.md` dead link (reached from a common troubleshooting symptom) · Status: FIXED (also caught: the spike-script table links are TRACKED/valid — only MMP_DEBUG_SESSION.md was dead)
 - **Evidence:** `docs/why_no_addim2.md:131` → `../spikes/phase0/MMP_DEBUG_SESSION.md` (same missing file as M10). Entry points `README.md:162/205`, `operator_guide.md:196`.
 - **Fix / Verify:** commit `MMP_DEBUG_SESSION.md` or remove the reference; link resolves.
 
@@ -95,7 +95,7 @@ Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated +
 - **Impact:** becomes a live MAJOR the instant the installer ships — `ai-sw-mcp` dies with `ModuleNotFoundError: No module named 'mcp'` inside Claude Desktop. **Fix before/with B2.**
 - **Fix / Verify:** add `[mcp]` to the README-first install line; `grep "\[mcp\]" installer/README-first.txt` matches.
 
-### m14 — `ONBOARDING.md` off-by-one ("28 subcommands" vs 27) · Status: OPEN
+### m14 — `ONBOARDING.md` off-by-one ("28 subcommands" vs 27) · Status: FIXED
 - **Evidence:** `docs/ONBOARDING.md:146` "28 subcommands" for `ai-sw-observe`; the parser registers 27.
 - **Fix / Verify:** change to 27 (or derive programmatically).
 

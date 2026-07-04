@@ -143,7 +143,7 @@ Source: [`cli/observe.py`](../src/ai_sw_bridge/cli/observe.py) (subcommand
 |---|---|---|
 | `ai-sw-probe` | Verify COM connectivity | Yes |
 | `ai-sw-build` | Build a part from a JSON spec | Yes |
-| `ai-sw-observe` | Read-only inspection (28 subcommands) | Yes |
+| `ai-sw-observe` | Read-only inspection (27 subcommands) | Yes |
 | `ai-sw-mutate` | Propose-approve-execute variable changes | Yes |
 | `ai-sw-assembly` | Propose-approve-execute assembly lifecycle | Yes |
 | `ai-sw-drawing` | Create drawing views + annotations | Yes |
