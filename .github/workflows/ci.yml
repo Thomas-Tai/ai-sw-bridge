@@ -188,5 +188,10 @@ jobs:
           Write-Host ($out | Out-String)
           if ($probeExit -ne 1) { throw "ai-sw-probe exited $probeExit (want 1 with no seat)" }
           if ($out -match "Traceback") { throw "ai-sw-probe leaked a traceback" }
+          # ai-sw-probe intentionally exits 1 when no seat is present — that IS
+          # the success condition asserted above. Reset the leaked non-zero
+          # $LASTEXITCODE so GitHub's pwsh trailer (`exit $LASTEXITCODE`) does
+          # not fail the step after every assertion has passed.
+          exit 0
       - name: MCP server module imports
         run: python -c "import ai_sw_bridge.mcp.server; print('mcp ok')"
