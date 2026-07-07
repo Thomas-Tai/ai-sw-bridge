@@ -143,7 +143,7 @@ Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated +
 | m14 | FIXED | `16f6109` | ONBOARDING "28"→"27" subcommands |
 | C15 | FIXED | `dd1d542` | ~62 MB download stated alongside installed footprint |
 
-**All 14 findings FIXED.** Release published + smoke-proven 2026-07-07 (v1.7.1). Repo-health beyond the audit: the scheduled `Security`/gitleaks red (10 known sketch-relation FPs, broken by the W68 IP-scrub SHA rewrite) was regenerated in `e63aad6` and re-verified green; the `Upstream drift` scheduled "failure" is working-as-designed (alarms the ported-from upstream advanced past its pin). Deferred: zh README/USAGE mirror retranslation (honestly sentinel-marked stale, not silently rotted).
+**All 14 findings FIXED.** Release published + smoke-proven 2026-07-07 (v1.7.1). Repo-health beyond the audit: the scheduled `Security`/gitleaks red (10 known sketch-relation FPs, broken by the W68 IP-scrub SHA rewrite) was regenerated in `e63aad6` and re-verified green; the `Upstream drift` scheduled "failure" is working-as-designed (alarms the ported-from upstream advanced past its pin). **No deferrals remain:** the zh-CN/zh-TW README mirrors were retranslated to the v1.7.1 front door (`6c1ace9`, CI green) — Install A/B + chat-first Step 4 + m11 + banner, re-anchored `dd1d542`→`9937f99`, sentinel dropped; the USAGE and PUBLIC_API mirrors were already fresh (verified, no change). All six front-door mirrors now pass `test_i18n_staleness.py` as fresh (no sentinel), so the honest-lag debt is fully paid down, not just declared.
 
 ---
 
