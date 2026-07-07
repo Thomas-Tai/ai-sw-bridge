@@ -456,7 +456,7 @@ The first release uses a written handoff, not an automatic converter.
   - `ai-sw-drawing` for manufacturing drawings.
   - `ai-sw-properties` for metadata.
   - `ai-sw-configurations` for variant families.
-  - `ai-sw-checkpoint` for state save/restore at step boundaries.
+  - `ai-sw-history` to query, diff, and roll back the automatic per-feature checkpoints at step boundaries (`ai-sw-checkpoint` itself only manages checkpoint encryption keys).
   - `ai-sw-observe`, `ai-sw-motion`, and `ai-sw-solver` for verification.
 
 `solidworks_handoff.md` must also contain an **ordered build sequence**, not only a mapping. The required shape, matching the repo's verify-the-effect culture:
@@ -467,7 +467,7 @@ The first release uses a written handoff, not an automatic converter.
 4. Produce drawings (`ai-sw-drawing`) and metadata (`ai-sw-properties`).
 5. Close the loop against the package: `ai-sw-observe equations` diffed against the declared parameters, plus the checks named in `verification_plan.md`.
 
-Every step names its verify command and expected effect; `ai-sw-checkpoint` marks step boundaries.
+Every step names its verify command and expected effect; the automatic checkpoint trail, queried and rolled back through `ai-sw-history`, marks step boundaries.
 
 Future automation can consume `cad_ready_summary.json` to generate initial bridge-native specs.
 
