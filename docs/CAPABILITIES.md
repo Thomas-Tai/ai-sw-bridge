@@ -15,13 +15,24 @@ the MCP server.
 
 ## Surfaces
 
-- **21 command-line tools** (`ai-sw-build`, `ai-sw-mutate`, `ai-sw-assembly`,
+- **22 command-line tools** (`ai-sw-build`, `ai-sw-mutate`, `ai-sw-batch`, `ai-sw-assembly`,
   `ai-sw-drawing`, `ai-sw-properties`, `ai-sw-configurations`, `ai-sw-sketch-edit`,
   `ai-sw-sketch-relations`, `ai-sw-observe`, `ai-sw-import`, `ai-sw-export-dxf-flat`,
   `ai-sw-motion`, `ai-sw-solver`, `ai-sw-urdf`, `ai-sw-checkpoint`, `ai-sw-history`,
-  `ai-sw-memory`, `ai-sw-apidoc`, `ai-sw-codegen`, `ai-sw-probe`) — see
+  `ai-sw-memory`, `ai-sw-apidoc`, `ai-sw-codegen`, `ai-sw-probe`, `ai-sw-doctor`) — see
   [`PUBLIC_API.md`](PUBLIC_API.md) for stability tiers.
 - **One MCP server** (`ai-sw-mcp`) exposing 37 tools to MCP-capable AI clients.
+
+---
+
+## Industrial Design Intake — pre-CAD planning (docs layer)
+
+Upstream of every build surface sits a documentation-and-templates layer that
+turns a raw product idea (or a professional's complete design) into a CAD-ready
+package: requirements → architecture → calculations → COTS selection → top-down
+CAD strategy → DFM/DFA → verification plan, ending in a CAD-neutral
+`cad_ready_summary.json` handoff. It adds no CLI or MCP tool — see
+[`industrial_intake/README.md`](industrial_intake/README.md).
 
 ---
 

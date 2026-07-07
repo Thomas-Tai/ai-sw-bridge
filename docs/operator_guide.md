@@ -13,6 +13,12 @@ edges to know before you author your own part.
 > example to copy, and exactly what needs your confirmation before anything runs.
 > You stay in the loop; the AI drafts, you approve.
 
+> **Starting from just an idea?** If you have a product or machine idea but no
+> design yet, have your AI run the [Industrial Design
+> Intake](industrial_intake/README.md) first — it turns one idea into a
+> reviewable engineering package (requirements → architecture → calculations →
+> CAD plan) before any SolidWorks work begins.
+
 ---
 
 ## Before you start — what you need

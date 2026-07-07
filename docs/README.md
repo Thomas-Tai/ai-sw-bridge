@@ -8,6 +8,7 @@ prompts, session reconstructions, R&D research/spike reports) is kept out of the
 ## Getting started
 - [ONBOARDING.md](ONBOARDING.md) — first-run setup for a new operator/contributor.
 - [AGENTS.md](AGENTS.md) — how an AI agent drives the bridge (the contract agents read).
+- [industrial_intake/](industrial_intake/README.md) — pre-CAD intake: from one idea (or a complete professional design) to a CAD-ready package the bridge can build.
 - [CAPABILITIES.md](CAPABILITIES.md) — what the bridge can build/observe today.
 - [spec_reference.md](spec_reference.md) — per-primitive JSON spec schema reference (incl. sketch-axis reference).
 - [known_limitations.md](known_limitations.md) — spec-author sharp edges (read before your first spec).

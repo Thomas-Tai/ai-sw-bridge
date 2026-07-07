@@ -38,6 +38,7 @@ The 30 spec feature types available (13 sketch + 11 extrude/revolve + 3 modify +
 3. **Default to `--no-dim`.** It builds in seconds with zero manual clicks. Use parametric mode (no flag) only if the human explicitly needs a live equation link to `locals.txt`.
 4. **One feature at a time when debugging.** If a build fails at feature 7 of 10, trim the spec to features 1–7, fix, re-run, then add the rest back.
 5. **Start from a known-good shape.** Prefer adapting a working spec over writing from scratch. Run `ai-sw-build --demo --dry-run` to print a complete, valid reference spec; the [`examples/` folder on GitHub](https://github.com/Thomas-Tai/ai-sw-bridge/tree/master/examples) has 20 more covering every shipped feature type — browsable online (an installer / pipx setup won't have them on disk).
+6. **Vague idea? Intake first.** If the goal is a vague product or machine idea ("build me a sorting machine") rather than a concrete part, assembly, or spec, do not draft any spec yet: run the Industrial Design Intake process ([`industrial_intake/AGENTS.md`](industrial_intake/AGENTS.md)) until the package reaches a CAD-ready state, then come back here.
 
 ## What the spec looks like
 
