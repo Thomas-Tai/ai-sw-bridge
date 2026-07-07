@@ -1,6 +1,6 @@
 # Public API & Stability Contract
 
-> **Status:** the supported surface of ai-sw-bridge as of **v1.7.0**.
+> **Status:** the supported surface of ai-sw-bridge as of **v1.7.1**.
 > Anything not listed here is **internal** and may change without notice.
 
 > **Developer surface — Contract.** The supported-surface promise: every public

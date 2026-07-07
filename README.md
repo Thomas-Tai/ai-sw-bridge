@@ -345,7 +345,7 @@ The offline test suite is the spec: it must stay green (`pytest`, 3,700+ tests),
 
 ## Project status
 
-**Current release: `v1.7.0` — commercial, Production/Stable.** One public Python
+**Current release: `v1.7.1` — commercial, Production/Stable.** One public Python
 entry point (`SolidWorksClient`), 22 CLI commands, a 37-tool MCP server, and a
 36-kind `feature_add` registry behind the `ai-sw-batch` / `ai-sw-mutate` surface.
 Validated against SOLIDWORKS 32.1.0 (2024 SP1); CI green on Win-2025 × Python
