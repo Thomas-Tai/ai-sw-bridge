@@ -154,7 +154,7 @@ repo root; each line prints a label + its result. Then compare against the
 **Expected** column. Nothing here touches COM or the live seat — only
 `grep`/`git`/`gh`/`pytest` — so it is safe to run with SOLIDWORKS open.
 
-- **Confirmed at:** HEAD `8bcaa8a` on `master`, release tag `v1.7.1` → `daa5336`.
+- **Confirmed at:** HEAD `8bcaa8a` on `master`, release tag `v1.7.1` → `daa5336`. **Re-verified `b6f0b3f` (2026-07-07, post zh-README-retranslation): 16/16 checks still pass, nothing regressed.**
 - **Convention:** for "absence" checks (M3/M9/M10/m12) a clean result is **no
   output and `exit=1`** (grep found nothing). For "presence" checks a non-zero
   count is the pass.
