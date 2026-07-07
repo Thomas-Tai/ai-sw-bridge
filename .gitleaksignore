@@ -1,19 +1,33 @@
 # gitleaks allowlist — documented false positives.
 #
 # All entries below are gitleaks `generic-api-key` hits that fired ONLY because
-# the JSON field is literally named "token". The values are PUBLIC SOLIDWORKS
-# sketch-relation constraint identifiers (sgHORIZONTAL2D, sgVERTICAL2D,
-# sgPARALLEL, sgPERPENDICULAR2D, sgSAMELENGTH, sgCONCENTRIC) emitted into W39
-# sketch-relation spike `_results/*.json` dumps. They are SOLIDWORKS API enum
-# strings, NOT credentials. Triaged 2026-06-20 during the W68 IP-scrub pass.
+# a JSON field is literally named "token" (or a doc quotes such a field). The
+# values are PUBLIC SOLIDWORKS sketch-relation constraint identifiers
+# (sgHORIZONTAL2D, sgVERTICAL2D, sgPARALLEL, sgPERPENDICULAR2D, sgSAMELENGTH,
+# sgCONCENTRIC) emitted into W39 sketch-relation spike `_results/*.json` dumps,
+# plus one doc (docs/human_gates_runbook.md) that quotes the example token while
+# explaining these very false positives. They are SOLIDWORKS API enum strings,
+# NOT credentials. Originally triaged 2026-06-20 during the W68 IP-scrub pass.
+#
+# REGENERATED 2026-07-07: gitleaks fingerprints embed the commit SHA, and the
+# W68 IP-scrub (git filter-repo --invert-paths on RouteCAddin.dll) rewrote
+# history — moving these blobs from the pre-scrub SHA a06ea3e3 to 7fe40d84, and
+# the later-added runbook to 70ee4feb. The old fingerprints stopped matching, so
+# the scheduled full-history Security scan went red on the 10 known FPs. The
+# entries below are regenerated from the actual gitleaks SARIF of that scan.
+# (docs/human_gates_runbook.md itself warned this regeneration would be needed
+# after any history rewrite.) NOTE: a future rewrite will require regenerating
+# again; a path/regex allowlist in a .gitleaks.toml would be SHA-independent and
+# is the durable fix — deferred.
 #
 # Fingerprint format: <commit>:<file>:<rule-id>:<startline>
-a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations_effect_pae.json:generic-api-key:60
-a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations_effect_pae.json:generic-api-key:82
-a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations_effect_pae.json:generic-api-key:101
-a06ea3e39152115c3b794759f660c154101e5629:_results/sketch_relations.json:generic-api-key:14
-a06ea3e39152115c3b794759f660c154101e5629:_results/sketch_relations.json:generic-api-key:15
-a06ea3e39152115c3b794759f660c154101e5629:_results/sketch_relations.json:generic-api-key:17
-a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations.json:generic-api-key:28
-a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations.json:generic-api-key:29
-a06ea3e39152115c3b794759f660c154101e5629:spikes/v0_2x/_results/sketch_relations.json:generic-api-key:31
+70ee4febf4791720ece054267de4e5bf08d88f87:docs/human_gates_runbook.md:generic-api-key:190
+7fe40d8404d207e9097d807901e6102c97afaeab:_results/sketch_relations.json:generic-api-key:14
+7fe40d8404d207e9097d807901e6102c97afaeab:_results/sketch_relations.json:generic-api-key:15
+7fe40d8404d207e9097d807901e6102c97afaeab:_results/sketch_relations.json:generic-api-key:17
+7fe40d8404d207e9097d807901e6102c97afaeab:spikes/v0_2x/_results/sketch_relations.json:generic-api-key:28
+7fe40d8404d207e9097d807901e6102c97afaeab:spikes/v0_2x/_results/sketch_relations.json:generic-api-key:29
+7fe40d8404d207e9097d807901e6102c97afaeab:spikes/v0_2x/_results/sketch_relations.json:generic-api-key:31
+7fe40d8404d207e9097d807901e6102c97afaeab:spikes/v0_2x/_results/sketch_relations_effect_pae.json:generic-api-key:60
+7fe40d8404d207e9097d807901e6102c97afaeab:spikes/v0_2x/_results/sketch_relations_effect_pae.json:generic-api-key:82
+7fe40d8404d207e9097d807901e6102c97afaeab:spikes/v0_2x/_results/sketch_relations_effect_pae.json:generic-api-key:101
