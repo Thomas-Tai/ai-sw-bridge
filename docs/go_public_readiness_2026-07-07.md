@@ -46,19 +46,19 @@ Status legend: `OPEN` (confirmed, not yet done) · `FIXED` (remediated + Verify 
 
 ## 🟢 Owner's-judgment calls (not blockers — decide, then mark ACCEPTED)
 
-### J5 — Internal engineering/process docs would go public · Status: OPEN (decide)
+### J5 — Internal engineering/process docs would go public · Status: ACCEPTED (KEPT public, 2026-07-07)
 - **Evidence:** `git ls-files 'docs/superpowers/**'` → **13** SDD plan/spec files; `_results/` → **11** spike/PAE dumps; internal audit docs `docs/E2E_FRESH_USER_AUDIT_2026-06-30.md`, `docs/operator_experience_audit_2026-07-04.md`, `docs/pending_gates.md` (and this file).
 - **Impact:** two-sided. It *demonstrates rigor* (a credibility asset) but also exposes your internal roadmap, phase plans, and historical defect lists.
-- **Decision:** keep public as "engineering transparency," **or** relocate to a private/`.gitignore`'d `docs/internal/`. Either is defensible; make it a conscious choice.
-- **Verify:** owner recorded a decision here (ACCEPTED-keep or moved-private).
+- **Decision (2026-07-07): KEEP public.** The SDD plans + audit docs demonstrate a rigorous, results-oriented engineering process — a credibility asset for enterprise evaluators, not a liability. It reinforces that the bridge is built to strict standards and drives real outcomes. Kept as deliberate engineering transparency.
+- **Verify:** decision recorded (ACCEPTED — kept public).
 
-### J6 — "Lego Sorter V2" personal-project anecdote · Status: OPEN (decide)
+### J6 — "Lego Sorter V2" personal-project anecdote · Status: ACCEPTED (KEPT, 2026-07-07)
 - **Evidence:** `git grep -n 'Lego Sorter'` → `USAGE.md:26`, `docs/i18n/zh-CN/USAGE.md:29`, `docs/i18n/zh-TW/USAGE.md:30`, `examples/grooved_shaft/README.md:26`. Your own hobby project; no third-party/confidential data.
 - **Impact:** reads as an authentic real-world validation story (positive). Purely a question of whether you want the personal project named in a commercial doc.
-- **Decision:** keep (credibility) or generalize the wording. Owner's call.
-- **Verify:** owner recorded a decision.
+- **Decision (2026-07-07): KEEP.** The anecdote grounds the tool in a real physical system (a hardware sorter driving toward strict performance metrics), proving it drives real-world outcomes rather than abstract AI demos — exactly the grounded, results-oriented context enterprise evaluators value.
+- **Verify:** decision recorded (ACCEPTED — kept).
 
-### J7 — No SOLIDWORKS trademark / non-affiliation disclaimer · Status: OPEN
+### J7 — No SOLIDWORKS trademark / non-affiliation disclaimer · Status: FIXED (`2ea6f13`, 2026-07-07)
 - **Evidence:** `grep -ic 'not affiliated\|not endorsed\|Dassault' README.md` → **0** (as-audited). "SOLIDWORKS" is a registered mark of Dassault Systèmes.
 - **Impact:** driving SOLIDWORKS via COM is permitted, but a *commercial* product built around the trademark should carry a nominative-use / non-affiliation notice. Cheap insurance.
 - **Fix:** add a one-line disclaimer to README (and optionally LICENSE): *"SOLIDWORKS is a registered trademark of Dassault Systèmes. This project is independent and not affiliated with or endorsed by Dassault Systèmes."*
@@ -102,9 +102,9 @@ Status legend: `OPEN` (confirmed, not yet done) · `FIXED` (remediated + Verify 
 | S2 | should-fix | OPEN | delete 5 stale branches (`feat/*` + working branch) |
 | S3 | should-fix | OPEN | future commit email → noreply; historical Gmail = accept or rewrite |
 | S4 | should-fix | OPEN | delete 5 internal snapshot tags (optional) |
-| J5 | judgment | OPEN | keep-public vs private for `docs/superpowers/` + audit docs |
-| J6 | judgment | OPEN | keep vs generalize the Lego-Sorter anecdote |
-| J7 | judgment | OPEN | add SOLIDWORKS non-affiliation disclaimer |
+| J5 | judgment | ACCEPTED | KEPT public — engineering transparency (SDD plans + audit docs show rigor) |
+| J6 | judgment | ACCEPTED | KEPT — real-world (hardware) validation credibility |
+| J7 | judgment | FIXED | `2ea6f13` — SOLIDWORKS non-affiliation disclaimer added to README (+ zh mirrors) |
 | J8 | info | ACCEPTED | legacy MIT releases are irrevocable — awareness only |
 
 ---

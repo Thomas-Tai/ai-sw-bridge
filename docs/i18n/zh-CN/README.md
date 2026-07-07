@@ -1,5 +1,5 @@
 ---
-translated-from: 9937f99ca3568e004907fb99995551beab277a69
+translated-from: 2ea6f13a0fb79d310d59eb8e3c74e836c982850f
 ---
 
 # ai-sw-bridge
@@ -430,6 +430,12 @@ ai-sw-bridge/
 范本）。v1.0.0–v1.4.0 版本曾以 MIT 许可发布，并仍依该等条款提供。所集成的
 第三方组件保留各自的许可证 — 见 [THIRD-PARTY-NOTICES.md](../../../THIRD-PARTY-NOTICES.md)。
 贡献内容按 [CLA](../../../CLA.md) 接受。
+
+## 商标
+
+SOLIDWORKS 是 Dassault Systèmes SE 的注册商标。`ai-sw-bridge` 是一个独立项目，**与
+Dassault Systèmes 没有从属关系，也未获其授权或认可**。它通过已公开的 COM API 驱动
+SOLIDWORKS 以实现互操作；所有其他商标均归其各自所有者所有。
 
 ## 致谢
 
