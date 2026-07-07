@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "project": {
+    "name": "automated_sorting_machine",
+    "intent": "Sort mixed objects into bins by visual classification."
+  },
+  "units": {
+    "length": "mm",
+    "mass": "kg",
+    "angle": "deg"
+  },
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "text": "Sort target objects into at least three output bins.",
+      "priority": "must",
+      "verification": "test"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "CONVEYOR_WIDTH",
+      "value": 120.0,
+      "unit": "mm",
+      "status": "assumed",
+      "rationale": "Wide enough for the largest target object plus side clearance."
+    }
+  ],
+  "modules": [
+    {
+      "id": "MOD-001",
+      "name": "infeed_conveyor",
+      "role": "Move objects through the sensing zone.",
+      "cad_intent": "assembly",
+      "interfaces": ["IF-001", "IF-002"],
+      "build_buy": "mixed"
+    }
+  ],
+  "interfaces": [
+    {
+      "id": "IF-001",
+      "from": "infeed_conveyor",
+      "to": "vision_module",
+      "type": "spatial",
+      "description": "Camera field of view covers the belt inspection area."
+    }
+  ],
+  "cots": [
+    {
+      "id": "COTS-001",
+      "category": "motor",
+      "selection_status": "candidate",
+      "model": "Generic NEMA 17 stepper candidate",
+      "critical_dimensions": {},
+      "cad_asset": "missing"
+    }
+  ],
+  "manufacturing": {
+    "candidate_processes": ["3d_printing", "laser_cut_plate", "cnc_machining"],
+    "tolerance_policy": "prototype_clearance",
+    "notes": []
+  },
+  "cad_strategy": {
+    "coordinate_system": "machine_origin_at_frame_center_front_bottom",
+    "top_down": true,
+    "global_variables": ["CONVEYOR_WIDTH"],
+    "backend_targets": ["solidworks"]
+  },
+  "readiness": {
+    "state": "cad_ready_with_assumptions",
+    "blocking_questions": [],
+    "manual_review_required": ["safety_guarding"]
+  }
+}
