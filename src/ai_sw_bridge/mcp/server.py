@@ -152,7 +152,10 @@ _SERVER_INSTRUCTIONS = (
     "(ComExecutor.is_sw_dead=True). The two write tools (`sw_build`, "
     "`sw_batch_execute`) never persist without your in-chat approval — COM "
     "writes are irreversible within a single SW session, so review the plan "
-    "before approving."
+    "before approving. If the user starts from a vague product or machine "
+    "idea rather than a concrete part or spec, run the Industrial Design "
+    "Intake process first (docs/industrial_intake/ in the repo, or ask the "
+    "user for their intake package) before proposing any build."
 )
 
 
