@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "project": {
+    "name": "automated_sorting_machine",
+    "intent": "Sort mixed rigid objects into at least three bins by visual classification."
+  },
+  "units": {
+    "length": "mm",
+    "mass": "kg",
+    "angle": "deg"
+  },
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "text": "Convey objects one at a time through a sensing zone at >= 30 objects/min.",
+      "priority": "must",
+      "verification": "test"
+    },
+    {
+      "id": "REQ-002",
+      "text": "Classify each object into one of >= 3 visual classes with >= 95 % accuracy.",
+      "priority": "must",
+      "verification": "test"
+    },
+    {
+      "id": "REQ-003",
+      "text": "Handle objects up to 100 x 100 x 100 mm and 0.5 kg.",
+      "priority": "must",
+      "verification": "analysis"
+    },
+    {
+      "id": "REQ-004",
+      "text": "Divert each classified object into its matching bin (>= 3 bins).",
+      "priority": "must",
+      "verification": "demonstration"
+    },
+    {
+      "id": "REQ-005",
+      "text": "Whole machine fits a 1200 x 800 mm bench footprint.",
+      "priority": "should",
+      "verification": "inspection"
+    },
+    {
+      "id": "REQ-006",
+      "text": "An e-stop cuts all motion; nip points and the diverter sweep are guarded.",
+      "priority": "must",
+      "verification": "demonstration"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "CONVEYOR_WIDTH",
+      "value": 120.0,
+      "unit": "mm",
+      "status": "assumed",
+      "rationale": "Largest object 100 mm plus 2 x 10 mm side clearance."
+    },
+    {
+      "name": "INF_BELT_L",
+      "value": 600.0,
+      "unit": "mm",
+      "status": "assumed",
+      "rationale": "Sensing zone plus one object pitch either side."
+    },
+    {
+      "name": "INF_ROLLER_D",
+      "value": 40.0,
+      "unit": "mm",
+      "status": "assumed",
+      "rationale": "Candidate crowned roller size; input to the drive-torque calculation."
+    },
+    {
+      "name": "INF_FRAME_H",
+      "value": 150.0,
+      "unit": "mm",
+      "status": "assumed",
+      "rationale": "Belt-top height above baseplate for bin clearance under the discharge."
+    },
+    {
+      "name": "INF_BELT_SPEED",
+      "value": 0.1,
+      "unit": "m/s",
+      "status": "derived",
+      "rationale": "REQ-001 throughput (30 obj/min) at 200 mm assumed pitch; calculations.md section 1."
+    }
+  ],
+  "modules": [
+    {
+      "id": "MOD-001",
+      "name": "infeed_conveyor",
+      "role": "Move objects through the sensing zone at constant speed.",
+      "cad_intent": "assembly",
+      "interfaces": ["IF-001", "IF-002", "IF-003", "IF-004"],
+      "build_buy": "mixed"
+    },
+    {
+      "id": "MOD-002",
+      "name": "vision_module",
+      "role": "Classify each object passing the sensing zone.",
+      "cad_intent": "assembly",
+      "interfaces": ["IF-001", "IF-005"],
+      "build_buy": "mixed"
+    },
+    {
+      "id": "MOD-003",
+      "name": "diverter_unit",
+      "role": "Redirect each classified object into its bin lane.",
+      "cad_intent": "assembly",
+      "interfaces": ["IF-003", "IF-006"],
+      "build_buy": "mixed"
+    },
+    {
+      "id": "MOD-004",
+      "name": "bin_array",
+      "role": "Receive and hold sorted objects.",
+      "cad_intent": "part",
+      "interfaces": ["IF-006"],
+      "build_buy": "build"
+    },
+    {
+      "id": "MOD-005",
+      "name": "frame",
+      "role": "Position all modules and carry loads to the bench.",
+      "cad_intent": "assembly",
+      "interfaces": ["IF-002"],
+      "build_buy": "mixed"
+    },
+    {
+      "id": "MOD-006",
+      "name": "controls",
+      "role": "Power and sequence the machine; host the e-stop.",
+      "cad_intent": "purchased",
+      "interfaces": ["IF-004", "IF-005"],
+      "build_buy": "buy"
+    }
+  ],
+  "interfaces": [
+    {
+      "id": "IF-001",
+      "from": "vision_module",
+      "to": "infeed_conveyor",
+      "type": "spatial",
+      "description": "Camera field of view covers the belt sensing zone unobstructed."
+    },
+    {
+      "id": "IF-002",
+      "from": "infeed_conveyor",
+      "to": "frame",
+      "type": "mechanical",
+      "description": "Slotted M5 bolt pattern; belt-top height equals INF_FRAME_H."
+    },
+    {
+      "id": "IF-003",
+      "from": "diverter_unit",
+      "to": "infeed_conveyor",
+      "type": "spatial",
+      "description": "Paddle sweep envelope clears belt and object by at least 2 mm."
+    },
+    {
+      "id": "IF-004",
+      "from": "infeed_conveyor",
+      "to": "controls",
+      "type": "electrical",
+      "description": "Stepper 4-wire to driver with the e-stop loop in series."
+    },
+    {
+      "id": "IF-005",
+      "from": "vision_module",
+      "to": "controls",
+      "type": "data",
+      "description": "USB camera stream to the classifier."
+    },
+    {
+      "id": "IF-006",
+      "from": "diverter_unit",
+      "to": "bin_array",
+      "type": "spatial",
+      "description": "Diverted-object trajectory lands inside the bin mouth."
+    }
+  ],
+  "cots": [
+    {
+      "id": "COTS-001",
+      "category": "motor",
+      "selection_status": "candidate",
+      "model": "Generic NEMA 17 stepper, 0.4 N.m holding",
+      "critical_dimensions": {
+        "faceplate_square": { "value": 42.3, "unit": "mm" },
+        "shaft_diameter": { "value": 5.0, "unit": "mm" }
+      },
+      "cad_asset": "missing"
+    },
+    {
+      "id": "COTS-002",
+      "category": "belt",
+      "selection_status": "candidate",
+      "model": "PU flat belt, 120 mm wide, endless",
+      "critical_dimensions": {
+        "width": { "value": 120.0, "unit": "mm" }
+      },
+      "cad_asset": "missing"
+    },
+    {
+      "id": "COTS-003",
+      "category": "roller",
+      "selection_status": "candidate",
+      "model": "Crowned conveyor roller",
+      "critical_dimensions": {
+        "outer_diameter": { "value": 40.0, "unit": "mm" },
+        "face_length": { "value": 130.0, "unit": "mm" }
+      },
+      "cad_asset": "missing"
+    },
+    {
+      "id": "COTS-004",
+      "category": "camera",
+      "selection_status": "candidate",
+      "model": "USB 1080p module with fixed-focus lens",
+      "critical_dimensions": {},
+      "cad_asset": "missing"
+    },
+    {
+      "id": "COTS-005",
+      "category": "controller",
+      "selection_status": "candidate",
+      "model": "SBC (Raspberry-Pi-class) plus stepper driver",
+      "critical_dimensions": {},
+      "cad_asset": "missing"
+    },
+    {
+      "id": "COTS-006",
+      "category": "fasteners",
+      "selection_status": "selected",
+      "model": "ISO 4762 M5 socket-head screws",
+      "critical_dimensions": {
+        "thread_major_diameter": { "value": 5.0, "unit": "mm" }
+      },
+      "cad_asset": "available"
+    }
+  ],
+  "manufacturing": {
+    "candidate_processes": ["laser_cut_plate", "3d_printing"],
+    "tolerance_policy": "prototype_clearance",
+    "notes": [
+      "Quantity 1 prototype + up to 5 pilots: no tooling, no castings.",
+      "Belt is not modeled as a flexible body in v1 CAD."
+    ]
+  },
+  "cad_strategy": {
+    "coordinate_system": "machine_origin_at_frame_center_front_bottom",
+    "top_down": true,
+    "global_variables": ["CONVEYOR_WIDTH"],
+    "backend_targets": ["solidworks"]
+  },
+  "readiness": {
+    "state": "cad_ready_with_assumptions",
+    "blocking_questions": [],
+    "manual_review_required": ["safety_guarding"]
+  }
+}
