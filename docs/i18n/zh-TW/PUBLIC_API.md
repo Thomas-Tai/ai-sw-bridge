@@ -1,10 +1,10 @@
 ---
-translated-from: e3bec289377be23d6673971dff79ae8c049c7c0c
+translated-from: 2aa695ab4adbfdd625d6d3b3dfaef867e00d1803
 ---
 
 # Public API & Stability Contract (公開 API 與穩定性合約)
 
-> **狀態：** ai-sw-bridge 截至 **v1.7.0** 的支援範圍。
+> **狀態：** ai-sw-bridge 截至 **v1.7.1** 的支援範圍。
 > 未列於此處的一切都是**內部**實作，可能隨時變更且不另行通知。
 
 > **開發者介面 — 合約 (Contract)。** 支援範圍的承諾：每一個公開

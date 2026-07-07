@@ -1,10 +1,10 @@
 ---
-translated-from: e3bec289377be23d6673971dff79ae8c049c7c0c
+translated-from: 2aa695ab4adbfdd625d6d3b3dfaef867e00d1803
 ---
 
 # Public API & Stability Contract (公开 API 与稳定性契约)
 
-> **状态：** ai-sw-bridge 截至 **v1.7.0** 的受支持能力面。
+> **状态：** ai-sw-bridge 截至 **v1.7.1** 的受支持能力面。
 > 未在此列出的一切都属于**内部实现**，可能不经通知就发生变化。
 
 > **开发者能力面 — 契约。** 受支持范围的承诺：每个公开符号、它的稳定性层级、
