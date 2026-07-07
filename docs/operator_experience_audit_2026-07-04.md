@@ -20,11 +20,12 @@ Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated +
 - **Fix:** ship the demo spec as package data under `src/ai_sw_bridge/examples/` and add `ai-sw-build --demo` (resolves the spec via `importlib.resources`). Rewrite the quickstart commands to `ai-sw-build --demo …`.
 - **Verify:** on a wheel install with **no repo checkout**, `ai-sw-build --demo --dry-run` exits 0 and reports `feature_count: 3`; no doc references `examples/…` on a no-clone path.
 
-### B2 — The "no-Python" installer `.exe` is not published on any Release · Status: PARTIAL (docs fixed; publish deferred to a maintainer tag)
+### B2 — The "no-Python" installer `.exe` is not published on any Release · Status: FIXED (v1.7.1 tag cut → `.exe` published & smoke-proven, 2026-07-07)
 - **Evidence:** `docs/operator_guide.md:54-58` says "Download `ai-sw-bridge-setup-<version>.exe` from the Releases page and double-click it." `gh release view v1.7.0 --json assets` → **0 assets**; every release v1.3.0…v1.7.0 (Latest) has no `.exe`. The installer is proven to *build* (workflow_dispatch run `28697923375`, ~62 MB) but was never *published*; `CHANGELOG.md` still lists it under `[Unreleased]`.
 - **Operator impact:** the path written for this exact persona dead-ends — they land on Releases, see only "Source code (zip/tar.gz)," and are stuck. The CI artifact needs a GitHub login + Actions access a non-coder lacks.
 - **Fix (two parts):** (a) *docs, in-scope now* — stop sending operators to a download that isn't there; make pipx the supported path and state the `.exe` ships attached to tagged releases. (b) *maintainer/outward-facing* — publish the `.exe` by cutting a tag (release.yml's `installer` job auto-attaches a correctly-versioned `.exe` on tag runs), or manually upload.
 - **Verify:** docs no longer promise a Release `.exe` that is absent; AND (to fully close) `gh release view <tag> --json assets` shows `ai-sw-bridge-setup-*.exe`.
+- **VERIFIED 2026-07-07:** `v1.7.1` tag pushed at `daa5336` (CI green: 3.10/3.12/3.14 + install-smoke). `release.yml` published a real Release (`draft=false, prerelease=false`) at `/releases/tag/v1.7.1` with assets: **`ai-sw-bridge-setup-1.7.1.exe` (65,749,100 B ≈ 62.7 MB)**, the wheel, the sdist, and `checksums.txt` (unsigned — GPG optional, no key configured). The `installer` job's silent-install smoke passed on a clean windows-2025 runner (install → `ai-sw-build --list-kinds` → `pywin32 ok` → `mcp ok`), so the published `.exe` is proven functional, not merely built. Getting here also required clearing two CI honesty gates the `1.7.1` bump tripped: doc-truth (5 version banners → `2aa695a`) and i18n staleness (PUBLIC_API mirrors re-anchored → `daa5336`).
 
 ---
 
@@ -126,18 +127,20 @@ Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated +
 
 | ID | Status | Commit | Notes |
 |----|--------|--------|-------|
-| B1 | FIXED | `--demo` commit | package-data `examples/*.json` + `ai-sw-build --demo` + test + docs |
-| B2 | PARTIAL | `--demo` commit | docs no longer promise an absent download; **publish the `.exe` = maintainer tag action** |
-| M3 | OPEN | — | i18n cascade: re-anchor USAGE mirrors |
-| M4 | OPEN | — | — |
-| M5 | OPEN | — | — |
-| M6 | OPEN | — | depends on B2 asset for the primary path |
-| M7 | OPEN | — | — |
-| M8 | OPEN | — | — |
-| M9 | OPEN | — | — |
-| M10 | OPEN | — | — |
-| m11 | OPEN | — | i18n cascade: README mirror |
-| m12 | OPEN | — | — |
-| m13 | FIXED | `--demo` commit | `[mcp]` added to README-first pipx line |
-| m14 | OPEN | — | — |
-| C15 | FIXED | `--demo` commit | ~62 MB download stated alongside installed footprint |
+| B1 | FIXED | `dd1d542` | package-data `examples/*.json` + `ai-sw-build --demo` + test + docs; wheel-verified |
+| B2 | FIXED | `dd1d542` (docs) + `v1.7.1`@`daa5336` | `.exe` published on the v1.7.1 Release (`ai-sw-bridge-setup-1.7.1.exe`, 62.7 MB), silent-install smoke-proven on windows-2025 |
+| M3 | FIXED | `16f6109` (+i18n re-anchor `3c90006`) | flag underscores→hyphens across USAGE/tools_reference/zh mirrors |
+| M4 | FIXED | `aef2542` | mcp_server_design §6.6 leads with `ai-sw-doctor --register`; manual JSON demoted |
+| M5 | FIXED | `aef2542` | README Step 4 chat-first via MCP + Claude Desktop; copy-paste = fallback |
+| M6 | FIXED | `aef2542` | README front door leads with the no-Python installer (path A) |
+| M7 | FIXED | `aef2542` | installer = one-action path; pipx/pywin32-subshell relabeled developer path |
+| M8 | FIXED | `aef2542` | AGENTS.md: no clone/`pip -e .` assumption; prefer MCP tools; examples on GitHub |
+| M9 | FIXED | `16f6109` | zh-TW README 8 dead nav anchors re-slugged to translated headings |
+| M10 | FIXED | `16f6109` | known_limitations dead links de-linked / repointed to ROADMAP.md |
+| m11 | FIXED | `aef2542` | README `undo`→`undo_last_commit` |
+| m12 | FIXED | `16f6109` | why_no_addim2 dead link removed (spike-dir links kept — verified tracked) |
+| m13 | FIXED | `dd1d542` | `[mcp]` added to README-first pipx line |
+| m14 | FIXED | `16f6109` | ONBOARDING "28"→"27" subcommands |
+| C15 | FIXED | `dd1d542` | ~62 MB download stated alongside installed footprint |
+
+**All 14 findings FIXED.** Release published + smoke-proven 2026-07-07 (v1.7.1). Repo-health beyond the audit: the scheduled `Security`/gitleaks red (10 known sketch-relation FPs, broken by the W68 IP-scrub SHA rewrite) was regenerated in `e63aad6` and re-verified green; the `Upstream drift` scheduled "failure" is working-as-designed (alarms the ported-from upstream advanced past its pin). Deferred: zh README/USAGE mirror retranslation (honestly sentinel-marked stale, not silently rotted).
