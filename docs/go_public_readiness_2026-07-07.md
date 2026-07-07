@@ -30,7 +30,7 @@ Status legend: `OPEN` (confirmed, not yet done) · `FIXED` (remediated + Verify 
 - **Fix:** after merging `docs/commercial-elevation`, `git push origin --delete <branch>` for each `feat/*` and the working branch. Leave `dependabot/*` (auto-managed).
 - **Verify:** `gh api repos/Thomas-Tai/ai-sw-bridge/branches --jq '.[].name' | grep -vE '^(master|dependabot/)' | grep -c .` → **0**.
 
-### S3 — Personal email is on 1,374 commits (permanent once public) · Status: OPEN
+### S3 — Personal email is on 1,374 commits (permanent once public) · Status: FIXED (future→noreply 2026-07-07; historical ACCEPTED, no rewrite)
 - **Evidence:** `git log --all --format='%ae' | sort | uniq -c` → `thomastai.uni@gmail.com` on **1,374** commits; `git config user.email` → `thomastai.uni@gmail.com` (as-audited).
 - **Impact:** the personal Gmail becomes permanently public and scrapeable in every commit. The *historical* addresses cannot be changed without another full history rewrite (which re-breaks every SHA — not worth it), but *future* commits can use a private address.
 - **Fix:** `git config user.email "<id>+Thomas-Tai@users.noreply.github.com"` for future commits; consciously accept (or accept-the-cost-of-rewriting) the historical Gmail exposure.
@@ -115,6 +115,16 @@ gh pr list --state open
 
 Then re-run [§ Verification Protocol](#-verification-protocol--runnable-cross-check) — with the license finalized, **B1 now reads 0** and every row hits its Expected value.
 
+### Post-flip hardening (do the moment visibility flips — all free on public repos)
+
+Platform-level safety nets that only become available *because* the repo is public. They enforce, at the GitHub level, the discipline this campaign held by hand.
+
+- [ ] **Branch protection on `master`** — require the CI status check + ≥1 PR review; block direct pushes. (Was 403/unavailable while private on the Free plan.)
+- [ ] **GitHub secret scanning + push protection** — enable (Settings → Code security). Belt-and-suspenders alongside gitleaks; push protection blocks a secret *before* it lands, not after.
+- [ ] **Private vulnerability reporting** — enable (Settings → Security). This is what makes the existing `docs/SECURITY.md` reporting link actually functional.
+- [ ] **Retire the direct-push workflow.** The campaign pushed `docs/commercial-elevation → master` via refspec — correct for a solo private repo, wrong for a public one with contributors. Switch to feature-branch → PR → CI-green → merge (branch protection will enforce it anyway).
+- [ ] **Validate the merged Action bumps before the next real release.** A `workflow_dispatch` of `release.yml` exercises `upload-artifact@v7` + `checkout@v7` + the installer build for free (no tag, no publish). `action-gh-release@v3` runs only on a real tag → either watch the next `v*` release closely (revert-ready) or float+delete a throwaway `v1.7.2-rc1` prerelease to prove it first.
+
 ---
 
 ## Remediation log (fill in as steps land)
@@ -123,7 +133,7 @@ Then re-run [§ Verification Protocol](#-verification-protocol--runnable-cross-c
 |----|----------|--------|-------|
 | B1 | BLOCKER | OPEN | LICENSE is a placeholder — counsel must finalize before commercial public launch |
 | S2 | should-fix | FIXED | pruned `feat/w58-doc-trueup`, `feat/w68-{curve-driven-pattern,fill-pattern,fillet-faceround}`, `docs/commercial-elevation` — remote now shows only `master` + `dependabot/*` |
-| S3 | should-fix | OPEN | future commit email → noreply; historical Gmail = accept or rewrite (owner) |
+| S3 | should-fix | FIXED | future commits → `40379214+Thomas-Tai@users.noreply.github.com` (repo-local); historical Gmail ACCEPTED — no rewrite (would break every release tag/SHA) |
 | S4 | should-fix | FIXED | pruned `v1.0-OOP-Baseline`, `pre-*` (×3), `0.10.0` (remote + local) |
 | J5 | judgment | ACCEPTED | KEPT public — engineering transparency (SDD plans + audit docs show rigor) |
 | J6 | judgment | ACCEPTED | KEPT — real-world (hardware) validation credibility |
