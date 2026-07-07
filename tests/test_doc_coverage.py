@@ -11,6 +11,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GATE_SCRIPT = REPO_ROOT / "tools" / "doc_coverage_gate.py"
 
+# Make `import doc_coverage_gate` work when this file runs as a subset, not
+# only when an alphabetically-earlier test module has already put tools/ on
+# sys.path as a collection side effect.
+_TOOLS = REPO_ROOT / "tools"
+if str(_TOOLS) not in sys.path:
+    sys.path.insert(0, str(_TOOLS))
+
 
 def test_doc_coverage_passes() -> None:
     """The doc coverage gate should pass on the current repo."""
