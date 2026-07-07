@@ -6,7 +6,7 @@
 
 **Method:** a 6-auditor adversarial workflow from the 20-year-operator persona, then each load-bearing BLOCKER/MAJOR independently re-verified against source at HEAD `95fa30d`.
 
-**How to use this doc:** each row has a **Verify** column — the exact check to run after the fix. When every row is `FIXED` and its Verify passes, the operator experience is genuinely delivered. Do **not** "fix" anything in the *Verified-good* section — those are correct.
+**How to use this doc:** each finding has a **Verify** line — the exact check to run after the fix. When every finding is `FIXED` and its Verify passes, the operator experience is genuinely delivered. Do **not** "fix" anything in the *Verified-good* section — those are correct. **To independently re-check everything in one pass, jump to [§ Verification Protocol](#-verification-protocol--runnable-cross-check-confirmed-2026-07-07) at the end** — it is a single COM-free command block (grep/git/gh/pytest only, no live seat) with the expected result for every finding.
 
 Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated + Verify passes) · `DEFERRED` (needs a maintainer/outward-facing action).
 
@@ -144,3 +144,81 @@ Status legend: `OPEN` (confirmed defect, not yet fixed) · `FIXED` (remediated +
 | C15 | FIXED | `dd1d542` | ~62 MB download stated alongside installed footprint |
 
 **All 14 findings FIXED.** Release published + smoke-proven 2026-07-07 (v1.7.1). Repo-health beyond the audit: the scheduled `Security`/gitleaks red (10 known sketch-relation FPs, broken by the W68 IP-scrub SHA rewrite) was regenerated in `e63aad6` and re-verified green; the `Upstream drift` scheduled "failure" is working-as-designed (alarms the ported-from upstream advanced past its pin). Deferred: zh README/USAGE mirror retranslation (honestly sentinel-marked stale, not silently rotted).
+
+---
+
+## ✅ Verification Protocol — runnable cross-check (confirmed 2026-07-07)
+
+Every fix has a **concrete, COM-free command**. Paste the block below from the
+repo root; each line prints a label + its result. Then compare against the
+**Expected** column. Nothing here touches COM or the live seat — only
+`grep`/`git`/`gh`/`pytest` — so it is safe to run with SOLIDWORKS open.
+
+- **Confirmed at:** HEAD `8bcaa8a` on `master`, release tag `v1.7.1` → `daa5336`.
+- **Convention:** for "absence" checks (M3/M9/M10/m12) a clean result is **no
+  output and `exit=1`** (grep found nothing). For "presence" checks a non-zero
+  count is the pass.
+
+```bash
+# ── run from the repo root ──────────────────────────────────────────────
+# B1  demo spec ships INSIDE the importable package (works on no-clone installs)
+python -c "from importlib.resources import files; print('B1a is_file:', (files('ai_sw_bridge')/'examples'/'filleted_box.json').is_file())"
+python -m pytest tests/cli/test_build_demo.py -q                                   # B1b
+# B2  the installer .exe is PUBLISHED on the Release
+gh release view v1.7.1 --json assets --jq '.assets[].name'                          # B2
+# M3  no underscore CLI flags survive in the docs
+grep -rEn -- '--(new_value|proposal_id|fit_view|entity_a|entity_b)' USAGE.md docs/tools_reference.md docs/i18n; echo "M3 exit=$?"
+# M4  ai-sw-doctor --register is documented as the registration step
+grep -c -- 'ai-sw-doctor --register' README.md docs/mcp_server_design.md            # M4
+# M5  chat-first names Claude Desktop; AGENTS references the MCP tool
+echo "M5 desktop=$(grep -ic 'claude desktop' README.md) agents_sw_build=$(grep -c sw_build docs/AGENTS.md)"
+# M6  README front door surfaces the installer (was 0 hits pre-fix)
+echo "M6 installer_hits=$(grep -cEi 'installer|\.exe|releases' README.md)"
+# M7/M8  AGENTS operator path installs NOTHING (pip -e is contributor-scoped only)
+echo "M8 no_install_line=$(grep -c 'you do not install anything' docs/AGENTS.md)"
+# M9  zh-TW dead nav anchor removed
+grep -Fn '(#for-operators--5-minute-quickstart)' docs/i18n/zh-TW/README.md; echo "M9 exit=$?"
+# M10 known_limitations dead links removed
+grep -nE 'MMP_DEBUG_SESSION|deferred_dim_investigation|README\.md#roadmap' docs/known_limitations.md; echo "M10 exit=$?"
+# m11 README uses undo_last_commit (not bare 'undo')
+echo "m11 undo_last_commit=$(grep -c undo_last_commit README.md)"
+# m12 no dead LINK to MMP_DEBUG_SESSION (a plain-prose mention is fine)
+grep -nE '\]\([^)]*MMP_DEBUG_SESSION[^)]*\)' docs/why_no_addim2.md; echo "m12 exit=$?"
+# m13 README-first installs the [mcp] extra
+echo "m13 mcp_extra=$(grep -Fc '[mcp]' installer/README-first.txt)"
+# m14 ONBOARDING subcommand count corrected
+echo "m14 stale=$(grep -c '28 subcommands' docs/ONBOARDING.md) current=$(grep -c '27 subcommands' docs/ONBOARDING.md)"
+# C15 the real ~62 MB download is stated alongside the installed footprint
+grep -niE '~?62 ?MB' docs/operator_guide.md                                         # C15
+# GATES  the honesty gates the release depends on
+python -m pytest tests/test_doc_truth.py tests/test_i18n_staleness.py tests/cli/test_build_demo.py -q
+# CI     all workflows green on the tagged/current commit
+gh run list --branch master --limit 4 --json workflowName,conclusion --jq '.[] | "\(.conclusion) \(.workflowName)"'
+```
+
+| ID | What it proves | Expected result | Confirmed 2026-07-07 |
+|----|----------------|-----------------|----------------------|
+| B1a | demo spec is in the wheel-importable package | `is_file: True` | ✅ `True` |
+| B1b | `--demo` path is offline-tested | `5 passed` | ✅ 5 passed |
+| B2 | the `.exe` is published, not just built | asset list includes `ai-sw-bridge-setup-1.7.1.exe` | ✅ present (+ wheel, sdist, checksums) |
+| M3 | canonical flags are hyphenated in docs | no output, `M3 exit=1` | ✅ clean |
+| M4 | `--register` is the documented step | README ≥1 **and** mcp_server_design ≥1 | ✅ `1` / `1` |
+| M5 | chat-first names Desktop; AI briefed on MCP | desktop ≥1 **and** agents_sw_build ≥1 | ✅ `8` / `1` |
+| M6 | README surfaces the installer | installer_hits ≥1 (was `0`) | ✅ `6` |
+| M7 | installer is the ≤1-action path | (read: quickstart path A = installer; pipx = "developers") | ✅ manual-read |
+| M8 | AGENTS operator path installs nothing | no_install_line ≥1; `pip -e` is contributor-only | ✅ `1` |
+| M9 | zh-TW nav anchors live | no output, `M9 exit=1` | ✅ clean |
+| M10 | known_limitations links resolve | no output, `M10 exit=1` | ✅ clean |
+| m11 | README uses `undo_last_commit` | count ≥1 | ✅ `1` |
+| m12 | no dead **link** to MMP_DEBUG_SESSION | no output, `m12 exit=1` (prose mention allowed) | ✅ clean |
+| m13 | README-first installs `[mcp]` | mcp_extra ≥1 | ✅ present (line 22 + note) |
+| m14 | ONBOARDING count is 27 | stale=`0`, current=`1` | ✅ `0` / `1` |
+| C15 | ~62 MB download stated | ≥1 hit | ✅ line 71 |
+| GATES | doc-truth + i18n + demo gates pass | `47 passed` | ✅ 47 passed |
+| CI | all workflows green on master | `success CI`, `success Security`, `success License lint` | ✅ green |
+
+**If any row fails a future re-run:** that fix regressed — the finding above it
+names the file, the operator impact, and the remediation commit to diff against.
+Absence checks (M3/M9/M10/m12) flip to a failure the moment a bad pattern is
+re-introduced, so this block doubles as a regression tripwire, not just a
+one-time sign-off.
