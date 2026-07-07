@@ -127,7 +127,7 @@ jobs:
           echo "path=/tmp/release_notes.txt" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           # checksums.txt.asc only exists when a GPG key is configured (see the
           # optional sign step); don't fail the release when it's absent.
@@ -188,7 +188,7 @@ jobs:
 
       - name: Attach installer to the Release (tag runs only)
         if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/ai-sw-bridge-setup-*.exe
 
