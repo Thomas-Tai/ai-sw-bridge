@@ -92,6 +92,29 @@ Status legend: `OPEN` (confirmed, not yet done) · `FIXED` (remediated + Verify 
 6. **Enable branch protection** on `master`; confirm fork-PR Actions require approval (default).
 7. **Flip to public**, then immediately re-run the gitleaks scan on the public default branch to confirm nothing changed.
 
+### Post-flip turnkey (run after the flip)
+
+```bash
+# ── AFTER the LICENSE is finalized (B1) and the repo is flipped to public ──
+gh repo view --json isPrivate,visibility --jq '{isPrivate,visibility}'   # expect visibility=PUBLIC, isPrivate=false
+grep -c 'PLACEHOLDER\|TEMPLATE — NOT LEGAL ADVICE' LICENSE               # B1 verify -> must be 0
+
+# trigger a fresh pipeline (public repos = unmetered Actions, so it will actually run this time)
+git commit --allow-empty -m "ci: post-flip green stamp" && git push origin HEAD:master
+
+# 1) prove the quota wall is gone + CI green
+gh run watch "$(gh run list --workflow ci.yml       --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
+# 2) gitleaks re-attests clean over the now-world-readable full history
+gh run watch "$(gh run list --workflow security.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
+
+# 3) validate + merge the 5 deferred Dependabot PRs through their now-live CI.
+#    Before merging black #5: apply its reformat AND reconcile the hard-coded
+#    black==25.12.0 pin in ci.yml + release.yml, or black --check will fail.
+gh pr list --state open
+```
+
+Then re-run [§ Verification Protocol](#-verification-protocol--runnable-cross-check) — with the license finalized, **B1 now reads 0** and every row hits its Expected value.
+
 ---
 
 ## Remediation log (fill in as steps land)
