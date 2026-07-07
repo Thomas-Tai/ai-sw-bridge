@@ -21,6 +21,7 @@
 - Python files must pass `black --check` (black==25.12.0, target py310, 88 cols) and `flake8`. Never write `assert not x, (f"...")` — parenthesized-tuple asserts fail the repo's black gate.
 - The i18n gate (`tests/test_i18n_staleness.py`) works on `translated-from: <sha>` frontmatter in each mirror; the sha must already exist in history. Therefore the README edit and the mirror retranslation are **two separate commits in the same branch push** (Task 9 explains the exact dance).
 - Preflight (run once before Task 1): `git -C . status --short` must show only `M .gitignore`; `python -c "import jsonschema, pytest"` must succeed (else `pip install -e ".[dev]"`).
+- **Tool invocation on this workstation:** bare `pytest` / `black` / `flake8` are NOT on PATH — every command below uses `python -m pytest`, `python -m black`, `python -m flake8`. Do not "simplify" them back to bare names. The repo path contains `[Local]`, which PowerShell treats as a wildcard — never `Set-Location` to the literal path (you are already started in the repo root; stay there).
 - Vocabulary pins from spec §9 — the schema is the single source of truth downstream, but these exact enums are non-negotiable:
   - `parameters[].status`: `required | assumed | measured | vendor_provided | derived`
   - `interfaces[].type`: `spatial | mechanical | electrical | data | thermal`
@@ -357,11 +358,7 @@ Expected output: `VALID`. If it raises `ValidationError`, fix the JSON — do no
 - [ ] **Step 4: Prove the schema can reject (spot check)**
 
 ```powershell
-python -c "import json, jsonschema; d='docs/industrial_intake/templates/'; doc=json.load(open(d+'cad_ready_summary.example.json', encoding='utf-8')); doc['readiness']['state']='totally_ready';
-try:
-    jsonschema.validate(doc, json.load(open(d+'cad_ready_summary.schema.json', encoding='utf-8'))); print('BUG: accepted')
-except jsonschema.ValidationError:
-    print('REJECTS-INVALID')"
+python -c "import json, jsonschema; d='docs/industrial_intake/templates/'; s=json.load(open(d+'cad_ready_summary.schema.json', encoding='utf-8')); doc=json.load(open(d+'cad_ready_summary.example.json', encoding='utf-8')); doc['readiness']['state']='totally_ready'; print('REJECTS-INVALID' if not jsonschema.Draft202012Validator(s).is_valid(doc) else 'BUG: accepted')"
 ```
 
 Expected output: `REJECTS-INVALID`.
@@ -2199,7 +2196,7 @@ def test_dead_link_detector_actually_detects(tmp_path: Path) -> None:
 - [ ] **Step 2: Run the new gate**
 
 ```powershell
-pytest tests/test_industrial_intake_docs.py -v
+python -m pytest tests/test_industrial_intake_docs.py -v
 ```
 
 Expected: **7 passed** (tree-shape, 2× schema-validates, 2× schema-rejects, dead-links, detector-detects). If the tree-shape test fails, a Task 1–6 file is missing or misnamed — fix the file, not the test.
@@ -2207,11 +2204,11 @@ Expected: **7 passed** (tree-shape, 2× schema-validates, 2× schema-rejects, de
 - [ ] **Step 3: Lint the new file**
 
 ```powershell
-black --check tests/test_industrial_intake_docs.py
-flake8 tests/test_industrial_intake_docs.py
+python -m black --check tests/test_industrial_intake_docs.py
+python -m flake8 tests/test_industrial_intake_docs.py
 ```
 
-Expected: black "would leave 1 file unchanged"; flake8 silent, exit 0. If black wants changes, run `black tests/test_industrial_intake_docs.py` and re-check.
+Expected: black "would leave 1 file unchanged"; flake8 silent, exit 0. If black wants changes, run `python -m black tests/test_industrial_intake_docs.py` and re-check.
 
 - [ ] **Step 4: Commit**
 
@@ -2349,7 +2346,7 @@ CAD strategy → DFM/DFA → verification plan, ending in a CAD-neutral
 
 ```powershell
 python tools/doc_coverage_gate.py
-pytest tests/test_doc_truth.py tests/test_doc_coverage.py tests/test_industrial_intake_docs.py -v
+python -m pytest tests/test_doc_truth.py tests/test_doc_coverage.py tests/test_industrial_intake_docs.py -v
 ```
 
 Expected: gate exits 0; all tests pass. (`docs/CAPABILITIES.md` pins only the `v{version}` string in doc-truth — the count fix is safe; the intake adds no feature types, so doc-coverage is untouched.)
@@ -2469,7 +2466,7 @@ git commit -m "docs(i18n): retranslate README persona router for the intake row 
 - [ ] **Step 6: Run the i18n gate**
 
 ```powershell
-pytest tests/test_i18n_staleness.py -v
+python -m pytest tests/test_i18n_staleness.py -v
 ```
 
 Expected: **all 25 tests pass** (4 parametrized checks × 6 mirrors + the manifest check). The two README mirrors are fresh (their `translated-from` is the last commit that touched `README.md`, so `rev-list` is empty → no banner required). The USAGE/PUBLIC_API mirrors were untouched and stay fresh. If `test_mirror_exists_and_declares_translated_from` fails with "not in git history", the pasted hash is wrong — re-run `git log --oneline -3`, take the hash of commit A, fix both frontmatters, `git commit --amend --no-edit` commit B.
@@ -2513,8 +2510,8 @@ New string:
 - [ ] **Step 2: Verify formatting and content**
 
 ```powershell
-black --check src/ai_sw_bridge/mcp/server.py
-flake8 src/ai_sw_bridge/mcp/server.py
+python -m black --check src/ai_sw_bridge/mcp/server.py
+python -m flake8 src/ai_sw_bridge/mcp/server.py
 python -c "import re; t=open('src/ai_sw_bridge/mcp/server.py', encoding='utf-8').read(); assert 'Industrial Design ' in t and 'intake package' in t; print('SENTENCE-PRESENT')"
 ```
 
@@ -2542,7 +2539,7 @@ git commit -m "docs(mcp): route vague product ideas to industrial intake in serv
 
 ```powershell
 python tools/doc_coverage_gate.py
-pytest tests/test_doc_truth.py tests/test_doc_coverage.py tests/test_i18n_staleness.py tests/test_industrial_intake_docs.py -v
+python -m pytest tests/test_doc_truth.py tests/test_doc_coverage.py tests/test_i18n_staleness.py tests/test_industrial_intake_docs.py -v
 ```
 
 Expected: gate exit 0; every test passes.
@@ -2550,8 +2547,8 @@ Expected: gate exit 0; every test passes.
 - [ ] **Step 2: Lint the two touched Python files**
 
 ```powershell
-black --check tests/test_industrial_intake_docs.py src/ai_sw_bridge/mcp/server.py
-flake8 tests/test_industrial_intake_docs.py src/ai_sw_bridge/mcp/server.py
+python -m black --check tests/test_industrial_intake_docs.py src/ai_sw_bridge/mcp/server.py
+python -m flake8 tests/test_industrial_intake_docs.py src/ai_sw_bridge/mcp/server.py
 ```
 
 Expected: both clean.
@@ -2559,7 +2556,7 @@ Expected: both clean.
 - [ ] **Step 3: Full offline suite (the per-PR CI cut)**
 
 ```powershell
-pytest -n auto -m "not solidworks_only and not destructive_sw and not fault_injection and not mcp_lane_live"
+python -m pytest -n auto -m "not solidworks_only and not destructive_sw and not fault_injection and not mcp_lane_live"
 ```
 
 Expected: **all pass, none of the new work skipped**. This is the same marker cut CI runs per PR. If anything unrelated fails, STOP and report — do not fix drive-by failures inside this plan.
@@ -2573,7 +2570,7 @@ Expected: **all pass, none of the new work skipped**. This is the same marker cu
 - Every template has required sections + placeholder guidance (Task 2).
 - The summary has a formal schema + two validating examples (Tasks 1, 5) with the exact spec §9 enums.
 - The sorting-machine example runs idea → CAD-ready summary, first slice = infeed conveyor (Tasks 3–5).
-- No build/mutate/assembly/drawing behavior changed: `git diff master --stat -- src/` shows only `src/ai_sw_bridge/mcp/server.py` with a string-only diff.
+- No build/mutate/assembly/drawing behavior changed: `git diff "$(git merge-base master HEAD)" --stat -- src/` (merge-base guards against a stale local `master` ref) shows only `src/ai_sw_bridge/mcp/server.py`, and its diff is string-only.
 - The handoff gives an ordered build sequence with a named verify command per step and `ai-sw-history` at boundaries (Task 5).
 
 - [ ] **Step 5: Final review**
