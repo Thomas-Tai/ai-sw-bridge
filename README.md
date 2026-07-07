@@ -432,6 +432,13 @@ remain available under those terms. Incorporated third-party components keep
 their own licenses — see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 Contributions are accepted under the [CLA](CLA.md).
 
+## Trademarks
+
+SOLIDWORKS is a registered trademark of Dassault Systèmes SE. `ai-sw-bridge` is an
+independent project and is **not affiliated with, authorized by, or endorsed by**
+Dassault Systèmes. It drives SOLIDWORKS through the published COM API for
+interoperability; all other trademarks are the property of their respective owners.
+
 ## Acknowledgments
 
 SOLIDWORKS API patterns: [CodeStack](https://www.codestack.net/solidworks-api/). The Path C dim-binding fix (`EquationMgr.Add2` 3-arg form) came from their `document/dimensions/add-equation/` example.
