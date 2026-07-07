@@ -24,7 +24,7 @@ Status legend: `OPEN` (confirmed, not yet done) · `FIXED` (remediated + Verify 
 
 ## 🟡 SHOULD-FIX — privacy & cleanliness (mechanical, ~15 min)
 
-### S2 — Stale WIP branches would become world-readable · Status: OPEN
+### S2 — Stale WIP branches would become world-readable · Status: FIXED (pruned 2026-07-07)
 - **Evidence:** `gh api repos/Thomas-Tai/ai-sw-bridge/branches` lists (besides `master` + `dependabot/*`): `docs/commercial-elevation`, `feat/w58-doc-trueup`, `feat/w68-curve-driven-pattern`, `feat/w68-fill-pattern`, `feat/w68-fillet-faceround` — **5 branches**. These are the "parallel-SHA worker branches" flagged during the W68 campaign (they hold content not on `master`).
 - **Impact:** a public repo would expose unfinished WIP and duplicate/abandoned history. Cosmetically unprofessional and needlessly enlarges the audit surface.
 - **Fix:** after merging `docs/commercial-elevation`, `git push origin --delete <branch>` for each `feat/*` and the working branch. Leave `dependabot/*` (auto-managed).
@@ -36,7 +36,7 @@ Status legend: `OPEN` (confirmed, not yet done) · `FIXED` (remediated + Verify 
 - **Fix:** `git config user.email "<id>+Thomas-Tai@users.noreply.github.com"` for future commits; consciously accept (or accept-the-cost-of-rewriting) the historical Gmail exposure.
 - **Verify:** `git config user.email` ends with `users.noreply.github.com` (going-forward). Historical exposure is **ACCEPTED** or rewritten — owner's call.
 
-### S4 — Internal snapshot tags clutter the public tag list · Status: OPEN
+### S4 — Internal snapshot tags clutter the public tag list · Status: FIXED (pruned 2026-07-07)
 - **Evidence:** `gh api …/tags` includes non-release scaffolding tags: `v1.0-OOP-Baseline`, `pre-refactor-class-hierarchy-start`, `pre-push-2026-05-20`, `pre-class-refactor-2026-05-20`, `0.10.0` (missing the `v` prefix) — **5 tags**.
 - **Impact:** low — purely cosmetic; a public tag list reading only real SemVer releases looks more finished. Optional.
 - **Fix:** `git push origin --delete <tag>` (and delete the local tag) for each internal snapshot; keep every real `vX.Y.Z` release.
@@ -99,9 +99,9 @@ Status legend: `OPEN` (confirmed, not yet done) · `FIXED` (remediated + Verify 
 | ID | Severity | Status | Notes |
 |----|----------|--------|-------|
 | B1 | BLOCKER | OPEN | LICENSE is a placeholder — counsel must finalize before commercial public launch |
-| S2 | should-fix | OPEN | delete 5 stale branches (`feat/*` + working branch) |
-| S3 | should-fix | OPEN | future commit email → noreply; historical Gmail = accept or rewrite |
-| S4 | should-fix | OPEN | delete 5 internal snapshot tags (optional) |
+| S2 | should-fix | FIXED | pruned `feat/w58-doc-trueup`, `feat/w68-{curve-driven-pattern,fill-pattern,fillet-faceround}`, `docs/commercial-elevation` — remote now shows only `master` + `dependabot/*` |
+| S3 | should-fix | OPEN | future commit email → noreply; historical Gmail = accept or rewrite (owner) |
+| S4 | should-fix | FIXED | pruned `v1.0-OOP-Baseline`, `pre-*` (×3), `0.10.0` (remote + local) |
 | J5 | judgment | ACCEPTED | KEPT public — engineering transparency (SDD plans + audit docs show rigor) |
 | J6 | judgment | ACCEPTED | KEPT — real-world (hardware) validation credibility |
 | J7 | judgment | FIXED | `2ea6f13` — SOLIDWORKS non-affiliation disclaimer added to README (+ zh mirrors) |
@@ -143,3 +143,10 @@ gh run list --workflow security.yml --limit 1 --json conclusion --jq '"INV gitle
 | INV | full-history gitleaks green | `success` | ✅ `success` |
 
 **Interpretation:** the ❌ rows are the pre-flight work (one blocker + cleanup + a disclaimer). The ✅ INV rows are the hard-won clean state — they double as **regression tripwires**: if a binary blob, an untracked-dir leak, or a gitleaks failure ever appears, do **not** flip public until it's resolved. When all five ❌ rows read their Expected value and the three INV rows stay ✅, the repo is ready to go public.
+
+---
+
+## Remediation session note (2026-07-07)
+
+- **Executed:** J5/J6 ACCEPTED (kept public); **J7 FIXED** (`2ea6f13` — trademark disclaimer in README + zh mirrors, mirrors re-anchored/fresh); **S2 + S4 FIXED** (5 stale branches + 5 internal tags pruned; remote now shows only `master` + `dependabot/*` and real `vX.Y.Z` tags). **Remaining OPEN by design:** B1 (counsel) and S3 (owner's future-email choice).
+- **⚠️ Tripwire event — Security workflow went RED on the two doc-only commits `d8a95fe`/`97c00bf`** (`gitleaks` + `pip-audit`), while the prior commit `1f2ff25` was green. **This is exactly the halt-signal this tracker defines — the go-public flow was paused to investigate.** A **CI-faithful `pip-audit` reproduction** (fresh venv, `pip install -e .` → pillow 12.3.0 / numpy 2.5.1 / oletools 0.60.2 / jsonschema 4.26.0 / pywin32 312 / sqlite-vec 0.1.9) returned **"No known vulnerabilities found"** — the runtime deps are *not* actually vulnerable. Both jobs failing simultaneously on docs-only diffs, plus the CI logs being **unretrievable** (GitHub `BlobNotFound`), point to a **transient GitHub-side infra window**, not a real leak or CVE. **Being re-verified on the next Security run.** Do **not** flip public until `gitleaks` + `pip-audit` are confirmed green again.
