@@ -28,7 +28,9 @@ Inputs trace to `engineering_specs.md`; every result is `derived`.
 
 - Generic NEMA 17: 0.40 N·m holding; usable torque at 48 rpm typically
   ≥ 0.28 N·m (vendor curve required — `vendor_provided`, open below).
-- Margin vs load torque: 0.28 / 0.124 ≈ 2.3×. **PASS as candidate.**
+- Margin vs load torque: 0.28 / 0.124 ≈ 2.3× (vs the safety-factored
+  0.25 N·m requirement: 0.28 / 0.25 ≈ 1.1× — thin; the vendor curve
+  decides). **PASS as candidate.**
 
 ## Structural checks
 
