@@ -1,5 +1,5 @@
 ---
-translated-from: 2ea6f13a0fb79d310d59eb8e3c74e836c982850f
+translated-from: 1d9dcfd3a506dc514c2c3444ff052a33510a26fc
 ---
 
 # ai-sw-bridge
@@ -22,6 +22,7 @@ translated-from: 2ea6f13a0fb79d310d59eb8e3c74e836c982850f
 | 你是… | 你想… | 前往 |
 |---|---|---|
 | **操作者** — SOLIDWORKS 用户，不是程序员 | 安装桥接器，并从你的 AI 助手驱动它 | [**面向操作者 — 5 分钟快速入门**](#面向操作者--5-分钟快速入门) · 然后把 [`docs/operator_guide.md`](../../operator_guide.md) 交给你的 AI |
+| **创客 / 系统设计者** — 只有想法，还没有 CAD 设计 | 在建模之前，先把想法变成可进入 CAD 的工程设计包 | [**Industrial Design Intake（工业设计前期导入）**](../../industrial_intake/README.md) — 引导式导入（已有完整设计可直接填写），最终产出 SolidWorks 交接文档 |
 | **开发者 / 集成方** | 调用 `SolidWorksClient`、嵌入 MCP 服务器，或阅读受支持范围的契约 | [**面向开发者与集成方**](#面向开发者与集成方) |
 | **贡献者** | 新增一种特征类型、修复一处高墙、理解整体架构 | [**面向贡献者**](#面向贡献者) |
 
