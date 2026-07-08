@@ -10,7 +10,7 @@
 
 ## 0. Premise (measured, not assumed)
 
-From the seat-death recovery experiment (`_results/seat_death_recovery.json`):
+From the seat-death recovery experiment (`_results/seat_death_recovery.json`, untracked local receipt):
 
 | Fact | Value | Source |
 |---|---|---|

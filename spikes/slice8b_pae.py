@@ -10,9 +10,9 @@ import os
 import sys
 import time
 
-sys.path.insert(0, r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\aisw-W9\src")
+sys.path.insert(0, r"C:\path\to\aisw-W9\src")
 
-WORKTREE = r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\aisw-W9"
+WORKTREE = r"C:\path\to\aisw-W9"
 BASE_PART = os.path.join(WORKTREE, "spikes", "slice8b_box_base.SLDPRT")
 LID_SPEC = os.path.join(WORKTREE, "spikes", "slice8b_box_lid.json")
 OUTPUT_ASM = os.path.join(WORKTREE, "spikes", "slice8b_assembly.SLDASM")

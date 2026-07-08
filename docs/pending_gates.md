@@ -12,7 +12,7 @@ entries stay as proof-of-record after they ship.
 ## `semantic_edges` — semantic edge addressing (#9) — ✅ SHIPPED
 
 **State:** **PAE GREEN (4/4), flag promoted to default ON in v1.7.** Live-seat run
-recorded in `spikes/_results/semantic_edges_pae.json`. Retained here as the
+recorded in `spikes/_results/semantic_edges_pae.json` (untracked local receipt). Retained here as the
 proof-of-record. Literal `{x, y, z}` edge selection is unchanged and always on;
 `--disable-flag semantic_edges` reverts to literal-only.
 

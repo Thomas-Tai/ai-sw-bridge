@@ -94,6 +94,18 @@ src/ai_sw_bridge/rag/data/design_memory_index.sqlite
 # Build metrics sidecars (written next to a saved .sldprt; observability P3.1)
 *.build_metrics.json
 
+# SOLIDWORKS runtime artifacts: ~$ lock files appear next to open documents;
+# model files saved into the tree by probe/smoke runs are outputs, never
+# sources (no .sld* file is tracked today — negate per-path if an example
+# ever needs to ship one).
+~$*
+*.sldprt
+*.sldasm
+*.slddrw
+*.SLDPRT
+*.SLDASM
+*.SLDDRW
+
 # --- Examples ----------------------------------------------------------------
 # User-recorded macros that aren't part of the example
 examples/**/recorded.swp

@@ -6,13 +6,13 @@ import sys
 import hashlib
 import base64
 
-sys.path.insert(0, r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\aisw-W9\src")
+sys.path.insert(0, r"C:\path\to\aisw-W9\src")
 
 from ai_sw_bridge.sw_com import get_sw_app
 from ai_sw_bridge.com.earlybind import typed, typed_extension
 from ai_sw_bridge.com.sw_type_info import wrapper_module
 
-SAVE_TO = r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\aisw-W9\spikes\slice8b_box_base.SLDPRT"
+SAVE_TO = r"C:\path\to\aisw-W9\spikes\slice8b_box_base.SLDPRT"
 
 sw = get_sw_app()
 mod = wrapper_module()

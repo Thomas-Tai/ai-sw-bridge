@@ -7,7 +7,7 @@ Anchors on COINCIDENT=0 (Phase-1 proven).
 import sys
 import os
 
-sys.path.insert(0, r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\aisw-W10\src")
+sys.path.insert(0, r"C:\path\to\aisw-W10\src")
 
 import json
 import win32com.client
@@ -174,7 +174,7 @@ try:
         "all_candidates": candidate_enums,
     }
 
-    findings_path = r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\aisw-W10\spikes\phase2_typelib_mate_types.json"
+    findings_path = r"C:\path\to\aisw-W10\spikes\phase2_typelib_mate_types.json"
     with open(findings_path, "w") as f:
         json.dump(findings, f, indent=2)
 
