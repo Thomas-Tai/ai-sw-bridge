@@ -23,7 +23,7 @@ underlying SW behavior is correct and isolates the failure to the COM marshallin
 
 - SOLIDWORKS running
 - A blank Part document is the active doc (File → New → Part)
-- venv with `ai-sw-bridge` installed: `C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\ai-sw-bridge\.venv-freshtest`
+- venv with `ai-sw-bridge` installed: `C:\path\to\ai-sw-bridge\.venv-freshtest`
 
 ## Pass criteria
 

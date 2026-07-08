@@ -16,9 +16,9 @@ import time
 import hashlib
 import base64
 
-sys.path.insert(0, r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\aisw-W10\src")
+sys.path.insert(0, r"C:\path\to\aisw-W10\src")
 
-WORKTREE = r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\aisw-W10"
+WORKTREE = r"C:\path\to\aisw-W10"
 RESULTS_PATH = os.path.join(WORKTREE, "_results", "phase2_complete_pae.json")
 
 results = {

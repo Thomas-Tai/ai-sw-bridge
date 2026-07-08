@@ -4,7 +4,7 @@ import json
 import os
 import sys
 
-sys.path.insert(0, r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\aisw-W9\src")
+sys.path.insert(0, r"C:\path\to\aisw-W9\src")
 
 from ai_sw_bridge.spec.builder import build as part_build
 from ai_sw_bridge.brep.manifest import Manifest
@@ -29,7 +29,7 @@ BASE_SPEC = {
     ],
 }
 
-SAVE_TO = r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\aisw-W9\spikes\slice8b_box_base.SLDPRT"
+SAVE_TO = r"C:\path\to\aisw-W9\spikes\slice8b_box_base.SLDPRT"
 
 print(f"Building base part to {SAVE_TO}...")
 try:

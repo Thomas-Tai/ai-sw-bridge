@@ -5,7 +5,7 @@ import pythoncom
 import win32com.client
 
 WT = os.path.join(
-    "C:" + os.sep, "D", "WorkSpace", "[Local]_Station", "01_Heavy_Assets", "aisw-W6"
+    "C:" + os.sep, "path", "to", "aisw-W6"
 )
 sys.path.insert(0, os.path.join(WT, "src"))
 RESULTS_DIR = os.path.join(WT, "spikes", "v0_16", "_results")

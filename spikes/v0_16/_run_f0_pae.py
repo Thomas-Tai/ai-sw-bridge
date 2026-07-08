@@ -14,7 +14,7 @@ from typing import Any
 import pythoncom
 import win32com.client
 
-sys.path.insert(0, r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\ai-sw-bridge\src")
+sys.path.insert(0, r"C:\path\to\ai-sw-bridge\src")
 
 from ai_sw_bridge.mutate import (
     sw_propose_feature_add,
@@ -24,7 +24,7 @@ from ai_sw_bridge.mutate import (
 
 PART_TEMPLATE = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.prtdot"
 RESULTS_DIR = (
-    r"C:\D\WorkSpace\[Local]_Station\01_Heavy_Assets\ai-sw-bridge\spikes\v0_16\_results"
+    r"C:\path\to\ai-sw-bridge\spikes\v0_16\_results"
 )
 
 

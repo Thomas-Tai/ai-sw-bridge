@@ -172,7 +172,7 @@ def investigate_signatures():
                         0,
                         False,
                     )
-                    part_path = r"C:\Users\sky\AppData\Local\Temp\W32ProbePart.SLDPRT"
+                    part_path = r"C:\Users\user\AppData\Local\Temp\W32ProbePart.SLDPRT"
                     part.SaveAs3(part_path, 0, 0)
                     sw.CloseDoc(part.GetTitle())
 
