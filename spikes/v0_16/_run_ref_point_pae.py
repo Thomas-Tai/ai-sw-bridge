@@ -4,9 +4,7 @@ import os, sys, json, time, tempfile, traceback
 import pythoncom
 import win32com.client
 
-WT = os.path.join(
-    "C:" + os.sep, "path", "to", "aisw-W5.3"
-)
+WT = os.path.join("C:" + os.sep, "path", "to", "aisw-W5.3")
 sys.path.insert(0, os.path.join(WT, "src"))
 RESULTS_DIR = os.path.join(WT, "spikes", "v0_16", "_results")
 PART_TEMPLATE = os.path.join(
