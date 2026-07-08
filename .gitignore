@@ -1,4 +1,13 @@
-# Python
+# =============================================================================
+# ai-sw-bridge .gitignore
+#
+# Public-repo boundary: anything matched here is maintainer-local — machine
+# paths, session scratch, runtime data, regenerable outputs, or internal
+# operational context. Reconstructed 2026-07-08 (public-surface audit pass 2;
+# pass 1 was the 2026-06-26 sanitization that created _internal/).
+# =============================================================================
+
+# --- Python ------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
@@ -23,25 +32,46 @@ venv/
 env/
 ENV/
 
-# IDE
+# --- IDE / agent tooling -----------------------------------------------------
+# .claude/ is ignored as a whole (worktrees, local state) EXCEPT the tracked
+# .claude/settings.json (shipped tool allow-list; tracked files override ignore).
 .vscode/
 .idea/
 .qoder/
 .claude/
 *.swp
 
-# Internal-only docs — maintainer operational context relocated during the
-# public-boundary sanitization (2026-06-26): release runbooks, AI-agent
-# orchestration prompts (W*-era), session reconstructions, R&D spike reports,
-# and the git-history scrub target list. NEVER tracked; not for a public repo.
+# Agent-session working state: SDD run ledgers, briefs, review packages.
+.superpowers/
+
+# Agent session scratchpad — disposable per-session working files, never part
+# of the repo. Guards against `git add -A` sweeping local scratch into a commit.
+/scratchpad/
+
+# --- Internal-only docs ------------------------------------------------------
+# Maintainer operational context relocated during the public-boundary
+# sanitization (2026-06-26): release runbooks, AI-agent orchestration prompts
+# (W*-era), session reconstructions, R&D spike reports, and the git-history
+# scrub target list. 2026-07-08: go_public_readiness audit relocated here too
+# (contains maintainer contact details). NEVER tracked; not for a public repo.
 _internal/
 
-# OS
+# Maintainer strategic scratch — idea/architecture notes, not product docs.
+docs/central_idea/
+docs/central_idea_vs_implementation_audit.md
+docs/regression_checks/
+
+# --- Maintainer-local scratch files (one-offs; never publish) ----------------
+docs/demo_no_dim_showcase.md
+tools/demo_no_dim_showcase.py
+tests/tools/
+
+# --- OS ----------------------------------------------------------------------
 .DS_Store
 Thumbs.db
 nul
 
-# Runtime data (per-user, auto-created)
+# --- Runtime data (per-user, auto-created) ------------------------------------
 captures/
 proposals/
 .telemetry/
@@ -52,16 +82,41 @@ proposals/
 # own project .gitignore.
 .checkpoints/
 
+# Checkpoint encryption key (SEC-1: encrypt-by-default auto-generates this if no
+# AI_SW_CHECKPOINT_KEY is set). NEVER commit it — it decrypts the operator's
+# proprietary design-intent snapshots.
+.sw_agent_key
+
+# Design-Memory RAG: per-operator private design history (runtime, never committed)
+src/ai_sw_bridge/rag/data/design_memory_index.sqlite
+**/design_memory_index.sqlite
+
 # Build metrics sidecars (written next to a saved .sldprt; observability P3.1)
 *.build_metrics.json
 
-# Examples: user-recorded macros that aren't part of the example
+# --- Examples ----------------------------------------------------------------
+# User-recorded macros that aren't part of the example
 examples/**/recorded.swp
 examples/**/*_parameterized.bas
-
 # But DO ship the example spec.json and any docs
 !examples/**/spec.json
 !examples/**/README.md
+
+# --- Probe / PAE result dumps (provenance scratch, not product) ---------------
+# Live-seat probe receipts: JSON/DXF dumps written by spike + smoke runs. They
+# embed absolute machine paths (temp dirs, local worktree layout) and are
+# regenerable from the committed probe sources. Untracked at HEAD 2026-07-08
+# (public-surface audit); the committed spike *.py sources remain the
+# provenance record.
+/_results/
+spikes/**/_results/
+
+# Smoke-test scratch outputs (feature_tree_diff captures, etc.)
+tools/snapshots-e2e/
+
+# Temp files from debug sessions
+spikes/phase0/_tmp_*.json
+docs/_test*.json
 
 # Decompiled SW API CHM (reproducible from chm files in the OneDrive tree)
 spikes/phase0/_chm_decompiled/
@@ -69,18 +124,7 @@ spikes/phase0/_chm_decompiled_swconst/
 spikes/phase0/_chm_decompiled_progguide/
 spikes/phase0/_chm_decompiled_apiprogguide/
 
-# Temp files from debug sessions
-spikes/phase0/_tmp_*.json
-docs/_test*.json
-
-# Smoke-test scratch outputs (feature_tree_diff captures, etc.)
-tools/snapshots-e2e/
-
-
-docs/central_idea/
-docs/central_idea_vs_implementation_audit.md
-docs/regression_checks/
-
+# --- Reference clones (re-fetchable; never commit) -----------------------------
 # Upstream reference repo clones — see docs/reference_repos.md
 # (re-fetchable via tools/clone_references.sh; never commit the clones
 # themselves, they bloat the repo and are public elsewhere).
@@ -90,15 +134,12 @@ references/
 # in the worktree by accident. Re-fetchable; never part of this repo's history.
 skills/
 
-# Spike research outputs — regenerable probe/PAE dumps (JSON + proposal dirs).
-# The corpus is provenance scratch, not product; keep it out of `git status`.
-spikes/_results/
-spikes/v0_2x/_results/
-
-# PR body + release-note drafts (one-shot artifacts; not part of the repo)
+# --- One-shot release artifacts -----------------------------------------------
+# PR body + release-note drafts (not part of the repo)
 .github/pr_body_*.md
 .github/release_notes_*.md
 
+# --- Compiled / generated outputs ----------------------------------------------
 # Route-C in-process add-in build outputs — NEVER track compiled binaries.
 # The proprietary SOLIDWORKS-interop-linked RouteCAddin.dll was excised from
 # full history via git-filter-repo (W68 IP scrub, 2026-06-20). Source (.cs/.ps1)
@@ -119,12 +160,3 @@ docs/api_reference.md
 docs/sw_api_full.json
 docs/sw_api_full.md
 docs/ribbon_api_progress_relation_audit.md
-
-# Checkpoint encryption key (SEC-1: encrypt-by-default auto-generates this if no
-# AI_SW_CHECKPOINT_KEY is set). NEVER commit it — it decrypts the operator's
-# proprietary design-intent snapshots.
-.sw_agent_key
-
-# Design-Memory RAG: per-operator private design history (runtime, never committed)
-src/ai_sw_bridge/rag/data/design_memory_index.sqlite
-**/design_memory_index.sqlite
