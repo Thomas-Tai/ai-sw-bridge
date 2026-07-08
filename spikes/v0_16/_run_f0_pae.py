@@ -23,9 +23,7 @@ from ai_sw_bridge.mutate import (
 )
 
 PART_TEMPLATE = r"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2024\templates\Part.prtdot"
-RESULTS_DIR = (
-    r"C:\path\to\ai-sw-bridge\spikes\v0_16\_results"
-)
+RESULTS_DIR = r"C:\path\to\ai-sw-bridge\spikes\v0_16\_results"
 
 
 def _get_sw():
