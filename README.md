@@ -19,6 +19,7 @@ get a short teaser and a doc map.
 | You are… | You want to… | Go to |
 |---|---|---|
 | **An operator** — a SOLIDWORKS user, not a coder | Install the bridge and drive it from your AI assistant | [**For operators — 5-minute quickstart**](#for-operators--5-minute-quickstart) · then hand [`docs/operator_guide.md`](docs/operator_guide.md) to your AI |
+| **A Maker / system designer** — an idea, not a CAD design yet | Turn the idea into a CAD-ready engineering package before modeling | [**Industrial Design Intake**](docs/industrial_intake/README.md) — guided intake (or direct entry for complete designs), ending in a SolidWorks handoff |
 | **A developer / integrator** | Call `SolidWorksClient`, embed the MCP server, or read the supported-surface contract | [**For developers & integrators**](#for-developers--integrators) |
 | **A contributor** | Add a feature kind, fix a wall, understand the architecture | [**For contributors**](#for-contributors) |
 
