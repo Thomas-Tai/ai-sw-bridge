@@ -61,7 +61,7 @@ dev = [
     "pytest-xdist>=3",
     "black==25.12.0",
     "flake8>=7",
-    "mypy==2.1.0",
+    "mypy==2.2.0",
     "types-jsonschema",
     "pre-commit>=3",
     "sentence-transformers>=2.2",
