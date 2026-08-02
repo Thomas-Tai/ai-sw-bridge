@@ -73,7 +73,9 @@ def test_boss_extrude_blind_reads_feat_merge(monkeypatch):
     short-circuit the downstream face/BuiltFeature machinery (out of scope)."""
     captured = {}
 
-    def _spy(ctx, *, end_cond, depth_m, flip, merge=True):
+    def _spy(ctx, *, end_cond, depth_m, flip, merge=True, **_kw):
+        # **_kw tolerates the start_offset_m / flip_start_offset kwargs the real
+        # _call_feature_extrusion gained (W54.1); this spy only asserts `merge`.
         captured["merge"] = merge
         raise _Stop  # stop before the irrelevant downstream build steps
 
