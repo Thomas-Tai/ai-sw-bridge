@@ -711,6 +711,33 @@
         "type": "boolean",
         "default": true,
         "description": "true (default) = fuse this boss into the existing solid body it overlaps (modeling-time boolean UNION). false = keep it as a separate solid body (multi-body). Express unions HERE, at the extrusion phase: there is no post-hoc 'combine' feature."
+      },
+      "start_offset": {
+        "oneOf": [
+          {
+            "type": "number",
+            "description": "Literal length in millimetres."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rhs"
+            ],
+            "properties": {
+              "rhs": {
+                "type": "string",
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+              }
+            }
+          }
+        ],
+        "description": "Optional. Begin the extrude this many mm from the sketch plane (SW start condition swStartOffset) instead of on it; the blind `depth` is then measured from that offset start. OMIT for the normal start-on-sketch-plane behaviour (byte-identical to before). Lets a boss build offset from a standard plane -- e.g. a side plate sketched on Top Plane but extruded to begin at part-Y=+40. Pair with `flip_start_offset` to choose the offset direction."
+      },
+      "flip_start_offset": {
+        "type": "boolean",
+        "default": false,
+        "description": "Offset toward -normal instead of +normal (SW FlipStartOffset). Only meaningful when `start_offset` is set."
       }
     }
   },

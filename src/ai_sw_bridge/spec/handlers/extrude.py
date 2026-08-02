@@ -20,6 +20,7 @@ from ...sw_types import (
     SW_END_COND_MID_PLANE,
     SW_END_COND_THROUGH_ALL,
     SW_END_COND_UP_TO_SURFACE,
+    SW_START_OFFSET,
     SW_START_SKETCH_PLANE,
     assert_args,
 )
@@ -35,6 +36,8 @@ def _call_feature_extrusion(
     merge: bool = True,
     end_cond2: int | None = None,
     depth2_m: float = 0.0,
+    start_offset_m: float | None = None,
+    flip_start_offset: bool = False,
 ) -> Any:
     """Boss-only extrusion. For cuts use _call_feature_cut (FeatureCut4).
 
@@ -60,6 +63,14 @@ def _call_feature_extrusion(
     """
     fm = ctx.doc.FeatureManager
     single_dir = end_cond2 is None
+    # Start condition (args 21-23). Omitting start_offset_m keeps the historical
+    # swStartSketchPlane / 0.0 / False shape byte-for-byte; providing it (even
+    # 0.0) opts into swStartOffset so the extrude begins offset from the sketch
+    # plane. flip_start_offset reverses the offset toward -normal.
+    if start_offset_m is None:
+        t0, start_off = SW_START_SKETCH_PLANE, 0.0
+    else:
+        t0, start_off = SW_START_OFFSET, start_offset_m
     args = (
         single_dir,  # 1  Sd (single-ended unless a 2nd direction is requested)
         flip,  # 2  Flip
@@ -81,9 +92,9 @@ def _call_feature_extrusion(
         merge,  # 18 Merge (True=union into existing body, False=separate body)
         True,  # 19 UseFeatScope
         True,  # 20 UseAutoSelect
-        SW_START_SKETCH_PLANE,  # 21 T0
-        0.0,  # 22 StartOffset
-        False,  # 23 FlipStartOffset
+        t0,  # 21 T0
+        start_off,  # 22 StartOffset
+        bool(flip_start_offset),  # 23 FlipStartOffset
     )
     assert_args("IFeatureManager.FeatureExtrusion2", args)
     feature = fm.FeatureExtrusion2(*args)
@@ -241,12 +252,33 @@ def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltF
     depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["extrude_depth"])
     flip = bool(feat.get("flip", False))
     merge = bool(feat.get("merge", True))
+    start_offset_m = (
+        _literal_or_default(feat["start_offset"], 0.0)
+        if "start_offset" in feat
+        else None
+    )
+    flip_start_offset = bool(feat.get("flip_start_offset", False))
 
     f = _call_feature_extrusion(
-        ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip, merge=merge
+        ctx,
+        end_cond=SW_END_COND_BLIND,
+        depth_m=depth_m,
+        flip=flip,
+        merge=merge,
+        start_offset_m=start_offset_m,
+        flip_start_offset=flip_start_offset,
     )
     f.Name = feat["name"]
-    return _boss_built_feature(feat, sketch, sketch_name, f, depth_m, flip)
+    return _boss_built_feature(
+        feat,
+        sketch,
+        sketch_name,
+        f,
+        depth_m,
+        flip,
+        start_offset_m=start_offset_m,
+        flip_start_offset=flip_start_offset,
+    )
 
 
 def _boss_built_feature(
@@ -256,6 +288,8 @@ def _boss_built_feature(
     f: Any,
     depth_m: float | None,
     flip: bool,
+    start_offset_m: float | None = None,
+    flip_start_offset: bool = False,
 ) -> BuiltFeature:
     """Build the rich BuiltFeature shared by every boss-extrude variant — the
     extrude axis/origin derivation downstream face-selects depend on.
@@ -311,6 +345,16 @@ def _boss_built_feature(
             extrude_origin = (0.0, cx, cy)
     else:
         extrude_origin = (0.0, 0.0, 0.0)
+    # A start-offset boss begins `start_offset_m` from the sketch plane along the
+    # plane normal (toward +normal, or -normal when flip_start_offset). Shift the
+    # recorded extrude_origin -- the inboard/start ("-z") face -- to match, so
+    # downstream face-selects (_face_frame: "+z" = origin + axis*depth) locate
+    # the offset part's faces correctly. No shift when start_offset is absent/0.
+    if start_offset_m:
+        ax, ay, az = sketch.parent_plane_normal
+        s = -start_offset_m if flip_start_offset else start_offset_m
+        ox, oy, oz = extrude_origin
+        extrude_origin = (ox + ax * s, oy + ay * s, oz + az * s)
     return BuiltFeature(
         name=feat["name"],
         type=feat["type"],

@@ -7,8 +7,9 @@ and ``builder.py`` attaches handlers to the matching descriptors. So adding a
 primitive is one entry here + a handler, not five hand-synced files.
 
 Import layering (no cycles): this module imports only ``_build_context``
-(for ``FieldSpec``). ``schema.py`` and ``builder.py`` both import *from* here;
-neither is imported *by* here.
+(for ``FieldSpec``) and ``_extrude_fields`` (a leaf helper that itself imports
+only ``_build_context``). ``schema.py`` and ``builder.py`` both import *from*
+here; neither is imported *by* here.
 
 The shared sub-schemas (``LENGTH_SCHEMA`` etc.) live here too; ``schema.py``
 re-exports them for back-compat with existing importers.
@@ -19,6 +20,7 @@ from __future__ import annotations
 from typing import Any
 
 from ._build_context import FieldSpec
+from ._extrude_fields import boss_extrude_blind_fields
 
 # ---------------------------------------------------------------------------
 # Shared sub-schemas (moved here from schema.py; re-exported there).
@@ -560,40 +562,10 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
-    "boss_extrude_blind": [
-        FieldSpec(
-            "sketch",
-            {
-                "type": "string",
-                "description": "Name of an earlier sketch feature to extrude.",
-            },
-            True,
-        ),
-        FieldSpec("depth", LENGTH_SCHEMA, True),
-        FieldSpec(
-            "flip",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "Extrude in -normal instead of +normal direction.",
-            },
-            False,
-        ),
-        FieldSpec(
-            "merge",
-            {
-                "type": "boolean",
-                "default": True,
-                "description": (
-                    "true (default) = fuse this boss into the existing solid body "
-                    "it overlaps (modeling-time boolean UNION). false = keep it as a "
-                    "separate solid body (multi-body). Express unions HERE, at the "
-                    "extrusion phase: there is no post-hoc 'combine' feature."
-                ),
-            },
-            False,
-        ),
-    ],
+    # Field list built in the focused ._extrude_fields helper (with the new
+    # start_offset/flip_start_offset fields) to keep this grandfathered module
+    # under its module-size budget. LENGTH_SCHEMA is passed in to avoid a cycle.
+    "boss_extrude_blind": boss_extrude_blind_fields(LENGTH_SCHEMA),
     "boss_extrude_midplane": [
         FieldSpec("sketch", {"type": "string"}, True),
         FieldSpec("depth", LENGTH_SCHEMA, True),
