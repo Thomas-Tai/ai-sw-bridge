@@ -272,6 +272,9 @@ SKETCH_TYPES = frozenset(
         "sketch_text",
         # W53 — 3D-sketch primitive (Phase-5 prerequisite).
         "sketch_3d_sketch",
+        # Composite closed polyline on a standard plane (non-axis-aligned
+        # closed profiles; extrudes along the plane normal).
+        "sketch_polyline_on_plane",
     }
 )
 EXTRUDE_TYPES = frozenset(

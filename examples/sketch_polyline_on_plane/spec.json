@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "name": "PolylineOnPlaneParallelogram",
+  "_comment": "Gallery of the sketch_polyline_on_plane primitive: a non-axis-aligned closed 4-point parallelogram on the Top plane, extruded mid-plane along the plane normal (+/-Y). This is the SM-HW-S1b-009 BeltEndChute floor profile (a 45 deg slope), which sketch_rectangle_on_plane (axis-aligned) and sketch_polygon (regular N-gon) cannot express. Unlike sketch_3d_sketch (whose extrude only ever runs +Z), a polyline on a standard plane extrudes along that plane's normal.",
+  "features": [
+    {
+      "type": "sketch_polyline_on_plane",
+      "name": "SK_FloorParallelogram",
+      "_comment": "Closed parallelogram, Top-plane sketch-local mm: (0,0) -> (8,8) -> (6.586,9.414) -> (-1.414,1.414). 45 deg slanted sides; auto-closed.",
+      "plane": "Top",
+      "points": [
+        {"x": 0.0,    "y": 0.0},
+        {"x": 8.0,    "y": 8.0},
+        {"x": 6.586,  "y": 9.414},
+        {"x": -1.414, "y": 1.414}
+      ]
+    },
+    {
+      "type": "boss_extrude_midplane",
+      "name": "BOSS_FloorSlab",
+      "_comment": "Extrude the parallelogram 40 mm centred on the Top plane -> +/-20 mm along +/-Y (the plane normal).",
+      "sketch": "SK_FloorParallelogram",
+      "depth": 40.0
+    }
+  ]
+}

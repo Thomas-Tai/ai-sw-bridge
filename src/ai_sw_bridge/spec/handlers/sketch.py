@@ -147,6 +147,47 @@ def _build_sketch_line(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     return _close_plane_sketch_and_build(ctx, feat)
 
 
+def _build_sketch_polyline_on_plane(
+    ctx: BuildContext, feat: dict[str, Any]
+) -> BuiltFeature:
+    """Sketch a closed (or open) multi-segment polyline on a reference plane.
+
+    Draws connected line segments through ``points`` (sketch-local 2D, mm) in a
+    SINGLE plane sketch; when ``closed`` (default True) a final segment joins the
+    last point back to the first, producing a closed profile a boss/cut extrude
+    can consume. This is the primitive for non-axis-aligned CLOSED profiles —
+    e.g. the 45 deg parallelograms of SM-HW-S1b-009 BeltEndChute — that
+    ``sketch_rectangle_on_plane`` (axis-aligned) and ``sketch_polygon`` (regular
+    N-gon) cannot express, and that ``sketch_line`` cannot either (it closes its
+    sketch after a single segment).
+
+    Because it lives on a standard reference plane, build() stashes the plane's
+    outward normal as ``parent_plane_normal`` so a child extrude runs along that
+    normal (e.g. a Top-plane profile extrudes +/-Y). This is the key difference
+    from a 3D-sketch loop, whose FeatureExtrusion2 (Dir=False) only ever extrudes
+    +Z regardless of the loop's own plane (verified live 2026-08-05). Coordinates
+    are SKETCH-LOCAL 2D, the same convention as ``sketch_line``.
+    """
+    points = feat["points"]
+    closed = bool(feat.get("closed", True))
+    seq = list(points)
+    if closed:
+        seq = seq + [points[0]]
+    sm = _enter_plane_sketch(ctx, feat)
+    for i in range(len(seq) - 1):
+        a, b = seq[i], seq[i + 1]
+        seg = sm.CreateLine(
+            _mm_to_m(a["x"]),
+            _mm_to_m(a["y"]),
+            0.0,
+            _mm_to_m(b["x"]),
+            _mm_to_m(b["y"]),
+            0.0,
+        )
+        _apply_construction(seg, feat)
+    return _close_plane_sketch_and_build(ctx, feat)
+
+
 def _build_sketch_arc(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     """Sketch a circular arc (center + start + end) on a reference plane.
 

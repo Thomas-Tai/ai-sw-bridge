@@ -433,6 +433,37 @@ A 3D polyline sketch through a sequence of 3D points. Unlike on-plane sketch pri
 
 > **✅ Seat-proven:** `Insert3DSketch(True)` + `CreateLine(x1,y1,z1, x2,y2,z2)` — verified on SW 2024 SP1 (3 segments, 0.06 m Z-extent). Same toggle opens and closes the 3D sketch.
 
+### `sketch_polyline_on_plane`
+
+A composite closed polyline — several connected line segments in **one** plane sketch — forming a closed profile a boss/cut extrude can consume. This is the primitive for non-axis-aligned closed profiles (e.g. the 45° parallelograms of SM-HW-S1b-009 BeltEndChute) that `sketch_rectangle_on_plane` (axis-aligned) and `sketch_polygon` (regular N-gon) cannot express, and that `sketch_line` cannot either (it closes its sketch after a single segment). Coordinates are sketch-local 2D (mm), same convention as `sketch_line`.
+
+Because it lives on a standard reference plane, a child extrude runs **along that plane's normal** (a Top-plane profile extrudes ±Y, mid-plane works). This is the key difference from `sketch_3d_sketch`, whose extrude only ever runs +Z regardless of the loop's own plane (verified live 2026-08-05).
+
+```json
+{
+  "type": "sketch_polyline_on_plane",
+  "name": "SK_FloorParallelogram",
+  "plane": "Top",
+  "points": [
+    {"x": 0.0,    "y": 0.0},
+    {"x": 8.0,    "y": 8.0},
+    {"x": 6.586,  "y": 9.414},
+    {"x": -1.414, "y": 1.414}
+  ]
+}
+```
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `type` | yes | const `"sketch_polyline_on_plane"` | |
+| `name` | yes | string | Unique feature name |
+| `plane` | yes | enum `Front`/`Top`/`Right` | Reference plane to host the sketch |
+| `points` | yes | array (min 3) | Ordered vertices `{x, y}` (mm, sketch-local). Consecutive points are joined by line segments. |
+| `closed` | no | boolean | Auto-close the loop (last→first) so the profile is extrudable. Default `true`. Set `false` for an open polyline. |
+| `construction` | no | boolean | Mark the segments as construction entities. Default `false`. |
+
+> **✅ Seat-proven:** multi-segment `CreateLine` on a Top-plane 2D sketch, extruded mid-plane 40 mm → ±Y — verified on SW 2024 SP1 (spike_polyline_on_plane, 2026-08-05).
+
 ## Extrude primitives
 
 ### `boss_extrude_blind`

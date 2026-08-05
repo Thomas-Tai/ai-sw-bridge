@@ -21,12 +21,12 @@ You never call the SOLIDWORKS COM API directly — the bridge handles COM. You w
 5. **Build a part**: `ai-sw-build --demo --no-dim` (creates a fresh part in SW)
 6. **Observe the result**: `ai-sw-observe features` / `ai-sw-observe bbox` / `ai-sw-observe volume`
 
-The 30 spec feature types available (13 sketch + 11 extrude/revolve + 3 modify + 3 pattern):
+The 31 spec feature types available (14 sketch + 11 extrude/revolve + 3 modify + 3 pattern):
 
 | Category | Types |
 |---|---|
 | Sketch | `sketch_rectangle_on_plane`, `sketch_rectangle_on_face`, `sketch_circle_on_plane`, `sketch_circle_on_face`, `sketch_circles_on_face` |
-| Sketch primitives | `sketch_line`, `sketch_arc`, `sketch_spline`, `sketch_slot`, `sketch_polygon`, `sketch_ellipse`, `sketch_text`, `sketch_3d_sketch` |
+| Sketch primitives | `sketch_line`, `sketch_arc`, `sketch_spline`, `sketch_slot`, `sketch_polygon`, `sketch_ellipse`, `sketch_text`, `sketch_3d_sketch`, `sketch_polyline_on_plane` |
 | Extrude | `boss_extrude_blind`, `boss_extrude_midplane`, `boss_extrude_through_all`, `boss_extrude_two_direction`, `boss_extrude_up_to_surface`, `cut_extrude_through_all`, `cut_extrude_blind`, `cut_extrude_midplane`, `cut_extrude_two_direction`, `revolve_boss`, `revolve_cut` |
 | Modify | `fillet_constant_radius`, `chamfer_edge`, `simple_hole` |
 | Pattern | `linear_pattern`, `circular_pattern`, `mirror_feature` |
