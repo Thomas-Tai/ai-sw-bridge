@@ -1178,6 +1178,58 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             True,
         ),
     ],
+    # Composite closed polyline on a standard plane. Multiple connected line
+    # segments in ONE plane sketch → a closed profile a boss/cut extrude can
+    # consume. The primitive for non-axis-aligned closed profiles (45 deg
+    # parallelograms) that the axis-aligned rectangle / regular polygon /
+    # single-segment line cannot express.
+    "sketch_polyline_on_plane": [
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "points",
+            {
+                "type": "array",
+                "minItems": 3,
+                "description": (
+                    "Ordered vertices of the profile in sketch-local 2D (mm). "
+                    "Consecutive points are joined by line segments; when "
+                    "`closed` is true (default) a final segment joins the last "
+                    "point back to the first. At least 3 points for a closed "
+                    "profile."
+                ),
+                "items": _SKETCH_POINT_2D,
+            },
+            True,
+        ),
+        FieldSpec(
+            "closed",
+            {
+                "type": "boolean",
+                "default": True,
+                "description": (
+                    "If true (default) auto-close the loop (last→first) so the "
+                    "profile is extrudable. Set false for an open polyline."
+                ),
+            },
+            False,
+        ),
+        FieldSpec(
+            "construction",
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "If true, mark the segments as construction entities.",
+            },
+            False,
+        ),
+    ],
 }
 
 
@@ -1413,6 +1465,18 @@ FEATURE_META: dict[str, dict[str, Any]] = {
         "sw_min": "2024 SP1",
         "spike_id": "W53 (sketch_3d)",
     },
+    # Composite closed polyline on a standard plane. Extrudes along the plane
+    # normal (planar 2D sketch) — unlike sketch_3d_sketch, whose extrude only
+    # ever runs +Z (verified live 2026-08-05). The primitive for non-axis-
+    # aligned closed profiles (e.g. SM-HW-S1b-009 45 deg parallelograms).
+    "sketch_polyline_on_plane": {
+        "doc": "Composite closed polyline (multi-segment profile) on a "
+        "default reference plane; extrudes along the plane normal.",
+        "example_ref": "sketch_polyline_on_plane",
+        "risk_tier": "safe",
+        "sw_min": "2024 SP1",
+        "spike_id": "spike_polyline_on_plane (2026-08-05)",
+    },
 }
 
 
@@ -1451,6 +1515,8 @@ FEATURE_ORDER: list[str] = [
     "sketch_text",
     # W53 — 3D-sketch primitive (Phase-5 prerequisite).
     "sketch_3d_sketch",
+    # Composite closed polyline on a standard plane (non-axis-aligned profiles).
+    "sketch_polyline_on_plane",
 ]
 
 

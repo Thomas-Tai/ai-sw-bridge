@@ -2643,5 +2643,65 @@
         }
       }
     }
+  },
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "name",
+      "plane",
+      "points"
+    ],
+    "properties": {
+      "type": {
+        "const": "sketch_polyline_on_plane"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "plane": {
+        "enum": [
+          "Front",
+          "Top",
+          "Right"
+        ],
+        "description": "Default reference plane to host the sketch."
+      },
+      "points": {
+        "type": "array",
+        "minItems": 3,
+        "description": "Ordered vertices of the profile in sketch-local 2D (mm). Consecutive points are joined by line segments; when `closed` is true (default) a final segment joins the last point back to the first. At least 3 points for a closed profile.",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "X (mm) in sketch-local frame."
+            },
+            "y": {
+              "type": "number",
+              "description": "Y (mm) in sketch-local frame."
+            }
+          }
+        }
+      },
+      "closed": {
+        "type": "boolean",
+        "default": true,
+        "description": "If true (default) auto-close the loop (last→first) so the profile is extrudable. Set false for an open polyline."
+      },
+      "construction": {
+        "type": "boolean",
+        "default": false,
+        "description": "If true, mark the segments as construction entities."
+      }
+    }
   }
 ]

@@ -107,6 +107,7 @@ from .handlers.sketch import (  # noqa: F401  -- re-exported for _wire_handlers 
     _build_sketch_ellipse,
     _build_sketch_line,
     _build_sketch_polygon,
+    _build_sketch_polyline_on_plane,
     _build_sketch_slot,
     _build_sketch_spline,
     _build_sketch_text,
@@ -579,6 +580,14 @@ DESCRIPTORS: dict[str, FeatureDescriptor] = {
         handler=None,
         dim_fields={},
     ),
+    # Composite closed polyline on a standard plane — the primitive for
+    # non-axis-aligned closed profiles (45 deg parallelograms) that
+    # sketch_rectangle_on_plane / sketch_polygon / sketch_line cannot express.
+    "sketch_polyline_on_plane": FeatureType(
+        name="sketch_polyline_on_plane",
+        handler=None,
+        dim_fields={},
+    ),
 }
 
 
@@ -620,6 +629,8 @@ def _wire_handlers() -> None:
         "sketch_text": _build_sketch_text,
         # W53 — 3D-sketch primitive (Insert3DSketch + CreateLine with real Z).
         "sketch_3d_sketch": _build_sketch_3d_sketch,
+        # Composite closed polyline on a standard plane (multi-segment profile).
+        "sketch_polyline_on_plane": _build_sketch_polyline_on_plane,
     }
     from .descriptors import FEATURE_FIELDS, FEATURE_META
 
@@ -1109,6 +1120,7 @@ def run_feature_step(
             "sketch_rectangle_on_plane",
             "sketch_circle_on_plane",
             "sketch_ellipse",
+            "sketch_polyline_on_plane",
         ):
             bf.parent_plane_normal = PLANE_NORMALS[feat["plane"]]
 

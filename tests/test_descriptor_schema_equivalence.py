@@ -63,10 +63,11 @@ def test_feature_order_covers_all_descriptors():
     # added cut_extrude_midplane + cut_extrude_two_direction (25 total). W53
     # added sketch_3d_sketch (26 total). W67 P5 added boss_extrude_midplane +
     # boss_extrude_through_all + boss_extrude_two_direction (29 total), then
-    # boss_extrude_up_to_surface (Tier 2, 30 total).
+    # boss_extrude_up_to_surface (Tier 2, 30 total). SM-HW-S1b-009 added
+    # sketch_polyline_on_plane (composite closed polyline, 31 total).
     # The exact count is not the invariant — the invariant is that FEATURE_ORDER,
     # FEATURE_FIELDS, FEATURE_META, and the golden snapshot all agree.
-    assert len(descriptors.FEATURE_ORDER) == 30
+    assert len(descriptors.FEATURE_ORDER) == 31
     assert set(descriptors.FEATURE_ORDER) == set(descriptors.FEATURE_FIELDS)
     assert set(descriptors.FEATURE_ORDER) == set(descriptors.FEATURE_META)
     assert len(GOLDEN) == len(descriptors.FEATURE_ORDER)

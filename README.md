@@ -42,7 +42,7 @@ flowchart LR
     style G fill:#e8f5e9,stroke:#388e3c,color:#000
 ```
 
-The spec language covers **30 part-modelling feature types** today (13 sketch + 11 extrude/revolve + 3 modify + 3 pattern). [See the full list →](docs/spec_reference.md)
+The spec language covers **31 part-modelling feature types** today (14 sketch + 11 extrude/revolve + 3 modify + 3 pattern). [See the full list →](docs/spec_reference.md)
 
 As of **v0.13**, the same tool surface is also reachable via the MCP server (`ai-sw-mcp`) — bring your own Claude Desktop, Cursor, or Continue.dev. [Jump to the MCP section ↓](#mcp-server--drive-the-bridge-from-claude-desktop--cursor--etc)
 
