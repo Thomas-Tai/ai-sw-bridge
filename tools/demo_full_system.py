@@ -11,11 +11,12 @@ the remaining chapters are stubs that later tasks fill in.
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 # Allow ``python tools/demo_full_system.py`` from any cwd: the direct script
 # invocation puts this file's own directory on sys.path[0], not the repo
@@ -59,6 +60,17 @@ class Chapter:
     title: str
     caption: str
     build_steps: Callable[[BuildEnv], list[DemoStep]]
+    # Set only for chapters whose on-screen identity depends on a BuildEnv
+    # flag (currently just ``assembly``, gated on ``mates_proven``). Static
+    # chapters leave these None and fall back to the fixed title/caption.
+    title_fn: Callable[[BuildEnv], str] | None = None
+    caption_fn: Callable[[BuildEnv], str] | None = None
+
+    def title_for(self, env: BuildEnv) -> str:
+        return self.title_fn(env) if self.title_fn is not None else self.title
+
+    def caption_for(self, env: BuildEnv) -> str:
+        return self.caption_fn(env) if self.caption_fn is not None else self.caption
 
 
 def _tour_steps(env: BuildEnv) -> list[DemoStep]:
@@ -248,16 +260,288 @@ def _part_steps(env: BuildEnv) -> list[DemoStep]:
     return steps
 
 
+# The mate block injected into assembly.resolved.json when env.mates_proven
+# is True: concentric bore<->shaft, coincident block<->plate. Schema-valid
+# against assembly/schema.py (MATE_SCHEMA / MATE_REF_SCHEMA) today, but
+# face_ref resolution (the "cylindrical"/"normal" shorthand -> a concrete SW
+# face) is Spike-0-gated -- whether ai-sw-assembly's dry_run can actually
+# bind these against a --no-dim-built part is UNKNOWN until that spike runs.
+_ASSEMBLY_MATES: list[dict[str, Any]] = [
+    {
+        "type": "concentric",
+        "a": {"component": "shaft", "face_ref": {"cylindrical": True}},
+        "b": {"component": "block_pos", "face_ref": {"cylindrical": True}},
+    },
+    {
+        "type": "coincident",
+        "alignment": "aligned",
+        "a": {"component": "block_pos", "face_ref": {"normal": [0, 0, -1]}},
+        "b": {"component": "base", "face_ref": {"normal": [0, 0, 1]}},
+    },
+]
+
+
+def _assembly_prep_script(env: BuildEnv, mates_proven: bool) -> str:
+    """Body of the assembly_prep runtime step.
+
+    Reads the *committed* examples/demo_widget/assembly.json (Task 3;
+    never mutated), rewrites each component's ``part`` from the committed
+    ``demo_out/<Part>.SLDPRT`` relative path to the ABSOLUTE path under
+    ``env.demo_out`` (where the ``part`` chapter actually built it), and
+    swaps in ``_ASSEMBLY_MATES`` when ``mates_proven`` -- else leaves
+    ``mates: []`` as committed. Writes demo_out/assembly.resolved.json.
+
+    Built via plain string concatenation, not ``str.format``: the mates
+    JSON payload contains literal ``{``/``}`` characters that would collide
+    with format-string placeholder syntax. The mates list is embedded as a
+    JSON string literal and re-parsed with ``json.loads`` at runtime (not
+    spliced in as Python source), since JSON ``true``/``false`` are not
+    valid Python literals. Pure string building -- no filesystem I/O
+    happens until this text is executed as a subprocess by run_step.
+    """
+    mates = _ASSEMBLY_MATES if mates_proven else []
+    mates_json = json.dumps(mates)
+    src = (env.widget_dir / "assembly.json").as_posix()
+    dst = (env.demo_out / "assembly.resolved.json").as_posix()
+    demo_out = env.demo_out.as_posix()
+    return (
+        "import json, pathlib\n"
+        f'src = pathlib.Path("{src}")\n'
+        f'dst = pathlib.Path("{dst}")\n'
+        f'demo_out = pathlib.Path("{demo_out}")\n'
+        "data = json.loads(src.read_text(encoding='utf-8'))\n"
+        "for comp in data.get('components', []):\n"
+        "    part = comp.get('part')\n"
+        "    if part:\n"
+        "        comp['part'] = (demo_out / pathlib.Path(part).name).as_posix()\n"
+        f"data['mates'] = json.loads('''{mates_json}''')\n"
+        "dst.write_text(json.dumps(data, indent=2), encoding='utf-8')\n"
+        "print('assembly resolved ->', dst)\n"
+    )
+
+
+def _assembly_title(env: BuildEnv) -> str:
+    if env.mates_proven:
+        return "assembly (with mates)"
+    return "component placement / layout"
+
+
+def _assembly_caption(env: BuildEnv) -> str:
+    if env.mates_proven:
+        return (
+            "Concentric + coincident mates bind the parts; interference is "
+            "a build gate."
+        )
+    return "Transform-only placement (mates seat-unproven -- see Spike 0)."
+
+
 def _assembly_steps(env: BuildEnv) -> list[DemoStep]:
-    return []
+    # Assumes the 3 parts already exist in demo_out/ (built by the `part`
+    # chapter). Do NOT rebuild them here -- rebuilding would clobber the
+    # mutate beat's reparam output. `--chapter assembly` run standalone
+    # expects a prior part build; the recording always runs `--chapter all`.
+    #
+    # There is no `mirror`/`exploded` verb on ai-sw-assembly (see
+    # cli/assembly.py: propose/dry_run/commit/edit only). component_patterns
+    # (mirror) and exploded_views are spec-level constructs (assembly/
+    # schema.py), not CLI steps -- and assembly.json (Task 3) already places
+    # both block_pos and block_neg explicitly, so there's nothing to mirror.
+    # Both are deferred spec-level features, not omitted by oversight.
+    resolved = env.demo_out / "assembly.resolved.json"
+    return [
+        DemoStep(
+            id="assembly_prep",
+            title="Resolve assembly.json part paths (+ mates if proven)",
+            argv=[
+                sys.executable,
+                "-c",
+                _assembly_prep_script(env, env.mates_proven),
+            ],
+            display=(
+                'python -c "<resolve examples/demo_widget/assembly.json '
+                "part paths -> demo_out/, mates="
+                f'{env.mates_proven} -> demo_out/assembly.resolved.json>"'
+            ),
+        ),
+        # propose -> dry_run -> commit must run back-to-back with no idle
+        # gap at seat time -- proposals expire across pauses (the
+        # reference_sw_bridge_assembly lesson: propose returns a
+        # proposal_id that dry_run/commit must consume before it lapses).
+        DemoStep(
+            id="assembly_propose",
+            title="Propose: validate the assembly spec offline",
+            argv=_module_argv(
+                "ai_sw_bridge.cli.assembly",
+                "propose",
+                "--spec",
+                str(resolved),
+            ),
+            display=f"ai-sw-assembly propose --spec {resolved}",
+            capture_json=True,
+        ),
+        # <proposal-id> is a placeholder -- the same documented seat-phase
+        # seam as the mutate beat (Task 5): assembly_propose emits the real
+        # proposal_id in its JSON stdout at runtime; a dedicated seat-phase
+        # runner (structurally like _run_tour) captures it and substitutes
+        # it here before dry_run/commit actually run. Not wired in this task.
+        DemoStep(
+            id="assembly_dry_run",
+            title="Dry-run: resolve parts, bind mate faces",
+            argv=_module_argv(
+                "ai_sw_bridge.cli.assembly",
+                "dry_run",
+                "--proposal-id",
+                "<proposal-id>",
+            ),
+            display="ai-sw-assembly dry_run --proposal-id <proposal-id>",
+        ),
+        DemoStep(
+            id="assembly_commit",
+            title="Commit: place components, create mates, save",
+            argv=_module_argv(
+                "ai_sw_bridge.cli.assembly",
+                "commit",
+                "--proposal-id",
+                "<proposal-id>",
+                "--out",
+                str(env.demo_out / "DemoWidget.SLDASM"),
+            ),
+            display=(
+                "ai-sw-assembly commit --proposal-id <proposal-id> --out "
+                "demo_out/DemoWidget.SLDASM"
+            ),
+        ),
+    ]
 
 
 def _observe_steps(env: BuildEnv) -> list[DemoStep]:
-    return []
+    # The weighted chapter -- real DFM + build-tree read-back against the
+    # committed assembly is the most credible content in the whole tour, so
+    # the recording gives it extra header/pause room versus the other
+    # chapters (a delivery choice, not a code mechanism: every step here
+    # already gets its own _print_header + sleep via run_step).
+    return [
+        DemoStep(
+            id="observe_interference",
+            title="DFM headline: interference detection (expect 0)",
+            argv=_module_argv("ai_sw_bridge.cli.observe", "interference"),
+            display="ai-sw-observe interference",
+            capture_json=True,
+            allow_failure=True,
+        ),
+        DemoStep(
+            id="observe_feature_statistics",
+            title="Build-tree statistics",
+            argv=_module_argv("ai_sw_bridge.cli.observe", "feature_statistics"),
+            display="ai-sw-observe feature_statistics",
+            capture_json=True,
+            allow_failure=True,
+        ),
+        DemoStep(
+            id="observe_mate_errors",
+            title="Mate health (most meaningful once mates are proven)",
+            argv=_module_argv("ai_sw_bridge.cli.observe", "mate_errors"),
+            display="ai-sw-observe mate_errors",
+            capture_json=True,
+            allow_failure=True,
+        ),
+        DemoStep(
+            id="observe_screenshot",
+            title="Capture the assembled widget",
+            argv=_module_argv(
+                "ai_sw_bridge.cli.observe",
+                "screenshot",
+                "--filename",
+                "demo_widget.png",
+            ),
+            display="ai-sw-observe screenshot --filename demo_widget.png",
+            capture_json=True,
+            allow_failure=True,
+        ),
+    ]
+
+
+def _drawing_prep_script(env: BuildEnv) -> str:
+    """Body of the drawing_prep runtime step.
+
+    Authors a minimal standalone drawing spec (schema: drawing/
+    spec_schema.py) at demo_out/drawing.json -- Task 3 only produced an
+    assembly spec, and committed spec files may not be created for this
+    task, so it's authored at runtime instead. Legacy single-sheet mode:
+    top-level ``views[]``, ``dimensions: true`` (model dims, no tolerance),
+    ``bom: true``. Pure string building -- the write happens only when this
+    text is executed as a subprocess by run_step.
+    """
+    model = (env.demo_out / "DemoWidget.SLDASM").as_posix()
+    dst = (env.demo_out / "drawing.json").as_posix()
+    spec = {
+        "kind": "drawing",
+        "name": "DemoWidgetDrawing",
+        "model": model,
+        "views": ["front", "top", "right", "isometric"],
+        "dimensions": True,
+        "bom": True,
+    }
+    spec_json = json.dumps(spec, indent=2)
+    return (
+        "import pathlib\n"
+        f'dst = pathlib.Path("{dst}")\n'
+        f"dst.write_text('''{spec_json}''', encoding='utf-8')\n"
+        "print('drawing spec written ->', dst)\n"
+    )
 
 
 def _drawing_steps(env: BuildEnv) -> list[DemoStep]:
-    return []
+    resolved = env.demo_out / "drawing.json"
+    return [
+        DemoStep(
+            id="drawing_prep",
+            title="Author a standalone drawing spec for the assembly",
+            argv=[sys.executable, "-c", _drawing_prep_script(env)],
+            display='python -c "<write demo_out/drawing.json>"',
+        ),
+        DemoStep(
+            id="drawing_propose",
+            title="Propose: validate the drawing spec offline",
+            argv=_module_argv(
+                "ai_sw_bridge.cli.drawing",
+                "propose",
+                "--spec",
+                str(resolved),
+            ),
+            display=f"ai-sw-drawing propose --spec {resolved}",
+            capture_json=True,
+        ),
+        # <proposal-id> placeholder -- same seat-phase seam as
+        # assembly_dry_run/mutate_dry_run above. Not wired in this task.
+        DemoStep(
+            id="drawing_dry_run",
+            title="Dry-run: confirm the model file is openable",
+            argv=_module_argv(
+                "ai_sw_bridge.cli.drawing",
+                "dry_run",
+                "--proposal-id",
+                "<proposal-id>",
+            ),
+            display="ai-sw-drawing dry_run --proposal-id <proposal-id>",
+        ),
+        DemoStep(
+            id="drawing_commit",
+            title="Commit: create views, save the .SLDDRW",
+            argv=_module_argv(
+                "ai_sw_bridge.cli.drawing",
+                "commit",
+                "--proposal-id",
+                "<proposal-id>",
+                "--out",
+                str(env.demo_out / "DemoWidget.SLDDRW"),
+            ),
+            display=(
+                "ai-sw-drawing commit --proposal-id <proposal-id> --out "
+                "demo_out/DemoWidget.SLDDRW"
+            ),
+        ),
+    ]
 
 
 def _export_steps(env: BuildEnv) -> list[DemoStep]:
@@ -285,19 +569,21 @@ CHAPTERS: dict[str, Chapter] = {
     "assembly": Chapter(
         key="assembly",
         title="Assembly",
-        caption="Place parts and add mates to assemble the demo widget (stub; filled in a later task).",
+        caption="Place parts (and mates, once proven) to assemble the demo widget.",
         build_steps=_assembly_steps,
+        title_fn=_assembly_title,
+        caption_fn=_assembly_caption,
     ),
     "observe": Chapter(
         key="observe",
         title="Observe",
-        caption="Read back geometry, mass properties, and feature stats (stub; filled in a later task).",
+        caption="DFM is a build gate, not a manual afterthought.",
         build_steps=_observe_steps,
     ),
     "drawing": Chapter(
         key="drawing",
         title="Drawing",
-        caption="Generate a drawing view of the assembled widget (stub; filled in a later task).",
+        caption="Drawing + BOM fall out of the same model.",
         build_steps=_drawing_steps,
     ),
     "export": Chapter(
@@ -439,8 +725,8 @@ def main(argv: list[str] | None = None) -> int:
             steps = chapter.build_steps(env)
             if not steps:
                 continue
-            _print_header(f"Preflight plan: {chapter.title}")
-            print(chapter.caption)
+            _print_header(f"Preflight plan: {chapter.title_for(env)}")
+            print(chapter.caption_for(env))
             for step in steps:
                 print(f"  $ {step.display}")
         return 0
@@ -450,8 +736,8 @@ def main(argv: list[str] | None = None) -> int:
         steps = chapter.build_steps(env)
         if not steps:
             continue
-        _pause(f"Starting chapter: {chapter.title}", args.no_pause)
-        print(chapter.caption)
+        _pause(f"Starting chapter: {chapter.title_for(env)}", args.no_pause)
+        print(chapter.caption_for(env))
         for step in steps:
             rc, _payload = run_step(
                 step,

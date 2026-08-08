@@ -52,3 +52,19 @@ def test_part_chapter_builds_three_parts_with_no_dim_save_as(tmp_path: Path) -> 
         assert "--no-dim" in s.argv and "--yes" in s.argv and "--save-as" in s.argv
     # headline mutate beat present
     assert any(s.id.startswith("mutate") or s.id.startswith("reparam") for s in steps)
+
+
+def test_assembly_caption_flips_on_mates_flag(tmp_path: Path) -> None:
+    def env(mates: bool) -> "dfs.BuildEnv":
+        return dfs.BuildEnv(
+            Path("C:/repo"),
+            tmp_path / "o",
+            Path("C:/repo/examples/demo_widget"),
+            mates_proven=mates,
+            export_block_wired=False,
+            mutate_drives_nodim=False,
+        )
+
+    assert dfs.CHAPTERS["assembly"].title_for(env(True)) != dfs.CHAPTERS[
+        "assembly"
+    ].title_for(env(False))
