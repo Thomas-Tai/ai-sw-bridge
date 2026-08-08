@@ -84,3 +84,33 @@ def test_export_caption_flips_on_export_block_wired_flag(tmp_path: Path) -> None
     assert dfs.CHAPTERS["export"].caption_for(env(True)) != dfs.CHAPTERS[
         "export"
     ].caption_for(env(False))
+
+
+def test_quickstart_seatless_runs_tier_a_only(tmp_path: Path) -> None:
+    env = dfs.BuildEnv(
+        Path("C:/repo"),
+        tmp_path / "o",
+        Path("C:/repo/examples/demo_widget"),
+        mates_proven=False,
+        export_block_wired=False,
+        mutate_drives_nodim=False,
+    )
+    steps = dfs.quickstart_steps(env, with_sw=False)
+    # Seat-less quickstart never issues a live build/observe.
+    assert all("--no-dim" not in (s.argv or []) for s in steps)
+    assert all("--yes" not in (s.argv or []) for s in steps)
+
+
+def test_quickstart_doc_commands_match_canonical_list() -> None:
+    import re
+
+    doc = Path(__file__).resolve().parents[2] / "QUICKSTART.md"
+    fenced = re.findall(r"```bash\n(.*?)```", doc.read_text(encoding="utf-8"), re.S)
+    doc_cmds = [
+        ln.strip()
+        for block in fenced
+        for ln in block.splitlines()
+        if ln.strip() and not ln.strip().startswith("#")
+    ]
+    for cmd in dfs.quickstart_command_lines(with_sw=True):
+        assert cmd in doc_cmds, f"QUICKSTART.md missing/renamed command: {cmd}"

@@ -9,6 +9,14 @@
 
 **Language**: English · [繁體中文](docs/i18n/zh-TW/README.md) · [简体中文](docs/i18n/zh-CN/README.md)
 
+## Quickstart
+
+Get running in 5 minutes → [QUICKSTART.md](QUICKSTART.md)
+
+```bash
+python tools/demo_full_system.py --quickstart
+```
+
 ## Who are you? → start here
 
 This README is a **persona router**. Pick the row that matches you and jump

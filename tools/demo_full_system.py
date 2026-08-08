@@ -699,6 +699,142 @@ CHAPTERS: dict[str, Chapter] = {
 }
 
 
+@dataclass(frozen=True)
+class QuickstartStep:
+    tier: str  # "A" (no SW) | "B" (needs a seat) | "next" (prose pointer)
+    caption: str
+    argv: (
+        list[str] | None
+    )  # doc-form tokens, e.g. ["python", "-m", "..."]; None = prose-only
+    prose: str | None = None
+
+
+# The single source of truth for both the ``--quickstart`` runnable mode and
+# QUICKSTART.md. A test (test_quickstart_doc_commands_match_canonical_list)
+# asserts every command this list renders is present verbatim in the doc, so
+# the two can never drift apart.
+QUICKSTART_STEPS: list[QuickstartStep] = [
+    # Tier A -- no SOLIDWORKS needed.
+    QuickstartStep(
+        tier="A",
+        caption="Install the package (one-time).",
+        argv=["pip", "install", "-e", ".[dev]"],
+    ),
+    QuickstartStep(
+        tier="A",
+        caption="Health check (read-only; reports 'no seat' if SW isn't running).",
+        argv=["python", "-m", "ai_sw_bridge.cli.doctor"],
+    ),
+    QuickstartStep(
+        tier="A",
+        caption="See every supported feature/CLI kind.",
+        argv=["python", "-m", "ai_sw_bridge.cli.build", "--list-kinds"],
+    ),
+    QuickstartStep(
+        tier="A",
+        caption="Validate + lint a real spec -- no SW needed.",
+        argv=[
+            "python",
+            "-m",
+            "ai_sw_bridge.cli.build",
+            "examples/demo_widget/demo_baseplate/spec.json",
+            "--dry-run",
+            "--lint",
+        ],
+    ),
+    # Tier B -- needs a live SOLIDWORKS seat.
+    QuickstartStep(
+        tier="B",
+        caption="Build your first real part.",
+        argv=[
+            "python",
+            "-m",
+            "ai_sw_bridge.cli.build",
+            "--demo",
+            "--no-dim",
+            "--yes",
+        ],
+    ),
+    QuickstartStep(
+        tier="B",
+        caption="Read geometry back from the live model.",
+        argv=["python", "-m", "ai_sw_bridge.cli.observe", "bounding_box"],
+    ),
+    # Next -- prose pointers (a couple double as real, non-executed commands).
+    QuickstartStep(
+        tier="next",
+        caption="Edit and re-validate.",
+        argv=None,
+        prose=(
+            "Edit any `examples/demo_widget/*/spec.json` and re-run the "
+            "Tier-A dry-run to see your change validated."
+        ),
+    ),
+    QuickstartStep(
+        tier="next",
+        caption="Run the full chaptered demo.",
+        argv=["python", "tools/demo_full_system.py", "--chapter", "all"],
+    ),
+    QuickstartStep(
+        tier="next",
+        caption="Learn how each chapter is recorded.",
+        argv=None,
+        prose="Read `docs/demo_full_system.md` for how to record each chapter.",
+    ),
+]
+
+
+def quickstart_command_lines(with_sw: bool = True) -> list[str]:
+    """Render the canonical shell command lines, in order.
+
+    This is the exact set QUICKSTART.md's fenced ``bash`` blocks are
+    compared against (string-for-string) by the doc-sync test.
+    """
+    lines: list[str] = []
+    for step in QUICKSTART_STEPS:
+        if step.argv is None:
+            continue
+        if step.tier == "B" and not with_sw:
+            continue
+        lines.append(" ".join(step.argv))
+    return lines
+
+
+def quickstart_steps(env: BuildEnv, with_sw: bool) -> list[DemoStep]:
+    """Build the EXECUTABLE steps for ``--quickstart``.
+
+    Only ``python -m <module> ...`` steps are ever executed here. Tier A
+    always runs; Tier B only when ``with_sw`` (seat-gated, exercised in a
+    later task). The ``pip install`` prerequisite and every ``next`` pointer
+    (including the ``--chapter all`` full-tour command) are never executed
+    inside quickstart -- they are printed as instructions by ``main``.
+    """
+    steps: list[DemoStep] = []
+    for index, step in enumerate(QUICKSTART_STEPS):
+        if step.tier == "next":
+            continue
+        if step.tier == "B" and not with_sw:
+            continue
+        argv = step.argv
+        if argv is None or len(argv) < 3 or argv[0] != "python" or argv[1] != "-m":
+            # Not a "python -m <module>" invocation (e.g. ``pip install``):
+            # printed as a prerequisite instruction instead, never executed.
+            continue
+        module, *rest = argv[2:]
+        capture_json = "--list-kinds" in rest or "--dry-run" in rest
+        steps.append(
+            DemoStep(
+                id=f"quickstart_{index}_{module.rsplit('.', 1)[-1]}",
+                title=step.caption,
+                argv=_module_argv(module, *rest),
+                display=" ".join(step.argv),
+                allow_failure=True,
+                capture_json=capture_json,
+            )
+        )
+    return steps
+
+
 def chapter_order() -> list[str]:
     return ["tour", "part", "assembly", "observe", "drawing", "export"]
 
@@ -748,6 +884,53 @@ def _run_tour(env: BuildEnv, *, sleep_s: float, compact: bool) -> int:
     return 0
 
 
+def _run_quickstart(
+    env: BuildEnv, *, with_sw: bool, no_pause: bool, sleep_s: float
+) -> int:
+    """Walk QUICKSTART_STEPS: execute Tier A (and Tier B iff with_sw), print
+    everything else (the pip-install prerequisite, an unrun Tier B, and the
+    ``next`` pointers) as plain instructions. Never wipes demo_out -- the
+    Tier-A steps write nothing, and a live Tier-B build manages its own
+    output.
+    """
+    _print_header("Get running in 5 minutes")
+    executable = quickstart_steps(env, with_sw=with_sw)
+    by_index = {int(s.id.split("_")[1]): s for s in executable}
+    env_dict = _command_env(env.repo_root)
+
+    for index, step in enumerate(QUICKSTART_STEPS):
+        demo_step = by_index.get(index)
+        if step.tier in ("A", "B") and demo_step is not None:
+            rc, _payload = run_step(
+                demo_step, cwd=env.repo_root, env=env_dict, sleep_s=sleep_s
+            )
+            if rc:
+                return rc
+            continue
+        if step.tier == "B" and not with_sw:
+            print()
+            print(f"[Tier B - needs a SOLIDWORKS seat] {step.caption}")
+            print(f"  $ {' '.join(step.argv or [])}")
+            print("  Run again with --quickstart --with-sw to execute this live.")
+            continue
+        if step.tier == "A":
+            # The pip-install prerequisite: printed, never executed.
+            print()
+            print(f"[Prerequisite] {step.caption}")
+            print(f"  $ {' '.join(step.argv or [])}")
+            continue
+        # step.tier == "next": prose pointer, optionally with a real command.
+        print()
+        print(f"[Next] {step.caption}")
+        if step.prose:
+            print(f"  {step.prose}")
+        if step.argv is not None:
+            print(f"  $ {' '.join(step.argv)}")
+
+    _pause("Quickstart complete.", no_pause)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="demo_full_system",
@@ -793,6 +976,20 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Run only no-SW-safe steps, then stop before any live SOLIDWORKS work.",
     )
+    parser.add_argument(
+        "--quickstart",
+        action="store_true",
+        help=(
+            "5-minute onboarding mode: run the no-SW Tier-A health/validate "
+            "steps and print the Tier-B/next steps as instructions. 100%% "
+            "SOLIDWORKS-free unless combined with --with-sw."
+        ),
+    )
+    parser.add_argument(
+        "--with-sw",
+        action="store_true",
+        help="With --quickstart, also execute the Tier-B steps against a live SOLIDWORKS seat.",
+    )
     args = parser.parse_args(argv)
 
     if args.list_chapters:
@@ -808,6 +1005,12 @@ def main(argv: list[str] | None = None) -> int:
         demo_out=repo_root / "demo_out",
         widget_dir=repo_root / "examples" / "demo_widget",
     )
+
+    if args.quickstart:
+        return _run_quickstart(
+            env, with_sw=args.with_sw, no_pause=args.no_pause, sleep_s=args.sleep
+        )
+
     wipe_demo_out(env.demo_out)
     _print_header("ai-sw-bridge full-system demo")
 
