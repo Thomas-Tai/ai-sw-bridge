@@ -1,0 +1,37 @@
+{
+  "kind": "assembly",
+  "name": "demo_widget",
+  "components": [
+    {
+      "id": "base",
+      "part": "demo_out/DemoBaseplate.SLDPRT",
+      "transform": {
+        "xyz_mm": [0, 0, -5]
+      }
+    },
+    {
+      "id": "shaft",
+      "part": "demo_out/DemoShaft.SLDPRT",
+      "transform": {
+        "xyz_mm": [0, 0, 20]
+      }
+    },
+    {
+      "id": "block_pos",
+      "part": "demo_out/DemoBearingBlock.SLDPRT",
+      "transform": {
+        "xyz_mm": [30, 0, 20],
+        "rpy_deg": [0, 90, 0]
+      }
+    },
+    {
+      "id": "block_neg",
+      "part": "demo_out/DemoBearingBlock.SLDPRT",
+      "transform": {
+        "xyz_mm": [-30, 0, 20],
+        "rpy_deg": [0, 90, 0]
+      }
+    }
+  ],
+  "mates": []
+}
