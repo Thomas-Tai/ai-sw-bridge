@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "name": "DemoBaseplate",
+  "locals": "locals.txt",
+  "_comment": "Pillow-block base plate. Origin-centered so face-sketch children resolve (known_limitations §1). Axis-aligned Front extrude (§2). Fillet/chamfer use semantic edge selectors (§4): FIL_Corners fillets the 4 vertical corner edges via between_faces, CHA_TopEdge chamfers all 4 top-face edges via of_face. Driving dims sourced from locals.txt (PLATE_L/PLATE_W/PLATE_T + friends).",
+  "features": [
+    {"type": "sketch_rectangle_on_plane", "name": "SK_Plate", "plane": "Front",
+     "width": {"rhs": "\"PLATE_L\""}, "height": {"rhs": "\"PLATE_W\""}, "center": {"x": 0.0, "y": 0.0}},
+    {"type": "boss_extrude_blind", "name": "EX_Plate", "sketch": "SK_Plate", "depth": {"rhs": "\"PLATE_T\""}},
+    {"type": "sketch_circle_on_face", "name": "SK_MountSeed", "of_feature": "EX_Plate",
+     "face": "+z", "diameter": {"rhs": "\"PLATE_MOUNT_DIA\""},
+     "_comment2": "center.u/v is a plain-number field only -- {rhs} is rejected by the schema here (confirmed empirically; every reference example (drive_roller, motor_mount_plate) also leaves center literal even when diameter is parametric). Mirrors PLATE_MOUNT_X/Y literally; keep the two in sync by hand if locals.txt changes.",
+     "center": {"u": -40.0, "v": -20.0}},
+    {"type": "cut_extrude_through_all", "name": "Hole_MountSeed", "sketch": "SK_MountSeed"},
+    {"type": "linear_pattern", "name": "LP_Mounts",
+     "_comment": "Direction is a point on an edge whose tangent is +/-X (NOT a raw unit vector -- see patterned_plate README 'How direction selection works'). (0, 30, 10) is the midpoint of the +y top edge of the +z face (plate spans x=[-50,50], y=[-30,30], z=[0,10]). flip:true grows the pattern -X->+X so it walks away from the seed at u=-40 toward +X, matching patterned_plate's convention.",
+     "seed": "Hole_MountSeed",
+     "_comment3": "direction.x/y/z must be plain numbers -- {rhs} is rejected here (confirmed empirically: 'is not of type number'). (0,30,10) tracks PLATE_W/2=30 and PLATE_T=10 by hand; keep in sync if locals.txt changes.",
+     "direction": {"x": 0.0, "y": 30.0, "z": 10.0}, "count": 3, "spacing": {"rhs": "\"PLATE_MOUNT_PITCH\""}, "flip": true},
+    {"type": "mirror_feature", "name": "MIR_Mounts",
+     "_comment": "Top Plane = XZ (y=0): flips Y, taking the v=-20 hole row to v=+20 (mirrored_holes README plane-semantics table).",
+     "seed": "LP_Mounts", "plane": "Top"},
+    {"type": "fillet_constant_radius", "name": "FIL_Corners",
+     "_comment": "4 vertical corner edges = the edge shared by each adjacent (x-face, y-face) pair -- between_faces semantic selector (dress_up.py _select_edges), not of_feature/radius-only.",
+     "radius": {"rhs": "\"PLATE_FILLET_R\""},
+     "edges": [
+       {"of_feature": "EX_Plate", "between_faces": ["+x", "+y"]},
+       {"of_feature": "EX_Plate", "between_faces": ["+x", "-y"]},
+       {"of_feature": "EX_Plate", "between_faces": ["-x", "+y"]},
+       {"of_feature": "EX_Plate", "between_faces": ["-x", "-y"]}
+     ]},
+    {"type": "chamfer_edge", "name": "CHA_TopEdge",
+     "_comment": "of_face semantic selector: all edges bounding the +z (top) face.",
+     "mode": "equal_distance", "distance": {"rhs": "\"PLATE_CHAMFER_DIST\""},
+     "edges": [
+       {"of_feature": "EX_Plate", "face": "+z"}
+     ]},
+    {"type": "sketch_circle_on_face", "name": "SK_BoltSeed", "of_feature": "EX_Plate",
+     "face": "+z", "diameter": {"rhs": "\"PLATE_BOLT_DIA\""}, "center": {"u": -40.0, "v": -14.0}},
+    {"type": "cut_extrude_through_all", "name": "Hole_BoltSeed", "sketch": "SK_BoltSeed"},
+    {"type": "circular_pattern", "name": "CP_BoltCircle",
+     "_comment": "Step 6 enrichment (kept -- clean dry-run, patterned_disc idiom). Axis point (-37.5,-20,10) is on the rim of Hole_MountSeed (center -40,-20, dia 5 -> radius 2.5), which SW uses to infer the rotation axis through (-40,-20) normal to +z. 4 small Ø1.5 holes at 90 deg spacing, radius 6mm, around the first mount hole -- a bolt-circle decoration that doesn't touch the corner fillets or the patterned/mirrored mount holes.",
+     "seed": "Hole_BoltSeed",
+     "axis": {"x": -37.5, "y": -20.0, "z": 10.0}, "count": 4, "total_angle": 360.0}
+  ]
+}

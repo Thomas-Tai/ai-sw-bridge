@@ -1,0 +1,11 @@
+"PLATE_L"               = 100.0
+"PLATE_W"               = 60.0
+"PLATE_T"               = 10.0
+"PLATE_MOUNT_DIA"       = 5.0
+"PLATE_MOUNT_X"         = -40.0
+"PLATE_MOUNT_Y"         = -20.0
+"PLATE_MOUNT_PITCH"     = 40.0
+"PLATE_FILLET_R"        = 4.0
+"PLATE_CHAMFER_DIST"    = 1.5
+"PLATE_BOLT_DIA"        = 1.5
+"PLATE_BOLT_RING_R"     = 6.0

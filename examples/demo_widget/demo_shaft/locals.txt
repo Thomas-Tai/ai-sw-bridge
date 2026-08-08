@@ -1,0 +1,5 @@
+"SHAFT_DIA"             = 16.0
+"SHAFT_LEN"             = 90.0
+"SHAFT_GROOVE_W"        = 4.0
+"SHAFT_GROOVE_DEPTH"    = 1.0
+"SHAFT_CHAMFER"         = 1.0

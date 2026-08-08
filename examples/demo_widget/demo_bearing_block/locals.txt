@@ -1,0 +1,7 @@
+"BORE_DIA"              = 16.0
+"BLOCK_W"               = 40.0
+"BLOCK_H"               = 28.0
+"BLOCK_T"               = 30.0
+"BLOCK_FILLET_R"        = 3.0
+"BLOCK_MOUNT_DIA"       = 4.0
+"BLOCK_BORE_CHAMFER"    = 0.5

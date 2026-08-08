@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "name": "DemoBearingBlock",
+  "locals": "locals.txt",
+  "_comment": "Bearing housing: 40x30x28 block, centered through-bore Ø16, two mounting holes, fillet + a bore lead-in chamfer. Origin-centered; boss_extrude_midplane spans z=[-15,15] from the width=40(x)xheight=28(y) SK_Block sketch. Driving dims (BORE_DIA/BLOCK_W + friends) sourced from locals.txt; center/edge-point fields stay literal -- schema rejects {rhs} there (confirmed empirically on demo_baseplate).",
+  "features": [
+    {"type": "sketch_rectangle_on_plane", "name": "SK_Block", "plane": "Front",
+     "width": {"rhs": "\"BLOCK_W\""}, "height": {"rhs": "\"BLOCK_H\""}, "center": {"x": 0.0, "y": 0.0}},
+    {"type": "boss_extrude_midplane", "name": "EX_Block", "sketch": "SK_Block", "depth": {"rhs": "\"BLOCK_T\""}},
+    {"type": "sketch_circle_on_face", "name": "SK_Bore", "of_feature": "EX_Block",
+     "face": "+z", "diameter": {"rhs": "\"BORE_DIA\""}, "center": {"u": 0.0, "v": 0.0}},
+    {"type": "cut_extrude_through_all", "name": "Cut_Bore", "sketch": "SK_Bore"},
+    {"type": "fillet_constant_radius", "name": "FIL_Block",
+     "_comment": "4 vertical corner edges via between_faces semantic selector, same idiom as demo_baseplate FIL_Corners.",
+     "radius": {"rhs": "\"BLOCK_FILLET_R\""},
+     "edges": [
+       {"of_feature": "EX_Block", "between_faces": ["+x", "+y"]},
+       {"of_feature": "EX_Block", "between_faces": ["+x", "-y"]},
+       {"of_feature": "EX_Block", "between_faces": ["-x", "+y"]},
+       {"of_feature": "EX_Block", "between_faces": ["-x", "-y"]}
+     ]},
+    {"type": "simple_hole", "name": "Hole_MountA", "of_feature": "EX_Block",
+     "face": "+z", "center": {"u": 15.0, "v": 0.0}, "diameter": {"rhs": "\"BLOCK_MOUNT_DIA\""}, "end_condition": "through_all"},
+    {"type": "simple_hole", "name": "Hole_MountB", "of_feature": "EX_Block",
+     "face": "+z", "center": {"u": -15.0, "v": 0.0}, "diameter": {"rhs": "\"BLOCK_MOUNT_DIA\""}, "end_condition": "through_all"},
+    {"type": "chamfer_edge", "name": "CHA_BoreLeadIn",
+     "_comment": "Literal-point selector on the bore's top rim (radius 8, z=15) -- Cut_Bore is a cut, not a boxy of_feature with +x/-y style faces, so a semantic selector doesn't apply to its circular rim.",
+     "mode": "equal_distance", "distance": {"rhs": "\"BLOCK_BORE_CHAMFER\""},
+     "edges": [
+       {"x": 8.0, "y": 0.0, "z": 15.0}
+     ]}
+  ]
+}

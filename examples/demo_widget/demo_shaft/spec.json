@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "name": "DemoShaft",
+  "locals": "locals.txt",
+  "_comment": "Turned shaft: Ø16 x 90 revolve boss along x, O-ring groove at mid-length via revolve_cut on the opposite side (grooved_shaft README 'A note on opposite-side cuts'). End chamfers via literal-point edge selectors (the revolve body has no of_feature/+x-style faces for a semantic selector). Groove profile corrected from the task brief's starter (center.y=-8 would sit half outside the Ø16 body): grooved_shaft's rule is center.y = -(R - depth/2) = -(8 - 0.5) = -7.5 for a 1mm-deep groove. Driving dims (SHAFT_DIA/SHAFT_LEN + friends) sourced from locals.txt; center/centerline/edge-point fields stay literal -- schema rejects {rhs} there (confirmed empirically on demo_baseplate), so those numbers must be kept in sync by hand if locals.txt changes.",
+  "features": [
+    {"type": "sketch_rectangle_on_plane", "name": "SK_Body", "plane": "Front",
+     "width": {"rhs": "\"SHAFT_LEN\""}, "height": {"rhs": "\"SHAFT_DIA\"/2"}, "center": {"x": 45.0, "y": 4.0},
+     "centerline": {"start": {"x": -60.0, "y": 0.0}, "end": {"x": 150.0, "y": 0.0}}},
+    {"type": "revolve_boss", "name": "REV_Body", "sketch": "SK_Body", "angle": 360.0},
+    {"type": "sketch_rectangle_on_plane", "name": "SK_Groove", "plane": "Front",
+     "_comment": "Opposite side (-y) from SK_Body's +y profile, per grooved_shaft's chained-revolve handedness rule. 1mm-wide radial band from the R=8 surface inward to R=7: y spans [-8,-7], center.y=-7.5.",
+     "width": {"rhs": "\"SHAFT_GROOVE_W\""}, "height": {"rhs": "\"SHAFT_GROOVE_DEPTH\""}, "center": {"x": 45.0, "y": -7.5},
+     "centerline": {"start": {"x": -60.0, "y": 0.0}, "end": {"x": 150.0, "y": 0.0}}},
+    {"type": "revolve_cut", "name": "CUT_Groove", "sketch": "SK_Groove", "angle": 360.0},
+    {"type": "chamfer_edge", "name": "CHA_Ends",
+     "_comment": "Literal-point selectors on the two end circular edges (x=0 and x=90, both at radius 8 i.e. y=8,z=0) -- revolve_boss features carry no extrude_axis metadata, so of_face/between_faces (which require a built-extrusion parent) aren't available here; see dress_up.py _select_edges parent.extrude_axis guard.",
+     "mode": "equal_distance", "distance": {"rhs": "\"SHAFT_CHAMFER\""},
+     "edges": [
+       {"x": 0.0, "y": 8.0, "z": 0.0},
+       {"x": 90.0, "y": 8.0, "z": 0.0}
+     ]}
+  ]
+}
