@@ -34,3 +34,21 @@ def test_wipe_demo_out_clears_and_recreates(tmp_path: Path) -> None:
     dfs.wipe_demo_out(out)
     assert out.is_dir()
     assert list(out.iterdir()) == []
+
+
+def test_part_chapter_builds_three_parts_with_no_dim_save_as(tmp_path: Path) -> None:
+    env = dfs.BuildEnv(
+        repo_root=Path("C:/repo"),
+        demo_out=tmp_path / "demo_out",
+        widget_dir=Path("C:/repo/examples/demo_widget"),
+        mates_proven=False,
+        export_block_wired=False,
+        mutate_drives_nodim=False,
+    )
+    steps = dfs.CHAPTERS["part"].build_steps(env)
+    build_steps = [s for s in steps if s.id.startswith("build_")]
+    assert len(build_steps) == 3
+    for s in build_steps:
+        assert "--no-dim" in s.argv and "--yes" in s.argv and "--save-as" in s.argv
+    # headline mutate beat present
+    assert any(s.id.startswith("mutate") or s.id.startswith("reparam") for s in steps)

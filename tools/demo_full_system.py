@@ -73,8 +73,179 @@ def _tour_steps(env: BuildEnv) -> list[DemoStep]:
     ]
 
 
+# The three demo-widget parts, in build order. The bearing block is built
+# LAST so it is the active SOLIDWORKS document when the mutate/reparam beat
+# runs (both target its BORE_DIA).
+_PART_SPECS: tuple[tuple[str, str, str], ...] = (
+    ("baseplate", "demo_baseplate", "DemoBaseplate"),
+    ("shaft", "demo_shaft", "DemoShaft"),
+    ("bearing_block", "demo_bearing_block", "DemoBearingBlock"),
+)
+
+# The variable the mutate/reparam beat resizes, and its new value. Both
+# branches of mutate_beat_steps() target this so the on-screen narrative
+# ("resize the bore") is identical regardless of which beat is live-valid.
+_MUTATE_VAR = "BORE_DIA"
+_MUTATE_NEW_VALUE = "20.0"
+
+# Body of the fallback beat's runtime reparam step: copies the bearing
+# block's spec + locals into a demo_out/ scratch copy and bumps BORE_DIA in
+# the copy, never touching the committed examples/ locals.txt. Two format
+# passes: the ``%(var)s``/``%(val)s`` substitution below bakes in the
+# variable name/new value at import time (raw string, so the regex's own
+# backslashes need no doubling); the ``{src}``/``{dst}`` placeholders are
+# left untouched by that pass (``%`` formatting ignores braces) and are
+# filled in later, per-call, by mutate_beat_steps() with the concrete
+# demo_out paths.
+_REPARAM_SCRIPT_TEMPLATE = r"""import pathlib, re, shutil
+src = pathlib.Path("{src}")
+dst = pathlib.Path("{dst}")
+dst.mkdir(parents=True, exist_ok=True)
+shutil.copy(src / "spec.json", dst / "spec.json")
+loc = (src / "locals.txt").read_text(encoding="utf-8")
+loc = re.sub(r'("%(var)s"\s*=\s*)[0-9.]+', r'\g<1>%(val)s', loc)
+(dst / "locals.txt").write_text(loc, encoding="utf-8")
+print("reparam: %(var)s -> %(val)s in", dst)
+""" % {
+    "var": _MUTATE_VAR,
+    "val": _MUTATE_NEW_VALUE,
+}
+
+
+def mutate_beat_steps(env: BuildEnv) -> list[DemoStep]:
+    """The headline "resize the bore and rebuild" beat.
+
+    Two mutually exclusive branches, selected by ``env.mutate_drives_nodim``:
+
+    * Primary (``True``): drive the change through ``ai-sw-mutate``'s
+      propose -> dry_run -> commit workflow against the live-built bearing
+      block. Whether ``ai-sw-mutate`` can drive a ``--no-dim``-built part at
+      all is UNKNOWN and is exactly what Spike M (a later, seat-gated task)
+      determines; this branch is inert (its steps are never executed) until
+      that spike flips the flag to True.
+    * Fallback (``False``, the default and the only no-SW-testable path):
+      copy the bearing block's spec+locals into ``demo_out/reparam/``, bump
+      ``BORE_DIA`` in the copy, and rebuild with ``--no-dim --yes
+      --save-as``. This never touches the committed ``examples/`` locals.
+    """
+    if env.mutate_drives_nodim:
+        return [
+            DemoStep(
+                id="mutate_propose",
+                title="Propose: resize the bore",
+                argv=_module_argv(
+                    "ai_sw_bridge.cli.mutate",
+                    "propose",
+                    "--var",
+                    _MUTATE_VAR,
+                    "--new-value",
+                    _MUTATE_NEW_VALUE,
+                ),
+                display=(
+                    f"ai-sw-mutate propose --var {_MUTATE_VAR} "
+                    f"--new-value {_MUTATE_NEW_VALUE}"
+                ),
+                capture_json=True,
+            ),
+            # <proposal-id> is a placeholder: the real proposal_id is emitted
+            # by mutate_propose's JSON stdout at runtime. A dedicated
+            # seat-phase runner (a later task, analogous to _run_tour above)
+            # captures it from that JSON and substitutes it here before
+            # running dry_run/commit. Not wired yet -- this whole branch is
+            # inert until env.mutate_drives_nodim is set True at seat time.
+            DemoStep(
+                id="mutate_dry_run",
+                title="Dry-run: apply, verify, roll back",
+                argv=_module_argv(
+                    "ai_sw_bridge.cli.mutate",
+                    "dry_run",
+                    "--proposal-id",
+                    "<proposal-id>",
+                ),
+                display="ai-sw-mutate dry_run --proposal-id <proposal-id>",
+            ),
+            DemoStep(
+                id="mutate_commit",
+                title="Commit: re-apply and save",
+                argv=_module_argv(
+                    "ai_sw_bridge.cli.mutate",
+                    "commit",
+                    "--proposal-id",
+                    "<proposal-id>",
+                ),
+                display="ai-sw-mutate commit --proposal-id <proposal-id>",
+            ),
+        ]
+
+    reparam_src = env.widget_dir / "demo_bearing_block"
+    reparam_dir = env.demo_out / "reparam"
+    reparam_script = _REPARAM_SCRIPT_TEMPLATE.format(
+        src=reparam_src.as_posix(), dst=reparam_dir.as_posix()
+    )
+    return [
+        DemoStep(
+            id="reparam_prep",
+            title="Reparam: bump BORE_DIA in a demo_out/ copy",
+            argv=[sys.executable, "-c", reparam_script],
+            display=(
+                f'python -c "<copy demo_bearing_block, {_MUTATE_VAR} -> '
+                f'{_MUTATE_NEW_VALUE} in demo_out/reparam/>"'
+            ),
+        ),
+        DemoStep(
+            id="reparam_build",
+            title="Rebuild the bearing block with the resized bore",
+            argv=_module_argv(
+                "ai_sw_bridge.cli.build",
+                str(reparam_dir / "spec.json"),
+                "--no-dim",
+                "--yes",
+                "--save-as",
+                str(env.demo_out / "DemoBearingBlock_reparam.SLDPRT"),
+            ),
+            display=(
+                "ai-sw-build demo_out/reparam/spec.json --no-dim --yes "
+                "--save-as demo_out/DemoBearingBlock_reparam.SLDPRT"
+            ),
+        ),
+    ]
+
+
 def _part_steps(env: BuildEnv) -> list[DemoStep]:
-    return []
+    steps: list[DemoStep] = []
+    for slug, dirname, part_name in _PART_SPECS:
+        spec_path = env.widget_dir / dirname / "spec.json"
+        save_as = env.demo_out / f"{part_name}.SLDPRT"
+        steps.append(
+            DemoStep(
+                id=f"build_{slug}",
+                title=f"Build {part_name}",
+                argv=_module_argv(
+                    "ai_sw_bridge.cli.build",
+                    str(spec_path),
+                    "--no-dim",
+                    "--yes",
+                    "--save-as",
+                    str(save_as),
+                ),
+                display=(
+                    f"ai-sw-build {dirname}/spec.json --no-dim --yes "
+                    f"--save-as demo_out/{part_name}.SLDPRT"
+                ),
+            )
+        )
+        steps.append(
+            DemoStep(
+                id=f"observe_bbox_{slug}",
+                title=f"Observe bounding box: {part_name}",
+                argv=_module_argv("ai_sw_bridge.cli.observe", "bounding_box"),
+                display="ai-sw-observe bounding_box",
+                capture_json=True,
+                allow_failure=True,
+            )
+        )
+    steps.extend(mutate_beat_steps(env))
+    return steps
 
 
 def _assembly_steps(env: BuildEnv) -> list[DemoStep]:
@@ -103,7 +274,12 @@ CHAPTERS: dict[str, Chapter] = {
     "part": Chapter(
         key="part",
         title="Part build",
-        caption="Build the demo widget's parts from JSON specs (stub; filled in a later task).",
+        caption=(
+            "Build the demo widget's three parts, then change one number and "
+            "the model rebuilds -- that's the whole point (--no-dim strips the "
+            "in-file equation link, but the *_locals.txt file still drives the "
+            "rebuild)."
+        ),
         build_steps=_part_steps,
     ),
     "assembly": Chapter(
@@ -255,9 +431,18 @@ def main(argv: list[str] | None = None) -> int:
 
     remaining = [key for key in selected if key != "tour"]
     if args.preflight_only:
-        # The non-tour chapters are empty stubs in this skeleton, so a
-        # preflight run currently behaves the same as --tour-only; later
-        # tasks will populate no-SW-safe steps (e.g. dry-run/lint) here.
+        # No-SW "plan" view: construct each remaining chapter's steps (pure,
+        # no filesystem/SW touch) and print what would run, without running
+        # any of it. Chapters that are still empty stubs contribute nothing.
+        for key in remaining:
+            chapter = CHAPTERS[key]
+            steps = chapter.build_steps(env)
+            if not steps:
+                continue
+            _print_header(f"Preflight plan: {chapter.title}")
+            print(chapter.caption)
+            for step in steps:
+                print(f"  $ {step.display}")
         return 0
 
     for key in remaining:
@@ -266,6 +451,7 @@ def main(argv: list[str] | None = None) -> int:
         if not steps:
             continue
         _pause(f"Starting chapter: {chapter.title}", args.no_pause)
+        print(chapter.caption)
         for step in steps:
             rc, _payload = run_step(
                 step,
