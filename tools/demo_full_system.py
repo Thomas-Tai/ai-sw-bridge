@@ -592,7 +592,7 @@ def _export_fallback_script(env: BuildEnv) -> str:
     """
     drawing_out = (env.demo_out / "DemoWidget.SLDDRW").as_posix()
     message = (
-        "Drawing PDF is the downstream artifact in this build (drawing "
+        "The drawing (.SLDDRW) is the downstream artifact in this build (drawing "
         f"chapter output: {drawing_out}); STEP/STL/3MF ship via the spec "
         "export block (examples/demo_widget/export.json), seat-gated -- see "
         "docs/demo_full_system.md."
@@ -604,7 +604,7 @@ def _export_caption(env: BuildEnv) -> str:
     if env.export_block_wired:
         return "One model, every downstream format."
     return (
-        "Drawing PDF is the downstream artifact in this build; STEP/STL/3MF "
+        "The drawing (.SLDDRW) is the downstream artifact in this build; STEP/STL/3MF "
         "ship via the spec export block, seat-gated."
     )
 
@@ -638,10 +638,10 @@ def _export_steps(env: BuildEnv) -> list[DemoStep]:
     return [
         DemoStep(
             id="export_reminder",
-            title="Downstream artifact: drawing PDF (export block is seat-gated)",
+            title="Downstream artifact: the drawing (.SLDDRW) (export block is seat-gated)",
             argv=[sys.executable, "-c", _export_fallback_script(env)],
             display=(
-                'python -c "<note: drawing PDF is the downstream artifact; '
+                'python -c "<note: the drawing (.SLDDRW) is the downstream artifact; '
                 'STEP/STL/3MF ship via the spec export block, seat-gated>"'
             ),
         ),
