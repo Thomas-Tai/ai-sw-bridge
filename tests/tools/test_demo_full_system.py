@@ -68,3 +68,19 @@ def test_assembly_caption_flips_on_mates_flag(tmp_path: Path) -> None:
     assert dfs.CHAPTERS["assembly"].title_for(env(True)) != dfs.CHAPTERS[
         "assembly"
     ].title_for(env(False))
+
+
+def test_export_caption_flips_on_export_block_wired_flag(tmp_path: Path) -> None:
+    def env(wired: bool) -> "dfs.BuildEnv":
+        return dfs.BuildEnv(
+            Path("C:/repo"),
+            tmp_path / "o",
+            Path("C:/repo/examples/demo_widget"),
+            mates_proven=False,
+            export_block_wired=wired,
+            mutate_drives_nodim=False,
+        )
+
+    assert dfs.CHAPTERS["export"].caption_for(env(True)) != dfs.CHAPTERS[
+        "export"
+    ].caption_for(env(False))

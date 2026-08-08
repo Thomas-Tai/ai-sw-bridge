@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "name": "DemoExportBlock",
+  "_comment": "Standalone schema-v2 spec for the export chapter (Task 7). Not part of the pillow-block widget assembly -- a small, self-contained solid whose only job is to exercise the export: block (spec.md FR-1-03). Requires the schema_v2 feature flag ON at validate time; the CLI's --enable-flag does NOT reach the spec validator (spec/validator.py::_v2_enabled() re-resolves flags from the environment only), so the flag must be set via the AI_SW_BRIDGE_FLAG_SCHEMA_V2=1 environment variable (Spike E, 2026-08-08). See docs/demo_full_system.md.",
+  "features": [
+    {"type": "sketch_rectangle_on_plane", "name": "SK", "plane": "Front",
+     "width": 30.0, "height": 20.0, "center": {"x": 0.0, "y": 0.0}},
+    {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 8.0}
+  ],
+  "export": [
+    {"format": "step214", "output_dir": "demo_out"},
+    {"format": "stl", "output_dir": "demo_out", "binary": true},
+    {"format": "3mf", "output_dir": "demo_out"}
+  ]
+}

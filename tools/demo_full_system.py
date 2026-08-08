@@ -1,11 +1,23 @@
 #!/usr/bin/env python3
-"""Chaptered full-system demo: part -> assembly -> observe -> drawing -> export.
+"""Chaptered full-system demo: tour -> part -> assembly -> observe -> drawing -> export.
 
 The script is a thin orchestrator around the public CLIs, in the same spirit
-as ``tools/demo_no_dim_showcase.py``. It is organized into named chapters so
-an operator (or a recording session) can run the whole tour or a single
-chapter. Only the ``tour`` chapter is wired to real steps in this skeleton;
-the remaining chapters are stubs that later tasks fill in.
+as ``tools/demo_no_dim_showcase.py``. It is organized into six named
+chapters -- ``tour``, ``part``, ``assembly``, ``observe``, ``drawing``, and
+``export`` -- so an operator (or a recording session) can run the whole tour
+(``--chapter all``) or a single chapter (``--chapter <name>``). All six
+chapters are wired to real steps.
+
+``tour`` (pure introspection) and ``--preflight-only`` (construct and print
+every remaining chapter's planned steps without running them) are the only
+no-SW paths -- they never touch a live SOLIDWORKS session. Every other
+chapter's live build/observe/assembly/drawing/export steps need a live
+SOLIDWORKS seat; see ``docs/demo_full_system.md`` for the seat-gate note and
+the exact per-chapter commands. Two chapters carry a flag-gated identity:
+``assembly``'s and ``export``'s title/caption reflect whether the underlying
+capability (mates, the schema-v2 export block) has been spike-confirmed on a
+live seat (``BuildEnv.mates_proven`` / ``BuildEnv.export_block_wired``);
+until then each runs an honest, narrower fallback beat instead of failing.
 """
 
 from __future__ import annotations
@@ -544,8 +556,96 @@ def _drawing_steps(env: BuildEnv) -> list[DemoStep]:
     ]
 
 
+# Body of the wired branch's list_exports runtime step: globs demo_out/ for
+# the artifacts export.json declares (STEP/STL/3MF) and prints whatever is
+# found. Pure string building at construction time -- the glob only runs
+# once this text is executed as a subprocess by run_step, after the export
+# build step has actually written the files.
+_LIST_EXPORTS_SCRIPT_TEMPLATE = """import pathlib
+demo_out = pathlib.Path(r"{demo_out}")
+patterns = ["*.step*", "*.stl", "*.3mf"]
+found = []
+for pattern in patterns:
+    found.extend(sorted(demo_out.glob(pattern)))
+if found:
+    for path in found:
+        print(path)
+else:
+    print("no export artifacts found in", demo_out)
+"""
+
+
+def _list_exports_script(env: BuildEnv) -> str:
+    return _LIST_EXPORTS_SCRIPT_TEMPLATE.format(demo_out=env.demo_out.as_posix())
+
+
+def _export_fallback_script(env: BuildEnv) -> str:
+    """Body of the fallback branch's single reminder step.
+
+    Prints a note pointing at the drawing chapter's output as this build's
+    actual downstream artifact, and explains that STEP/STL/3MF ship via the
+    spec export block but are seat-gated (Spike E has not confirmed live
+    emission yet). Built via an f-string ``!r`` repr, not string
+    concatenation, so the message is embedded as a single safely-escaped
+    Python string literal in the generated ``python -c`` source -- no
+    filesystem I/O happens until that source is executed as a subprocess.
+    """
+    drawing_out = (env.demo_out / "DemoWidget.SLDDRW").as_posix()
+    message = (
+        "Drawing PDF is the downstream artifact in this build (drawing "
+        f"chapter output: {drawing_out}); STEP/STL/3MF ship via the spec "
+        "export block (examples/demo_widget/export.json), seat-gated -- see "
+        "docs/demo_full_system.md."
+    )
+    return f"print({message!r})\n"
+
+
+def _export_caption(env: BuildEnv) -> str:
+    if env.export_block_wired:
+        return "One model, every downstream format."
+    return (
+        "Drawing PDF is the downstream artifact in this build; STEP/STL/3MF "
+        "ship via the spec export block, seat-gated."
+    )
+
+
 def _export_steps(env: BuildEnv) -> list[DemoStep]:
-    return []
+    if env.export_block_wired:
+        spec_path = env.widget_dir / "export.json"
+        return [
+            DemoStep(
+                id="export_build",
+                title="Build the schema-v2 export block (STEP + STL + 3MF)",
+                argv=_module_argv(
+                    "ai_sw_bridge.cli.build",
+                    str(spec_path),
+                    "--no-dim",
+                    "--yes",
+                ),
+                display=(
+                    "AI_SW_BRIDGE_FLAG_SCHEMA_V2=1 ai-sw-build "
+                    "examples/demo_widget/export.json --no-dim --yes"
+                ),
+            ),
+            DemoStep(
+                id="list_exports",
+                title="List the produced export artifacts",
+                argv=[sys.executable, "-c", _list_exports_script(env)],
+                display='python -c "<list demo_out/*.step*, *.stl, *.3mf>"',
+                allow_failure=True,
+            ),
+        ]
+    return [
+        DemoStep(
+            id="export_reminder",
+            title="Downstream artifact: drawing PDF (export block is seat-gated)",
+            argv=[sys.executable, "-c", _export_fallback_script(env)],
+            display=(
+                'python -c "<note: drawing PDF is the downstream artifact; '
+                'STEP/STL/3MF ship via the spec export block, seat-gated>"'
+            ),
+        ),
+    ]
 
 
 CHAPTERS: dict[str, Chapter] = {
@@ -589,8 +689,12 @@ CHAPTERS: dict[str, Chapter] = {
     "export": Chapter(
         key="export",
         title="Export",
-        caption="Export the finished assembly to a neutral format (stub; filled in a later task).",
+        caption=(
+            "Export the finished model to neutral downstream formats "
+            "(schema-v2 export block)."
+        ),
         build_steps=_export_steps,
+        caption_fn=_export_caption,
     ),
 }
 
@@ -739,10 +843,22 @@ def main(argv: list[str] | None = None) -> int:
         _pause(f"Starting chapter: {chapter.title_for(env)}", args.no_pause)
         print(chapter.caption_for(env))
         for step in steps:
+            env_dict = _command_env(env.repo_root)
+            # Spike E (2026-08-08, no-SW half): the export chapter's v2
+            # export block needs the schema_v2 feature flag ON, and the
+            # CLI's --enable-flag does NOT reach it -- spec/validator.py's
+            # _v2_enabled() re-resolves flags from the environment only
+            # (flags.resolve() with no CLI overrides), so a CLI override
+            # passed to ai-sw-build never propagates to validation. The
+            # environment variable is the only reliable enable. Harmless
+            # for every other step: v1 part specs always route to the v1
+            # schema regardless of this flag, and assembly/drawing are
+            # separate spec kinds entirely.
+            env_dict["AI_SW_BRIDGE_FLAG_SCHEMA_V2"] = "1"
             rc, _payload = run_step(
                 step,
                 cwd=env.repo_root,
-                env=_command_env(env.repo_root),
+                env=env_dict,
                 sleep_s=args.sleep,
             )
             if rc:

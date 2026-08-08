@@ -71,6 +71,7 @@ nul
 
 # --- Runtime data (per-user, auto-created) ------------------------------------
 captures/
+demo_out/
 proposals/
 .telemetry/
 # L4 checkpoint store — per privacy_review.md §4.1, the .sqlite files

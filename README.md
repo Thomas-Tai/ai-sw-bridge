@@ -383,6 +383,29 @@ Milestone arc (full detail in [CHANGELOG.md](CHANGELOG.md)):
 See [`docs/PUBLIC_API.md`](docs/PUBLIC_API.md) for the supported-surface contract
 and [`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md) for the architecture map.
 
+## Demo GIFs
+
+Short recordings of [`tools/demo_full_system.py`](tools/demo_full_system.py)
+building the bundled pillow-block widget end-to-end — **parts → assembly →
+observe/DFM → drawing → export** — plus the single-part capability tour
+(`tools/demo_no_dim_showcase.py`). Recorded on a live SOLIDWORKS seat; see
+[`docs/demo_full_system.md`](docs/demo_full_system.md) for the exact command
+behind every clip and how to re-record them yourself.
+
+> Clips land here once the seat-gated recording pass runs (a later task in
+> this project). The table below reserves the layout — each `<!-- TODO -->`
+> becomes a real `![...](...)` embed once the GIF is captured.
+
+| Chapter | Clip |
+|---|---|
+| Capability tour | <!-- TODO: docs/img/demo_tour.gif --> |
+| Part build + parametric rebuild | <!-- TODO: docs/img/demo_part.gif --> |
+| Assembly | <!-- TODO: docs/img/demo_assembly.gif --> |
+| Observe / DFM | <!-- TODO: docs/img/demo_observe.gif --> |
+| Drawing | <!-- TODO: docs/img/demo_drawing.gif --> |
+| Export | <!-- TODO: docs/img/demo_export.gif --> |
+| Full run (`--chapter all`) | <!-- TODO: docs/img/demo_all.gif --> |
+
 ## Layout
 
 ```
