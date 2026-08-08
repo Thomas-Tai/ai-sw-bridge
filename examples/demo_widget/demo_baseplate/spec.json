@@ -2,14 +2,14 @@
   "schema_version": 1,
   "name": "DemoBaseplate",
   "locals": "locals.txt",
-  "_comment": "Pillow-block base plate. Origin-centered so face-sketch children resolve (known_limitations §1). Axis-aligned Front extrude (§2). Fillet/chamfer use semantic edge selectors (§4): FIL_Corners fillets the 4 vertical corner edges via between_faces, CHA_TopEdge chamfers all 4 top-face edges via of_face. Driving dims sourced from locals.txt (PLATE_L/PLATE_W/PLATE_T + friends).",
+  "_comment": "Pillow-block base plate. Origin-centered so face-sketch children resolve (known_limitations §1). Axis-aligned Front extrude (§2). FIL_Corners fillets the 4 vertical corner edges via the between_faces semantic selector (§4) -- robust regardless of what else is cut into the top face. CHA_TopEdge deliberately does NOT use an of_face selector (see its own _comment: of_face:'+z' would over-select every hole rim on that face by the time it builds). Driving dims sourced from locals.txt (PLATE_L/PLATE_W/PLATE_T + friends).",
   "features": [
     {"type": "sketch_rectangle_on_plane", "name": "SK_Plate", "plane": "Front",
      "width": {"rhs": "\"PLATE_L\""}, "height": {"rhs": "\"PLATE_W\""}, "center": {"x": 0.0, "y": 0.0}},
     {"type": "boss_extrude_blind", "name": "EX_Plate", "sketch": "SK_Plate", "depth": {"rhs": "\"PLATE_T\""}},
     {"type": "sketch_circle_on_face", "name": "SK_MountSeed", "of_feature": "EX_Plate",
      "face": "+z", "diameter": {"rhs": "\"PLATE_MOUNT_DIA\""},
-     "_comment2": "center.u/v is a plain-number field only -- {rhs} is rejected by the schema here (confirmed empirically; every reference example (drive_roller, motor_mount_plate) also leaves center literal even when diameter is parametric). Mirrors PLATE_MOUNT_X/Y literally; keep the two in sync by hand if locals.txt changes.",
+     "_comment2": "center.u/v is a plain-number field only -- {rhs} is rejected by the schema here (confirmed empirically; every reference example (drive_roller, motor_mount_plate) also leaves center literal even when diameter is parametric). (-40,-20) is a literal, unwired to locals.txt; keep it in sync by hand if the plate's overall size or hole layout changes.",
      "center": {"u": -40.0, "v": -20.0}},
     {"type": "cut_extrude_through_all", "name": "Hole_MountSeed", "sketch": "SK_MountSeed"},
     {"type": "linear_pattern", "name": "LP_Mounts",
@@ -30,16 +30,19 @@
        {"of_feature": "EX_Plate", "between_faces": ["-x", "-y"]}
      ]},
     {"type": "chamfer_edge", "name": "CHA_TopEdge",
-     "_comment": "of_face semantic selector: all edges bounding the +z (top) face.",
+     "_comment": "FIX (review 2026-08-08): was of_face:'+z', which resolves via IFace2.GetEdges -- EVERY edge bounding the +z face, including all 6 mount-hole rims already cut into it by this point in the tree PLUS the arcs FIL_Corners just added. That over-selects ~12-14 edges instead of the 4 intended plate-boundary edges, and (worse) would have consumed Hole_MountSeed's original rim that CP_BoltCircle's axis point depends on. Switched to 4 literal points, one per straight outer-boundary edge, each far from both the corner fillet arcs (which start ~4mm=PLATE_FILLET_R in from each corner) and every hole rim (nearest hole is 10mm+ away): (50,0,10)=+x edge midpoint, (-50,0,10)=-x edge midpoint, (0,30,10)=+y edge midpoint (same point LP_Mounts.direction already uses), (0,-30,10)=-y edge midpoint. These 4 values track PLATE_L/2, PLATE_W/2, PLATE_T by hand -- keep in sync if locals.txt changes. Deliberately does NOT chamfer the 4 corner-fillet arcs (chamfering on top of a fillet is unusual) or any hole rim.",
      "mode": "equal_distance", "distance": {"rhs": "\"PLATE_CHAMFER_DIST\""},
      "edges": [
-       {"of_feature": "EX_Plate", "face": "+z"}
+       {"x": 50.0, "y": 0.0, "z": 10.0},
+       {"x": -50.0, "y": 0.0, "z": 10.0},
+       {"x": 0.0, "y": 30.0, "z": 10.0},
+       {"x": 0.0, "y": -30.0, "z": 10.0}
      ]},
     {"type": "sketch_circle_on_face", "name": "SK_BoltSeed", "of_feature": "EX_Plate",
      "face": "+z", "diameter": {"rhs": "\"PLATE_BOLT_DIA\""}, "center": {"u": -40.0, "v": -14.0}},
     {"type": "cut_extrude_through_all", "name": "Hole_BoltSeed", "sketch": "SK_BoltSeed"},
     {"type": "circular_pattern", "name": "CP_BoltCircle",
-     "_comment": "Step 6 enrichment (kept -- clean dry-run, patterned_disc idiom). Axis point (-37.5,-20,10) is on the rim of Hole_MountSeed (center -40,-20, dia 5 -> radius 2.5), which SW uses to infer the rotation axis through (-40,-20) normal to +z. 4 small Ø1.5 holes at 90 deg spacing, radius 6mm, around the first mount hole -- a bolt-circle decoration that doesn't touch the corner fillets or the patterned/mirrored mount holes.",
+     "_comment": "Step 6 enrichment (kept -- clean dry-run, patterned_disc idiom). Axis point (-37.5,-20,10) is on the rim of Hole_MountSeed (center -40,-20, dia 5 -> radius 2.5), which SW uses to infer the rotation axis through (-40,-20) normal to +z. LIVE-BUILD SOUNDNESS (review 2026-08-08): this rim is untouched by every feature built before this one -- FIL_Corners only reaches the 4 vertical PERIMETER corners (nowhere near x=-40,y=-20, which is 14mm+ inside the plate), and CHA_TopEdge (fixed above) now only touches the 4 outer boundary edges via literal points, never any hole rim. So the exact circular edge this axis point sits on at build time is byte-for-byte the same edge Hole_MountSeed created -- no cascading edge-identity risk. 4 small Ø1.5 holes at 90 deg spacing, radius 6mm, around the first mount hole -- a bolt-circle decoration that doesn't touch the corner fillets or the patterned/mirrored mount holes.",
      "seed": "Hole_BoltSeed",
      "axis": {"x": -37.5, "y": -20.0, "z": 10.0}, "count": 4, "total_angle": 360.0}
   ]
