@@ -114,3 +114,33 @@ def test_quickstart_doc_commands_match_canonical_list() -> None:
     ]
     for cmd in dfs.quickstart_command_lines(with_sw=True):
         assert cmd in doc_cmds, f"QUICKSTART.md missing/renamed command: {cmd}"
+
+
+def test_quickstart_doctor_step_never_touches_solidworks_seat(
+    tmp_path: Path,
+) -> None:
+    """Regression guard for the live-SW-launch bug: a bare ``doctor``
+    invocation defaults to ``run_probe=True``, which calls ``get_sw_app()``
+    -- and that falls back to ``win32com.client.Dispatch()``, which
+    auto-launches SOLIDWORKS on a box with no seat already running.
+    ``--no-seat`` skips the seat probe entirely (env-only, zero COM calls),
+    so the doctor step must always carry it. This must fail if the doctor
+    step ever reverts to the bare (seat-touching) invocation.
+    """
+    env = dfs.BuildEnv(
+        Path("C:/repo"),
+        tmp_path / "o",
+        Path("C:/repo/examples/demo_widget"),
+        mates_proven=False,
+        export_block_wired=False,
+        mutate_drives_nodim=False,
+    )
+    steps = dfs.quickstart_steps(env, with_sw=False)
+    doctor_steps = [s for s in steps if "ai_sw_bridge.cli.doctor" in (s.argv or [])]
+    assert doctor_steps, "expected a doctor step in quickstart_steps(with_sw=False)"
+    for s in doctor_steps:
+        assert "--no-seat" in s.argv, f"doctor step missing --no-seat: {s.argv}"
+
+    lines = dfs.quickstart_command_lines(with_sw=True)
+    assert "python -m ai_sw_bridge.cli.doctor --no-seat" in lines
+    assert "python -m ai_sw_bridge.cli.doctor" not in lines

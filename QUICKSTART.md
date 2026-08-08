@@ -24,12 +24,13 @@ pip install -e .[dev]
 ```
 
 ```bash
-python -m ai_sw_bridge.cli.doctor
+python -m ai_sw_bridge.cli.doctor --no-seat
 ```
 
-`ai-sw-doctor` is read-only: it does a read-only attach to SOLIDWORKS *if*
-a seat happens to be running, and otherwise reports "no seat" gracefully.
-It never launches or mutates SOLIDWORKS.
+`--no-seat` runs environment checks only (Python bitness, pywin32, PATH,
+MCP registration) and never touches SOLIDWORKS. Without that flag, `doctor`
+also probes for a live SOLIDWORKS seat, which falls back to auto-launching
+SOLIDWORKS if none is running -- so quickstart always passes `--no-seat`.
 
 ```bash
 python -m ai_sw_bridge.cli.build --list-kinds

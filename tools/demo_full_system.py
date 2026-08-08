@@ -722,8 +722,8 @@ QUICKSTART_STEPS: list[QuickstartStep] = [
     ),
     QuickstartStep(
         tier="A",
-        caption="Health check (read-only; reports 'no seat' if SW isn't running).",
-        argv=["python", "-m", "ai_sw_bridge.cli.doctor"],
+        caption="Environment health check -- no SOLIDWORKS seat needed.",
+        argv=["python", "-m", "ai_sw_bridge.cli.doctor", "--no-seat"],
     ),
     QuickstartStep(
         tier="A",
