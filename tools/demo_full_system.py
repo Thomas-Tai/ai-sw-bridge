@@ -444,11 +444,12 @@ def _assembly_steps(env: BuildEnv) -> list[DemoStep]:
             display=f"ai-sw-assembly propose --spec {resolved}",
             capture_json=True,
         ),
-        # <proposal-id> is a placeholder -- the same documented seat-phase
-        # seam as the mutate beat (Task 5): assembly_propose emits the real
-        # proposal_id in its JSON stdout at runtime; a dedicated seat-phase
-        # runner (structurally like _run_tour) captures it and substitutes
-        # it here before dry_run/commit actually run. Not wired in this task.
+        # <proposal-id> is a placeholder: assembly_propose emits the real
+        # proposal_id in its JSON stdout, and main()'s seat-phase loop
+        # captures it and substitutes it here before dry_run/commit run (see
+        # _substitute_proposal_id). The three steps run back-to-back within
+        # the chapter (no _pause between them) so the proposal is consumed
+        # before it lapses.
         DemoStep(
             id="assembly_dry_run",
             title="Dry-run: resolve parts, bind mate faces",
@@ -612,8 +613,9 @@ def _drawing_steps(env: BuildEnv) -> list[DemoStep]:
             display=f"ai-sw-drawing propose --spec {resolved}",
             capture_json=True,
         ),
-        # <proposal-id> placeholder -- same seat-phase seam as
-        # assembly_dry_run/mutate_dry_run above. Not wired in this task.
+        # <proposal-id> placeholder -- main()'s seat-phase loop substitutes
+        # the real id captured from drawing_propose's JSON stdout before
+        # these run (see _substitute_proposal_id), same as assembly above.
         DemoStep(
             id="drawing_dry_run",
             title="Dry-run: confirm the model file is openable",
