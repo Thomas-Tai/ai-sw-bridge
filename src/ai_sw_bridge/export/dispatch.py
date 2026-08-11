@@ -167,6 +167,35 @@ def resolve_output_path(
     return out_path
 
 
+def parse_export_requests(block: list[Any]) -> list[ExportRequest]:
+    """Build ``ExportRequest`` objects from a spec's ``export:`` block.
+
+    Each entry is a dict from the schema-v2 ``export`` array. Entries that
+    are not dicts, or that omit ``format``, are skipped defensively (the
+    schema already rejects those). Honors ``format``, ``output_dir``,
+    ``filename``, ``sheets`` (PDF), and ``binary`` (STL). ``output_dir``
+    defaults to the process CWD when absent.
+    """
+    out: list[ExportRequest] = []
+    for entry in block:
+        if not isinstance(entry, dict):
+            continue
+        fmt = entry.get("format")
+        if not fmt:
+            continue
+        out_dir = entry.get("output_dir")
+        out.append(
+            ExportRequest(
+                format=str(fmt),
+                output_dir=Path(out_dir) if out_dir else Path("."),
+                filename=entry.get("filename"),
+                sheets=entry.get("sheets", "all"),
+                binary=entry.get("binary"),
+            )
+        )
+    return out
+
+
 def export_all(
     doc: Any,
     requests: list[ExportRequest],

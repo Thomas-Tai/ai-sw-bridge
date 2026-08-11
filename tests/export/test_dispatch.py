@@ -12,6 +12,7 @@ from ai_sw_bridge.export.dispatch import (
     ExportResult,
     _export_one,
     export_all,
+    parse_export_requests,
     resolve_output_path,
 )
 from ai_sw_bridge.export.formats import resolve_format
@@ -54,6 +55,62 @@ class _MockDrawingDoc(_MockDoc):
 
     def GetType(self) -> int:
         return 3
+
+
+class TestParseExportRequests:
+    """The spec `export:` block -> ExportRequest list (pure, no SW)."""
+
+    def test_basic_fields_and_order(self) -> None:
+        reqs = parse_export_requests(
+            [
+                {"format": "step214", "output_dir": "demo_out"},
+                {"format": "stl", "output_dir": "demo_out", "binary": True},
+                {"format": "3mf", "output_dir": "demo_out"},
+            ]
+        )
+        assert [r.format for r in reqs] == ["step214", "stl", "3mf"]
+        assert reqs[0].output_dir == Path("demo_out")
+
+    def test_honors_binary_true_false_and_absent(self) -> None:
+        reqs = parse_export_requests(
+            [
+                {"format": "stl", "output_dir": "o", "binary": True},
+                {"format": "stl", "output_dir": "o", "binary": False},
+                {"format": "stl", "output_dir": "o"},
+            ]
+        )
+        assert reqs[0].binary is True
+        assert reqs[1].binary is False
+        assert reqs[2].binary is None  # not specified -> SW default
+
+    def test_filename_and_sheets(self) -> None:
+        reqs = parse_export_requests(
+            [
+                {
+                    "format": "pdf",
+                    "output_dir": "o",
+                    "filename": "rev_A",
+                    "sheets": ["S1"],
+                }
+            ]
+        )
+        assert reqs[0].filename == "rev_A"
+        assert reqs[0].sheets == ["S1"]
+
+    def test_skips_malformed_entries(self) -> None:
+        reqs = parse_export_requests(
+            [
+                "not-a-dict",
+                {"no_format": True},
+                {"format": "step214", "output_dir": "o"},
+            ]
+        )
+        assert len(reqs) == 1
+        assert reqs[0].format == "step214"
+
+    def test_default_output_dir_is_cwd(self) -> None:
+        reqs = parse_export_requests([{"format": "step214"}])
+        assert reqs[0].output_dir == Path(".")
 
 
 class TestExportRequest:

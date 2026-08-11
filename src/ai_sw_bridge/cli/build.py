@@ -295,6 +295,40 @@ def _dry_run(spec: dict[str, Any]) -> dict[str, Any]:
 
 
 @cli_stability("stable")
+def _run_export_block(
+    spec: dict[str, Any], result: Any
+) -> tuple[list[dict[str, Any]], bool]:
+    """Emit the spec's ``export:`` block from the just-built part.
+
+    The low-level builder builds features only; a schema-v2 ``export:`` block
+    is otherwise silently ignored (the orchestrator's export stage has never
+    been wired to this CLI). After a successful build the built part is the
+    active document, so read it via ``get_active_doc`` rather than threading a
+    handle through ``BuildResult``. ``part_name`` follows the export stage's
+    rule: the saved file's stem when ``--save-as`` was used, else
+    ``spec['name']``.
+
+    Returns ``(export_results_as_dicts, all_ok)``.
+    """
+    from ..export import export_all, parse_export_requests
+    from ..sw_com import get_active_doc, get_sw_app
+
+    block = spec.get("export")
+    if not isinstance(block, list) or not block:
+        return [], True
+    doc = get_active_doc(get_sw_app())
+    if doc is None:
+        return (
+            [{"ok": False, "error": "no active document after build; cannot export"}],
+            False,
+        )
+    part_name = (
+        Path(result.save_as).stem if result.save_as else str(spec.get("name", "part"))
+    )
+    results = export_all(doc, parse_export_requests(block), part_name)
+    return [r.to_dict() for r in results], all(r.ok for r in results)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="ai-sw-build",
@@ -856,7 +890,19 @@ def main() -> int:
     # the saved part so a later run can diff per-feature timings.
     if result.save_as:
         payload["build_metrics"] = _write_build_metrics(result, spec, result.save_as)
-    return _emit(payload, 0 if result.ok else 4)
+    # Schema-v2 `export:` block: the low-level builder builds features only, so
+    # a requested `export:` block would otherwise be silently dropped. Emit each
+    # format from the just-built part and fold the per-format results in; overall
+    # ok/exit reflects export success (a requested file that didn't land is a
+    # failed operation, not a silent partial success).
+    export_ok = True
+    if result.ok and isinstance(spec.get("export"), list) and spec["export"]:
+        export_payload, export_ok = _run_export_block(spec, result)
+        payload["export_results"] = export_payload
+        if not export_ok:
+            payload["ok"] = False
+            payload.setdefault("error", "export_failed")
+    return _emit(payload, 0 if (result.ok and export_ok) else 4)
 
 
 if __name__ == "__main__":

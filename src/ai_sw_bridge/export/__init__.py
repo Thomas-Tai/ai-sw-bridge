@@ -11,7 +11,13 @@ Public API for multi-format part export.
 
 from __future__ import annotations
 
-from .dispatch import ExportRequest, ExportResult, export_all, resolve_output_path
+from .dispatch import (
+    ExportRequest,
+    ExportResult,
+    export_all,
+    parse_export_requests,
+    resolve_output_path,
+)
 from .formats import (
     EXPORT_FORMAT_NAMES,
     EXPORT_FORMATS,
@@ -31,6 +37,7 @@ __all__ = [
     "ExportResult",
     "SaveMethod",
     "export_all",
+    "parse_export_requests",
     "resolve_format",
     "resolve_output_path",
 ]
