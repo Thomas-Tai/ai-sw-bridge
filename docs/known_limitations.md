@@ -268,21 +268,25 @@ max_db_size_mb = 20.0
 
 ---
 
-## 8. In-context references, assembly mates, and sub-assemblies are out of scope
+## 8. In-context references and sub-assembly orchestration are out of scope
 
-The bridge authors **single parts**. Assembly-level workflows are deliberately not supported at this stage:
+`ai-sw-build` authors **single parts**, and the separate `ai-sw-assembly` lane inserts components into an assembly and authors mates (see below). Two assembly-level workflows remain deliberately unsupported:
 
 - **In-context references** — a feature in one component that references another component's geometry (e.g. an extrude up-to a mating part's face). These are fragile across edits and a classic source of circular / under-defined references even in hand-built assemblies; driving them blind and out-of-process multiplies that risk.
-- **Mates** — `AddMate5` / `CreateMate` pass entity arrays across the assembly COM boundary, which is exactly the IDispatch-variant-array marshalling class that fails under late binding without a verified workaround.
 - **Sub-assembly orchestration** and **large-assembly performance** — not targeted.
 
-### How to recognize
+### Assembly mates ARE supported (`ai-sw-assembly`)
 
-You opened an assembly (`.SLDASM`) and expected the bridge to insert components or add mates. `ai-sw-build` only creates/edits parts; assembly docs are read-only to the observe surface (`sw_get_mate_errors` reports *existing* mate state but cannot author mates).
+The earlier "mates fail under late binding" limitation has been resolved. `ai-sw-assembly` is a Propose-Approve-Execute lane (`propose --spec` → `dry_run` → `commit`) that inserts components and authors mates. The schema accepts 16 mate types (coincident, concentric, parallel, perpendicular, tangent, distance, angle, width, gear, rackpinion, camfollower, slot, hinge, symmetric, profile_center, linear_coupler). A **concentric** mate has been verified end-to-end out-of-process — two coaxial cylindrical faces, `mate_count=1`, `interference_count=0`. Face references resolve by geometric fingerprint (e.g. `face_ref: {"is_cylinder": true}`), so this path does **not** share §4's literal-coordinate selection fragility.
 
-### Workaround
+Operational notes (verified out-of-process):
 
-Author the individual parts with the bridge, then assemble + mate them by hand in SOLIDWORKS. Assembly + mate primitives are tracked as v0.13+ backlog in [ROADMAP.md](ROADMAP.md) and [DEFERRED.md](DEFERRED.md). A deeper blocker: mates reference specific faces/edges, and the bridge has no durable topological reference for those yet (cf. §4 — edge selection is by literal coordinate), so robust mate authoring depends on solving that first.
+- Component `part` paths in an assembly spec must be **Windows backslash** form. `AddComponent4` matches the pre-opened document by its exact registered path; a forward-slash path silently returns `None` ("AddComponent4 returned None").
+- The assembly spec schema is strict (`additionalProperties: false`) — no `_comment` keys (unlike part specs, which allow them).
+
+### How to recognize the remaining gaps
+
+You expected a component's feature to reference another component's live geometry (in-context), or the bridge to manage a multi-level sub-assembly tree. `ai-sw-build` edits parts; `ai-sw-assembly` inserts components and mates but does not author in-context references or orchestrate sub-assemblies. In-context and sub-assembly primitives are tracked as backlog in [ROADMAP.md](ROADMAP.md) and [DEFERRED.md](DEFERRED.md).
 
 ---
 

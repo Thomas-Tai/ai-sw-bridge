@@ -61,8 +61,17 @@ class BuildEnv:
     repo_root: Path
     demo_out: Path
     widget_dir: Path
-    mates_proven: bool = False
-    export_block_wired: bool = False
+    # Seat-confirmed feasibility flags (Task 9 spikes, 2026-08-11): each gates
+    # which real beat a chapter airs. Defaults reflect what the live seat proved
+    # against THIS repo state.
+    # - mates_proven: Spike 0 authored a concentric mate out-of-process
+    #   (mate_count=1, interference=0) via ai-sw-assembly.
+    # - export_block_wired: Spike E + the export-stage CLI-wiring fix -- a
+    #   schema-v2 export: block now emits STEP/STL/3MF from ai-sw-build.
+    # - mutate_drives_nodim: FALSE by design -- --no-dim strips the locals link
+    #   ai-sw-mutate needs, so the mutate chapter airs the reparam fallback.
+    mates_proven: bool = True
+    export_block_wired: bool = True
     mutate_drives_nodim: bool = False
 
 
