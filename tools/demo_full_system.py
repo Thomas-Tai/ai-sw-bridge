@@ -489,15 +489,26 @@ def _observe_open_assembly_script(env: BuildEnv) -> str:
     a separate observe *process* -- each observe step is its own subprocess
     that attaches to the running SW and reads ActiveDoc. Without this opener,
     interference / mate_errors / screenshot would all read the wrong doc
-    (observed live 2026-08-11: mate_count:0). OpenDoc6 on an
-    already-open doc returns it and makes it active. The path is embedded as a
-    forward-slash literal and converted to a native (backslash) path with
-    str() at runtime, matching SW's registered path form. Pure string
-    building; no COM happens until run_step executes this as a subprocess.
+    (observed live 2026-08-11: mate_count:0). OpenDoc6 on an already-open doc
+    returns it and makes it active.
+
+    The opener then SETTLES before exiting: OpenDoc6 activates the doc, but
+    after a fresh commit with several component docs still open, SW can take a
+    beat to finalize ActiveDoc. Because the next observe step is a separate
+    process that immediately reads sw.ActiveDoc, a zero-gap handoff can race
+    and read `no_active_doc` (seen live in a full `--sleep 0` e2e run,
+    2026-08-11, even though the same opener passes in isolation). Confirming
+    ActiveDoc here (while this process still holds the seat) plus a short final
+    pause closes that window regardless of the demo's global `--sleep`.
+
+    The path is embedded as a forward-slash literal and converted to a native
+    (backslash) path with str() at runtime, matching SW's registered path
+    form. Pure string building; no COM happens until run_step executes this as
+    a subprocess.
     """
     asm = (env.demo_out / "DemoWidget.SLDASM").as_posix()
     return (
-        "import pathlib\n"
+        "import pathlib, time\n"
         "from ai_sw_bridge.com.earlybind import typed\n"
         "from ai_sw_bridge.com.sw_type_info import wrapper_module\n"
         "from ai_sw_bridge.sw_com import get_sw_app\n"
@@ -506,6 +517,13 @@ def _observe_open_assembly_script(env: BuildEnv) -> str:
         "tsw = typed(sw, 'ISldWorks', module=wrapper_module())\n"
         "opened = tsw.OpenDoc6(asm, 2, 0, '', 0, 0)\n"  # 2 = swDocASSEMBLY
         "doc = opened[0] if isinstance(opened, tuple) else opened\n"
+        # Settle so the next (separate) observe process never races in on a
+        # not-yet-finalized ActiveDoc -- see the docstring.
+        "for _ in range(20):\n"
+        "    if sw.ActiveDoc is not None:\n"
+        "        break\n"
+        "    time.sleep(0.25)\n"
+        "time.sleep(0.75)\n"
         "print('observe target open+active:' if doc is not None "
         "else 'OpenDoc6 returned None for:', asm)\n"
     )
