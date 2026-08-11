@@ -12,9 +12,9 @@ against a purpose-built "pillow-block" widget bundled in
 | Chapter | What it does | No-SW? |
 |---|---|---|
 | `tour` | Introspects the live build surface (`ai-sw-build --list-kinds`, `pyproject.toml` `[project.scripts]`, the `ai-sw-observe` subcommand list) and prints a capability summary. Always runs first in `--chapter all`. | Yes |
-| `part` | Builds the widget's 3 parts (`demo_baseplate`, `demo_shaft`, `demo_bearing_block`) via `ai-sw-build --no-dim --yes --save-as`, bbox-checks each, then the headline beat: resize `BORE_DIA` and rebuild (via `ai-sw-mutate` once Spike M confirms it drives a `--no-dim` part, else a `demo_out/reparam/` copy-and-rebuild fallback). | No |
+| `part` | Builds the widget's 3 parts (`demo_baseplate`, `demo_shaft`, `demo_bearing_block`) via `ai-sw-build --no-dim --yes --save-as`, bbox-checks each, then the headline beat: bump `BLOCK_W` in a `demo_out/reparam/` copy and rebuild, so one number change flows through to new geometry (bbox dx 40->56). `ai-sw-mutate` can't drive this beat -- Spike M confirmed `--no-dim` strips the locals link mutate routes through -- so the reparam copy-and-rebuild is the live path. `BLOCK_W`, not `BORE_DIA`: a `BORE_DIA` change moves the bore rim out from under the bore chamfer's literal edge selector, failing the rebuild. Closes with `ai-sw-observe feature_statistics` on the rebuilt part (build-tree read-back; `feature_statistics` is part-only, not assembly). | No |
 | `assembly` | Resolves `examples/demo_widget/assembly.json` against the parts just built and runs `ai-sw-assembly propose/dry_run/commit`. Title/caption flip on `BuildEnv.mates_proven` (Spike 0): `"assembly (with mates)"` once mates are seat-confirmed, else the honest `"component placement / layout"`. | No |
-| `observe` | DFM read-backs against the assembly: `ai-sw-observe interference` (expect 0), `feature_statistics`, `mate_errors`, and a `screenshot`. | No |
+| `observe` | Re-opens `DemoWidget.SLDASM` first (an assembly commit does not leave it active for a separate observe process), then DFM read-backs against it: `ai-sw-observe interference` (expect 0), `mate_errors`, and a `screenshot`. (`feature_statistics` is part-only, so the build-tree read-back runs in the `part` chapter.) | No |
 | `drawing` | Authors a standalone drawing spec at runtime and runs `ai-sw-drawing propose/dry_run/commit`, producing `demo_out/DemoWidget.SLDDRW`. | No |
 | `export` | Caption flips on `BuildEnv.export_block_wired` (Spike E). **Wired:** builds `examples/demo_widget/export.json` -- a schema-v2 spec with a `export:` block (STEP AP-214 / binary STL / 3MF) -- via `ai-sw-build --no-dim --yes`, then lists the produced files in `demo_out/`. **Fallback:** a single reminder step naming the drawing chapter's `.SLDDRW` as this build's actual downstream artifact, noting that STEP/STL/3MF ship via the spec `export:` block but are seat-gated. | No (wired branch is seat-gated at run time; fallback branch is not) |
 
@@ -81,6 +81,25 @@ surface or construct-but-not-run each chapter's steps. Every live build,
 observe, assembly, drawing, and export step needs an attached SOLIDWORKS
 seat (single-instance discipline, same as the rest of this workspace); run
 `ai-sw-doctor` first to confirm the seat/COM path is healthy.
+
+## Seat-phase `proposal_id` threading
+
+The `assembly` and `drawing` chapters use the PAE (propose -> dry_run ->
+commit) workflow: `propose` validates the spec and returns a `proposal_id`,
+and `dry_run`/`commit` consume that id. The chapters author their `dry_run`/
+`commit` steps with a literal `<proposal-id>` placeholder; `main()` captures
+the real `proposal_id` from the `propose` step's JSON stdout and substitutes
+it into the dependent steps before they run (`_substitute_proposal_id`). The
+captured id is reset per chapter so it never leaks across chapters, and the
+three steps run back-to-back within a chapter (no `Press Enter` pause between
+them) so the proposal never lapses before it is consumed.
+
+Two spec details make the mates bind against `--no-dim`-built parts (both
+verified on a live seat 2026-08-11): the resolved component `part` paths are
+written in **native (backslash) form**, because the assembly handler pre-opens
+each part and `AddComponent4` matches it by SOLIDWORKS' registered path (a
+forward-slash path returns `None`); and the mate `face_ref` uses the resolver
+key **`is_cylinder`** (not `cylindrical`, which the resolver silently ignores).
 
 ## The `export` chapter's schema_v2 flag
 

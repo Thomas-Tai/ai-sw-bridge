@@ -6,7 +6,7 @@
       "id": "base",
       "part": "demo_out/DemoBaseplate.SLDPRT",
       "transform": {
-        "xyz_mm": [0, 0, -5]
+        "xyz_mm": [0, 0, -10]
       }
     },
     {

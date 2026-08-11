@@ -144,3 +144,95 @@ def test_quickstart_doctor_step_never_touches_solidworks_seat(
     lines = dfs.quickstart_command_lines(with_sw=True)
     assert "python -m ai_sw_bridge.cli.doctor --no-seat" in lines
     assert "python -m ai_sw_bridge.cli.doctor" not in lines
+
+
+def _env(tmp_path: Path) -> "dfs.BuildEnv":
+    return dfs.BuildEnv(
+        Path("C:/repo"),
+        tmp_path / "o",
+        Path("C:/repo/examples/demo_widget"),
+        mates_proven=True,
+        export_block_wired=True,
+        mutate_drives_nodim=False,
+    )
+
+
+def test_reparam_beat_uses_reparam_safe_var(tmp_path: Path) -> None:
+    # Regression for the rehearsal finding (2026-08-11): reparaming BORE_DIA
+    # moves the bore rim out from under CHA_BoreLeadIn's literal edge selector
+    # and the rebuild fails. BLOCK_W leaves the bore rim/top face untouched.
+    assert dfs._MUTATE_VAR == "BLOCK_W"
+    steps = dfs.mutate_beat_steps(_env(tmp_path))
+    prep = next(s for s in steps if s.id == "reparam_prep")
+    assert "BLOCK_W" in prep.display
+    assert "BORE_DIA" not in prep.display
+
+
+def test_substitute_proposal_id_replaces_only_when_id_and_placeholder() -> None:
+    argv = ["ai_sw_bridge.cli.assembly", "dry_run", "--proposal-id", "<proposal-id>"]
+    out = dfs._substitute_proposal_id(argv, "abc123")
+    assert out == [
+        "ai_sw_bridge.cli.assembly",
+        "dry_run",
+        "--proposal-id",
+        "abc123",
+    ]
+    # input list is never mutated (DemoStep is frozen)
+    assert argv[-1] == "<proposal-id>"
+    # no id captured yet -> no-op, returns the SAME object (cheap `is` check)
+    assert dfs._substitute_proposal_id(argv, None) is argv
+    # no placeholder present -> no-op, same object
+    no_placeholder = ["a", "b"]
+    assert dfs._substitute_proposal_id(no_placeholder, "abc123") is no_placeholder
+
+
+def test_assembly_prep_uses_native_paths_and_is_cylinder(tmp_path: Path) -> None:
+    # Native str() (backslash on Windows), not as_posix(): AddComponent4
+    # matches SW's registered path, and a forward-slash path returns None.
+    script = dfs._assembly_prep_script(_env(tmp_path), mates_proven=True)
+    assert "str(demo_out / pathlib.Path(part).name)" in script
+    assert "(demo_out / pathlib.Path(part).name).as_posix()" not in script
+    # Mate face_ref must use the resolver's `is_cylinder` key -- `cylindrical`
+    # is silently ignored and leaves the face unresolved.
+    mates_flat = str(dfs._ASSEMBLY_MATES)
+    assert "is_cylinder" in mates_flat
+    assert "cylindrical" not in mates_flat
+
+
+def test_observe_chapter_opens_assembly_before_reading(tmp_path: Path) -> None:
+    # An assembly commit does not leave the assembly active for a separate
+    # observe process, so the observe chapter must open it first.
+    steps = dfs._observe_steps(_env(tmp_path))
+    assert steps[0].id == "observe_open_assembly"
+    opener_src = steps[0].argv[-1]
+    assert "DemoWidget.SLDASM" in opener_src
+    assert "OpenDoc6" in opener_src
+    ids = [s.id for s in steps]
+    assert ids.index("observe_open_assembly") < ids.index("observe_interference")
+
+
+def test_feature_statistics_reads_a_part_not_the_assembly(tmp_path: Path) -> None:
+    # feature_statistics returns None on an assembly ("unsupported doc"), so the
+    # build-tree read-back runs in the part chapter (on the rebuilt part) and
+    # never in the assembly-scoped observe chapter.
+    part_ids = [s.id for s in dfs.CHAPTERS["part"].build_steps(_env(tmp_path))]
+    assert "observe_part_feature_statistics" in part_ids
+    observe_ids = [s.id for s in dfs._observe_steps(_env(tmp_path))]
+    assert not any("feature_statistics" in i for i in observe_ids)
+
+
+def test_assembly_geometry_is_interference_free_config() -> None:
+    import json
+
+    # Regression for the 8854 mm^3 base<->block clash found live 2026-08-11: the
+    # coincident mate must be anti_aligned (aligned drives the block down through
+    # the plate), and the baseplate must sit so its top is at z=0 (transform
+    # z=-10 for the 10mm-thick plate) so the mated block bottoms rest flush.
+    coincident = next(m for m in dfs._ASSEMBLY_MATES if m["type"] == "coincident")
+    assert coincident["alignment"] == "anti_aligned"
+    repo = Path(__file__).resolve().parents[2]
+    asm = json.loads(
+        (repo / "examples/demo_widget/assembly.json").read_text(encoding="utf-8")
+    )
+    base = next(c for c in asm["components"] if c["id"] == "base")
+    assert base["transform"]["xyz_mm"] == [0, 0, -10]

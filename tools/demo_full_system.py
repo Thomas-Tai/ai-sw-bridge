@@ -26,7 +26,7 @@ import argparse
 import json
 import shutil
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable
 
@@ -108,7 +108,7 @@ def _tour_steps(env: BuildEnv) -> list[DemoStep]:
 
 # The three demo-widget parts, in build order. The bearing block is built
 # LAST so it is the active SOLIDWORKS document when the mutate/reparam beat
-# runs (both target its BORE_DIA).
+# runs (both target its BLOCK_W).
 _PART_SPECS: tuple[tuple[str, str, str], ...] = (
     ("baseplate", "demo_baseplate", "DemoBaseplate"),
     ("shaft", "demo_shaft", "DemoShaft"),
@@ -117,12 +117,20 @@ _PART_SPECS: tuple[tuple[str, str, str], ...] = (
 
 # The variable the mutate/reparam beat resizes, and its new value. Both
 # branches of mutate_beat_steps() target this so the on-screen narrative
-# ("resize the bore") is identical regardless of which beat is live-valid.
-_MUTATE_VAR = "BORE_DIA"
-_MUTATE_NEW_VALUE = "20.0"
+# ("widen the housing") is identical regardless of which beat is live-valid.
+#
+# BLOCK_W, not BORE_DIA: the bearing block's CHA_BoreLeadIn chamfer selects the
+# bore's top rim by a LITERAL point (8.0, 0, 15) pinned to the original bore
+# radius. Changing BORE_DIA moves that edge out from under the selector, so the
+# rebuild fails ("edge matches no edge within 1um"). BLOCK_W widens the housing
+# without touching the bore rim or the top face, so every feature -- including
+# the literal-selected chamfer -- survives. Verified on a live seat 2026-08-11
+# (BLOCK_W 40->56: bbox dx 40->56, feature_errors issues:[]).
+_MUTATE_VAR = "BLOCK_W"
+_MUTATE_NEW_VALUE = "56.0"
 
 # Body of the fallback beat's runtime reparam step: copies the bearing
-# block's spec + locals into a demo_out/ scratch copy and bumps BORE_DIA in
+# block's spec + locals into a demo_out/ scratch copy and bumps BLOCK_W in
 # the copy, never touching the committed examples/ locals.txt. Two format
 # passes: the ``%(var)s``/``%(val)s`` substitution below bakes in the
 # variable name/new value at import time (raw string, so the regex's own
@@ -146,26 +154,28 @@ print("reparam: %(var)s -> %(val)s in", dst)
 
 
 def mutate_beat_steps(env: BuildEnv) -> list[DemoStep]:
-    """The headline "resize the bore and rebuild" beat.
+    """The headline "widen the housing and rebuild" beat.
 
     Two mutually exclusive branches, selected by ``env.mutate_drives_nodim``:
 
     * Primary (``True``): drive the change through ``ai-sw-mutate``'s
       propose -> dry_run -> commit workflow against the live-built bearing
-      block. Whether ``ai-sw-mutate`` can drive a ``--no-dim``-built part at
-      all is UNKNOWN and is exactly what Spike M (a later, seat-gated task)
-      determines; this branch is inert (its steps are never executed) until
-      that spike flips the flag to True.
-    * Fallback (``False``, the default and the only no-SW-testable path):
-      copy the bearing block's spec+locals into ``demo_out/reparam/``, bump
-      ``BORE_DIA`` in the copy, and rebuild with ``--no-dim --yes
-      --save-as``. This never touches the committed ``examples/`` locals.
+      block. Spike M (2026-08-11) determined ``ai-sw-mutate`` CANNOT drive a
+      ``--no-dim``-built part: ``--no-dim`` strips the equation link to
+      locals.txt, and mutate routes every change through that linked file, so
+      the propose fails ("no linked locals file"). This branch is therefore
+      pinned inert (mutate_drives_nodim stays False) and kept only to document
+      the mechanism.
+    * Fallback (``False``, the default and the live path): copy the bearing
+      block's spec+locals into ``demo_out/reparam/``, bump ``BLOCK_W`` in the
+      copy, and rebuild with ``--no-dim --yes --save-as``. This never touches
+      the committed ``examples/`` locals.
     """
     if env.mutate_drives_nodim:
         return [
             DemoStep(
                 id="mutate_propose",
-                title="Propose: resize the bore",
+                title="Propose: widen the housing",
                 argv=_module_argv(
                     "ai_sw_bridge.cli.mutate",
                     "propose",
@@ -180,12 +190,13 @@ def mutate_beat_steps(env: BuildEnv) -> list[DemoStep]:
                 ),
                 capture_json=True,
             ),
-            # <proposal-id> is a placeholder: the real proposal_id is emitted
-            # by mutate_propose's JSON stdout at runtime. A dedicated
-            # seat-phase runner (a later task, analogous to _run_tour above)
-            # captures it from that JSON and substitutes it here before
-            # running dry_run/commit. Not wired yet -- this whole branch is
-            # inert until env.mutate_drives_nodim is set True at seat time.
+            # <proposal-id> is a placeholder that main()'s seat-phase
+            # proposal_id threading substitutes from mutate_propose's JSON
+            # stdout (see _substitute_proposal_id). This whole branch is inert
+            # anyway (Spike M: mutate cannot drive a --no-dim part), so it
+            # never actually runs -- the reparam fallback below is the live
+            # path. Kept as a documented reference to the propose/dry_run/
+            # commit shape.
             DemoStep(
                 id="mutate_dry_run",
                 title="Dry-run: apply, verify, roll back",
@@ -218,7 +229,7 @@ def mutate_beat_steps(env: BuildEnv) -> list[DemoStep]:
     return [
         DemoStep(
             id="reparam_prep",
-            title="Reparam: bump BORE_DIA in a demo_out/ copy",
+            title=f"Reparam: bump {_MUTATE_VAR} in a demo_out/ copy",
             argv=[sys.executable, "-c", reparam_script],
             display=(
                 f'python -c "<copy demo_bearing_block, {_MUTATE_VAR} -> '
@@ -227,7 +238,7 @@ def mutate_beat_steps(env: BuildEnv) -> list[DemoStep]:
         ),
         DemoStep(
             id="reparam_build",
-            title="Rebuild the bearing block with the resized bore",
+            title="Rebuild the bearing block at the wider width",
             argv=_module_argv(
                 "ai_sw_bridge.cli.build",
                 str(reparam_dir / "spec.json"),
@@ -278,24 +289,50 @@ def _part_steps(env: BuildEnv) -> list[DemoStep]:
             )
         )
     steps.extend(mutate_beat_steps(env))
+    # Build-tree statistics belong on a PART: ai-sw-observe feature_statistics
+    # returns None on an assembly ("FeatureStatistics returned None / unsupported
+    # doc"), so this read lives here (reading the just-rebuilt bearing block that
+    # the reparam step left active) rather than in the assembly-scoped observe
+    # chapter.
+    steps.append(
+        DemoStep(
+            id="observe_part_feature_statistics",
+            title="Build-tree statistics for the rebuilt part",
+            argv=_module_argv("ai_sw_bridge.cli.observe", "feature_statistics"),
+            display="ai-sw-observe feature_statistics",
+            capture_json=True,
+            allow_failure=True,
+        )
+    )
     return steps
 
 
 # The mate block injected into assembly.resolved.json when env.mates_proven
-# is True: concentric bore<->shaft, coincident block<->plate. Schema-valid
-# against assembly/schema.py (MATE_SCHEMA / MATE_REF_SCHEMA) today, but
-# face_ref resolution (the "cylindrical"/"normal" shorthand -> a concrete SW
-# face) is Spike-0-gated -- whether ai-sw-assembly's dry_run can actually
-# bind these against a --no-dim-built part is UNKNOWN until that spike runs.
+# is True: concentric shaft<->block_pos bore, coincident block_pos<->base.
+# Schema-valid against assembly/schema.py (MATE_SCHEMA / MATE_REF_SCHEMA).
+# face_ref uses the resolver's fingerprint keys (assembly/face_resolver.py):
+# ``is_cylinder`` matches the first cylindrical face on the component body;
+# ``normal`` matches a planar face by its outward normal. (Note: the key is
+# ``is_cylinder``, not ``cylindrical`` -- the resolver silently ignores an
+# unknown key and reports the face "unresolved".) VERIFIED on a live seat
+# 2026-08-11: the commit binds both mates (mate_count:2) against the
+# --no-dim-built parts.
 _ASSEMBLY_MATES: list[dict[str, Any]] = [
     {
         "type": "concentric",
-        "a": {"component": "shaft", "face_ref": {"cylindrical": True}},
-        "b": {"component": "block_pos", "face_ref": {"cylindrical": True}},
+        "a": {"component": "shaft", "face_ref": {"is_cylinder": True}},
+        "b": {"component": "block_pos", "face_ref": {"is_cylinder": True}},
     },
     {
+        # anti_aligned, NOT aligned: the block's bottom face normal [0,0,-1] and
+        # the base's top face normal [0,0,1] are naturally opposite, so the block
+        # sits ON the plate (faces flush, solids on opposite sides). "aligned"
+        # forces the normals parallel and drives the block DOWN through the
+        # plate -- an 8854 mm^3 interference (observed live 2026-08-11). With
+        # anti_aligned + the base plate dropped so its top is at z=0 (see
+        # examples/demo_widget/assembly.json base transform), interference is 0.
         "type": "coincident",
-        "alignment": "aligned",
+        "alignment": "anti_aligned",
         "a": {"component": "block_pos", "face_ref": {"normal": [0, 0, -1]}},
         "b": {"component": "base", "face_ref": {"normal": [0, 0, 1]}},
     },
@@ -334,7 +371,14 @@ def _assembly_prep_script(env: BuildEnv, mates_proven: bool) -> str:
         "for comp in data.get('components', []):\n"
         "    part = comp.get('part')\n"
         "    if part:\n"
-        "        comp['part'] = (demo_out / pathlib.Path(part).name).as_posix()\n"
+        # NATIVE str(), NOT as_posix(): the assembly handler pre-opens each
+        # part with OpenDoc6 and then AddComponent4 matches it by its EXACT
+        # registered path, which SOLIDWORKS normalizes to backslashes on
+        # Windows. A forward-slash (as_posix) path never matches, so
+        # AddComponent4 returns None ("component 'base': AddComponent4
+        # returned None"). str(WindowsPath) yields backslashes. (Spike 0 /
+        # rehearsal 2026-08-11.)
+        "        comp['part'] = str(demo_out / pathlib.Path(part).name)\n"
         f"data['mates'] = json.loads('''{mates_json}''')\n"
         "dst.write_text(json.dumps(data, indent=2), encoding='utf-8')\n"
         "print('assembly resolved ->', dst)\n"
@@ -435,26 +479,61 @@ def _assembly_steps(env: BuildEnv) -> list[DemoStep]:
     ]
 
 
+def _observe_open_assembly_script(env: BuildEnv) -> str:
+    """Body of the observe chapter's opener step: (re-)open + activate the
+    committed DemoWidget.SLDASM so the read-only observe tools inspect the
+    ASSEMBLY, not whichever component part happened to stay active.
+
+    An assembly commit does NOT leave the assembly as the active document for
+    a separate observe *process* -- each observe step is its own subprocess
+    that attaches to the running SW and reads ActiveDoc. Without this opener,
+    interference / mate_errors / screenshot would all read the wrong doc
+    (observed live 2026-08-11: mate_count:0). OpenDoc6 on an
+    already-open doc returns it and makes it active. The path is embedded as a
+    forward-slash literal and converted to a native (backslash) path with
+    str() at runtime, matching SW's registered path form. Pure string
+    building; no COM happens until run_step executes this as a subprocess.
+    """
+    asm = (env.demo_out / "DemoWidget.SLDASM").as_posix()
+    return (
+        "import pathlib\n"
+        "from ai_sw_bridge.com.earlybind import typed\n"
+        "from ai_sw_bridge.com.sw_type_info import wrapper_module\n"
+        "from ai_sw_bridge.sw_com import get_sw_app\n"
+        f'asm = str(pathlib.Path("{asm}"))\n'
+        "sw = get_sw_app()\n"
+        "tsw = typed(sw, 'ISldWorks', module=wrapper_module())\n"
+        "opened = tsw.OpenDoc6(asm, 2, 0, '', 0, 0)\n"  # 2 = swDocASSEMBLY
+        "doc = opened[0] if isinstance(opened, tuple) else opened\n"
+        "print('observe target open+active:' if doc is not None "
+        "else 'OpenDoc6 returned None for:', asm)\n"
+    )
+
+
 def _observe_steps(env: BuildEnv) -> list[DemoStep]:
-    # The weighted chapter -- real DFM + build-tree read-back against the
-    # committed assembly is the most credible content in the whole tour, so
-    # the recording gives it extra header/pause room versus the other
+    # The weighted chapter -- real DFM read-back (interference + mate health)
+    # against the committed assembly is the most credible content in the whole
+    # tour, so the recording gives it extra header/pause room versus the other
     # chapters (a delivery choice, not a code mechanism: every step here
-    # already gets its own _print_header + sleep via run_step).
+    # already gets its own _print_header + sleep via run_step). Build-tree
+    # statistics live in the part chapter (feature_statistics is part-only).
+    #
+    # The opener step MUST run first: an assembly commit leaves the assembly
+    # non-active for a separate observe process, so without it every observe
+    # below would inspect the wrong doc (see _observe_open_assembly_script).
     return [
+        DemoStep(
+            id="observe_open_assembly",
+            title="Open the assembled widget for inspection",
+            argv=[sys.executable, "-c", _observe_open_assembly_script(env)],
+            display='python -c "<open+activate demo_out/DemoWidget.SLDASM>"',
+            allow_failure=True,
+        ),
         DemoStep(
             id="observe_interference",
             title="DFM headline: interference detection (expect 0)",
             argv=_module_argv("ai_sw_bridge.cli.observe", "interference"),
             display="ai-sw-observe interference",
-            capture_json=True,
-            allow_failure=True,
-        ),
-        DemoStep(
-            id="observe_feature_statistics",
-            title="Build-tree statistics",
-            argv=_module_argv("ai_sw_bridge.cli.observe", "feature_statistics"),
-            display="ai-sw-observe feature_statistics",
             capture_json=True,
             allow_failure=True,
         ),
@@ -940,6 +1019,29 @@ def _run_quickstart(
     return 0
 
 
+# The literal token a propose->dry_run->commit chapter leaves in its dry_run
+# and commit argv. main()'s seat-phase loop captures the real proposal_id from
+# the propose step's JSON stdout and swaps it in before the dependent steps run
+# (a proposal is consumed by dry_run/commit before it lapses -- steps within a
+# chapter run back-to-back, with only the small inter-step sleep between them
+# and no _pause, so the id is always fresh when substituted). Kept identical to
+# the on-screen <proposal-id> the step display shows.
+_PROPOSAL_ID_PLACEHOLDER = "<proposal-id>"
+
+
+def _substitute_proposal_id(argv: list[str], proposal_id: str | None) -> list[str]:
+    """Return ``argv`` with every ``<proposal-id>`` token replaced by
+    ``proposal_id``.
+
+    Returns the original list object unchanged when there is nothing to do (no
+    captured id yet, or no placeholder present) so callers can cheaply detect a
+    no-op with ``is``. Never mutates the input (DemoStep is frozen).
+    """
+    if not proposal_id or _PROPOSAL_ID_PLACEHOLDER not in argv:
+        return argv
+    return [proposal_id if arg == _PROPOSAL_ID_PLACEHOLDER else arg for arg in argv]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="demo_full_system",
@@ -1054,6 +1156,11 @@ def main(argv: list[str] | None = None) -> int:
             continue
         _pause(f"Starting chapter: {chapter.title_for(env)}", args.no_pause)
         print(chapter.caption_for(env))
+        # Seat-phase proposal_id threading. Reset per chapter: the propose step
+        # of each PAE chapter (assembly/drawing) emits a fresh proposal_id that
+        # its own dry_run/commit consume; a stale id must never leak across
+        # chapters.
+        proposal_id: str | None = None
         for step in steps:
             env_dict = _command_env(env.repo_root)
             # Spike E (2026-08-08, no-SW half): the export chapter's v2
@@ -1067,14 +1174,20 @@ def main(argv: list[str] | None = None) -> int:
             # schema regardless of this flag, and assembly/drawing are
             # separate spec kinds entirely.
             env_dict["AI_SW_BRIDGE_FLAG_SCHEMA_V2"] = "1"
-            rc, _payload = run_step(
-                step,
+            run_argv = _substitute_proposal_id(step.argv, proposal_id)
+            run_step_step = (
+                step if run_argv is step.argv else replace(step, argv=run_argv)
+            )
+            rc, payload = run_step(
+                run_step_step,
                 cwd=env.repo_root,
                 env=env_dict,
                 sleep_s=args.sleep,
             )
             if rc:
                 return rc
+            if isinstance(payload, dict) and payload.get("proposal_id"):
+                proposal_id = str(payload["proposal_id"])
 
     return 0
 
