@@ -7,9 +7,11 @@ and ``builder.py`` attaches handlers to the matching descriptors. So adding a
 primitive is one entry here + a handler, not five hand-synced files.
 
 Import layering (no cycles): this module imports only ``_build_context``
-(for ``FieldSpec``) and ``_extrude_fields`` (a leaf helper that itself imports
-only ``_build_context``). ``schema.py`` and ``builder.py`` both import *from*
-here; neither is imported *by* here.
+(for ``FieldSpec``) plus the leaf helpers ``_extrude_fields`` and
+``_advanced_sketch_fields`` (each itself imports only ``_build_context``; shared
+sub-schemas like ``LENGTH_SCHEMA`` / ``_SKETCH_POINT_2D`` are passed *in* to them
+rather than imported *by* them). ``schema.py`` and ``builder.py`` both import
+*from* here; neither is imported *by* here.
 
 The shared sub-schemas (``LENGTH_SCHEMA`` etc.) live here too; ``schema.py``
 re-exports them for back-compat with existing importers.
@@ -20,6 +22,10 @@ from __future__ import annotations
 from typing import Any
 
 from ._build_context import FieldSpec
+from ._advanced_sketch_fields import (
+    sketch_3d_sketch_fields,
+    sketch_polyline_on_plane_fields,
+)
 from ._extrude_fields import boss_extrude_blind_fields
 
 # ---------------------------------------------------------------------------
@@ -1139,97 +1145,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         # rejected at validation rather than silently ignored.
         FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
-    # W53 — 3D-sketch primitive.  No `plane` field (3D sketches are not
-    # constrained to a reference plane).  Points carry real X/Y/Z coordinates
-    # (mm, all three required).  The polyline connects consecutive points via
-    # ISketchManager.CreateLine inside a 3D sketch (Insert3DSketch).
-    "sketch_3d_sketch": [
-        FieldSpec(
-            "points",
-            {
-                "type": "array",
-                "minItems": 2,
-                "description": (
-                    "Ordered 3D control points of the polyline.  Consecutive "
-                    "points are connected by line segments.  All three axes "
-                    "(x, y, z) are required — use a non-zero z extent to "
-                    "create a non-planar path (weldment / sweep prerequisite)."
-                ),
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": ["x", "y", "z"],
-                    "properties": {
-                        "x": {
-                            "type": "number",
-                            "description": "X coordinate (mm) in the part frame.",
-                        },
-                        "y": {
-                            "type": "number",
-                            "description": "Y coordinate (mm) in the part frame.",
-                        },
-                        "z": {
-                            "type": "number",
-                            "description": "Z coordinate (mm) in the part frame.",
-                        },
-                    },
-                },
-            },
-            True,
-        ),
-    ],
-    # Composite closed polyline on a standard plane. Multiple connected line
-    # segments in ONE plane sketch → a closed profile a boss/cut extrude can
-    # consume. The primitive for non-axis-aligned closed profiles (45 deg
-    # parallelograms) that the axis-aligned rectangle / regular polygon /
-    # single-segment line cannot express.
-    "sketch_polyline_on_plane": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "points",
-            {
-                "type": "array",
-                "minItems": 3,
-                "description": (
-                    "Ordered vertices of the profile in sketch-local 2D (mm). "
-                    "Consecutive points are joined by line segments; when "
-                    "`closed` is true (default) a final segment joins the last "
-                    "point back to the first. At least 3 points for a closed "
-                    "profile."
-                ),
-                "items": _SKETCH_POINT_2D,
-            },
-            True,
-        ),
-        FieldSpec(
-            "closed",
-            {
-                "type": "boolean",
-                "default": True,
-                "description": (
-                    "If true (default) auto-close the loop (last→first) so the "
-                    "profile is extrudable. Set false for an open polyline."
-                ),
-            },
-            False,
-        ),
-        FieldSpec(
-            "construction",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "If true, mark the segments as construction entities.",
-            },
-            False,
-        ),
-    ],
+    # W53 3D-sketch + composite on-plane polyline. Field lists relocated to the
+    # `_advanced_sketch_fields` leaf helper to keep this shrink-only module under
+    # budget; the shared `_SKETCH_POINT_2D` is passed in to avoid an import cycle.
+    "sketch_3d_sketch": sketch_3d_sketch_fields(),
+    "sketch_polyline_on_plane": sketch_polyline_on_plane_fields(_SKETCH_POINT_2D),
 }
 
 
