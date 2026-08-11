@@ -400,16 +400,17 @@ observe/DFM → drawing → export** — plus the single-part capability tour
 [`docs/demo_full_system.md`](docs/demo_full_system.md) for the exact command
 behind every clip and how to re-record them yourself.
 
-> Clips land here once the seat-gated recording pass runs (a later task in
-> this project). The table below reserves the layout — each `<!-- TODO -->`
-> becomes a real `![...](...)` embed once the GIF is captured.
+> Recorded on a live SOLIDWORKS seat. Part / Assembly / Observe are captured
+> below; the drawing, export, and capability-tour clips are still being refined
+> and land here next (each remaining `<!-- TODO -->` becomes a real
+> `![...](...)` embed once its clip is finalized).
 
 | Chapter | Clip |
 |---|---|
 | Capability tour | <!-- TODO: docs/img/demo_tour.gif --> |
-| Part build + parametric rebuild | <!-- TODO: docs/img/demo_part.gif --> |
-| Assembly | <!-- TODO: docs/img/demo_assembly.gif --> |
-| Observe / DFM | <!-- TODO: docs/img/demo_observe.gif --> |
+| Part build + parametric rebuild | ![Part build and BLOCK_W parametric rebuild](docs/img/demo_part.gif) |
+| Assembly | ![Assembly turntable](docs/img/demo_assembly.gif) |
+| Observe / DFM | ![Observe / DFM read-back](docs/img/demo_observe.gif) |
 | Drawing | <!-- TODO: docs/img/demo_drawing.gif --> |
 | Export | <!-- TODO: docs/img/demo_export.gif --> |
 | Full run (`--chapter all`) | <!-- TODO: docs/img/demo_all.gif --> |
