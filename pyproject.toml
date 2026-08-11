@@ -46,12 +46,16 @@ dependencies = [
 
 [project.optional-dependencies]
 crypto = ["cryptography>=41.0"]
-mcp = ["mcp>=1.0.0"]
+# Cap below 2.0.0: the `mcp` name on PyPI at 2.0.0 is a DIFFERENT project — it
+# ships no `mcp.server.fastmcp` (which mcp/server.py imports) and drags in
+# mcp-types/httpx2/httpcore2. The official SDK carrying FastMCP is the 1.x line;
+# `<2` keeps pip on it (it resolves the newest 1.x, verified at 1.26.0).
+mcp = ["mcp>=1.0.0,<2"]
 # Extras needed only by the CI full-suite job. Adding them here (rather than
 # to `dev`) lets local dev installs stay lean while CI collects every test
 # that uses `pytest.importorskip("mcp", ...)` or `importorskip("keyring", ...)`.
 ci = [
-    "mcp>=1.0.0",
+    "mcp>=1.0.0,<2",  # see the [mcp] extra: `<2` avoids the divergent 2.0.0
     "keyring>=25.0",
 ]
 dev = [
