@@ -23,7 +23,7 @@ from typing import Any
 
 from ..flags import FLAG_REGISTRY, parse_flag_args, resolve as resolve_flags
 from ..spec import validate, ValidationError
-from ..spec.builder import _resolve_rhs_in_spec, build
+from ..spec.builder import BuildResult, _resolve_rhs_in_spec, build
 from ..spec.lint import lint as spec_lint
 from .stability import add_tier, cli_stability
 from .streams import (
@@ -294,9 +294,8 @@ def _dry_run(spec: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-@cli_stability("stable")
 def _run_export_block(
-    spec: dict[str, Any], result: Any
+    spec: dict[str, Any], result: BuildResult
 ) -> tuple[list[dict[str, Any]], bool]:
     """Emit the spec's ``export:`` block from the just-built part.
 
@@ -316,7 +315,23 @@ def _run_export_block(
     block = spec.get("export")
     if not isinstance(block, list) or not block:
         return [], True
-    doc = get_active_doc(get_sw_app())
+    # The built part is the active doc after a successful build. This COM read
+    # can raise (stale handle / RPC disconnect) -- mirror _seat_gate's
+    # best-effort guard and turn any failure into a JSON export error rather
+    # than an uncaught traceback (the module's contract is a JSON error object,
+    # never a raw stack trace, and the part is already built + saved on disk).
+    try:
+        doc = get_active_doc(get_sw_app())
+    except Exception as exc:  # noqa: BLE001 -- active-doc read is best-effort
+        return (
+            [
+                {
+                    "ok": False,
+                    "error": f"could not read active document to export: {exc}",
+                }
+            ],
+            False,
+        )
     if doc is None:
         return (
             [{"ok": False, "error": "no active document after build; cannot export"}],
@@ -329,6 +344,7 @@ def _run_export_block(
     return [r.to_dict() for r in results], all(r.ok for r in results)
 
 
+@cli_stability("stable")
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="ai-sw-build",

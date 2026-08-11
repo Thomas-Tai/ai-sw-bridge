@@ -161,38 +161,15 @@ def _run_drawing(state: OrchestrationState) -> StageOutcome:
     )
 
 
-def _parse_export_requests(block: list[Any]) -> list[Any]:
-    """Turn the spec's ``export`` array into a list of :class:`ExportRequest`."""
-    from ..export import ExportRequest
-
-    out: list[Any] = []
-    for entry in block:
-        if not isinstance(entry, dict):
-            continue
-        fmt = entry.get("format")
-        if not fmt:
-            continue
-        out_dir = entry.get("output_dir")
-        sheets = entry.get("sheets", "all")
-        out.append(
-            ExportRequest(
-                format=str(fmt),
-                output_dir=Path(out_dir) if out_dir else Path("."),
-                filename=entry.get("filename"),
-                sheets=sheets,
-            )
-        )
-    return out
-
-
 def _run_export(state: OrchestrationState) -> StageOutcome:
     """Stage 4 (optional): export via :func:`export.export_all`."""
     block = state.spec.get("export") if isinstance(state.spec, dict) else None
     if not block:
         return StageOutcome("export", ok=True, skipped=True, detail="no export block")
     from ..client import SolidWorksClient
+    from ..export import parse_export_requests
 
-    requests = _parse_export_requests(block)
+    requests = parse_export_requests(block)
     part_name = (
         Path(state.part_path).stem
         if state.part_path
