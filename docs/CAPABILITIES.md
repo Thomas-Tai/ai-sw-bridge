@@ -86,7 +86,7 @@ The runtime source of truth is `client.features.list_kinds()`.
 | Capability | Detail |
 |---|---|
 | Component placement | Place prebuilt parts or parts built from an inline spec; positioned and rotated (roll/pitch/yaw) |
-| Mates (13 types) | coincident, distance, concentric, parallel, perpendicular, tangent, angle, width, gear, rack-and-pinion, cam-follower, slot, hinge |
+| Mates (16 types) | coincident, distance, concentric, parallel, perpendicular, tangent, angle, width, gear, rack-and-pinion, cam-follower, slot, hinge, symmetric, profile-center, linear-coupler |
 | Limit mates | Distance and angle limit modifiers |
 | Component arrays | Linear and circular, via placement expansion |
 | Mirror components | Mirror a component across a plane |
