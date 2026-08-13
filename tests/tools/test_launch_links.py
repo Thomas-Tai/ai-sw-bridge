@@ -8,8 +8,9 @@ import launch_links as ll  # noqa: E402
 
 
 def test_build_utm_url_adds_all_params():
-    url = ll.build_utm_url("https://example.com/", "hn", "referral",
-                           "launch", "show-hn")
+    url = ll.build_utm_url(
+        "https://example.com/", "hn", "referral", "launch", "show-hn"
+    )
     q = parse_qs(urlsplit(url).query)
     assert q["utm_source"] == ["hn"]
     assert q["utm_medium"] == ["referral"]
@@ -18,8 +19,7 @@ def test_build_utm_url_adds_all_params():
 
 
 def test_build_utm_url_preserves_existing_query():
-    url = ll.build_utm_url("https://example.com/?ref=x", "hn",
-                           "referral", "launch")
+    url = ll.build_utm_url("https://example.com/?ref=x", "hn", "referral", "launch")
     q = parse_qs(urlsplit(url).query)
     assert q["ref"] == ["x"]
     assert q["utm_source"] == ["hn"]
