@@ -2,6 +2,9 @@
 translated-from: 1d9dcfd3a506dc514c2c3444ff052a33510a26fc
 ---
 
+<!-- i18n-staleness-banner -->
+> ⚠️ **此翻譯已落後於英文版。** 英文 [README](../../../README.md) 為權威版本；最近的更新（示範 GIF 套件與 README 重構）尚未同步至此翻譯。
+
 # ai-sw-bridge
 
 > **從 AI 助理驅動 SOLIDWORKS。** 把要建構的零件交給 Claude / ChatGPT / Codex，讓它產生、驗證並執行 JSON 規格 — 完全不需要給它一個能「為所欲為」進入你 CAD 模型的按鈕。
