@@ -224,12 +224,18 @@ def test_feature_statistics_reads_a_part_not_the_assembly(tmp_path: Path) -> Non
 def test_assembly_geometry_is_interference_free_config() -> None:
     import json
 
-    # Regression for the 8854 mm^3 base<->block clash found live 2026-08-11: the
-    # coincident mate must be anti_aligned (aligned drives the block down through
-    # the plate), and the baseplate must sit so its top is at z=0 (transform
-    # z=-10 for the 10mm-thick plate) so the mated block bottoms rest flush.
-    coincident = next(m for m in dfs._ASSEMBLY_MATES if m["type"] == "coincident")
-    assert coincident["alignment"] == "anti_aligned"
+    # The verified-live interference-free config (fixed 2026-08-13; see the
+    # _ASSEMBLY_MATES root-cause history). The shaft threads CONCENTRIC into BOTH
+    # bores (block_pos + block_neg); there is NO block<->base coincident mate --
+    # an earlier coincident on a bore end-cap silently stood a block upright and
+    # pointed its bore up (world +Z), so the "shaft seated through both bores"
+    # narrative was false while every mate still reported "ok". The baseplate
+    # still sits so its top is at z=0 (transform z=-10 for the 10mm plate).
+    mates = dfs._ASSEMBLY_MATES
+    assert [m["type"] for m in mates] == ["concentric", "concentric"]
+    assert all(m["a"]["component"] == "shaft" for m in mates)
+    assert {m["b"]["component"] for m in mates} == {"block_pos", "block_neg"}
+    assert not any(m["type"] == "coincident" for m in mates)
     repo = Path(__file__).resolve().parents[2]
     asm = json.loads(
         (repo / "examples/demo_widget/assembly.json").read_text(encoding="utf-8")

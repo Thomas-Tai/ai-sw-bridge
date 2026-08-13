@@ -308,15 +308,31 @@ def _part_steps(env: BuildEnv) -> list[DemoStep]:
 
 
 # The mate block injected into assembly.resolved.json when env.mates_proven
-# is True: concentric shaft<->block_pos bore, coincident block_pos<->base.
+# is True: the shaft is concentric-mated into BOTH bearing bores
+# (shaft<->block_pos and shaft<->block_neg), seating it through both coaxial
+# bores -- the functional "real mates, not fixed coordinates" beat. The two
+# bearing blocks and the base plate are placed by their assembly.json
+# transforms (fixed housings); only the shaft is mated.
 # Schema-valid against assembly/schema.py (MATE_SCHEMA / MATE_REF_SCHEMA).
-# face_ref uses the resolver's fingerprint keys (assembly/face_resolver.py):
-# ``is_cylinder`` matches the first cylindrical face on the component body;
-# ``normal`` matches a planar face by its outward normal. (Note: the key is
-# ``is_cylinder``, not ``cylindrical`` -- the resolver silently ignores an
-# unknown key and reports the face "unresolved".) VERIFIED on a live seat
-# 2026-08-11: the commit binds both mates (mate_count:2) against the
-# --no-dim-built parts.
+# ``is_cylinder`` matches the FIRST cylindrical face on the component body
+# (assembly/face_resolver.py); verified live 2026-08-13 that this resolves to
+# each block's Ø16 bore (radius 8mm, local +Z axis), so both concentrics bind
+# the shaft to the bore axis. mate_count:2.
+#
+# ROOT-CAUSE HISTORY (fixed 2026-08-13): the earlier scheme paired the shaft
+# concentric with a ``coincident`` block_pos<->base on the block's local -Z
+# face. That -Z face is a bore END-CAP, so mating it flat onto the plate stood
+# block_pos upright and pointed its bore straight UP (world +Z) -- silently
+# overriding the rpy[0,90,0] transform that makes the bore horizontal.
+# block_neg (unmated) kept its horizontal bore, so the two bores ended up
+# PERPENDICULAR and the shaft seated vertically into the flipped bore, floating
+# clear of the plate. Both mates still reported status "ok" (each is
+# individually satisfiable) and interference was 0, so nothing flagged it --
+# but the "shaft seated through both bores" narrative was false. Fix: drop the
+# block coincident; concentric the shaft into both bores. Verified live
+# 2026-08-13 (scratch fix_v6): shaft spans x=[-45,45] through both Ø16 bores,
+# interference 0. The shaft's axial position comes from its assembly.json
+# transform (shaft xyz [0,0,20]); the commit's solve lands it centered.
 _ASSEMBLY_MATES: list[dict[str, Any]] = [
     {
         "type": "concentric",
@@ -324,17 +340,9 @@ _ASSEMBLY_MATES: list[dict[str, Any]] = [
         "b": {"component": "block_pos", "face_ref": {"is_cylinder": True}},
     },
     {
-        # anti_aligned, NOT aligned: the block's bottom face normal [0,0,-1] and
-        # the base's top face normal [0,0,1] are naturally opposite, so the block
-        # sits ON the plate (faces flush, solids on opposite sides). "aligned"
-        # forces the normals parallel and drives the block DOWN through the
-        # plate -- an 8854 mm^3 interference (observed live 2026-08-11). With
-        # anti_aligned + the base plate dropped so its top is at z=0 (see
-        # examples/demo_widget/assembly.json base transform), interference is 0.
-        "type": "coincident",
-        "alignment": "anti_aligned",
-        "a": {"component": "block_pos", "face_ref": {"normal": [0, 0, -1]}},
-        "b": {"component": "base", "face_ref": {"normal": [0, 0, 1]}},
+        "type": "concentric",
+        "a": {"component": "shaft", "face_ref": {"is_cylinder": True}},
+        "b": {"component": "block_neg", "face_ref": {"is_cylinder": True}},
     },
 ]
 
@@ -394,8 +402,8 @@ def _assembly_title(env: BuildEnv) -> str:
 def _assembly_caption(env: BuildEnv) -> str:
     if env.mates_proven:
         return (
-            "Concentric + coincident mates bind the parts; interference is "
-            "a build gate."
+            "Concentric mates seat the shaft through both bearing bores; "
+            "interference is a build gate."
         )
     return "Transform-only placement (mates seat-unproven -- see Spike 0)."
 

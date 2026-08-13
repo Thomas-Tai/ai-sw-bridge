@@ -1,35 +1,21 @@
 # ai-sw-bridge
 
-> **Drive your real SOLIDWORKS seat from a JSON spec.**
-> Native `.SLDPRT` / `.SLDASM` / `.SLDDRW` with a real, editable feature tree —
-> not a foreign STEP dump from a throwaway kernel.
+> **Drive SOLIDWORKS from an AI assistant.** Hand Claude / ChatGPT / Codex a part to build and let it generate, validate, and run the JSON spec — without ever giving it a "do anything" button into your CAD model.
 
 [![CI](https://github.com/Thomas-Tai/ai-sw-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomas-Tai/ai-sw-bridge/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12%20%7C%203.14-blue)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)](#prerequisites)
-[![Requires SOLIDWORKS 2021+](https://img.shields.io/badge/requires-SOLIDWORKS%202021%2B-lightgrey)](#for-operators--5-minute-quickstart)
 
 **Language**: English · [繁體中文](docs/i18n/zh-TW/README.md) · [简体中文](docs/i18n/zh-CN/README.md)
 
-![ai-sw-bridge builds a pillow-block widget end-to-end on a live SOLIDWORKS seat — part, assembly, observe, drawing, export](docs/img/demo_hero.gif)
+## Quickstart
 
-*One spec → parts → assembly → observe/DFM → drawing → export, on a live
-SOLIDWORKS seat, human-gated (propose → approve → execute).*
+Get running in 5 minutes → [QUICKSTART.md](QUICKSTART.md)
 
-### Capability at a glance
-
-| Chapter | What it proves | CLI |
-|---|---|---|
-| **Tour** | the whole surface — and its honest edges | *(introspects the codebase)* |
-| **Part** | change one number → the real feature tree rebuilds | `ai-sw-build` · `ai-sw-mutate` |
-| **Assembly** | real mates, not fixed coordinates | `ai-sw-assembly` |
-| **Observe / DFM** | interference · mass · bbox, from SW's own kernel | `ai-sw-observe` |
-| **Drawing** | views · section · BOM · balloons — all from one model | `ai-sw-drawing` |
-| **Export** | STEP / STL / 3MF — and the STEP round-trips back, Δbbox = 0 | spec export block · `ai-sw-export-dxf-flat` |
-
-**No SOLIDWORKS seat?** You can still author and validate specs with zero
-license — start with the [5-minute quickstart →](QUICKSTART.md).
+```bash
+python tools/demo_full_system.py --quickstart
+```
 
 ## Who are you? → start here
 
@@ -407,22 +393,27 @@ and [`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md) for the architect
 
 ## Demo GIFs
 
-Short recordings of [`tools/demo_full_system.py`](tools/demo_full_system.py) building the
-bundled pillow-block widget end-to-end on a live SOLIDWORKS seat. See
-[`docs/demo_full_system.md`](docs/demo_full_system.md) for the exact command behind each
-clip and how to re-record them yourself. Every clip also has an `.mp4` sibling in
-[`docs/img/`](docs/img/).
+Short recordings of [`tools/demo_full_system.py`](tools/demo_full_system.py)
+building the bundled pillow-block widget end-to-end — **parts → assembly →
+observe/DFM → drawing → export** — plus the single-part capability tour
+(`tools/demo_no_dim_showcase.py`). Recorded on a live SOLIDWORKS seat; see
+[`docs/demo_full_system.md`](docs/demo_full_system.md) for the exact command
+behind every clip and how to re-record them yourself.
 
-| Chapter | Clip | What to look for |
-|---|---|---|
-| Capability tour | ![Capability surface — feature kinds, CLIs, mate types, export formats](docs/img/demo_tour.gif) | the surface at a glance — kinds · CLIs · mates · formats, and the `DEFERRED.md` edges |
-| Part build + rebuild | ![Feature tree builds, then a dimension change rebuilds the solid](docs/img/demo_part.gif) | the FeatureManager tree filling in, then one dimension change rebuilding the solid |
-| Assembly | ![Shaft seats through both pillow-block bores](docs/img/demo_assembly.gif) | the shaft seating through both bores — real mates, not fixed coordinates |
-| Observe / DFM | ![The seated assembly inspected by ai-sw-observe](docs/img/demo_observe.gif) | the seated assembly `ai-sw-observe` inspects — interference / mass / bbox come from SW's own kernel |
-| Drawing | ![Ortho + iso views, a Section A–A, an auto-BOM and balloons](docs/img/demo_drawing.gif) | four views, a Section A–A through the bore, an auto-BOM and balloons — all falling out of the same model |
-| Export | ![The model exported to STEP/STL/3MF and re-imported with zero bbox change](docs/img/demo_export.gif) | STEP / STL / 3MF written straight from the model — then the STEP re-imports with **Δbbox = 0** (a lossless round-trip, not a dead end) |
+> Recorded on a live SOLIDWORKS seat. Part / Assembly / Observe are captured
+> below; the drawing, export, and capability-tour clips are still being refined
+> and land here next (each remaining `<!-- TODO -->` becomes a real
+> `![...](...)` embed once its clip is finalized).
 
-Full unedited run (heavy, ~1.7 MB): [`demo_all.gif`](docs/img/demo_all.gif) · [`demo_all.mp4`](docs/img/demo_all.mp4)
+| Chapter | Clip |
+|---|---|
+| Capability tour | <!-- TODO: docs/img/demo_tour.gif --> |
+| Part build + parametric rebuild | ![Part build and BLOCK_W parametric rebuild](docs/img/demo_part.gif) |
+| Assembly | ![Assembly turntable](docs/img/demo_assembly.gif) |
+| Observe / DFM | ![Observe / DFM read-back](docs/img/demo_observe.gif) |
+| Drawing | <!-- TODO: docs/img/demo_drawing.gif --> |
+| Export | <!-- TODO: docs/img/demo_export.gif --> |
+| Full run (`--chapter all`) | <!-- TODO: docs/img/demo_all.gif --> |
 
 ## Layout
 

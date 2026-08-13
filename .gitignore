@@ -47,6 +47,9 @@ ENV/
 # Agent session scratchpad — disposable per-session working files, never part
 # of the repo. Guards against `git add -A` sweeping local scratch into a commit.
 /scratchpad/
+# Disposable working scratch (pre-caption GIF backups, eyeball frames, one-shot
+# drivers, SDD run artifacts). Same rationale as /scratchpad/ — never a product.
+/scratch/
 
 # --- Internal-only docs ------------------------------------------------------
 # Maintainer operational context relocated during the public-boundary
