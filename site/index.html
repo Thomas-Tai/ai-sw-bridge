@@ -232,6 +232,39 @@
   .anchor-edit img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--card-border); display: block; }
   .anchor-edit figcaption { font-size: 0.9rem; color: var(--muted); margin-top: 0.6rem; }
   .anchor-edit .honesty { display: block; font-size: 0.8rem; opacity: 0.8; margin-top: 0.2rem; }
+
+  /* ---- Block ②: workflow filmstrip + breadth strip ---- */
+  .filmstrip {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+  .film-tile {
+    flex: 1 1 130px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 0.75rem;
+  }
+  .film-tile img { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--card-border); display: block; }
+  .film-tile h3 { font-size: 0.98rem; margin: 0.5rem 0 0.25rem; }
+  .film-tile p { margin: 0; font-size: 0.82rem; color: var(--muted); }
+  .film-tile p.tool { margin-top: 0.4rem; color: var(--text); }
+  .same-part { font-size: 0.92rem; color: var(--muted); font-style: italic; margin: 0.25rem 0 1.25rem; }
+  .breadth {
+    background: var(--code-bg);
+    border-radius: 10px;
+    padding: 1rem 1.15rem;
+    margin: 0 0 1rem;
+  }
+  .breadth p { margin: 0 0 0.5rem; font-size: 0.86rem; line-height: 1.5; }
+  .breadth p:last-child { margin-bottom: 0; }
+  .breadth .breadth-ref { color: var(--muted); }
+  .pipeline .micro { font-size: 0.85rem; color: var(--muted); margin: 0; }
 </style>
 </head>
 <body>
@@ -265,6 +298,51 @@
       <img src="../docs/img/anchor_live_edit.gif" alt="bore diameter changed from 16 to 20 millimetres; the feature tree rebuilds with no errors">
       <figcaption>Change one number — <code>BORE_DIA&nbsp;16&nbsp;&rarr;&nbsp;20</code> — and it survives the edit: the tree rebuilds, 0 errors. <span class="honesty">Recording of a real seat, not a live browser kernel.</span></figcaption>
     </figure>
+  </div>
+</section>
+
+<section class="pipeline" aria-labelledby="pipeline-heading">
+  <div class="container">
+    <h2 id="pipeline-heading" class="section-title">It doesn&rsquo;t stop at the part. The same model runs the whole job:</h2>
+    <ol class="filmstrip">
+      <li class="film-tile">
+        <img src="../docs/img/still_part.png" alt="the authored bearing-block part in SOLIDWORKS">
+        <h3>Part</h3>
+        <p>A real, authored <code>.SLDPRT</code> — the seed of everything below.</p>
+        <p class="tool"><code>ai-sw-build</code></p>
+      </li>
+      <li class="film-tile">
+        <img src="../docs/img/still_assembly.png" alt="the assembled widget: shaft seated through both bores">
+        <h3>Assembly</h3>
+        <p>Real mates, not fixed coordinates — the shaft seats through both bores.</p>
+        <p class="tool"><code>ai-sw-assembly</code></p>
+      </li>
+      <li class="film-tile">
+        <img src="../docs/img/still_observe.png" alt="a section view of the widget with a DFM info-card">
+        <h3>Observe / DFM</h3>
+        <p>Interference, mass, bounding box — measured on SW&rsquo;s own kernel.</p>
+        <p class="tool"><code>ai-sw-observe</code></p>
+      </li>
+      <li class="film-tile">
+        <img src="../docs/img/still_drawing.png" alt="a drawing sheet with orthographic and section views and a bill of materials">
+        <h3>Drawing</h3>
+        <p>Section A&ndash;A, auto-BOM, balloons — all from the one model.</p>
+        <p class="tool"><code>ai-sw-drawing</code></p>
+      </li>
+      <li class="film-tile">
+        <img src="../docs/img/still_export.png" alt="the widget re-imported from STEP with a round-trip info-card">
+        <h3>Export</h3>
+        <p>STEP / STL / 3MF — and STEP round-trips back, &Delta;bbox = 0.</p>
+        <p class="tool">spec export block</p>
+      </li>
+    </ol>
+    <p class="same-part">That&rsquo;s the same part in every frame — one model, all the way.</p>
+    <div class="breadth">
+      <p><strong>Features:</strong> the demo part uses a handful. The bridge builds <strong>extrude &middot; cut &middot; revolve</strong> over 7 sketch primitives, plus <strong>36 more feature kinds</strong> — fillets, chamfers, shell, draft, linear/circular/mirror/sketch patterns, sweeps &amp; sweep-cuts, dome, hole wizard, helix/spiral/projected curves, planar/offset/knit surfaces, sheet-metal (base flange &middot; hem &middot; bend), weldments, boolean (intersect &middot; scale &middot; delete-body).</p>
+      <p><strong>Mates:</strong> <strong>16 mate types</strong> — incl. gear, rack-and-pinion, cam-follower, slot, hinge, width, linear-coupler — not just coincident/concentric.</p>
+      <p class="breadth-ref">Full matrix &rarr; <a href="../docs/CAPABILITIES.md">CAPABILITIES.md</a>.</p>
+    </div>
+    <p class="micro">Every stage is propose &rarr; approve &rarr; execute — and the walls are labeled, not hidden: see <a href="../docs/known_limitations.md">Known Limitations</a>.</p>
   </div>
 </section>
 
