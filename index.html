@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ai-sw-bridge — drive real SOLIDWORKS from an AI agent</title>
+<style>
+  :root {
+    --bg: #fbfbfc;
+    --text: #1c1e21;
+    --muted: #55585e;
+    --card-bg: #ffffff;
+    --card-border: #dde1e6;
+    --accent: #1e4fd8;
+    --accent-contrast: #ffffff;
+    --code-bg: #f0f1f3;
+    --code-text: #1c1e21;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101114;
+      --text: #e7e8ea;
+      --muted: #a7abb3;
+      --card-bg: #17181c;
+      --card-border: #2b2d33;
+      --accent: #7ea2ff;
+      --accent-contrast: #0b0d10;
+      --code-bg: #1d1f24;
+      --code-text: #e7e8ea;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    font-size: 17px;
+  }
+
+  code, kbd, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  code {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+
+  a { color: var(--accent); }
+  a:hover { text-decoration: none; }
+
+  h1, h2, h3 {
+    line-height: 1.25;
+    font-weight: 700;
+  }
+
+  /* ---- Hero / fold ---- */
+  header.hero {
+    padding: 3.5rem 0 2.5rem;
+    text-align: center;
+  }
+
+  header.hero img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    border: 1px solid var(--card-border);
+    margin-bottom: 2rem;
+  }
+
+  h1.headline {
+    font-size: clamp(1.9rem, 4.4vw, 2.6rem);
+    margin: 0 0 0.9rem;
+  }
+
+  p.subline {
+    font-size: 1.15rem;
+    color: var(--muted);
+    max-width: 620px;
+    margin: 0 auto 1.4rem;
+  }
+
+  p.pipeline {
+    font-size: 0.98rem;
+    color: var(--muted);
+    max-width: 640px;
+    margin: 0 auto 1.1rem;
+  }
+
+  p.requirement {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  /* ---- Generic two-up grid (doorways, A4 cards, CTAs) ---- */
+  .grid-2up {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+    margin: 1.75rem 0;
+  }
+
+  .card {
+    display: block;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  a.card:hover {
+    border-color: var(--accent);
+  }
+
+  .card h3 {
+    margin: 0 0 0.6rem;
+    font-size: 1.1rem;
+    color: var(--text);
+  }
+
+  .card p {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .card p.framing {
+    font-style: italic;
+  }
+
+  .card ul {
+    margin: 0.5rem 0 0;
+    padding-left: 1.1rem;
+    color: var(--muted);
+  }
+
+  .card ul li { margin-bottom: 0.35rem; }
+
+  section, article { padding: 2.25rem 0; }
+
+  section + section,
+  article + section,
+  section + article {
+    border-top: 1px solid var(--card-border);
+  }
+
+  h2 {
+    font-size: 1.55rem;
+    margin: 0 0 0.5rem;
+  }
+
+  h2.section-title { margin-bottom: 1.25rem; }
+
+  article#essay > h2 { margin-bottom: 1.75rem; }
+
+  .beat { margin-bottom: 1.75rem; }
+  .beat h3 {
+    font-size: 1.15rem;
+    margin: 0 0 0.5rem;
+  }
+  .beat p { margin: 0; }
+
+  .a4-block { margin-top: 2.25rem; }
+  .a4-block h3 { font-size: 1.3rem; margin-bottom: 0.5rem; }
+  .a4-block > p.a4-intro { color: var(--muted); margin: 0 0 0.5rem; }
+
+  .btn {
+    display: inline-block;
+    margin-top: 0.9rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .btn:hover { opacity: 0.9; }
+
+  .btn-secondary {
+    display: inline-block;
+    margin-top: 0.9rem;
+    margin-right: 1rem;
+    font-size: 0.92rem;
+  }
+
+  footer.page-footer {
+    padding: 2rem 0 3rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+
+<header class="hero" id="hero">
+  <div class="container">
+    <img src="assets/demo_hero.gif" alt="ai-sw-bridge builds a pillow-block widget end-to-end on a live SOLIDWORKS seat — part, assembly, observe, drawing, export">
+    <h1 class="headline">Drive your real SOLIDWORKS seat from a JSON spec.</h1>
+    <p class="subline">Native <code>.SLDPRT</code> / <code>.SLDASM</code> / <code>.SLDDRW</code> with a real, editable feature tree — not a foreign STEP dump from a throwaway kernel.</p>
+    <p class="pipeline"><em>One spec → parts → assembly → observe/DFM → drawing → export, on a live SOLIDWORKS seat, human-gated (propose → approve → execute).</em></p>
+    <p class="requirement">Requires SOLIDWORKS 2021+ — a system requirement, not an endorsement.</p>
+  </div>
+</header>
+
+<main>
+
+<section aria-labelledby="doorway-heading">
+  <div class="container">
+    <h2 id="doorway-heading" class="section-title">Who are you? → start here</h2>
+    <div class="grid-2up">
+      <a class="card" href="#essay">
+        <h3>AI-agent / MCP builder</h3>
+        <p class="framing">&ldquo;An MCP server that drives a real SOLIDWORKS seat — safely, human-gated.&rdquo;</p>
+      </a>
+      <a class="card" href="#essay">
+        <h3>SOLIDWORKS practitioner</h3>
+        <p class="framing">&ldquo;Let Claude do your drafting — you approve every step.&rdquo;</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<article id="essay">
+  <div class="container">
+    <h2>Driving real SOLIDWORKS from an AI agent — and why it's hard</h2>
+
+    <div class="beat">
+      <h3>1. The problem</h3>
+      <p>AI agents can already emit &ldquo;CAD,&rdquo; but that usually means a dead STEP or mesh dump from a throwaway kernel — geometry with no history, nothing you can open and keep editing in the tool you actually design in. ai-sw-bridge starts from a different premise: drive the CAD system you already run, and keep the feature tree native.</p>
+    </div>
+
+    <div class="beat">
+      <h3>2. Propose → approve → execute (human-gated safety)</h3>
+      <p>Every change follows the same three-step gate: the agent proposes a spec, you review and approve it, and only then does it execute against your live SOLIDWORKS seat. Nothing runs silently — every step is visible before it touches your model.</p>
+    </div>
+
+    <div class="beat">
+      <h3>3. Native editable feature tree vs. foreign STEP</h3>
+      <p>The output is a real <code>.SLDPRT</code> feature tree you keep editing — change a dimension, rebuild, exactly like anything you built by hand. A STEP import isn't like that: you can only push its faces around, not edit the history that made them.</p>
+    </div>
+
+    <div class="beat">
+      <h3>4. The real kernel walls</h3>
+      <p>This isn't friction-free, and we say so plainly: a whole class of features — lofts, ribs, wraps, combines and the like — can't be driven out-of-process, so the bridge refuses them cleanly rather than emit a broken part; and in dimensioned mode a handful of SOLIDWORKS dimension dialogs still need a human tick before they'll proceed. These walls are labeled honestly, not hidden — see the full, current list in <a href="https://github.com/Thomas-Tai/ai-sw-bridge/blob/master/docs/known_limitations.md">Known Limitations</a>.</p>
+    </div>
+
+    <div class="beat">
+      <h3>5. Try it with no seat</h3>
+      <p>You don't need SOLIDWORKS installed to start. Author and lint a real spec offline — schema, references, locals, DFM lint — with zero license (Tier A) via the <a href="https://github.com/Thomas-Tai/ai-sw-bridge/blob/master/QUICKSTART.md">5-minute Quickstart</a>. Building actual geometry is Tier B, and that's where a SOLIDWORKS seat becomes required.</p>
+    </div>
+
+    <div class="a4-block">
+      <h3>AI + SOLIDWORKS — which fits your job?</h3>
+      <p class="a4-intro">Two different things an AI agent can hand you. Neither is universally better — which one fits depends on what you need to do with the output next.</p>
+      <div class="grid-2up">
+        <div class="card">
+          <h3>Real seat, native feature tree</h3>
+          <ul>
+            <li><strong>Output:</strong> a live <code>.SLDPRT</code> / <code>.SLDASM</code> in your own SOLIDWORKS</li>
+            <li><strong>Editing:</strong> change a dimension and rebuild, same as hand-built work</li>
+            <li><strong>Requires:</strong> a running, licensed SOLIDWORKS 2021+ seat (Tier B)</li>
+            <li><strong>Fits when:</strong> you're going to keep iterating on this part</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Throwaway-kernel → STEP dump</h3>
+          <ul>
+            <li><strong>Output:</strong> a static STEP or mesh file, no feature history</li>
+            <li><strong>Editing:</strong> only by pushing faces around; design intent is gone</li>
+            <li><strong>Requires:</strong> no CAD seat at all</li>
+            <li><strong>Fits when:</strong> you need a one-off shape to reference or print once</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+<section aria-labelledby="cta-heading">
+  <div class="container">
+    <h2 id="cta-heading" class="section-title">Get started</h2>
+    <div class="grid-2up">
+      <div class="card">
+        <h3>Builders</h3>
+        <p>No SOLIDWORKS install, no license — validate a real, committed spec (schema, references, locals, DFM lint) entirely offline.</p>
+        <a class="btn" href="https://github.com/Thomas-Tai/ai-sw-bridge/blob/master/QUICKSTART.md">Author + lint a spec offline, zero license →</a>
+      </div>
+      <div class="card">
+        <h3>Practitioners</h3>
+        <p>It's a power tool you drive — you approve every step before it touches your model, never autonomous drafting.</p>
+        <a class="btn-secondary" href="#hero">↑ Watch the demo above</a>
+        <br>
+        <a class="btn" href="https://github.com/Thomas-Tai/ai-sw-bridge/blob/master/docs/operator_guide.md">See geometry rebuild in a real seat →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="page-footer">
+  <div class="container">
+    <p>ai-sw-bridge — a bridge between AI agents and a real, licensed SOLIDWORKS 2021+ seat.</p>
+  </div>
+</footer>
+
+</body>
+</html>
