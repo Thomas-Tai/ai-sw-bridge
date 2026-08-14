@@ -207,6 +207,31 @@
     color: var(--muted);
     font-size: 0.85rem;
   }
+
+  /* ---- Block ①: Dead → Real → Survives anchor ---- */
+  .anchor .anchor-pair { align-items: stretch; }
+  .anchor-tile {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 1rem;
+    margin: 0;
+  }
+  .anchor-tile .eyebrow {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 0 0 0.6rem;
+  }
+  .anchor-tile img { width: 100%; height: auto; border-radius: 6px; display: block; }
+  .anchor-tile figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.6rem; }
+  .anchor-dead img { filter: saturate(0.15); }
+  .anchor-alive { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .anchor-edit { margin: 1.25rem 0 0; }
+  .anchor-edit img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--card-border); display: block; }
+  .anchor-edit figcaption { font-size: 0.9rem; color: var(--muted); margin-top: 0.6rem; }
+  .anchor-edit .honesty { display: block; font-size: 0.8rem; opacity: 0.8; margin-top: 0.2rem; }
 </style>
 </head>
 <body>
@@ -220,6 +245,28 @@
     <p class="requirement">Requires SOLIDWORKS 2021+ — a system requirement, not an endorsement.</p>
   </div>
 </header>
+
+<section class="anchor" aria-labelledby="anchor-heading">
+  <div class="container">
+    <h2 id="anchor-heading" class="section-title">Same shape. Opposite futures.</h2>
+    <div class="grid-2up anchor-pair">
+      <figure class="anchor-tile anchor-dead">
+        <p class="eyebrow">what most &ldquo;AI CAD&rdquo; gives you</p>
+        <img src="../docs/img/anchor_dead_step.png" alt="STEP import collapsed to a single Imported1 solid, no feature history">
+        <figcaption>A frozen <code>Imported1</code> body — no history to edit.</figcaption>
+      </figure>
+      <figure class="anchor-tile anchor-alive">
+        <p class="eyebrow">what the bridge builds</p>
+        <img src="../docs/img/anchor_alive_tree.png" alt="the same part as a native SOLIDWORKS feature tree with named features and an Equation Manager driving the dimensions">
+        <figcaption>Named features, driven by equations (<code>&quot;BORE_DIA&quot; = 16</code>).</figcaption>
+      </figure>
+    </div>
+    <figure class="anchor-edit">
+      <img src="../docs/img/anchor_live_edit.gif" alt="bore diameter changed from 16 to 20 millimetres; the feature tree rebuilds with no errors">
+      <figcaption>Change one number — <code>BORE_DIA&nbsp;16&nbsp;&rarr;&nbsp;20</code> — and it survives the edit: the tree rebuilds, 0 errors. <span class="honesty">Recording of a real seat, not a live browser kernel.</span></figcaption>
+    </figure>
+  </div>
+</section>
 
 <main>
 
