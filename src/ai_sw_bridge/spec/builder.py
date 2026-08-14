@@ -61,6 +61,7 @@ from ._build_context import (
     FeatureDescriptor,
     FeatureType,
 )
+from ._advanced_sketch_fields import ADVANCED_SKETCH_FEATURE_TYPES
 from .sketches import (
     CircleOnFaceHandler,
     CircleOnPlaneHandler,
@@ -572,23 +573,8 @@ DESCRIPTORS: dict[str, FeatureDescriptor] = {
     "sketch_polygon": FeatureType(name="sketch_polygon", handler=None, dim_fields={}),
     "sketch_ellipse": FeatureType(name="sketch_ellipse", handler=None, dim_fields={}),
     "sketch_text": FeatureType(name="sketch_text", handler=None, dim_fields={}),
-    # W53 — 3D-sketch primitive. Not on a reference plane; uses Insert3DSketch(True)
-    # (BOOL UpdateEditRebuild) and carries real X/Y/Z. Unblocks weldments (FR-5-06)
-    # and swept/lofted surfaces (FR-5-02).
-    "sketch_3d_sketch": FeatureType(
-        name="sketch_3d_sketch",
-        handler=None,
-        dim_fields={},
-    ),
-    # Composite closed polyline on a standard plane — the primitive for
-    # non-axis-aligned closed profiles (45 deg parallelograms) that
-    # sketch_rectangle_on_plane / sketch_polygon / sketch_line cannot express.
-    "sketch_polyline_on_plane": FeatureType(
-        name="sketch_polyline_on_plane",
-        handler=None,
-        dim_fields={},
-    ),
 }
+DESCRIPTORS.update(ADVANCED_SKETCH_FEATURE_TYPES)  # stubs: _advanced_sketch_fields leaf
 
 
 # Wire handlers into the registry (done at module-load time, after all

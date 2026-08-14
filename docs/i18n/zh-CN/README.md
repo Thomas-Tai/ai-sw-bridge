@@ -1,5 +1,5 @@
 ---
-translated-from: 1d9dcfd3a506dc514c2c3444ff052a33510a26fc
+translated-from: bdf80346ce0d25ab75f5c5686d10dcc80532ea3d
 ---
 
 <!-- i18n-staleness-banner -->
@@ -49,7 +49,7 @@ flowchart LR
     style G fill:#e8f5e9,stroke:#388e3c,color:#000
 ```
 
-规格语言目前涵盖 **30 种零件建模特征类型**（13 种草图 + 11 种拉伸/旋转 + 3 种修改 + 3 种阵列）。[查看完整列表 →](../../spec_reference.md)
+规格语言目前涵盖 **31 种零件建模特征类型**（14 种草图 + 11 种拉伸/旋转 + 3 种修改 + 3 种阵列）。[查看完整列表 →](../../spec_reference.md)
 
 自 **v0.13** 起，同一套工具面也可通过 MCP 服务器（`ai-sw-mcp`）访问 — 自带你的 Claude Desktop、Cursor 或 Continue.dev。[跳转到 MCP 一节 ↓](#mcp-服务器--从-claude-desktop--cursor-等驱动桥接器)
 

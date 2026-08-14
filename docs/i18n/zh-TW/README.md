@@ -1,5 +1,5 @@
 ---
-translated-from: 1d9dcfd3a506dc514c2c3444ff052a33510a26fc
+translated-from: bdf80346ce0d25ab75f5c5686d10dcc80532ea3d
 ---
 
 <!-- i18n-staleness-banner -->
@@ -46,7 +46,7 @@ flowchart LR
     style G fill:#e8f5e9,stroke:#388e3c,color:#000
 ```
 
-規格語言目前涵蓋 **30 種零件塑型特徵類型**（13 種草圖 + 11 種擠出／旋轉 + 3 種修改 + 3 種陣列）。[查看完整清單 →](../../spec_reference.md)
+規格語言目前涵蓋 **31 種零件塑型特徵類型**（14 種草圖 + 11 種擠出／旋轉 + 3 種修改 + 3 種陣列）。[查看完整清單 →](../../spec_reference.md)
 
 自 **v0.13** 起，同一套工具介面也可以透過 MCP 伺服器（`ai-sw-mcp`）存取 — 自備 Claude Desktop、Cursor 或 Continue.dev。[跳到 MCP 章節 ↓](#mcp-伺服器--從-claude-desktop--cursor-等驅動橋接器)
 
