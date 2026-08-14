@@ -5,49 +5,44 @@ links back to. It is a single self-contained HTML file — inline CSS, no
 external CDN/font/script — and it is buildable and previewable right now:
 open `site/index.html` directly in a browser, no build step required.
 
-## Publish mechanism — deferred decision
+## Publish mechanism — RESOLVED (Task 10, 2026-08-14)
 
-How this page actually gets served on the public web is **not decided
-here**. That call is Task 10, and it stays open until the git hold on this
-work lifts. The live options on the table:
+The page is served by **GitHub Pages from a dedicated `gh-pages` branch**
+(branch root), at the canonical URL
+**`https://thomas-tai.github.io/ai-sw-bridge/`** — the default `github.io`
+subdomain, no custom domain. This keeps published output off `master`
+entirely, and keeps the public surface intentional: a single standalone
+page, never a whole-`docs/` Jekyll build (which would have leaked internal
+engineering docs — operator notes, specs, i18n mirrors).
 
-- **GitHub Pages from `/docs`** — repurpose the existing `docs/` folder as
-  the Pages root.
-- **A dedicated `gh-pages` branch** — keep published output out of `main`
-  entirely.
-- **`site/` as the Pages root** — point Pages straight at this directory.
+### How the published copy is produced
 
-Also undecided: the default `github.io` subdomain vs. a custom domain.
-None of that affects how this page is written today — it only affects how
-it gets deployed later.
+`site/index.html` is the **source**; the `gh-pages` root is a **generated
+artifact** built deterministically by
+[`../tools/build_pages.py`](../tools/build_pages.py):
 
-### Recommendation
+- the hero `../docs/img/demo_hero.gif` is copied to `assets/demo_hero.gif`
+  and the `<img src>` repointed there, so it resolves when only the
+  artifact is served;
+- the three internal Markdown links (`../QUICKSTART.md`,
+  `../docs/operator_guide.md`, `../docs/known_limitations.md`) are
+  rewritten to their rendered GitHub blob URLs on `master` (GitHub renders
+  Markdown; Pages would serve it raw);
+- same-page anchors (`#hero`, `#essay`) are left untouched;
+- a `.nojekyll` marker is written so Pages serves the raw HTML with no
+  Jekyll build.
 
-Publish `site/` as a **standalone page**, not by turning the whole `docs/`
-folder into a Jekyll build. `docs/` holds internal engineering
-documentation (operator guide, known limitations, architecture notes,
-i18n mirrors, superpowers specs) that was never meant to be a public
-website — a whole-`docs/` Jekyll build would publish all of it by
-accident. `site/` (or an equivalent narrowly-scoped Pages root) keeps the
-public surface intentional.
+The script fails loudly if any escaping `../` reference survives the
+rewrite. Rebuild + redeploy with:
 
-## Why the links still work today
+    python tools/build_pages.py . _site
+    # then publish _site/ to the gh-pages branch root
 
-`index.html` uses the `../`-relative-to-`site/` convention for every
-internal link and asset (`../docs/img/demo_hero.gif`, `../QUICKSTART.md`,
-`../docs/operator_guide.md`, `../docs/known_limitations.md`). That's
-deliberate: those paths resolve on disk right now, which is what lets
-`python tools/check_launch_kit.py` verify them before a publish mechanism
-even exists.
+### Why the source keeps `../`-relative links
 
-At actual publish time, two things happen that this file does not attempt
-to pre-solve:
-
-- The **hero asset** (`docs/img/demo_hero.gif`) is finalized and copied
-  into whatever the chosen publish layout expects.
-- The **internal `../`-relative links** are rewritten to their published
-  URLs (e.g. an absolute path, a different relative depth, or a full
-  `https://` URL depending on which of the three options above is chosen).
-
-Neither rewrite changes anything in this document now — they're deferred
-to Task 10, alongside the publish-mechanism decision itself.
+`site/index.html` deliberately uses the `../`-relative-to-`site/`
+convention (`../docs/img/demo_hero.gif`, `../QUICKSTART.md`, …) so those
+paths resolve **on disk**, which is what lets
+`python tools/check_launch_kit.py` verify them in the repo. The publish
+rewrite above lives only in the generated artifact — the committed source
+is never hand-edited for publish.
