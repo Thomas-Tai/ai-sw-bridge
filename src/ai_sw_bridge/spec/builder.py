@@ -62,6 +62,7 @@ from ._build_context import (
     FeatureType,
 )
 from ._advanced_sketch_fields import ADVANCED_SKETCH_FEATURE_TYPES
+from ._deferred_locals import load_nominal_locals
 from .sketches import (
     CircleOnFaceHandler,
     CircleOnPlaneHandler,
@@ -1227,20 +1228,11 @@ def run_feature_step(
                 raise RuntimeError(be.diagnosis) from be
             for (d, r), i in zip(feat_bindings, indices):
                 bindings.append(Binding(dim=d, rhs=r, add2_index=i))
-            # Force a rebuild so subsequent geometry sees the updated dim
-            # values, not the placeholder. `_ = doc.EditRebuild3` DOES fire a
-            # rebuild here (pywin32 dynamic dispatch auto-invokes the zero-arg
-            # method on bare attribute access -- verified: it returns True),
-            # but EditRebuild3 is INCREMENTAL and does not reliably propagate
-            # an equation-driven dimension change into feature geometry. That
-            # is the demo_bearing_block SK_Bore "+z face of EX_Block -- none
-            # hit material" failure: EX_Block's depth binding (D1=BLOCK_T=30mm)
-            # was applied but the extrude stayed at its 5mm placeholder depth,
-            # so the next feature's +z face query (expecting z=BLOCK_T/2=15mm)
-            # missed material 12.5mm up in the air -- intermittently, since a
-            # stray rebuild sometimes settled it first. ForceRebuild3(False)
-            # forces a COMPLETE rebuild and settles it deterministically
-            # (mirrors the chamfer/fillet dress-up handlers).
+            # COMPLETE rebuild so an equation-driven dim change propagates into
+            # feature geometry before the next feature queries it. The old
+            # incremental `_ = doc.EditRebuild3` left extrudes at placeholder
+            # depth (demo_bearing_block SK_Bore "+z none hit material"); commit
+            # 193b569 has the full analysis. Mirrors the dress-up handlers.
             ctx.doc.ForceRebuild3(False)
 
         return StepResult(
@@ -1432,27 +1424,12 @@ def build(
 
         brep_manifest = _BrepManifest()
 
-    # deferred_dim: load the resolved locals so geometry handlers can create
-    # {rhs}-bound lengths at NOMINAL size (not placeholder). This keeps the
-    # later driving dim from resizing -- and thus drifting -- the geometry.
-    # (no_dim already resolved rhs in-spec above; inline needs no map.)
-    nominal_locals: dict[str, float] | None = None
-    if deferred_dim and isinstance(spec.get("locals"), str):
-        try:
-            nominal_locals = _load_locals_map(spec["locals"])
-        except Exception as e:
-            logger.warning("deferred-dim nominal-locals load failed: %s", e)
-            nominal_locals = None
-
     sw = get_sw_app()
     doc = create_blank_part(sw)
-    ctx = BuildContext(
-        sw=sw,
-        doc=doc,
-        no_dim=no_dim,
-        deferred_dim=deferred_dim,
-        locals_map=nominal_locals,
-    )
+    ctx = BuildContext(sw=sw, doc=doc, no_dim=no_dim, deferred_dim=deferred_dim)
+    # deferred_dim: build {rhs} geometry at NOMINAL size so the driving dim
+    # can't resize/drift it (see _deferred_locals.load_nominal_locals).
+    ctx.locals_map = load_nominal_locals(deferred_dim, spec, _load_locals_map)
 
     # Lazy B-rep interrogation (spec.md §2.11): compute the referenced-face
     # set so the interrogator can skip unreferenced features.
