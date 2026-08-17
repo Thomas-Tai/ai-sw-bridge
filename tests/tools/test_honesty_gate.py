@@ -1,6 +1,8 @@
 import pathlib
 import sys
 
+import pytest
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 import honesty_gate as hg  # noqa: E402
@@ -26,6 +28,37 @@ def test_phantom_export_under_docs_superpowers_is_excluded(tmp_path):
     )
     violations = hg.scan(tmp_path)
     assert violations == []
+
+
+@pytest.mark.parametrize(
+    "excluded_dir",
+    ["docs/superpowers", "docs/archive", "docs/i18n"],
+)
+def test_excluded_prefix_is_actually_filtered_from_a_reaching_glob(
+    tmp_path, excluded_dir
+):
+    # Under DEFAULT_MANIFEST no surface ever globs into docs/**, so a test
+    # that only plants a file under docs/superpowers/ (like the test above)
+    # never actually reaches EXCLUDED_PREFIXES / _is_excluded -- it would
+    # pass identically even if that filter were deleted or broken. Override
+    # the manifest so a banned-token glob genuinely reaches docs/**, then
+    # confirm the excluded subtree is dropped while a docs/ sibling outside
+    # it is still flagged.
+    excluded_path = tmp_path / excluded_dir / "plan.md"
+    excluded_path.parent.mkdir(parents=True)
+    excluded_path.write_text("historic `ai-sw-export part.json`\n", encoding="utf-8")
+
+    sibling = tmp_path / "docs" / "GUIDE.md"
+    sibling.write_text("run `ai-sw-export part.json`\n", encoding="utf-8")
+
+    manifest = {
+        hg.KIND_BANNED_TOKEN: hg.CheckSpec(explicit=(), globs=("docs/**/*.md",)),
+    }
+    violations = hg.scan(tmp_path, manifest=manifest)
+    flagged_surfaces = {surface for surface, _, _ in violations}
+
+    assert "docs/GUIDE.md" in flagged_surfaces
+    assert f"{excluded_dir}/plan.md" not in flagged_surfaces
 
 
 def test_real_dxf_cli_in_readme_is_not_flagged(tmp_path):
