@@ -55,6 +55,34 @@ def _literal_or_default(length_value: Any, default_mm: float) -> float:
     return _mm_to_m(length_value)
 
 
+def _nominal_or_placeholder(ctx: Any, length_value: Any, default_mm: float) -> float:
+    """Meters for a length field, preferring its NOMINAL resolved value.
+
+    Like ``_literal_or_default``, but when the value is an ``{rhs}`` object AND
+    the build context carries a resolved ``locals_map`` (deferred_dim only), the
+    rhs is evaluated against the locals so the geometry is created at its TRUE
+    size rather than the placeholder. The later deferred driving dim then MATCHES
+    the geometry and does not resize it -- which is what let a stripped-midpoint
+    ``CreateCenterRectangle`` drift off-origin (the resize was the sole drift
+    driver). Falls back to the placeholder when there is no map or the rhs cannot
+    be resolved, so inline / no_dim behavior is unchanged.
+    """
+    if _is_rhs(length_value):
+        locals_map = getattr(ctx, "locals_map", None)
+        if locals_map:
+            try:
+                # Lazy import: builder imports this module, so import at call
+                # time to avoid a module-load cycle (mirrors collect_rhs_bindings).
+                from .builder import _eval_rhs
+
+                mm = _eval_rhs(length_value["rhs"], lambda n: locals_map[n])
+                return float(mm) / 1000.0
+            except Exception:
+                return default_mm / 1000.0
+        return default_mm / 1000.0
+    return _mm_to_m(length_value)
+
+
 def _dismiss_dim_pane(doc: Any) -> None:
     """Reserved for v1.1 — currently a no-op.
 
