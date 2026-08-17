@@ -81,6 +81,13 @@ jobs:
         # builder.py decomposed into spec/handlers/* and re-baselined at 1690.
         run: python tools/module_size_gate.py --strict
 
+      - name: Honesty gate (phantom CLI / placeholders / links)
+        # Scans user-facing surfaces (README, USAGE, docs/, site/, launch-kit/,
+        # tools/demo_*.py) for phantom CLI claims, launch-copy placeholders, and
+        # broken internal links. Supersedes the manual tools/check_launch_kit.py
+        # run (spec §3, L6).
+        run: python tools/honesty_gate.py
+
       - name: Import-linter lane-boundary contracts
         # Layer contract lives in pyproject [tool.importlinter]. It silently
         # drifted from W9–W36 because nothing enforced it (caught 2026-06-11);

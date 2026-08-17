@@ -21,57 +21,27 @@ error (nothing to lint yet).
 """
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
+
+from _honesty_checks import (
+    find_placeholders,
+    find_banned_claims,
+    check_internal_links,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCAN_DIRS = ("site", "launch-kit")
 
-_PLACEHOLDER_RE = re.compile(
-    r"\b(?:TODO|TBD|FIXME|XXX)\b"  # bare dev markers (case-sensitive)
-    r"|<[A-Za-z0-9]*_[A-Za-z0-9_]*>"  # <UPPER_UNDERSCORE> stubs (HTML tags have no '_')
-    r"|(?i:<[a-z0-9 _-]*\b(?:here|placeholder)\b[a-z0-9 _-]*>)"  # <name here> / <placeholder>
-)
-# Bare `ai-sw-export` as a whole token: real word ends here, is not the
-# real `ai-sw-export-dxf-flat` CLI, and is not a longer word like `ai-sw-exporter`.
-_BANNED_RE = re.compile(r"ai-sw-export\b(?!-)")
-# Markdown ![alt](path) and [text](path); HTML src="path" / href="path".
-_MD_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
-_HTML_ASSET_RE = re.compile(r'(?:src|href)="([^"]+)"')
-
-
-def find_placeholders(text: str) -> list[str]:
-    """Return placeholder tokens found in *text* (one per match)."""
-    return [m.group(0) for m in _PLACEHOLDER_RE.finditer(text)]
-
-
-def find_banned_claims(text: str) -> list[str]:
-    """Return phantom-CLI claims found in *text*."""
-    return [m.group(0) for m in _BANNED_RE.finditer(text)]
-
-
-def _is_internal(target: str) -> bool:
-    """True if *target* is a repo-local path (not http, mailto, or anchor)."""
-    return not target.startswith(("http://", "https://", "mailto:", "#"))
-
-
-def check_internal_links(doc_path: Path, repo_root: Path) -> list[str]:
-    """Verify every internal link/asset in *doc_path* resolves on disk."""
-    text = doc_path.read_text(encoding="utf-8")
-    targets = _MD_LINK_RE.findall(text) + _HTML_ASSET_RE.findall(text)
-    errors: list[str] = []
-    for raw in targets:
-        target = raw.split("#", 1)[0].split("?", 1)[0].strip()
-        if not target or not _is_internal(target):
-            continue
-        if target.startswith("/"):
-            resolved = (repo_root / target.lstrip("/")).resolve()
-        else:
-            resolved = (doc_path.parent / target).resolve()
-        if not resolved.exists():
-            errors.append(f"{doc_path.name}: broken internal link -> {target}")
-    return errors
+__all__ = [
+    "find_placeholders",
+    "find_banned_claims",
+    "check_internal_links",
+    "lint_paths",
+    "main",
+    "SCAN_DIRS",
+    "REPO_ROOT",
+]
 
 
 def lint_paths(paths: list[Path], repo_root: Path) -> list[str]:
