@@ -8,9 +8,10 @@ consolidates the standalone demo-caption guard into the same scanner:
   * no placeholders (TODO / TBD / FIXME / `<...>` angle-bracket stubs) --
     launch copy only (site/, launch-kit/); general docs may say "TODO".
   * no phantom CLI claims (bare ``ai-sw-export`` -- real export is the spec
-    export block or ``ai-sw-export-dxf-flat``) -- the broad surface: top-level
-    docs, site/, launch-kit/, and the tools/demo_*.py renderers whose burned-in
-    captions have shipped this phantom before (2026-08-14).
+    export block or ``ai-sw-export-dxf-flat``) -- the broad surface:
+    README.md, USAGE.md, all of docs/**/*.md, site/, launch-kit/, and the
+    tools/demo_*.py renderers whose burned-in captions have shipped this
+    phantom before (2026-08-14).
   * internal links / image assets resolve on disk -- README.md, site/,
     launch-kit/.
 
@@ -72,11 +73,9 @@ DEFAULT_MANIFEST: dict[str, CheckSpec] = {
         explicit=(
             "README.md",
             "USAGE.md",
-            "docs/PUBLIC_API.md",
-            "docs/CAPABILITIES.md",
-            "docs/ONBOARDING.md",
         ),
         globs=(
+            "docs/**/*.md",
             "site/**/*.md",
             "site/**/*.html",
             "launch-kit/**/*.md",
@@ -105,6 +104,9 @@ __all__ = [
     "CheckSpec",
     "DEFAULT_MANIFEST",
     "EXCLUDED_PREFIXES",
+    "KIND_BANNED_TOKEN",
+    "KIND_BROKEN_LINK",
+    "KIND_PLACEHOLDER",
     "REPO_ROOT",
     "main",
     "scan",
@@ -190,7 +192,8 @@ def _scanned_file_count(repo_root: Path, manifest: dict[str, CheckSpec]) -> int:
 
 
 def main() -> int:
-    violations = scan(REPO_ROOT)
+    manifest = DEFAULT_MANIFEST
+    violations = scan(REPO_ROOT, manifest=manifest)
     if violations:
         by_surface: dict[str, list[tuple[str, str]]] = {}
         for surface, kind, detail in violations:
@@ -201,7 +204,7 @@ def main() -> int:
                 print(f"  [{kind}] {detail}", file=sys.stderr)
         print(f"\n{len(violations)} violation(s) found.", file=sys.stderr)
         return 1
-    scanned = _scanned_file_count(REPO_ROOT, DEFAULT_MANIFEST)
+    scanned = _scanned_file_count(REPO_ROOT, manifest)
     print(f"OK: {scanned} surface file(s) pass the honesty gate")
     return 0
 

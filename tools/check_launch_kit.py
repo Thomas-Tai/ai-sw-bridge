@@ -28,7 +28,6 @@ from _honesty_checks import (
     find_placeholders,
     find_banned_claims,
     check_internal_links,
-    _is_internal,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -37,7 +36,6 @@ SCAN_DIRS = ("site", "launch-kit")
 __all__ = [
     "find_placeholders",
     "find_banned_claims",
-    "_is_internal",
     "check_internal_links",
     "lint_paths",
     "main",

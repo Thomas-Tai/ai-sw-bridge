@@ -40,9 +40,9 @@ pip install pre-commit
 pre-commit install
 ```
 
-`pre-commit` then runs `black`, `flake8`, `mypy`, and the spec linter on every
-`git commit` — the same gates CI enforces. Run them across the whole tree at
-any time with `pre-commit run --all-files`.
+`pre-commit` then runs `black`, `flake8`, `mypy`, the spec linter, and the
+honesty gate on every `git commit` — the same gates CI enforces. Run them
+across the whole tree at any time with `pre-commit run --all-files`.
 
 ### Honesty gate
 
@@ -50,9 +50,9 @@ any time with `pre-commit run --all-files`.
 user-facing English surfaces (spec §3, L6). It checks:
 
 - **Phantom CLI claims** — bare `ai-sw-export` (real export is the spec
-  export block or `ai-sw-export-dxf-flat`) — over top-level docs (`README.md`,
-  `USAGE.md`, `docs/PUBLIC_API.md`, `docs/CAPABILITIES.md`,
-  `docs/ONBOARDING.md`), `site/`, `launch-kit/`, and `tools/demo_*.py`.
+  export block or `ai-sw-export-dxf-flat`) — over `README.md`, `USAGE.md`,
+  all of `docs/**/*.md` (excluding `docs/superpowers/`, `docs/archive/`, and
+  `docs/i18n/` — see below), `site/`, `launch-kit/`, and `tools/demo_*.py`.
 - **Placeholders** — `TODO` / `TBD` / `FIXME` / `<...>` angle-bracket stubs —
   over launch copy only (`site/`, `launch-kit/`); general docs may say "TODO".
 - **Broken internal links / image assets** — over `README.md`, `site/`, and
