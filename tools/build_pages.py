@@ -4,11 +4,14 @@
 Deterministic transform of the repo-local landing page into a self-contained
 gh-pages root:
 
-  * hero  ../docs/img/demo_hero.gif  -> assets/demo_hero.gif  (copied in, so it
-    resolves when only this artifact is served);
-  * the three internal doc links (../QUICKSTART.md, ../docs/operator_guide.md,
-    ../docs/known_limitations.md) -> their rendered GitHub blob URLs on the
-    default branch (they are Markdown; GitHub renders them, Pages would not);
+  * every image asset referenced by the page (the hero GIF, the workflow
+    stills, and the Block-1 anchor stills/GIF under ../docs/img/) is copied
+    into the artifact's assets/ dir and its src="" rewritten to the local
+    copy, so the page resolves when only this artifact is served;
+  * the four internal doc links (../QUICKSTART.md, ../docs/operator_guide.md,
+    ../docs/known_limitations.md, ../docs/CAPABILITIES.md) -> their rendered
+    GitHub blob URLs on the default branch (they are Markdown; GitHub renders
+    them, Pages would not);
   * same-page anchors (#hero, #essay) are left untouched;
   * a .nojekyll marker so Pages serves the raw HTML without a Jekyll build.
 
@@ -27,23 +30,38 @@ LINK_REWRITES = {
     "../QUICKSTART.md": f"{BLOB}/QUICKSTART.md",
     "../docs/operator_guide.md": f"{BLOB}/docs/operator_guide.md",
     "../docs/known_limitations.md": f"{BLOB}/docs/known_limitations.md",
+    "../docs/CAPABILITIES.md": f"{BLOB}/docs/CAPABILITIES.md",
 }
-HERO_SRC_REL = "../docs/img/demo_hero.gif"
-HERO_OUT_REL = "assets/demo_hero.gif"
+
+# (src relative to site/index.html) -> (out relative in the gh-pages artifact)
+IMAGE_ASSETS = [
+    ("../docs/img/demo_hero.gif", "assets/demo_hero.gif"),
+    ("../docs/img/still_part.png", "assets/still_part.png"),
+    ("../docs/img/still_assembly.png", "assets/still_assembly.png"),
+    ("../docs/img/still_observe.png", "assets/still_observe.png"),
+    ("../docs/img/still_drawing.png", "assets/still_drawing.png"),
+    ("../docs/img/still_export.png", "assets/still_export.png"),
+    ("../docs/img/anchor_dead_step.png", "assets/anchor_dead_step.png"),
+    ("../docs/img/anchor_alive_tree.png", "assets/anchor_alive_tree.png"),
+    ("../docs/img/anchor_live_edit.gif", "assets/anchor_live_edit.gif"),
+]
 
 
 def build(repo_root: Path, out_dir: Path) -> int:
-    src_html = (repo_root / "site" / "index.html").read_text(encoding="utf-8")
-    hero = repo_root / "docs" / "img" / "demo_hero.gif"
-    if not hero.exists():
-        print(f"ERROR: hero not found: {hero}", file=sys.stderr)
-        return 1
+    html = (repo_root / "site" / "index.html").read_text(encoding="utf-8")
 
-    html = src_html.replace(f'src="{HERO_SRC_REL}"', f'src="{HERO_OUT_REL}"')
+    staged: list[tuple[Path, str]] = []
+    for src_rel, out_rel in IMAGE_ASSETS:
+        src_path = (repo_root / "site" / src_rel).resolve()
+        if not src_path.exists():
+            print(f"ERROR: image asset not found: {src_path}", file=sys.stderr)
+            return 1
+        html = html.replace(f'src="{src_rel}"', f'src="{out_rel}"')
+        staged.append((src_path, out_rel))
+
     for old, new in LINK_REWRITES.items():
         html = html.replace(f'href="{old}"', f'href="{new}"')
 
-    # Fail loudly if any escaping ../ link survived the rewrite.
     leftover = [tok for tok in ('href="../', 'src="../') if tok in html]
     if leftover:
         print(f"ERROR: unrewritten relative refs remain: {leftover}", file=sys.stderr)
@@ -53,13 +71,11 @@ def build(repo_root: Path, out_dir: Path) -> int:
         shutil.rmtree(out_dir)
     (out_dir / "assets").mkdir(parents=True)
     (out_dir / "index.html").write_text(html, encoding="utf-8")
-    shutil.copy2(hero, out_dir / HERO_OUT_REL)
+    for src_path, out_rel in staged:
+        shutil.copy2(src_path, out_dir / out_rel)
     (out_dir / ".nojekyll").write_text("", encoding="utf-8")
 
-    print(f"OK: built Pages artifact at {out_dir}")
-    print(f"  index.html    ({len(html)} bytes)")
-    print(f"  {HERO_OUT_REL} ({hero.stat().st_size} bytes)")
-    print("  .nojekyll")
+    print(f"OK: built Pages artifact at {out_dir} ({len(staged)} image assets)")
     return 0
 
 
