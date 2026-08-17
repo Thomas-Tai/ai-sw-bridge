@@ -373,7 +373,12 @@ def compose(raw_dir: pathlib.Path, m: dict, keep: bool = False) -> pathlib.Path:
     caption.caption_clip(
         bare,
         caption.Caption(
-            "Export is a lossless round-trip, not a dead end", "ai-sw-export"
+            # There is no dedicated export CLI verb; the registry has only
+            # `ai-sw-export-dxf-flat` + `ai-sw-import`. STEP/STL/3MF ship via the
+            # spec `export:` block -> export.export_all. Keep this label honest
+            # (L6 gate) -- do not name a phantom CLI here.
+            "Export is a lossless round-trip, not a dead end",
+            "spec export block",
         ),
         OUT_GIF,
     )
