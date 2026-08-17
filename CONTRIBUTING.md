@@ -44,6 +44,30 @@ pre-commit install
 `git commit` — the same gates CI enforces. Run them across the whole tree at
 any time with `pre-commit run --all-files`.
 
+### Honesty gate
+
+`tools/honesty_gate.py` is the CI- and pre-commit-enforced lint over
+user-facing English surfaces (spec §3, L6). It checks:
+
+- **Phantom CLI claims** — bare `ai-sw-export` (real export is the spec
+  export block or `ai-sw-export-dxf-flat`) — over top-level docs (`README.md`,
+  `USAGE.md`, `docs/PUBLIC_API.md`, `docs/CAPABILITIES.md`,
+  `docs/ONBOARDING.md`), `site/`, `launch-kit/`, and `tools/demo_*.py`.
+- **Placeholders** — `TODO` / `TBD` / `FIXME` / `<...>` angle-bracket stubs —
+  over launch copy only (`site/`, `launch-kit/`); general docs may say "TODO".
+- **Broken internal links / image assets** — over `README.md`, `site/`, and
+  `launch-kit/`.
+
+`docs/superpowers/`, `docs/archive/`, and `docs/i18n/` are always excluded:
+they legitimately document the banned `ai-sw-export` example as a record of
+the mistake, and i18n honesty is covered by its own gate
+(`tests/test_i18n_staleness.py`).
+
+Run it locally with `python tools/honesty_gate.py` (exit 0 clean, 1 on any
+violation; the same command runs in CI and as the `honesty-gate` pre-commit
+hook). It supersedes the older manual `python tools/check_launch_kit.py` run
+— that script still exists but `honesty_gate.py` is the enforced superset.
+
 ## Tests
 
 ```powershell

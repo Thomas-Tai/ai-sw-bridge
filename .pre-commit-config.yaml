@@ -33,3 +33,13 @@ repos:
         entry: python tools/lint_specs.py
         language: system
         files: '(^|/)spec\.json$'
+
+      # Honesty gate over user-facing surfaces (README, USAGE, docs/, site/,
+      # launch-kit/, tools/demo_*.py). Scans a fixed manifest, not staged
+      # files, so it always runs rather than filtering by `files:`.
+      - id: honesty-gate
+        name: honesty gate (phantom CLI / placeholders / links)
+        entry: python tools/honesty_gate.py
+        language: system
+        pass_filenames: false
+        always_run: true
