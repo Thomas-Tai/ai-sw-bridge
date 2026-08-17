@@ -244,6 +244,16 @@ def _build_fillet_constant_radius(
     # in Spike P; readback confirmed value round-trips.
     data.DefaultRadius = radius_m
 
+    # Settle the B-rep before resolving semantic edge selectors. A prior
+    # topology-changing feature (notably a through-all cut) can leave the model
+    # un-rebuilt, so GetBodies2 / SelectByID transiently miss a side face the
+    # geometry actually has -- the demo_bearing_block "could not resolve -x face
+    # of EX_Block" failure, which resolves cleanly against the same body once
+    # the model is rebuilt. The chamfer handler already force-rebuilds (after
+    # itself, see _build_chamfer_edge); do the equivalent here BEFORE the face
+    # query the fillet's between_faces/of_face selectors depend on.
+    ctx.doc.ForceRebuild3(False)
+
     # Accumulate edges via the shared helper (literal points and/or semantic
     # of_face / between_faces selectors). See _select_edges docstring.
     n_selected = _select_edges(ctx, feat["edges"])

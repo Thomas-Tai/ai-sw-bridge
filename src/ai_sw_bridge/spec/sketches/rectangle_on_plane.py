@@ -14,7 +14,7 @@ from .._sketch_primitives import (
     _dismiss_dim_pane,
     _draw_centerline_if_present,
     _identify_rect_edge,
-    _literal_or_default,
+    _nominal_or_placeholder,
     _strip_centerrectangle_midpoint_relation,
 )
 from .base import SketchFrame, SketchHandler
@@ -47,8 +47,16 @@ class RectangleOnPlaneHandler(SketchHandler):
     def _draw_geometry(
         self, ctx: BuildContext, feat: dict[str, Any], frame: SketchFrame
     ) -> dict[str, Any]:
-        width_m = _literal_or_default(feat["width"], PLACEHOLDER_MM["rectangle_side"])
-        height_m = _literal_or_default(feat["height"], PLACEHOLDER_MM["rectangle_side"])
+        # deferred_dim: create at NOMINAL size (via ctx.locals_map) so the later
+        # driving dim matches and does not resize -- which is what drifted the
+        # stripped-midpoint center off-origin. Inline/no_dim fall back to the
+        # placeholder / pre-resolved literal exactly as before.
+        width_m = _nominal_or_placeholder(
+            ctx, feat["width"], PLACEHOLDER_MM["rectangle_side"]
+        )
+        height_m = _nominal_or_placeholder(
+            ctx, feat["height"], PLACEHOLDER_MM["rectangle_side"]
+        )
         cx_m, cy_m, cz_m = frame.center_part
 
         # The user's `center` is in PART-frame mm. The COM call

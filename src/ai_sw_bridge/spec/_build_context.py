@@ -102,6 +102,13 @@ class BuildContext:
     # walking for features not in this set and filters faces to matching
     # roles when the set is present. None = eager mode (default).
     referenced_face_roles: set[tuple[str, str]] | None = None
+    # deferred_dim only: resolved locals name->mm map. When present, geometry
+    # handlers create {rhs}-bound lengths at their NOMINAL size instead of the
+    # PLACEHOLDER size, so the later driving dim matches the geometry and does
+    # not resize it. That resize was what let a stripped-midpoint CenterRectangle
+    # drift off-origin (the demo_bearing_block off-center block). None = legacy
+    # placeholder behavior (inline/no_dim, or no locals).
+    locals_map: dict[str, float] | None = None
 
 
 @dataclass(frozen=True)

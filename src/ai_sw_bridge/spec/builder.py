@@ -62,6 +62,7 @@ from ._build_context import (
     FeatureType,
 )
 from ._advanced_sketch_fields import ADVANCED_SKETCH_FEATURE_TYPES
+from ._deferred_locals import load_nominal_locals
 from .sketches import (
     CircleOnFaceHandler,
     CircleOnPlaneHandler,
@@ -1227,9 +1228,12 @@ def run_feature_step(
                 raise RuntimeError(be.diagnosis) from be
             for (d, r), i in zip(feat_bindings, indices):
                 bindings.append(Binding(dim=d, rhs=r, add2_index=i))
-            # Force a rebuild so subsequent geometry sees the updated dim
-            # values, not the placeholder.
-            _ = ctx.doc.EditRebuild3
+            # COMPLETE rebuild so an equation-driven dim change propagates into
+            # feature geometry before the next feature queries it. The old
+            # incremental `_ = doc.EditRebuild3` left extrudes at placeholder
+            # depth (demo_bearing_block SK_Bore "+z none hit material"); commit
+            # 193b569 has the full analysis. Mirrors the dress-up handlers.
+            ctx.doc.ForceRebuild3(False)
 
         return StepResult(
             bf=bf,
@@ -1423,6 +1427,9 @@ def build(
     sw = get_sw_app()
     doc = create_blank_part(sw)
     ctx = BuildContext(sw=sw, doc=doc, no_dim=no_dim, deferred_dim=deferred_dim)
+    # deferred_dim: build {rhs} geometry at NOMINAL size so the driving dim
+    # can't resize/drift it (see _deferred_locals.load_nominal_locals).
+    ctx.locals_map = load_nominal_locals(deferred_dim, spec, _load_locals_map)
 
     # Lazy B-rep interrogation (spec.md §2.11): compute the referenced-face
     # set so the interrogator can skip unreferenced features.

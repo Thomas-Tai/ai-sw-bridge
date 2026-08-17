@@ -154,6 +154,11 @@ skills/
 .github/release_notes_*.md
 
 # --- Compiled / generated outputs ----------------------------------------------
+# GitHub Pages publish artifact — `python tools/build_pages.py . _site` rebuilds
+# it deterministically from site/index.html + docs/img/. Regenerable output,
+# deployed to the gh-pages branch; never tracked on the source branch.
+_site/
+
 # Route-C in-process add-in build outputs — NEVER track compiled binaries.
 # The proprietary SOLIDWORKS-interop-linked RouteCAddin.dll was excised from
 # full history via git-filter-repo (W68 IP scrub, 2026-06-20). Source (.cs/.ps1)
