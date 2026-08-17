@@ -63,6 +63,7 @@ from ._build_context import (
 )
 from ._advanced_sketch_fields import ADVANCED_SKETCH_FEATURE_TYPES
 from ._deferred_locals import load_nominal_locals
+from ..com.earlybind import typed
 from .sketches import (
     CircleOnFaceHandler,
     CircleOnPlaneHandler,
@@ -358,8 +359,12 @@ def link_locals(doc: Any, locals_path: str) -> None:
     if eq is None:
         raise RuntimeError("doc.GetEquationMgr is None")
     eq.FilePath = str(locals_path)
-    eq.LinkToFile = True
-    eq.AutomaticRebuild = True
+    # Late-bound dispatch can refuse these bool SETs on a degraded COM state
+    # ("Property can not be set"); the early-bound typed interface sets them
+    # reliably (FilePath alone already establishes the link).
+    teq = typed(eq, "IEquationMgr")
+    teq.LinkToFile = True
+    teq.AutomaticRebuild = True
     _ = eq.UpdateValuesFromExternalEquationFile  # auto-fires reload
     if not eq.LinkToFile:
         raise RuntimeError(f"failed to activate link to {locals_path}")
