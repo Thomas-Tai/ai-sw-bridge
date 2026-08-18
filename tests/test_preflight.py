@@ -241,3 +241,46 @@ def test_preflight_aggregates_all_three_analyzers():
     # coordinate echo (info) present, no warning/error on a clean plate
     assert any(f.severity == "info" for f in findings)
     assert [f for f in findings if f.severity in ("warning", "error")] == []
+
+
+def test_unconsumed_construction_polyline_is_not_flagged():
+    # A lone construction polyline that no boss/cut consumes must NOT warn --
+    # the construction-only check is gated on being consumed, like its sibling.
+    spec = {
+        "features": [
+            {
+                "type": "sketch_polyline_on_plane",
+                "name": "SK_Ref",
+                "plane": "Front",
+                "points": [{"x": 0, "y": 0}, {"x": 10, "y": 0}],
+                "construction": True,
+            }
+        ]
+    }
+    warns = [f for f in _degenerate_profile_checks(spec) if f.severity == "warning"]
+    assert warns == []
+
+
+def test_consumed_construction_polyline_warns():
+    # A construction polyline consumed by a boss has no real entities to sweep.
+    spec = {
+        "features": [
+            {
+                "type": "sketch_polyline_on_plane",
+                "name": "SK_Con",
+                "plane": "Front",
+                "points": [{"x": 0, "y": 0}, {"x": 10, "y": 0}],
+                "construction": True,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX",
+                "sketch": "SK_Con",
+                "depth": 5.0,
+            },
+        ]
+    }
+    warns = [f for f in _degenerate_profile_checks(spec) if f.severity == "warning"]
+    assert any(
+        "SK_Con" in f.message and "construction" in f.message.lower() for f in warns
+    )

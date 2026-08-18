@@ -331,7 +331,7 @@ def _degenerate_profile_checks(spec: dict[str, Any]) -> list[LintFinding]:
         f.get("sketch", "")
         for f in features
         if f.get("type", "").endswith(
-            ("_blind", "_midplane", "_two_direction", "_through_all")
+            ("_blind", "_midplane", "_two_direction", "_through_all", "_up_to_surface")
         )
     }
     findings: list[LintFinding] = []
@@ -352,7 +352,7 @@ def _degenerate_profile_checks(spec: dict[str, Any]) -> list[LintFinding]:
                         ),
                     )
                 )
-            if feat.get("construction", False) is True:
+            if feat.get("construction", False) is True and name in consumed:
                 findings.append(
                     LintFinding(
                         severity="warning",
