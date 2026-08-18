@@ -430,6 +430,35 @@ def test_revolve_is_skipped_not_flagged():
     findings = material_envelope_scan(spec)
     assert _sev(findings, "error") == []  # no false ERROR after an unmodeled body
     assert any(f.severity == "info" and "skip" in f.message.lower() for f in findings)
+
+
+def test_flipped_cut_into_material_is_not_flagged():
+    # A cut sketched on the +Z top face (Front plane, center z=10) with
+    # flip=True cuts INWARD into real material (Z[5, 10]); the tracker must
+    # model -normal and NOT fire a false empty-air ERROR. With the old
+    # +normal-only code the box was Z[10, 15] (disjoint) -> false ERROR.
+    spec = {
+        "features": [
+            _PLATE,
+            _BOSS,  # material Z in [0, 10]
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_TopCut",
+                "plane": "Front",
+                "width": 10.0,
+                "height": 10.0,
+                "center": {"z": 10.0},  # top face of the plate
+            },
+            {
+                "type": "cut_extrude_blind",
+                "name": "CUT_In",
+                "sketch": "SK_TopCut",
+                "depth": 5.0,
+                "flip": True,  # cut -Z, into the plate
+            },
+        ]
+    }
+    assert _sev(material_envelope_scan(spec), "error") == []
 ```
 
 - [ ] **Step 2: Run to verify they fail**
@@ -478,17 +507,31 @@ def _plane_rect_box(feat: dict[str, Any]) -> Optional[Box]:
     return (min(xs), max(xs), min(ys), max(ys), min(zs), max(zs))
 
 
-def _extruded_box(sketch: dict[str, Any], depth: float) -> Optional[Box]:
+def _extruded_box(
+    sketch: dict[str, Any], depth: float, flip: bool = False
+) -> Optional[Box]:
+    """Part-frame box of a plane rectangle extruded ``depth`` along the plane
+    normal, or None if ``sketch`` is not a modelable plane rectangle.
+
+    ``flip`` honors the schema's boss/cut ``flip`` field: False sweeps
+    +normal (``[lo, lo + depth]``), True sweeps -normal (``[lo - depth, lo]``)
+    -- e.g. a blind cut on a top face flipped to cut inward into material.
+    A sketch is zero-thickness along its own normal (``lo == hi ==`` the plane
+    offset), so the swept box grows from that single offset value.
+    """
     base = _plane_rect_box(sketch)
     if base is None:
         return None
     plane = sketch.get("plane", "")
-    # extrude grows +depth along the plane normal
     normal_axis = {"Front": 2, "Top": 1, "Right": 0}[plane]
-    lo, hi = base[normal_axis * 2], base[normal_axis * 2 + 1]
+    lo = min(base[normal_axis * 2], base[normal_axis * 2 + 1])
     box = list(base)
-    box[normal_axis * 2] = min(lo, hi, lo + 0.0)
-    box[normal_axis * 2 + 1] = max(lo, hi, lo + depth)
+    if flip:
+        box[normal_axis * 2] = lo - depth
+        box[normal_axis * 2 + 1] = lo
+    else:
+        box[normal_axis * 2] = lo
+        box[normal_axis * 2 + 1] = lo + depth
     return (box[0], box[1], box[2], box[3], box[4], box[5])
 
 
@@ -510,7 +553,11 @@ def material_envelope_scan(spec: dict[str, Any]) -> list[LintFinding]:
         name = feat.get("name", "")
 
         if ftype in _MODELED_ADDITIVE:
-            box = _extruded_box(sketches.get(feat.get("sketch", ""), {}), float(feat.get("depth", 0.0)))
+            box = _extruded_box(
+                sketches.get(feat.get("sketch", ""), {}),
+                float(feat.get("depth", 0.0)),
+                bool(feat.get("flip", False)),
+            )
             if box is None:
                 modeled_complete = False
                 findings.append(_skip(i, name, ftype))
@@ -518,7 +565,11 @@ def material_envelope_scan(spec: dict[str, Any]) -> list[LintFinding]:
                 material.append(box)
 
         elif ftype in _MODELED_SUBTRACTIVE:
-            box = _extruded_box(sketches.get(feat.get("sketch", ""), {}), float(feat.get("depth", 0.0)))
+            box = _extruded_box(
+                sketches.get(feat.get("sketch", ""), {}),
+                float(feat.get("depth", 0.0)),
+                bool(feat.get("flip", False)),
+            )
             if box is None:
                 modeled_complete = False
                 findings.append(_skip(i, name, ftype))
