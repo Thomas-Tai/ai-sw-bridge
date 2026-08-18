@@ -78,12 +78,15 @@ Other faces (`±x`, `±y`) honest-skip in v0.11.
   - `PLANE_AXES: dict[str, tuple[str, str, str]]` — plane name → (X-expr, Y-expr, Z-expr) using tokens `"u"`, `"v"`, `"-v"`, `"-u"`, `"o"`.
   - `map_plane_point(plane: str, u: float, v: float, offset: float) -> tuple[float, float, float]` — sketch-local point → part-frame `(x, y, z)`; raises `KeyError` on unknown plane (caller guards).
   - `coordinate_mapping_report(spec: dict) -> list[LintFinding]` — one `severity="info"` finding per plane-sketch with a rectangle/circle profile, naming the part-frame spans.
+  - `_plane_center_uvo(plane: str, center: dict) -> tuple[float, float, float]` — project a part-frame sketch `center` `{x,y,z}` (mm) to sketch-local `(u, v)` plus the plane's out-of-plane offset `o`, consistent with `PLANE_AXES`: Front→`(x, y, z)`, Top→`(x, −z, y)`, Right→`(−z, y, x)`. The real schema's plane-sketch `center` is part-frame (`descriptors.py` `_SKETCH_PLANE_CENTER`, `additionalProperties:False`, keys `x/y/z`); the builder projects it per-plane (`sketches/rectangle_on_plane.py`). Reused by Task 2's `_plane_rect_box`. `_rect_uv_extent(feat, cu, cv)` now takes the projected center.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
 # tests/test_preflight.py
 from __future__ import annotations
+
+import pytest
 
 from ai_sw_bridge.spec.preflight import (
     map_plane_point,
@@ -130,6 +133,30 @@ def test_coordinate_echo_ignores_on_face_sketches():
     # on-face sketches have no plane; they are Component-2 territory
     spec = {"features": [{"type": "simple_hole", "name": "H", "face": "+z"}]}
     assert coordinate_mapping_report(spec) == []
+
+
+def test_top_rect_with_offset_center_shifts_z_span():
+    # O-ring groove at mid-length of a +Z shaft: Top plane, center z=40.
+    # center.z must map through v->-Z so the span centers on Z=40, not 0.
+    spec = {
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Groove",
+                "plane": "Top",
+                "width": 40.0,
+                "height": 30.0,
+                "center": {"x": 0.0, "z": 40.0},
+            }
+        ]
+    }
+    f = coordinate_mapping_report(spec)[0]
+    assert "Z[25.0, 55.0]" in f.message  # 40 +/- 15, not [-15, 15]
+
+
+def test_map_plane_point_unknown_plane_raises():
+    with pytest.raises(KeyError):
+        map_plane_point("Bogus", 0.0, 0.0, 0.0)
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -191,12 +218,34 @@ def map_plane_point(
     )
 
 
-def _rect_uv_extent(feat: dict[str, Any]) -> Optional[tuple[float, float, float, float]]:
-    """Return (umin, umax, vmin, vmax) for a rectangle/circle plane-sketch,
-    or None if the feature carries no modelable planar profile."""
-    center = feat.get("center", {}) or {}
-    cu = float(center.get("u", center.get("x", 0.0)))
-    cv = float(center.get("v", center.get("y", 0.0)))
+def _plane_center_uvo(
+    plane: str, center: dict[str, Any]
+) -> tuple[float, float, float]:
+    """Project a part-frame sketch ``center`` {x, y, z} (mm) to sketch-local
+    (u, v) plus the plane's out-of-plane offset o, consistent with
+    ``PLANE_AXES``: Front->(x, y, z); Top->(x, -z, y); Right->(-z, y, x).
+
+    The real schema's plane-sketch ``center`` is part-frame (see
+    descriptors.py ``_SKETCH_PLANE_CENTER``); the builder projects it
+    per-plane (sketches/rectangle_on_plane.py). Front is identity in x/y;
+    Top and Right carry the out-of-plane component that must NOT be dropped.
+    """
+    x = float(center.get("x", 0.0))
+    y = float(center.get("y", 0.0))
+    z = float(center.get("z", 0.0))
+    if plane == "Top":
+        return x, -z, y
+    if plane == "Right":
+        return -z, y, x
+    return x, y, z  # Front (and default)
+
+
+def _rect_uv_extent(
+    feat: dict[str, Any], cu: float, cv: float
+) -> Optional[tuple[float, float, float, float]]:
+    """Return (umin, umax, vmin, vmax) for a rectangle/circle plane-sketch
+    centered at sketch-local (cu, cv), or None if the feature carries no
+    modelable planar profile."""
     if "width" in feat and "height" in feat:
         w, h = float(feat["width"]), float(feat["height"])
         return (cu - w / 2, cu + w / 2, cv - h / 2, cv + h / 2)
@@ -218,10 +267,10 @@ def coordinate_mapping_report(spec: dict[str, Any]) -> list[LintFinding]:
         plane = feat.get("plane", "")
         if plane not in PLANE_AXES:
             continue
-        extent = _rect_uv_extent(feat)
+        cu, cv, offset = _plane_center_uvo(plane, feat.get("center", {}) or {})
+        extent = _rect_uv_extent(feat, cu, cv)
         if extent is None:
             continue
-        offset = float(feat.get("offset", 0.0))
         umin, umax, vmin, vmax = extent
         xs, ys, zs = [], [], []
         for u, v in ((umin, vmin), (umax, vmax)):
@@ -243,7 +292,7 @@ def coordinate_mapping_report(spec: dict[str, Any]) -> list[LintFinding]:
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `PYTHONPATH=src python -m pytest tests/test_preflight.py -q`
-Expected: PASS (5 tests).
+Expected: PASS (7 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -414,11 +463,11 @@ def _plane_rect_box(feat: dict[str, Any]) -> Optional[Box]:
     plane = feat.get("plane", "")
     if plane not in PLANE_AXES or "width" not in feat or "height" not in feat:
         return None
-    extent = _rect_uv_extent(feat)
+    cu, cv, offset = _plane_center_uvo(plane, feat.get("center", {}) or {})
+    extent = _rect_uv_extent(feat, cu, cv)
     if extent is None:
         return None
     umin, umax, vmin, vmax = extent
-    offset = float(feat.get("offset", 0.0))
     xs, ys, zs = [], [], []
     for u in (umin, umax):
         for v in (vmin, vmax):
