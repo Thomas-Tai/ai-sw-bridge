@@ -5,6 +5,7 @@ import pytest
 from ai_sw_bridge.spec.preflight import (
     map_plane_point,
     coordinate_mapping_report,
+    material_envelope_scan,
 )
 
 
@@ -71,3 +72,111 @@ def test_top_rect_with_offset_center_shifts_z_span():
 def test_map_plane_point_unknown_plane_raises():
     with pytest.raises(KeyError):
         map_plane_point("Bogus", 0.0, 0.0, 0.0)
+
+
+_PLATE = {
+    "type": "sketch_rectangle_on_plane",
+    "name": "SK_Plate",
+    "plane": "Front",
+    "width": 40.0,
+    "height": 30.0,
+}
+_BOSS = {
+    "type": "boss_extrude_blind",
+    "name": "EX_Plate",
+    "sketch": "SK_Plate",
+    "depth": 10.0,
+}
+
+
+def _sev(findings, sev):
+    return [f for f in findings if f.severity == sev]
+
+
+def test_clean_plate_with_on_material_hole_has_no_warn_or_error():
+    spec = {
+        "features": [
+            _PLATE,
+            _BOSS,
+            {
+                "type": "simple_hole",
+                "name": "H1",
+                "of_feature": "EX_Plate",
+                "face": "+z",
+                "center": {"u": 10.0, "v": 0.0},
+                "diameter": 5.0,
+            },
+        ]
+    }
+    findings = material_envelope_scan(spec)
+    assert _sev(findings, "warning") == []
+    assert _sev(findings, "error") == []
+
+
+def test_hole_off_the_face_warns():
+    spec = {
+        "features": [
+            _PLATE,
+            _BOSS,
+            {
+                "type": "simple_hole",
+                "name": "H_off",
+                "of_feature": "EX_Plate",
+                "face": "+z",
+                "center": {"u": 50.0, "v": 0.0},  # face is X in [-20, 20]
+                "diameter": 5.0,
+            },
+        ]
+    }
+    warns = _sev(material_envelope_scan(spec), "warning")
+    assert any("H_off" in f.message and "off" in f.message.lower() for f in warns)
+
+
+def test_empty_air_cut_errors():
+    spec = {
+        "features": [
+            _PLATE,
+            _BOSS,
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Air",
+                "plane": "Front",
+                "width": 5.0,
+                "height": 5.0,
+                "center": {"x": 100.0, "y": 100.0},  # far from the plate
+            },
+            {
+                "type": "cut_extrude_blind",
+                "name": "CUT_Air",
+                "sketch": "SK_Air",
+                "depth": 5.0,
+            },
+        ]
+    }
+    errs = _sev(material_envelope_scan(spec), "error")
+    assert any("CUT_Air" in f.message for f in errs)
+
+
+def test_revolve_is_skipped_not_flagged():
+    spec = {
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Rev",
+                "plane": "Top",
+                "width": 10.0,
+                "height": 10.0,
+                "centerline": True,
+            },
+            {"type": "revolve_boss", "name": "REV", "sketch": "SK_Rev"},
+            {
+                "type": "cut_extrude_blind",
+                "name": "CUT_X",
+                "sketch": "SK_Rev",
+                "depth": 2.0,
+            },
+        ]
+    }
+    findings = material_envelope_scan(spec)
+    assert _sev(findings, "error") == []  # no false ERROR after an unmodeled body
+    assert any(f.severity == "info" and "skip" in f.message.lower() for f in findings)
