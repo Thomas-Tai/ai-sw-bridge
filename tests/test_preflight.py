@@ -180,3 +180,32 @@ def test_revolve_is_skipped_not_flagged():
     findings = material_envelope_scan(spec)
     assert _sev(findings, "error") == []  # no false ERROR after an unmodeled body
     assert any(f.severity == "info" and "skip" in f.message.lower() for f in findings)
+
+
+def test_flipped_cut_into_material_is_not_flagged():
+    # A cut sketched on the +Z top face (Front plane, center z=10) with
+    # flip=True cuts INWARD into real material (Z[5, 10]); the tracker must
+    # model -normal and NOT fire a false empty-air ERROR. With the old
+    # +normal-only code the box was Z[10, 15] (disjoint) -> false ERROR.
+    spec = {
+        "features": [
+            _PLATE,
+            _BOSS,  # material Z in [0, 10]
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_TopCut",
+                "plane": "Front",
+                "width": 10.0,
+                "height": 10.0,
+                "center": {"z": 10.0},  # top face of the plate
+            },
+            {
+                "type": "cut_extrude_blind",
+                "name": "CUT_In",
+                "sketch": "SK_TopCut",
+                "depth": 5.0,
+                "flip": True,  # cut -Z, into the plate
+            },
+        ]
+    }
+    assert _sev(material_envelope_scan(spec), "error") == []
