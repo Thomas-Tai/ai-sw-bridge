@@ -718,6 +718,49 @@ def test_open_polyline_consumed_by_boss_warns():
     assert any("SK_Open" in f.message and "closed" in f.message.lower() for f in warns)
 
 
+def test_unconsumed_construction_polyline_is_not_flagged():
+    # A lone construction polyline that no boss/cut consumes must NOT warn --
+    # the construction-only check is gated on being consumed, like its sibling.
+    spec = {
+        "features": [
+            {
+                "type": "sketch_polyline_on_plane",
+                "name": "SK_Ref",
+                "plane": "Front",
+                "points": [{"x": 0, "y": 0}, {"x": 10, "y": 0}],
+                "construction": True,
+            }
+        ]
+    }
+    warns = [f for f in _degenerate_profile_checks(spec) if f.severity == "warning"]
+    assert warns == []
+
+
+def test_consumed_construction_polyline_warns():
+    # A construction polyline consumed by a boss has no real entities to sweep.
+    spec = {
+        "features": [
+            {
+                "type": "sketch_polyline_on_plane",
+                "name": "SK_Con",
+                "plane": "Front",
+                "points": [{"x": 0, "y": 0}, {"x": 10, "y": 0}],
+                "construction": True,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX",
+                "sketch": "SK_Con",
+                "depth": 5.0,
+            },
+        ]
+    }
+    warns = [f for f in _degenerate_profile_checks(spec) if f.severity == "warning"]
+    assert any(
+        "SK_Con" in f.message and "construction" in f.message.lower() for f in warns
+    )
+
+
 def test_preflight_aggregates_all_three_analyzers():
     spec = {"features": [_PLATE, _BOSS]}
     findings = preflight(spec)
@@ -745,7 +788,9 @@ def _degenerate_profile_checks(spec: dict[str, Any]) -> list[LintFinding]:
     consumed = {
         f.get("sketch", "")
         for f in features
-        if f.get("type", "").endswith(("_blind", "_midplane", "_two_direction", "_through_all"))
+        if f.get("type", "").endswith(
+            ("_blind", "_midplane", "_two_direction", "_through_all", "_up_to_surface")
+        )
     }
     findings: list[LintFinding] = []
     for i, feat in enumerate(features):
@@ -765,7 +810,7 @@ def _degenerate_profile_checks(spec: dict[str, Any]) -> list[LintFinding]:
                         ),
                     )
                 )
-            if feat.get("construction", False) is True:
+            if feat.get("construction", False) is True and name in consumed:
                 findings.append(
                     LintFinding(
                         severity="warning",
