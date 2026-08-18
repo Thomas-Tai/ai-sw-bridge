@@ -32,6 +32,21 @@ def _eval_axis(token: str, u: float, v: float, o: float) -> float:
     return {"u": u, "-u": -u, "v": v, "-v": -v, "o": o}[token]
 
 
+def _as_float(value: Any) -> Optional[float]:
+    """Coerce a spec dimension field to float, or None if it isn't a plain
+    number.
+
+    Dimension fields may carry an unresolved ``{"rhs": "expr"}`` locals
+    reference (see rhs_resolver.py) instead of a literal. Such fields are
+    not statically modelable pre-flight (no SW seat, no locals file loaded
+    here), so callers treat None as "cannot model this feature exactly"
+    per the module's honest-skip contract rather than crash or guess.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
 def map_plane_point(
     plane: str, u: float, v: float, offset: float
 ) -> tuple[float, float, float]:
@@ -48,7 +63,9 @@ def map_plane_point(
     )
 
 
-def _plane_center_uvo(plane: str, center: dict[str, Any]) -> tuple[float, float, float]:
+def _plane_center_uvo(
+    plane: str, center: dict[str, Any]
+) -> Optional[tuple[float, float, float]]:
     """Project a part-frame sketch ``center`` {x, y, z} (mm) to sketch-local
     (u, v) plus the plane's out-of-plane offset o, consistent with
     ``PLANE_AXES``: Front->(x, y, z); Top->(x, -z, y); Right->(-z, y, x).
@@ -57,10 +74,15 @@ def _plane_center_uvo(plane: str, center: dict[str, Any]) -> tuple[float, float,
     descriptors.py ``_SKETCH_PLANE_CENTER``); the builder projects it
     per-plane (sketches/rectangle_on_plane.py). Front is identity in x/y;
     Top and Right carry the out-of-plane component that must NOT be dropped.
+
+    Returns None if any component is an unresolved ``{"rhs": ...}`` locals
+    reference rather than a literal (honest-skip; see ``_as_float``).
     """
-    x = float(center.get("x", 0.0))
-    y = float(center.get("y", 0.0))
-    z = float(center.get("z", 0.0))
+    x = _as_float(center.get("x", 0.0))
+    y = _as_float(center.get("y", 0.0))
+    z = _as_float(center.get("z", 0.0))
+    if x is None or y is None or z is None:
+        return None
     if plane == "Top":
         return x, -z, y
     if plane == "Right":
@@ -73,12 +95,18 @@ def _rect_uv_extent(
 ) -> Optional[tuple[float, float, float, float]]:
     """Return (umin, umax, vmin, vmax) for a rectangle/circle plane-sketch
     centered at sketch-local (cu, cv), or None if the feature carries no
-    modelable planar profile."""
+    modelable planar profile (including an unresolved ``{"rhs": ...}``
+    width/height/diameter -- see ``_as_float``)."""
     if "width" in feat and "height" in feat:
-        w, h = float(feat["width"]), float(feat["height"])
+        w, h = _as_float(feat["width"]), _as_float(feat["height"])
+        if w is None or h is None:
+            return None
         return (cu - w / 2, cu + w / 2, cv - h / 2, cv + h / 2)
     if "diameter" in feat:
-        r = float(feat["diameter"]) / 2
+        d = _as_float(feat["diameter"])
+        if d is None:
+            return None
+        r = d / 2
         return (cu - r, cu + r, cv - r, cv + r)
     return None
 
@@ -95,7 +123,10 @@ def coordinate_mapping_report(spec: dict[str, Any]) -> list[LintFinding]:
         plane = feat.get("plane", "")
         if plane not in PLANE_AXES:
             continue
-        cu, cv, offset = _plane_center_uvo(plane, feat.get("center", {}) or {})
+        uvo = _plane_center_uvo(plane, feat.get("center", {}) or {})
+        if uvo is None:
+            continue
+        cu, cv, offset = uvo
         extent = _rect_uv_extent(feat, cu, cv)
         if extent is None:
             continue
@@ -143,7 +174,10 @@ def _plane_rect_box(feat: dict[str, Any]) -> Optional[Box]:
     plane = feat.get("plane", "")
     if plane not in PLANE_AXES or "width" not in feat or "height" not in feat:
         return None
-    cu, cv, offset = _plane_center_uvo(plane, feat.get("center", {}) or {})
+    uvo = _plane_center_uvo(plane, feat.get("center", {}) or {})
+    if uvo is None:
+        return None
+    cu, cv, offset = uvo
     extent = _rect_uv_extent(feat, cu, cv)
     if extent is None:
         return None
@@ -224,9 +258,14 @@ def _hole_offface_finding(
     if face not in {"+z", "-z"} or not material or not modeled_complete:
         return []
     center = feat.get("center", {}) or {}
-    cu = float(center.get("u", 0.0))
-    cv = float(center.get("v", 0.0))
-    r = float(feat.get("diameter", 0.0)) / 2
+    cu = _as_float(center.get("u", 0.0))
+    cv = _as_float(center.get("v", 0.0))
+    d = _as_float(feat.get("diameter", 0.0))
+    if cu is None or cv is None or d is None:
+        # Unresolved {"rhs": ...} locals reference -- not statically
+        # modelable pre-flight; honest-skip this hole's off-face check.
+        return []
+    r = d / 2
     # +z/-z face: u->X, v->Y; check the hole footprint against material X/Y union
     xmin = min(m[0] for m in material)
     xmax = max(m[1] for m in material)
@@ -264,10 +303,15 @@ def material_envelope_scan(spec: dict[str, Any]) -> list[LintFinding]:
         name = feat.get("name", "")
 
         if ftype in _MODELED_ADDITIVE:
-            box = _extruded_box(
-                sketches.get(feat.get("sketch", ""), {}),
-                float(feat.get("depth", 0.0)),
-                bool(feat.get("flip", False)),
+            depth = _as_float(feat.get("depth", 0.0))
+            box = (
+                _extruded_box(
+                    sketches.get(feat.get("sketch", ""), {}),
+                    depth,
+                    bool(feat.get("flip", False)),
+                )
+                if depth is not None
+                else None
             )
             if box is None:
                 modeled_complete = False
@@ -276,10 +320,15 @@ def material_envelope_scan(spec: dict[str, Any]) -> list[LintFinding]:
                 material.append(box)
 
         elif ftype in _MODELED_SUBTRACTIVE:
-            box = _extruded_box(
-                sketches.get(feat.get("sketch", ""), {}),
-                float(feat.get("depth", 0.0)),
-                bool(feat.get("flip", False)),
+            depth = _as_float(feat.get("depth", 0.0))
+            box = (
+                _extruded_box(
+                    sketches.get(feat.get("sketch", ""), {}),
+                    depth,
+                    bool(feat.get("flip", False)),
+                )
+                if depth is not None
+                else None
             )
             if box is None:
                 modeled_complete = False

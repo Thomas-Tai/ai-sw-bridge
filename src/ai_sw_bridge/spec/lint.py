@@ -18,7 +18,7 @@ class LintFinding:
     """One lint warning. Not fatal — the spec may still build correctly."""
 
     def __init__(self, severity: str, path: str, message: str) -> None:
-        self.severity = severity  # "warning" or "error"
+        self.severity = severity  # "info", "warning", or "error"
         self.path = path
         self.message = message
 

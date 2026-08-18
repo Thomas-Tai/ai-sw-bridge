@@ -408,6 +408,15 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--no-preflight",
+        dest="no_preflight",
+        action="store_true",
+        help=(
+            "Skip the seat-free geometric pre-flight (coordinate-mapping "
+            "echoes + material-envelope checks). Semantic lint still runs."
+        ),
+    )
+    parser.add_argument(
         "--no-dim",
         action="store_true",
         help=(
@@ -809,20 +818,27 @@ def main() -> int:
     # --lint runs semantic checks after validation. It implies --dry-run
     # unless a build mode (--no-dim, --deferred-dim) was also selected.
     lint_findings = spec_lint(spec)
+    if not getattr(args, "no_preflight", False):
+        from ..spec.preflight import preflight
+
+        lint_findings = lint_findings + preflight(spec)
     lint_payload = [f.to_dict() for f in lint_findings]
+    has_error = any(f.severity == "error" for f in lint_findings)
 
     if args.lint and not (args.no_dim or args.deferred_dim):
         # Lint-only mode: also run dry-run and include both outputs
         dry_run_payload = _dry_run(spec) if args.dry_run or args.lint else None
         payload: dict[str, Any] = {
-            "ok": len(lint_findings) == 0,
+            "ok": not has_error,
             "lint": True,
             "findings": lint_payload,
             "finding_count": len(lint_findings),
+            "error_count": sum(1 for f in lint_findings if f.severity == "error"),
+            "warning_count": sum(1 for f in lint_findings if f.severity == "warning"),
         }
         if dry_run_payload is not None:
             payload["dry_run"] = dry_run_payload
-        return _emit(payload, 0 if not lint_findings else 6)
+        return _emit(payload, 0 if not has_error else 6)
 
     if args.dry_run:
         payload = _dry_run(spec)
