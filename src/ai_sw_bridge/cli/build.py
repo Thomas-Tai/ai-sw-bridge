@@ -24,8 +24,8 @@ from typing import Any
 from ..flags import FLAG_REGISTRY, parse_flag_args, resolve as resolve_flags
 from ..spec import validate, ValidationError
 from ..spec.builder import BuildResult, _resolve_rhs_in_spec, build
-from ..spec.lint import lint as spec_lint
 from .stability import add_tier, cli_stability
+from ._lint_preflight import lint_dryrun_response
 from .streams import (
     PlainFormatter,
     add_locale_flag,
@@ -815,40 +815,10 @@ def main() -> int:
         # own RetryGuard usage when it raises.)
         guard.record_attempt(spec)
 
-    # --lint runs semantic checks after validation. It implies --dry-run
-    # unless a build mode (--no-dim, --deferred-dim) was also selected.
-    lint_findings = spec_lint(spec)
-    if not getattr(args, "no_preflight", False):
-        from ..spec.preflight import preflight
-
-        lint_findings = lint_findings + preflight(spec)
-    lint_payload = [f.to_dict() for f in lint_findings]
-    has_error = any(f.severity == "error" for f in lint_findings)
-
-    if args.lint and not (args.no_dim or args.deferred_dim):
-        # Lint-only mode: also run dry-run and include both outputs
-        dry_run_payload = _dry_run(spec) if args.dry_run or args.lint else None
-        payload: dict[str, Any] = {
-            "ok": not has_error,
-            "lint": True,
-            "findings": lint_payload,
-            "finding_count": len(lint_findings),
-            "error_count": sum(1 for f in lint_findings if f.severity == "error"),
-            "warning_count": sum(1 for f in lint_findings if f.severity == "warning"),
-        }
-        if dry_run_payload is not None:
-            payload["dry_run"] = dry_run_payload
-        return _emit(payload, 0 if not has_error else 6)
-
-    if args.dry_run:
-        payload = _dry_run(spec)
-        # Include lint findings if --lint was also passed
-        if args.lint and lint_findings:
-            payload["lint_findings"] = lint_payload
-        # Exit 5 (distinct from validation=3 and build=4) on rhs-resolution
-        # failure so CI can tell apart "spec is malformed" from "spec refs
-        # missing vars in locals".
-        return _emit(payload, 0 if payload["ok"] else 5)
+    # --lint / --dry-run are seat-free: assemble findings + emit without a build.
+    lint_resp = lint_dryrun_response(spec, args, _dry_run)
+    if lint_resp is not None:
+        return _emit(*lint_resp)
 
     # Issue #7 — identify the foreground seat and gate BEFORE the first COM
     # write, so a build never silently lands in the operator's session.
