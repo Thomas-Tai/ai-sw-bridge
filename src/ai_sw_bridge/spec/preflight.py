@@ -303,6 +303,16 @@ def material_envelope_scan(spec: dict[str, Any]) -> list[LintFinding]:
         name = feat.get("name", "")
 
         if ftype in _MODELED_ADDITIVE:
+            if "start_offset" in feat:
+                # A start_offset boss begins its extrude displaced along the
+                # plane normal (spec/handlers/extrude.py) -- the axis-aligned
+                # box model places the body at the UN-offset plane, so trusting
+                # it could flag a later cut into the displaced material as an
+                # empty-air ERROR (false positive). Honest-skip instead, exactly
+                # like the midplane/two_direction offset-math branch below.
+                modeled_complete = False
+                findings.append(_skip(i, name, ftype))
+                continue
             depth = _as_float(feat.get("depth", 0.0))
             box = (
                 _extruded_box(

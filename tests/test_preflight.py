@@ -213,6 +213,54 @@ def test_flipped_cut_into_material_is_not_flagged():
     assert _sev(material_envelope_scan(spec), "error") == []
 
 
+def test_start_offset_boss_honest_skips_no_false_empty_air_error():
+    # F1 regression: boss_extrude_blind's start_offset displaces the REAL
+    # body along the plane normal (spec/handlers/extrude.py), but the
+    # un-offset axis-aligned box model doesn't know that. Un-offset modeled
+    # box would be Z[0, 10]; the real body is Z[20, 30]. A later cut that
+    # really lands in the displaced material (Z[20, 25]) is disjoint from
+    # the wrongly-placed un-offset box -> false empty-air ERROR on current
+    # code. The boss must honest-skip (INFO) instead, so no false ERROR.
+    spec = {
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "sk_base",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 40.0,
+                "center": {"x": 0.0, "y": 0.0, "z": 0.0},
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "base",
+                "sketch": "sk_base",
+                "depth": 10.0,
+                "start_offset": 20.0,
+            },
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "sk_cut",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 40.0,
+                "center": {"x": 0.0, "y": 0.0, "z": 25.0},
+            },
+            {
+                "type": "cut_extrude_blind",
+                "name": "pocket",
+                "sketch": "sk_cut",
+                "depth": 5.0,
+                "flip": True,
+            },
+        ]
+    }
+    findings = material_envelope_scan(spec)
+    assert _sev(findings, "error") == []  # no false ERROR
+    infos = _sev(findings, "info")
+    assert any("base" in f.message and "skip" in f.message.lower() for f in infos)
+
+
 def test_open_polyline_consumed_by_boss_warns():
     spec = {
         "features": [
