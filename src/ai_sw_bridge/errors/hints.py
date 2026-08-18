@@ -254,6 +254,20 @@ HINT_CATALOG: dict[str, Hint] = {
         ),
         ref_doc="docs/known_limitations.md §6 (geometry not validated)",
     ),
+    "empty_air_cut": Hint(
+        key="empty_air_cut",
+        summary=(
+            "A cut/hole sweeps a region that does not intersect any "
+            "material -- FeatureCut4 returns None with no error."
+        ),
+        remedy=(
+            "The pre-flight (ai-sw-build --lint) flags this before build. "
+            "Check the sketch plane, sketch-local coordinates, and plane "
+            "offset against docs/coordinate_conventions.md -- the usual "
+            "cause is a plane->part mapping slip (Top v->-Z, Right u->-Z)."
+        ),
+        ref_doc="docs/coordinate_conventions.md",
+    ),
 }
 
 # Fallback used when callers want a non-None placeholder for unknown
@@ -376,6 +390,10 @@ _IFACE_FEATURE_MAP: dict[tuple[str, str], str] = {
         "ISketchManager.AddRelation",
         "sketch_tangent_dim_conflict",
     ): "sketch_tangent_dim_conflict",
+    # Geometric pre-flight (--lint) synthetic feature_type tag emitted
+    # when the empty-air-cut check detects a cut/hole region with no
+    # material overlap before the build ever reaches SW.
+    ("IFeatureManager.FeatureCut4", "empty_air_cut"): "empty_air_cut",
 }
 
 

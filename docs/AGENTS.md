@@ -18,6 +18,9 @@ You never call the SOLIDWORKS COM API directly — the bridge handles COM. You w
 2. **Validate a spec**: `ai-sw-build --demo --validate-only`
 3. **Dry-run (no SW needed)**: `ai-sw-build --demo --dry-run`
 4. **Lint check**: `ai-sw-build --demo --lint`
+   Run `ai-sw-build <spec> --lint` first — the seat-free pre-flight catches
+   coordinate-mapping and empty-air-cut errors before a build. Conventions:
+   docs/coordinate_conventions.md.
 5. **Build a part**: `ai-sw-build --demo --no-dim` (creates a fresh part in SW)
 6. **Observe the result**: `ai-sw-observe features` / `ai-sw-observe bbox` / `ai-sw-observe volume`
 
