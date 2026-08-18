@@ -32,16 +32,21 @@ SKETCH_VALIDITY_KEYS = [
     "sketch_tangent_dim_conflict",
 ]
 
+# Geometric pre-flight hint (geometric-preflight, Task 6).
+PREFLIGHT_KEYS = [
+    "empty_air_cut",
+]
+
 
 def test_catalog_has_fourteen_required_entries() -> None:
-    for key in REQUIRED_KEYS + SKETCH_VALIDITY_KEYS:
+    for key in REQUIRED_KEYS + SKETCH_VALIDITY_KEYS + PREFLIGHT_KEYS:
         assert key in HINT_CATALOG, f"missing catalog entry: {key}"
     # 9 from E1.3 + 4 sketch validity entries from audit §6.4
     # + 1 empty_air_cut pre-flight hint (geometric-preflight, Task 6)
     assert len(HINT_CATALOG) == 14
 
 
-@pytest.mark.parametrize("key", REQUIRED_KEYS + SKETCH_VALIDITY_KEYS)
+@pytest.mark.parametrize("key", REQUIRED_KEYS + SKETCH_VALIDITY_KEYS + PREFLIGHT_KEYS)
 def test_each_hint_has_non_empty_fields(key: str) -> None:
     hint = HINT_CATALOG[key]
     assert isinstance(hint, Hint)

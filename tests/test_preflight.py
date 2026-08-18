@@ -261,6 +261,48 @@ def test_start_offset_boss_honest_skips_no_false_empty_air_error():
     assert any("base" in f.message and "skip" in f.message.lower() for f in infos)
 
 
+def test_body_less_sketch_does_not_gut_empty_air_detection():
+    # F2 regression: a body-less sketch adds no body, but the old
+    # _SKETCH_ONLY_QUIET set listed only 5 of 14 sketch types, so any other
+    # sketch (here sketch_polyline_on_plane -- the offset/polyline-part
+    # primitive) hit the else-branch and flipped modeled_complete=False,
+    # silencing EVERY downstream empty-air ERROR. A genuine empty-air cut
+    # after such a sketch must STILL be flagged, and the body-less sketch
+    # itself must emit no misleading "not modeled" skip note.
+    spec = {
+        "features": [
+            _PLATE,
+            _BOSS,  # modeled material Z in [0, 10]
+            {
+                "type": "sketch_polyline_on_plane",
+                "name": "SK_Ref",
+                "plane": "Front",
+                "points": [{"x": 0, "y": 0}, {"x": 10, "y": 0}, {"x": 10, "y": 10}],
+                "closed": True,
+            },
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Air",
+                "plane": "Front",
+                "width": 5.0,
+                "height": 5.0,
+                "center": {"x": 100.0, "y": 100.0},  # far from the plate
+            },
+            {
+                "type": "cut_extrude_blind",
+                "name": "CUT_Air",
+                "sketch": "SK_Air",
+                "depth": 5.0,
+            },
+        ]
+    }
+    findings = material_envelope_scan(spec)
+    # the body-less sketch must NOT silence the genuine empty-air cut
+    assert any("CUT_Air" in f.message for f in _sev(findings, "error"))
+    # ...and must not emit a misleading "not modeled" skip note for itself
+    assert not any("SK_Ref" in f.message for f in _sev(findings, "info"))
+
+
 def test_open_polyline_consumed_by_boss_warns():
     spec = {
         "features": [

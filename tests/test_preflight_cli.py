@@ -68,6 +68,29 @@ def test_empty_air_cut_exits_six(tmp_path):
     )
 
 
+def test_warning_only_spec_exits_zero(tmp_path):
+    # A WARNING (here an off-face simple_hole) must NOT gate the exit code --
+    # only ERROR severity does (the gate special-cases == "error"). Covers the
+    # WARNING-only exit-0 path (Task 4); INFO-only is covered above.
+    spec = json.loads(json.dumps(_CLEAN))
+    spec["features"].append(
+        {
+            "type": "simple_hole",
+            "name": "H_off",
+            "of_feature": "EX",
+            "face": "+z",
+            "center": {"u": 50, "v": 0},  # material X in [-20, 20] -> off-face
+            "diameter": 5,
+            "depth": 8,
+        }
+    )
+    rc, payload = _run(spec, tmp_path)
+    assert rc == 0
+    assert payload["ok"] is True
+    assert any(f["severity"] == "warning" for f in payload["findings"])
+    assert not any(f["severity"] == "error" for f in payload["findings"])
+
+
 def test_no_preflight_suppresses_geometry_findings(tmp_path):
     spec = json.loads(json.dumps(_CLEAN))
     spec["features"] += [

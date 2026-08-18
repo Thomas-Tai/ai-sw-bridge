@@ -45,12 +45,19 @@ def lint_dryrun_response(
     caller should then proceed to an actual build). Behavior-preserving
     extraction of ``build.py``'s former inline lint/dry-run response block.
     """
+    # An actual build (a mode selected without lint-only, and no --dry-run) has
+    # no seat-free response here -- return early BEFORE the pure lint+pre-flight
+    # pass rather than compute and discard it.
+    lint_only = args.lint and not (args.no_dim or args.deferred_dim)
+    if not (lint_only or args.dry_run):
+        return None
+
     findings, findings_dicts, has_error = assemble_lint_findings(
         spec, no_preflight=getattr(args, "no_preflight", False)
     )
 
     # Lint-only mode: implies --dry-run unless a build mode was also selected.
-    if args.lint and not (args.no_dim or args.deferred_dim):
+    if lint_only:
         dry_run_payload = dry_run(spec) if args.dry_run or args.lint else None
         payload: dict[str, Any] = {
             "ok": not has_error,
@@ -64,14 +71,12 @@ def lint_dryrun_response(
             payload["dry_run"] = dry_run_payload
         return payload, 0 if not has_error else 6
 
-    if args.dry_run:
-        payload = dry_run(spec)
-        # Include lint findings if --lint was also passed
-        if args.lint and findings:
-            payload["lint_findings"] = findings_dicts
-        # Exit 5 (distinct from validation=3 and build=4) on rhs-resolution
-        # failure so CI can tell apart "spec is malformed" from "spec refs
-        # missing vars in locals".
-        return payload, 0 if payload["ok"] else 5
-
-    return None
+    # Reached only when args.dry_run is True (guaranteed by the early return).
+    payload = dry_run(spec)
+    # Include lint findings if --lint was also passed
+    if args.lint and findings:
+        payload["lint_findings"] = findings_dicts
+    # Exit 5 (distinct from validation=3 and build=4) on rhs-resolution
+    # failure so CI can tell apart "spec is malformed" from "spec refs
+    # missing vars in locals".
+    return payload, 0 if payload["ok"] else 5

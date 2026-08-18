@@ -220,16 +220,6 @@ def _extruded_box(
     return (box[0], box[1], box[2], box[3], box[4], box[5])
 
 
-# Sketch/echo-only types that should not emit a SKIP note (they add no body).
-_SKETCH_ONLY_QUIET = frozenset(
-    {
-        "sketch_rectangle_on_plane",
-        "sketch_circle_on_plane",
-        "sketch_circles_on_face",
-        "sketch_rectangle_on_face",
-        "sketch_circle_on_face",
-    }
-)
 # Types that do not modify the solid body (so a SKIP does not invalidate the
 # model).
 _NON_BODY_TYPES = frozenset({"linear_pattern", "circular_pattern", "mirror_feature"})
@@ -371,8 +361,17 @@ def material_envelope_scan(spec: dict[str, Any]) -> list[LintFinding]:
             findings.append(_skip(i, name, ftype))
 
         else:
-            # sketches carry no body; every other feature type is unmodeled.
-            if ftype not in PLANE_AXES and ftype not in _SKETCH_ONLY_QUIET:
+            # Sketch features (sketch_*) carry no body -- they define a profile
+            # a later boss/cut consumes -- so they never modify material and
+            # must stay quiet: no skip note, and no modeled_complete flip.
+            # Flipping it on a body-less sketch would silence every downstream
+            # empty-air ERROR after the first non-rect sketch, gutting the
+            # check for polyline/primitive parts (F2). Every solid-modifying op
+            # has a non-"sketch_" name (boss_*, cut_*, revolve_*, simple_hole,
+            # fillet_*, chamfer_*, patterns, mirror), so the prefix reliably
+            # identifies body-less sketches and stays correct as new sketch
+            # primitives are added -- unlike the hand-maintained set it replaces.
+            if not ftype.startswith("sketch_"):
                 findings.append(_skip(i, name, ftype))
                 if ftype not in _NON_BODY_TYPES:
                     modeled_complete = False
