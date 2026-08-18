@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-08-18
+
+**Author-time pre-flight & reach.** A seat-free geometric pre-flight now catches
+coordinate-mapping and impossible-geometry errors at author time — before you
+ever touch a SOLIDWORKS seat — and a full-system demo suite plus a landing page
+make the whole surface legible at a glance.
+
+### Added
+
+- **Geometric pre-flight (`ai-sw-build --lint`).** A seat-free static analyzer —
+  no SW, no COM, no license — over a spec: exact coordinate-mapping echoes
+  (INFO), empty-air-cut detection (`ERROR`: a `cut_extrude_*` sweeping a region
+  disjoint from all modeled material, which SW would return `None` for), and
+  off-face-hole checks (`WARNING`). Anything the axis-aligned model cannot
+  represent exactly is honest-skipped, so the analyzer **never emits a false
+  ERROR**. ERROR-only exit gating (exit `6`); `--no-preflight` runs only the
+  semantic lint. New [`docs/coordinate_conventions.md`](docs/coordinate_conventions.md).
+- **`sketch_polyline_on_plane`** primitive — composite closed polylines for
+  non-axis-aligned profiles (the 14th sketch type).
+- **Full-system demo suite** — a chaptered `tools/demo_full_system.py`
+  (part → assembly → observe → drawing → export), a captioned GIF suite, and a
+  5-minute `--quickstart` onboarding path (`QUICKSTART.md`, `ai-sw-build --demo`).
+- **Unified honesty-gate** (`tools/honesty_gate.py`) — a CI + pre-commit lint
+  over user-facing docs that fails on phantom CLI names, placeholders, and dead
+  links.
+- **Landing page & distribution kit** — a GitHub Pages index with capability
+  blocks and a demo filmstrip (`tools/build_pages.py`).
+
+### Fixed
+
+- Deferred-dim geometry centering and equation-driven rebuild.
+- Fillet: force a rebuild before resolving semantic edge selectors.
+- Build stability: restore the `main()` stability decorator, guard the export
+  doc read, and de-duplicate the argument parser.
+- Cap the `[mcp]` / `[ci]` extras below `2.0` (the divergent PyPI `mcp 2.0.0`
+  namesquat).
+
 ## [1.7.1] - 2026-07-04
 
 **Operator-experience release.** Makes the no-Python operator path work

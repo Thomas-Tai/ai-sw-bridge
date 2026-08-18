@@ -2,6 +2,9 @@
 translated-from: 16f6109d33b4e749f53a8408a12fd071889b1ed4
 ---
 
+<!-- i18n-staleness-banner -->
+> ⚠️ **此翻譯已落後於英文版。** 英文 [USAGE](../../../USAGE.md) 為權威版本；最近的更新（免授權幾何預檢 `--lint` 的工作流程）尚未同步至此翻譯。
+
 # USAGE
 
 > **開發者介面 — 操作指南 (How-to guide)。** 這是驅動橋接器的
@@ -144,6 +147,17 @@ if data["manager_status_code"] != 0:
 ```
 
 對 Claude Code 及其他 MCP 用戶端來說，`ai-sw-bridge` 提供一個原生 MCP 伺服器 — `ai-sw-mcp` — 透過 stdio 公開 37 個工具（讀取通道 + plan/elicit 把關的寫入）；你不需要自己包一層 CLI。設定方式、工具清單、協定細節請見 [`docs/mcp_server_design.md`](../../mcp_server_design.md)。上面示範的「透過 subprocess 呼叫 CLI」模式，對偏好自訂框架的人來說依然可行。
+
+## 工作流程 5 — 免授權的規格預檢（`--lint`）
+
+在動用 SOLIDWORKS 席位前，先對規格做一次靜態幾何預檢——不需 SW、不需 COM、不需授權——就能抓出座標對應或不可能幾何的錯誤：
+
+```powershell
+ai-sw-build spec.json --lint          # 免席位；只要出現幾何 ERROR 就以 6 結束
+ai-sw-build spec.json --lint --no-preflight   # 只跑語意檢查
+```
+
+沒有 ERROR 時以 `0` 結束（INFO/WARNING 不影響結束碼），出現任一 ERROR 時以 `6` 結束，因此可直接當成免授權的 CI／pre-commit 關卡。此預檢**永不誤報 ERROR**——無法精確建模的部分一律誠實跳過。完整說明見 [`docs/tools_reference.md`](../../tools_reference.md)。
 
 ## 輸出路徑與環境
 

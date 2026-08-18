@@ -1,6 +1,6 @@
 # Contributing to ai-sw-bridge
 
-Thanks for your interest. This project is commercial and stable (v1.7.1).
+Thanks for your interest. This project is commercial and stable (v1.8.0).
 
 ## Quick start
 

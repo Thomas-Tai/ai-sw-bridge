@@ -129,6 +129,40 @@ Returns the output path + `next_steps` array reminding you to paste & F5 in VBE.
 
 Both directories are created on first use.
 
+## `ai-sw-build --lint` — seat-free geometric pre-flight
+
+`ai-sw-build spec.json --lint` runs a **seat-free** static analysis of a spec —
+no SOLIDWORKS, no COM, no license — and prints its findings as JSON. Use it to
+catch coordinate-mapping and impossible-geometry mistakes at author time,
+*before* a build turns them into a silent `FeatureCut4`-returns-`None` failure
+on a live seat.
+
+Two analyzers run over the spec dict (both pure functions):
+
+- **Coordinate-mapping echoes** (INFO) — for each plane sketch, the exact
+  part-frame span it maps to, so you can eyeball whether `Front`/`Top`/`Right`
+  and your `center` land where you intended. (The plane→axis mapping —
+  including the `Top v→−Z` / `Right u→−Z` traps — is spelled out in
+  [`coordinate_conventions.md`](coordinate_conventions.md).)
+- **Material-envelope scan** — a conservative axis-aligned material model that
+  flags an **empty-air cut** (`ERROR`: a `cut_extrude_*` sweeping a region
+  disjoint from all modeled material — SW would return `None`) and an
+  **off-face hole** (`WARNING`: a `simple_hole` whose footprint falls outside
+  the face's material). Anything the box model cannot represent exactly is
+  **honest-skipped** (INFO) and the model is marked incomplete, so the analyzer
+  **never emits a false ERROR**.
+
+Gating: `--lint` exits `0` when there is no ERROR-severity finding (INFO and
+WARNING do not gate) and `6` when any ERROR is present — so it drops cleanly
+into a pre-commit hook or CI job that lints spec repos **without a SOLIDWORKS
+seat**. Add `--no-preflight` to run only the semantic lint and skip the
+geometric pre-flight.
+
+```powershell
+ai-sw-build spec.json --lint          # seat-free; exit 6 iff a geometric ERROR
+ai-sw-build spec.json --lint --no-preflight   # semantic lint only
+```
+
 ## Exit codes
 
 Shared convention across the CLIs:

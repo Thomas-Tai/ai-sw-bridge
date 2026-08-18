@@ -2,6 +2,9 @@
 translated-from: 2aa695ab4adbfdd625d6d3b3dfaef867e00d1803
 ---
 
+<!-- i18n-staleness-banner -->
+> ⚠️ **此翻譯已落後於英文版。** 英文 [PUBLIC_API](../../PUBLIC_API.md) 為權威版本；最近的版本更新（v1.8.0）尚未同步至此翻譯。
+
 # Public API & Stability Contract (公開 API 與穩定性合約)
 
 > **狀態：** ai-sw-bridge 截至 **v1.7.1** 的支援範圍。

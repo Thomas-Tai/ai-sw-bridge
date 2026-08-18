@@ -29,7 +29,12 @@ SOLIDWORKS seat, human-gated (propose → approve → execute).*
 | **Export** | STEP / STL / 3MF — and the STEP round-trips back, Δbbox = 0 | spec export block · `ai-sw-export-dxf-flat` |
 
 **No SOLIDWORKS seat?** You can still author and validate specs with zero
-license — start with the [5-minute quickstart →](QUICKSTART.md).
+license. `ai-sw-build spec.json --lint` runs a **seat-free geometric
+pre-flight** — no SW, no COM — that echoes the exact part-frame coordinates
+each plane sketch maps to and flags **empty-air cuts** before a build turns
+them into a silent failure on a live seat. It exits `6` on a geometric error,
+so it drops straight into a pre-commit hook or CI job that lints spec repos
+without a license. Start with the [5-minute quickstart →](QUICKSTART.md).
 
 ## Who are you? → start here
 
@@ -364,15 +369,15 @@ model? These are your entry points:
 - **[`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md)** — the architecture map: `client` → facades → registry → COM, and the design rationale.
 - **[`CODESTYLE.md`](CODESTYLE.md)** — cross-cutting code discipline (two-stream I/O, fail-soft, STA threading).
 
-The offline test suite is the spec: it must stay green (`pytest`, 3,700+ tests), plus the live-SW `solidworks_only` lane and the destructive `destructive_sw` recovery lane for seat-proof work.
+The offline test suite is the spec: it must stay green (`pytest`, 4,100+ tests), plus the live-SW `solidworks_only` lane and the destructive `destructive_sw` recovery lane for seat-proof work.
 
 ## Project status
 
-**Current release: `v1.7.1` — commercial, Production/Stable.** One public Python
+**Current release: `v1.8.0` — commercial, Production/Stable.** One public Python
 entry point (`SolidWorksClient`), 22 CLI commands, a 37-tool MCP server, and a
 36-kind `feature_add` registry behind the `ai-sw-batch` / `ai-sw-mutate` surface.
 Validated against SOLIDWORKS 32.1.0 (2024 SP1); CI green on Win-2025 × Python
-3.10 / 3.12 / 3.14. The offline suite is **3,700+ tests**, plus a live-SW
+3.10 / 3.12 / 3.14. The offline suite is **4,100+ tests**, plus a live-SW
 end-to-end lane (`solidworks_only`) and a destructive seat-death recovery lane
 (`destructive_sw`).
 
@@ -401,6 +406,15 @@ Milestone arc (full detail in [CHANGELOG.md](CHANGELOG.md)):
   `sw_batch_execute`) gate every disk write behind in-chat human approval (MCP
   elicitation); proprietary commercial licensing; CI hardened (black / flake8 /
   mypy / import-linter / coverage / secret + CVE scanning, all blocking).
+- **v1.7.0–v1.7.1 — semantic edges & operator experience** (2026-07). Semantic
+  edge selectors for fillet/chamfer and CLI ergonomics; the no-Python operator
+  path end-to-end (bundled `ai-sw-build --demo`, an unsigned Windows installer,
+  quickstart hardening).
+- **v1.8.0 — author-time pre-flight & reach** (2026-08). A **seat-free geometric
+  pre-flight** (`ai-sw-build --lint`) that flags coordinate-mapping and
+  empty-air-cut errors before you touch a seat; the `sketch_polyline_on_plane`
+  primitive; a full-system demo suite (chaptered GIFs + `--quickstart`); a
+  unified honesty-gate over user-facing docs; and a landing page.
 
 See [`docs/PUBLIC_API.md`](docs/PUBLIC_API.md) for the supported-surface contract
 and [`docs/CLASS_RELATION_MAP.md`](docs/CLASS_RELATION_MAP.md) for the architecture map.
@@ -457,7 +471,7 @@ ai-sw-bridge/
 │   └── CLASS_RELATION_MAP.md  # client / facades / registry / COM relation map
 ├── tools/                    # CHM extractor, drift/license lint, bundle, perf baselines, probe_mcp_tools, checkpoint_redact, spec_redact, example_roundtrip
 ├── spikes/                   # Phase 0 / v0.3 / v0.5 / v0.6 API probes
-├── tests/                    # 3,750 offline tests, green on Python 3.10 / 3.12 / 3.14
+├── tests/                    # 4,100+ offline tests, green on Python 3.10 / 3.12 / 3.14
 │   ├── e2e_sw/               # end-to-end suite against live SW (solidworks_only marker)
 │   ├── fault_injection/      # COM HRESULT injection (separate CI job)
 │   ├── mcp_lane/             # MCP server contract + wire-level + snapshot fixtures

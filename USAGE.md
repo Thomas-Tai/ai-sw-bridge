@@ -141,6 +141,40 @@ if data["manager_status_code"] != 0:
 
 For Claude Code and other MCP clients, `ai-sw-bridge` ships a native MCP server — `ai-sw-mcp` — exposing 37 tools (read lanes + plan/elicit-gated writes) over stdio; you do not need to wrap the CLIs yourself. See [`docs/mcp_server_design.md`](docs/mcp_server_design.md) for setup, the tool inventory, and the protocol. The subprocess-over-CLI pattern shown above still works for bespoke harnesses that prefer it.
 
+## Workflow 5 — Seat-free spec pre-flight (`--lint`)
+
+Use case: You (or an AI agent) authored a spec and want to catch
+coordinate-mapping or impossible-geometry mistakes **before** touching a
+SOLIDWORKS seat — or you want to gate a repo of specs in CI with **no license**.
+
+`ai-sw-build --lint` runs a static geometric pre-flight — no SW, no COM — and
+prints its findings as JSON:
+
+```powershell
+ai-sw-build spec.json --lint
+# INFO   coordinate echoes: each plane sketch's part-frame span
+# WARNING off-face hole: a simple_hole outside the face's material
+# ERROR  empty-air cut: a cut sweeping a region with no material (SW -> None)
+```
+
+It exits `0` when there is no ERROR (INFO/WARNING don't gate) and `6` when any
+ERROR is present. That makes it a drop-in **seat-free CI / pre-commit gate**:
+
+```powershell
+# Fails the job iff a spec has a geometric ERROR — no SOLIDWORKS license needed.
+foreach ($s in Get-ChildItem specs\*.json) {
+    ai-sw-build $s.FullName --lint
+    if ($LASTEXITCODE -eq 6) { throw "geometric pre-flight failed: $($s.Name)" }
+}
+```
+
+The pre-flight **never emits a false ERROR** — anything it can't model exactly
+it honest-skips (INFO) — so a green `--lint` means "no *proven* geometry
+impossibility," not "provably correct." Add `--no-preflight` to run only the
+semantic lint. Full detail: [`docs/tools_reference.md`](docs/tools_reference.md)
+and the plane→axis mapping in
+[`docs/coordinate_conventions.md`](docs/coordinate_conventions.md).
+
 ## Output paths & environment
 
 | Default location | Override via |
