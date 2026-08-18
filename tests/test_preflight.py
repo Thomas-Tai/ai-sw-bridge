@@ -6,6 +6,8 @@ from ai_sw_bridge.spec.preflight import (
     map_plane_point,
     coordinate_mapping_report,
     material_envelope_scan,
+    preflight,
+    _degenerate_profile_checks,
 )
 
 
@@ -209,3 +211,33 @@ def test_flipped_cut_into_material_is_not_flagged():
         ]
     }
     assert _sev(material_envelope_scan(spec), "error") == []
+
+
+def test_open_polyline_consumed_by_boss_warns():
+    spec = {
+        "features": [
+            {
+                "type": "sketch_polyline_on_plane",
+                "name": "SK_Open",
+                "plane": "Front",
+                "points": [{"x": 0, "y": 0}, {"x": 10, "y": 0}, {"x": 10, "y": 10}],
+                "closed": False,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX",
+                "sketch": "SK_Open",
+                "depth": 5.0,
+            },
+        ]
+    }
+    warns = [f for f in _degenerate_profile_checks(spec) if f.severity == "warning"]
+    assert any("SK_Open" in f.message and "closed" in f.message.lower() for f in warns)
+
+
+def test_preflight_aggregates_all_three_analyzers():
+    spec = {"features": [_PLATE, _BOSS]}
+    findings = preflight(spec)
+    # coordinate echo (info) present, no warning/error on a clean plate
+    assert any(f.severity == "info" for f in findings)
+    assert [f for f in findings if f.severity in ("warning", "error")] == []

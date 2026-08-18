@@ -319,3 +319,62 @@ def material_envelope_scan(spec: dict[str, Any]) -> list[LintFinding]:
                     modeled_complete = False
 
     return findings
+
+
+def _degenerate_profile_checks(spec: dict[str, Any]) -> list[LintFinding]:
+    """WARNING for spec-detectable degenerate profiles: an open polyline
+    consumed by a boss/cut, or a construction-only sketch. These map to
+    the post-mortem hints (sketch_open_contour_needed_closed,
+    sketch_construction_only) in errors/hints.py, promoted to pre-build."""
+    features = spec.get("features", [])
+    consumed = {
+        f.get("sketch", "")
+        for f in features
+        if f.get("type", "").endswith(
+            ("_blind", "_midplane", "_two_direction", "_through_all")
+        )
+    }
+    findings: list[LintFinding] = []
+    for i, feat in enumerate(features):
+        name = feat.get("name", "")
+        if feat.get("type") == "sketch_polyline_on_plane":
+            if feat.get("closed", True) is False and name in consumed:
+                findings.append(
+                    LintFinding(
+                        severity="warning",
+                        path=f"features/{i}/closed",
+                        message=(
+                            f"polyline sketch '{name}' is closed:false but is "
+                            f"consumed by a boss/cut, which needs a closed "
+                            f"profile -- SW raises 'No closed profile'. Close "
+                            f"the contour (see errors/hints.py "
+                            f"sketch_open_contour_needed_closed)."
+                        ),
+                    )
+                )
+            if feat.get("construction", False) is True:
+                findings.append(
+                    LintFinding(
+                        severity="warning",
+                        path=f"features/{i}/construction",
+                        message=(
+                            f"sketch '{name}' is construction-only; a boss/cut "
+                            f"has no real entities to sweep (see errors/hints.py "
+                            f"sketch_construction_only)."
+                        ),
+                    )
+                )
+    return findings
+
+
+def preflight(spec: dict[str, Any]) -> list[LintFinding]:
+    """Run all seat-free geometric pre-flight analyzers over ``spec``.
+
+    Returns INFO coordinate echoes, WARNING advisories, and at most one
+    ERROR per provable empty-air cut. Never raises; never touches SW.
+    """
+    findings: list[LintFinding] = []
+    findings.extend(coordinate_mapping_report(spec))
+    findings.extend(material_envelope_scan(spec))
+    findings.extend(_degenerate_profile_checks(spec))
+    return findings
