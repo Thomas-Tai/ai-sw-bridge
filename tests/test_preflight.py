@@ -284,3 +284,140 @@ def test_consumed_construction_polyline_warns():
     assert any(
         "SK_Con" in f.message and "construction" in f.message.lower() for f in warns
     )
+
+
+# Regression tests for rhs-driven dimensions (Task 4 crash-fix).
+# The crash-fix adds _as_float() to handle {"rhs": "..."} locals references
+# instead of crashing with TypeError: float() argument must be a string or a real number, not 'dict'.
+
+
+def test_rhs_driven_rectangle_width_is_skipped_not_crashed():
+    """Regression: coordinate_mapping_report must not crash on rhs-driven width.
+
+    Pre-fix: float({"rhs": "X"}) -> TypeError.
+    Post-fix: _as_float({"rhs": "X"}) -> None, feature is skipped (extent=None).
+    """
+    spec = {
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_RHS_Width",
+                "plane": "Front",
+                "width": {"rhs": "SOME_LOCAL"},  # unresolved locals ref
+                "height": 30.0,
+            }
+        ]
+    }
+    # Must not raise TypeError.
+    findings = coordinate_mapping_report(spec)
+    # Feature skipped (no coordinate echo), so no ERROR/WARNING either.
+    assert all(f.severity != "error" for f in findings)
+    assert all(f.severity != "warning" for f in findings)
+
+
+def test_rhs_driven_rectangle_height_is_skipped_not_crashed():
+    """Regression: coordinate_mapping_report must not crash on rhs-driven height."""
+    spec = {
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_RHS_Height",
+                "plane": "Top",
+                "width": 40.0,
+                "height": {"rhs": "GROOVE_DEPTH"},  # unresolved locals ref
+            }
+        ]
+    }
+    # Must not raise TypeError.
+    findings = coordinate_mapping_report(spec)
+    # Feature skipped, so no ERROR/WARNING either.
+    assert all(f.severity != "error" for f in findings)
+    assert all(f.severity != "warning" for f in findings)
+
+
+def test_rhs_driven_circle_diameter_is_skipped_not_crashed():
+    """Regression: coordinate_mapping_report must not crash on rhs-driven diameter."""
+    spec = {
+        "features": [
+            {
+                "type": "sketch_circle_on_plane",
+                "name": "SK_RHS_Diameter",
+                "plane": "Front",
+                "diameter": {"rhs": "BORE_SIZE"},  # unresolved locals ref
+            }
+        ]
+    }
+    # Must not raise TypeError.
+    findings = coordinate_mapping_report(spec)
+    # Feature skipped, so no ERROR/WARNING either.
+    assert all(f.severity != "error" for f in findings)
+    assert all(f.severity != "warning" for f in findings)
+
+
+def test_rhs_driven_extrude_depth_is_skipped_not_crashed():
+    """Regression: material_envelope_scan must not crash on rhs-driven depth.
+
+    Pre-fix: float({"rhs": "X"}) -> TypeError in _rect_uv_extent or material_envelope_scan.
+    Post-fix: _as_float({"rhs": "X"}) -> None, feature marked incomplete (modeled_complete=False).
+    """
+    spec = {
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Plate",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 30.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_RHS_Depth",
+                "sketch": "SK_Plate",
+                "depth": {"rhs": "EXTRUDE_LENGTH"},  # unresolved locals ref
+            },
+        ]
+    }
+    # Must not raise TypeError.
+    findings = material_envelope_scan(spec)
+    # Feature skipped (depth unresolved), marked incomplete; no false ERROR/WARNING.
+    assert all(f.severity != "error" for f in findings)
+    assert all(f.severity != "warning" for f in findings)
+
+
+def test_rhs_driven_cut_depth_is_skipped_not_crashed():
+    """Regression: material_envelope_scan must not crash on rhs-driven cut depth."""
+    spec = {
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Plate",
+                "plane": "Front",
+                "width": 40.0,
+                "height": 30.0,
+            },
+            {
+                "type": "boss_extrude_blind",
+                "name": "EX_Plate",
+                "sketch": "SK_Plate",
+                "depth": 10.0,
+            },
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Pocket",
+                "plane": "Front",
+                "width": 5.0,
+                "height": 5.0,
+                "center": {"x": 0.0, "y": 0.0},
+            },
+            {
+                "type": "cut_extrude_blind",
+                "name": "CUT_RHS_Depth",
+                "sketch": "SK_Pocket",
+                "depth": {"rhs": "POCKET_DEPTH"},  # unresolved locals ref
+            },
+        ]
+    }
+    # Must not raise TypeError.
+    findings = material_envelope_scan(spec)
+    # Feature skipped (depth unresolved), marked incomplete; no false ERROR.
+    assert all(f.severity != "error" for f in findings)
