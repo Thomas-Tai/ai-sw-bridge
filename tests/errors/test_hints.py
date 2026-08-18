@@ -33,11 +33,12 @@ SKETCH_VALIDITY_KEYS = [
 ]
 
 
-def test_catalog_has_thirteen_required_entries() -> None:
+def test_catalog_has_fourteen_required_entries() -> None:
     for key in REQUIRED_KEYS + SKETCH_VALIDITY_KEYS:
         assert key in HINT_CATALOG, f"missing catalog entry: {key}"
     # 9 from E1.3 + 4 sketch validity entries from audit §6.4
-    assert len(HINT_CATALOG) == 13
+    # + 1 empty_air_cut pre-flight hint (geometric-preflight, Task 6)
+    assert len(HINT_CATALOG) == 14
 
 
 @pytest.mark.parametrize("key", REQUIRED_KEYS + SKETCH_VALIDITY_KEYS)
