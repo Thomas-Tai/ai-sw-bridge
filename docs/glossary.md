@@ -37,6 +37,27 @@ fail closed rather than silently no-op. The default execution path is **Route-A*
 (below). See [DEFERRED.md](DEFERRED.md) and [decisions.md](decisions.md) (the
 invariant "out-of-process Python, no agent COM access").
 
+### Pre-flight (`--lint`)
+
+The seat-free static analysis `ai-sw-build --lint` runs over a spec before any
+build: exact coordinate-mapping echoes (INFO), empty-air-cut detection (`ERROR`
+— a `cut_extrude_*` sweeping a region disjoint from all modeled material, which
+SOLIDWORKS would return `None` for), and off-face-hole checks (`WARNING`).
+Anything the axis-aligned model cannot represent exactly is honest-skipped, so
+the analyzer never emits a false `ERROR`. It needs no SOLIDWORKS, no COM, and no
+license, and gates on `ERROR` only (exit `6`). See
+[coordinate_conventions.md](coordinate_conventions.md).
+
+### Published schema
+
+The standalone JSON Schema for the spec format, serialized from the v1
+`spec.schema.SCHEMA` and committed at `schema/ai-sw-bridge.spec.schema.json`
+(with a byte-identical copy shipped inside the wheel). Point an editor at it for
+`spec.json` autocomplete and inline validation; a `pip`-installed user resolves
+the packaged copy via `ai_sw_bridge.spec.published_schema_path()`. Kept in
+lockstep with `schema.py` by `tools/emit_spec_schema.py` and a CI sync gate. See
+[spec_reference.md](spec_reference.md).
+
 ### Route-A / B / C / D
 
 The candidate execution paths for driving SOLIDWORKS, in escalating invasiveness.

@@ -84,6 +84,58 @@ If you add a new feature primitive, add at least:
 - A schema-level test in `tests/test_schema.py`
 - A reference-check test in `tests/test_validator.py`
 
+## CI gates — what can red your PR
+
+The `test` job (matrix: Python 3.10 / 3.12 / 3.14 on windows-2025, fail-fast)
+runs these gates in order. Each is reproducible locally with the exact command
+shown — no SOLIDWORKS seat needed for any of them.
+
+| Gate | Enforces | Reproduce locally |
+|---|---|---|
+| Formatting | `black` clean over the whole repo | `black --check .` |
+| Lint | `flake8` clean over `src/` | `flake8 src/` |
+| Types | `mypy` clean over the package | `mypy --config-file mypy.ini src/ai_sw_bridge` |
+| Doc coverage | every schema feature type is documented in `spec_reference.md` + `AGENTS.md` and has an example | `python tools/doc_coverage_gate.py` |
+| Two-stream lint | CLIs keep the stdout-JSON / stderr-text contract | `python tools/two_stream_lint.py src/` |
+| Module-size budget | no `src/` module exceeds 800 LOC | `python tools/module_size_gate.py --strict` |
+| Honesty gate | no phantom CLI / placeholders / broken links on user-facing surfaces (see above) | `python tools/honesty_gate.py` |
+| Import-linter | import lane boundaries in `[tool.importlinter]` hold | `lint-imports` |
+| Tests | the full hermetic pytest suite | `pytest` |
+| Coverage ratchet | line coverage stays at or above the recorded floor | `python tools/coverage_gate.py` |
+
+Reproduce the whole job in one shot (PowerShell or bash) — run from the repo root:
+
+```bash
+black --check . && flake8 src/ && mypy --config-file mypy.ini src/ai_sw_bridge \
+  && python tools/doc_coverage_gate.py && python tools/two_stream_lint.py src/ \
+  && python tools/module_size_gate.py --strict && python tools/honesty_gate.py \
+  && lint-imports && pytest && python tools/coverage_gate.py
+```
+
+**Gates that live inside `pytest`.** Several repo-invariant checks are ordinary
+tests, so `pytest` is where they fire (no separate CI step):
+
+- `test_doc_truth.py` — the version string appears verbatim in the 5 version-bearing
+  docs, and source-derived counts (feature types, CLI/MCP tool counts, kinds) match.
+- `test_i18n_staleness.py` — when an English mirror-bound doc (`README` / `USAGE` /
+  `PUBLIC_API`) advances past its translation, the `zh-CN` / `zh-TW` copy carries a
+  staleness banner.
+- `test_spec_schema_published.py` — the published JSON Schema (both the repo-root and
+  in-wheel copies) is byte-identical to `schema.py` and every example validates.
+- `test_examples_index_complete.py` — every `examples/<dir>/` is linked from
+  `examples/README.md`.
+
+**Blocks your commit, not a separate CI step.** Two more gates run as pre-commit
+hooks (and are covered transitively by the pytest gates above): `ai-sw-build-lint`
+(`tools/lint_specs.py`, semantic lint of any staged `spec.json`) and
+`spec-schema-sync` (`python tools/emit_spec_schema.py --check`).
+
+**Other CI jobs.** Beyond `test`: `import-check` (the package imports lazily with no
+`pywin32`), `onboarding` (`pytest -m onboarding` — the quickstart smoke), and
+`operator-install-smoke` (build a wheel, install it, confirm the console scripts are
+on `PATH` and degrade gracefully with no SOLIDWORKS). Separate workflows run the
+license lint (`tools/license_lint.py`) and the security scan.
+
 ## Designing new code
 
 Topic-keyed pointers to the right CODESTYLE.md section before you start:

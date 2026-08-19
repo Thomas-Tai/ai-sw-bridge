@@ -23,6 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   repo-root and in-wheel copies are generated from one `render()` and gated
   byte-identical (in the CI sync gate and `emit_spec_schema.py --check`).
 
+### Documentation
+
+- **Example & doc indexes now complete.** `examples/README.md` lists every
+  example folder and `docs/README.md` lists every tracked reference doc; a new
+  drift-guard test (`tests/test_examples_index_complete.py`) keeps the examples
+  index honest. Per-folder READMEs added for the five examples that lacked them.
+- **Editor-autocomplete quickstart.** `QUICKSTART.md` now shows how to wire
+  `spec.json` autocomplete to the published JSON Schema.
+- **CI-gates reference.** `CONTRIBUTING.md` documents every gate that can red a
+  PR and how to reproduce each locally (guarded by
+  `tests/test_ci_gates_documented.py`); new glossary entries for pre-flight
+  (`--lint`) and the published schema.
+
 ## [1.8.0] - 2026-08-18
 
 **Author-time pre-flight & reach.** A seat-free geometric pre-flight now catches
