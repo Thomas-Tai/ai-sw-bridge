@@ -7,10 +7,13 @@ prompts, session reconstructions, R&D research/spike reports) is kept out of the
 
 ## Getting started
 - [ONBOARDING.md](ONBOARDING.md) — first-run setup for a new operator/contributor.
+- [operator_guide.md](operator_guide.md) — the SOLIDWORKS user's guide to driving the bridge from an AI assistant.
 - [AGENTS.md](AGENTS.md) — how an AI agent drives the bridge (the contract agents read).
 - [industrial_intake/](industrial_intake/README.md) — pre-CAD intake: from one idea (or a complete professional design) to a CAD-ready package the bridge can build.
 - [CAPABILITIES.md](CAPABILITIES.md) — what the bridge can build/observe today.
+- [demo_full_system.md](demo_full_system.md) — the chaptered full-system demo tour (parts → assembly → observe → drawing → export): how to run and record it.
 - [spec_reference.md](spec_reference.md) — per-primitive JSON spec schema reference (incl. sketch-axis reference).
+- [coordinate_conventions.md](coordinate_conventions.md) — plane → axis sketch coordinate conventions (the reference behind `ai-sw-build --lint`).
 - [known_limitations.md](known_limitations.md) — spec-author sharp edges (read before your first spec).
 - [known_gotchas.md](known_gotchas.md) — COM/pywin32 marshalling gotchas (contributors).
 
@@ -23,6 +26,7 @@ prompts, session reconstructions, R&D research/spike reports) is kept out of the
 - [CLASS_RELATION_MAP.md](CLASS_RELATION_MAP.md) — system structure: the client/facades/registry/verify/COM relation map (mermaid + layer hierarchy). The canonical architecture doc (supersedes the retired `architecture.md`).
 - [decisions.md](decisions.md) — the running architecture decision log (ADRs).
 - [mcp_server_design.md](mcp_server_design.md) — the MCP server contract.
+- [extension_contract.md](extension_contract.md) — the contract for adding a new feature handler / extending the bridge.
 - [checkpoint_encryption_design.md](checkpoint_encryption_design.md) — at-rest encryption design.
 - [supervised_session_spec.md](supervised_session_spec.md) — crash-recovery envelope (spec + test specification).
 - [com_failure_modes.md](com_failure_modes.md) — the COM incident registry (verify-the-postcondition).
@@ -33,5 +37,10 @@ prompts, session reconstructions, R&D research/spike reports) is kept out of the
 ## Security & compliance
 - [SECURITY.md](SECURITY.md) — privacy posture (data inventory, sensitivity tiers, egress paths) + supply-chain security (pinned-commit policy, CVE response, license audit).
 
+## Testing & CI gates
+- [perf_gate.md](perf_gate.md) — the performance honesty gate (the Model-B contract for build-time budgets).
+- [pending_gates.md](pending_gates.md) — features code-complete and green offline but awaiting a live-seat gate: what's held and why.
+
 ## Reference
 - [ROADMAP.md](ROADMAP.md) — direction.
+- [demo_no_dim_showcase.md](demo_no_dim_showcase.md) — how to record the `--no-dim` showcase GIF.

@@ -64,6 +64,32 @@ in the main [README](README.md)) so there's nothing to author before your
 first build. `ai-sw-observe bounding_box` reads real geometry back from the
 model that command just created.
 
+## Author specs with editor autocomplete
+
+Point your editor at the published JSON Schema and every `spec.json` gets
+autocomplete, enum hints, and inline validation as you type — no build required.
+In VS Code, add to `.vscode/settings.json`:
+
+```json
+{
+  "json.schemas": [
+    { "fileMatch": ["**/spec.json"], "url": "./schema/ai-sw-bridge.spec.schema.json" }
+  ]
+}
+```
+
+Working outside a repo clone (a `pip`/`pipx` install)? The schema ships inside
+the wheel — resolve its path with:
+
+```python
+from ai_sw_bridge.spec import published_schema_path
+print(published_schema_path())
+```
+
+Full wiring (JetBrains, the raw-URL option, and why an inline `$schema` key is
+rejected) is in
+[docs/spec_reference.md](docs/spec_reference.md#editor-autocomplete-json-schema).
+
 ## Where next
 
 Edit any `examples/demo_widget/*/spec.json` and re-run the Tier-A dry-run
