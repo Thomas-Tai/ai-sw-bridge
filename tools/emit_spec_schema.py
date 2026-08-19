@@ -2,10 +2,13 @@
 """Emit the canonical published JSON Schema for the ai-sw-bridge part spec.
 
 The stable, shipping spec surface is the v1 ``schema.SCHEMA`` (assembled from
-the declarative descriptors). This tool serializes it to
-``schema/ai-sw-bridge.spec.schema.json`` -- the standalone ``$schema`` file an
-editor points at to get autocomplete and inline validation while authoring a
-``spec.json`` (see ``docs/spec_reference.md`` for the editor wiring).
+the declarative descriptors). This tool serializes it to the standalone
+``$schema`` file an editor points at to get autocomplete and inline validation
+while authoring a ``spec.json`` (see ``docs/spec_reference.md`` for the editor
+wiring). It writes two byte-identical copies from one ``render()``: the repo-root
+canonical ``schema/ai-sw-bridge.spec.schema.json`` (what the ``$id`` URL names)
+and an in-wheel ``src/ai_sw_bridge/schema/`` copy so a pip/pipx install can
+resolve it via ``ai_sw_bridge.spec.published_schema_path()``.
 
 Usage::
 
@@ -32,10 +35,24 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from ai_sw_bridge.spec.schema import SCHEMA  # noqa: E402  (needs sys.path above)
 
+# The published schema is committed in two byte-identical places, both written
+# from the single render() below so they can never disagree:
+#   * schema/...                    -- repo-root canonical. The $id URL points
+#     here; it is what an editor in a repo clone associates.
+#   * src/ai_sw_bridge/schema/...   -- the in-wheel copy, so a pip/pipx install
+#     can resolve the schema without the source tree, via importlib.resources
+#     (ai_sw_bridge.spec.published_schema_path()). Ships as package-data, the
+#     same mechanism examples/*.json already uses.
 PUBLISHED_PATH = REPO_ROOT / "schema" / "ai-sw-bridge.spec.schema.json"
+PACKAGED_PATH = (
+    REPO_ROOT / "src" / "ai_sw_bridge" / "schema" / "ai-sw-bridge.spec.schema.json"
+)
+TARGETS = (PUBLISHED_PATH, PACKAGED_PATH)
 
 # Canonical identifier for the published schema. The repo is public, so this
 # raw URL resolves; editors also accept a plain relative path (see the docs).
+# Both physical copies carry this same $id -- it is the stable identifier for
+# the schema, independent of which local copy an editor happens to point at.
 CANONICAL_ID = (
     "https://raw.githubusercontent.com/Thomas-Tai/ai-sw-bridge/"
     "master/schema/ai-sw-bridge.spec.schema.json"
@@ -93,28 +110,33 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     rendered = render()
-    rel = PUBLISHED_PATH.relative_to(REPO_ROOT)
 
     if args.check:
-        if not PUBLISHED_PATH.exists():
-            print(
-                f"MISSING: {rel} -- run: python tools/emit_spec_schema.py",
-                file=sys.stderr,
-            )
+        drifted = False
+        for path in TARGETS:
+            rel = path.relative_to(REPO_ROOT)
+            if not path.exists():
+                print(
+                    f"MISSING: {rel} -- run: python tools/emit_spec_schema.py",
+                    file=sys.stderr,
+                )
+                drifted = True
+            elif path.read_text(encoding="utf-8") != rendered:
+                print(
+                    f"STALE: {rel} drifted from schema.py -- "
+                    "run: python tools/emit_spec_schema.py",
+                    file=sys.stderr,
+                )
+                drifted = True
+        if drifted:
             return 1
-        if PUBLISHED_PATH.read_text(encoding="utf-8") != rendered:
-            print(
-                f"STALE: {rel} drifted from schema.py -- "
-                "run: python tools/emit_spec_schema.py",
-                file=sys.stderr,
-            )
-            return 1
-        print(f"OK: {rel} is in sync with schema.py")
+        print("OK: published spec schema copies are in sync with schema.py")
         return 0
 
-    PUBLISHED_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PUBLISHED_PATH.write_text(rendered, encoding="utf-8")
-    print(f"wrote {rel} ({len(rendered)} bytes)")
+    for path in TARGETS:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(rendered, encoding="utf-8")
+        print(f"wrote {path.relative_to(REPO_ROOT)} ({len(rendered)} bytes)")
     return 0
 
 

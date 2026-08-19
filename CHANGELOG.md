@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   every example spec validates). The published schema models the `_comment`
   annotation convention (`patternProperties: {"^_": {}}`), and the editor wiring
   is documented in `docs/spec_reference.md`.
+- **Packaged spec JSON Schema.** The published schema now also ships inside the
+  wheel (`ai_sw_bridge/schema/`), so a `pip`/`pipx` install can resolve it
+  without a repo clone via `ai_sw_bridge.spec.published_schema_path()`. Both the
+  repo-root and in-wheel copies are generated from one `render()` and gated
+  byte-identical (in the CI sync gate and `emit_spec_schema.py --check`).
 
 ## [1.8.0] - 2026-08-18
 

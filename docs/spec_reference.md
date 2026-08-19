@@ -39,6 +39,18 @@ The published file is a serialization of `schema.py` (the v1 stable surface),
 kept in lockstep by `tools/emit_spec_schema.py` and its CI sync gate — after any
 intentional schema change, regenerate it with `python tools/emit_spec_schema.py`.
 
+**Installed outside a repo clone?** The same schema ships inside the wheel, so a
+`pip`/`pipx`/installer install can locate it without the source tree:
+
+```python
+from ai_sw_bridge.spec import published_schema_path
+print(published_schema_path())   # absolute path to the packaged .json
+```
+
+Point your editor's workspace mapping at that path (or keep using the raw URL
+above). The packaged copy is byte-identical to the repo-root
+`schema/` file — both are generated from one `render()` and gated in sync.
+
 ## Top-level structure
 
 ```json
