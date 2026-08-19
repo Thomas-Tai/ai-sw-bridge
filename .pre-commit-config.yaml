@@ -43,3 +43,15 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+      # Published spec JSON Schema (schema/ai-sw-bridge.spec.schema.json) must
+      # stay byte-identical to schema.py. Cheap author-time mirror of the CI
+      # gate (tests/test_spec_schema_published.py); regenerate on drift with
+      # `python tools/emit_spec_schema.py`. Always runs (a schema.py edit, not
+      # the published file, is what makes it stale).
+      - id: spec-schema-sync
+        name: spec JSON Schema in sync (emit_spec_schema --check)
+        entry: python tools/emit_spec_schema.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
