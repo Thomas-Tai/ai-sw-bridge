@@ -2,6 +2,43 @@
 
 Complete reference for the JSON spec format consumed by `ai-sw-build`. The authoritative schema lives in [`src/ai_sw_bridge/spec/schema.py`](../src/ai_sw_bridge/spec/schema.py); this document is the human-readable version.
 
+## Editor autocomplete (JSON Schema)
+
+A standalone JSON Schema for the spec format is published at
+[`schema/ai-sw-bridge.spec.schema.json`](../schema/ai-sw-bridge.spec.schema.json).
+Point your editor at it — via a **workspace mapping**, not a key inside the
+spec — to get autocomplete, enum hints, and inline validation while authoring a
+`spec.json`, with no `ai-sw-build` run required.
+
+- **VS Code** — map a glob to the file in `.vscode/settings.json`; every
+  matching spec then picks it up automatically:
+
+  ```json
+  {
+    "json.schemas": [
+      { "fileMatch": ["**/spec.json"], "url": "./schema/ai-sw-bridge.spec.schema.json" }
+    ]
+  }
+  ```
+
+  Use the raw URL
+  (`https://raw.githubusercontent.com/Thomas-Tai/ai-sw-bridge/master/schema/ai-sw-bridge.spec.schema.json`)
+  instead of the local path if your specs live outside this repo.
+
+- **JetBrains IDEs** — *Settings → Languages & Frameworks → Schemas and DTDs →
+  JSON Schema Mappings*: add the file (or URL) and a `*/spec.json` file pattern.
+
+> **Do not add a `$schema` key inside the spec.** The v1 grammar is strict
+> (`additionalProperties: false`), so an inline `$schema` — or any other
+> unknown top-level key — is rejected by `ai-sw-build` validation (exit `3`).
+> Associate the schema through the editor's workspace mapping instead. (The one
+> exception is keys beginning with `_`, e.g. `_comment`: they are stripped as
+> annotations and allowed anywhere, and the published schema permits them too.)
+
+The published file is a serialization of `schema.py` (the v1 stable surface),
+kept in lockstep by `tools/emit_spec_schema.py` and its CI sync gate — after any
+intentional schema change, regenerate it with `python tools/emit_spec_schema.py`.
+
 ## Top-level structure
 
 ```json

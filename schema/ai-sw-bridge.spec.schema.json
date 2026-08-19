@@ -1,0 +1,3053 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Thomas-Tai/ai-sw-bridge/master/schema/ai-sw-bridge.spec.schema.json",
+  "title": "ai-sw-bridge part spec v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "name",
+    "features"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "description": "Part name (will become the SLDPRT filename if saved)."
+    },
+    "locals": {
+      "type": "string",
+      "description": "Absolute path to the *_locals.txt file to link before binding dims. Required if any feature's length uses an {rhs} object."
+    },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "plane",
+              "width",
+              "height"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_rectangle_on_plane"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ]
+              },
+              "width": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "height": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                },
+                "description": "Sketch-local center (mm). Default (0, 0, 0). The optional z offsets the sketch geometry along the part-frame Z axis and is required when sketching on Top Plane (XZ) at part-Z != 0, e.g. an O-ring groove at the mid-length of a +Z-extruded shaft. For Front (XY) and Right (YZ) planes leave z=0; only Top Plane's normal aligns with part-Z.",
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "centerline": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "start",
+                  "end"
+                ],
+                "properties": {
+                  "start": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "x",
+                      "y"
+                    ],
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "z": {
+                        "type": "number"
+                      }
+                    },
+                    "description": "Centerline start point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0). Used when the parent sketch's center.z is non-zero (e.g. Top Plane sketch positioned at part-Z != 0).",
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  },
+                  "end": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "x",
+                      "y"
+                    ],
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "z": {
+                        "type": "number"
+                      }
+                    },
+                    "description": "Centerline end point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0).",
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                },
+                "description": "Construction line embedded in the sketch. Consumed by `revolve_boss` as the axis of revolution (SW auto-detects). No driving dim; coordinates are literal mm.",
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "of_feature",
+              "face",
+              "width",
+              "height"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_rectangle_on_face"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "of_feature": {
+                "type": "string",
+                "description": "Name of an earlier extrusion feature."
+              },
+              "face": {
+                "enum": [
+                  "+x",
+                  "-x",
+                  "+y",
+                  "-y",
+                  "+z",
+                  "-z"
+                ],
+                "description": "Outward normal direction of the face in the feature's local frame."
+              },
+              "width": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "height": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "u": {
+                    "type": "number"
+                  },
+                  "v": {
+                    "type": "number"
+                  }
+                },
+                "description": "In-face center offset (mm) from the FACE SKETCH ORIGIN, which empirically is the projection of the part origin onto the face (NOT the face's geometric center). For a feature whose base sketch was a center-rectangle on origin these happen to coincide; for one shifted off origin (e.g. TensionBracket cap with Y span [0,15]) they don't, and child sketches need a u/v offset to land on the bracket centroid instead of the part origin. Default (0, 0).",
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "plane",
+              "diameter"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_circle_on_plane"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ]
+              },
+              "diameter": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                },
+                "description": "Sketch-local center (mm). Default (0, 0, 0). See SKETCH_RECTANGLE_ON_PLANE for when the optional z is needed (Top Plane sketches positioned at part-Z != 0).",
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "centerline": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "start",
+                  "end"
+                ],
+                "properties": {
+                  "start": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "x",
+                      "y"
+                    ],
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "z": {
+                        "type": "number"
+                      }
+                    },
+                    "description": "Centerline start point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0). Used when the parent sketch's center.z is non-zero (e.g. Top Plane sketch positioned at part-Z != 0).",
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  },
+                  "end": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "x",
+                      "y"
+                    ],
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "z": {
+                        "type": "number"
+                      }
+                    },
+                    "description": "Centerline end point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0).",
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                },
+                "description": "Construction line embedded in the sketch. Consumed by `revolve_boss` as the axis of revolution (SW auto-detects). No driving dim; coordinates are literal mm.",
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "of_feature",
+              "face",
+              "diameter"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_circle_on_face"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "of_feature": {
+                "type": "string",
+                "description": "Name of an earlier extrusion feature."
+              },
+              "face": {
+                "enum": [
+                  "+x",
+                  "-x",
+                  "+y",
+                  "-y",
+                  "+z",
+                  "-z"
+                ],
+                "description": "Outward normal direction of the face in the feature's local frame."
+              },
+              "diameter": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "u": {
+                    "type": "number"
+                  },
+                  "v": {
+                    "type": "number"
+                  }
+                },
+                "description": "In-face center offset (mm) from the face SKETCH ORIGIN, which is the projection of the part origin onto the face (NOT the face's geometric center -- see SKETCH_RECTANGLE_ON_FACE). Default (0, 0).",
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "of_feature",
+              "face",
+              "circles"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_circles_on_face"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "of_feature": {
+                "type": "string"
+              },
+              "face": {
+                "enum": [
+                  "+x",
+                  "-x",
+                  "+y",
+                  "-y",
+                  "+z",
+                  "-z"
+                ]
+              },
+              "circles": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "u",
+                    "v",
+                    "diameter"
+                  ],
+                  "properties": {
+                    "u": {
+                      "type": "number",
+                      "description": "Center u-offset (mm) from the face SKETCH ORIGIN (= part-origin projection onto the face, NOT face centroid -- see SKETCH_RECTANGLE_ON_FACE for the gotcha)."
+                    },
+                    "v": {
+                      "type": "number"
+                    },
+                    "diameter": {
+                      "oneOf": [
+                        {
+                          "type": "number",
+                          "description": "Literal length in millimetres."
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "rhs"
+                          ],
+                          "properties": {
+                            "rhs": {
+                              "type": "string",
+                              "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                            }
+                          },
+                          "patternProperties": {
+                            "^_": {}
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                }
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch",
+              "depth"
+            ],
+            "properties": {
+              "type": {
+                "const": "boss_extrude_blind"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string",
+                "description": "Name of an earlier sketch feature to extrude."
+              },
+              "depth": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false,
+                "description": "Extrude in -normal instead of +normal direction."
+              },
+              "merge": {
+                "type": "boolean",
+                "default": true,
+                "description": "true (default) = fuse this boss into the existing solid body it overlaps (modeling-time boolean UNION). false = keep it as a separate solid body (multi-body). Express unions HERE, at the extrusion phase: there is no post-hoc 'combine' feature."
+              },
+              "start_offset": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ],
+                "description": "Optional. Begin the extrude this many mm from the sketch plane (SW start condition swStartOffset) instead of on it; the blind `depth` is then measured from that offset start. OMIT for the normal start-on-sketch-plane behaviour (byte-identical to before). Lets a boss build offset from a standard plane -- e.g. a side plate sketched on Top Plane but extruded to begin at part-Y=+40. Pair with `flip_start_offset` to choose the offset direction."
+              },
+              "flip_start_offset": {
+                "type": "boolean",
+                "default": false,
+                "description": "Offset toward -normal instead of +normal (SW FlipStartOffset). Only meaningful when `start_offset` is set."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch",
+              "depth"
+            ],
+            "properties": {
+              "type": {
+                "const": "boss_extrude_midplane"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string"
+              },
+              "depth": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false
+              },
+              "merge": {
+                "type": "boolean",
+                "default": true
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch"
+            ],
+            "properties": {
+              "type": {
+                "const": "boss_extrude_through_all"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string"
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false
+              },
+              "merge": {
+                "type": "boolean",
+                "default": true
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch",
+              "depth",
+              "depth2"
+            ],
+            "properties": {
+              "type": {
+                "const": "boss_extrude_two_direction"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string"
+              },
+              "depth": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "depth2": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false
+              },
+              "merge": {
+                "type": "boolean",
+                "default": true
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch",
+              "target_ref"
+            ],
+            "properties": {
+              "type": {
+                "const": "boss_extrude_up_to_surface"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string",
+                "description": "Name of an earlier sketch to extrude."
+              },
+              "target_ref": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "of_feature",
+                  "face"
+                ],
+                "properties": {
+                  "of_feature": {
+                    "type": "string",
+                    "description": "Name of an earlier extrusion whose face the boss extrudes up to (the up-to termination surface)."
+                  },
+                  "face": {
+                    "enum": [
+                      "+x",
+                      "-x",
+                      "+y",
+                      "-y",
+                      "+z",
+                      "-z"
+                    ],
+                    "description": "Outward normal of the up-to target face."
+                  }
+                },
+                "description": "Durable reference to the up-to termination surface (a face of an earlier extrusion). Required — the boss has no fixed depth.",
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false
+              },
+              "merge": {
+                "type": "boolean",
+                "default": true
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch"
+            ],
+            "properties": {
+              "type": {
+                "const": "cut_extrude_through_all"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string",
+                "description": "Name of an earlier sketch to cut along."
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false,
+                "description": "Cut in -normal instead of +normal direction."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch",
+              "depth"
+            ],
+            "properties": {
+              "type": {
+                "const": "cut_extrude_blind"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string"
+              },
+              "depth": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch",
+              "depth"
+            ],
+            "properties": {
+              "type": {
+                "const": "cut_extrude_midplane"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string"
+              },
+              "depth": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch",
+              "depth",
+              "depth2"
+            ],
+            "properties": {
+              "type": {
+                "const": "cut_extrude_two_direction"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string"
+              },
+              "depth": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "depth2": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch"
+            ],
+            "properties": {
+              "type": {
+                "const": "revolve_boss"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string",
+                "description": "Name of an earlier plane-based sketch that contains both a closed profile and an embedded centerline. SW auto-picks the centerline as the axis of revolution."
+              },
+              "angle": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 360,
+                "default": 360.0,
+                "description": "Sweep angle in DEGREES (builder converts to radians). Default 360 = full revolution."
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false,
+                "description": "Reverse the revolve direction."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "sketch"
+            ],
+            "properties": {
+              "type": {
+                "const": "revolve_cut"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "sketch": {
+                "type": "string",
+                "description": "Name of an earlier plane-based sketch that contains both a closed profile and an embedded centerline. SW auto-picks the centerline as the axis of revolution. The profile, when revolved, must intersect existing body material -- otherwise SW silently produces no geometry."
+              },
+              "angle": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 360,
+                "default": 360.0,
+                "description": "Sweep angle in DEGREES (builder converts to radians). Default 360 = full revolution."
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false,
+                "description": "Reverse the revolve direction."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "of_feature",
+              "face",
+              "diameter"
+            ],
+            "properties": {
+              "type": {
+                "const": "simple_hole"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "of_feature": {
+                "type": "string",
+                "description": "Name of an earlier extrusion feature."
+              },
+              "face": {
+                "enum": [
+                  "+x",
+                  "-x",
+                  "+y",
+                  "-y",
+                  "+z",
+                  "-z"
+                ],
+                "description": "Outward normal of the face the hole drills into."
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "u": {
+                    "type": "number"
+                  },
+                  "v": {
+                    "type": "number"
+                  }
+                },
+                "description": "In-face center (mm) of the hole from the face SKETCH ORIGIN (= part-origin projection onto the face plane, NOT the face centroid -- see SKETCH_CIRCLE_ON_FACE for the gotcha). Default (0, 0).",
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "diameter": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "end_condition": {
+                "enum": [
+                  "blind",
+                  "through_all"
+                ],
+                "default": "blind",
+                "description": "Hole depth termination. 'blind' uses `depth`; 'through_all' drills all the way through and ignores `depth`."
+              },
+              "depth": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "radius",
+              "edges"
+            ],
+            "properties": {
+              "type": {
+                "const": "fillet_constant_radius"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "radius": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "edges": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "x",
+                        "y",
+                        "z"
+                      ],
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "z": {
+                          "type": "number"
+                        }
+                      },
+                      "description": "A point on the target edge in part coordinates (mm) — the legacy literal form. The builder converts to meters and selects the nearest model edge within 1um. Brittle under dimension changes; prefer the `of_feature`/`face` semantic form for parametric models.",
+                      "patternProperties": {
+                        "^_": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "of_feature",
+                        "face"
+                      ],
+                      "properties": {
+                        "of_feature": {
+                          "type": "string",
+                          "description": "Name of an EARLIER fixed-extent boss extrude; ALL edges bounding its `face` are added to the fillet/chamfer set. Re-resolved against current geometry each build, so it survives upstream dimension edits (unlike a literal point)."
+                        },
+                        "face": {
+                          "enum": [
+                            "+x",
+                            "-x",
+                            "+y",
+                            "-y",
+                            "+z",
+                            "-z"
+                          ],
+                          "description": "Which orthogonal face whose bounding edges to select."
+                        }
+                      },
+                      "description": "Semantic edge selector: all edges of a named face. Requires the `semantic_edges` flag.",
+                      "patternProperties": {
+                        "^_": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "of_feature",
+                        "between_faces"
+                      ],
+                      "properties": {
+                        "of_feature": {
+                          "type": "string",
+                          "description": "Name of an EARLIER fixed-extent boss extrude whose two named faces share the target edge."
+                        },
+                        "between_faces": {
+                          "type": "array",
+                          "items": {
+                            "enum": [
+                              "+x",
+                              "-x",
+                              "+y",
+                              "-y",
+                              "+z",
+                              "-z"
+                            ]
+                          },
+                          "minItems": 2,
+                          "maxItems": 2,
+                          "description": "The two faces whose shared edge to select — exactly one edge on a convex solid (the build fails if 0 or >1 edges are shared)."
+                        }
+                      },
+                      "description": "Semantic edge selector: the single edge shared by two faces (most precise). Requires the `semantic_edges` flag.",
+                      "patternProperties": {
+                        "^_": {}
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "mode",
+              "edges"
+            ],
+            "properties": {
+              "type": {
+                "const": "chamfer_edge"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "mode": {
+                "enum": [
+                  "equal_distance",
+                  "distance_angle"
+                ],
+                "description": "Chamfer geometry mode. 'equal_distance' takes a single distance and applies it to both sides. 'distance_angle' takes a distance plus an angle in degrees, measured from one face of the chamfered edge."
+              },
+              "distance": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ],
+                "description": "Chamfer distance from edge (mm). Required for both modes."
+              },
+              "angle": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ],
+                "description": "Chamfer angle in DEGREES. Required for mode 'distance_angle', forbidden for mode 'equal_distance'. Despite reusing LENGTH_SCHEMA for parametric support, this is an angle in degrees -- the spec author is responsible for not passing a length-typed locals var here."
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false,
+                "description": "Reverse the chamfer asymmetry direction. Only meaningful for 'distance_angle' (the equal-distance case is symmetric)."
+              },
+              "edges": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "x",
+                        "y",
+                        "z"
+                      ],
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "z": {
+                          "type": "number"
+                        }
+                      },
+                      "description": "A point on the target edge in part coordinates (mm) — the legacy literal form. Builder selects the nearest model edge within 1um. Prefer the `of_feature`/`face` semantic form for parametric models.",
+                      "patternProperties": {
+                        "^_": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "of_feature",
+                        "face"
+                      ],
+                      "properties": {
+                        "of_feature": {
+                          "type": "string",
+                          "description": "Name of an EARLIER fixed-extent boss extrude; ALL edges bounding its `face` are added to the fillet/chamfer set. Re-resolved against current geometry each build, so it survives upstream dimension edits (unlike a literal point)."
+                        },
+                        "face": {
+                          "enum": [
+                            "+x",
+                            "-x",
+                            "+y",
+                            "-y",
+                            "+z",
+                            "-z"
+                          ],
+                          "description": "Which orthogonal face whose bounding edges to select."
+                        }
+                      },
+                      "description": "Semantic edge selector: all edges of a named face. Requires the `semantic_edges` flag.",
+                      "patternProperties": {
+                        "^_": {}
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "of_feature",
+                        "between_faces"
+                      ],
+                      "properties": {
+                        "of_feature": {
+                          "type": "string",
+                          "description": "Name of an EARLIER fixed-extent boss extrude whose two named faces share the target edge."
+                        },
+                        "between_faces": {
+                          "type": "array",
+                          "items": {
+                            "enum": [
+                              "+x",
+                              "-x",
+                              "+y",
+                              "-y",
+                              "+z",
+                              "-z"
+                            ]
+                          },
+                          "minItems": 2,
+                          "maxItems": 2,
+                          "description": "The two faces whose shared edge to select — exactly one edge on a convex solid (the build fails if 0 or >1 edges are shared)."
+                        }
+                      },
+                      "description": "Semantic edge selector: the single edge shared by two faces (most precise). Requires the `semantic_edges` flag.",
+                      "patternProperties": {
+                        "^_": {}
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "seed",
+              "direction",
+              "count",
+              "spacing"
+            ],
+            "properties": {
+              "type": {
+                "const": "linear_pattern"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "seed": {
+                "type": "string",
+                "description": "Name of an earlier feature to pattern. The seed itself counts as instance 1; `count` includes it."
+              },
+              "direction": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                },
+                "description": "A point on a model edge whose direction defines the pattern axis. The builder selects the edge with SelectByID and uses its tangent at that point.",
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 2,
+                "description": "Total number of instances along Direction 1 (includes the seed). Must be >= 2 -- a count of 1 would be a no-op."
+              },
+              "spacing": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ],
+                "description": "Distance between consecutive instances (mm)."
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false,
+                "description": "Reverse pattern direction relative to the selected edge's tangent."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "seed",
+              "axis",
+              "count"
+            ],
+            "properties": {
+              "type": {
+                "const": "circular_pattern"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "seed": {
+                "type": "string",
+                "description": "Name of an earlier feature to pattern. The seed itself counts as instance 1; `count` includes it."
+              },
+              "axis": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                },
+                "description": "A point on the rotation-axis reference -- either a circular EDGE (e.g. the rim of a cylindrical face) or a cylindrical FACE. The builder tries EDGE first, then FACE on fallback. SW infers the axis of revolution from the selected entity.",
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 2,
+                "description": "Total number of instances around the axis (includes the seed). Must be >= 2 -- a count of 1 would be a no-op."
+              },
+              "total_angle": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 360,
+                "default": 360.0,
+                "description": "Total sweep angle in DEGREES (builder converts to radians). Default 360 = full circle, equally spaced. For a half-fan of 4 instances over 180 degrees, set total_angle=180."
+              },
+              "flip": {
+                "type": "boolean",
+                "default": false,
+                "description": "Reverse the rotation direction."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "seed",
+              "plane"
+            ],
+            "properties": {
+              "type": {
+                "const": "mirror_feature"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "seed": {
+                "type": "string",
+                "description": "Name of an earlier feature to mirror."
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ],
+                "description": "Default reference plane to mirror about. Front = XY (mirrors Z), Top = XZ (mirrors Y), Right = YZ (mirrors X)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "plane",
+              "start",
+              "end"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_line"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ],
+                "description": "Default reference plane to host the sketch."
+              },
+              "start": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X (mm) in sketch-local frame."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y (mm) in sketch-local frame."
+                  }
+                },
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "end": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X (mm) in sketch-local frame."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y (mm) in sketch-local frame."
+                  }
+                },
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "construction": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, mark the segment as a construction (centerline) entity."
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "plane",
+              "center",
+              "start",
+              "end"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_arc"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ],
+                "description": "Default reference plane to host the sketch."
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X (mm) in sketch-local frame."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y (mm) in sketch-local frame."
+                  }
+                },
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "start": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X (mm) in sketch-local frame."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y (mm) in sketch-local frame."
+                  }
+                },
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "end": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X (mm) in sketch-local frame."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y (mm) in sketch-local frame."
+                  }
+                },
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "direction": {
+                "enum": [
+                  "cw",
+                  "ccw"
+                ],
+                "default": "ccw",
+                "description": "Arc direction from start to end about the center."
+              },
+              "construction": {
+                "type": "boolean",
+                "default": false
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "plane",
+              "points"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_spline"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ],
+                "description": "Default reference plane to host the sketch."
+              },
+              "points": {
+                "type": "array",
+                "minItems": 2,
+                "description": "Control points in sketch-local coordinates (mm). At least 2 required. 🔴 SEAT (P1.7-seat/W0): the live call packs these into a SAFEARRAY of doubles for ISketchManager.CreateSpline2 — the exact marshaling shape ([x0,y0,x1,y1,...] vs [x0,y0,z0,x1,y1,z1,...]) and the b3D flag autoselect rule must be confirmed on the seat.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "x",
+                    "y"
+                  ],
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "description": "X (mm) in sketch-local frame."
+                    },
+                    "y": {
+                      "type": "number",
+                      "description": "Y (mm) in sketch-local frame."
+                    },
+                    "z": {
+                      "type": "number",
+                      "default": 0.0,
+                      "description": "Out-of-plane Z (mm). Non-zero triggers the 3D-sketch COM path."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                }
+              },
+              "construction": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, mark the spline as a construction entity."
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "plane",
+              "center",
+              "width",
+              "length"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_slot"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ],
+                "description": "Default reference plane to host the sketch."
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X (mm) in sketch-local frame."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y (mm) in sketch-local frame."
+                  }
+                },
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "width": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "length": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "slot_type": {
+                "enum": [
+                  "arc"
+                ],
+                "default": "arc",
+                "description": "End shape of the slot. Only 'arc' (rounded ends) is supported — the SOLIDWORKS CreateSketchSlot kernel call produces inherently rounded slots (there is no flat-ended creation type). For a flat-ended rectangular slot, use sketch_rectangle_on_plane instead."
+              },
+              "angle_deg": {
+                "type": "number",
+                "default": 0.0,
+                "description": "Rotation of the slot's major axis from the sketch X axis (degrees)."
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "plane",
+              "center",
+              "sides",
+              "radius"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_polygon"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ],
+                "description": "Default reference plane to host the sketch."
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X (mm) in sketch-local frame."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y (mm) in sketch-local frame."
+                  }
+                },
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "sides": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 40,
+                "description": "Number of polygon sides (3..40)."
+              },
+              "radius": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "inscribed": {
+                "type": "boolean",
+                "default": true,
+                "description": "If true, `radius` is the inscribed (apothem) radius — polygon edges are tangent to the circle. If false, `radius` is the circumscribed radius — polygon vertices lie on the circle."
+              },
+              "angle_deg": {
+                "type": "number",
+                "default": 0.0,
+                "description": "Rotation of the polygon's first vertex from the sketch X axis (degrees)."
+              },
+              "construction": {
+                "type": "boolean",
+                "default": false
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "plane",
+              "center",
+              "major_radius",
+              "minor_radius"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_ellipse"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ],
+                "description": "Default reference plane to host the sketch."
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X (mm) in sketch-local frame."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y (mm) in sketch-local frame."
+                  }
+                },
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "major_radius": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "minor_radius": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "angle_deg": {
+                "type": "number",
+                "default": 0.0,
+                "description": "Rotation of the major axis from the sketch X axis (degrees)."
+              },
+              "construction": {
+                "type": "boolean",
+                "default": false
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "plane",
+              "position",
+              "content",
+              "height"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_text"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ],
+                "description": "Default reference plane to host the sketch."
+              },
+              "position": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X (mm) in sketch-local frame."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y (mm) in sketch-local frame."
+                  }
+                },
+                "patternProperties": {
+                  "^_": {}
+                }
+              },
+              "content": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Text content. Plain ASCII; no rich formatting."
+              },
+              "height": {
+                "oneOf": [
+                  {
+                    "type": "number",
+                    "description": "Literal length in millimetres."
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rhs"
+                    ],
+                    "properties": {
+                      "rhs": {
+                        "type": "string",
+                        "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      }
+                    },
+                    "patternProperties": {
+                      "^_": {}
+                    }
+                  }
+                ]
+              },
+              "font": {
+                "type": "string",
+                "description": "Font family name (e.g. 'Arial'). Applied via the inserted ISketchText's text format (GetTextFormat -> TypeFaceName -> SetTextFormat); `height` sets CharHeight in the same call."
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "entities"
+                  ],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "horizontal",
+                        "vertical",
+                        "parallel",
+                        "perpendicular",
+                        "equal",
+                        "concentric"
+                      ],
+                      "description": "Geometric relation type. horizontal/vertical take 1 entity; parallel/perpendicular/equal/concentric take 2. collinear/coincident/symmetric are deferred (tokens unproven on seat — see docs/DEFERRED.md)."
+                    },
+                    "entities": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "description": "0-based segment indices within the sketch (creation order, including construction segments). Arity must match the relation type."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                },
+                "description": "Geometric relations between sketch entities. Applied after geometry draw via ISketchManager.SketchAddConstraints. ⚠️ Token names are seat-gated (W21 radians lesson)."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "points"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_3d_sketch"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "points": {
+                "type": "array",
+                "minItems": 2,
+                "description": "Ordered 3D control points of the polyline.  Consecutive points are connected by line segments.  All three axes (x, y, z) are required — use a non-zero z extent to create a non-planar path (weldment / sweep prerequisite).",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "x",
+                    "y",
+                    "z"
+                  ],
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "description": "X coordinate (mm) in the part frame."
+                    },
+                    "y": {
+                      "type": "number",
+                      "description": "Y coordinate (mm) in the part frame."
+                    },
+                    "z": {
+                      "type": "number",
+                      "description": "Z coordinate (mm) in the part frame."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                }
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name",
+              "plane",
+              "points"
+            ],
+            "properties": {
+              "type": {
+                "const": "sketch_polyline_on_plane"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "plane": {
+                "enum": [
+                  "Front",
+                  "Top",
+                  "Right"
+                ],
+                "description": "Default reference plane to host the sketch."
+              },
+              "points": {
+                "type": "array",
+                "minItems": 3,
+                "description": "Ordered vertices of the profile in sketch-local 2D (mm). Consecutive points are joined by line segments; when `closed` is true (default) a final segment joins the last point back to the first. At least 3 points for a closed profile.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "x",
+                    "y"
+                  ],
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "description": "X (mm) in sketch-local frame."
+                    },
+                    "y": {
+                      "type": "number",
+                      "description": "Y (mm) in sketch-local frame."
+                    }
+                  },
+                  "patternProperties": {
+                    "^_": {}
+                  }
+                }
+              },
+              "closed": {
+                "type": "boolean",
+                "default": true,
+                "description": "If true (default) auto-close the loop (last→first) so the profile is extrudable. Set false for an open polyline."
+              },
+              "construction": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, mark the segments as construction entities."
+              }
+            },
+            "patternProperties": {
+              "^_": {}
+            }
+          }
+        ]
+      }
+    }
+  },
+  "patternProperties": {
+    "^_": {}
+  }
+}
