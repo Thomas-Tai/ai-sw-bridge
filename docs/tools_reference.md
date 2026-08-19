@@ -181,6 +181,33 @@ Shared convention across the CLIs:
 
 Most output is one JSON object on stdout; `ai-sw-build` also writes its seat-identification banner to **stderr** (Issue #7). If the JSON parse fails, the exit code is your fallback signal.
 
+### CI integration (`--lint`)
+
+Because `--lint` is **seat-free** and gates only on ERROR (exit `6`), it drops
+straight into a pre-commit hook or a CI job with no SOLIDWORKS on the runner —
+branch on the exit code alone:
+
+```bash
+# bash — block a merge on any geometric ERROR across a spec repo
+for spec in specs/*.json; do
+  ai-sw-build "$spec" --lint || exit $?   # non-zero propagates the failure
+done
+```
+
+```powershell
+# PowerShell — same gate
+Get-ChildItem specs\*.json | ForEach-Object {
+  ai-sw-build $_.FullName --lint
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+```
+
+A non-zero exit means the spec failed the gate: `6` for a geometric ERROR, `3`
+for a schema / refs / locals validation failure, or `2` for a missing or
+malformed spec file. INFO and WARNING findings never change the exit code — a
+spec that only trips off-face-hole *warnings* still passes, so read the JSON on
+stdout when you want to surface those too.
+
 ---
 
 # SW-version compatibility matrix runner

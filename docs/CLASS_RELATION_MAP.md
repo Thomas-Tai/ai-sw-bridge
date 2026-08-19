@@ -259,6 +259,7 @@ CI runs `lint-imports`; the contract currently reports **0 broken**.
 | Add a feature kind | `features/__init__.py` (lane protocol) + an existing lane (e.g. `features/scale.py`) |
 | Understand "did it work" checks | `features/verify.py` |
 | Trace a CLI command | `cli/<name>.py` (`main` → `_build_parser`) |
+| Trace the seat-free `--lint` pre-flight | `spec/preflight.py` (pure analyzers) + `cli/_lint_preflight.py` (CLI wiring, exit-code gating) |
 | Trace an MCP tool | `mcp/tools.py` + `mcp/_tool_*.py` (`register`) |
 | Understand crash recovery | `resilience/session.py` + `checkpoint/transaction_store.py` |
 | Understand COM marshalling | `com/earlybind.py`, `com/executor.py`, `sw_com.py` |

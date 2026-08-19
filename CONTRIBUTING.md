@@ -16,8 +16,12 @@ pip install -e ".[dev]"
 
 1. Create a branch from `master`.
 2. Make your changes.
-3. Run the checks below.
-4. Open a PR against `master`.
+3. Add a `CHANGELOG.md` entry under `## [Unreleased]` — a user-facing change
+   belongs in `Added` / `Changed` / `Fixed`. Keep this section current per-PR so
+   cutting a release is just renaming `[Unreleased]` to the new version; an
+   internal-only refactor with no user-visible effect may skip it.
+4. Run the checks below.
+5. Open a PR against `master`.
 
 ## Code style
 

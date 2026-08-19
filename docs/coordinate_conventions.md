@@ -21,6 +21,27 @@ sits at offset `o` along that plane's normal. The plane determines how
 | Top   | u | o | -v |
 | Right | o | v | -u |
 
+The table is exact, but the two sign-flips are what actually bite. Here is
+where a *rightward* sketch move (`+u`) and an *upward* sketch move (`+v`)
+really go in the part frame, per plane:
+
+```
+             a +u (sketch-right) move goes to →   a +v (sketch-up) move goes to →
+  Front               +X                                   +Y
+  Top                 +X                                   −Z   ⚠ sketch-up = part −Z
+  Right               −Z   ⚠ sketch-right = part −Z        +Y
+
+  Part frame is right-handed:      +Z
+                                    │
+                                    └──── +X
+                                   ╱
+                                +Y
+```
+
+Only **Front** maps sketch `(u, v)` straight onto part `(X, Y)` with no flip.
+On **Top**, `+v` drives geometry into **−Z**; on **Right**, `+u` drives it into
+**−Z**. Those are the two rows to sanity-check first when a cut lands in air.
+
 **Traps:**
 - **Top plane: sketch `v` maps to `-Z`.** A positive `v` in the sketch moves
   the geometry in the *negative* part-Z direction. This is the single most
