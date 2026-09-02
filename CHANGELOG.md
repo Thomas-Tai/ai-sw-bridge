@@ -36,6 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `tests/test_ci_gates_documented.py`); new glossary entries for pre-flight
   (`--lint`) and the published schema.
 
+### Fixed
+
+- **Pre-flight now ERRORs a one-directional cut sketched on a reference
+  plane.** `cut_extrude_blind` / `cut_extrude_through_all` /
+  `cut_extrude_midplane` whose sketch is `*_on_plane` always fail at build
+  time (`FeatureCut4 returned None`), but the envelope model could false-pass
+  them when the profile overlapped material. The new check is a type/reference
+  ERROR and names both escape hatches: sketch on a modeled face (`*_on_face`),
+  or switch to `cut_extrude_two_direction` to straddle the plane. It does not
+  fire on `cut_extrude_two_direction` or any `boss_extrude_*`.
+
 ## [1.8.0] - 2026-08-18
 
 **Author-time pre-flight & reach.** A seat-free geometric pre-flight now catches

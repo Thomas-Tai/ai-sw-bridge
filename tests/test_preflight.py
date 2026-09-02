@@ -511,3 +511,79 @@ def test_rhs_driven_cut_depth_is_skipped_not_crashed():
     findings = material_envelope_scan(spec)
     # Feature skipped (depth unresolved), marked incomplete; no false ERROR.
     assert all(f.severity != "error" for f in findings)
+
+
+# ---------------------------------------------------------------------------
+# One-directional cut on a *_on_plane sketch (issue #40).
+# FeatureCut4 returns None for this form at build time, but the envelope
+# model currently false-passes a plane+blind cut that overlaps material.
+# The new check is a pure type/reference ERROR; it must not fire on
+# cut_extrude_two_direction (legal plane-sketched form) or on *_on_face.
+# ---------------------------------------------------------------------------
+
+_PLANE_CUT_SKETCH = {
+    "type": "sketch_rectangle_on_plane",
+    "name": "SK_Cut",
+    "plane": "Front",
+    "width": 8.0,
+    "height": 8.0,
+    # Default center is on the plate -- the envelope would false-pass this.
+}
+
+_FACE_CUT_SKETCH = {
+    "type": "sketch_rectangle_on_face",
+    "name": "SK_Cut",
+    "of_feature": "EX_Plate",
+    "face": "+z",
+    "width": 8.0,
+    "height": 8.0,
+}
+
+
+def _spec_with_cut(sketch: dict, cut_type: str, **cut_fields) -> dict:
+    return {
+        "features": [
+            _PLATE,
+            _BOSS,
+            sketch,
+            {"type": cut_type, "name": "CUT_X", "sketch": sketch["name"], **cut_fields},
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    "cut_type,cut_fields",
+    [
+        ("cut_extrude_blind", {"depth": 5.0}),
+        ("cut_extrude_through_all", {}),
+        ("cut_extrude_midplane", {"depth": 5.0}),
+    ],
+)
+def test_one_directional_cut_on_plane_sketch_errors(cut_type, cut_fields):
+    spec = _spec_with_cut(_PLANE_CUT_SKETCH, cut_type, **cut_fields)
+    errs = _sev(preflight(spec), "error")
+    assert len(errs) == 1
+    msg = errs[0].message
+    assert "CUT_X" in msg
+    assert "FeatureCut4" in msg
+    assert "None" in msg
+    assert "*_on_face" in msg or "modeled face" in msg.lower()
+    assert "cut_extrude_two_direction" in msg
+
+
+def test_plane_sketched_two_direction_cut_does_not_error():
+    spec = _spec_with_cut(
+        _PLANE_CUT_SKETCH, "cut_extrude_two_direction", depth=8.0, depth2=8.0
+    )
+    assert _sev(preflight(spec), "error") == []
+
+
+def test_face_sketched_blind_cut_does_not_error():
+    spec = _spec_with_cut(_FACE_CUT_SKETCH, "cut_extrude_blind", depth=5.0)
+    assert _sev(preflight(spec), "error") == []
+
+
+def test_plane_sketched_boss_extrude_does_not_error():
+    # The check is cut-only; a plane-sketched boss is the normal first body.
+    spec = {"features": [_PLATE, _BOSS]}
+    assert _sev(preflight(spec), "error") == []

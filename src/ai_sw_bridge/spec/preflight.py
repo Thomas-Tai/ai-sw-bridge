@@ -154,6 +154,19 @@ Box = tuple[float, float, float, float, float, float]
 _MODELED_ADDITIVE = frozenset({"boss_extrude_blind"})
 _MODELED_SUBTRACTIVE = frozenset({"cut_extrude_blind"})
 
+# One-directional cuts. A *_on_plane sketch consumed by one of these always
+# fails FeatureCut4 (returns None) at build time -- even when the envelope
+# model would pass because the profile overlaps material. cut_extrude_two_direction
+# is the legal plane-sketched form and is intentionally absent. boss_extrude_*
+# are additive and are not in this set.
+_ONE_DIRECTIONAL_CUTS = frozenset(
+    {
+        "cut_extrude_blind",
+        "cut_extrude_through_all",
+        "cut_extrude_midplane",
+    }
+)
+
 
 def _boxes_overlap(a: Box, b: Box) -> bool:
     """Whether two axis-aligned part-frame boxes intersect (open-interval;
@@ -425,14 +438,54 @@ def _degenerate_profile_checks(spec: dict[str, Any]) -> list[LintFinding]:
     return findings
 
 
+def _one_directional_cut_on_plane_checks(spec: dict[str, Any]) -> list[LintFinding]:
+    """ERROR when a one-directional cut consumes a ``*_on_plane`` sketch.
+
+    Pure type/reference check -- no geometry evaluation. FeatureCut4
+    returns None for this form at build time. Does not fire for
+    ``cut_extrude_two_direction`` (legal: straddles the plane) or for
+    any ``boss_extrude_*``. On-face sketches (``*_on_face``) are the
+    other legal form for one-directional cuts.
+    """
+    features = spec.get("features", [])
+    by_name = {f.get("name", ""): f for f in features}
+    findings: list[LintFinding] = []
+    for i, feat in enumerate(features):
+        ftype = feat.get("type", "")
+        if ftype not in _ONE_DIRECTIONAL_CUTS:
+            continue
+        sketch_name = feat.get("sketch", "")
+        sketch = by_name.get(sketch_name) or {}
+        if not str(sketch.get("type", "")).endswith("_on_plane"):
+            continue
+        name = feat.get("name", "")
+        findings.append(
+            LintFinding(
+                severity="error",
+                path=f"features/{i}/{name}",
+                message=(
+                    f"cut '{name}' ({ftype}) references plane-sketch "
+                    f"'{sketch_name}'. FeatureCut4 returns None for a "
+                    f"one-directional cut sketched on a reference plane. "
+                    f"Sketch the profile on the body's modeled face "
+                    f"(*_on_face), or switch to cut_extrude_two_direction "
+                    f"to straddle the plane."
+                ),
+            )
+        )
+    return findings
+
+
 def preflight(spec: dict[str, Any]) -> list[LintFinding]:
     """Run all seat-free geometric pre-flight analyzers over ``spec``.
 
-    Returns INFO coordinate echoes, WARNING advisories, and at most one
-    ERROR per provable empty-air cut. Never raises; never touches SW.
+    Returns INFO coordinate echoes, WARNING advisories, empty-air-cut
+    ERRORs, and ERRORs for one-directional cuts sketched on a reference
+    plane. Never raises; never touches SW.
     """
     findings: list[LintFinding] = []
     findings.extend(coordinate_mapping_report(spec))
     findings.extend(material_envelope_scan(spec))
     findings.extend(_degenerate_profile_checks(spec))
+    findings.extend(_one_directional_cut_on_plane_checks(spec))
     return findings
