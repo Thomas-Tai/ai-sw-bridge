@@ -967,7 +967,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             True,
         ),
         FieldSpec("center", _UV_CENTER_HOLE, False),
-        FieldSpec("diameter", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "diameter",
+            {**LENGTH_SCHEMA, "description": "Hole diameter (mm)."},
+            True,
+        ),
         FieldSpec(
             "end_condition",
             {
@@ -980,11 +984,37 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             False,
         ),
-        FieldSpec("depth", LENGTH_SCHEMA, False),
+        FieldSpec(
+            "depth",
+            {
+                **LENGTH_SCHEMA,
+                "description": (
+                    "Hole depth (mm). Required when `end_condition` is "
+                    "'blind'; ignored (and may be omitted) for 'through_all'."
+                ),
+            },
+            False,
+        ),
     ],
     "fillet_constant_radius": [
-        FieldSpec("radius", LENGTH_SCHEMA, True),
-        FieldSpec("edges", _EDGE_POINT_ITEM_FILLET, True),
+        FieldSpec(
+            "radius",
+            {**LENGTH_SCHEMA, "description": "Fillet radius (mm)."},
+            True,
+        ),
+        FieldSpec(
+            "edges",
+            {
+                **_EDGE_POINT_ITEM_FILLET,
+                "description": (
+                    "Edges to fillet. At least 1 item; each is a literal "
+                    "{x, y, z} point, or (with the semantic_edges flag) an "
+                    "{of_feature, face} / {of_feature, between_faces} "
+                    "selector -- see docs/spec_reference.md Edge selectors."
+                ),
+            },
+            True,
+        ),
     ],
     "chamfer_edge": [
         FieldSpec(
@@ -1034,7 +1064,18 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             False,
         ),
-        FieldSpec("edges", _EDGE_POINT_ITEM_CHAMFER, True),
+        FieldSpec(
+            "edges",
+            {
+                **_EDGE_POINT_ITEM_CHAMFER,
+                "description": (
+                    "Edges to chamfer. At least 1 item; same three selector "
+                    "forms as fillet_constant_radius -- see "
+                    "docs/spec_reference.md Edge selectors."
+                ),
+            },
+            True,
+        ),
     ],
     "linear_pattern": [
         FieldSpec(
