@@ -178,6 +178,9 @@ Shared convention across the CLIs:
 - `5` — `--dry-run` `{rhs}`-resolution failed (spec references a missing/cyclic local)
 - `6` — `--lint` found semantic findings
 - `7` — `--auto-retry` refused an identical re-submission
+- `8` — `--lint --strict` found the geometric pre-flight could not model every
+  solid-modifying feature (see the `coverage` object). Only emitted with
+  `--strict`; without it, coverage gaps never change the exit code.
 
 Most output is one JSON object on stdout; `ai-sw-build` also writes its seat-identification banner to **stderr** (Issue #7). If the JSON parse fails, the exit code is your fallback signal.
 
@@ -202,11 +205,12 @@ Get-ChildItem specs\*.json | ForEach-Object {
 }
 ```
 
-A non-zero exit means the spec failed the gate: `6` for a geometric ERROR, `3`
-for a schema / refs / locals validation failure, or `2` for a missing or
-malformed spec file. INFO and WARNING findings never change the exit code — a
-spec that only trips off-face-hole *warnings* still passes, so read the JSON on
-stdout when you want to surface those too.
+A non-zero exit means the spec failed the gate: `6` for a geometric ERROR, `8`
+for incomplete coverage under `--strict`, `3` for a schema / refs / locals
+validation failure, or `2` for a missing or malformed spec file. INFO and
+WARNING findings never change the exit code — a spec that only trips
+off-face-hole *warnings* still passes, so read the JSON on stdout when you
+want to surface those too.
 
 ### Coverage (`--lint`)
 

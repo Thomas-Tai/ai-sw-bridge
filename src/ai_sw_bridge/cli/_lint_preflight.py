@@ -92,7 +92,15 @@ def lint_dryrun_response(
         }
         if dry_run_payload is not None:
             payload["dry_run"] = dry_run_payload
-        return payload, 0 if not has_error else 6
+        if has_error:
+            return payload, 6
+        # --strict promotes an honest coverage gap to a failure. ERROR still
+        # wins: 6 is never downgraded to 8. ``ok`` deliberately stays True --
+        # it tracks ERROR findings, and an unmodeled feature is not a defect
+        # in the spec, only a limit of what the seat-free tier can promise.
+        if getattr(args, "strict", False) and not cov["complete"]:
+            return payload, 8
+        return payload, 0
 
     # Reached only when args.dry_run is True (guaranteed by the early return).
     payload = dry_run(spec)
