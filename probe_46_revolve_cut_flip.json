@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "name": "Probe46RevolveCutFlip",
+  "_comment": "Issue 46 variant B: identical to probe_46_revolve_cut.json except CUT_Groove.flip=true, which is the only FeatureRevolve2 direction boolean the spec can reach (arg 5 ReverseDir). If A returns None and B builds, ReverseDir pinned False is the defect (issue-40 shape). If both return None, ReverseDir is not the lever -- next seat experiment is UseFeatScope=False in _feature_revolve2_args (pinned True, spec-unreachable; handler selects the sketch only, not bodies). If both build, the original None was not reproduced on this reduced spec.",
+  "features": [
+    {
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_Base",
+      "plane": "Front",
+      "width": 140.0,
+      "height": 90.0,
+      "center": {"x": 0.0, "y": 0.0}
+    },
+    {
+      "type": "boss_extrude_blind",
+      "name": "EX_Base",
+      "sketch": "SK_Base",
+      "depth": 20.0
+    },
+    {
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_Hub",
+      "plane": "Front",
+      "width": 12.0,
+      "height": 4.0,
+      "center": {"x": 0.0, "y": 14.0},
+      "centerline": {
+        "start": {"x": -80.0, "y": 0.0},
+        "end": {"x": 80.0, "y": 0.0}
+      }
+    },
+    {
+      "type": "revolve_boss",
+      "name": "REV_Hub",
+      "sketch": "SK_Hub",
+      "angle": 360.0
+    },
+    {
+      "type": "sketch_rectangle_on_plane",
+      "name": "SK_Groove",
+      "plane": "Front",
+      "width": 4.0,
+      "height": 1.5,
+      "center": {"x": 0.0, "y": -14.75},
+      "centerline": {
+        "start": {"x": -80.0, "y": 0.0},
+        "end": {"x": 80.0, "y": 0.0}
+      }
+    },
+    {
+      "type": "revolve_cut",
+      "name": "CUT_Groove",
+      "sketch": "SK_Groove",
+      "angle": 360.0,
+      "flip": true
+    }
+  ]
+}
