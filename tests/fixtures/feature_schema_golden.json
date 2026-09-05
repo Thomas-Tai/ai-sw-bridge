@@ -11,18 +11,21 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_rectangle_on_plane"
+        "const": "sketch_rectangle_on_plane",
+        "description": "Rectangular profile sketch on a default reference plane (Front/Top/Right)."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "plane": {
         "enum": [
           "Front",
           "Top",
           "Right"
-        ]
+        ],
+        "description": "Default reference plane to host the sketch."
       },
       "width": {
         "oneOf": [
@@ -43,7 +46,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Rectangle width (mm)."
       },
       "height": {
         "oneOf": [
@@ -64,20 +68,24 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Rectangle height (mm)."
       },
       "center": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "x": {
-            "type": "number"
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
           },
           "y": {
-            "type": "number"
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
           },
           "z": {
-            "type": "number"
+            "type": "number",
+            "description": "Optional part-frame Z offset (mm); see the enclosing center's description for the per-plane mapping."
           }
         },
         "description": "Sketch-local center (mm). Default (0, 0, 0). The optional z offsets the sketch geometry along the part-frame Z axis and is required when sketching on Top Plane (XZ) at part-Z != 0, e.g. an O-ring groove at the mid-length of a +Z-extruded shaft. For Front (XY) and Right (YZ) planes leave z=0; only Top Plane's normal aligns with part-Z."
@@ -99,13 +107,16 @@
             ],
             "properties": {
               "x": {
-                "type": "number"
+                "type": "number",
+                "description": "X (mm) in sketch-local frame."
               },
               "y": {
-                "type": "number"
+                "type": "number",
+                "description": "Y (mm) in sketch-local frame."
               },
               "z": {
-                "type": "number"
+                "type": "number",
+                "description": "Optional part-frame Z offset (mm); see this object's description."
               }
             },
             "description": "Centerline start point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0). Used when the parent sketch's center.z is non-zero (e.g. Top Plane sketch positioned at part-Z != 0)."
@@ -119,13 +130,16 @@
             ],
             "properties": {
               "x": {
-                "type": "number"
+                "type": "number",
+                "description": "X (mm) in sketch-local frame."
               },
               "y": {
-                "type": "number"
+                "type": "number",
+                "description": "Y (mm) in sketch-local frame."
               },
               "z": {
-                "type": "number"
+                "type": "number",
+                "description": "Optional part-frame Z offset (mm); see this object's description."
               }
             },
             "description": "Centerline end point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0)."
@@ -183,11 +197,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_rectangle_on_face"
+        "const": "sketch_rectangle_on_face",
+        "description": "Rectangular profile sketch on an existing feature's orthogonal face."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "of_feature": {
         "type": "string",
@@ -223,7 +239,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Rectangle width (mm)."
       },
       "height": {
         "oneOf": [
@@ -244,17 +261,20 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Rectangle height (mm)."
       },
       "center": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "u": {
-            "type": "number"
+            "type": "number",
+            "description": "In-face u-offset (mm) from the face sketch origin."
           },
           "v": {
-            "type": "number"
+            "type": "number",
+            "description": "In-face v-offset (mm) from the face sketch origin."
           }
         },
         "description": "In-face center offset (mm) from the FACE SKETCH ORIGIN, which empirically is the projection of the part origin onto the face (NOT the face's geometric center). For a feature whose base sketch was a center-rectangle on origin these happen to coincide; for one shifted off origin (e.g. TensionBracket cap with Y span [0,15]) they don't, and child sketches need a u/v offset to land on the bracket centroid instead of the part origin. Default (0, 0)."
@@ -307,18 +327,21 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_circle_on_plane"
+        "const": "sketch_circle_on_plane",
+        "description": "Circular profile sketch on a default reference plane."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "plane": {
         "enum": [
           "Front",
           "Top",
           "Right"
-        ]
+        ],
+        "description": "Default reference plane to host the sketch."
       },
       "diameter": {
         "oneOf": [
@@ -339,20 +362,24 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Circle diameter (mm)."
       },
       "center": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "x": {
-            "type": "number"
+            "type": "number",
+            "description": "X (mm) in sketch-local frame."
           },
           "y": {
-            "type": "number"
+            "type": "number",
+            "description": "Y (mm) in sketch-local frame."
           },
           "z": {
-            "type": "number"
+            "type": "number",
+            "description": "Optional part-frame Z offset (mm); see the enclosing center's description for the per-plane mapping."
           }
         },
         "description": "Sketch-local center (mm). Default (0, 0, 0). See SKETCH_RECTANGLE_ON_PLANE for when the optional z is needed (Top Plane sketches positioned at part-Z != 0)."
@@ -374,13 +401,16 @@
             ],
             "properties": {
               "x": {
-                "type": "number"
+                "type": "number",
+                "description": "X (mm) in sketch-local frame."
               },
               "y": {
-                "type": "number"
+                "type": "number",
+                "description": "Y (mm) in sketch-local frame."
               },
               "z": {
-                "type": "number"
+                "type": "number",
+                "description": "Optional part-frame Z offset (mm); see this object's description."
               }
             },
             "description": "Centerline start point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0). Used when the parent sketch's center.z is non-zero (e.g. Top Plane sketch positioned at part-Z != 0)."
@@ -394,13 +424,16 @@
             ],
             "properties": {
               "x": {
-                "type": "number"
+                "type": "number",
+                "description": "X (mm) in sketch-local frame."
               },
               "y": {
-                "type": "number"
+                "type": "number",
+                "description": "Y (mm) in sketch-local frame."
               },
               "z": {
-                "type": "number"
+                "type": "number",
+                "description": "Optional part-frame Z offset (mm); see this object's description."
               }
             },
             "description": "Centerline end point in sketch-local coords (mm). Optional z is the part-frame z offset of the sketch plane (default 0)."
@@ -457,11 +490,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_circle_on_face"
+        "const": "sketch_circle_on_face",
+        "description": "Circular profile sketch on an existing feature's face."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "of_feature": {
         "type": "string",
@@ -497,17 +532,20 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Circle diameter (mm)."
       },
       "center": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "u": {
-            "type": "number"
+            "type": "number",
+            "description": "In-face u-offset (mm) from the face sketch origin."
           },
           "v": {
-            "type": "number"
+            "type": "number",
+            "description": "In-face v-offset (mm) from the face sketch origin."
           }
         },
         "description": "In-face center offset (mm) from the face SKETCH ORIGIN, which is the projection of the part origin onto the face (NOT the face's geometric center -- see SKETCH_RECTANGLE_ON_FACE). Default (0, 0)."
@@ -561,14 +599,17 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_circles_on_face"
+        "const": "sketch_circles_on_face",
+        "description": "Multiple circles in one sketch on a face (e.g. a hole pattern)."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "of_feature": {
-        "type": "string"
+        "type": "string",
+        "description": "Name of an earlier extrusion feature."
       },
       "face": {
         "enum": [
@@ -578,11 +619,13 @@
           "-y",
           "+z",
           "-z"
-        ]
+        ],
+        "description": "Outward normal direction of the face in the feature's local frame."
       },
       "circles": {
         "type": "array",
         "minItems": 1,
+        "description": "One or more circles sketched together on the face, each with its own center offset and diameter.",
         "items": {
           "type": "object",
           "additionalProperties": false,
@@ -597,7 +640,8 @@
               "description": "Center u-offset (mm) from the face SKETCH ORIGIN (= part-origin projection onto the face, NOT face centroid -- see SKETCH_RECTANGLE_ON_FACE for the gotcha)."
             },
             "v": {
-              "type": "number"
+              "type": "number",
+              "description": "Center v-offset (mm) from the face SKETCH ORIGIN (see `u`)."
             },
             "diameter": {
               "oneOf": [
@@ -618,7 +662,8 @@
                     }
                   }
                 }
-              ]
+              ],
+              "description": "Circle diameter (mm)."
             }
           }
         }
@@ -671,11 +716,13 @@
     ],
     "properties": {
       "type": {
-        "const": "boss_extrude_blind"
+        "const": "boss_extrude_blind",
+        "description": "Blind boss extrusion of a sketch to a given depth."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
         "type": "string",
@@ -700,7 +747,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Extrusion depth (mm)."
       },
       "flip": {
         "type": "boolean",
@@ -752,14 +800,17 @@
     ],
     "properties": {
       "type": {
-        "const": "boss_extrude_midplane"
+        "const": "boss_extrude_midplane",
+        "description": "Mid-plane boss extrusion: adds `depth` of material centred on the sketch plane (depth/2 each side)."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
-        "type": "string"
+        "type": "string",
+        "description": "Name of an earlier sketch feature to extrude."
       },
       "depth": {
         "oneOf": [
@@ -780,15 +831,18 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Total extrusion depth (mm), centred on the sketch plane (depth/2 of material added each side)."
       },
       "flip": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Reserved; a mid-plane extrude is symmetric about the sketch plane, so the direction is immaterial."
       },
       "merge": {
         "type": "boolean",
-        "default": true
+        "default": true,
+        "description": "true (default) = fuse this boss into the existing solid body it overlaps (modeling-time boolean UNION). false = keep it as a separate solid body (multi-body). Express unions HERE, at the extrusion phase: there is no post-hoc 'combine' feature."
       }
     }
   },
@@ -802,22 +856,27 @@
     ],
     "properties": {
       "type": {
-        "const": "boss_extrude_through_all"
+        "const": "boss_extrude_through_all",
+        "description": "Through-all boss extrusion: adds material until it terminates against existing geometry. Requires a prior solid body (SW errors without one)."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
-        "type": "string"
+        "type": "string",
+        "description": "Name of an earlier sketch feature to extrude."
       },
       "flip": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Extrude in -normal instead of +normal direction."
       },
       "merge": {
         "type": "boolean",
-        "default": true
+        "default": true,
+        "description": "true (default) = fuse this boss into the existing solid body it overlaps (modeling-time boolean UNION). false = keep it as a separate solid body (multi-body). Express unions HERE, at the extrusion phase: there is no post-hoc 'combine' feature."
       }
     }
   },
@@ -833,14 +892,17 @@
     ],
     "properties": {
       "type": {
-        "const": "boss_extrude_two_direction"
+        "const": "boss_extrude_two_direction",
+        "description": "Two-direction boss: `depth` into +normal and `depth2` into -normal from the sketch plane."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
-        "type": "string"
+        "type": "string",
+        "description": "Name of an earlier sketch feature to extrude."
       },
       "depth": {
         "oneOf": [
@@ -861,7 +923,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Extrusion depth into +normal (mm)."
       },
       "depth2": {
         "oneOf": [
@@ -882,15 +945,18 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Extrusion depth into -normal (mm)."
       },
       "flip": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Swap which side `depth` (+normal) vs `depth2` (-normal) extrudes into."
       },
       "merge": {
         "type": "boolean",
-        "default": true
+        "default": true,
+        "description": "true (default) = fuse this boss into the existing solid body it overlaps (modeling-time boolean UNION). false = keep it as a separate solid body (multi-body). Express unions HERE, at the extrusion phase: there is no post-hoc 'combine' feature."
       }
     }
   },
@@ -905,11 +971,13 @@
     ],
     "properties": {
       "type": {
-        "const": "boss_extrude_up_to_surface"
+        "const": "boss_extrude_up_to_surface",
+        "description": "Up-to-surface boss: extrudes the sketch until it terminates on `target_ref` (a face of an earlier extrusion). No `depth`."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
         "type": "string",
@@ -943,11 +1011,13 @@
       },
       "flip": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Extrude in -normal instead of +normal direction."
       },
       "merge": {
         "type": "boolean",
-        "default": true
+        "default": true,
+        "description": "true (default) = fuse this boss into the existing solid body it overlaps (modeling-time boolean UNION). false = keep it as a separate solid body (multi-body). Express unions HERE, at the extrusion phase: there is no post-hoc 'combine' feature."
       }
     }
   },
@@ -961,11 +1031,13 @@
     ],
     "properties": {
       "type": {
-        "const": "cut_extrude_through_all"
+        "const": "cut_extrude_through_all",
+        "description": "Through-all cut extrusion along a sketch."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
         "type": "string",
@@ -974,7 +1046,7 @@
       "flip": {
         "type": "boolean",
         "default": false,
-        "description": "Cut in -normal instead of +normal direction."
+        "description": "Bound to FeatureCut4 arg 2 (`Flip`); proven not to reverse cut direction (issue #40, seat-proven 2026-09-05). The builder sets the real +normal/-normal sweep direction automatically depending on whether the sketch is plane- or face-hosted."
       }
     }
   },
@@ -989,14 +1061,17 @@
     ],
     "properties": {
       "type": {
-        "const": "cut_extrude_blind"
+        "const": "cut_extrude_blind",
+        "description": "Blind cut extrusion of a sketch to a given depth."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
-        "type": "string"
+        "type": "string",
+        "description": "Name of an earlier sketch feature to cut along."
       },
       "depth": {
         "oneOf": [
@@ -1017,11 +1092,13 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Cut depth (mm)."
       },
       "flip": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Bound to FeatureCut4 arg 2 (`Flip`); proven not to reverse cut direction (issue #40, seat-proven 2026-09-05). The builder sets the real +normal/-normal sweep direction automatically depending on whether the sketch is plane- or face-hosted."
       }
     }
   },
@@ -1036,14 +1113,17 @@
     ],
     "properties": {
       "type": {
-        "const": "cut_extrude_midplane"
+        "const": "cut_extrude_midplane",
+        "description": "Mid-plane cut extrusion: removes `depth` of material centred on the sketch plane (depth/2 each side)."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
-        "type": "string"
+        "type": "string",
+        "description": "Name of an earlier sketch feature to cut along."
       },
       "depth": {
         "oneOf": [
@@ -1064,11 +1144,13 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Total cut depth (mm), centred on the sketch plane (depth/2 removed each side)."
       },
       "flip": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Bound to FeatureCut4 arg 2 (`Flip`); proven not to reverse cut direction (issue #40, seat-proven 2026-09-05). The builder sets the real +normal/-normal sweep direction automatically depending on whether the sketch is plane- or face-hosted."
       }
     }
   },
@@ -1084,14 +1166,17 @@
     ],
     "properties": {
       "type": {
-        "const": "cut_extrude_two_direction"
+        "const": "cut_extrude_two_direction",
+        "description": "Two-direction blind cut: `depth` into +normal and `depth2` into -normal from the sketch plane."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
-        "type": "string"
+        "type": "string",
+        "description": "Name of an earlier sketch feature to cut along."
       },
       "depth": {
         "oneOf": [
@@ -1112,7 +1197,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Cut depth into the +normal direction (mm)."
       },
       "depth2": {
         "oneOf": [
@@ -1133,11 +1219,13 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Cut depth into the -normal direction (mm)."
       },
       "flip": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "Bound to FeatureCut4 arg 2 (`Flip`). The issue #40 seat proof (2026-09-05) only covers one-directional cuts, so this field's effect on a two-direction cut is UNVERIFIED -- `depth`/`depth2` are what determine which side is removed, not `flip`."
       }
     }
   },
@@ -1151,11 +1239,13 @@
     ],
     "properties": {
       "type": {
-        "const": "revolve_boss"
+        "const": "revolve_boss",
+        "description": "Solid revolve of a profile about its embedded centerline."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
         "type": "string",
@@ -1185,11 +1275,13 @@
     ],
     "properties": {
       "type": {
-        "const": "revolve_cut"
+        "const": "revolve_cut",
+        "description": "Subtractive revolve of a profile about its embedded centerline."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "sketch": {
         "type": "string",
@@ -1221,11 +1313,13 @@
     ],
     "properties": {
       "type": {
-        "const": "simple_hole"
+        "const": "simple_hole",
+        "description": "Single straight-bore hole drilled into a face (blind or through-all)."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "of_feature": {
         "type": "string",
@@ -1247,10 +1341,12 @@
         "additionalProperties": false,
         "properties": {
           "u": {
-            "type": "number"
+            "type": "number",
+            "description": "In-face u-offset (mm) from the face sketch origin."
           },
           "v": {
-            "type": "number"
+            "type": "number",
+            "description": "In-face v-offset (mm) from the face sketch origin."
           }
         },
         "description": "In-face center (mm) of the hole from the face SKETCH ORIGIN (= part-origin projection onto the face plane, NOT the face centroid -- see SKETCH_CIRCLE_ON_FACE for the gotcha). Default (0, 0)."
@@ -1274,7 +1370,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Hole diameter (mm)."
       },
       "end_condition": {
         "enum": [
@@ -1303,7 +1400,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Hole depth (mm). Required when `end_condition` is 'blind'; ignored (and may be omitted) for 'through_all'."
       }
     }
   },
@@ -1318,11 +1416,13 @@
     ],
     "properties": {
       "type": {
-        "const": "fillet_constant_radius"
+        "const": "fillet_constant_radius",
+        "description": "Constant-radius fillet on selected edges."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "radius": {
         "oneOf": [
@@ -1343,7 +1443,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Fillet radius (mm)."
       },
       "edges": {
         "type": "array",
@@ -1360,13 +1461,16 @@
               ],
               "properties": {
                 "x": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "Part-frame X coordinate (mm)."
                 },
                 "y": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "Part-frame Y coordinate (mm)."
                 },
                 "z": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "Part-frame Z coordinate (mm)."
                 }
               },
               "description": "A point on the target edge in part coordinates (mm) — the legacy literal form. The builder converts to meters and selects the nearest model edge within 1um. Brittle under dimension changes; prefer the `of_feature`/`face` semantic form for parametric models."
@@ -1429,7 +1533,8 @@
               "description": "Semantic edge selector: the single edge shared by two faces (most precise). Requires the `semantic_edges` flag."
             }
           ]
-        }
+        },
+        "description": "Edges to fillet. At least 1 item; each is a literal {x, y, z} point, or (with the semantic_edges flag) an {of_feature, face} / {of_feature, between_faces} selector -- see docs/spec_reference.md Edge selectors."
       }
     }
   },
@@ -1444,11 +1549,13 @@
     ],
     "properties": {
       "type": {
-        "const": "chamfer_edge"
+        "const": "chamfer_edge",
+        "description": "Edge chamfer (equal-distance or distance-angle)."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "mode": {
         "enum": [
@@ -1521,13 +1628,16 @@
               ],
               "properties": {
                 "x": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "Part-frame X coordinate (mm)."
                 },
                 "y": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "Part-frame Y coordinate (mm)."
                 },
                 "z": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "Part-frame Z coordinate (mm)."
                 }
               },
               "description": "A point on the target edge in part coordinates (mm) — the legacy literal form. Builder selects the nearest model edge within 1um. Prefer the `of_feature`/`face` semantic form for parametric models."
@@ -1590,7 +1700,8 @@
               "description": "Semantic edge selector: the single edge shared by two faces (most precise). Requires the `semantic_edges` flag."
             }
           ]
-        }
+        },
+        "description": "Edges to chamfer. At least 1 item; same three selector forms as fillet_constant_radius -- see docs/spec_reference.md Edge selectors."
       }
     }
   },
@@ -1607,11 +1718,13 @@
     ],
     "properties": {
       "type": {
-        "const": "linear_pattern"
+        "const": "linear_pattern",
+        "description": "Linear pattern of a seed feature along a model-edge direction."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "seed": {
         "type": "string",
@@ -1627,13 +1740,16 @@
         ],
         "properties": {
           "x": {
-            "type": "number"
+            "type": "number",
+            "description": "Part-frame X coordinate (mm)."
           },
           "y": {
-            "type": "number"
+            "type": "number",
+            "description": "Part-frame Y coordinate (mm)."
           },
           "z": {
-            "type": "number"
+            "type": "number",
+            "description": "Part-frame Z coordinate (mm)."
           }
         },
         "description": "A point on a model edge whose direction defines the pattern axis. The builder selects the edge with SelectByID and uses its tangent at that point."
@@ -1684,11 +1800,13 @@
     ],
     "properties": {
       "type": {
-        "const": "circular_pattern"
+        "const": "circular_pattern",
+        "description": "Circular pattern of a seed feature about an axis reference."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "seed": {
         "type": "string",
@@ -1704,13 +1822,16 @@
         ],
         "properties": {
           "x": {
-            "type": "number"
+            "type": "number",
+            "description": "Part-frame X coordinate (mm)."
           },
           "y": {
-            "type": "number"
+            "type": "number",
+            "description": "Part-frame Y coordinate (mm)."
           },
           "z": {
-            "type": "number"
+            "type": "number",
+            "description": "Part-frame Z coordinate (mm)."
           }
         },
         "description": "A point on the rotation-axis reference -- either a circular EDGE (e.g. the rim of a cylindrical face) or a cylindrical FACE. The builder tries EDGE first, then FACE on fallback. SW infers the axis of revolution from the selected entity."
@@ -1745,11 +1866,13 @@
     ],
     "properties": {
       "type": {
-        "const": "mirror_feature"
+        "const": "mirror_feature",
+        "description": "Mirror of a seed feature about a default reference plane."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "seed": {
         "type": "string",
@@ -1777,11 +1900,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_line"
+        "const": "sketch_line",
+        "description": "Single line segment on a reference plane (start → end)."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "plane": {
         "enum": [
@@ -1807,7 +1932,8 @@
             "type": "number",
             "description": "Y (mm) in sketch-local frame."
           }
-        }
+        },
+        "description": "Line start point (sketch-local mm)."
       },
       "end": {
         "type": "object",
@@ -1825,7 +1951,8 @@
             "type": "number",
             "description": "Y (mm) in sketch-local frame."
           }
-        }
+        },
+        "description": "Line end point (sketch-local mm)."
       },
       "construction": {
         "type": "boolean",
@@ -1882,11 +2009,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_arc"
+        "const": "sketch_arc",
+        "description": "Circular arc on a reference plane (center + start + end)."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "plane": {
         "enum": [
@@ -1912,7 +2041,8 @@
             "type": "number",
             "description": "Y (mm) in sketch-local frame."
           }
-        }
+        },
+        "description": "Arc center point (sketch-local mm)."
       },
       "start": {
         "type": "object",
@@ -1930,7 +2060,8 @@
             "type": "number",
             "description": "Y (mm) in sketch-local frame."
           }
-        }
+        },
+        "description": "Arc start point (sketch-local mm)."
       },
       "end": {
         "type": "object",
@@ -1948,7 +2079,8 @@
             "type": "number",
             "description": "Y (mm) in sketch-local frame."
           }
-        }
+        },
+        "description": "Arc end point (sketch-local mm)."
       },
       "direction": {
         "enum": [
@@ -1960,7 +2092,8 @@
       },
       "construction": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "If true, mark the arc as a construction entity."
       },
       "relations": {
         "type": "array",
@@ -2010,11 +2143,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_spline"
+        "const": "sketch_spline",
+        "description": "Freeform spline through a sequence of control points."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "plane": {
         "enum": [
@@ -2107,11 +2242,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_slot"
+        "const": "sketch_slot",
+        "description": "Rectangular or arc-ended slot on a reference plane."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "plane": {
         "enum": [
@@ -2137,7 +2274,8 @@
             "type": "number",
             "description": "Y (mm) in sketch-local frame."
           }
-        }
+        },
+        "description": "Slot center point (sketch-local mm)."
       },
       "width": {
         "oneOf": [
@@ -2158,7 +2296,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Slot width (mm) -- the diameter of the two rounded end caps."
       },
       "length": {
         "oneOf": [
@@ -2179,7 +2318,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Slot length (mm) -- the center-to-center distance between the two rounded ends, along the slot's major axis."
       },
       "slot_type": {
         "enum": [
@@ -2243,11 +2383,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_polygon"
+        "const": "sketch_polygon",
+        "description": "Regular N-sided polygon on a reference plane."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "plane": {
         "enum": [
@@ -2273,7 +2415,8 @@
             "type": "number",
             "description": "Y (mm) in sketch-local frame."
           }
-        }
+        },
+        "description": "Polygon center point (sketch-local mm)."
       },
       "sides": {
         "type": "integer",
@@ -2300,7 +2443,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Polygon radius (mm); see `inscribed` for whether this is the apothem (inscribed) or circumscribed radius."
       },
       "inscribed": {
         "type": "boolean",
@@ -2314,7 +2458,8 @@
       },
       "construction": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "If true, mark the polygon as a construction entity."
       },
       "relations": {
         "type": "array",
@@ -2366,11 +2511,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_ellipse"
+        "const": "sketch_ellipse",
+        "description": "Ellipse with major/minor radii on a reference plane."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "plane": {
         "enum": [
@@ -2396,7 +2543,8 @@
             "type": "number",
             "description": "Y (mm) in sketch-local frame."
           }
-        }
+        },
+        "description": "Ellipse center point (sketch-local mm)."
       },
       "major_radius": {
         "oneOf": [
@@ -2417,7 +2565,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Semi-major axis length (mm)."
       },
       "minor_radius": {
         "oneOf": [
@@ -2438,7 +2587,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Semi-minor axis length (mm)."
       },
       "angle_deg": {
         "type": "number",
@@ -2447,7 +2597,8 @@
       },
       "construction": {
         "type": "boolean",
-        "default": false
+        "default": false,
+        "description": "If true, mark the ellipse as a construction entity."
       },
       "relations": {
         "type": "array",
@@ -2499,11 +2650,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_text"
+        "const": "sketch_text",
+        "description": "Plain-text annotation sketch on a reference plane."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "plane": {
         "enum": [
@@ -2529,7 +2682,8 @@
             "type": "number",
             "description": "Y (mm) in sketch-local frame."
           }
-        }
+        },
+        "description": "Text insertion point (sketch-local mm)."
       },
       "content": {
         "type": "string",
@@ -2555,7 +2709,8 @@
               }
             }
           }
-        ]
+        ],
+        "description": "Text cap height (mm), applied as CharHeight."
       },
       "font": {
         "type": "string",
@@ -2608,11 +2763,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_3d_sketch"
+        "const": "sketch_3d_sketch",
+        "description": "3D polyline sketch through a sequence of 3D points (non-planar path)."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "points": {
         "type": "array",
@@ -2655,11 +2812,13 @@
     ],
     "properties": {
       "type": {
-        "const": "sketch_polyline_on_plane"
+        "const": "sketch_polyline_on_plane",
+        "description": "Composite closed polyline (multi-segment profile) on a default reference plane; extrudes along the plane normal."
       },
       "name": {
         "type": "string",
-        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "description": "Unique identifier for this feature within the spec. Later features refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, or `target_ref.of_feature`)."
       },
       "plane": {
         "enum": [
