@@ -1235,8 +1235,16 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("start", _SKETCH_POINT_2D, True),
-        FieldSpec("end", _SKETCH_POINT_2D, True),
+        FieldSpec(
+            "start",
+            {**_SKETCH_POINT_2D, "description": "Line start point (sketch-local mm)."},
+            True,
+        ),
+        FieldSpec(
+            "end",
+            {**_SKETCH_POINT_2D, "description": "Line end point (sketch-local mm)."},
+            True,
+        ),
         FieldSpec(
             "construction",
             {
@@ -1257,9 +1265,21 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("center", _SKETCH_POINT_2D, True),
-        FieldSpec("start", _SKETCH_POINT_2D, True),
-        FieldSpec("end", _SKETCH_POINT_2D, True),
+        FieldSpec(
+            "center",
+            {**_SKETCH_POINT_2D, "description": "Arc center point (sketch-local mm)."},
+            True,
+        ),
+        FieldSpec(
+            "start",
+            {**_SKETCH_POINT_2D, "description": "Arc start point (sketch-local mm)."},
+            True,
+        ),
+        FieldSpec(
+            "end",
+            {**_SKETCH_POINT_2D, "description": "Arc end point (sketch-local mm)."},
+            True,
+        ),
         FieldSpec(
             "direction",
             {
@@ -1271,7 +1291,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec(
             "construction",
-            {"type": "boolean", "default": False},
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "If true, mark the arc as a construction entity.",
+            },
             False,
         ),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
@@ -1312,9 +1336,30 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("center", _SKETCH_POINT_2D, True),
-        FieldSpec("width", LENGTH_SCHEMA, True),
-        FieldSpec("length", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "center",
+            {**_SKETCH_POINT_2D, "description": "Slot center point (sketch-local mm)."},
+            True,
+        ),
+        FieldSpec(
+            "width",
+            {
+                **LENGTH_SCHEMA,
+                "description": "Slot width (mm) -- the diameter of the two rounded end caps.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "length",
+            {
+                **LENGTH_SCHEMA,
+                "description": (
+                    "Slot length (mm) -- the center-to-center distance "
+                    "between the two rounded ends, along the slot's major axis."
+                ),
+            },
+            True,
+        ),
         FieldSpec("slot_type", _SLOT_TYPE_ENUM, False),
         FieldSpec(
             "angle_deg",
@@ -1341,7 +1386,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("center", _SKETCH_POINT_2D, True),
+        FieldSpec(
+            "center",
+            {**_SKETCH_POINT_2D, "description": "Polygon center point (sketch-local mm)."},
+            True,
+        ),
         FieldSpec(
             "sides",
             {
@@ -1352,7 +1401,17 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("radius", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "radius",
+            {
+                **LENGTH_SCHEMA,
+                "description": (
+                    "Polygon radius (mm); see `inscribed` for whether this "
+                    "is the apothem (inscribed) or circumscribed radius."
+                ),
+            },
+            True,
+        ),
         FieldSpec(
             "inscribed",
             {
@@ -1377,7 +1436,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec(
             "construction",
-            {"type": "boolean", "default": False},
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "If true, mark the polygon as a construction entity.",
+            },
             False,
         ),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
@@ -1391,9 +1454,21 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("center", _SKETCH_POINT_2D, True),
-        FieldSpec("major_radius", LENGTH_SCHEMA, True),
-        FieldSpec("minor_radius", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "center",
+            {**_SKETCH_POINT_2D, "description": "Ellipse center point (sketch-local mm)."},
+            True,
+        ),
+        FieldSpec(
+            "major_radius",
+            {**LENGTH_SCHEMA, "description": "Semi-major axis length (mm)."},
+            True,
+        ),
+        FieldSpec(
+            "minor_radius",
+            {**LENGTH_SCHEMA, "description": "Semi-minor axis length (mm)."},
+            True,
+        ),
         FieldSpec(
             "angle_deg",
             {
@@ -1405,7 +1480,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec(
             "construction",
-            {"type": "boolean", "default": False},
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "If true, mark the ellipse as a construction entity.",
+            },
             False,
         ),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
@@ -1419,7 +1498,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("position", _SKETCH_POINT_2D, True),
+        FieldSpec(
+            "position",
+            {**_SKETCH_POINT_2D, "description": "Text insertion point (sketch-local mm)."},
+            True,
+        ),
         FieldSpec(
             "content",
             {
@@ -1429,7 +1512,14 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("height", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "height",
+            {
+                **LENGTH_SCHEMA,
+                "description": "Text cap height (mm), applied as CharHeight.",
+            },
+            True,
+        ),
         FieldSpec(
             "font",
             {
