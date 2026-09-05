@@ -32,7 +32,11 @@ def boss_extrude_blind_fields(length_schema: dict[str, Any]) -> list[FieldSpec]:
             },
             True,
         ),
-        FieldSpec("depth", length_schema, True),
+        FieldSpec(
+            "depth",
+            {**length_schema, "description": "Extrusion depth (mm)."},
+            True,
+        ),
         FieldSpec(
             "flip",
             {

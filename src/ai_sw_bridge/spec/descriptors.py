@@ -529,6 +529,41 @@ _SLOT_TYPE_ENUM: dict[str, Any] = {
 }
 
 
+# Shared `merge` schema for every boss variant EXCEPT boss_extrude_blind
+# (whose field list lives in the separate _extrude_fields helper and carries
+# its own, textually-identical copy). Kept as one constant here so the four
+# boss_extrude_* fragments in this module can't drift from each other.
+_BOSS_MERGE_SCHEMA: dict[str, Any] = {
+    "type": "boolean",
+    "default": True,
+    "description": (
+        "true (default) = fuse this boss into the existing solid body it "
+        "overlaps (modeling-time boolean UNION). false = keep it as a "
+        "separate solid body (multi-body). Express unions HERE, at the "
+        "extrusion phase: there is no post-hoc 'combine' feature."
+    ),
+}
+
+# Shared `flip` schema for the three single-direction cut variants
+# (cut_extrude_through_all/_blind/_midplane). FeatureCut4 arg 2 (`Flip`) is
+# proven NOT to reverse cut direction (issue #40, seat-proven 2026-09-05) --
+# the builder derives the real +normal/-normal sweep automatically from
+# whether the sketch is plane- or face-hosted (see
+# docs/coordinate_conventions.md §4). `cut_extrude_two_direction` gets its
+# own hedged copy below since that arg shape was not covered by the #40 seat
+# proof.
+_CUT_FLIP_SCHEMA: dict[str, Any] = {
+    "type": "boolean",
+    "default": False,
+    "description": (
+        "Bound to FeatureCut4 arg 2 (`Flip`); proven not to reverse cut "
+        "direction (issue #40, seat-proven 2026-09-05). The builder sets "
+        "the real +normal/-normal sweep direction automatically depending "
+        "on whether the sketch is plane- or face-hosted."
+    ),
+}
+
+
 FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     "sketch_rectangle_on_plane": [
         FieldSpec(
@@ -679,22 +714,91 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     # under its module-size budget. LENGTH_SCHEMA is passed in to avoid a cycle.
     "boss_extrude_blind": boss_extrude_blind_fields(LENGTH_SCHEMA),
     "boss_extrude_midplane": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec("depth", LENGTH_SCHEMA, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-        FieldSpec("merge", {"type": "boolean", "default": True}, False),
+        FieldSpec(
+            "sketch",
+            {
+                "type": "string",
+                "description": "Name of an earlier sketch feature to extrude.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "depth",
+            {
+                **LENGTH_SCHEMA,
+                "description": (
+                    "Total extrusion depth (mm), centred on the sketch plane "
+                    "(depth/2 of material added each side)."
+                ),
+            },
+            True,
+        ),
+        FieldSpec(
+            "flip",
+            {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "Reserved; a mid-plane extrude is symmetric about the "
+                    "sketch plane, so the direction is immaterial."
+                ),
+            },
+            False,
+        ),
+        FieldSpec("merge", _BOSS_MERGE_SCHEMA, False),
     ],
     "boss_extrude_through_all": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-        FieldSpec("merge", {"type": "boolean", "default": True}, False),
+        FieldSpec(
+            "sketch",
+            {
+                "type": "string",
+                "description": "Name of an earlier sketch feature to extrude.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "flip",
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "Extrude in -normal instead of +normal direction.",
+            },
+            False,
+        ),
+        FieldSpec("merge", _BOSS_MERGE_SCHEMA, False),
     ],
     "boss_extrude_two_direction": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec("depth", LENGTH_SCHEMA, True),
-        FieldSpec("depth2", LENGTH_SCHEMA, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-        FieldSpec("merge", {"type": "boolean", "default": True}, False),
+        FieldSpec(
+            "sketch",
+            {
+                "type": "string",
+                "description": "Name of an earlier sketch feature to extrude.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "depth",
+            {**LENGTH_SCHEMA, "description": "Extrusion depth into +normal (mm)."},
+            True,
+        ),
+        FieldSpec(
+            "depth2",
+            {**LENGTH_SCHEMA, "description": "Extrusion depth into -normal (mm)."},
+            True,
+        ),
+        FieldSpec(
+            "flip",
+            {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "Swap which side `depth` (+normal) vs `depth2` (-normal) "
+                    "extrudes into."
+                ),
+            },
+            False,
+        ),
+        FieldSpec("merge", _BOSS_MERGE_SCHEMA, False),
     ],
     "boss_extrude_up_to_surface": [
         FieldSpec(
@@ -703,8 +807,16 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             True,
         ),
         FieldSpec("target_ref", _TARGET_REF_SCHEMA, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-        FieldSpec("merge", {"type": "boolean", "default": True}, False),
+        FieldSpec(
+            "flip",
+            {
+                "type": "boolean",
+                "default": False,
+                "description": "Extrude in -normal instead of +normal direction.",
+            },
+            False,
+        ),
+        FieldSpec("merge", _BOSS_MERGE_SCHEMA, False),
     ],
     "cut_extrude_through_all": [
         FieldSpec(
@@ -715,35 +827,80 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
+        FieldSpec("flip", _CUT_FLIP_SCHEMA, False),
+    ],
+    "cut_extrude_blind": [
+        FieldSpec(
+            "sketch",
+            {
+                "type": "string",
+                "description": "Name of an earlier sketch feature to cut along.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "depth",
+            {**LENGTH_SCHEMA, "description": "Cut depth (mm)."},
+            True,
+        ),
+        FieldSpec("flip", _CUT_FLIP_SCHEMA, False),
+    ],
+    "cut_extrude_midplane": [
+        FieldSpec(
+            "sketch",
+            {
+                "type": "string",
+                "description": "Name of an earlier sketch feature to cut along.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "depth",
+            {
+                **LENGTH_SCHEMA,
+                "description": (
+                    "Total cut depth (mm), centred on the sketch plane "
+                    "(depth/2 removed each side)."
+                ),
+            },
+            True,
+        ),
+        FieldSpec("flip", _CUT_FLIP_SCHEMA, False),
+    ],
+    "cut_extrude_two_direction": [
+        FieldSpec(
+            "sketch",
+            {
+                "type": "string",
+                "description": "Name of an earlier sketch feature to cut along.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "depth",
+            {**LENGTH_SCHEMA, "description": "Cut depth into the +normal direction (mm)."},
+            True,
+        ),
+        FieldSpec(
+            "depth2",
+            {**LENGTH_SCHEMA, "description": "Cut depth into the -normal direction (mm)."},
+            True,
+        ),
         FieldSpec(
             "flip",
             {
                 "type": "boolean",
                 "default": False,
-                "description": "Cut in -normal instead of +normal direction.",
+                "description": (
+                    "Bound to FeatureCut4 arg 2 (`Flip`). The issue #40 seat "
+                    "proof (2026-09-05) only covers one-directional cuts, so "
+                    "this field's effect on a two-direction cut is UNVERIFIED "
+                    "-- `depth`/`depth2` are what determine which side is "
+                    "removed, not `flip`."
+                ),
             },
             False,
         ),
-    ],
-    "cut_extrude_blind": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec("depth", LENGTH_SCHEMA, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-    ],
-    "cut_extrude_midplane": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec(
-            "depth",
-            LENGTH_SCHEMA,
-            True,
-        ),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-    ],
-    "cut_extrude_two_direction": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec("depth", LENGTH_SCHEMA, True),
-        FieldSpec("depth2", LENGTH_SCHEMA, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
     ],
     "revolve_boss": [
         FieldSpec(
