@@ -804,6 +804,12 @@ Open the PR against `master` with the before/after exit codes in the description
 
 **Read `C:\D\_grok_agnostic_test\O2_VERDICT.md` first.** Apply exactly one branch. They are mutually exclusive.
 
+> **RESOLVED 2026-09-05 — `VERDICT: BRIDGE_BUG`. Apply branch B. Branch A does not apply and is retained below only as the record of what was tested for.**
+>
+> The probe ran the full 2×2 of `FeatureCut4`'s two direction booleans. `Dir=False` fails in both `Flip` states; `Dir=True` **builds in both**. `Dir` alone decides, `Flip` is not a direction control, and neither is reachable from a spec. PR #44's guard would forbid a form that demonstrably builds.
+>
+> **Branch B gains one step the original did not anticipate — B4a.** `material_envelope_scan` models the spec's `flip` as a direction reverser (probe E lints exit 6, empty-air ERROR). That ERROR is correct *only* while the builder pins `Dir=False`. Exposing `Dir` without correcting the envelope trades a false pass for a false ERROR.
+
 **Files (branch A):**
 - Modify: `docs/spec_reference.md` (cut-type sections), `docs/coordinate_conventions.md` §4
 - The existing PR #44 branch `fix/issue-40-one-dir-cut-on-plane` is retained
@@ -865,18 +871,22 @@ git push gh fix/issue-40-one-dir-cut-on-plane
 
 Post the Task 1 verdict on PR #44 explaining that the guard forbids a form that in fact builds, and close it. Re-title issue #40 to name the real defect: the builder never exposes `FeatureCut4`'s `Dir` axis, so a spec cannot express the working direction.
 
-- [ ] **B2: Write the failing test**
+**The rule the probe established:** `FeatureCut4` with `Dir=False` sweeps **−(sketch normal)**, always. A face sketch's normal points out of the body, so −normal is *into* it and the default is correct — which is why every face-sketched cut works today. A reference plane at or below the body has −normal pointing away, so the cut sweeps air and SW returns `None`. Meanwhile `_extruded_box` (`preflight.py:193`) models a `flip=False` cut as sweeping **+normal** — the opposite. The builder and the pre-flight disagree, and issue #40 is the gap between them.
 
-Add to `tests/test_preflight.py` — a unit test on the arg tuple, no seat required:
+**The fix is to make the builder do what the pre-flight, the docs and the author already assume**, scoped to the case that is broken: pass `Dir=True` for a one-directional cut whose sketch is on a reference plane. Face-sketched cuts keep `Dir=False` and are untouched. No new spec field, no migration, and nothing that builds today changes behaviour.
+
+⚠ Setting `Dir=True` unconditionally would break every face-sketched cut. The scoping is the fix, not an optimization.
+
+- [ ] **B2: Write the failing tests**
+
+Add to `tests/test_preflight.py` — unit tests on the arg tuple, no seat required:
 
 ```python
-def test_cut_arg_builder_exposes_the_reverse_direction_axis():
+def test_cut_arg_builder_carries_the_direction_axis():
     from ai_sw_bridge.spec.handlers.extrude import _cut4_args_2024
 
-    args = _cut4_args_2024(
-        end_cond=0, depth_m=0.006, flip=False, reverse_direction=True
-    )
-    assert args[2] is True, "arg 3 Dir must carry reverse_direction"
+    args = _cut4_args_2024(end_cond=0, depth_m=0.006, flip=False, toward_normal=True)
+    assert args[2] is True, "arg 3 Dir must carry toward_normal"
 
 
 def test_cut_arg_builder_default_is_byte_for_byte_unchanged():
@@ -886,29 +896,81 @@ def test_cut_arg_builder_default_is_byte_for_byte_unchanged():
     assert args[2] is False
 ```
 
-- [ ] **B3: Run the test to verify it fails**
-
-Run: `pytest tests/test_preflight.py -q -k reverse_direction`
-Expected: FAIL — `TypeError: _cut4_args_2024() got an unexpected keyword argument 'reverse_direction'`.
-
-- [ ] **B4: Thread the axis through**
-
-In `src/ai_sw_bridge/spec/handlers/extrude.py`, add `reverse_direction: bool = False` to the keyword-only signature of `_cut4_args_2024`, `_cut4_args_2025` and `_call_feature_cut`; change arg 3 from `False` to `reverse_direction`; and in each of `_build_cut_extrude_blind`, `_build_cut_extrude_through_all` and `_build_cut_extrude_midplane`, read it from the spec and pass it:
+And a test that the plane/face scoping is applied, in `tests/test_preflight.py`:
 
 ```python
-    reverse = bool(feat.get("reverse_direction", False))
+def test_plane_sketched_cut_sweeps_toward_the_normal():
+    from ai_sw_bridge.spec.handlers.extrude import _cut_sweeps_toward_normal
+
+    plane_sketch = {"type": "sketch_rectangle_on_plane", "plane": "Front"}
+    face_sketch = {"type": "sketch_circle_on_face", "face": "+z"}
+    assert _cut_sweeps_toward_normal(plane_sketch) is True
+    assert _cut_sweeps_toward_normal(face_sketch) is False
+    assert _cut_sweeps_toward_normal({}) is False
 ```
 
-Add `reverse_direction` as an optional boolean to those three cut types in `src/ai_sw_bridge/spec/schema.py`, following the shape of the existing `flip` property, with the description: `"Reverse the cut direction (FeatureCut4 Dir). Distinct from flip, which selects which side of the profile is removed."`
+- [ ] **B3: Run the tests to verify they fail**
+
+Run: `pytest tests/test_preflight.py -q -k "toward_normal or direction_axis"`
+Expected: FAIL — `TypeError: _cut4_args_2024() got an unexpected keyword argument 'toward_normal'` and `ImportError: cannot import name '_cut_sweeps_toward_normal'`.
+
+- [ ] **B4: Thread the axis through, scoped to plane sketches**
+
+In `src/ai_sw_bridge/spec/handlers/extrude.py`:
+
+Add `toward_normal: bool = False` to the keyword-only signature of `_cut4_args_2024`, `_cut4_args_2025` and `_call_feature_cut`, and change arg 3 from `False` to `toward_normal`.
+
+Add the scoping predicate:
+
+```python
+def _cut_sweeps_toward_normal(sketch: dict[str, Any]) -> bool:
+    """Whether a one-directional cut on ``sketch`` needs FeatureCut4 Dir=True.
+
+    FeatureCut4 with Dir=False sweeps -(sketch normal). A modeled face's
+    normal points out of the body, so -normal is *into* it and the default
+    is already correct. A reference plane at or below the body has -normal
+    pointing away, so the cut sweeps empty air and SW returns None -- the
+    silent failure behind issue #40. Flipping Dir for plane sketches makes
+    the cut go where docs/coordinate_conventions.md and preflight's
+    ``_extruded_box`` both already say it goes.
+
+    Verified on a seat 2026-09-05: plane-sketched blind cut, Dir=False ->
+    FeatureCut4 None; Dir=True -> builds. Face-sketched cuts build on
+    Dir=False and must keep it.
+    """
+    return str(sketch.get("type", "")).endswith("_on_plane")
+```
+
+In each of `_build_cut_extrude_blind`, `_build_cut_extrude_through_all` and `_build_cut_extrude_midplane`, resolve the sketch feature and pass the flag. These handlers currently call `_select_sketch(ctx, sketch_name)` without holding the sketch dict, so look it up from the spec the same way the builder does elsewhere, and pass `toward_normal=_cut_sweeps_toward_normal(sketch)` to `_call_feature_cut`.
+
+Leave `_build_cut_extrude_two_direction` alone — it straddles the plane and works in both senses.
+
+- [ ] **B4a: Correct the pre-flight's direction model to match**
+
+This step does not exist in the original plan; the probe revealed the need for it. Once B4 lands, a plane-sketched cut sweeps `+normal`, which is what `_extruded_box` already models for `flip=False` — so for plane sketches the two now agree and no change is needed there.
+
+What *does* need correcting is `flip`. The probe showed arg 2 `Flip` does **not** reverse direction: `Dir=True` builds with `flip` both true and false. So `_extruded_box`'s `flip` parameter models an effect the builder does not have. Either bind `flip` to the direction the model assumes, or stop modeling it. Decide with the maintainer and record which; do not leave the model asserting an effect that is not there.
+
+Add a regression test asserting the pre-flight no longer ERRORs on `probe_E_dir_true_flip_true.json`'s shape once the builder is fixed — a spec that builds must not lint as a geometric ERROR (the never-false-ERROR invariant).
 
 - [ ] **B5: Run the tests to verify they pass**
 
 Run: `pytest tests/ -q`
-Expected: PASS. The default-path test proves the shipped arg tuple is unchanged for every existing spec.
+Expected: PASS, whole suite. The default-path test proves the arg tuple is unchanged for face-sketched cuts, which are the only ones that build today.
 
-- [ ] **B6: Document it and re-verify on the seat**
+- [ ] **B6: Document the corrected rule and re-verify on the seat**
 
-Add the field to the three cut-type tables in `docs/spec_reference.md`. Then — **operator-gated, same rules as Task 1** — re-run `probe_D_dir_true.json` with `"reverse_direction": true` on the cut through the normal build path and confirm exit 0.
+In `docs/coordinate_conventions.md` §4 and the three cut-type sections of `docs/spec_reference.md`, replace any "sketch cuts on a face" style advice with the mechanism: a cut sweeps −(sketch normal) by default; the builder now flips that for plane sketches so a plane-sketched cut goes toward the material. Correct the `flip` row per B4a.
+
+Then — **operator-gated, same rules as Task 1** — run all three through the normal build path with no probe patch and confirm:
+
+| Spec | Expect |
+|---|---|
+| `C:/D/_grok_agnostic_test/probe_D_dir_true.json` | exit 0, 4 features (was exit 4) |
+| `C:/D/_grok_agnostic_test/probe_B_posz_face_blind.json` | exit 0 — **no regression on face cuts** |
+| `C:/D/_grok_agnostic_test/exerciser.json` | `CUT_Early` and `CUT_Poly` now build |
+
+The third is the one that matters: those are the two features that killed the original cold-read build.
 
 - [ ] **B7: Run the gates and commit**
 
@@ -917,8 +979,8 @@ cd /c/D/_grok_agnostic_test/bridge_work
 git checkout master && git checkout -b fix/issue-40-expose-cut-direction
 rm -f nul
 black . && flake8 && mypy && pytest -q && python tools/module_size_gate.py
-git add src/ai_sw_bridge/spec/handlers/extrude.py src/ai_sw_bridge/spec/schema.py tests/test_preflight.py docs/spec_reference.md
-git commit -m "fix(build): expose FeatureCut4 reverse-direction axis to cut specs"
+git add src/ai_sw_bridge/spec/handlers/extrude.py src/ai_sw_bridge/spec/preflight.py tests/test_preflight.py docs/spec_reference.md docs/coordinate_conventions.md
+git commit -m "fix(build): sweep plane-sketched cuts toward the material"
 git remote -v
 git push gh fix/issue-40-expose-cut-direction
 ```
@@ -938,19 +1000,21 @@ Independent of the Task 1 verdict — true either way.
 
 **Background:** `spec_reference.md` describes `flip` on a cut as *"Cut in -normal direction"* — a direction claim. The code binds `flip` to `FeatureCut4` arg 2, which the repo's own signature table (`sw_types.py:1218`) names `Flip`, while the arg named `Dir` (arg 3) is pinned `False`. `flip: true` on a cut has **zero** coverage: no shipped example uses it, and it appears in none of the 88 extrude/cut features across the 20 production specs surveyed. The doc therefore promises behaviour nothing has verified.
 
-- [ ] **Step 1: Determine what to write from the Task 1 evidence**
+- [ ] **Step 1: Settled by the probe — `flip` is not a direction control**
 
-Task 1's probe E ran `Flip=True` together with `Dir=True`; probe B in the original control set ran `Flip=True` with `Dir=False`. Between them the two booleans are separable. Write the row to match what was observed, not what was assumed.
+Task 1 ran the full 2×2. `Dir=True` **built with `flip` both true and false**; `Dir=False` failed in both. Arg 2 `Flip` has no bearing on the cut's direction, so the documented description is wrong.
 
 - [ ] **Step 2: Replace both `flip` rows**
 
-If Task 1 showed `Flip` selects which side of the profile is removed rather than the direction, replace the description in both rows with:
+Replace the description in the `flip` row of `cut_extrude_blind` (`:658`) and `cut_extrude_through_all` (`:710`) with:
 
 ```markdown
-| `flip` | no | boolean | Remove the material *outside* the profile instead of inside (`FeatureCut4 Flip`). This does **not** reverse the cut direction. Default `false`. Untested on a seat — no shipped example or production spec sets it. |
+| `flip` | no | boolean | Remove the material *outside* the profile instead of inside (`FeatureCut4 Flip`). This does **not** reverse the cut direction — see the direction note under `sketch`. Default `false`. No shipped example or production spec sets it. |
 ```
 
-If Task 1 showed `Flip` does reverse the direction, keep the existing wording and instead append: `Verified on a seat 2026-09-05.`
+Do the same for `cut_extrude_midplane` (`:732`), whose row currently reads "Mirror the asymmetric reference" — also a direction claim.
+
+Note the ordering constraint: this row's accuracy depends on Task 6 B4a deciding what `flip` means in `_extruded_box`. If B4a removes `flip` from the model, say so here rather than describing an effect nothing implements.
 
 - [ ] **Step 3: Check the honesty gate**
 
