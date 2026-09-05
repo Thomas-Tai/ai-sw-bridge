@@ -15,6 +15,44 @@ from ai_sw_bridge.spec.lint import lint, LintFinding
 from ai_sw_bridge.spec.validator import validate
 
 
+def test_finding_without_code_omits_the_key():
+    f = LintFinding(severity="info", path="features/0/X", message="m")
+    assert f.code is None
+    assert f.to_dict() == {"severity": "info", "path": "features/0/X", "message": "m"}
+
+
+def test_finding_with_code_includes_the_key():
+    f = LintFinding(
+        severity="info", path="features/0/X", message="m", code="preflight_skip"
+    )
+    assert f.to_dict()["code"] == "preflight_skip"
+
+
+def test_preflight_skip_notes_carry_the_skip_code():
+    from ai_sw_bridge.spec.preflight import (
+        PREFLIGHT_SKIP_CODE,
+        material_envelope_scan,
+    )
+
+    spec = {
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40,
+                "height": 30,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10},
+            {"type": "linear_pattern", "name": "PAT", "seed": "EX", "count": 3},
+        ]
+    }
+    findings = material_envelope_scan(spec)
+    skips = [f for f in findings if f.code == PREFLIGHT_SKIP_CODE]
+    assert len(skips) == 1
+    assert skips[0].path == "features/2/PAT"
+
+
 def _minimal_spec() -> dict:
     return {
         "schema_version": 1,

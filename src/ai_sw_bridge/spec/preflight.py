@@ -224,6 +224,11 @@ def _extruded_box(
 # model).
 _NON_BODY_TYPES = frozenset({"linear_pattern", "circular_pattern", "mirror_feature"})
 
+# Stable machine tag on every honest-skip note. Consumers derive pre-flight
+# coverage from these rather than re-deriving the modeling predicate, so the
+# summary cannot drift from what the analyzers actually skipped.
+PREFLIGHT_SKIP_CODE = "preflight_skip"
+
 
 def _skip(i: int, name: str, ftype: str) -> LintFinding:
     """Honest-skip note: this feature is not modeled by the axis-aligned
@@ -236,6 +241,7 @@ def _skip(i: int, name: str, ftype: str) -> LintFinding:
             f"pre-flight skip: '{name}' ({ftype}) is not modeled by the "
             f"axis-aligned envelope; downstream geometry checks are relaxed."
         ),
+        code=PREFLIGHT_SKIP_CODE,
     )
 
 
