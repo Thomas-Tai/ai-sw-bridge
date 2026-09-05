@@ -124,6 +124,7 @@ def _cut4_args_2024(
     flip: bool,
     end_cond2: int | None = None,
     depth2_m: float = 0.0,
+    toward_normal: bool = False,
 ) -> tuple:
     """SW 2024 SP1 FeatureCut4 arg tuple (27 args; default/proven variant).
 
@@ -148,7 +149,7 @@ def _cut4_args_2024(
     return (
         single_dir,  # 1  Sd (single-ended unless a 2nd direction is requested)
         flip,  # 2  Flip
-        False,  # 3  Dir
+        toward_normal,  # 3  Dir
         end_cond,  # 4  T1
         0 if single_dir else end_cond2,  # 5  T2
         depth_m,  # 6  D1
@@ -184,6 +185,7 @@ def _cut4_args_2025(
     flip: bool,
     end_cond2: int | None = None,
     depth2_m: float = 0.0,
+    toward_normal: bool = False,
 ) -> tuple:
     """🔴 SEAT (SW 2025 / RevisionNumber major 33) -- UNVERIFIED.
 
@@ -204,6 +206,7 @@ def _cut4_args_2025(
         flip=flip,
         end_cond2=end_cond2,
         depth2_m=depth2_m,
+        toward_normal=toward_normal,
     )
 
 
@@ -215,6 +218,7 @@ def _call_feature_cut(
     flip: bool,
     end_cond2: int | None = None,
     depth2_m: float = 0.0,
+    toward_normal: bool = False,
 ) -> Any:
     """FeatureManager.FeatureCut4 - the cut variant of FeatureExtrusion2.
 
@@ -235,6 +239,7 @@ def _call_feature_cut(
         flip=flip,
         end_cond2=end_cond2,
         depth2_m=depth2_m,
+        toward_normal=toward_normal,
     )
     assert_args("IFeatureManager.FeatureCut4", args)
     fm = ctx.doc.FeatureManager
@@ -242,6 +247,36 @@ def _call_feature_cut(
     if feature is None:
         raise RuntimeError("FeatureCut4 returned None")
     return feature
+
+
+def _cut_sweeps_toward_normal(sketch: dict[str, Any]) -> bool:
+    """Whether a one-directional cut on ``sketch`` needs FeatureCut4 Dir=True.
+
+    FeatureCut4 with Dir=False sweeps -(sketch normal). A modeled face's
+    normal points out of the body, so -normal is *into* it and the default
+    is already correct. A reference plane at or below the body has -normal
+    pointing away, so the cut sweeps empty air and SW returns None -- the
+    silent failure behind issue #40. Flipping Dir for plane sketches makes
+    the cut go where docs/coordinate_conventions.md and preflight's
+    ``_extruded_box`` both already say it goes.
+
+    Verified on a seat 2026-09-05: plane-sketched blind cut, Dir=False ->
+    FeatureCut4 None; Dir=True -> builds. Face-sketched cuts build on
+    Dir=False and must keep it.
+    """
+    return str(sketch.get("type", "")).endswith("_on_plane")
+
+
+def _cut_toward_normal_for(ctx: BuildContext, sketch_name: str) -> bool:
+    """Resolve Dir for a one-directional cut from the already-built sketch.
+
+    Handlers only hold the sketch name; ``BuiltFeature.type`` is the spec
+    type string. A missing name keeps Dir=False (today's face-cut default).
+    """
+    built = ctx.features_by_name.get(sketch_name)
+    if built is None:
+        return False
+    return _cut_sweeps_toward_normal({"type": built.type})
 
 
 def _build_boss_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
@@ -513,7 +548,13 @@ def _build_cut_extrude_through_all(
     sketch_name = feat["sketch"]
     _select_sketch(ctx, sketch_name)
     flip = bool(feat.get("flip", False))
-    f = _call_feature_cut(ctx, end_cond=SW_END_COND_THROUGH_ALL, depth_m=0.0, flip=flip)
+    f = _call_feature_cut(
+        ctx,
+        end_cond=SW_END_COND_THROUGH_ALL,
+        depth_m=0.0,
+        flip=flip,
+        toward_normal=_cut_toward_normal_for(ctx, sketch_name),
+    )
     f.Name = feat["name"]
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
@@ -523,7 +564,13 @@ def _build_cut_extrude_blind(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFe
     _select_sketch(ctx, sketch_name)
     depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["cut_depth"])
     flip = bool(feat.get("flip", False))
-    f = _call_feature_cut(ctx, end_cond=SW_END_COND_BLIND, depth_m=depth_m, flip=flip)
+    f = _call_feature_cut(
+        ctx,
+        end_cond=SW_END_COND_BLIND,
+        depth_m=depth_m,
+        flip=flip,
+        toward_normal=_cut_toward_normal_for(ctx, sketch_name),
+    )
     f.Name = feat["name"]
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
 
@@ -540,7 +587,11 @@ def _build_cut_extrude_midplane(
     depth_m = _literal_or_default(feat["depth"], PLACEHOLDER_MM["cut_depth"])
     flip = bool(feat.get("flip", False))
     f = _call_feature_cut(
-        ctx, end_cond=SW_END_COND_MID_PLANE, depth_m=depth_m, flip=flip
+        ctx,
+        end_cond=SW_END_COND_MID_PLANE,
+        depth_m=depth_m,
+        flip=flip,
+        toward_normal=_cut_toward_normal_for(ctx, sketch_name),
     )
     f.Name = feat["name"]
     return BuiltFeature(name=feat["name"], type=feat["type"], sw_object=f)
