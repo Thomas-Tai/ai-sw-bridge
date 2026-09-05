@@ -628,3 +628,33 @@ def test_plane_hosted_sketch_types_are_schema_derived():
         "sketch_polygon",
         "sketch_text",
     } <= PLANE_HOSTED_SKETCH_TYPES
+
+
+def test_plane_normal_is_stashed_for_every_plane_hosted_sketch():
+    """Every plane-hosted sketch must stash the plane's outward normal.
+
+    A child extrude reads ``parent_plane_normal`` and raises if it is None,
+    so a plane-hosted type missing from the stash set fails the build at the
+    first extrude that consumes it. This was a hand-maintained tuple of four
+    types; the other six plane-hosted types silently had no normal.
+    """
+    from ai_sw_bridge.spec.builder import PLANE_NORMALS, _stash_plane_normal
+    from ai_sw_bridge.spec.schema import PLANE_HOSTED_SKETCH_TYPES, SKETCH_TYPES
+
+    class _BF:
+        def __init__(self, t):
+            self.type = t
+            self.parent_plane_normal = None
+
+    for stype in PLANE_HOSTED_SKETCH_TYPES:
+        for plane in ("Front", "Top", "Right"):
+            bf = _BF(stype)
+            _stash_plane_normal(bf, {"type": stype, "plane": plane})
+            assert bf.parent_plane_normal == PLANE_NORMALS[plane], (stype, plane)
+
+    # Face-based handlers stash their own face normal; build() must not
+    # overwrite it from a plane that is not there.
+    for stype in SKETCH_TYPES - PLANE_HOSTED_SKETCH_TYPES:
+        bf = _BF(stype)
+        _stash_plane_normal(bf, {"type": stype})
+        assert bf.parent_plane_normal is None, stype
