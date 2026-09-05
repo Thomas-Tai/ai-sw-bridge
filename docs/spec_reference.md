@@ -641,6 +641,12 @@ No `depth` — the boss runs until it terminates on `target_ref`.
 
 Removes material through the entire part in both directions.
 
+A one-directional cut sketched on a **reference plane** (any sketch type
+that takes a `plane` field, not just the `*_on_plane` three) sweeps
+**+normal** (the builder sets FeatureCut4 `Dir=True`). A **face-sketched** cut
+keeps `Dir=False` and sweeps **−normal** (into the body). See
+[coordinate_conventions.md](coordinate_conventions.md) §4.
+
 ```json
 {
   "type": "cut_extrude_through_all",
@@ -654,8 +660,8 @@ Removes material through the entire part in both directions.
 |---|---|---|---|
 | `type` | yes | const `"cut_extrude_through_all"` | |
 | `name` | yes | string | Unique feature name |
-| `sketch` | yes | string | Name of an earlier sketch feature |
-| `flip` | no | boolean | Cut in -normal direction. Default `false`. |
+| `sketch` | yes | string | Name of an earlier sketch. Plane sketches sweep +normal; face sketches sweep −normal / into the body. |
+| `flip` | no | boolean | Bound to FeatureCut4 arg 2 (`Flip`). Does **not** reverse cut direction (seat 2026-09-05). Default `false`. |
 
 No `depth` — cuts go through everything.
 
@@ -691,6 +697,12 @@ Same face-sketch-origin gotcha as `sketch_rectangle_on_face` — `center` offset
 
 Removes material to a specified depth.
 
+A one-directional cut sketched on a **reference plane** (any sketch type
+that takes a `plane` field, not just the `*_on_plane` three) sweeps
+**+normal** (the builder sets FeatureCut4 `Dir=True`). A **face-sketched** cut
+keeps `Dir=False` and sweeps **−normal** (into the body). See
+[coordinate_conventions.md](coordinate_conventions.md) §4.
+
 ```json
 {
   "type": "cut_extrude_blind",
@@ -705,13 +717,20 @@ Removes material to a specified depth.
 |---|---|---|---|
 | `type` | yes | const `"cut_extrude_blind"` | |
 | `name` | yes | string | Unique feature name |
-| `sketch` | yes | string | Name of an earlier sketch feature |
+| `sketch` | yes | string | Name of an earlier sketch. Plane sketches sweep +normal; face sketches sweep −normal / into the body. |
 | `depth` | yes | length | Cut depth (mm) |
-| `flip` | no | boolean | Cut in -normal direction. Default `false`. |
+| `flip` | no | boolean | Bound to FeatureCut4 arg 2 (`Flip`). Does **not** reverse cut direction (seat 2026-09-05). Default `false`. |
 
 ### `cut_extrude_midplane`
 
 Removes material symmetrically about the sketch plane — `depth/2` is cut into each side.
+
+A one-directional cut sketched on a **reference plane** (any sketch type
+that takes a `plane` field, not just the `*_on_plane` three) sweeps
+**+normal** (the builder sets FeatureCut4 `Dir=True`). A **face-sketched** cut
+keeps `Dir=False` and sweeps **−normal** (into the body). Mid-plane still
+straddles the sketch, so both sides are cut. See
+[coordinate_conventions.md](coordinate_conventions.md) §4.
 
 ```json
 {
@@ -727,9 +746,9 @@ Removes material symmetrically about the sketch plane — `depth/2` is cut into 
 |---|---|---|---|
 | `type` | yes | const `"cut_extrude_midplane"` | |
 | `name` | yes | string | Unique feature name |
-| `sketch` | yes | string | Name of an earlier sketch feature |
+| `sketch` | yes | string | Name of an earlier sketch. Plane sketches sweep +normal; face sketches sweep −normal / into the body. |
 | `depth` | yes | length | Total cut depth (mm); centred on the sketch plane |
-| `flip` | no | boolean | Mirror the asymmetric reference. Default `false`. |
+| `flip` | no | boolean | Bound to FeatureCut4 arg 2 (`Flip`). Does **not** reverse cut direction (seat 2026-09-05). Default `false`. |
 
 ### `cut_extrude_two_direction`
 

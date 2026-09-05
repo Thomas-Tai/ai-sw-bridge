@@ -198,9 +198,12 @@ def _extruded_box(
     """Part-frame box of a plane rectangle extruded ``depth`` along the plane
     normal, or None if ``sketch`` is not a modelable plane rectangle.
 
-    ``flip`` honors the schema's boss/cut ``flip`` field: False sweeps
-    +normal (``[lo, lo + depth]``), True sweeps -normal (``[lo - depth, lo]``)
-    -- e.g. a blind cut on a top face flipped to cut inward into material.
+    ``flip`` honors the schema's *boss* ``flip`` field: False sweeps
+    +normal (``[lo, lo + depth]``), True sweeps -normal (``[lo - depth, lo]``).
+    Cut call sites pass False: FeatureCut4 arg 2 Flip is not a direction
+    control (issue #40, seat 2026-09-05); a plane-sketched cut sweeps
+    +normal. Face-sketched cuts are not a modelable plane rectangle here
+    and honest-skip (the builder's Dir=False already cuts into the body).
     A sketch is zero-thickness along its own normal (``lo == hi ==`` the plane
     offset), so the swept box grows from that single offset value.
     """
@@ -327,11 +330,15 @@ def material_envelope_scan(spec: dict[str, Any]) -> list[LintFinding]:
 
         elif ftype in _MODELED_SUBTRACTIVE:
             depth = _as_float(feat.get("depth", 0.0))
+            # FeatureCut4 arg 2 Flip does not reverse direction (issue #40).
+            # Plane-sketched cuts now sweep +normal; never treat feat["flip"]
+            # as a reverser. Face-sketched cuts are absent from `sketches`
+            # so _extruded_box returns None and we honest-skip.
             box = (
                 _extruded_box(
                     sketches.get(feat.get("sketch", ""), {}),
                     depth,
-                    bool(feat.get("flip", False)),
+                    False,
                 )
                 if depth is not None
                 else None

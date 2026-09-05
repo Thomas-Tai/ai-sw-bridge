@@ -71,6 +71,11 @@ from .sketches import (
     RectangleOnFaceHandler,
     RectangleOnPlaneHandler,
 )
+
+# PLANE_NORMALS is re-exported here: callers and tests reach it as
+# ``builder.PLANE_NORMALS``, which predates the extraction.
+from ._plane_normals import PLANE_NORMALS  # noqa: F401
+from ._plane_normals import _stash_plane_normal
 from .schema import SKETCH_TYPES
 from .handlers._common import (  # noqa: F401  -- re-exported for _wire_handlers + monkeypatch seams
     _mm_to_m,
@@ -157,19 +162,6 @@ SAVE_FORMAT_VERSIONS: dict[str, int] = {
     "2022": 31,
     "2021": 30,
 }
-
-# Plane name -> outward-normal vector in part coordinates
-# (+X right, +Y up, +Z out of screen).
-# Matches SW's default English template orientation:
-#   Front Plane = XY plane (normal +Z)
-#   Top   Plane = XZ plane (normal +Y)
-#   Right Plane = YZ plane (normal +X)
-PLANE_NORMALS: dict[str, tuple[float, float, float]] = {
-    "Front": (0.0, 0.0, 1.0),
-    "Top": (0.0, 1.0, 0.0),
-    "Right": (1.0, 0.0, 0.0),
-}
-
 
 # -----------------------------------------------------------------------------
 # no_dim mode: resolve {rhs} -> literal mm at build time, skip AddDimension2
@@ -1106,15 +1098,7 @@ def run_feature_step(
 
         # Stash plane info for plane-based sketches so child extrudes
         # can inherit the parent plane's outward normal as their axis.
-        # sketch_ellipse rides the same `plane`+`center` mechanism as the
-        # rectangle/circle on-plane primitives, so it stashes identically.
-        if bf.type in (
-            "sketch_rectangle_on_plane",
-            "sketch_circle_on_plane",
-            "sketch_ellipse",
-            "sketch_polyline_on_plane",
-        ):
-            bf.parent_plane_normal = PLANE_NORMALS[feat["plane"]]
+        _stash_plane_normal(bf, feat)
 
         ctx.features_by_name[bf.name] = bf
         # Record the name the instant the handler succeeds -- BEFORE brep /
