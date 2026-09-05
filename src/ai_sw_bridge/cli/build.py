@@ -483,10 +483,14 @@ def main() -> int:
         dest="strict",
         action="store_true",
         help=(
-            "Treat post-rebuild feature WARNINGS (GetErrorCode==1) as build "
-            "failures, not just ERRORS (==2). By default a part with warnings "
-            "still reports ok=True; with --strict any non-OK feature fails the "
-            "build. See BuildResult.feature_health (X2 success-gate)."
+            "With --lint: exit 8 when the geometric pre-flight could not "
+            "model every solid-modifying feature. Default lint gating is "
+            "unchanged: only ERROR findings gate, at exit 6. On a live "
+            "build: treat post-rebuild feature WARNINGS (GetErrorCode==1) "
+            "as failures, not just ERRORS (==2). By default a part with "
+            "warnings still reports ok=True; with --strict any non-OK "
+            "feature fails the build. See BuildResult.feature_health "
+            "(X2 success-gate)."
         ),
     )
     parser.add_argument(

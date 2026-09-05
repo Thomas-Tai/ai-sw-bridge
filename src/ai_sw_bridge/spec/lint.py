@@ -9,25 +9,41 @@ Each check returns a list of LintFinding dicts. An empty list means pass.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from .schema import SKETCH_TYPES, EXTRUDE_TYPES
 
 
 class LintFinding:
-    """One lint warning. Not fatal — the spec may still build correctly."""
+    """One lint warning. Not fatal — the spec may still build correctly.
 
-    def __init__(self, severity: str, path: str, message: str) -> None:
+    ``code`` is an optional stable machine tag (e.g. ``"preflight_skip"``)
+    for consumers that need to identify a finding class without parsing its
+    prose. It is omitted from ``to_dict()`` when unset, so the serialized
+    shape is unchanged for every finding that does not set one.
+    """
+
+    def __init__(
+        self,
+        severity: str,
+        path: str,
+        message: str,
+        code: Optional[str] = None,
+    ) -> None:
         self.severity = severity  # "info", "warning", or "error"
         self.path = path
         self.message = message
+        self.code = code
 
     def to_dict(self) -> dict[str, str]:
-        return {
+        d = {
             "severity": self.severity,
             "path": self.path,
             "message": self.message,
         }
+        if self.code is not None:
+            d["code"] = self.code
+        return d
 
     def __str__(self) -> str:
         return f"[{self.severity}] {self.path}: {self.message}"

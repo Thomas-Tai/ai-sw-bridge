@@ -227,6 +227,11 @@ def _extruded_box(
 # model).
 _NON_BODY_TYPES = frozenset({"linear_pattern", "circular_pattern", "mirror_feature"})
 
+# Stable machine tag on every honest-skip note. Consumers derive pre-flight
+# coverage from these rather than re-deriving the modeling predicate, so the
+# summary cannot drift from what the analyzers actually skipped.
+PREFLIGHT_SKIP_CODE = "preflight_skip"
+
 
 def _skip(i: int, name: str, ftype: str) -> LintFinding:
     """Honest-skip note: this feature is not modeled by the axis-aligned
@@ -239,6 +244,7 @@ def _skip(i: int, name: str, ftype: str) -> LintFinding:
             f"pre-flight skip: '{name}' ({ftype}) is not modeled by the "
             f"axis-aligned envelope; downstream geometry checks are relaxed."
         ),
+        code=PREFLIGHT_SKIP_CODE,
     )
 
 
@@ -430,6 +436,41 @@ def _degenerate_profile_checks(spec: dict[str, Any]) -> list[LintFinding]:
                     )
                 )
     return findings
+
+
+def coverage(spec: dict[str, Any], findings: list[LintFinding]) -> dict[str, Any]:
+    """Summarize how much of ``spec`` the geometric pre-flight actually modeled.
+
+    Derived from the honest-skip notes the analyzers emitted (tagged
+    ``PREFLIGHT_SKIP_CODE``) rather than from a second copy of the modeling
+    predicate, so the summary cannot drift from the real skip logic.
+
+    The denominator is solid-modifying features only. ``sketch_*`` features
+    carry no body -- they define a profile a later boss/cut consumes -- so
+    counting them would inflate coverage with features there is nothing to
+    check. This is the same prefix rule ``material_envelope_scan`` uses to
+    decide which features may stay quiet.
+
+    ``skipped_types`` is sorted and de-duplicated so the summary is stable
+    across runs and diffable in CI.
+    """
+    features = spec.get("features", [])
+    solid_ops = [
+        (i, f)
+        for i, f in enumerate(features)
+        if not str(f.get("type", "")).startswith("sketch_")
+    ]
+    skipped_paths = {f.path for f in findings if f.code == PREFLIGHT_SKIP_CODE}
+    skipped = [
+        f for i, f in solid_ops if f"features/{i}/{f.get('name', '')}" in skipped_paths
+    ]
+    return {
+        "total": len(solid_ops),
+        "modeled": len(solid_ops) - len(skipped),
+        "skipped": len(skipped),
+        "skipped_types": sorted({str(f.get("type", "")) for f in skipped}),
+        "complete": len(skipped) == 0,
+    }
 
 
 def preflight(spec: dict[str, Any]) -> list[LintFinding]:
