@@ -208,6 +208,31 @@ malformed spec file. INFO and WARNING findings never change the exit code — a
 spec that only trips off-face-hole *warnings* still passes, so read the JSON on
 stdout when you want to surface those too.
 
+### Coverage (`--lint`)
+
+The geometric pre-flight models a subset of the feature vocabulary exactly and
+**honestly skips** the rest rather than guessing. A clean exit therefore means
+"nothing I checked is wrong", not "this will build". The `coverage` object in
+the `--lint` payload says which of the two you got:
+
+```json
+"coverage": {
+  "total": 12,
+  "modeled": 9,
+  "skipped": 3,
+  "skipped_types": ["boss_extrude_midplane", "linear_pattern"],
+  "complete": false
+}
+```
+
+`total` counts solid-modifying features only — `sketch_*` features carry no
+body, so they are not part of the denominator. `complete` is `true` only when
+every one of them was modeled. Passing `--no-preflight` reports
+`modeled: 0, complete: false`: nothing was checked.
+
+Coverage gaps are **not** errors and never change the default exit code. To
+gate on them, see `--strict`.
+
 ---
 
 # SW-version compatibility matrix runner

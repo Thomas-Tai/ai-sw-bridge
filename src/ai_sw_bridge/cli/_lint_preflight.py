@@ -18,20 +18,42 @@ from ..spec.lint import LintFinding, lint as spec_lint
 
 def assemble_lint_findings(
     spec: dict[str, Any], *, no_preflight: bool
-) -> tuple[list[LintFinding], list[dict[str, Any]], bool]:
+) -> tuple[list[LintFinding], list[dict[str, Any]], bool, dict[str, Any]]:
     """Run semantic lint and (unless suppressed) the geometric pre-flight.
 
-    Returns ``(findings, findings_as_dicts, has_error)`` where ``has_error`` is
-    True iff any finding is ERROR severity (the ERROR-only exit-gating contract).
+    Returns ``(findings, findings_as_dicts, has_error, coverage)`` where
+    ``has_error`` is True iff any finding is ERROR severity (the ERROR-only
+    exit-gating contract) and ``coverage`` summarizes how much of the spec the
+    geometric pre-flight modeled.
+
+    When ``no_preflight`` suppresses the pre-flight entirely, coverage reports
+    zero modeled features and ``complete: False`` -- nothing was checked, and
+    saying so is the honest answer. It must not read as a clean bill of health.
     """
     findings = spec_lint(spec)
     if not no_preflight:
+        from ..spec.preflight import coverage as preflight_coverage
         from ..spec.preflight import preflight
 
-        findings = findings + preflight(spec)
+        pre = preflight(spec)
+        findings = findings + pre
+        cov = preflight_coverage(spec, pre)
+    else:
+        solid_ops = sum(
+            1
+            for f in spec.get("features", [])
+            if not str(f.get("type", "")).startswith("sketch_")
+        )
+        cov = {
+            "total": solid_ops,
+            "modeled": 0,
+            "skipped": solid_ops,
+            "skipped_types": [],
+            "complete": False,
+        }
     findings_dicts = [f.to_dict() for f in findings]
     has_error = any(f.severity == "error" for f in findings)
-    return findings, findings_dicts, has_error
+    return findings, findings_dicts, has_error, cov
 
 
 def lint_dryrun_response(
@@ -52,7 +74,7 @@ def lint_dryrun_response(
     if not (lint_only or args.dry_run):
         return None
 
-    findings, findings_dicts, has_error = assemble_lint_findings(
+    findings, findings_dicts, has_error, cov = assemble_lint_findings(
         spec, no_preflight=getattr(args, "no_preflight", False)
     )
 
@@ -66,6 +88,7 @@ def lint_dryrun_response(
             "finding_count": len(findings),
             "error_count": sum(1 for f in findings if f.severity == "error"),
             "warning_count": sum(1 for f in findings if f.severity == "warning"),
+            "coverage": cov,
         }
         if dry_run_payload is not None:
             payload["dry_run"] = dry_run_payload
