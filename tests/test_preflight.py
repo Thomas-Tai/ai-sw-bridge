@@ -511,3 +511,67 @@ def test_rhs_driven_cut_depth_is_skipped_not_crashed():
     findings = material_envelope_scan(spec)
     # Feature skipped (depth unresolved), marked incomplete; no false ERROR.
     assert all(f.severity != "error" for f in findings)
+
+
+def test_coverage_counts_only_solid_ops_and_is_complete_when_nothing_skipped():
+    from ai_sw_bridge.spec.preflight import coverage, preflight
+
+    spec = {
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40,
+                "height": 30,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10},
+        ]
+    }
+    cov = coverage(spec, preflight(spec))
+    # The sketch is body-less and is not a coverage denominator; only EX counts.
+    assert cov == {
+        "total": 1,
+        "modeled": 1,
+        "skipped": 0,
+        "skipped_types": [],
+        "complete": True,
+    }
+
+
+def test_coverage_reports_skipped_types_sorted_and_deduplicated():
+    from ai_sw_bridge.spec.preflight import coverage, preflight
+
+    spec = {
+        "features": [
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK",
+                "plane": "Front",
+                "width": 40,
+                "height": 30,
+            },
+            {"type": "boss_extrude_blind", "name": "EX", "sketch": "SK", "depth": 10},
+            {"type": "linear_pattern", "name": "P1", "seed": "EX", "count": 3},
+            {"type": "linear_pattern", "name": "P2", "seed": "EX", "count": 2},
+            {"type": "boss_extrude_midplane", "name": "BM", "sketch": "SK", "depth": 4},
+        ]
+    }
+    cov = coverage(spec, preflight(spec))
+    assert cov["total"] == 4
+    assert cov["skipped"] == 3
+    assert cov["modeled"] == 1
+    assert cov["skipped_types"] == ["boss_extrude_midplane", "linear_pattern"]
+    assert cov["complete"] is False
+
+
+def test_coverage_of_an_empty_spec_is_complete():
+    from ai_sw_bridge.spec.preflight import coverage
+
+    assert coverage({"features": []}, []) == {
+        "total": 0,
+        "modeled": 0,
+        "skipped": 0,
+        "skipped_types": [],
+        "complete": True,
+    }
