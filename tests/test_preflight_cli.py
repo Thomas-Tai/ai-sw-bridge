@@ -166,6 +166,74 @@ def test_strict_exits_eight_on_incomplete_coverage(tmp_path):
     assert payload["ok"] is True
 
 
+def test_strict_exits_eight_on_revolve_coverage_gap(tmp_path):
+    spec = json.loads(json.dumps(_CLEAN))
+    spec["features"] += [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Hub",
+            "plane": "Front",
+            "width": 12.0,
+            "height": 4.0,
+            "center": {"x": 0.0, "y": 14.0},
+            "centerline": {
+                "start": {"x": -80.0, "y": 0.0},
+                "end": {"x": 80.0, "y": 0.0},
+            },
+        },
+        {
+            "type": "revolve_boss",
+            "name": "REV_Hub",
+            "sketch": "SK_Hub",
+            "angle": 360.0,
+        },
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Groove",
+            "plane": "Front",
+            "width": 4.0,
+            "height": 1.5,
+            "center": {"x": 0.0, "y": -14.75},
+            "centerline": {
+                "start": {"x": -80.0, "y": 0.0},
+                "end": {"x": 80.0, "y": 0.0},
+            },
+        },
+        {
+            "type": "revolve_cut",
+            "name": "CUT_Groove",
+            "sketch": "SK_Groove",
+            "angle": 360.0,
+        },
+    ]
+    rc, payload = _run(spec, tmp_path, "--strict")
+    assert rc == 8
+    assert payload["ok"] is True
+    assert payload["coverage"]["complete"] is False
+    assert "revolve_boss" in payload["coverage"]["skipped_types"]
+    assert "revolve_cut" in payload["coverage"]["skipped_types"]
+
+
+def test_lint_without_strict_exits_zero_on_revolve_but_reports_gap(tmp_path):
+    spec = json.loads(json.dumps(_CLEAN))
+    spec["features"][0]["centerline"] = {
+        "start": {"x": -80.0, "y": 0.0},
+        "end": {"x": 80.0, "y": 0.0},
+    }
+    spec["features"].append(
+        {
+            "type": "revolve_boss",
+            "name": "REV_Hub",
+            "sketch": "SK",
+            "angle": 360.0,
+        }
+    )
+    rc, payload = _run(spec, tmp_path)
+    assert rc == 0
+    assert payload["coverage"]["complete"] is False
+    assert payload["coverage"]["skipped_types"] == ["revolve_boss"]
+
+
 def test_strict_exits_zero_when_coverage_is_complete(tmp_path):
     rc, payload = _run(_CLEAN, tmp_path, "--strict")
     assert rc == 0
