@@ -24,6 +24,7 @@ from ...sw_types import (
     SW_START_SKETCH_PLANE,
     assert_args,
 )
+from ..schema import PLANE_HOSTED_SKETCH_TYPES
 from ._common import _select_sketch
 
 
@@ -263,8 +264,14 @@ def _cut_sweeps_toward_normal(sketch: dict[str, Any]) -> bool:
     Verified on a seat 2026-09-05: plane-sketched blind cut, Dir=False ->
     FeatureCut4 None; Dir=True -> builds. Face-sketched cuts build on
     Dir=False and must keep it.
+
+    The test is schema membership, not the ``_on_plane`` name suffix: only
+    three of the ten plane-hosted sketch types carry that suffix, so a name
+    rule would leave ``sketch_slot``, ``sketch_ellipse``, ``sketch_polygon``,
+    ``sketch_text``, ``sketch_line``, ``sketch_arc`` and ``sketch_spline``
+    sweeping into empty air with the same silent None.
     """
-    return str(sketch.get("type", "")).endswith("_on_plane")
+    return str(sketch.get("type", "")) in PLANE_HOSTED_SKETCH_TYPES
 
 
 def _cut_toward_normal_for(ctx: BuildContext, sketch_name: str) -> bool:

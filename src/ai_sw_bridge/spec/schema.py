@@ -316,3 +316,39 @@ PATTERN_TYPES = frozenset(
     }
 )
 ALL_TYPES = SKETCH_TYPES | EXTRUDE_TYPES | MODIFY_TYPES | PATTERN_TYPES
+
+
+def _plane_hosted_sketch_types() -> frozenset[str]:
+    """Sketch types hosted on a reference plane -- their branch requires ``plane``.
+
+    Derived from SCHEMA rather than hand-listed, and deliberately not a name
+    rule: only three plane-hosted types carry the ``_on_plane`` suffix, while
+    ``sketch_slot``, ``sketch_ellipse``, ``sketch_polygon``, ``sketch_text``,
+    ``sketch_line``, ``sketch_arc`` and ``sketch_spline`` are equally
+    plane-hosted. A suffix test would silently leave those on the
+    face-sketch cut direction and reproduce issue #40 on them.
+    """
+    found: set[str] = set()
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            props = node.get("properties")
+            if isinstance(props, dict):
+                tprop = props.get("type")
+                if isinstance(tprop, dict):
+                    tconst = tprop.get("const")
+                    if tconst in SKETCH_TYPES and "plane" in node.get("required", ()):
+                        found.add(str(tconst))
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(SCHEMA)
+    return frozenset(found)
+
+
+# Sketch types whose profile lives on a reference plane rather than on a
+# modeled face. Cut direction depends on this distinction (issue #40).
+PLANE_HOSTED_SKETCH_TYPES = _plane_hosted_sketch_types()

@@ -85,7 +85,9 @@ error (issue #40).
 
 The builder therefore sets `Dir=True` for a one-directional cut
 (`cut_extrude_blind` / `_through_all` / `_midplane`) whose sketch is on a
-reference plane (`*_on_plane`), so the cut sweeps **+normal** — toward the
+reference plane — any sketch type whose schema takes a `plane` field, which
+is all of them except the three `*_on_face` types and `sketch_3d_sketch` —
+so the cut sweeps **+normal**, toward the
 material the rest of this doc and the pre-flight already assume. Face-sketched
 cuts keep `Dir=False`. `cut_extrude_two_direction` is unchanged: it straddles
 the plane and removes material whichever way `Dir` points.

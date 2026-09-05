@@ -586,3 +586,45 @@ def test_plane_sketched_blind_cut_with_or_without_flip_is_not_a_geometric_error(
         spec = {"features": base + [cut]}
         errors = [f for f in preflight(spec) if f.severity == "error"]
         assert errors == [], f"flip={flip} produced geometric ERROR: {errors}"
+
+
+def test_every_plane_hosted_sketch_type_sweeps_toward_the_normal():
+    """The cut-direction predicate must follow the schema, not the type name.
+
+    Only three plane-hosted sketch types carry an ``_on_plane`` suffix. A
+    name-suffix predicate leaves ``sketch_slot``, ``sketch_ellipse`` and the
+    rest on the face-sketch direction, reproducing issue #40 on them -- and
+    the audit's own 46-feature exerciser cuts through a slot and an ellipse.
+    """
+    from ai_sw_bridge.spec.handlers.extrude import _cut_sweeps_toward_normal
+    from ai_sw_bridge.spec.schema import PLANE_HOSTED_SKETCH_TYPES, SKETCH_TYPES
+
+    for stype in PLANE_HOSTED_SKETCH_TYPES:
+        assert _cut_sweeps_toward_normal({"type": stype}) is True, stype
+    for stype in SKETCH_TYPES - PLANE_HOSTED_SKETCH_TYPES:
+        assert _cut_sweeps_toward_normal({"type": stype}) is False, stype
+
+
+def test_plane_hosted_sketch_types_are_schema_derived():
+    """Guards the classification itself against schema drift."""
+    from ai_sw_bridge.spec.schema import PLANE_HOSTED_SKETCH_TYPES, SKETCH_TYPES
+
+    assert PLANE_HOSTED_SKETCH_TYPES <= SKETCH_TYPES
+    # Face-hosted sketches must never flip Dir: their normal already points
+    # out of the body, so the COM default cuts inward.
+    assert not (
+        PLANE_HOSTED_SKETCH_TYPES
+        & {
+            "sketch_rectangle_on_face",
+            "sketch_circle_on_face",
+            "sketch_circles_on_face",
+            "sketch_3d_sketch",
+        }
+    )
+    # The types a name-suffix predicate silently missed.
+    assert {
+        "sketch_slot",
+        "sketch_ellipse",
+        "sketch_polygon",
+        "sketch_text",
+    } <= PLANE_HOSTED_SKETCH_TYPES

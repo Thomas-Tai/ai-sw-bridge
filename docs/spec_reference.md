@@ -641,7 +641,8 @@ No `depth` — the boss runs until it terminates on `target_ref`.
 
 Removes material through the entire part in both directions.
 
-A one-directional cut sketched on a **reference plane** (`*_on_plane`) sweeps
+A one-directional cut sketched on a **reference plane** (any sketch type
+that takes a `plane` field, not just the `*_on_plane` three) sweeps
 **+normal** (the builder sets FeatureCut4 `Dir=True`). A **face-sketched** cut
 keeps `Dir=False` and sweeps **−normal** (into the body). See
 [coordinate_conventions.md](coordinate_conventions.md) §4.
@@ -696,7 +697,8 @@ Same face-sketch-origin gotcha as `sketch_rectangle_on_face` — `center` offset
 
 Removes material to a specified depth.
 
-A one-directional cut sketched on a **reference plane** (`*_on_plane`) sweeps
+A one-directional cut sketched on a **reference plane** (any sketch type
+that takes a `plane` field, not just the `*_on_plane` three) sweeps
 **+normal** (the builder sets FeatureCut4 `Dir=True`). A **face-sketched** cut
 keeps `Dir=False` and sweeps **−normal** (into the body). See
 [coordinate_conventions.md](coordinate_conventions.md) §4.
@@ -723,7 +725,8 @@ keeps `Dir=False` and sweeps **−normal** (into the body). See
 
 Removes material symmetrically about the sketch plane — `depth/2` is cut into each side.
 
-A one-directional cut sketched on a **reference plane** (`*_on_plane`) sweeps
+A one-directional cut sketched on a **reference plane** (any sketch type
+that takes a `plane` field, not just the `*_on_plane` three) sweeps
 **+normal** (the builder sets FeatureCut4 `Dir=True`). A **face-sketched** cut
 keeps `Dir=False` and sweeps **−normal** (into the body). Mid-plane still
 straddles the sketch, so both sides are cut. See
