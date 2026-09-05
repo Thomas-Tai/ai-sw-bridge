@@ -74,12 +74,35 @@ yet model their local mapping and will not flag findings on them.
   cut sweeps until it *finds* material in one direction; across an air gap
   it finds none and `FeatureCut4` returns `None`.
 
-## 4. Flat-part pattern
+## 4. Cut direction (and the flat-part pattern)
 
-Build flat profiles as **Front-plane bosses**, then put any holes on the
-resulting **`+z` face**. This is the pattern that keeps the box-face mapping
-in §2 in play (holes on `+z`/`-z` are supported; other faces are the
-honest-skip from §2).
+`FeatureCut4` with `Dir=False` (the COM default) sweeps **−(sketch normal)**.
+A modeled face's normal points out of the body, so −normal is *into* it — a
+face-sketched one-directional cut therefore works without flipping `Dir`. A
+reference plane at or below the body has −normal pointing away, so the same
+default would sweep empty air and SOLIDWORKS would return `None` with no
+error (issue #40).
+
+The builder therefore sets `Dir=True` for a one-directional cut
+(`cut_extrude_blind` / `_through_all` / `_midplane`) whose sketch is on a
+reference plane — any sketch type whose schema takes a `plane` field, which
+is all of them except the three `*_on_face` types and `sketch_3d_sketch` —
+so the cut sweeps **+normal**, toward the
+material the rest of this doc and the pre-flight already assume. Face-sketched
+cuts keep `Dir=False`. `cut_extrude_two_direction` is unchanged: it straddles
+the plane and removes material whichever way `Dir` points.
+
+`flip` on a one-directional cut is bound to FeatureCut4 arg 2 (`Flip`) and
+**does not reverse the cut direction** (seat-proven 2026-09-05, both `flip`
+values build once `Dir` is correct). Do not use it as a "cut the other way"
+switch.
+
+The still-useful flat-part pattern: build flat profiles as **Front-plane
+bosses**, then put holes on the resulting **`+z` face**. That keeps the
+box-face mapping in §2 in play (holes on `+z`/`-z` are supported; other
+faces are the honest-skip from §2). It is no longer a workaround for a
+kernel constraint — plane-sketched one-directional cuts now build — but it
+is still the mapping the pre-flight models exactly.
 
 ## 5. Silent-`None` triage
 

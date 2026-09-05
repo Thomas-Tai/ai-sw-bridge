@@ -184,11 +184,14 @@ def test_revolve_is_skipped_not_flagged():
     assert any(f.severity == "info" and "skip" in f.message.lower() for f in findings)
 
 
-def test_flipped_cut_into_material_is_not_flagged():
-    # A cut sketched on the +Z top face (Front plane, center z=10) with
-    # flip=True cuts INWARD into real material (Z[5, 10]); the tracker must
-    # model -normal and NOT fire a false empty-air ERROR. With the old
-    # +normal-only code the box was Z[10, 15] (disjoint) -> false ERROR.
+def test_flip_does_not_reverse_a_far_face_plane_cut_into_material():
+    # Was test_flipped_cut_into_material_is_not_flagged. That name asserted
+    # the bug: flip=True on a Front-plane sketch at the plate's +Z face
+    # (center z=10) was modeled as cutting INWARD (Z[5, 10]) and must not
+    # empty-air ERROR. Seat 2026-09-05: FeatureCut4 arg 2 Flip is not a
+    # direction control; plane-sketched cuts sweep +normal, so this
+    # geometry is Z[10, 15] -- empty air -- and MUST ERROR. Same fixture,
+    # corrected assertion.
     spec = {
         "features": [
             _PLATE,
@@ -206,11 +209,12 @@ def test_flipped_cut_into_material_is_not_flagged():
                 "name": "CUT_In",
                 "sketch": "SK_TopCut",
                 "depth": 5.0,
-                "flip": True,  # cut -Z, into the plate
+                "flip": True,  # Flip does not reverse; still +normal into air
             },
         ]
     }
-    assert _sev(material_envelope_scan(spec), "error") == []
+    errs = _sev(material_envelope_scan(spec), "error")
+    assert any("CUT_In" in f.message for f in errs)
 
 
 def test_start_offset_boss_honest_skips_no_false_empty_air_error():
@@ -511,3 +515,146 @@ def test_rhs_driven_cut_depth_is_skipped_not_crashed():
     findings = material_envelope_scan(spec)
     # Feature skipped (depth unresolved), marked incomplete; no false ERROR.
     assert all(f.severity != "error" for f in findings)
+
+
+def test_cut_arg_builder_carries_the_direction_axis():
+    from ai_sw_bridge.spec.handlers.extrude import _cut4_args_2024
+
+    args = _cut4_args_2024(end_cond=0, depth_m=0.006, flip=False, toward_normal=True)
+    assert args[2] is True, "arg 3 Dir must carry toward_normal"
+
+
+def test_cut_arg_builder_default_is_byte_for_byte_unchanged():
+    from ai_sw_bridge.spec.handlers.extrude import _cut4_args_2024
+
+    args = _cut4_args_2024(end_cond=0, depth_m=0.006, flip=False)
+    assert args[2] is False
+
+
+def test_plane_sketched_cut_sweeps_toward_the_normal():
+    from ai_sw_bridge.spec.handlers.extrude import _cut_sweeps_toward_normal
+
+    plane_sketch = {"type": "sketch_rectangle_on_plane", "plane": "Front"}
+    face_sketch = {"type": "sketch_circle_on_face", "face": "+z"}
+    assert _cut_sweeps_toward_normal(plane_sketch) is True
+    assert _cut_sweeps_toward_normal(face_sketch) is False
+    assert _cut_sweeps_toward_normal({}) is False
+
+
+def test_plane_sketched_blind_cut_with_or_without_flip_is_not_a_geometric_error():
+    """A spec that builds must never lint as a geometric ERROR.
+
+    Seat 2026-09-05: Front-plane 140x90 boss_extrude_blind depth 20 plus a
+    Front-plane 8x8 cut_extrude_blind depth 6 at {-20,-18} builds with
+    FeatureCut4 Dir=True whether flip is true or false. Arg 2 Flip is not a
+    direction control, so the envelope must not treat flip as reversing the
+    cut into empty air (the never-false-ERROR invariant).
+    """
+    base = [
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_Base",
+            "plane": "Front",
+            "width": 140.0,
+            "height": 90.0,
+            "center": {"x": 0.0, "y": 0.0},
+        },
+        {
+            "type": "boss_extrude_blind",
+            "name": "EX_Base",
+            "sketch": "SK_Base",
+            "depth": 20.0,
+        },
+        {
+            "type": "sketch_rectangle_on_plane",
+            "name": "SK_C",
+            "plane": "Front",
+            "width": 8.0,
+            "height": 8.0,
+            "center": {"x": -20.0, "y": -18.0},
+        },
+    ]
+    for flip in (False, True):
+        cut: dict = {
+            "type": "cut_extrude_blind",
+            "name": "CUT",
+            "sketch": "SK_C",
+            "depth": 6.0,
+        }
+        if flip:
+            cut["flip"] = True
+        spec = {"features": base + [cut]}
+        errors = [f for f in preflight(spec) if f.severity == "error"]
+        assert errors == [], f"flip={flip} produced geometric ERROR: {errors}"
+
+
+def test_every_plane_hosted_sketch_type_sweeps_toward_the_normal():
+    """The cut-direction predicate must follow the schema, not the type name.
+
+    Only three plane-hosted sketch types carry an ``_on_plane`` suffix. A
+    name-suffix predicate leaves ``sketch_slot``, ``sketch_ellipse`` and the
+    rest on the face-sketch direction, reproducing issue #40 on them -- and
+    the audit's own 46-feature exerciser cuts through a slot and an ellipse.
+    """
+    from ai_sw_bridge.spec.handlers.extrude import _cut_sweeps_toward_normal
+    from ai_sw_bridge.spec.schema import PLANE_HOSTED_SKETCH_TYPES, SKETCH_TYPES
+
+    for stype in PLANE_HOSTED_SKETCH_TYPES:
+        assert _cut_sweeps_toward_normal({"type": stype}) is True, stype
+    for stype in SKETCH_TYPES - PLANE_HOSTED_SKETCH_TYPES:
+        assert _cut_sweeps_toward_normal({"type": stype}) is False, stype
+
+
+def test_plane_hosted_sketch_types_are_schema_derived():
+    """Guards the classification itself against schema drift."""
+    from ai_sw_bridge.spec.schema import PLANE_HOSTED_SKETCH_TYPES, SKETCH_TYPES
+
+    assert PLANE_HOSTED_SKETCH_TYPES <= SKETCH_TYPES
+    # Face-hosted sketches must never flip Dir: their normal already points
+    # out of the body, so the COM default cuts inward.
+    assert not (
+        PLANE_HOSTED_SKETCH_TYPES
+        & {
+            "sketch_rectangle_on_face",
+            "sketch_circle_on_face",
+            "sketch_circles_on_face",
+            "sketch_3d_sketch",
+        }
+    )
+    # The types a name-suffix predicate silently missed.
+    assert {
+        "sketch_slot",
+        "sketch_ellipse",
+        "sketch_polygon",
+        "sketch_text",
+    } <= PLANE_HOSTED_SKETCH_TYPES
+
+
+def test_plane_normal_is_stashed_for_every_plane_hosted_sketch():
+    """Every plane-hosted sketch must stash the plane's outward normal.
+
+    A child extrude reads ``parent_plane_normal`` and raises if it is None,
+    so a plane-hosted type missing from the stash set fails the build at the
+    first extrude that consumes it. This was a hand-maintained tuple of four
+    types; the other six plane-hosted types silently had no normal.
+    """
+    from ai_sw_bridge.spec.builder import PLANE_NORMALS, _stash_plane_normal
+    from ai_sw_bridge.spec.schema import PLANE_HOSTED_SKETCH_TYPES, SKETCH_TYPES
+
+    class _BF:
+        def __init__(self, t):
+            self.type = t
+            self.parent_plane_normal = None
+
+    for stype in PLANE_HOSTED_SKETCH_TYPES:
+        for plane in ("Front", "Top", "Right"):
+            bf = _BF(stype)
+            _stash_plane_normal(bf, {"type": stype, "plane": plane})
+            assert bf.parent_plane_normal == PLANE_NORMALS[plane], (stype, plane)
+
+    # Face-based handlers stash their own face normal; build() must not
+    # overwrite it from a plane that is not there.
+    for stype in SKETCH_TYPES - PLANE_HOSTED_SKETCH_TYPES:
+        bf = _BF(stype)
+        _stash_plane_normal(bf, {"type": stype})
+        assert bf.parent_plane_normal is None, stype
