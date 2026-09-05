@@ -36,6 +36,11 @@ from ._extrude_fields import boss_extrude_blind_fields
 NAME_PATTERN: dict[str, Any] = {
     "type": "string",
     "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+    "description": (
+        "Unique identifier for this feature within the spec. Later features "
+        "refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, "
+        "or `target_ref.of_feature`)."
+    ),
 }
 
 
@@ -73,9 +78,12 @@ CENTERLINE_SCHEMA: dict[str, Any] = {
             "additionalProperties": False,
             "required": ["x", "y"],
             "properties": {
-                "x": {"type": "number"},
-                "y": {"type": "number"},
-                "z": {"type": "number"},
+                "x": {"type": "number", "description": "X (mm) in sketch-local frame."},
+                "y": {"type": "number", "description": "Y (mm) in sketch-local frame."},
+                "z": {
+                    "type": "number",
+                    "description": "Optional part-frame Z offset (mm); see this object's description.",
+                },
             },
             "description": (
                 "Centerline start point in sketch-local coords (mm). "
@@ -89,9 +97,12 @@ CENTERLINE_SCHEMA: dict[str, Any] = {
             "additionalProperties": False,
             "required": ["x", "y"],
             "properties": {
-                "x": {"type": "number"},
-                "y": {"type": "number"},
-                "z": {"type": "number"},
+                "x": {"type": "number", "description": "X (mm) in sketch-local frame."},
+                "y": {"type": "number", "description": "Y (mm) in sketch-local frame."},
+                "z": {
+                    "type": "number",
+                    "description": "Optional part-frame Z offset (mm); see this object's description.",
+                },
             },
             "description": (
                 "Centerline end point in sketch-local coords (mm). "
@@ -232,9 +243,9 @@ def _xyz_point(*, required: bool, description: str) -> dict[str, Any]:
     if required:
         out["required"] = ["x", "y", "z"]
     out["properties"] = {
-        "x": {"type": "number"},
-        "y": {"type": "number"},
-        "z": {"type": "number"},
+        "x": {"type": "number", "description": "Part-frame X coordinate (mm)."},
+        "y": {"type": "number", "description": "Part-frame Y coordinate (mm)."},
+        "z": {"type": "number", "description": "Part-frame Z coordinate (mm)."},
     }
     out["description"] = description
     return out
@@ -250,9 +261,15 @@ _SKETCH_PLANE_CENTER = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "x": {"type": "number"},
-        "y": {"type": "number"},
-        "z": {"type": "number"},
+        "x": {"type": "number", "description": "X (mm) in sketch-local frame."},
+        "y": {"type": "number", "description": "Y (mm) in sketch-local frame."},
+        "z": {
+            "type": "number",
+            "description": (
+                "Optional part-frame Z offset (mm); see the enclosing "
+                "center's description for the per-plane mapping."
+            ),
+        },
     },
 }
 
@@ -1447,10 +1464,15 @@ def assemble_feature_schema(name: str) -> dict[str, Any]:
     ``type`` const + ``name`` pattern, ``additionalProperties: False``, and a
     ``required`` list of ``["type", "name"]`` followed by the required fields
     in declared order.
+
+    The ``type`` const's ``description`` is sourced from ``FEATURE_META[name]
+    ["doc"]`` -- the same one-line human summary the doc-coverage test already
+    holds every primitive to -- so the discriminator's description can't drift
+    from that single per-primitive summary.
     """
     fields = FEATURE_FIELDS[name]
     properties: dict[str, Any] = {
-        "type": {"const": name},
+        "type": {"const": name, "description": FEATURE_META[name]["doc"]},
         "name": NAME_PATTERN,
     }
     required: list[str] = ["type", "name"]

@@ -66,7 +66,13 @@ SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": ["schema_version", "name", "features"],
     "properties": {
-        "schema_version": {"const": SCHEMA_VERSION},
+        "schema_version": {
+            "const": SCHEMA_VERSION,
+            "description": (
+                "Spec format version. Must be 1 (the only version the "
+                "validator accepts unless the schema_v2 feature flag is on)."
+            ),
+        },
         "name": {
             "type": "string",
             "description": "Part name (will become the SLDPRT filename if saved).",
@@ -81,6 +87,10 @@ SCHEMA: dict[str, Any] = {
         "features": {
             "type": "array",
             "minItems": 1,
+            "description": (
+                "Ordered list of features to build, applied one at a time in "
+                "array order. At least 1 feature is required."
+            ),
             "items": {"oneOf": assemble_all()},
         },
     },
