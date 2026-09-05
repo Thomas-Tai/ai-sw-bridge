@@ -878,12 +878,18 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec(
             "depth",
-            {**LENGTH_SCHEMA, "description": "Cut depth into the +normal direction (mm)."},
+            {
+                **LENGTH_SCHEMA,
+                "description": "Cut depth into the +normal direction (mm).",
+            },
             True,
         ),
         FieldSpec(
             "depth2",
-            {**LENGTH_SCHEMA, "description": "Cut depth into the -normal direction (mm)."},
+            {
+                **LENGTH_SCHEMA,
+                "description": "Cut depth into the -normal direction (mm).",
+            },
             True,
         ),
         FieldSpec(
@@ -1388,7 +1394,10 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec(
             "center",
-            {**_SKETCH_POINT_2D, "description": "Polygon center point (sketch-local mm)."},
+            {
+                **_SKETCH_POINT_2D,
+                "description": "Polygon center point (sketch-local mm).",
+            },
             True,
         ),
         FieldSpec(
@@ -1456,7 +1465,10 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec(
             "center",
-            {**_SKETCH_POINT_2D, "description": "Ellipse center point (sketch-local mm)."},
+            {
+                **_SKETCH_POINT_2D,
+                "description": "Ellipse center point (sketch-local mm).",
+            },
             True,
         ),
         FieldSpec(
@@ -1500,7 +1512,10 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
         ),
         FieldSpec(
             "position",
-            {**_SKETCH_POINT_2D, "description": "Text insertion point (sketch-local mm)."},
+            {
+                **_SKETCH_POINT_2D,
+                "description": "Text insertion point (sketch-local mm).",
+            },
             True,
         ),
         FieldSpec(
