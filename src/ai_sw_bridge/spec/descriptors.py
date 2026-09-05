@@ -297,7 +297,16 @@ _CIRCLE_ON_PLANE_CENTER = {
 _UV_CENTER_RECT_FACE = {
     "type": "object",
     "additionalProperties": False,
-    "properties": {"u": {"type": "number"}, "v": {"type": "number"}},
+    "properties": {
+        "u": {
+            "type": "number",
+            "description": "In-face u-offset (mm) from the face sketch origin.",
+        },
+        "v": {
+            "type": "number",
+            "description": "In-face v-offset (mm) from the face sketch origin.",
+        },
+    },
     "description": (
         "In-face center offset (mm) from the FACE SKETCH ORIGIN, "
         "which empirically is the projection of the part origin onto "
@@ -313,7 +322,16 @@ _UV_CENTER_RECT_FACE = {
 _UV_CENTER_CIRCLE_FACE = {
     "type": "object",
     "additionalProperties": False,
-    "properties": {"u": {"type": "number"}, "v": {"type": "number"}},
+    "properties": {
+        "u": {
+            "type": "number",
+            "description": "In-face u-offset (mm) from the face sketch origin.",
+        },
+        "v": {
+            "type": "number",
+            "description": "In-face v-offset (mm) from the face sketch origin.",
+        },
+    },
     "description": (
         "In-face center offset (mm) from the face SKETCH ORIGIN, "
         "which is the projection of the part origin onto the face "
@@ -325,7 +343,16 @@ _UV_CENTER_CIRCLE_FACE = {
 _UV_CENTER_HOLE = {
     "type": "object",
     "additionalProperties": False,
-    "properties": {"u": {"type": "number"}, "v": {"type": "number"}},
+    "properties": {
+        "u": {
+            "type": "number",
+            "description": "In-face u-offset (mm) from the face sketch origin.",
+        },
+        "v": {
+            "type": "number",
+            "description": "In-face v-offset (mm) from the face sketch origin.",
+        },
+    },
     "description": (
         "In-face center (mm) of the hole from the face SKETCH ORIGIN "
         "(= part-origin projection onto the face plane, NOT the face "
@@ -504,9 +531,24 @@ _SLOT_TYPE_ENUM: dict[str, Any] = {
 
 FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     "sketch_rectangle_on_plane": [
-        FieldSpec("plane", {"enum": ["Front", "Top", "Right"]}, True),
-        FieldSpec("width", LENGTH_SCHEMA, True),
-        FieldSpec("height", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "width",
+            {**LENGTH_SCHEMA, "description": "Rectangle width (mm)."},
+            True,
+        ),
+        FieldSpec(
+            "height",
+            {**LENGTH_SCHEMA, "description": "Rectangle height (mm)."},
+            True,
+        ),
         FieldSpec("center", _RECT_ON_PLANE_CENTER, False),
         FieldSpec("centerline", CENTERLINE_SCHEMA, False),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
@@ -525,14 +567,33 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("width", LENGTH_SCHEMA, True),
-        FieldSpec("height", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "width",
+            {**LENGTH_SCHEMA, "description": "Rectangle width (mm)."},
+            True,
+        ),
+        FieldSpec(
+            "height",
+            {**LENGTH_SCHEMA, "description": "Rectangle height (mm)."},
+            True,
+        ),
         FieldSpec("center", _UV_CENTER_RECT_FACE, False),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_circle_on_plane": [
-        FieldSpec("plane", {"enum": ["Front", "Top", "Right"]}, True),
-        FieldSpec("diameter", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "diameter",
+            {**LENGTH_SCHEMA, "description": "Circle diameter (mm)."},
+            True,
+        ),
         FieldSpec("center", _CIRCLE_ON_PLANE_CENTER, False),
         FieldSpec("centerline", CENTERLINE_SCHEMA, False),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
@@ -551,18 +612,37 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("diameter", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "diameter",
+            {**LENGTH_SCHEMA, "description": "Circle diameter (mm)."},
+            True,
+        ),
         FieldSpec("center", _UV_CENTER_CIRCLE_FACE, False),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_circles_on_face": [
-        FieldSpec("of_feature", {"type": "string"}, True),
-        FieldSpec("face", {"enum": _FACE_ENUM}, True),
+        FieldSpec(
+            "of_feature",
+            {"type": "string", "description": "Name of an earlier extrusion feature."},
+            True,
+        ),
+        FieldSpec(
+            "face",
+            {
+                "enum": _FACE_ENUM,
+                "description": "Outward normal direction of the face in the feature's local frame.",
+            },
+            True,
+        ),
         FieldSpec(
             "circles",
             {
                 "type": "array",
                 "minItems": 1,
+                "description": (
+                    "One or more circles sketched together on the face, each "
+                    "with its own center offset and diameter."
+                ),
                 "items": {
                     "type": "object",
                     "additionalProperties": False,
@@ -576,8 +656,17 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
                                 "centroid -- see SKETCH_RECTANGLE_ON_FACE for the gotcha)."
                             ),
                         },
-                        "v": {"type": "number"},
-                        "diameter": LENGTH_SCHEMA,
+                        "v": {
+                            "type": "number",
+                            "description": (
+                                "Center v-offset (mm) from the face SKETCH ORIGIN "
+                                "(see `u`)."
+                            ),
+                        },
+                        "diameter": {
+                            **LENGTH_SCHEMA,
+                            "description": "Circle diameter (mm).",
+                        },
                     },
                 },
             },
