@@ -232,7 +232,10 @@ the `--lint` payload says which of the two you got:
 `total` counts solid-modifying features only — `sketch_*` features carry no
 body, so they are not part of the denominator. `complete` is `true` only when
 every one of them was modeled. Passing `--no-preflight` reports
-`modeled: 0, complete: false`: nothing was checked.
+`modeled: 0, complete: false`: nothing was checked. `revolve_boss` and
+`revolve_cut` are always skipped: the envelope is axis-aligned boxes and
+cannot represent a sweep about an axis, so a revolve spec is incomplete
+coverage rather than a bare `--lint` exit 0.
 
 Coverage gaps are **not** errors and never change the default exit code. To
 gate on them, see `--strict`.

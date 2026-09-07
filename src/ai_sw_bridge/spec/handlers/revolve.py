@@ -45,20 +45,17 @@ def _build_revolve_cut(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     return _call_feature_revolve(ctx, feat, is_cut=True)
 
 
-def _call_feature_revolve(
-    ctx: BuildContext, feat: dict[str, Any], *, is_cut: bool
-) -> BuiltFeature:
-    """Shared implementation for revolve_boss / revolve_cut."""
-    import math
+def _feature_revolve2_args(*, is_cut: bool, angle_rad: float, flip: bool) -> tuple:
+    """CHM-verified 20-arg ``FeatureRevolve2`` tuple.
 
-    sketch_name = feat["sketch"]
-    _select_sketch(ctx, sketch_name)
-
-    angle_deg = float(feat.get("angle", 360.0))
-    angle_rad = math.radians(angle_deg)
-    flip = bool(feat.get("flip", False))
-
-    args = (
+    Spec-reachable: ``is_cut`` (boss vs cut handler), ``angle_rad``,
+    ``flip`` -> arg 5 ReverseDir. Pinned and unreachable from the spec:
+    SingleDir=True, IsSolid=True, IsThin=False, Merge=True,
+    UseFeatScope=True, UseAutoSelect=True. Merge applies to bosses only
+    (SW programming guide); UseFeatScope=True limits a cut to selected
+    bodies, and the handler selects only the sketch.
+    """
+    return (
         True,  # 1  SingleDir
         True,  # 2  IsSolid
         False,  # 3  IsThin
@@ -80,6 +77,22 @@ def _call_feature_revolve(
         True,  # 19 UseFeatScope
         True,  # 20 UseAutoSelect
     )
+
+
+def _call_feature_revolve(
+    ctx: BuildContext, feat: dict[str, Any], *, is_cut: bool
+) -> BuiltFeature:
+    """Shared implementation for revolve_boss / revolve_cut."""
+    import math
+
+    sketch_name = feat["sketch"]
+    _select_sketch(ctx, sketch_name)
+
+    angle_deg = float(feat.get("angle", 360.0))
+    angle_rad = math.radians(angle_deg)
+    flip = bool(feat.get("flip", False))
+
+    args = _feature_revolve2_args(is_cut=is_cut, angle_rad=angle_rad, flip=flip)
     assert_args("IFeatureManager.FeatureRevolve2", args)
     f = ctx.doc.FeatureManager.FeatureRevolve2(*args)
     if f is None:

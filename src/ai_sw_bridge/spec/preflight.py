@@ -373,6 +373,13 @@ def material_envelope_scan(spec: dict[str, Any]) -> list[LintFinding]:
             modeled_complete = False
             findings.append(_skip(i, name, ftype))
 
+        elif ftype in {"revolve_boss", "revolve_cut"}:
+            # A revolved solid is not an axis-aligned box. Skip so coverage()
+            # reports the gap (--strict exit 8) rather than a bare lint 0,
+            # and never ERROR -- a revolve spec can still build.
+            modeled_complete = False
+            findings.append(_skip(i, name, ftype))
+
         else:
             # Sketch features (sketch_*) carry no body -- they define a profile
             # a later boss/cut consumes -- so they never modify material and

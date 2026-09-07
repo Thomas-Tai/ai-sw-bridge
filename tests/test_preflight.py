@@ -3,6 +3,8 @@ from __future__ import annotations
 import pytest
 
 from ai_sw_bridge.spec.preflight import (
+    PREFLIGHT_SKIP_CODE,
+    coverage,
     map_plane_point,
     coordinate_mapping_report,
     material_envelope_scan,
@@ -182,6 +184,70 @@ def test_revolve_is_skipped_not_flagged():
     findings = material_envelope_scan(spec)
     assert _sev(findings, "error") == []  # no false ERROR after an unmodeled body
     assert any(f.severity == "info" and "skip" in f.message.lower() for f in findings)
+
+
+def _plate_plus_revolve_groove() -> dict:
+    """Reduced issue-46 geometry: Front plate + hub revolve + opposite-side cut."""
+    return {
+        "schema_version": 1,
+        "name": "RevolveCoverage",
+        "features": [
+            _PLATE,
+            _BOSS,
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Hub",
+                "plane": "Front",
+                "width": 12.0,
+                "height": 4.0,
+                "center": {"x": 0.0, "y": 14.0},
+                "centerline": {
+                    "start": {"x": -80.0, "y": 0.0},
+                    "end": {"x": 80.0, "y": 0.0},
+                },
+            },
+            {
+                "type": "revolve_boss",
+                "name": "REV_Hub",
+                "sketch": "SK_Hub",
+                "angle": 360.0,
+            },
+            {
+                "type": "sketch_rectangle_on_plane",
+                "name": "SK_Groove",
+                "plane": "Front",
+                "width": 4.0,
+                "height": 1.5,
+                "center": {"x": 0.0, "y": -14.75},
+                "centerline": {
+                    "start": {"x": -80.0, "y": 0.0},
+                    "end": {"x": 80.0, "y": 0.0},
+                },
+            },
+            {
+                "type": "revolve_cut",
+                "name": "CUT_Groove",
+                "sketch": "SK_Groove",
+                "angle": 360.0,
+            },
+        ],
+    }
+
+
+def test_revolve_boss_and_cut_are_preflight_coverage_skips():
+    # Axis-aligned envelope cannot represent a revolve sweep. The skip must
+    # carry PREFLIGHT_SKIP_CODE so coverage() (and --strict exit 8) see it,
+    # and must not ERROR -- a revolve spec can still build.
+    spec = _plate_plus_revolve_groove()
+    findings = preflight(spec)
+    assert _sev(findings, "error") == []
+    skips = [f for f in findings if f.code == PREFLIGHT_SKIP_CODE]
+    skipped_names = {f.path.rsplit("/", 1)[-1] for f in skips}
+    assert "REV_Hub" in skipped_names
+    assert "CUT_Groove" in skipped_names
+    cov = coverage(spec, findings)
+    assert cov["complete"] is False
+    assert cov["skipped_types"] == ["revolve_boss", "revolve_cut"]
 
 
 def test_flip_does_not_reverse_a_far_face_plane_cut_into_material():
@@ -579,6 +645,27 @@ def test_coverage_of_an_empty_spec_is_complete():
         "skipped_types": [],
         "complete": True,
     }
+
+
+def test_revolve2_args_bind_flip_to_reverse_dir_and_pin_scope_flags():
+    import math
+
+    from ai_sw_bridge.spec.handlers.revolve import _feature_revolve2_args
+
+    args = _feature_revolve2_args(is_cut=True, angle_rad=math.tau, flip=False)
+    assert len(args) == 20
+    assert args[0] is True  # SingleDir
+    assert args[1] is True  # IsSolid
+    assert args[2] is False  # IsThin
+    assert args[3] is True  # IsCut
+    assert args[4] is False  # ReverseDir (spec flip)
+    assert args[17] is True  # Merge
+    assert args[18] is True  # UseFeatScope -- pinned, spec cannot reach
+    assert args[19] is True  # UseAutoSelect -- pinned, spec cannot reach
+    flipped = _feature_revolve2_args(is_cut=True, angle_rad=math.tau, flip=True)
+    assert flipped[4] is True
+    boss = _feature_revolve2_args(is_cut=False, angle_rad=math.tau, flip=False)
+    assert boss[3] is False
 
 
 def test_cut_arg_builder_carries_the_direction_axis():
