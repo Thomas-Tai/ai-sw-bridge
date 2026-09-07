@@ -17,7 +17,7 @@ ai-sw-bridge 的詳細工作流程。安裝方式與 60 秒快速入門，請見
 
 ## 工作流程 1 — 設計指南驗證（唯讀）
 
-使用情境：你寫了一份設計指南，內容說「立柱高度是 `D_Z_BELT − S1B_BELT_T − S1B_ROLLER_DIA/2 = 61.0 mm`」。你想驗證 SOLIDWORKS 是否真的算出這個結果。
+使用情境：你寫了一份設計指南，內容說「立柱高度是 `D_Z_BELT − CONV_BELT_T − CONV_ROLLER_DIA/2 = 61.0 mm`」。你想驗證 SOLIDWORKS 是否真的算出這個結果。
 
 ```powershell
 # 1. 在 SOLIDWORKS 中開啟零件。
@@ -30,17 +30,17 @@ ai-sw-observe screenshot --filename=verification.png
 
 輸出的 JSON 包含每一條方程式與其目前的數值。把它接到 `jq`，或直接餵給一個 AI 代理去比對書面指南。
 
-這個工作流程實際用在 Lego Sorter V2 S1b 輸送帶設計指南上，抓到一個參數強制執行的落差（一個應該綁定到 `-"S1B_CHUTE_OUTLET_LOCAL_X"` 卻寫成字面值 `-32.5` mm 偏移量的錯誤）。單看指南文字看不出這個錯誤 — AI 代理是靠比對即時的 `equations` 輸出與已記載的不變量差異才找到的。
+這個工作流程實際用在 一份輸送帶設計指南上，抓到一個參數強制執行的落差（一個應該綁定到 `-"CONV_CHUTE_OUTLET_LOCAL_X"` 卻寫成字面值 `-32.5` mm 偏移量的錯誤）。單看指南文字看不出這個錯誤 — AI 代理是靠比對即時的 `equations` 輸出與已記載的不變量差異才找到的。
 
 ## 工作流程 2 — 變更單一變數（Propose-Approve-Execute）
 
-使用情境：設計指南寫著 `S1B_FOOT_W` 應該是 16 mm，但模型上是 15 mm。你想安全地套用這項變更。
+使用情境：設計指南寫著 `CONV_FOOT_W` 應該是 16 mm，但模型上是 15 mm。你想安全地套用這項變更。
 
 **前置條件**：目前開啟的 SW 零件必須有一個透過 Tools → Equations → Link to file 連結的 `*_locals.txt` 檔案。橋接器會讀取 `EquationMgr.FilePath` 找出連結的檔案。
 
 ```powershell
 # 1. 提案（尚未變更任何 SW 狀態）
-ai-sw-mutate propose --var=S1B_FOOT_W --new-value=16.0
+ai-sw-mutate propose --var=CONV_FOOT_W --new-value=16.0
 # -> proposal_id: a1b2c3d4e5f6, state: proposed
 
 # 2. Dry-run：套用、重建、擷取、回滾

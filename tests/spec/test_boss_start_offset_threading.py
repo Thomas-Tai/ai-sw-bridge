@@ -4,7 +4,7 @@ args 21-23, plus the extrude_origin shift the downstream face-selects depend on.
 ``start_offset`` lets a blind boss begin at a distance from its sketch plane
 instead of on it (SOLIDWORKS start condition ``swStartOffset``). This unblocks
 parts whose geometry sits offset from all three standard planes -- e.g.
-SM-HW-S1b-001 ConveyorFrame: the side plate at part-Y=+40, feet at part-Z=-75,
+ConveyorFrame: the side plate at part-Y=+40, feet at part-Z=-75,
 cross-braces at part-Z=-56 (see the ConveyorFrame bridge-capability-gap report).
 
 Opt-in semantics: OMITTING ``start_offset`` keeps the historical single-direction

@@ -156,7 +156,7 @@ def _build_sketch_polyline_on_plane(
     SINGLE plane sketch; when ``closed`` (default True) a final segment joins the
     last point back to the first, producing a closed profile a boss/cut extrude
     can consume. This is the primitive for non-axis-aligned CLOSED profiles —
-    e.g. the 45 deg parallelograms of SM-HW-S1b-009 BeltEndChute — that
+    e.g. the 45 deg parallelograms of BeltEndChute — that
     ``sketch_rectangle_on_plane`` (axis-aligned) and ``sketch_polygon`` (regular
     N-gon) cannot express, and that ``sketch_line`` cannot either (it closes its
     sketch after a single segment).

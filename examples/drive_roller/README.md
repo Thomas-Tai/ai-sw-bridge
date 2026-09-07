@@ -1,4 +1,4 @@
-# DriveRoller (SM-HW-S1b-004)
+# DriveRoller
 
 Cylindrical roller with centre bore, bearing pockets on each end face, and an O-ring groove at mid-length.
 

@@ -52,8 +52,8 @@ Boss/cut extrudes with the non-blind end conditions. See [`../docs/spec_referenc
 | Example | Features | What it demonstrates |
 |---|---|---|
 | [`grooved_shaft/`](grooved_shaft/) | 4 | `revolve_cut` — the subtractive sibling of `revolve_boss`: an O-ring groove cut into a shaft |
-| [`spring_end_cap/`](spring_end_cap/) | 6 | Blind + through-all cuts and `sketch_circles_on_face` (multi-circle face sketch) on a real S1b part |
-| [`drive_roller/`](drive_roller/) | 10 | Full S1b roller: centre bore, bearing pockets on each end face, and a mid-length O-ring `revolve_cut` groove |
+| [`spring_end_cap/`](spring_end_cap/) | 6 | Blind + through-all cuts and `sketch_circles_on_face` (multi-circle face sketch) on a real production part |
+| [`drive_roller/`](drive_roller/) | 10 | Full roller: centre bore, bearing pockets on each end face, and a mid-length O-ring `revolve_cut` groove |
 
 ## Sketch-primitive galleries
 

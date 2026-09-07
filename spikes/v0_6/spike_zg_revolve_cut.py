@@ -1,7 +1,7 @@
 """Spike ZG: probe FeatureRevolve2 with IsCut=True via pywin32 late-binding.
 
 Context: v0.5 shipped `revolve_boss` (Spike X, 2026-05-19). The DriveRoller
-part (S1b-004, design guide §13.2 Step 2) needs an O-ring groove cut around
+part (design guide §13.2 Step 2) needs an O-ring groove cut around
 its cylindrical axis -- a revolved cut. The 20-arg FeatureRevolve2 takes
 `IsCut` as arg 4; flipping it from the boss case is the only structural
 difference we expect. But we have never tested this on SW 2024 SP1.
@@ -16,7 +16,7 @@ Risky questions this spike answers:
       reject it because the profile doesn't intersect the existing body
       tangentially-enough?
 
-Test geometry: mirror the S1b DriveRoller's O-ring groove without being
+Test geometry: mirror the DriveRoller's O-ring groove without being
 the actual part (Sonnet builds the part later in a fresh session).
 
   Step 1: Build base cylinder: Ø25 x 80 mm along the Y axis.

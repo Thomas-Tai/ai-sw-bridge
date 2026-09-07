@@ -491,7 +491,7 @@ class TestMmToMHelper:
         assert builder._mm_to_m(0.5) == pytest.approx(0.0005)
 
     def test_rhs_dict_returns_placeholder(self) -> None:
-        assert builder._mm_to_m({"rhs": '"S1B_W"'}) == 0.0
+        assert builder._mm_to_m({"rhs": '"CONV_W"'}) == 0.0
 
 
 def _stash_plane_normal(bf: builder.BuiltFeature, feat: dict[str, Any]) -> None:

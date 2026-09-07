@@ -23,7 +23,7 @@ A Ø25 × 80 mm cylindrical shaft along the x-axis with a 5 mm-wide × 1 mm-deep
 
 - Body bbox: `x = [0, 80] mm, y = [-12.5, 12.5] mm, z = [-12.5, 12.5] mm`
 - The groove drops the outer radius from 12.5 mm to 11.5 mm over the band x ∈ [37.5, 42.5] mm
-- Typical use: seat for a Ø2 mm rubber O-ring on a 3D-printed conveyor drive roller (see Lego Sorter S1b DriveRoller § 13.2 for the inspiring real-world geometry)
+- Typical use: seat for a Ø2 mm rubber O-ring on a 3D-printed conveyor drive roller (the inspiring geometry is a production drive-roller design guide § 13.2)
 
 ## How `revolve_cut` works
 

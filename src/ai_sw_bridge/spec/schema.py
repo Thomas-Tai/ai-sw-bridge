@@ -11,7 +11,7 @@ Design rules:
 - A `length` value is either a literal number (mm) or {"rhs": "<expr>"} where
   expr is a SW Equation Manager expression. RHS strings get pasted verbatim
   into EquationMgr.Add2 - the user must quote variable references themselves
-  (e.g. `"\"S1B_MMP_W\""` for a bare var, `"\"S1B_X\" + 0.5"` for an expr).
+  (e.g. `"\"CONV_MMP_W\""` for a bare var, `"\"CONV_X\" + 0.5"` for an expr).
 - Features have unique `name` (within the spec) and are built in declared
   order. References to earlier features use that `name`.
 - Planes: the three default reference planes are "Front", "Top", "Right"

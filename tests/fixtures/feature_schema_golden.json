@@ -42,7 +42,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -64,7 +64,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -235,7 +235,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -257,7 +257,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -358,7 +358,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -528,7 +528,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -658,7 +658,7 @@
                   "properties": {
                     "rhs": {
                       "type": "string",
-                      "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                      "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
                     }
                   }
                 }
@@ -743,7 +743,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -775,7 +775,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -827,7 +827,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -919,7 +919,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -941,7 +941,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -1088,7 +1088,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -1140,7 +1140,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -1193,7 +1193,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -1215,7 +1215,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -1366,7 +1366,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -1396,7 +1396,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -1439,7 +1439,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -1579,7 +1579,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -1601,7 +1601,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -1774,7 +1774,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -2292,7 +2292,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -2314,7 +2314,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -2439,7 +2439,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -2561,7 +2561,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -2583,7 +2583,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }
@@ -2705,7 +2705,7 @@
             "properties": {
               "rhs": {
                 "type": "string",
-                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"S1B_W\"' for a bare var."
+                "description": "Right-hand side of an Equation Manager binding. Pasted verbatim into EquationMgr.Add2. Quote variable references yourself, e.g. '\"CONV_W\"' for a bare var."
               }
             }
           }

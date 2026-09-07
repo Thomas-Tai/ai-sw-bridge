@@ -54,7 +54,7 @@ def main():
             print(f"        text :: {text}")
     print()
 
-    # ---- For each dim used in S1b MMP, see if Parameter resolves ----
+    # ---- For each dim used in MMP, see if Parameter resolves ----
     print("=== Parameter resolution for known MMP dims ===")
     for pname in [
         "D1@SK_PlateSlab",

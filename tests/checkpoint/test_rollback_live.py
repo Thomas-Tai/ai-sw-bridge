@@ -3,7 +3,7 @@
 End-to-end verification that the L4 checkpoint round-trip works against a
 running SOLIDWORKS session:
 
-1. Build the S1b motor-mount plate (MMP) spec with ``--checkpoint``.
+1. Build the motor-mount plate (MMP) spec with ``--checkpoint``.
 2. Confirm one committed checkpoint row per built feature.
 3. Corrupt the locals file to simulate a downstream-feature failure.
 4. ``rollback_to(checkpoint_5)`` restores the locals.
@@ -35,7 +35,7 @@ from ai_sw_bridge.spec.validator import validate
 
 EXAMPLES_ROOT = Path(__file__).resolve().parents[2] / "examples"
 MMP_SPEC_PATH = EXAMPLES_ROOT / "motor_mount_plate" / "spec.json"
-MMP_LOCALS_PATH = EXAMPLES_ROOT / "s1b_conveyor_locals.txt"
+MMP_LOCALS_PATH = EXAMPLES_ROOT / "conveyor_locals.txt"
 MMP_FEATURE_COUNT = 10
 
 
@@ -154,7 +154,7 @@ def test_rollback_restores_locals_after_corruption(mmp_env) -> None:
             original_map = _parse_locals(original_text, tmp_path)
 
             locals_path.write_text(
-                '"S1B_MMP_H" = THIS_IS_NOT_A_NUMBER\n',
+                '"CONV_MMP_H" = THIS_IS_NOT_A_NUMBER\n',
                 encoding="utf-8",
             )
             assert "THIS_IS_NOT_A_NUMBER" in locals_path.read_text(encoding="utf-8")

@@ -10,7 +10,7 @@ Detailed workflows for ai-sw-bridge. For installation and a 60-second quickstart
 
 ## Workflow 1 — Design-guide verification (read-only)
 
-Use case: You wrote a design guide that says "the post height is `D_Z_BELT − S1B_BELT_T − S1B_ROLLER_DIA/2 = 61.0 mm`." You want to verify SOLIDWORKS actually computes this.
+Use case: You wrote a design guide that says "the post height is `D_Z_BELT − CONV_BELT_T − CONV_ROLLER_DIA/2 = 61.0 mm`." You want to verify SOLIDWORKS actually computes this.
 
 ```powershell
 # 1. Open the part in SOLIDWORKS.
@@ -23,17 +23,17 @@ ai-sw-observe screenshot --filename=verification.png
 
 The output JSON has every equation with its current numeric value. Pipe it to `jq` or feed it directly to an AI agent that compares against the written guide.
 
-This workflow has been used in practice on the Lego Sorter V2 S1b conveyor design guide to catch a parametric-enforcement gap (a literal `-32.5` mm offset that should have been bound to `-"S1B_CHUTE_OUTLET_LOCAL_X"`). The error wasn't visible from reading the guide alone — the AI agent only found it by diffing the live `equations` output against the documented invariants.
+This workflow has been used in practice on the a conveyor design guide to catch a parametric-enforcement gap (a literal `-32.5` mm offset that should have been bound to `-"CONV_CHUTE_OUTLET_LOCAL_X"`). The error wasn't visible from reading the guide alone — the AI agent only found it by diffing the live `equations` output against the documented invariants.
 
 ## Workflow 2 — Change a single variable (Propose-Approve-Execute)
 
-Use case: The design guide says `S1B_FOOT_W` should be 16 mm but the model has 15 mm. You want to apply the change safely.
+Use case: The design guide says `CONV_FOOT_W` should be 16 mm but the model has 15 mm. You want to apply the change safely.
 
 **Prerequisite**: The active SW part must have a `*_locals.txt` file linked via Tools → Equations → Link to file. The bridge reads `EquationMgr.FilePath` to discover the linked file.
 
 ```powershell
 # 1. Propose (no SW state changed yet)
-ai-sw-mutate propose --var=S1B_FOOT_W --new-value=16.0
+ai-sw-mutate propose --var=CONV_FOOT_W --new-value=16.0
 # -> proposal_id: a1b2c3d4e5f6, state: proposed
 
 # 2. Dry-run: apply, rebuild, capture, roll back

@@ -1,7 +1,7 @@
 """Shared scrub/redaction utilities for telemetry export and bug reports.
 
 Redaction rules per spec.md §8.8 and privacy_review.md:
-  - Replace any string matching r"S1B_\\w+" with <redacted_local>
+  - Replace any string matching r"CONV_\\w+" with <redacted_local>
   - Replace absolute file paths with basename only
   - Replace trade-secret patterns from .ai-sw-bridge.toml with <REDACTED:trade_secret>
   - Strip *_locals.txt file contents entirely
@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_REDACT_LOCALS = re.compile(r"S1B_\w+")
+_REDACT_LOCALS = re.compile(r"CONV_\w+")
 _REDACT_PATH = re.compile(r"(?:[A-Z]:)?[/\\]+(?:[^/\\]+[/\\]+)*[^/\\]+")
 _TRADE_SECRET_TOKEN = "<REDACTED:trade_secret>"
 

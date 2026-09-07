@@ -1,28 +1,28 @@
 {
   "schema_version": 1,
-  "name": "SM-HW-S1b-007_MotorMountPlate_v01_FROM_JSON",
-  "locals": "../s1b_conveyor_locals.txt",
-  "_comment": "S1b MMP per Hardware/S1b_Conveyor/SW_Design_Guide.md §13.4. Uses SW default coords (Front Plane normal = +Z), so the design guide's '+Y extrude' becomes '+Z extrude' in this build. Geometry is identical; only axis labels differ from the existing hand-built SLDPRT.",
+  "name": "MotorMountPlate_v01_FROM_JSON",
+  "locals": "../conveyor_locals.txt",
+  "_comment": "MMP per SW_Design_Guide.md §13.4. Uses SW default coords (Front Plane normal = +Z), so the design guide's '+Y extrude' becomes '+Z extrude' in this build. Geometry is identical; only axis labels differ from the existing hand-built SLDPRT.",
   "features": [
     {
       "type": "sketch_rectangle_on_plane",
       "name": "SK_PlateSlab",
       "plane": "Front",
-      "width":  {"rhs": "\"S1B_MMP_H\""},
-      "height": {"rhs": "\"S1B_MMP_W\""}
+      "width":  {"rhs": "\"CONV_MMP_H\""},
+      "height": {"rhs": "\"CONV_MMP_W\""}
     },
     {
       "type": "boss_extrude_blind",
       "name": "Extrude_Plate",
       "sketch": "SK_PlateSlab",
-      "depth": {"rhs": "\"S1B_MMP_T\""}
+      "depth": {"rhs": "\"CONV_MMP_T\""}
     },
     {
       "type": "sketch_circle_on_face",
       "name": "SK_CouplerHole",
       "of_feature": "Extrude_Plate",
       "face": "-z",
-      "diameter": {"rhs": "\"S1B_COUPLER_CLEARANCE\""}
+      "diameter": {"rhs": "\"CONV_COUPLER_CLEARANCE\""}
     },
     {
       "type": "cut_extrude_through_all",
@@ -34,7 +34,7 @@
       "name": "SK_FlangeRecess",
       "of_feature": "Extrude_Plate",
       "face": "+z",
-      "diameter": {"rhs": "\"S1B_MOTOR_FLANGE_OD\" + 0.5"}
+      "diameter": {"rhs": "\"CONV_MOTOR_FLANGE_OD\" + 0.5"}
     },
     {
       "type": "cut_extrude_blind",
@@ -43,7 +43,7 @@
       "depth": 1.0
     },
     {
-      "_comment": "Motor mounting holes - 2 circles offset in X by S1B_MOTOR_HOLE_PITCH/2 = 12.5mm. v1 limit: positions are literal mm, not parametric. Update u values if S1B_MOTOR_HOLE_PITCH changes after motor procurement.",
+      "_comment": "Motor mounting holes - 2 circles offset in X by CONV_MOTOR_HOLE_PITCH/2 = 12.5mm. v1 limit: positions are literal mm, not parametric. Update u values if CONV_MOTOR_HOLE_PITCH changes after motor procurement.",
       "type": "sketch_circles_on_face",
       "name": "SK_MotorHoles",
       "of_feature": "Extrude_Plate",
@@ -59,14 +59,14 @@
       "sketch": "SK_MotorHoles"
     },
     {
-      "_comment": "Frame holes - 2 circles offset in X by S1B_MMP_FRAME_HOLE_PITCH/2 = 15mm. Diameter is parametric.",
+      "_comment": "Frame holes - 2 circles offset in X by CONV_MMP_FRAME_HOLE_PITCH/2 = 15mm. Diameter is parametric.",
       "type": "sketch_circles_on_face",
       "name": "SK_FrameHoles",
       "of_feature": "Extrude_Plate",
       "face": "-z",
       "circles": [
-        {"u":  15.0, "v": 0.0, "diameter": {"rhs": "\"S1B_MMP_FRAME_HOLE_DIA\""}},
-        {"u": -15.0, "v": 0.0, "diameter": {"rhs": "\"S1B_MMP_FRAME_HOLE_DIA\""}}
+        {"u":  15.0, "v": 0.0, "diameter": {"rhs": "\"CONV_MMP_FRAME_HOLE_DIA\""}},
+        {"u": -15.0, "v": 0.0, "diameter": {"rhs": "\"CONV_MMP_FRAME_HOLE_DIA\""}}
       ]
     },
     {
