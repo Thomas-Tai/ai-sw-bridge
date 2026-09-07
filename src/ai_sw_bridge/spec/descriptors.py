@@ -26,7 +26,26 @@ from ._advanced_sketch_fields import (
     sketch_3d_sketch_fields,
     sketch_polyline_on_plane_fields,
 )
-from ._extrude_fields import boss_extrude_blind_fields
+from ._basic_sketch_fields import (
+    sketch_arc_fields,
+    sketch_ellipse_fields,
+    sketch_line_fields,
+    sketch_polygon_fields,
+    sketch_slot_fields,
+    sketch_spline_fields,
+    sketch_text_fields,
+)
+from ._extrude_fields import (
+    boss_extrude_blind_fields,
+    boss_extrude_midplane_fields,
+    boss_extrude_through_all_fields,
+    boss_extrude_two_direction_fields,
+    boss_extrude_up_to_surface_fields,
+    cut_extrude_blind_fields,
+    cut_extrude_midplane_fields,
+    cut_extrude_through_all_fields,
+    cut_extrude_two_direction_fields,
+)
 
 # ---------------------------------------------------------------------------
 # Shared sub-schemas (moved here from schema.py; re-exported there).
@@ -206,31 +225,9 @@ RELATIONS_SCHEMA: dict[str, Any] = {
 # Face-direction enum, shared by all face-bound primitives.
 _FACE_ENUM = ["+x", "-x", "+y", "-y", "+z", "-z"]
 
-# Durable up-to reference for boss_extrude_up_to_surface: a face of an earlier
-# extrusion the boss terminates against. Carried as a self-contained object so
-# the reference is unambiguous and the validator can demand it explicitly.
-_TARGET_REF_SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["of_feature", "face"],
-    "properties": {
-        "of_feature": {
-            "type": "string",
-            "description": (
-                "Name of an earlier extrusion whose face the boss extrudes "
-                "up to (the up-to termination surface)."
-            ),
-        },
-        "face": {
-            "enum": _FACE_ENUM,
-            "description": "Outward normal of the up-to target face.",
-        },
-    },
-    "description": (
-        "Durable reference to the up-to termination surface (a face of an "
-        "earlier extrusion). Required — the boss has no fixed depth."
-    ),
-}
+# boss_extrude_up_to_surface's `target_ref` schema is built inside
+# _extrude_fields.boss_extrude_up_to_surface_fields (which takes _FACE_ENUM
+# in), to keep this grandfathered module's LOC down.
 
 
 def _xyz_point(*, required: bool, description: str) -> dict[str, Any]:
@@ -529,41 +526,6 @@ _SLOT_TYPE_ENUM: dict[str, Any] = {
 }
 
 
-# Shared `merge` schema for every boss variant EXCEPT boss_extrude_blind
-# (whose field list lives in the separate _extrude_fields helper and carries
-# its own, textually-identical copy). Kept as one constant here so the four
-# boss_extrude_* fragments in this module can't drift from each other.
-_BOSS_MERGE_SCHEMA: dict[str, Any] = {
-    "type": "boolean",
-    "default": True,
-    "description": (
-        "true (default) = fuse this boss into the existing solid body it "
-        "overlaps (modeling-time boolean UNION). false = keep it as a "
-        "separate solid body (multi-body). Express unions HERE, at the "
-        "extrusion phase: there is no post-hoc 'combine' feature."
-    ),
-}
-
-# Shared `flip` schema for the three single-direction cut variants
-# (cut_extrude_through_all/_blind/_midplane). FeatureCut4 arg 2 (`Flip`) is
-# proven NOT to reverse cut direction (issue #40, seat-proven 2026-09-05) --
-# the builder derives the real +normal/-normal sweep automatically from
-# whether the sketch is plane- or face-hosted (see
-# docs/coordinate_conventions.md §4). `cut_extrude_two_direction` gets its
-# own hedged copy below since that arg shape was not covered by the #40 seat
-# proof.
-_CUT_FLIP_SCHEMA: dict[str, Any] = {
-    "type": "boolean",
-    "default": False,
-    "description": (
-        "Bound to FeatureCut4 arg 2 (`Flip`); proven not to reverse cut "
-        "direction (issue #40, seat-proven 2026-09-05). The builder sets "
-        "the real +normal/-normal sweep direction automatically depending "
-        "on whether the sketch is plane- or face-hosted."
-    ),
-}
-
-
 FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     "sketch_rectangle_on_plane": [
         FieldSpec(
@@ -713,201 +675,19 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     # start_offset/flip_start_offset fields) to keep this grandfathered module
     # under its module-size budget. LENGTH_SCHEMA is passed in to avoid a cycle.
     "boss_extrude_blind": boss_extrude_blind_fields(LENGTH_SCHEMA),
-    "boss_extrude_midplane": [
-        FieldSpec(
-            "sketch",
-            {
-                "type": "string",
-                "description": "Name of an earlier sketch feature to extrude.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "depth",
-            {
-                **LENGTH_SCHEMA,
-                "description": (
-                    "Total extrusion depth (mm), centred on the sketch plane "
-                    "(depth/2 of material added each side)."
-                ),
-            },
-            True,
-        ),
-        FieldSpec(
-            "flip",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": (
-                    "Reserved; a mid-plane extrude is symmetric about the "
-                    "sketch plane, so the direction is immaterial."
-                ),
-            },
-            False,
-        ),
-        FieldSpec("merge", _BOSS_MERGE_SCHEMA, False),
-    ],
-    "boss_extrude_through_all": [
-        FieldSpec(
-            "sketch",
-            {
-                "type": "string",
-                "description": "Name of an earlier sketch feature to extrude.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "flip",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "Extrude in -normal instead of +normal direction.",
-            },
-            False,
-        ),
-        FieldSpec("merge", _BOSS_MERGE_SCHEMA, False),
-    ],
-    "boss_extrude_two_direction": [
-        FieldSpec(
-            "sketch",
-            {
-                "type": "string",
-                "description": "Name of an earlier sketch feature to extrude.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "depth",
-            {**LENGTH_SCHEMA, "description": "Extrusion depth into +normal (mm)."},
-            True,
-        ),
-        FieldSpec(
-            "depth2",
-            {**LENGTH_SCHEMA, "description": "Extrusion depth into -normal (mm)."},
-            True,
-        ),
-        FieldSpec(
-            "flip",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": (
-                    "Swap which side `depth` (+normal) vs `depth2` (-normal) "
-                    "extrudes into."
-                ),
-            },
-            False,
-        ),
-        FieldSpec("merge", _BOSS_MERGE_SCHEMA, False),
-    ],
-    "boss_extrude_up_to_surface": [
-        FieldSpec(
-            "sketch",
-            {"type": "string", "description": "Name of an earlier sketch to extrude."},
-            True,
-        ),
-        FieldSpec("target_ref", _TARGET_REF_SCHEMA, True),
-        FieldSpec(
-            "flip",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "Extrude in -normal instead of +normal direction.",
-            },
-            False,
-        ),
-        FieldSpec("merge", _BOSS_MERGE_SCHEMA, False),
-    ],
-    "cut_extrude_through_all": [
-        FieldSpec(
-            "sketch",
-            {
-                "type": "string",
-                "description": "Name of an earlier sketch to cut along.",
-            },
-            True,
-        ),
-        FieldSpec("flip", _CUT_FLIP_SCHEMA, False),
-    ],
-    "cut_extrude_blind": [
-        FieldSpec(
-            "sketch",
-            {
-                "type": "string",
-                "description": "Name of an earlier sketch feature to cut along.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "depth",
-            {**LENGTH_SCHEMA, "description": "Cut depth (mm)."},
-            True,
-        ),
-        FieldSpec("flip", _CUT_FLIP_SCHEMA, False),
-    ],
-    "cut_extrude_midplane": [
-        FieldSpec(
-            "sketch",
-            {
-                "type": "string",
-                "description": "Name of an earlier sketch feature to cut along.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "depth",
-            {
-                **LENGTH_SCHEMA,
-                "description": (
-                    "Total cut depth (mm), centred on the sketch plane "
-                    "(depth/2 removed each side)."
-                ),
-            },
-            True,
-        ),
-        FieldSpec("flip", _CUT_FLIP_SCHEMA, False),
-    ],
-    "cut_extrude_two_direction": [
-        FieldSpec(
-            "sketch",
-            {
-                "type": "string",
-                "description": "Name of an earlier sketch feature to cut along.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "depth",
-            {
-                **LENGTH_SCHEMA,
-                "description": "Cut depth into the +normal direction (mm).",
-            },
-            True,
-        ),
-        FieldSpec(
-            "depth2",
-            {
-                **LENGTH_SCHEMA,
-                "description": "Cut depth into the -normal direction (mm).",
-            },
-            True,
-        ),
-        FieldSpec(
-            "flip",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": (
-                    "Bound to FeatureCut4 arg 2 (`Flip`). The issue #40 seat "
-                    "proof (2026-09-05) only covers one-directional cuts, so "
-                    "this field's effect on a two-direction cut is UNVERIFIED "
-                    "-- `depth`/`depth2` are what determine which side is "
-                    "removed, not `flip`."
-                ),
-            },
-            False,
-        ),
-    ],
+    # The remaining boss/cut extrude variants' field lists also live in the
+    # focused ._extrude_fields helper (same rationale as boss_extrude_blind
+    # above): it keeps this grandfathered module's LOC down as the extrude
+    # family's descriptions grow. LENGTH_SCHEMA / _FACE_ENUM are passed in to
+    # avoid an import cycle.
+    "boss_extrude_midplane": boss_extrude_midplane_fields(LENGTH_SCHEMA),
+    "boss_extrude_through_all": boss_extrude_through_all_fields(),
+    "boss_extrude_two_direction": boss_extrude_two_direction_fields(LENGTH_SCHEMA),
+    "boss_extrude_up_to_surface": boss_extrude_up_to_surface_fields(_FACE_ENUM),
+    "cut_extrude_through_all": cut_extrude_through_all_fields(),
+    "cut_extrude_blind": cut_extrude_blind_fields(LENGTH_SCHEMA),
+    "cut_extrude_midplane": cut_extrude_midplane_fields(LENGTH_SCHEMA),
+    "cut_extrude_two_direction": cut_extrude_two_direction_fields(LENGTH_SCHEMA),
     "revolve_boss": [
         FieldSpec(
             "sketch",
@@ -1232,328 +1012,27 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     # `construction`. Parametric `{rhs}` bindings are supported on every
     # LENGTH_SCHEMA field via the standard Equation Manager pathway.
     # ---------------------------------------------------------------------------
-    "sketch_line": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "start",
-            {**_SKETCH_POINT_2D, "description": "Line start point (sketch-local mm)."},
-            True,
-        ),
-        FieldSpec(
-            "end",
-            {**_SKETCH_POINT_2D, "description": "Line end point (sketch-local mm)."},
-            True,
-        ),
-        FieldSpec(
-            "construction",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "If true, mark the segment as a construction (centerline) entity.",
-            },
-            False,
-        ),
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_arc": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "center",
-            {**_SKETCH_POINT_2D, "description": "Arc center point (sketch-local mm)."},
-            True,
-        ),
-        FieldSpec(
-            "start",
-            {**_SKETCH_POINT_2D, "description": "Arc start point (sketch-local mm)."},
-            True,
-        ),
-        FieldSpec(
-            "end",
-            {**_SKETCH_POINT_2D, "description": "Arc end point (sketch-local mm)."},
-            True,
-        ),
-        FieldSpec(
-            "direction",
-            {
-                "enum": ["cw", "ccw"],
-                "default": "ccw",
-                "description": "Arc direction from start to end about the center.",
-            },
-            False,
-        ),
-        FieldSpec(
-            "construction",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "If true, mark the arc as a construction entity.",
-            },
-            False,
-        ),
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_spline": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec("points", _SKETCH_SPLINE_POINTS, True),
-        FieldSpec(
-            "construction",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "If true, mark the spline as a construction entity.",
-            },
-            False,
-        ),
-        # NOTE: no `closed` field. A point-based periodic (C2) closed spline has
-        # no out-of-process API on this seat — ISketchSpline.MakeClosed and
-        # ISketchManager.CreateClosedSpline do not exist (verified via
-        # GetIDsOfNames -> DISP_E_UNKNOWNNAME and a full typelib scan), and
-        # appending the first point yields a C0 cusp, not a periodic spline.
-        # Requesting `closed` therefore fails validation rather than faking it.
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_slot": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "center",
-            {**_SKETCH_POINT_2D, "description": "Slot center point (sketch-local mm)."},
-            True,
-        ),
-        FieldSpec(
-            "width",
-            {
-                **LENGTH_SCHEMA,
-                "description": "Slot width (mm) -- the diameter of the two rounded end caps.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "length",
-            {
-                **LENGTH_SCHEMA,
-                "description": (
-                    "Slot length (mm) -- the center-to-center distance "
-                    "between the two rounded ends, along the slot's major axis."
-                ),
-            },
-            True,
-        ),
-        FieldSpec("slot_type", _SLOT_TYPE_ENUM, False),
-        FieldSpec(
-            "angle_deg",
-            {
-                "type": "number",
-                "default": 0.0,
-                "description": "Rotation of the slot's major axis from the sketch X axis (degrees).",
-            },
-            False,
-        ),
-        # NOTE: no `construction` field. CreateSketchSlot returns a read-only
-        # slot object (not a settable ISketchSegment): `ConstructionGeometry
-        # can not be set` on the seat. Unpacking the macro-feature's underlying
-        # segment array to mutate each is COM-index fragile, so construction is
-        # rejected for slots rather than faked.
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_polygon": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "center",
-            {
-                **_SKETCH_POINT_2D,
-                "description": "Polygon center point (sketch-local mm).",
-            },
-            True,
-        ),
-        FieldSpec(
-            "sides",
-            {
-                "type": "integer",
-                "minimum": 3,
-                "maximum": 40,
-                "description": "Number of polygon sides (3..40).",
-            },
-            True,
-        ),
-        FieldSpec(
-            "radius",
-            {
-                **LENGTH_SCHEMA,
-                "description": (
-                    "Polygon radius (mm); see `inscribed` for whether this "
-                    "is the apothem (inscribed) or circumscribed radius."
-                ),
-            },
-            True,
-        ),
-        FieldSpec(
-            "inscribed",
-            {
-                "type": "boolean",
-                "default": True,
-                "description": (
-                    "If true, `radius` is the inscribed (apothem) radius — polygon "
-                    "edges are tangent to the circle. If false, `radius` is the "
-                    "circumscribed radius — polygon vertices lie on the circle."
-                ),
-            },
-            False,
-        ),
-        FieldSpec(
-            "angle_deg",
-            {
-                "type": "number",
-                "default": 0.0,
-                "description": "Rotation of the polygon's first vertex from the sketch X axis (degrees).",
-            },
-            False,
-        ),
-        FieldSpec(
-            "construction",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "If true, mark the polygon as a construction entity.",
-            },
-            False,
-        ),
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_ellipse": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "center",
-            {
-                **_SKETCH_POINT_2D,
-                "description": "Ellipse center point (sketch-local mm).",
-            },
-            True,
-        ),
-        FieldSpec(
-            "major_radius",
-            {**LENGTH_SCHEMA, "description": "Semi-major axis length (mm)."},
-            True,
-        ),
-        FieldSpec(
-            "minor_radius",
-            {**LENGTH_SCHEMA, "description": "Semi-minor axis length (mm)."},
-            True,
-        ),
-        FieldSpec(
-            "angle_deg",
-            {
-                "type": "number",
-                "default": 0.0,
-                "description": "Rotation of the major axis from the sketch X axis (degrees).",
-            },
-            False,
-        ),
-        FieldSpec(
-            "construction",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "If true, mark the ellipse as a construction entity.",
-            },
-            False,
-        ),
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_text": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "position",
-            {
-                **_SKETCH_POINT_2D,
-                "description": "Text insertion point (sketch-local mm).",
-            },
-            True,
-        ),
-        FieldSpec(
-            "content",
-            {
-                "type": "string",
-                "minLength": 1,
-                "description": "Text content. Plain ASCII; no rich formatting.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "height",
-            {
-                **LENGTH_SCHEMA,
-                "description": "Text cap height (mm), applied as CharHeight.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "font",
-            {
-                "type": "string",
-                "description": (
-                    "Font family name (e.g. 'Arial'). Applied via the inserted "
-                    "ISketchText's text format (GetTextFormat -> TypeFaceName -> "
-                    "SetTextFormat); `height` sets CharHeight in the same call."
-                ),
-            },
-            False,
-        ),
-        # NOTE: no `angle_deg` or `construction` field for text. InsertSketchText
-        # exposes no angle parameter and ITextFormat carries no rotation, so text
-        # baseline rotation has no out-of-process API on this seat; and text is
-        # not a sketch segment, so ConstructionGeometry does not apply. Both are
-        # rejected at validation rather than silently ignored.
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
+    # The seven general-purpose sketch primitives (line/arc/spline/slot/
+    # polygon/ellipse/text) also live in a focused ._basic_sketch_fields
+    # helper (same rationale as ._extrude_fields / ._advanced_sketch_fields):
+    # it keeps this grandfathered module's LOC down. _SKETCH_POINT_2D /
+    # _SKETCH_SPLINE_POINTS / _SLOT_TYPE_ENUM / LENGTH_SCHEMA /
+    # RELATIONS_SCHEMA are passed in to avoid an import cycle.
+    "sketch_line": sketch_line_fields(_SKETCH_POINT_2D, RELATIONS_SCHEMA),
+    "sketch_arc": sketch_arc_fields(_SKETCH_POINT_2D, RELATIONS_SCHEMA),
+    "sketch_spline": sketch_spline_fields(_SKETCH_SPLINE_POINTS, RELATIONS_SCHEMA),
+    "sketch_slot": sketch_slot_fields(
+        _SKETCH_POINT_2D, LENGTH_SCHEMA, _SLOT_TYPE_ENUM, RELATIONS_SCHEMA
+    ),
+    "sketch_polygon": sketch_polygon_fields(
+        _SKETCH_POINT_2D, LENGTH_SCHEMA, RELATIONS_SCHEMA
+    ),
+    "sketch_ellipse": sketch_ellipse_fields(
+        _SKETCH_POINT_2D, LENGTH_SCHEMA, RELATIONS_SCHEMA
+    ),
+    "sketch_text": sketch_text_fields(
+        _SKETCH_POINT_2D, LENGTH_SCHEMA, RELATIONS_SCHEMA
+    ),
     # W53 3D-sketch + composite on-plane polyline. Field lists relocated to the
     # `_advanced_sketch_fields` leaf helper to keep this shrink-only module under
     # budget; the shared `_SKETCH_POINT_2D` is passed in to avoid an import cycle.
