@@ -2,7 +2,7 @@
 
 The most complete v0.2 example — 10 features, 7 parametric bindings, exercises 6 of the 8 available primitives.
 
-Builds the S1b conveyor's motor mount plate: a 50×50×3 mm plate with a concentric Ø12 coupler hole, Ø20.5 flange recess, 2× motor mounting holes (Ø3.2 at ±12.5 mm), and 2× frame mounting holes (Ø3.4 at ±15 mm).
+Builds the conveyor's motor mount plate: a 50×50×3 mm plate with a concentric Ø12 coupler hole, Ø20.5 flange recess, 2× motor mounting holes (Ø3.2 at ±12.5 mm), and 2× frame mounting holes (Ø3.4 at ±15 mm).
 
 ## Run it
 
@@ -14,7 +14,7 @@ ai-sw-build examples/motor_mount_plate/spec.json --no-dim
 
 **Note:** This spec references a `locals` path that is specific to the author's machine. To run it, either:
 
-1. Update the `locals` path in `spec.json` to point to your own copy of `s1b_conveyor_locals.txt`, or
+1. Update the `locals` path in `spec.json` to point to your own copy of `conveyor_locals.txt`, or
 2. Replace all `{rhs}` expressions with literal mm values (see the `_comment` fields for the target values)
 
 ## What it builds (10 features)
@@ -53,5 +53,5 @@ ai-sw-build examples/motor_mount_plate/spec.json --no-dim
 ## Things to try
 
 - Change the motor hole pitch: update `u` values in `SK_MotorHoles` from ±12.5 to ±15
-- Change plate thickness: edit `S1B_MMP_T` in the locals file, re-run
+- Change plate thickness: edit `CONV_MMP_T` in the locals file, re-run
 - Add a fillet: append a `fillet_constant_radius` feature at the end (you'll need to calculate edge coordinates from the plate geometry)

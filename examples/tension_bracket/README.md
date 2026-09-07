@@ -2,7 +2,7 @@
 
 8 features, stacked extrudes with face-based sketches. Demonstrates the face-sketch-origin gotcha and how to work around it.
 
-Builds the S1b conveyor's tension bracket: a cap-slab-cap sandwich (inboard cap → slot slab → outboard cap) with an axle bore through the center.
+Builds the conveyor's tension bracket: a cap-slab-cap sandwich (inboard cap → slot slab → outboard cap) with an axle bore through the center.
 
 ## Run it
 
@@ -47,5 +47,5 @@ If you remove the `v: 7.5` offsets from `SK_SlotSlab`, `SK_OutboardCap`, or `SK_
 ## Things to try
 
 - Remove `v: 7.5` from `SK_SlotSlab` — observe the slab shifts down and the bounding box grows
-- Change `S1B_TB_X` to make the bracket wider
+- Change `CONV_TB_X` to make the bracket wider
 - Add a second bore by appending another `sketch_circle_on_face` + `cut_extrude_through_all` pair

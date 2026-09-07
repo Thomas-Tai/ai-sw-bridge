@@ -5,7 +5,7 @@ Background:
   In the per-sketch deferred-dim flow, after CreateCenterRectangle closes
   and re-opens via EditSketch, the second dim (D2 on the left edge) lands
   as a DRIVEN (reference) dim instead of a DRIVING dim. SW then refuses
-  the binding equation "D2@SK_PlateSlab" = "S1B_MMP_W" with the message
+  the binding equation "D2@SK_PlateSlab" = "CONV_MMP_W" with the message
   "A driven or reference dimension is not selectable as the dependent
   variable of the equation."
 

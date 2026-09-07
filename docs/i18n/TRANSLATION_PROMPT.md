@@ -155,12 +155,12 @@ Never localize:
   are illustrative; never translate keys)
 
 ## Hardware / domain references that should stay verbatim
-- S1b_Conveyor, MMP, TensionBracket, IdlerRoller, SpringEndCap, SideGuide,
+- Conveyor, MMP, TensionBracket, IdlerRoller, SpringEndCap, SideGuide,
   AxleEndCap, MotorMountPlate
-- Variable names from locals.txt: S1B_TB_X, S1B_TB_Y_OUTBOARD, S1B_TB_CAP_T,
-  S1B_AXLE_CLEARANCE, S1B_FRAME_PLATE_T, S1B_TB_BORE, S1B_MMP_H, S1B_MMP_W,
-  S1B_MMP_T, S1B_COUPLER_CLEARANCE, S1B_MOTOR_FLANGE_OD, S1B_MOTOR_HOLE_PITCH,
-  S1B_MMP_FRAME_HOLE_PITCH, S1B_MMP_FRAME_HOLE_DIA, S1B_PRINT_FILLET_R
+- Variable names from locals.txt: CONV_TB_X, CONV_TB_Y_OUTBOARD, CONV_TB_CAP_T,
+  CONV_AXLE_CLEARANCE, CONV_FRAME_PLATE_T, CONV_TB_BORE, CONV_MMP_H, CONV_MMP_W,
+  CONV_MMP_T, CONV_COUPLER_CLEARANCE, CONV_MOTOR_FLANGE_OD, CONV_MOTOR_HOLE_PITCH,
+  CONV_MMP_FRAME_HOLE_PITCH, CONV_MMP_FRAME_HOLE_DIA, CONV_PRINT_FILLET_R
 - Dim references: D1, D2, D1@SK_Body, D1@Fillet_TopRightEdge, etc.
 
 # Things that benefit from translation (the actual prose)

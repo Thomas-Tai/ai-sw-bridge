@@ -194,7 +194,7 @@ already work this way.
 
 ## Decision ③ — Model scope
 
-Axis-aligned box/cylinder features only — which covers ~90% of Lego Sorter
+Axis-aligned box/cylinder features only — which covers ~90% of our production
 parts (plates, mounts, brackets built from Front-plane bosses + `+z` holes).
 Everything else honest-skips per §Component 2. No CSG kernel. This is the YAGNI
 line: model what is common and high-value, punt honestly on what is rare.

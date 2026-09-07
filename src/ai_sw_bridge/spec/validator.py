@@ -87,7 +87,7 @@ class ValidationError(Exception):
 
 
 # Matches a quoted variable reference in an Equation Manager expression.
-# E.g. `"S1B_X"` -> capture S1B_X. Same regex used by ai-sw-observe equations.
+# E.g. `"CONV_X"` -> capture CONV_X. Same regex used by ai-sw-observe equations.
 QUOTED_VAR_RE = re.compile(r'"([A-Za-z_][A-Za-z0-9_]*)"')
 
 

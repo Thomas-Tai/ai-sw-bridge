@@ -156,7 +156,7 @@ def main() -> int:
         sw.CloseAllDocuments(True)
         out_dir = str(Path(t1._results_tmp(), f"v018_urdfout_{os.getpid()}"))
         ns = argparse.Namespace(
-            assembly=asm_path, output_dir=out_dir, robot_name="sorter", ascii_stl=False
+            assembly=asm_path, output_dir=out_dir, robot_name="demo", ascii_stl=False
         )
         with warnings.catch_warnings():
             warnings.simplefilter("error", PendingDeprecationWarning)

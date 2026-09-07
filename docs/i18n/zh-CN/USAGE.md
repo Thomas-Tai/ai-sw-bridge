@@ -16,7 +16,7 @@ ai-sw-bridge 的详细工作流。安装方式与 60 秒快速入门见 [README.
 
 ## 工作流 1 — 设计指南校验（只读）
 
-用例：你写了一份设计指南，其中写道 "the post height is `D_Z_BELT − S1B_BELT_T − S1B_ROLLER_DIA/2 = 61.0 mm`"。你想验证 SOLIDWORKS 是否真的算出这个结果。
+用例：你写了一份设计指南，其中写道 "the post height is `D_Z_BELT − CONV_BELT_T − CONV_ROLLER_DIA/2 = 61.0 mm`"。你想验证 SOLIDWORKS 是否真的算出这个结果。
 
 ```powershell
 # 1. Open the part in SOLIDWORKS.
@@ -29,17 +29,17 @@ ai-sw-observe screenshot --filename=verification.png
 
 输出的 JSON 包含每一条方程式及其当前的数值。可以把它交给 `jq`，也可以直接喂给一个负责与书面指南比对的 AI 代理。
 
-这个工作流已在 Lego Sorter V2 S1b conveyor 设计指南上实际用过，用来抓出一个参数化落实上的漏洞（一个本应绑定到 `-"S1B_CHUTE_OUTLET_LOCAL_X"` 却写成字面量 `-32.5` mm 偏移的地方）。仅靠阅读指南本身是看不出这个错误的 — AI 代理是通过把实时的 `equations` 输出与文档记录的不变量做差异比对才找到的。
+这个工作流已在 一份输送带设计指南上实际用过，用来抓出一个参数化落实上的漏洞（一个本应绑定到 `-"CONV_CHUTE_OUTLET_LOCAL_X"` 却写成字面量 `-32.5` mm 偏移的地方）。仅靠阅读指南本身是看不出这个错误的 — AI 代理是通过把实时的 `equations` 输出与文档记录的不变量做差异比对才找到的。
 
 ## 工作流 2 — 修改单个变量（Propose-Approve-Execute）
 
-用例：设计指南说 `S1B_FOOT_W` 应该是 16 mm，但模型里是 15 mm。你想安全地应用这个改动。
+用例：设计指南说 `CONV_FOOT_W` 应该是 16 mm，但模型里是 15 mm。你想安全地应用这个改动。
 
 **前提条件**：当前活动的 SW 零件必须通过 Tools → Equations → Link to file 链接了一个 `*_locals.txt` 文件。桥接器通过 `EquationMgr.FilePath` 来发现这个被链接的文件。
 
 ```powershell
 # 1. Propose (no SW state changed yet)
-ai-sw-mutate propose --var=S1B_FOOT_W --new-value=16.0
+ai-sw-mutate propose --var=CONV_FOOT_W --new-value=16.0
 # -> proposal_id: a1b2c3d4e5f6, state: proposed
 
 # 2. Dry-run: apply, rebuild, capture, roll back

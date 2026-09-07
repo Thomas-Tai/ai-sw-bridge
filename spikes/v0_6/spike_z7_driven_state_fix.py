@@ -5,7 +5,7 @@ Background (from Z5/Z6):
   When a rectangle sketch built by CreateCenterRectangle is closed via
   InsertSketch(True), re-opened via EditSketch, and then has TWO edge
   dimensions added (D1 = top edge, D2 = left edge), SW makes D2 driven.
-  The binding equation "D2@SK_PlateSlab" = "S1B_MMP_W" is then rejected
+  The binding equation "D2@SK_PlateSlab" = "CONV_MMP_W" is then rejected
   with "A driven or reference dimension is not selectable as the
   dependent variable of the equation."
 

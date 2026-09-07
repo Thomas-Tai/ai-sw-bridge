@@ -80,12 +80,12 @@ Any field marked as "length" accepts one of two forms:
 | Form | Example | Description |
 |---|---|---|
 | Literal | `20.0` | Millimetres. Passed directly to SW (converted to meters internally). |
-| RHS expression | `{"rhs": "\"S1B_MMP_W\""}` | Equation Manager expression. Pasted verbatim into `EquationMgr.Add2`. Quote variable names yourself. |
+| RHS expression | `{"rhs": "\"CONV_MMP_W\""}` | Equation Manager expression. Pasted verbatim into `EquationMgr.Add2`. Quote variable names yourself. |
 
 RHS expressions also support arithmetic:
 
 ```json
-{"rhs": "\"S1B_MOTOR_FLANGE_OD\" + 0.5"}
+{"rhs": "\"CONV_MOTOR_FLANGE_OD\" + 0.5"}
 ```
 
 In `--no-dim` mode, the builder resolves these to literal mm values in Python before any SW call. In parametric mode, they become live equation links.
@@ -528,7 +528,7 @@ A 3D polyline sketch through a sequence of 3D points. Unlike on-plane sketch pri
 
 ### `sketch_polyline_on_plane`
 
-A composite closed polyline — several connected line segments in **one** plane sketch — forming a closed profile a boss/cut extrude can consume. This is the primitive for non-axis-aligned closed profiles (e.g. the 45° parallelograms of SM-HW-S1b-009 BeltEndChute) that `sketch_rectangle_on_plane` (axis-aligned) and `sketch_polygon` (regular N-gon) cannot express, and that `sketch_line` cannot either (it closes its sketch after a single segment). Coordinates are sketch-local 2D (mm), same convention as `sketch_line`.
+A composite closed polyline — several connected line segments in **one** plane sketch — forming a closed profile a boss/cut extrude can consume. This is the primitive for non-axis-aligned closed profiles (e.g. the 45° parallelograms of BeltEndChute) that `sketch_rectangle_on_plane` (axis-aligned) and `sketch_polygon` (regular N-gon) cannot express, and that `sketch_line` cannot either (it closes its sketch after a single segment). Coordinates are sketch-local 2D (mm), same convention as `sketch_line`.
 
 Because it lives on a standard reference plane, a child extrude runs **along that plane's normal** (a Top-plane profile extrudes ±Y, mid-plane works). This is the key difference from `sketch_3d_sketch`, whose extrude only ever runs +Z regardless of the loop's own plane (verified live 2026-08-05).
 

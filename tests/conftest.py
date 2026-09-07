@@ -125,7 +125,7 @@ def cylinder_spec_path() -> Path:
 
 @pytest.fixture
 def mmp_spec() -> dict:
-    """v1 declarative spec for the S1b motor-mount plate."""
+    """v1 declarative spec for the motor-mount plate."""
     return _load_spec("motor_mount_plate/spec.json")
 
 

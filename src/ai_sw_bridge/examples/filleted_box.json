@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "filleted_box_demo",
-  "_comment": "Minimal exercise of the fillet_constant_radius primitive. Box 20x20x10mm on Front Plane, then 2mm constant-radius fillet on the +X edge of the +z face. The edge midpoint is at part (10, 0, 10) -- the +X corner of the top face. No locals.txt: radius is a literal. To make it parametric, replace `radius: 2.0` with `radius: {\"rhs\": \"\\\"S1B_PRINT_FILLET_R\\\"\"}` and add a `locals` path.",
+  "_comment": "Minimal exercise of the fillet_constant_radius primitive. Box 20x20x10mm on Front Plane, then 2mm constant-radius fillet on the +X edge of the +z face. The edge midpoint is at part (10, 0, 10) -- the +X corner of the top face. No locals.txt: radius is a literal. To make it parametric, replace `radius: 2.0` with `radius: {\"rhs\": \"\\\"CONV_PRINT_FILLET_R\\\"\"}` and add a `locals` path.",
   "features": [
     {
       "type": "sketch_rectangle_on_plane",

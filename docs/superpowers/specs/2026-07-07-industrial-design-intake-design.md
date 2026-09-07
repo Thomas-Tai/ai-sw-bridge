@@ -260,7 +260,7 @@ Required sections:
 - Global coordinate system
 - Master origin and datum planes
 - Skeleton/layout sketch strategy
-- Global variables and parameter names bound through per-part `*_locals.txt` equation files: module-owned parameters follow the repo's proven module-prefix convention (e.g. `S1B_BELT_T`); machine-global parameters (e.g. `CONVEYOR_WIDTH`) may omit the module prefix
+- Global variables and parameter names bound through per-part `*_locals.txt` equation files: module-owned parameters follow the repo's proven module-prefix convention (e.g. `CONV_BELT_T`); machine-global parameters (e.g. `CONVEYOR_WIDTH`) may omit the module prefix
 - Executable-by-bridge vs manual-in-GUI split: per-part `*_locals.txt` parameters, component placement, and mates are executable today; skeleton parts and in-context references are manual-in-GUI and must be marked as such
 - Assembly structure
 - Naming conventions for features, sketches, parts, and mates

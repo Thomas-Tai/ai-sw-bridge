@@ -163,7 +163,7 @@ git commit -m "refactor(demo): extract shared runner into tools/_demo_lib, re-ex
 - Produces: three buildable part specs whose paths later tasks reference. Part names (the `"name"` field, used as default output stems): `DemoBaseplate`, `DemoShaft`, `DemoBearingBlock`.
 - Consumes: nothing.
 
-**Reference examples for feature param shapes** (copy the exact field names from these — do not invent schema): rectangle+extrude+hole+linear_pattern → `examples/patterned_plate/spec.json`; revolve_boss+revolve_cut → `examples/grooved_shaft/spec.json`; chamfer → `examples/chamfered_box/spec.json`; fillet → `examples/filleted_box/spec.json`; mirror → `examples/mirrored_holes/spec.json`; circular_pattern → `examples/patterned_disc/spec.json`; simple_hole → `examples/drilled_plate/spec.json`; locals convention → `examples/s1b_conveyor_locals.txt` and the `feedback_locals_sot` rule (edit `*_locals.txt`, never the equation manager).
+**Reference examples for feature param shapes** (copy the exact field names from these — do not invent schema): rectangle+extrude+hole+linear_pattern → `examples/patterned_plate/spec.json`; revolve_boss+revolve_cut → `examples/grooved_shaft/spec.json`; chamfer → `examples/chamfered_box/spec.json`; fillet → `examples/filleted_box/spec.json`; mirror → `examples/mirrored_holes/spec.json`; circular_pattern → `examples/patterned_disc/spec.json`; simple_hole → `examples/drilled_plate/spec.json`; locals convention → `examples/conveyor_locals.txt` and the `feedback_locals_sot` rule (edit `*_locals.txt`, never the equation manager).
 
 - [ ] **Step 1: Confirm the build CLI surface for save + locals (no SW).**
 
@@ -260,7 +260,7 @@ For any feature lacking a reference example (`draft`, `shell`, `countersink`, `r
 
 - [ ] **Step 7: Write per-part `locals.txt` (parametric source of truth).**
 
-Using the mechanism confirmed in Step 1, extract the driving numbers into `<part>/locals.txt` and reference them as `{name}` in the spec (mirror the `s1b_conveyor_locals.txt` idiom). At minimum expose: baseplate `PLATE_L`, `PLATE_W`, `PLATE_T`; shaft `SHAFT_DIA`, `SHAFT_LEN`; block `BORE_DIA`, `BLOCK_W`. These are what the Task 5 headline beat edits. Re-run `--dry-run --lint`; expect `locals_resolved: true`.
+Using the mechanism confirmed in Step 1, extract the driving numbers into `<part>/locals.txt` and reference them as `{name}` in the spec (mirror the `conveyor_locals.txt` idiom). At minimum expose: baseplate `PLATE_L`, `PLATE_W`, `PLATE_T`; shaft `SHAFT_DIA`, `SHAFT_LEN`; block `BORE_DIA`, `BLOCK_W`. These are what the Task 5 headline beat edits. Re-run `--dry-run --lint`; expect `locals_resolved: true`.
 
 - [ ] **Step 8: Commit.**
 
@@ -286,7 +286,7 @@ Read `src/ai_sw_bridge/cli/assembly.py` (the `propose`/`dry_run`/`commit` verbs 
 
 - [ ] **Step 2: Write the transform-only assembly (the proven, always-works baseline).**
 
-Use the S1b idiom (`kind: "assembly"`, `components[].part` absolute path + `transform.xyz_mm`/`rpy_deg`). Place: `base` at origin; `shaft` concentric-nominal above the plate along its axis; `block_pos` and `block_neg` straddling the shaft at ±X so the shaft bore-line passes through both blocks' bores. Use **relative paths under `demo_out/`** resolved to absolute at runtime by the chapter code (do not hardcode a machine path — Task 6 fills the built-part paths). Keep a `"mates"` array present but empty for now.
+Use the assembly idiom (`kind: "assembly"`, `components[].part` absolute path + `transform.xyz_mm`/`rpy_deg`). Place: `base` at origin; `shaft` concentric-nominal above the plate along its axis; `block_pos` and `block_neg` straddling the shaft at ±X so the shaft bore-line passes through both blocks' bores. Use **relative paths under `demo_out/`** resolved to absolute at runtime by the chapter code (do not hardcode a machine path — Task 6 fills the built-part paths). Keep a `"mates"` array present but empty for now.
 
 - [ ] **Step 3: Validate via the assembly `dry_run` verb against pre-built parts (SEAT-GATED — deferred).**
 
@@ -660,7 +660,7 @@ git commit -m "feat(demo): --quickstart mode + synced QUICKSTART.md (5-min onboa
 
 - [ ] **Step 1: Confirm the seat is clean.**
 
-`python -m ai_sw_bridge.cli.observe active_doc` and check no unexpected instance/dirty rig is open (the S1b single-seat discipline). If dirty, ask the operator to close it — do not force.
+`python -m ai_sw_bridge.cli.observe active_doc` and check no unexpected instance/dirty rig is open (the single-seat discipline). If dirty, ask the operator to close it — do not force.
 
 - [ ] **Step 2: Spike 0 — mates.** Build a throwaway 2-part assembly and add ONE `concentric` mate via `ai-sw-assembly` (propose→dry_run→commit, chained). Does it commit out-of-process and hold (`mate_count: 1`, interference sane)?
   - PASS → set `mates_proven=True`.

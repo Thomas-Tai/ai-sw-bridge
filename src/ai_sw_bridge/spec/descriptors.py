@@ -77,7 +77,7 @@ LENGTH_SCHEMA: dict[str, Any] = {
                     "description": (
                         "Right-hand side of an Equation Manager binding. "
                         "Pasted verbatim into EquationMgr.Add2. Quote variable "
-                        "references yourself, e.g. '\"S1B_W\"' for a bare var."
+                        "references yourself, e.g. '\"CONV_W\"' for a bare var."
                     ),
                 }
             },
@@ -1282,7 +1282,7 @@ FEATURE_META: dict[str, dict[str, Any]] = {
     # Composite closed polyline on a standard plane. Extrudes along the plane
     # normal (planar 2D sketch) — unlike sketch_3d_sketch, whose extrude only
     # ever runs +Z (verified live 2026-08-05). The primitive for non-axis-
-    # aligned closed profiles (e.g. SM-HW-S1b-009 45 deg parallelograms).
+    # aligned closed profiles (e.g. 45 deg parallelograms).
     "sketch_polyline_on_plane": {
         "doc": "Composite closed polyline (multi-segment profile) on a "
         "default reference plane; extrudes along the plane normal.",

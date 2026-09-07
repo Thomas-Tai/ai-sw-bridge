@@ -83,8 +83,8 @@ def _build_param_bindings(bindings: list[dict[str, str]]) -> str:
 
     Per the CodeStack `add-equation/Macro.vba` pattern, the LHS is the
     quoted dim name and the RHS is a raw expression string. The RHS may
-    be a bare quoted variable ("S1B_X") or any arithmetic expression
-    mixing quoted vars and literals ("S1B_X" + 0.5). The user is
+    be a bare quoted variable ("CONV_X") or any arithmetic expression
+    mixing quoted vars and literals ("CONV_X" + 0.5). The user is
     responsible for any quoting inside `rhs`; we paste it verbatim.
 
     Legacy spec compatibility: if a binding has `var` but no `rhs`, we
@@ -124,10 +124,10 @@ def parameterize(swp_path: Path, spec: dict[str, Any]) -> str:
       locals_path: absolute path to *_locals.txt to link
       bindings: list of {"dim": "D1@<name>", "rhs": "<raw RHS expression>"}
         - RHS is pasted verbatim into the formula. For a bare variable
-          binding, write `"S1B_X"` (quotes included). For an expression,
-          write e.g. `"S1B_X" + 0.5` or `"S1B_A" * "S1B_B"`.
-        - Legacy: a binding may use `"var": "S1B_X"` (no quotes) instead
-          of `"rhs"`; we auto-wrap it as `"S1B_X"`. New specs should use
+          binding, write `"CONV_X"` (quotes included). For an expression,
+          write e.g. `"CONV_X" + 0.5` or `"CONV_A" * "CONV_B"`.
+        - Legacy: a binding may use `"var": "CONV_X"` (no quotes) instead
+          of `"rhs"`; we auto-wrap it as `"CONV_X"`. New specs should use
           `rhs`.
 
     The returned string is plain .bas content; paste into a SW VBE module

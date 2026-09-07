@@ -24,7 +24,7 @@ mark them as such.)*
 ## Global variables and parameter names
 
 *(Bound through per-part `*_locals.txt` equation files. Module-owned parameters
-carry the module prefix (e.g. `S1B_BELT_T`); machine-global parameters (e.g.
+carry the module prefix (e.g. `CONV_BELT_T`); machine-global parameters (e.g.
 `CONVEYOR_WIDTH`) may omit it. List every parameter, its owner, and its status.)*
 
 ## Executable-by-bridge vs manual-in-GUI split

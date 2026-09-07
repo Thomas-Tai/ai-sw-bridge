@@ -175,6 +175,11 @@ edits; plus `ai-sw-build --list-kinds`, a seat-identification banner with
 
 ### Changed
 
+- **Example locals and doc references now use generic names.** The bundled
+  locals file is `examples/conveyor_locals.txt` (was a project-specific name)
+  and its variables are prefixed `CONV_*`. Every example `spec.json`, README
+  and doc reference was updated in lockstep; no values, geometry or behaviour
+  changed. If you copied an example spec, update its `"locals"` path.
 - **`ai-sw-build` default behavior: interactive builds now pause for confirmation.**
   On an interactive TTY, `ai-sw-build` prompts `Proceed with build? [y/N]` (default
   *no*) before the first geometry mutation. Non-interactive stdin (piped /
@@ -1337,7 +1342,7 @@ per-task acceptance, live-SW E2E on SW 32.1.0, CI matrix on Windows-2025
 - **Task 1.10 — Bug-report bundler** (`tools/bundle_bug_report.py`). Zips
   last N spec.json files, telemetry export (last 24h), pip freeze,
   best-effort SW version — all run through `telemetry.scrub` (path
-  redaction, `S1B_*` locals scrubbing, configurable trade-secret
+  redaction, `CONV_*` locals scrubbing, configurable trade-secret
   patterns). Consent gate: refuses unless `.telemetry/consent.txt`
   exists or `--no-telemetry` is passed.
 - **Task 1.11 — Two-stream contract enforcement**
@@ -1563,7 +1568,7 @@ a VBA-macro round-trip.
 
 ### MMP demonstration (the v0.2 milestone)
 
-The Motor Mount Plate from S1b conveyor §13.4 now builds 10/10 features
+The Motor Mount Plate from conveyor §13.4 now builds 10/10 features
 end-to-end from JSON spec via `ai-sw-build`:
   SK_PlateSlab (center rect, 50×50) → Extrude_Plate (boss blind 5mm) →
   SK_CouplerHole (circle on -z face) → Cut_CouplerHole (through-all) →
@@ -1571,7 +1576,7 @@ end-to-end from JSON spec via `ai-sw-build`:
   SK_MotorHoles (2 circles on +z at ±12.5mm) → Cut_MotorHoles (through-all) →
   SK_FrameHoles (2 circles on -z at ±15mm) → Cut_FrameHoles (through-all)
 
-7 parametric bindings to `s1b_conveyor_locals.txt` applied via
+7 parametric bindings to `conveyor_locals.txt` applied via
 `EquationMgr.Add2`. Geometry verified centered via the `ai-sw-observe
 screenshot` capture.
 

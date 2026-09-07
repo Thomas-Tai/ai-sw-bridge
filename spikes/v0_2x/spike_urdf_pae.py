@@ -112,7 +112,7 @@ def main() -> int:
 
         out_dir = str(Path(t1._results_tmp(), f"w78_urdfout_{os.getpid()}"))
         ns = argparse.Namespace(
-            assembly=asm_path, output_dir=out_dir, robot_name="sorter", ascii_stl=False
+            assembly=asm_path, output_dir=out_dir, robot_name="demo", ascii_stl=False
         )
         rep = _run_export(ns)
         results["report"] = rep
@@ -128,7 +128,7 @@ def main() -> int:
                 rep["xml_error"] = repr(exc)
         gate(
             "urdf",
-            urdf_ok and root is not None and root.get("name") == "sorter",
+            urdf_ok and root is not None and root.get("name") == "demo",
             f"ok={rep.get('ok')} path={urdf_path} err={rep.get('error')}",
         )
         if root is None:

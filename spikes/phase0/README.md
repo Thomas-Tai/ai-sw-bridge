@@ -48,7 +48,7 @@ FAIL modes:
 
 ### Spike C — `Add2` binding on fresh-built feature
 
-PASS: after binding `"D1@Sketch1"` to `"S1B_TEST_W"`, changing the value in `*_locals.txt`
+PASS: after binding `"D1@Sketch1"` to `"CONV_TEST_W"`, changing the value in `*_locals.txt`
 and rebuilding shifts the box width.
 
 FAIL modes:

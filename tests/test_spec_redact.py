@@ -277,10 +277,10 @@ class TestIntegration:
         out = redact_spec(spec)
         # Walk the output and verify no raw rhs values remain
         raw = json.dumps(out)
-        assert "S1B_ROLLER_DIA" not in raw
-        assert "S1B_ROLLER_W" not in raw
-        assert "S1B_ROLLER_BORE" not in raw
-        assert "S1B_BEARING_POCKET" not in raw
+        assert "CONV_ROLLER_DIA" not in raw
+        assert "CONV_ROLLER_W" not in raw
+        assert "CONV_ROLLER_BORE" not in raw
+        assert "CONV_BEARING_POCKET" not in raw
         # Redacted markers present
         assert "<redacted>" in raw
 

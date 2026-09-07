@@ -100,7 +100,7 @@ def _approx_seq(actual: tuple, expected: list) -> None:
             assert a == e, (actual, expected)
 
 
-# The SM-HW-S1b-009 floor parallelogram, Top-plane sketch-local mm.
+# The BeltEndChute floor parallelogram, Top-plane sketch-local mm.
 _PARALLELOGRAM = [
     {"x": 0.0, "y": 0.0},
     {"x": 8.0, "y": 8.0},

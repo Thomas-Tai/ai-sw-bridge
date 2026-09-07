@@ -31,7 +31,7 @@ def project_dir(tmp_path):
     )
     locals_file = spec_dir / "test_locals.txt"
     locals_file.write_text(
-        '"PART_DIAMETER" = 50.0\n"S1B_HEIGHT" = 30.0\n',
+        '"PART_DIAMETER" = 50.0\n"CONV_HEIGHT" = 30.0\n',
         encoding="utf-8",
     )
     return tmp_path
@@ -48,8 +48,8 @@ def consent_file(project_dir):
 
 class TestScrub:
     def test_redact_locals_var(self):
-        assert "S1B_" not in redact_string("value S1B_HEIGHT here")
-        assert "<redacted_local>" in redact_string("value S1B_HEIGHT here")
+        assert "CONV_" not in redact_string("value CONV_HEIGHT here")
+        assert "<redacted_local>" in redact_string("value CONV_HEIGHT here")
 
     def test_redact_path(self):
         result = redact_string("path C:\\Users\\secret\\project\\file.txt end")
@@ -57,12 +57,12 @@ class TestScrub:
         assert "file.txt" in result
 
     def test_locals_file_fully_redacted(self):
-        content = '"PART_DIAMETER" = 50.0\n"S1B_HEIGHT" = 30.0\n'
+        content = '"PART_DIAMETER" = 50.0\n"CONV_HEIGHT" = 30.0\n'
         result = redact_file_contents(content, is_locals=True)
         assert result == "<redacted_locals>"
 
     def test_non_locals_file_partially_redacted(self):
-        content = "var S1B_HEIGHT and path C:\\secret\\file.txt"
+        content = "var CONV_HEIGHT and path C:\\secret\\file.txt"
         result = redact_file_contents(content, is_locals=False)
         assert "<redacted_local>" in result
         assert "secret" not in result

@@ -11,7 +11,7 @@ Collects:
 Scrubbing (via telemetry.scrub):
   - Strip *_locals.txt contents entirely
   - Redact absolute paths to basenames
-  - Redact S1B_\\w+ locals variable names
+  - Redact CONV_\\w+ locals variable names
   - Apply trade-secret patterns from .ai-sw-bridge.toml
 
 Consent gate: refuses unless .telemetry/consent.txt exists OR --no-telemetry
@@ -213,7 +213,7 @@ def bundle(
     scrub_counts: dict[str, int] = {
         "path_redactions": 0,
         "locals_redactions": 0,
-        "S1B_redactions": 0,
+        "CONV_redactions": 0,
         "trade_secret_redactions": 0,
     }
 

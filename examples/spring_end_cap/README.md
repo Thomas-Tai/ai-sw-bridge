@@ -1,6 +1,6 @@
 # spring_end_cap
 
-A real S1b part — `SM-HW-S1b-006b_SpringEndCap` — combining blind and
+A real production part — `SpringEndCap` — combining blind and
 through-all cuts with a multi-circle face sketch. A small PETG slab that hosts a
 compression-spring pocket and mounting holes.
 
