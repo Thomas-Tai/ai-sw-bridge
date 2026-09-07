@@ -93,7 +93,7 @@ class CirclesOnFaceHandler(SketchHandler):
         if not ok:
             raise RuntimeError(
                 f"face select returned False for {face} face of {parent_name} -- "
-                f"tried center and offsets"
+                f"no body face matched the expected normal"
             )
 
         sm = ctx.doc.SketchManager

@@ -2,11 +2,13 @@
 
 Pure geometry plus the SOLIDWORKS face-selection probe ``_select_extrude_face``.
 Consumed by the sketch handlers in ``sketches/`` and by ``_build_simple_hole``
-in ``builder.py``.
+in ``handlers/hole.py``. Face selection is a total order on measured geometry
+(see ``_face_sort_key``); view-state SelectByID is the fallback only.
 """
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from typing import Any
 
@@ -341,8 +343,6 @@ def _warn_face_sketch_offset(
     This is the #1 source of "wrong-position child feature" bugs
     surfaced in the TensionBracket work; see docs/known_limitations.md.
     """
-    import sys
-
     frame = _face_frame(parent, face)
     # Uncalibrated side faces (Top/Right parents) can't place a child sketch at
     # all -- _sketch_uv_to_part will raise -- so the offset advice is moot.
@@ -385,6 +385,280 @@ def _warn_face_sketch_offset(
     )
 
 
+def _face_sort_key(
+    dist2: float,
+    area_m2: float,
+    centroid: tuple[float, float, float],
+) -> tuple[float, float, float, float, float]:
+    """Total order over candidate faces: nearer, then larger, then centroid.
+
+    Depends only on measured geometry. Enumeration order, view state, and
+    SelectByID hit order are not inputs.
+    """
+    cx, cy, cz = centroid
+    return (dist2, -area_m2, cx, cy, cz)
+
+
+_NORMAL_MATCH_TOL = 0.1
+
+# SelectByID fallback only. Offsets in the face's local sketch frame, chosen
+# to probe small interior holes (1 mm) up to large voids (15 mm).
+_SELECT_BY_ID_OFFSETS_UV: tuple[tuple[float, float], ...] = (
+    (0.0, 0.0),
+    (0.001, 0.0),
+    (0.0, 0.001),
+    (-0.001, 0.0),
+    (0.0, -0.001),
+    (0.005, 0.0),
+    (0.0, 0.005),
+    (-0.005, 0.0),
+    (0.0, -0.005),
+    (0.015, 0.0),
+    (0.0, 0.015),
+    (-0.015, 0.0),
+    (0.0, -0.015),
+    (0.005, 0.005),
+    (-0.005, -0.005),
+    (0.015, 0.015),
+    (-0.015, -0.015),
+)
+
+
+# Acceptance radius for a ranked candidate, derived from the SelectByID probe
+# offsets above so the two paths cannot drift apart (the same hand-maintained-
+# subset defect class that bit the plane-hosted sketch types twice). A face
+# whose closest point to the modelled face centre is further than the spiral
+# could ever have probed is NOT the requested face: reject it and let the
+# caller fail honestly rather than sketch onto some other body.
+_MAX_FACE_SEED_DIST_M = max(
+    (du * du + dv * dv) ** 0.5 for du, dv in _SELECT_BY_ID_OFFSETS_UV
+)
+
+
+def _as_sequence(raw: Any) -> list[Any]:
+    if raw is None:
+        return []
+    if isinstance(raw, (list, tuple)):
+        return list(raw)
+    return [raw]
+
+
+def _invoke0(value: Any) -> Any:
+    """Binding-safe zero-arg COM read (late-bound auto-invoke vs early method)."""
+    if callable(value):
+        try:
+            return value()
+        except TypeError:
+            return value
+    return value
+
+
+def _face_normal(face_obj: Any) -> tuple[float, float, float] | None:
+    try:
+        n = _invoke0(face_obj.Normal)
+    except Exception:
+        return None
+    if n is None or len(n) < 3:
+        return None
+    try:
+        return (float(n[0]), float(n[1]), float(n[2]))
+    except (TypeError, ValueError):
+        return None
+
+
+def _normal_matches(
+    got: tuple[float, float, float] | None,
+    expected: tuple[float, float, float],
+) -> bool:
+    if got is None:
+        return False
+    return (
+        abs(got[0] - expected[0]) < _NORMAL_MATCH_TOL
+        and abs(got[1] - expected[1]) < _NORMAL_MATCH_TOL
+        and abs(got[2] - expected[2]) < _NORMAL_MATCH_TOL
+    )
+
+
+def _face_closest(
+    face_obj: Any, x: float, y: float, z: float
+) -> tuple[float, float, float] | None:
+    try:
+        cp = face_obj.GetClosestPointOn(x, y, z)
+    except Exception:
+        return None
+    if cp is None or len(cp) < 3:
+        return None
+    try:
+        return (float(cp[0]), float(cp[1]), float(cp[2]))
+    except (TypeError, ValueError):
+        return None
+
+
+def _face_area_m2(face_obj: Any) -> float:
+    try:
+        raw = _invoke0(face_obj.GetArea)
+        return float(raw)
+    except Exception:
+        return 0.0
+
+
+def _face_centroid(
+    face_obj: Any, fallback: tuple[float, float, float]
+) -> tuple[float, float, float]:
+    try:
+        box = _invoke0(face_obj.GetBox)
+        if box is not None and len(box) >= 6:
+            return (
+                (float(box[0]) + float(box[3])) / 2.0,
+                (float(box[1]) + float(box[4])) / 2.0,
+                (float(box[2]) + float(box[5])) / 2.0,
+            )
+    except Exception:
+        pass
+    return fallback
+
+
+@dataclass(frozen=True)
+class _FaceCandidate:
+    face_obj: Any
+    enum_index: int
+    closest: tuple[float, float, float]
+    dist2: float
+    area_m2: float
+    centroid: tuple[float, float, float]
+    normal: tuple[float, float, float]
+
+
+def _log_face_resolve(
+    parent: BuiltFeature,
+    face: str,
+    path: str,
+    index: int | None,
+    dist_m: float | None,
+    area_m2: float | None,
+    centroid: tuple[float, float, float] | None,
+    normal: tuple[float, float, float] | None,
+) -> None:
+    """One stderr line so two seat runs can be diffed. Not a JSON channel."""
+    idx_s = "-" if index is None else str(index)
+    dist_s = "-" if dist_m is None else f"{dist_m * 1000.0:.3f}"
+    area_s = "-" if area_m2 is None else f"{area_m2:.6e}"
+    if centroid is None:
+        cent_s = "-"
+    else:
+        cent_s = (
+            f"({centroid[0] * 1000.0:.3f}, {centroid[1] * 1000.0:.3f}, "
+            f"{centroid[2] * 1000.0:.3f})"
+        )
+    if normal is None:
+        nrm_s = "-"
+    else:
+        nrm_s = f"({normal[0]:+.2f},{normal[1]:+.2f},{normal[2]:+.2f})"
+    print(
+        f"FACE_RESOLVE parent={parent.name!r} face={face} path={path} "
+        f"index={idx_s} dist_mm={dist_s} area_m2={area_s} "
+        f"centroid_mm={cent_s} normal={nrm_s}",
+        file=sys.stderr,
+    )
+
+
+def _enumerate_face_candidates(
+    doc: Any,
+    expected_normal: tuple[float, float, float],
+    seed: tuple[float, float, float],
+) -> list[_FaceCandidate]:
+    """All solid-body faces whose outward normal matches *expected_normal*."""
+    try:
+        bodies = doc.GetBodies2(0, True)  # swSolidBody=0
+    except Exception:
+        return []
+    fx0, fy0, fz0 = seed
+    out: list[_FaceCandidate] = []
+    enum_index = 0
+    for body in _as_sequence(bodies):
+        try:
+            faces = body.GetFaces()
+        except Exception:
+            continue
+        for face_obj in _as_sequence(faces):
+            idx = enum_index
+            enum_index += 1
+            nrm = _face_normal(face_obj)
+            if not _normal_matches(nrm, expected_normal):
+                continue
+            assert nrm is not None
+            closest = _face_closest(face_obj, fx0, fy0, fz0)
+            if closest is None:
+                continue
+            d2 = (
+                (closest[0] - fx0) ** 2
+                + (closest[1] - fy0) ** 2
+                + (closest[2] - fz0) ** 2
+            )
+            if d2 > _MAX_FACE_SEED_DIST_M**2:
+                # Normal matches but the face is nowhere near where the model
+                # says it is -- a different feature's face, not this one.
+                continue
+            out.append(
+                _FaceCandidate(
+                    face_obj=face_obj,
+                    enum_index=idx,
+                    closest=closest,
+                    dist2=d2,
+                    area_m2=_face_area_m2(face_obj),
+                    centroid=_face_centroid(face_obj, closest),
+                    normal=nrm,
+                )
+            )
+    return out
+
+
+def _face_fingerprint_matches(face_obj: Any, cand: _FaceCandidate) -> bool:
+    """True when *face_obj* is the same geometric face as *cand*."""
+    nrm = _face_normal(face_obj)
+    if not _normal_matches(nrm, cand.normal):
+        return False
+    area = _face_area_m2(face_obj)
+    scale = max(abs(cand.area_m2), abs(area), 1e-12)
+    if abs(area - cand.area_m2) > 0.01 * scale:
+        return False
+    centroid = _face_centroid(face_obj, cand.closest)
+    d2 = (
+        (centroid[0] - cand.centroid[0]) ** 2
+        + (centroid[1] - cand.centroid[1]) ** 2
+        + (centroid[2] - cand.centroid[2]) ** 2
+    )
+    return d2 <= 1e-12  # 1 micron
+
+
+def _enact_ranked_selection(ctx: BuildContext, cand: _FaceCandidate) -> bool:
+    """Select the ranked winner.
+
+    Prefer SelectByID at the winner's closest point -- that is the pick
+    InsertSketch is proven to consume. Keep it only when the picked face
+    fingerprints as the winner; a view-dependent wrong hit is rejected and
+    the ranked IFace2 is selected via IEntity.Select2 instead.
+    """
+    ctx.doc.ClearSelection2(True)
+    x, y, z = cand.closest
+    try:
+        hit = bool(ctx.doc.SelectByID("", "FACE", x, y, z))
+    except Exception:
+        hit = False
+    if hit:
+        try:
+            picked = ctx.doc.SelectionManager.GetSelectedObject6(1, -1)
+        except Exception:
+            picked = None
+        if picked is not None and _face_fingerprint_matches(picked, cand):
+            return True
+    ctx.doc.ClearSelection2(True)
+    try:
+        return bool(cand.face_obj.Select2(False, 0))
+    except Exception:
+        return False
+
+
 def _select_extrude_face(
     ctx: BuildContext,
     parent: BuiltFeature,
@@ -392,113 +666,89 @@ def _select_extrude_face(
 ) -> tuple[bool, float, float, float]:
     """Select one of the 6 faces of an extrusion (+z, -z, +x, -x, +y, -y).
 
-    Uses _face_frame to find the face center and in-face tangent axes.
-    Tries the face center first; if that fails (e.g. earlier cut removed
-    material at the center), spirals outward in the face's tangent plane
-    until one offset hits material. Returns (ok, fx, fy, fz) where the
-    coords are the point on the face that successfully selected (used
-    downstream as the sketch origin reference for stacked extrudes).
+    Primary path: enumerate every solid-body face, keep those whose outward
+    normal matches the modelled face, and pick the unique winner of a total
+    order on geometry (distance from the modelled face centre, then larger
+    area, then centroid lexicographic order). That order does not depend on
+    document view, zoom, selection history, or GetFaces order.
 
-    SelectByID("", "FACE", x, y, z) is unreliable on side faces of a
-    multi-boss part: it can return True while picking a DIFFERENT face
-    than the one geometrically at (x, y, z) -- empirically observed when
-    the part has multiple recently-modified faces sharing screen-space
-    proximity. We verify by querying IFace2.Normal after each pick and
-    rejecting any face whose normal doesn't match `frame.out_normal`.
-    On rejection, fall back to enumerating body faces and selecting via
-    IEntity.Select2 (no Callout, late-binding-safe).
+    The ranked winner is enacted by SelectByID at its closest point (the
+    InsertSketch-proven pick) only when the picked face fingerprints as the
+    winner; a view-dependent wrong hit is rejected and IEntity.Select2 is
+    used on the ranked IFace2 instead. A SelectByID spiral without a ranked
+    winner is the last-resort fallback (enumeration raised or nothing
+    selectable).
+
+    Returns (ok, fx, fy, fz). On success the coords are GetClosestPointOn
+    of the modelled face centre against the winner (used downstream as the
+    sketch-origin reference for stacked extrudes). Every attempt logs one
+    FACE_RESOLVE line to stderr so two seat runs can be diffed.
     """
     frame = _face_frame(parent, face)
     fx0, fy0, fz0 = frame.face_center
+    expected = frame.out_normal
+    seed = (fx0, fy0, fz0)
+
+    candidates = _enumerate_face_candidates(ctx.doc, expected, seed)
+    candidates.sort(key=lambda c: _face_sort_key(c.dist2, c.area_m2, c.centroid))
+    for cand in candidates:
+        if _enact_ranked_selection(ctx, cand):
+            _log_face_resolve(
+                parent,
+                face,
+                "enumeration",
+                cand.enum_index,
+                cand.dist2**0.5,
+                cand.area_m2,
+                cand.centroid,
+                cand.normal,
+            )
+            return True, cand.closest[0], cand.closest[1], cand.closest[2]
+
+    # Enumeration empty or Select2 failed on every ranked candidate.
     ux, uy, uz = frame.u_axis
     vx, vy, vz = frame.v_axis
-    nx_e, ny_e, nz_e = frame.out_normal
-
-    def _matches_expected(face_obj: Any) -> bool:
-        try:
-            n = face_obj.Normal
-            return (
-                abs(n[0] - nx_e) < 0.1
-                and abs(n[1] - ny_e) < 0.1
-                and abs(n[2] - nz_e) < 0.1
-            )
-        except Exception:
-            return False
-
-    # Spiral of (du, dv) offsets in the face's local sketch frame. Each
-    # (du, dv) is projected to part coords via the frame's u/v axes.
-    # Distances chosen to handle small interior holes (1mm) up to large
-    # voids (15mm). Worst case: spec asks for a face entirely consumed
-    # by prior features -- raise on caller side.
-    offsets_uv = [
-        (0, 0),
-        (0.001, 0),
-        (0, 0.001),
-        (-0.001, 0),
-        (0, -0.001),
-        (0.005, 0),
-        (0, 0.005),
-        (-0.005, 0),
-        (0, -0.005),
-        (0.015, 0),
-        (0, 0.015),
-        (-0.015, 0),
-        (0, -0.015),
-        (0.005, 0.005),
-        (-0.005, -0.005),
-        (0.015, 0.015),
-        (-0.015, -0.015),
-    ]
-    for du, dv in offsets_uv:
+    for du, dv in _SELECT_BY_ID_OFFSETS_UV:
         fx = fx0 + du * ux + dv * vx
         fy = fy0 + du * uy + dv * vy
         fz = fz0 + du * uz + dv * vz
         ctx.doc.ClearSelection2(True)
-        if ctx.doc.SelectByID("", "FACE", fx, fy, fz):
-            face_obj = ctx.doc.SelectionManager.GetSelectedObject6(1, -1)
-            if _matches_expected(face_obj):
-                return True, fx, fy, fz
-            # Wrong face picked. Clear and keep trying other offsets;
-            # may pick the right one. (e.g. a SelectByID at face-center
-            # may hit a screen-occluding face but an off-center probe
-            # lands on the intended face.)
-
-    # SelectByID spiral exhausted. Fall back to body-face enumeration:
-    # find the face whose normal matches frame.out_normal AND whose
-    # closest point to (fx0, fy0, fz0) is within 1um. Then select via
-    # IEntity.Select2 (no Callout arg, late-binding-safe).
-    try:
-        bodies = ctx.doc.GetBodies2(0, True)  # swSolidBody=0
-    except Exception:
-        return False, fx0, fy0, fz0
-    for body in bodies:
-        faces = body.GetFaces()
-        if faces is None:
+        try:
+            hit = bool(ctx.doc.SelectByID("", "FACE", fx, fy, fz))
+        except Exception:
+            hit = False
+        if not hit:
             continue
-        for face_obj in faces:
-            if not _matches_expected(face_obj):
-                continue
-            try:
-                cp = face_obj.GetClosestPointOn(fx0, fy0, fz0)
-            except Exception:
-                continue
-            if cp is None or len(cp) < 3:
-                continue
-            d2 = (cp[0] - fx0) ** 2 + (cp[1] - fy0) ** 2 + (cp[2] - fz0) ** 2
-            if d2 > 1e-12:  # >1 micron away
-                continue
-            ctx.doc.ClearSelection2(True)
-            if face_obj.Select2(False, 0):
-                return True, cp[0], cp[1], cp[2]
+        try:
+            face_obj = ctx.doc.SelectionManager.GetSelectedObject6(1, -1)
+        except Exception:
+            continue
+        nrm = _face_normal(face_obj)
+        if not _normal_matches(nrm, expected):
+            continue
+        closest = _face_closest(face_obj, fx0, fy0, fz0) or (fx, fy, fz)
+        d2 = (closest[0] - fx0) ** 2 + (closest[1] - fy0) ** 2 + (closest[2] - fz0) ** 2
+        _log_face_resolve(
+            parent,
+            face,
+            "select_by_id",
+            None,
+            d2**0.5,
+            _face_area_m2(face_obj),
+            _face_centroid(face_obj, closest),
+            nrm,
+        )
+        return True, closest[0], closest[1], closest[2]
 
+    _log_face_resolve(parent, face, "unresolved", None, None, None, None, expected)
     return False, fx0, fy0, fz0
 
 
 def _resolve_face_object(ctx: BuildContext, parent: BuiltFeature, face: str) -> Any:
     """Return the live ``IFace2`` for a semantic face name of an extrusion.
 
-    Reuses :func:`_select_extrude_face` (the normal-verified spiral + body-face
-    enumeration probe) to select the face, then reads it back via
+    Reuses :func:`_select_extrude_face` (geometry-ranked body-face enumeration,
+    SelectByID only as fallback) to select the face, then reads it back via
     ``GetSelectedObject6(1, -1)`` -- the same idiom ``_build_simple_hole`` uses
     (builder.py). Used by the semantic edge selectors (``of_face`` /
     ``between_faces``) to walk to the face's bounding edges.

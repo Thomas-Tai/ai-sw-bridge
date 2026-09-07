@@ -60,9 +60,9 @@ def _build_simple_hole(ctx: BuildContext, feat: dict[str, Any]) -> BuiltFeature:
     ctx.doc.ClearSelection2(True)
     ok = ctx.doc.SelectByID("", "FACE", px, py, pz)
     if not ok:
-        # Fall back to the same normal-verified spiral _select_extrude_face
-        # uses, then re-pick exactly at the hole center via the body face.
-        # Most parts only need the direct pick.
+        # Fall back to _select_extrude_face (geometry-ranked body-face
+        # enumeration), then re-pick exactly at the hole center. Most parts
+        # only need the direct pick.
         ok2, _, _, _ = _select_extrude_face(ctx, parent, face)
         if not ok2:
             raise RuntimeError(
