@@ -772,7 +772,7 @@ Removes material in **both** directions from the sketch plane: `depth` into the 
 | `sketch` | yes | string | Name of an earlier sketch feature |
 | `depth` | yes | length | Cut depth in the +normal direction (mm) |
 | `depth2` | yes | length | Cut depth in the -normal direction (mm) |
-| `flip` | no | boolean | Swap which direction is +normal. Default `false`. |
+| `flip` | no | boolean | Bound to FeatureCut4 arg 2 (`Flip`). The issue #40 seat proof (2026-09-05) only covers one-directional cuts, so its effect on a two-direction cut is **unverified** — `depth`/`depth2` determine which side is removed, not `flip`. Default `false`. |
 
 ## Revolve primitives
 

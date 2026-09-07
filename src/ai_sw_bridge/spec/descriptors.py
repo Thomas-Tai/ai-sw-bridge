@@ -26,7 +26,26 @@ from ._advanced_sketch_fields import (
     sketch_3d_sketch_fields,
     sketch_polyline_on_plane_fields,
 )
-from ._extrude_fields import boss_extrude_blind_fields
+from ._basic_sketch_fields import (
+    sketch_arc_fields,
+    sketch_ellipse_fields,
+    sketch_line_fields,
+    sketch_polygon_fields,
+    sketch_slot_fields,
+    sketch_spline_fields,
+    sketch_text_fields,
+)
+from ._extrude_fields import (
+    boss_extrude_blind_fields,
+    boss_extrude_midplane_fields,
+    boss_extrude_through_all_fields,
+    boss_extrude_two_direction_fields,
+    boss_extrude_up_to_surface_fields,
+    cut_extrude_blind_fields,
+    cut_extrude_midplane_fields,
+    cut_extrude_through_all_fields,
+    cut_extrude_two_direction_fields,
+)
 
 # ---------------------------------------------------------------------------
 # Shared sub-schemas (moved here from schema.py; re-exported there).
@@ -36,6 +55,11 @@ from ._extrude_fields import boss_extrude_blind_fields
 NAME_PATTERN: dict[str, Any] = {
     "type": "string",
     "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+    "description": (
+        "Unique identifier for this feature within the spec. Later features "
+        "refer back to it by name (e.g. via `sketch`, `of_feature`, `seed`, "
+        "or `target_ref.of_feature`)."
+    ),
 }
 
 
@@ -73,9 +97,12 @@ CENTERLINE_SCHEMA: dict[str, Any] = {
             "additionalProperties": False,
             "required": ["x", "y"],
             "properties": {
-                "x": {"type": "number"},
-                "y": {"type": "number"},
-                "z": {"type": "number"},
+                "x": {"type": "number", "description": "X (mm) in sketch-local frame."},
+                "y": {"type": "number", "description": "Y (mm) in sketch-local frame."},
+                "z": {
+                    "type": "number",
+                    "description": "Optional part-frame Z offset (mm); see this object's description.",
+                },
             },
             "description": (
                 "Centerline start point in sketch-local coords (mm). "
@@ -89,9 +116,12 @@ CENTERLINE_SCHEMA: dict[str, Any] = {
             "additionalProperties": False,
             "required": ["x", "y"],
             "properties": {
-                "x": {"type": "number"},
-                "y": {"type": "number"},
-                "z": {"type": "number"},
+                "x": {"type": "number", "description": "X (mm) in sketch-local frame."},
+                "y": {"type": "number", "description": "Y (mm) in sketch-local frame."},
+                "z": {
+                    "type": "number",
+                    "description": "Optional part-frame Z offset (mm); see this object's description.",
+                },
             },
             "description": (
                 "Centerline end point in sketch-local coords (mm). "
@@ -195,31 +225,9 @@ RELATIONS_SCHEMA: dict[str, Any] = {
 # Face-direction enum, shared by all face-bound primitives.
 _FACE_ENUM = ["+x", "-x", "+y", "-y", "+z", "-z"]
 
-# Durable up-to reference for boss_extrude_up_to_surface: a face of an earlier
-# extrusion the boss terminates against. Carried as a self-contained object so
-# the reference is unambiguous and the validator can demand it explicitly.
-_TARGET_REF_SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["of_feature", "face"],
-    "properties": {
-        "of_feature": {
-            "type": "string",
-            "description": (
-                "Name of an earlier extrusion whose face the boss extrudes "
-                "up to (the up-to termination surface)."
-            ),
-        },
-        "face": {
-            "enum": _FACE_ENUM,
-            "description": "Outward normal of the up-to target face.",
-        },
-    },
-    "description": (
-        "Durable reference to the up-to termination surface (a face of an "
-        "earlier extrusion). Required — the boss has no fixed depth."
-    ),
-}
+# boss_extrude_up_to_surface's `target_ref` schema is built inside
+# _extrude_fields.boss_extrude_up_to_surface_fields (which takes _FACE_ENUM
+# in), to keep this grandfathered module's LOC down.
 
 
 def _xyz_point(*, required: bool, description: str) -> dict[str, Any]:
@@ -232,9 +240,9 @@ def _xyz_point(*, required: bool, description: str) -> dict[str, Any]:
     if required:
         out["required"] = ["x", "y", "z"]
     out["properties"] = {
-        "x": {"type": "number"},
-        "y": {"type": "number"},
-        "z": {"type": "number"},
+        "x": {"type": "number", "description": "Part-frame X coordinate (mm)."},
+        "y": {"type": "number", "description": "Part-frame Y coordinate (mm)."},
+        "z": {"type": "number", "description": "Part-frame Z coordinate (mm)."},
     }
     out["description"] = description
     return out
@@ -250,9 +258,15 @@ _SKETCH_PLANE_CENTER = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "x": {"type": "number"},
-        "y": {"type": "number"},
-        "z": {"type": "number"},
+        "x": {"type": "number", "description": "X (mm) in sketch-local frame."},
+        "y": {"type": "number", "description": "Y (mm) in sketch-local frame."},
+        "z": {
+            "type": "number",
+            "description": (
+                "Optional part-frame Z offset (mm); see the enclosing "
+                "center's description for the per-plane mapping."
+            ),
+        },
     },
 }
 
@@ -280,7 +294,16 @@ _CIRCLE_ON_PLANE_CENTER = {
 _UV_CENTER_RECT_FACE = {
     "type": "object",
     "additionalProperties": False,
-    "properties": {"u": {"type": "number"}, "v": {"type": "number"}},
+    "properties": {
+        "u": {
+            "type": "number",
+            "description": "In-face u-offset (mm) from the face sketch origin.",
+        },
+        "v": {
+            "type": "number",
+            "description": "In-face v-offset (mm) from the face sketch origin.",
+        },
+    },
     "description": (
         "In-face center offset (mm) from the FACE SKETCH ORIGIN, "
         "which empirically is the projection of the part origin onto "
@@ -296,7 +319,16 @@ _UV_CENTER_RECT_FACE = {
 _UV_CENTER_CIRCLE_FACE = {
     "type": "object",
     "additionalProperties": False,
-    "properties": {"u": {"type": "number"}, "v": {"type": "number"}},
+    "properties": {
+        "u": {
+            "type": "number",
+            "description": "In-face u-offset (mm) from the face sketch origin.",
+        },
+        "v": {
+            "type": "number",
+            "description": "In-face v-offset (mm) from the face sketch origin.",
+        },
+    },
     "description": (
         "In-face center offset (mm) from the face SKETCH ORIGIN, "
         "which is the projection of the part origin onto the face "
@@ -308,7 +340,16 @@ _UV_CENTER_CIRCLE_FACE = {
 _UV_CENTER_HOLE = {
     "type": "object",
     "additionalProperties": False,
-    "properties": {"u": {"type": "number"}, "v": {"type": "number"}},
+    "properties": {
+        "u": {
+            "type": "number",
+            "description": "In-face u-offset (mm) from the face sketch origin.",
+        },
+        "v": {
+            "type": "number",
+            "description": "In-face v-offset (mm) from the face sketch origin.",
+        },
+    },
     "description": (
         "In-face center (mm) of the hole from the face SKETCH ORIGIN "
         "(= part-origin projection onto the face plane, NOT the face "
@@ -487,9 +528,24 @@ _SLOT_TYPE_ENUM: dict[str, Any] = {
 
 FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     "sketch_rectangle_on_plane": [
-        FieldSpec("plane", {"enum": ["Front", "Top", "Right"]}, True),
-        FieldSpec("width", LENGTH_SCHEMA, True),
-        FieldSpec("height", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "width",
+            {**LENGTH_SCHEMA, "description": "Rectangle width (mm)."},
+            True,
+        ),
+        FieldSpec(
+            "height",
+            {**LENGTH_SCHEMA, "description": "Rectangle height (mm)."},
+            True,
+        ),
         FieldSpec("center", _RECT_ON_PLANE_CENTER, False),
         FieldSpec("centerline", CENTERLINE_SCHEMA, False),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
@@ -508,14 +564,33 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("width", LENGTH_SCHEMA, True),
-        FieldSpec("height", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "width",
+            {**LENGTH_SCHEMA, "description": "Rectangle width (mm)."},
+            True,
+        ),
+        FieldSpec(
+            "height",
+            {**LENGTH_SCHEMA, "description": "Rectangle height (mm)."},
+            True,
+        ),
         FieldSpec("center", _UV_CENTER_RECT_FACE, False),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_circle_on_plane": [
-        FieldSpec("plane", {"enum": ["Front", "Top", "Right"]}, True),
-        FieldSpec("diameter", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "plane",
+            {
+                "enum": ["Front", "Top", "Right"],
+                "description": "Default reference plane to host the sketch.",
+            },
+            True,
+        ),
+        FieldSpec(
+            "diameter",
+            {**LENGTH_SCHEMA, "description": "Circle diameter (mm)."},
+            True,
+        ),
         FieldSpec("center", _CIRCLE_ON_PLANE_CENTER, False),
         FieldSpec("centerline", CENTERLINE_SCHEMA, False),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
@@ -534,18 +609,37 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             True,
         ),
-        FieldSpec("diameter", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "diameter",
+            {**LENGTH_SCHEMA, "description": "Circle diameter (mm)."},
+            True,
+        ),
         FieldSpec("center", _UV_CENTER_CIRCLE_FACE, False),
         FieldSpec("relations", RELATIONS_SCHEMA, False),
     ],
     "sketch_circles_on_face": [
-        FieldSpec("of_feature", {"type": "string"}, True),
-        FieldSpec("face", {"enum": _FACE_ENUM}, True),
+        FieldSpec(
+            "of_feature",
+            {"type": "string", "description": "Name of an earlier extrusion feature."},
+            True,
+        ),
+        FieldSpec(
+            "face",
+            {
+                "enum": _FACE_ENUM,
+                "description": "Outward normal direction of the face in the feature's local frame.",
+            },
+            True,
+        ),
         FieldSpec(
             "circles",
             {
                 "type": "array",
                 "minItems": 1,
+                "description": (
+                    "One or more circles sketched together on the face, each "
+                    "with its own center offset and diameter."
+                ),
                 "items": {
                     "type": "object",
                     "additionalProperties": False,
@@ -559,8 +653,17 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
                                 "centroid -- see SKETCH_RECTANGLE_ON_FACE for the gotcha)."
                             ),
                         },
-                        "v": {"type": "number"},
-                        "diameter": LENGTH_SCHEMA,
+                        "v": {
+                            "type": "number",
+                            "description": (
+                                "Center v-offset (mm) from the face SKETCH ORIGIN "
+                                "(see `u`)."
+                            ),
+                        },
+                        "diameter": {
+                            **LENGTH_SCHEMA,
+                            "description": "Circle diameter (mm).",
+                        },
                     },
                 },
             },
@@ -572,73 +675,19 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     # start_offset/flip_start_offset fields) to keep this grandfathered module
     # under its module-size budget. LENGTH_SCHEMA is passed in to avoid a cycle.
     "boss_extrude_blind": boss_extrude_blind_fields(LENGTH_SCHEMA),
-    "boss_extrude_midplane": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec("depth", LENGTH_SCHEMA, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-        FieldSpec("merge", {"type": "boolean", "default": True}, False),
-    ],
-    "boss_extrude_through_all": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-        FieldSpec("merge", {"type": "boolean", "default": True}, False),
-    ],
-    "boss_extrude_two_direction": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec("depth", LENGTH_SCHEMA, True),
-        FieldSpec("depth2", LENGTH_SCHEMA, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-        FieldSpec("merge", {"type": "boolean", "default": True}, False),
-    ],
-    "boss_extrude_up_to_surface": [
-        FieldSpec(
-            "sketch",
-            {"type": "string", "description": "Name of an earlier sketch to extrude."},
-            True,
-        ),
-        FieldSpec("target_ref", _TARGET_REF_SCHEMA, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-        FieldSpec("merge", {"type": "boolean", "default": True}, False),
-    ],
-    "cut_extrude_through_all": [
-        FieldSpec(
-            "sketch",
-            {
-                "type": "string",
-                "description": "Name of an earlier sketch to cut along.",
-            },
-            True,
-        ),
-        FieldSpec(
-            "flip",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "Cut in -normal instead of +normal direction.",
-            },
-            False,
-        ),
-    ],
-    "cut_extrude_blind": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec("depth", LENGTH_SCHEMA, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-    ],
-    "cut_extrude_midplane": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec(
-            "depth",
-            LENGTH_SCHEMA,
-            True,
-        ),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-    ],
-    "cut_extrude_two_direction": [
-        FieldSpec("sketch", {"type": "string"}, True),
-        FieldSpec("depth", LENGTH_SCHEMA, True),
-        FieldSpec("depth2", LENGTH_SCHEMA, True),
-        FieldSpec("flip", {"type": "boolean", "default": False}, False),
-    ],
+    # The remaining boss/cut extrude variants' field lists also live in the
+    # focused ._extrude_fields helper (same rationale as boss_extrude_blind
+    # above): it keeps this grandfathered module's LOC down as the extrude
+    # family's descriptions grow. LENGTH_SCHEMA / _FACE_ENUM are passed in to
+    # avoid an import cycle.
+    "boss_extrude_midplane": boss_extrude_midplane_fields(LENGTH_SCHEMA),
+    "boss_extrude_through_all": boss_extrude_through_all_fields(),
+    "boss_extrude_two_direction": boss_extrude_two_direction_fields(LENGTH_SCHEMA),
+    "boss_extrude_up_to_surface": boss_extrude_up_to_surface_fields(_FACE_ENUM),
+    "cut_extrude_through_all": cut_extrude_through_all_fields(),
+    "cut_extrude_blind": cut_extrude_blind_fields(LENGTH_SCHEMA),
+    "cut_extrude_midplane": cut_extrude_midplane_fields(LENGTH_SCHEMA),
+    "cut_extrude_two_direction": cut_extrude_two_direction_fields(LENGTH_SCHEMA),
     "revolve_boss": [
         FieldSpec(
             "sketch",
@@ -684,7 +733,13 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             {
                 "type": "boolean",
                 "default": False,
-                "description": "Reverse the revolve direction.",
+                "description": (
+                    "Bound to FeatureRevolve2 arg 5 (`ReverseDir`). Whether "
+                    "this reverses the sweep of a *cut* is UNVERIFIED -- the "
+                    "issue #40 seat proof covers FeatureCut4, not "
+                    "FeatureRevolve2, and issue #46 is open on revolve_cut "
+                    "returning None. Do not rely on it to aim the cut."
+                ),
             },
             False,
         ),
@@ -704,7 +759,11 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             True,
         ),
         FieldSpec("center", _UV_CENTER_HOLE, False),
-        FieldSpec("diameter", LENGTH_SCHEMA, True),
+        FieldSpec(
+            "diameter",
+            {**LENGTH_SCHEMA, "description": "Hole diameter (mm)."},
+            True,
+        ),
         FieldSpec(
             "end_condition",
             {
@@ -717,11 +776,37 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             False,
         ),
-        FieldSpec("depth", LENGTH_SCHEMA, False),
+        FieldSpec(
+            "depth",
+            {
+                **LENGTH_SCHEMA,
+                "description": (
+                    "Hole depth (mm). Required when `end_condition` is "
+                    "'blind'; ignored (and may be omitted) for 'through_all'."
+                ),
+            },
+            False,
+        ),
     ],
     "fillet_constant_radius": [
-        FieldSpec("radius", LENGTH_SCHEMA, True),
-        FieldSpec("edges", _EDGE_POINT_ITEM_FILLET, True),
+        FieldSpec(
+            "radius",
+            {**LENGTH_SCHEMA, "description": "Fillet radius (mm)."},
+            True,
+        ),
+        FieldSpec(
+            "edges",
+            {
+                **_EDGE_POINT_ITEM_FILLET,
+                "description": (
+                    "Edges to fillet. At least 1 item; each is a literal "
+                    "{x, y, z} point, or (with the semantic_edges flag) an "
+                    "{of_feature, face} / {of_feature, between_faces} "
+                    "selector -- see docs/spec_reference.md Edge selectors."
+                ),
+            },
+            True,
+        ),
     ],
     "chamfer_edge": [
         FieldSpec(
@@ -771,7 +856,18 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             },
             False,
         ),
-        FieldSpec("edges", _EDGE_POINT_ITEM_CHAMFER, True),
+        FieldSpec(
+            "edges",
+            {
+                **_EDGE_POINT_ITEM_CHAMFER,
+                "description": (
+                    "Edges to chamfer. At least 1 item; same three selector "
+                    "forms as fillet_constant_radius -- see "
+                    "docs/spec_reference.md Edge selectors."
+                ),
+            },
+            True,
+        ),
     ],
     "linear_pattern": [
         FieldSpec(
@@ -922,229 +1018,27 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
     # `construction`. Parametric `{rhs}` bindings are supported on every
     # LENGTH_SCHEMA field via the standard Equation Manager pathway.
     # ---------------------------------------------------------------------------
-    "sketch_line": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec("start", _SKETCH_POINT_2D, True),
-        FieldSpec("end", _SKETCH_POINT_2D, True),
-        FieldSpec(
-            "construction",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "If true, mark the segment as a construction (centerline) entity.",
-            },
-            False,
-        ),
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_arc": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec("center", _SKETCH_POINT_2D, True),
-        FieldSpec("start", _SKETCH_POINT_2D, True),
-        FieldSpec("end", _SKETCH_POINT_2D, True),
-        FieldSpec(
-            "direction",
-            {
-                "enum": ["cw", "ccw"],
-                "default": "ccw",
-                "description": "Arc direction from start to end about the center.",
-            },
-            False,
-        ),
-        FieldSpec(
-            "construction",
-            {"type": "boolean", "default": False},
-            False,
-        ),
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_spline": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec("points", _SKETCH_SPLINE_POINTS, True),
-        FieldSpec(
-            "construction",
-            {
-                "type": "boolean",
-                "default": False,
-                "description": "If true, mark the spline as a construction entity.",
-            },
-            False,
-        ),
-        # NOTE: no `closed` field. A point-based periodic (C2) closed spline has
-        # no out-of-process API on this seat — ISketchSpline.MakeClosed and
-        # ISketchManager.CreateClosedSpline do not exist (verified via
-        # GetIDsOfNames -> DISP_E_UNKNOWNNAME and a full typelib scan), and
-        # appending the first point yields a C0 cusp, not a periodic spline.
-        # Requesting `closed` therefore fails validation rather than faking it.
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_slot": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec("center", _SKETCH_POINT_2D, True),
-        FieldSpec("width", LENGTH_SCHEMA, True),
-        FieldSpec("length", LENGTH_SCHEMA, True),
-        FieldSpec("slot_type", _SLOT_TYPE_ENUM, False),
-        FieldSpec(
-            "angle_deg",
-            {
-                "type": "number",
-                "default": 0.0,
-                "description": "Rotation of the slot's major axis from the sketch X axis (degrees).",
-            },
-            False,
-        ),
-        # NOTE: no `construction` field. CreateSketchSlot returns a read-only
-        # slot object (not a settable ISketchSegment): `ConstructionGeometry
-        # can not be set` on the seat. Unpacking the macro-feature's underlying
-        # segment array to mutate each is COM-index fragile, so construction is
-        # rejected for slots rather than faked.
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_polygon": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec("center", _SKETCH_POINT_2D, True),
-        FieldSpec(
-            "sides",
-            {
-                "type": "integer",
-                "minimum": 3,
-                "maximum": 40,
-                "description": "Number of polygon sides (3..40).",
-            },
-            True,
-        ),
-        FieldSpec("radius", LENGTH_SCHEMA, True),
-        FieldSpec(
-            "inscribed",
-            {
-                "type": "boolean",
-                "default": True,
-                "description": (
-                    "If true, `radius` is the inscribed (apothem) radius — polygon "
-                    "edges are tangent to the circle. If false, `radius` is the "
-                    "circumscribed radius — polygon vertices lie on the circle."
-                ),
-            },
-            False,
-        ),
-        FieldSpec(
-            "angle_deg",
-            {
-                "type": "number",
-                "default": 0.0,
-                "description": "Rotation of the polygon's first vertex from the sketch X axis (degrees).",
-            },
-            False,
-        ),
-        FieldSpec(
-            "construction",
-            {"type": "boolean", "default": False},
-            False,
-        ),
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_ellipse": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec("center", _SKETCH_POINT_2D, True),
-        FieldSpec("major_radius", LENGTH_SCHEMA, True),
-        FieldSpec("minor_radius", LENGTH_SCHEMA, True),
-        FieldSpec(
-            "angle_deg",
-            {
-                "type": "number",
-                "default": 0.0,
-                "description": "Rotation of the major axis from the sketch X axis (degrees).",
-            },
-            False,
-        ),
-        FieldSpec(
-            "construction",
-            {"type": "boolean", "default": False},
-            False,
-        ),
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
-    "sketch_text": [
-        FieldSpec(
-            "plane",
-            {
-                "enum": ["Front", "Top", "Right"],
-                "description": "Default reference plane to host the sketch.",
-            },
-            True,
-        ),
-        FieldSpec("position", _SKETCH_POINT_2D, True),
-        FieldSpec(
-            "content",
-            {
-                "type": "string",
-                "minLength": 1,
-                "description": "Text content. Plain ASCII; no rich formatting.",
-            },
-            True,
-        ),
-        FieldSpec("height", LENGTH_SCHEMA, True),
-        FieldSpec(
-            "font",
-            {
-                "type": "string",
-                "description": (
-                    "Font family name (e.g. 'Arial'). Applied via the inserted "
-                    "ISketchText's text format (GetTextFormat -> TypeFaceName -> "
-                    "SetTextFormat); `height` sets CharHeight in the same call."
-                ),
-            },
-            False,
-        ),
-        # NOTE: no `angle_deg` or `construction` field for text. InsertSketchText
-        # exposes no angle parameter and ITextFormat carries no rotation, so text
-        # baseline rotation has no out-of-process API on this seat; and text is
-        # not a sketch segment, so ConstructionGeometry does not apply. Both are
-        # rejected at validation rather than silently ignored.
-        FieldSpec("relations", RELATIONS_SCHEMA, False),
-    ],
+    # The seven general-purpose sketch primitives (line/arc/spline/slot/
+    # polygon/ellipse/text) also live in a focused ._basic_sketch_fields
+    # helper (same rationale as ._extrude_fields / ._advanced_sketch_fields):
+    # it keeps this grandfathered module's LOC down. _SKETCH_POINT_2D /
+    # _SKETCH_SPLINE_POINTS / _SLOT_TYPE_ENUM / LENGTH_SCHEMA /
+    # RELATIONS_SCHEMA are passed in to avoid an import cycle.
+    "sketch_line": sketch_line_fields(_SKETCH_POINT_2D, RELATIONS_SCHEMA),
+    "sketch_arc": sketch_arc_fields(_SKETCH_POINT_2D, RELATIONS_SCHEMA),
+    "sketch_spline": sketch_spline_fields(_SKETCH_SPLINE_POINTS, RELATIONS_SCHEMA),
+    "sketch_slot": sketch_slot_fields(
+        _SKETCH_POINT_2D, LENGTH_SCHEMA, _SLOT_TYPE_ENUM, RELATIONS_SCHEMA
+    ),
+    "sketch_polygon": sketch_polygon_fields(
+        _SKETCH_POINT_2D, LENGTH_SCHEMA, RELATIONS_SCHEMA
+    ),
+    "sketch_ellipse": sketch_ellipse_fields(
+        _SKETCH_POINT_2D, LENGTH_SCHEMA, RELATIONS_SCHEMA
+    ),
+    "sketch_text": sketch_text_fields(
+        _SKETCH_POINT_2D, LENGTH_SCHEMA, RELATIONS_SCHEMA
+    ),
     # W53 3D-sketch + composite on-plane polyline. Field lists relocated to the
     # `_advanced_sketch_fields` leaf helper to keep this shrink-only module under
     # budget; the shared `_SKETCH_POINT_2D` is passed in to avoid an import cycle.
@@ -1447,10 +1341,15 @@ def assemble_feature_schema(name: str) -> dict[str, Any]:
     ``type`` const + ``name`` pattern, ``additionalProperties: False``, and a
     ``required`` list of ``["type", "name"]`` followed by the required fields
     in declared order.
+
+    The ``type`` const's ``description`` is sourced from ``FEATURE_META[name]
+    ["doc"]`` -- the same one-line human summary the doc-coverage test already
+    holds every primitive to -- so the discriminator's description can't drift
+    from that single per-primitive summary.
     """
     fields = FEATURE_FIELDS[name]
     properties: dict[str, Any] = {
-        "type": {"const": name},
+        "type": {"const": name, "description": FEATURE_META[name]["doc"]},
         "name": NAME_PATTERN,
     }
     required: list[str] = ["type", "name"]
