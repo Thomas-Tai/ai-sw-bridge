@@ -424,6 +424,17 @@ _SELECT_BY_ID_OFFSETS_UV: tuple[tuple[float, float], ...] = (
 )
 
 
+# Acceptance radius for a ranked candidate, derived from the SelectByID probe
+# offsets above so the two paths cannot drift apart (the same hand-maintained-
+# subset defect class that bit the plane-hosted sketch types twice). A face
+# whose closest point to the modelled face centre is further than the spiral
+# could ever have probed is NOT the requested face: reject it and let the
+# caller fail honestly rather than sketch onto some other body.
+_MAX_FACE_SEED_DIST_M = max(
+    (du * du + dv * dv) ** 0.5 for du, dv in _SELECT_BY_ID_OFFSETS_UV
+)
+
+
 def _as_sequence(raw: Any) -> list[Any]:
     if raw is None:
         return []
@@ -584,6 +595,10 @@ def _enumerate_face_candidates(
                 + (closest[1] - fy0) ** 2
                 + (closest[2] - fz0) ** 2
             )
+            if d2 > _MAX_FACE_SEED_DIST_M**2:
+                # Normal matches but the face is nowhere near where the model
+                # says it is -- a different feature's face, not this one.
+                continue
             out.append(
                 _FaceCandidate(
                     face_obj=face_obj,

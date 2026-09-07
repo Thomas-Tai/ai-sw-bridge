@@ -18,6 +18,8 @@ import pytest
 
 from ai_sw_bridge.spec._build_context import BuildContext, BuiltFeature
 from ai_sw_bridge.spec._face_geometry import (
+    _MAX_FACE_SEED_DIST_M,
+    _SELECT_BY_ID_OFFSETS_UV,
     _face_sort_key,
     _select_extrude_face,
 )
@@ -375,3 +377,52 @@ def test_minus_z_does_not_pick_a_plus_z_face() -> None:
     ok, *_ = _select_extrude_face(_ctx_for(doc), _box_parent(), "-z")
     assert ok is True
     assert doc.selected is minus_z
+
+
+def test_far_away_matching_face_is_rejected_not_silently_selected() -> None:
+    """A normal-matching face far from the modelled centre is NOT this face.
+
+    Ranking alone is a total order but not a correctness test: with no
+    acceptance radius the nearest candidate wins even when it belongs to a
+    different feature, which turns an honest failure into a sketch built on
+    the wrong body. The radius is derived from the SelectByID probe offsets,
+    so a candidate the spiral could never have reached is rejected.
+    """
+    stray = _FakeFace(
+        "stray_+z_on_another_body",
+        normal=(0.0, 0.0, 1.0),
+        plane_z=0.010,
+        area=4.0e-4,
+        centroid=(0.050, 0.0, 0.010),
+        bounded_closest=(0.050, 0.0, 0.010),  # 50 mm from the modelled centre
+    )
+    doc = _FakeDoc([stray], select_by_id_ok=False)
+    ok, fx, fy, fz = _select_extrude_face(_ctx_for(doc), _box_parent(), "+z")
+    assert ok is False
+    assert doc.selected is None
+    # Falls back to the modelled centre, as the unresolved contract requires.
+    assert (fx, fy, fz) == (0.0, 0.0, 0.010)
+
+
+def test_acceptance_radius_tracks_the_probe_offsets() -> None:
+    """The radius must stay derived, never hand-maintained alongside them."""
+    expected = max((du * du + dv * dv) ** 0.5 for du, dv in _SELECT_BY_ID_OFFSETS_UV)
+    assert _MAX_FACE_SEED_DIST_M == expected
+
+
+def test_face_just_inside_the_radius_is_still_accepted() -> None:
+    """The bound must not break the case the spiral existed for: a modelled
+    centre sitting in a hole, with the real face's closest point offset."""
+    offset = _MAX_FACE_SEED_DIST_M * 0.9
+    reachable = _FakeFace(
+        "rim_of_the_intended_face",
+        normal=(0.0, 0.0, 1.0),
+        plane_z=0.010,
+        area=4.0e-4,
+        centroid=(offset, 0.0, 0.010),
+        bounded_closest=(offset, 0.0, 0.010),
+    )
+    doc = _FakeDoc([reachable], select_by_id_ok=False)
+    ok, *_ = _select_extrude_face(_ctx_for(doc), _box_parent(), "+z")
+    assert ok is True
+    assert doc.selected is reachable
