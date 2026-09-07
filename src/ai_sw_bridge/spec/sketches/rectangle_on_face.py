@@ -46,14 +46,14 @@ class RectangleOnFaceHandler(SketchHandler):
         _warn_face_sketch_offset(parent, face, feat, ("u", "v"))
 
         # Build the face frame (validates parent axis/extents); used for
-        # the face-center seed point and the spiral-offset probe.
+        # the modelled face-center seed that ranks body-face candidates.
         frame_geom = _face_frame(parent, face)
 
         ok, fx, fy, fz = _select_extrude_face(ctx, parent, face)
         if not ok:
             raise RuntimeError(
-                f"SelectByID returned False for {face} face of {parent_name} -- "
-                f"tried center and offset points, none hit material"
+                f"face select returned False for {face} face of {parent_name} -- "
+                f"no body face matched the expected normal"
             )
 
         ctx.doc.SketchManager.InsertSketch(True)

@@ -39,8 +39,8 @@ class CircleOnFaceHandler(SketchHandler):
         ok, fx, fy, fz = _select_extrude_face(ctx, parent, face)
         if not ok:
             raise RuntimeError(
-                f"SelectByID returned False for {face} face of {parent_name} -- "
-                f"tried center and offset points, none hit material"
+                f"face select returned False for {face} face of {parent_name} -- "
+                f"no body face matched the expected normal"
             )
 
         ctx.doc.SketchManager.InsertSketch(True)

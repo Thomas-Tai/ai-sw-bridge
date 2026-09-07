@@ -63,6 +63,40 @@ For sketching on a face of an already-modeled rectangular body:
 Other faces (`±x`, `±y`) are an honest-skip in v0.11 — the pre-flight does not
 yet model their local mapping and will not flag findings on them.
 
+### Live face resolution (issue #47)
+
+The table above is the *modelled* face: `_face_frame` computes a centre and
+outward normal from the parent extrusion's origin, axis, depth, and (for side
+faces) rectangular extents. That mapping is a pure function of the spec.
+
+Selecting the corresponding live `IFace2` is a separate step. The builder
+enumerates every solid-body face (`GetBodies2` / `GetFaces`), keeps those
+whose outward normal matches the modelled face, and picks the unique winner
+of a total order on measured geometry:
+
+1. Euclidean distance from the modelled face centre to
+   `IFace2.GetClosestPointOn` of that centre (nearer wins).
+2. Face area (larger wins) — so two coplanar leftovers after a cut do not
+   race on `GetFaces` order.
+3. Bounding-box centroid `(x, y, z)` lexicographic order.
+
+The ranked winner is enacted with `SelectByID` at that face's closest point
+— the pick `InsertSketch` is proven to consume — and kept only when the
+picked face fingerprints (normal + area + centroid) as the winner. A
+view-dependent wrong hit is rejected and the ranked `IFace2` is selected
+with `IEntity.Select2` instead. A `SelectByID` spiral without a ranked
+winner is last-resort fallback (enumeration raised or nothing selectable);
+a `FACE_RESOLVE ... path=select_by_id` line on stderr marks it.
+`simple_hole` still uses `SelectByID` at the hole centre for the pick
+*point* `SimpleHole2` consumes; that path is residual risk, not the sketch
+path.
+
+Every resolve prints one `FACE_RESOLVE` line to stderr (`path`, enumeration
+`index`, `dist_mm`, `area_m2`, `centroid_mm`, `normal`) so two seat runs of
+the same spec can be diffed rather than guessed at. `index` may shuffle
+across runs even when the geometric winner is stable — compare centroid /
+area / path, not index.
+
 ## 3. Offset-part recipes
 
 - **`start_offset` always grows in the +normal direction and ignores
@@ -112,10 +146,17 @@ When `FeatureCut4` or `FeatureExtrusion2` returns `None` with no COM error:
    offset that puts the cut/hole region entirely off the target body.
 2. Run `ai-sw-build <spec> --lint` — the seat-free pre-flight catches most of
    these before you ever touch SOLIDWORKS.
-3. Only after ruling out geometry-in-air should you suspect the COM API
-   itself. The on-seat fallback for confirming real geometry is the
-   1 micrometer slug-and-read-bbox spike (extrude a 0.001 mm slug at the
-   suspect location and read `GetBox` on it) — see
+3. **If the failing feature consumes a face-referenced sketch**
+   (`sketch_*_on_face`, `of_feature` + `face`): grep stderr for
+   `FACE_RESOLVE` on that parent/face. Diff the line against a passing run
+   of the same spec. A change in `centroid_mm` / `area_m2` / `path` means
+   the live face was not the same object; a stable `FACE_RESOLVE` with
+   `path=enumeration` means the face identity was stable and the `None` is
+   geometry, not resolution. See §2.
+4. Only after ruling out geometry-in-air *and* a face-identity slip should
+   you suspect the COM API itself. The on-seat fallback for confirming real
+   geometry is the 1 micrometer slug-and-read-bbox spike (extrude a
+   0.001 mm slug at the suspect location and read `GetBox` on it) — see
    [known_gotchas.md](known_gotchas.md) for the API-marshalling gotchas that
    are the *other* class of silent failure.
 
