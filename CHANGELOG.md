@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Documentation
 
+- **Generated spec-reference field tables.** Per-feature field tables in
+  `docs/spec_reference.md` are now emitted from the published JSON Schema by
+  `tools/emit_spec_reference.py` and kept in lockstep by a CI sync gate
+  (`tests/test_spec_reference_published.py` + pre-commit `spec-reference-sync`).
+  This closed several silent schema-vs-doc drifts (notably `start_offset` /
+  `flip_start_offset` / `merge` / `relations`, and the `--lint` exit contract).
 - **Example & doc indexes now complete.** `examples/README.md` lists every
   example folder and `docs/README.md` lists every tracked reference doc; a new
   drift-guard test (`tests/test_examples_index_complete.py`) keeps the examples

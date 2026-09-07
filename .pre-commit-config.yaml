@@ -55,3 +55,15 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+      # Per-feature field tables in docs/spec_reference.md must stay in lockstep
+      # with the published JSON Schema. Cheap author-time mirror of the CI gate
+      # (tests/test_spec_reference_published.py); regenerate on drift with
+      # `python tools/emit_spec_reference.py`. Always runs (a schema edit, not
+      # the doc, is what makes it stale).
+      - id: spec-reference-sync
+        name: spec_reference.md tables in sync (emit_spec_reference --check)
+        entry: python tools/emit_spec_reference.py --check
+        language: system
+        pass_filenames: false
+        always_run: true

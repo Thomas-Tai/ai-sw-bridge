@@ -122,13 +122,17 @@ tests, so `pytest` is where they fire (no separate CI step):
   staleness banner.
 - `test_spec_schema_published.py` — the published JSON Schema (both the repo-root and
   in-wheel copies) is byte-identical to `schema.py` and every example validates.
+- `test_spec_reference_published.py` — the per-feature field tables in
+  `docs/spec_reference.md` are byte-identical to a fresh render from the
+  published JSON Schema (`tools/emit_spec_reference.py`).
 - `test_examples_index_complete.py` — every `examples/<dir>/` is linked from
   `examples/README.md`.
 
-**Blocks your commit, not a separate CI step.** Two more gates run as pre-commit
+**Blocks your commit, not a separate CI step.** Three more gates run as pre-commit
 hooks (and are covered transitively by the pytest gates above): `ai-sw-build-lint`
-(`tools/lint_specs.py`, semantic lint of any staged `spec.json`) and
-`spec-schema-sync` (`python tools/emit_spec_schema.py --check`).
+(`tools/lint_specs.py`, semantic lint of any staged `spec.json`),
+`spec-schema-sync` (`python tools/emit_spec_schema.py --check`), and
+`spec-reference-sync` (`python tools/emit_spec_reference.py --check`).
 
 **Other CI jobs.** Beyond `test`: `import-check` (the package imports lazily with no
 `pywin32`), `onboarding` (`pytest -m onboarding` — the quickstart smoke), and
@@ -199,7 +203,7 @@ is applied:
 3. **Add the handler in the family leaf.** Implement `_build_<type>(ctx, feat) -> BuiltFeature` in the matching `src/ai_sw_bridge/spec/handlers/<family>.py`, then re-export it into `builder.py` (`from .handlers.<family> import _build_<type>  # noqa: F401`) so `_wire_handlers()` resolves it by name, wire it into the `handlers` dict inside `_wire_handlers`, and add a `FeatureType(...)` entry to `DESCRIPTORS` with any `dim_fields`. Sketch features (rectangle/circle on plane or face, circle arrays) are instead `SketchHandler` subclasses in `src/ai_sw_bridge/spec/sketches/`: subclass `SketchHandler`, override `_enter_sketch` / `_draw_geometry` / `_add_dimensions_inline` / `_record_deferred_dimensions` / `_finalize` (and optionally `_strip_relations`), export the class from `sketches/__init__.py`, and wire `Handler().build` into `_wire_handlers` via the corresponding `_build_sketch_<type>` adapter. Every COM-touching handler needs the postcondition verification pattern from [`CODESTYLE.md`](CODESTYLE.md) §2.4 — verify the postcondition, not the return code.
 4. **Spike first.** For SW API calls you haven't used before, write a spike script in `spikes/` that exercises the API via pywin32 late-binding. Verify arg counts against `sldworksapi.chm` (or `tools/chm_extract.py`).
 5. **Add an example** in `examples/` with a `spec.json` and a `README.md` explaining what it builds.
-6. **Update docs** — add the primitive to the capability matrix in `README.md` and to `docs/spec_reference.md`.
+6. **Update docs** — add the primitive to the capability matrix in `README.md` and a section in `docs/spec_reference.md` with a `<!-- BEGIN GENERATED: <type> -->` / `<!-- END GENERATED -->` pair, then run `python tools/emit_spec_reference.py` to fill the field table.
 
 ### Architecture reference
 
