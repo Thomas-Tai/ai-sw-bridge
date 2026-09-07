@@ -733,7 +733,13 @@ FEATURE_FIELDS: dict[str, list[FieldSpec]] = {
             {
                 "type": "boolean",
                 "default": False,
-                "description": "Reverse the revolve direction.",
+                "description": (
+                    "Bound to FeatureRevolve2 arg 5 (`ReverseDir`). Whether "
+                    "this reverses the sweep of a *cut* is UNVERIFIED -- the "
+                    "issue #40 seat proof covers FeatureCut4, not "
+                    "FeatureRevolve2, and issue #46 is open on revolve_cut "
+                    "returning None. Do not rely on it to aim the cut."
+                ),
             },
             False,
         ),
