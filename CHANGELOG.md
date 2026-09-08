@@ -23,6 +23,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   repo-root and in-wheel copies are generated from one `render()` and gated
   byte-identical (in the CI sync gate and `emit_spec_schema.py --check`).
 
+### Fixed
+
+- **The COM method-flag cache no longer trusts a recycled address.**
+  `com/sw_type_info.py` cached which interfaces it had flagged on an object,
+  keyed by `id(obj)`, and the entries outlived the objects they described. An
+  id is unique only among *live* objects, and CPython hands a freed block
+  straight back to the next same-size allocation — so a fresh COM dispatch
+  could land on a dead one's address, be judged "already flagged", and never be
+  flagged at all. Its methods then resolved as *properties* and SolidWorks
+  answered `Member not found`, intermittently and allocator-dependently. Each
+  entry now carries a weak reference and is trusted only while that reference
+  still resolves to the same object; objects that are not weak-referenceable
+  are flagged every time rather than cached. `invalidate_flag_cache()` had
+  documented this exact hazard but was never called from `src/`. Fix
+  cherry-picked from upstream SolidworksMCP-python (MIT)
+  `7695ae8956ee4a9cfe430eb837f5308ce7f36610`; base port commit unchanged.
+- **`ComExecutor.is_dead` no longer reports "not dead" during startup
+  failure.** The worker records a CoInitialize failure, signals ready, and only
+  then unwinds, so the thread is briefly still alive after `start()` returns.
+  `is_dead` tested liveness first and answered `False` in exactly that window —
+  the window in which callers check it. It now consults an explicit
+  `_init_failed` flag set before the ready signal.
+
 ### Documentation
 
 - **Generated spec-reference field tables.** Per-feature field tables in

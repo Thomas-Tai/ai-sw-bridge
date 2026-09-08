@@ -112,6 +112,10 @@ class ComExecutor:
         self._thread: threading.Thread | None = None
         self._ready = threading.Event()
         self._stopped = threading.Event()
+        # Set by the worker when CoInitialize fails, *before* it signals
+        # ready. Lets is_dead answer correctly the instant start() returns,
+        # without waiting for the worker thread to finish unwinding.
+        self._init_failed = threading.Event()
         self._co_init_ok = False
         self._sw_app_is_dead = False
 
@@ -138,6 +142,7 @@ class ComExecutor:
 
         self._ready.clear()
         self._stopped.clear()
+        self._init_failed.clear()
         self._co_init_ok = False
         self._thread = threading.Thread(
             target=self._worker, name=self._name, daemon=True
@@ -239,7 +244,15 @@ class ComExecutor:
         executor cannot be reused — construct a fresh one. Callers
         check this when ``start()`` returns to surface a clear error
         message rather than failing on the next ``submit``.
+
+        The ``_init_failed`` check comes first on purpose. The worker signals
+        ready and *then* unwinds, so for a short window after ``start()``
+        returns the thread is still alive; testing liveness first would
+        report ``False`` — "not dead" — for an executor whose CoInitialize
+        had in fact already failed. That is precisely the moment callers ask.
         """
+        if self._init_failed.is_set():
+            return True
         if self._thread is not None and self._thread.is_alive():
             return False
         if not self._ready.is_set():
@@ -349,9 +362,11 @@ class ComExecutor:
                 self._name,
                 exc,
             )
-            # Signal ready so start() doesn't hang. The is_dead property
-            # surfaces this; submit() would also fail because COM isn't
-            # really initialized.
+            # Record the failure BEFORE signalling ready, so a caller that
+            # checks is_dead the moment start() returns sees it. Signal ready
+            # so start() doesn't hang; submit() would also fail because COM
+            # isn't really initialized.
+            self._init_failed.set()
             self._ready.set()
             return
 

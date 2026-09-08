@@ -227,6 +227,37 @@ class TestCoInitializeFailure:
         assert not ex.is_alive
         assert ex.is_dead
 
+    def test_is_dead_while_failed_worker_is_still_unwinding(
+        self, fake_pythoncom: MagicMock
+    ) -> None:
+        """The exact window the ``_init_failed`` flag closes.
+
+        The worker records the failure, signals ready, and only *then*
+        unwinds, so for a short window after ``start()`` returns the thread is
+        still alive. ``is_dead`` used to test liveness first and answered
+        "not dead" in precisely that window — the window in which callers
+        actually ask.
+
+        Pinned deterministically rather than by racing a real worker: an
+        end-to-end version passes or fails on scheduling luck and would not
+        reliably guard the regression.
+        """
+        ex = ComExecutor()
+        release = threading.Event()
+        worker = threading.Thread(target=release.wait, daemon=True)
+        worker.start()
+        try:
+            # Reproduce the post-failure, pre-exit state exactly.
+            ex._thread = worker
+            ex._init_failed.set()
+            ex._ready.set()
+
+            assert worker.is_alive(), "precondition: the worker has not exited"
+            assert ex.is_dead
+        finally:
+            release.set()
+            worker.join(timeout=2)
+
     def test_is_dead_false_before_start(self, fake_pythoncom: MagicMock) -> None:
         ex = ComExecutor()
         assert ex.is_dead is False
