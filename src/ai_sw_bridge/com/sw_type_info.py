@@ -12,7 +12,14 @@ the upstream. This port:
   ``logging`` module (the bridge ships zero third-party logging deps).
 - Adds SPDX port-attribution headers.
 - Keeps the core logic (lazy gen_py loading, per-interface method
-  flagging, incrementality cache) byte-for-byte identical.
+  flagging, incrementality cache) identical apart from the cherry-picked
+  cache fix noted below.
+
+Cherry-picked from upstream *after* the base port above: the flag-cache
+soundness fix from commit ``7695ae8956ee4a9cfe430eb837f5308ce7f36610``
+(2026-08-13, "Stop the flag cache trusting a recycled address"). Only that
+fix was taken; the rest of the upstream file has moved on and is not ported.
+See :func:`_flagged_interfaces`.
 
 Background: pywin32's late-binding (``CDispatch``) sometimes resolves SW
 zero-argument methods (``GetType``, ``GetTitle``, ``GetPathName``,
@@ -49,6 +56,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import weakref
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -69,7 +77,9 @@ _interface_methods: dict[str, frozenset[str]] = {}
 # Per-object record of which interfaces have already been flagged. Keyed by
 # id(obj) so ``flag_methods(doc, 'IModelDoc2')`` followed by
 # ``flag_methods(doc, 'IAssemblyDoc')`` does incremental work, not a no-op.
-_flag_cache: dict[int, set[str]] = {}
+# The value carries a weak reference to the object the entry describes; that
+# weakref is what makes the id() key safe to trust. See _flagged_interfaces.
+_flag_cache: dict[int, tuple[weakref.ref[Any] | None, set[str]]] = {}
 
 
 def _load_wrapper() -> None:
@@ -173,11 +183,60 @@ DOC_TYPE_TO_INTERFACES: dict[int, tuple[str, ...]] = {
 }
 
 
+def _flagged_interfaces(obj: Any) -> set[str]:
+    """Return the set of interfaces already flagged on ``obj``.
+
+    The entry is keyed by ``id(obj)`` for speed, but is only trusted while the
+    stored weak reference still resolves to *this same object*. Without that
+    check the cache is unsound: an id is unique only among **live** objects,
+    and CPython hands a freed block straight back to the next allocation of
+    the same size. A fresh COM dispatch landing on a dead one's address was
+    judged "already flagged", so :func:`flag_methods` returned without flagging
+    anything — after which that object's methods resolve as *properties* and
+    SolidWorks answers ``Member not found``. The failure is intermittent and
+    allocator-dependent, which is what makes it so hard to attribute.
+
+    :func:`invalidate_flag_cache` documents the same hazard but has to be
+    called explicitly, and callers have no way to know when a dispatch has been
+    released. This makes the cache self-healing instead.
+
+    Objects that do not support weak references (some test doubles) are simply
+    not cached; they are flagged every time, which is correct if slower.
+
+    Args:
+        obj: A pywin32 ``CDispatch`` (or any object) to look up.
+
+    Returns:
+        The live set of interface names already flagged on ``obj``. Mutating
+        it updates the cache entry in place.
+    """
+    key = id(obj)
+    entry = _flag_cache.get(key)
+    if entry is not None:
+        ref, cached = entry
+        if ref is None or ref() is obj:
+            return cached
+        # Stale: the object this entry described is gone and its address has
+        # been recycled. Drop it and start fresh for the new occupant.
+        del _flag_cache[key]
+
+    names: set[str] = set()
+    try:
+        _flag_cache[key] = (weakref.ref(obj), names)
+    except TypeError:
+        # Not weak-referenceable, so a later address reuse would be
+        # undetectable. Skip caching rather than risk a stale entry.
+        pass
+    return names
+
+
 def flag_methods(obj: Any, *interfaces: str) -> int:
     """Flag SW methods on ``obj`` so pywin32 dispatches them as methods.
 
     Safe to call repeatedly on the same object — results are cached by
-    ``id(obj)``. Unknown method names are silently skipped.
+    ``id(obj)``, guarded by a weakref so a recycled address cannot be
+    mistaken for an already-flagged object. Unknown method names are
+    silently skipped.
 
     Args:
         obj: A pywin32 ``CDispatch`` wrapping a SolidWorks COM object.
@@ -191,8 +250,7 @@ def flag_methods(obj: Any, *interfaces: str) -> int:
     if not _interface_methods or obj is None:
         return 0
 
-    obj_id = id(obj)
-    already = _flag_cache.setdefault(obj_id, set())
+    already = _flagged_interfaces(obj)
 
     new_interfaces = [i for i in interfaces if i not in already]
     if not new_interfaces:
@@ -242,8 +300,11 @@ def flag_doc(obj: Any, doc_type: int) -> int:
 def invalidate_flag_cache(obj: Any | None = None) -> None:
     """Forget that ``obj`` has been flagged, or clear the cache entirely.
 
-    Needed when a dispatch is closed / re-acquired; the new object at the
-    same address would otherwise be treated as already-flagged.
+    Since the flag cache became weakref-guarded (see
+    :func:`_flagged_interfaces`) a recycled address can no longer be mistaken
+    for an already-flagged object, so this is no longer *required* for
+    correctness when a dispatch is closed and re-acquired. It remains useful to
+    force a re-flag explicitly, and to drop entries in tests.
     """
     if obj is None:
         _flag_cache.clear()
